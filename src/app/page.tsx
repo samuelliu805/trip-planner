@@ -1,4 +1,7 @@
 import { MapPinned, Route, Share2 } from "lucide-react";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 
 const capabilities = [
   { icon: MapPinned, label: "Plan every day in one workspace" },
@@ -21,6 +24,10 @@ export default function Home() {
             Organize daily plans, locations, and route alternatives in one calm,
             shareable travel workspace.
           </p>
+          <div className="mt-8 flex gap-3">
+            <Button asChild size="lg"><Link href="/signup">Start planning</Link></Button>
+            <Button asChild size="lg" variant="outline"><Link href="/login">Log in</Link></Button>
+          </div>
         </div>
 
         <ul className="mt-14 grid gap-4 md:grid-cols-3">
@@ -36,7 +43,7 @@ export default function Home() {
         </ul>
 
         <p className="mt-10 text-sm text-muted-foreground">
-          Project foundation is ready. Account and trip creation arrive in Phase 1.
+          Phase 1 is ready: create an account and start your first trip.
         </p>
       </section>
     </main>

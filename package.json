@@ -22,6 +22,7 @@
     "date-fns": "latest",
     "lucide-react": "latest",
     "next": "16.2.12",
+    "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "latest",

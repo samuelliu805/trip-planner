@@ -14,16 +14,318 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      itinerary_items: {
+        Row: {
+          booking_url: string | null
+          created_at: string
+          day_id: string
+          details: Json
+          end_time: string | null
+          id: string
+          notes: string | null
+          place_id: string | null
+          sort_order: number
+          start_time: string | null
+          title: string
+          trip_id: string
+          type: Database["public"]["Enums"]["itinerary_item_type"]
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          booking_url?: string | null
+          created_at?: string
+          day_id: string
+          details?: Json
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          place_id?: string | null
+          sort_order?: number
+          start_time?: string | null
+          title: string
+          trip_id: string
+          type: Database["public"]["Enums"]["itinerary_item_type"]
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          booking_url?: string | null
+          created_at?: string
+          day_id?: string
+          details?: Json
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          place_id?: string | null
+          sort_order?: number
+          start_time?: string | null
+          title?: string
+          trip_id?: string
+          type?: Database["public"]["Enums"]["itinerary_item_type"]
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_items_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itinerary_items_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itinerary_items_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itinerary_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      places: {
+        Row: {
+          custom_lat: number | null
+          custom_lng: number | null
+          custom_name: string | null
+          google_place_id: string | null
+          id: string
+          source: Database["public"]["Enums"]["place_source"]
+          trip_id: string
+        }
+        Insert: {
+          custom_lat?: number | null
+          custom_lng?: number | null
+          custom_name?: string | null
+          google_place_id?: string | null
+          id?: string
+          source: Database["public"]["Enums"]["place_source"]
+          trip_id: string
+        }
+        Update: {
+          custom_lat?: number | null
+          custom_lng?: number | null
+          custom_name?: string | null
+          google_place_id?: string | null
+          id?: string
+          source?: Database["public"]["Enums"]["place_source"]
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "places_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      route_variants: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          name: string
+          trip_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          name: string
+          trip_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          name?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "route_variants_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_days: {
+        Row: {
+          date: string
+          day_number: number
+          id: string
+          notes: string | null
+          title: string | null
+          variant_id: string
+        }
+        Insert: {
+          date: string
+          day_number: number
+          id?: string
+          notes?: string | null
+          title?: string | null
+          variant_id: string
+        }
+        Update: {
+          date?: string
+          day_number?: number
+          id?: string
+          notes?: string | null
+          title?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_days_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_members: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["trip_member_role"]
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["trip_member_role"]
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["trip_member_role"]
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_members_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          created_at: string
+          currency: string
+          end_date: string
+          id: string
+          owner_id: string
+          start_date: string
+          timezone: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          end_date: string
+          id?: string
+          owner_id: string
+          start_date: string
+          timezone: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          end_date?: string
+          id?: string
+          owner_id?: string
+          start_date?: string
+          timezone?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_trip: {
+        Args: {
+          trip_currency?: string
+          trip_end_date: string
+          trip_start_date: string
+          trip_timezone: string
+          trip_title: string
+        }
+        Returns: string
+      }
+      is_trip_member: { Args: { target_trip_id: string }; Returns: boolean }
+      is_trip_owner: { Args: { target_trip_id: string }; Returns: boolean }
+      variant_trip_id: { Args: { target_variant_id: string }; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      itinerary_item_type:
+        | "hotel"
+        | "activity"
+        | "meal"
+        | "transport"
+        | "location"
+        | "car_rental"
+        | "flight"
+        | "train"
+        | "note"
+      place_source: "google" | "custom"
+      trip_member_role: "owner" | "editor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +452,20 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      itinerary_item_type: [
+        "hotel",
+        "activity",
+        "meal",
+        "transport",
+        "location",
+        "car_rental",
+        "flight",
+        "train",
+        "note",
+      ],
+      place_source: ["google", "custom"],
+      trip_member_role: ["owner", "editor", "viewer"],
+    },
   },
 } as const
