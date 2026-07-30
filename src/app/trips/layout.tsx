@@ -14,7 +14,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 lg:px-8">
+        <div className="flex h-16 w-full items-center justify-between px-4 lg:px-5">
           <Link className="font-semibold tracking-tight" href="/trips">Trip Planner</Link>
           <div className="flex items-center gap-3">
             <span className="hidden max-w-64 truncate text-sm text-muted-foreground sm:block">{user.email}</span>

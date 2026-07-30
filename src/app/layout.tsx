@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { QueryProvider } from "@/components/query-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 import "./globals.css";
 
@@ -17,7 +18,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><QueryProvider>{children}</QueryProvider></body>
+      <body><QueryProvider><TooltipProvider delayDuration={350}>{children}</TooltipProvider></QueryProvider></body>
     </html>
   );
 }
