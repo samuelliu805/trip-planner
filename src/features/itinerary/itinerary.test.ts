@@ -165,3 +165,17 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(queries, /useCopyItineraryItems[\s\S]*onMutate/);
   assert.match(queries, /onError:[\s\S]*context\?\.previous/);
 });
+
+test("mobile workspace keeps the matrix editable and uses safe overlay sheets", async () => {
+  const workspace = await readFile(new URL("./components/planner-workspace.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
+  assert.match(styles, /max-width: 639px/);
+  assert.match(styles, /safe-area-inset-left/);
+  assert.match(styles, /planner-editor-sheet input,[\s\S]*font-size: 16px/);
+  assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
+  assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
+  assert.match(workspace, /selectedMapItem/);
+  assert.match(workspace, /contextLabel=\{selectedMapItem\?\.title\}/);
+  assert.match(workspace, /planner-map-sheet/);
+  assert.match(workspace, /Copy selected cells[\s\S]*>Paste[\s\S]*Copy to days[\s\S]*Copy previous day/);
+});

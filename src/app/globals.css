@@ -130,6 +130,7 @@ body {
     grid-column: 1;
     grid-row: 1;
     overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
   }
 
   .planner-divider {
@@ -163,6 +164,12 @@ body {
     padding-bottom: env(safe-area-inset-bottom);
   }
 
+  .planner-editor-sheet input,
+  .planner-editor-sheet select,
+  .planner-editor-sheet textarea {
+    font-size: 16px;
+  }
+
   .planner-matrix [data-edit-item],
   .planner-matrix [data-add-item],
   .planner-matrix [aria-label^="Actions for"] {
@@ -176,5 +183,24 @@ body {
 
   .planner-matrix [aria-label="Fill selected cells down"] {
     display: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .planner-workspace {
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+  }
+
+  .planner-editor-sheet {
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    overflow: hidden;
+  }
+
+  .planner-map-sheet {
+    height: calc(100dvh - max(8px, env(safe-area-inset-top))) !important;
+    max-height: none;
+    padding-bottom: env(safe-area-inset-bottom) !important;
   }
 }
