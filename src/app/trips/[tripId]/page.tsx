@@ -1,11 +1,11 @@
 import { format, parseISO } from "date-fns";
-import { ArrowLeft, CalendarDays, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { deleteTrip } from "@/features/trips/actions";
+import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
 import { getPrimaryTripDays, getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
@@ -39,9 +39,12 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
           ))}
         </section>
 
-        <aside className="space-y-6">
-          <Card><CardHeader><CardTitle>Trip settings</CardTitle><CardDescription>Dates are fixed after creation in this MVP.</CardDescription></CardHeader><CardContent><UpdateTripForm trip={trip} /></CardContent></Card>
-          <Card className="border-destructive/30"><CardHeader><CardTitle className="text-base">Delete trip</CardTitle><CardDescription>This permanently removes the trip and its current plan.</CardDescription></CardHeader><CardContent><form action={deleteTrip}><input name="trip_id" type="hidden" value={trip.id} /><Button type="submit" variant="destructive"><Trash2 className="size-4" aria-hidden="true" />Delete trip</Button></form></CardContent></Card>
+        <aside>
+          <Card>
+            <CardHeader><CardTitle>Edit Trip Settings</CardTitle><CardDescription>Update trip details without changing the generated date structure.</CardDescription></CardHeader>
+            <CardContent><UpdateTripForm trip={trip} /></CardContent>
+            <div className="flex border-t px-6 py-4"><DeleteTripDialog title={trip.title} tripId={trip.id} /></div>
+          </Card>
         </aside>
       </div>
     </main>

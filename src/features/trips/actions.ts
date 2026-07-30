@@ -50,15 +50,17 @@ export async function updateTrip(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("trips")
     .update({ title: parsed.data.title, timezone: parsed.data.timezone, currency: parsed.data.currency })
-    .eq("id", parsed.data.tripId);
+    .eq("id", parsed.data.tripId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { error: "Could not update this trip." };
+  if (error || !data) return { error: "You do not have permission to update this trip." };
   revalidatePath("/trips");
   revalidatePath(`/trips/${parsed.data.tripId}`);
-  return {};
+  return { success: "Trip settings saved." };
 }
 
 export async function deleteTrip(formData: FormData) {
@@ -66,7 +68,7 @@ export async function deleteTrip(formData: FormData) {
   if (!parsed.success) return;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("trips").delete().eq("id", parsed.data);
-  if (error) redirect(`/trips/${parsed.data}?error=delete`);
+  const { data, error } = await supabase.from("trips").delete().eq("id", parsed.data).select("id").maybeSingle();
+  if (error || !data) redirect(`/trips/${parsed.data}?error=delete`);
   redirect("/trips");
 }
