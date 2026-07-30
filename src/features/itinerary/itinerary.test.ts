@@ -179,3 +179,16 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(workspace, /planner-map-sheet/);
   assert.match(workspace, /Copy selected cells[\s\S]*>Paste[\s\S]*Copy to days[\s\S]*Copy previous day/);
 });
+
+test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", async () => {
+  const workspace = await readFile(new URL("./components/planner-workspace.tsx", import.meta.url), "utf8");
+  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  assert.match(workspace, /This itinerary is empty/);
+  assert.match(workspace, /planner could not refresh/);
+  assert.match(workspace, /Saving…[\s\S]*Saved/);
+  assert.match(workspace, /Unsupported clipboard data/);
+  assert.match(workspace, /previous order was restored/);
+  assert.match(queries, /onError:[\s\S]*context\?\.previous/);
+  assert.match(actions, /You do not have permission to change itinerary items/);
+});

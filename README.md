@@ -4,9 +4,9 @@ Trip Planner is a modern travel-planning workspace intended to replace the sprea
 
 ## Current status
 
-Phase 1 — Supabase, authentication, database, and trip CRUD — is complete. Users can sign up, log in, log out, create trips, view their own trips, update trip settings, and delete trips. Each trip atomically receives its owner membership, primary Route A variant, and one day record per travel date.
+Phase 2 — the core trip planner — is complete. The authenticated `/trips/[tripId]` route is one responsive editing workspace for desktop, tablet, and mobile browsers. It supports grouped-day itinerary editing, optional times, typed car-rental details, ordering, keyboard navigation, selection, replace-style copy/paste, fill, and copy-to-day operations. A provider-ready map region remains visible without loading Google APIs.
 
-Itinerary-item editing, maps, route comparison, sharing, and travel research remain intentionally deferred to their requested phases.
+Live Maps and Places, route alternatives, directions, sharing, export, and travel research remain intentionally deferred to later phases.
 
 ## Foundation stack
 
@@ -17,7 +17,7 @@ Itinerary-item editing, maps, route comparison, sharing, and travel research rem
 - ESLint with the Next.js Core Web Vitals and TypeScript presets
 - npm for dependency and lockfile management
 
-The dependencies required by later planned phases are installed now so the project has a reproducible technical baseline: Supabase, TanStack Query, React Hook Form, Zod, dnd-kit, date-fns, and Google Maps for React.
+Phase 2 uses Supabase, TanStack Query, React Hook Form, Zod, and date-fns. Provider packages may be installed, but the Phase 2 planner does not initialize Google Maps or make Maps/Places requests.
 
 ## Architecture
 
@@ -41,6 +41,62 @@ supabase/
 ```
 
 `MapProvider`, `PlaceProvider`, `RouteProvider`, and `TravelProvider` contracts keep external vendor representations outside the core domain. Google-specific implementations will be added only in their corresponding phases.
+
+### Planner structure
+
+```text
+src/features/itinerary/
+  actions.ts                     Validated server mutations
+  data.ts                        Route A, ordered days, and ordered item loading
+  schema.ts                      Item and type-specific validation
+  queries.ts                     TanStack Query cache and optimistic rollback
+  grid-interactions.ts           Navigation, selection, fill, and clipboard format
+  mutation-helpers.ts            Time normalization and independent-copy rows
+  components/
+    planner-workspace.tsx        Shared responsive ARIA grid and map shell
+    planner-item-form.tsx        Add/edit/delete Sheet form
+    item-details-editor.tsx      Typed detail editing
+```
+
+The server actions use the signed-in Supabase client. Database RLS remains the authority for writes; client-side controls are not an authorization boundary.
+
+### Matrix projection
+
+The spreadsheet is a projection of normalized records, not a database table shape:
+
+| Matrix column | Persisted source |
+| --- | --- |
+| Date, Day | `trip_days` |
+| City | `itinerary_items.type = location` |
+| Activities | `activity` |
+| Transport | `transport`, `flight`, `train` |
+| Hotel | `hotel` |
+| Car rental | `car_rental` |
+| Meals | `meal` |
+| Notes | `note` |
+
+A day may contain multiple items in every category. `start_time` and `end_time` are nullable and appear inline only when present. Copies insert independent rows with new IDs and destination `sort_order` values.
+
+### Planner controls
+
+- Arrow keys move between cells.
+- `Tab` and `Shift+Tab` move forward and backward through the grid.
+- `Enter` opens the first item in a populated cell or adds to an empty cell.
+- `Escape` cancels an open item editor.
+- Double-click opens a desktop cell/item editor; touch layouts use the selected cell's Add row and each item's actions menu.
+- `Ctrl/Cmd+C` and `Ctrl/Cmd+V` copy and replace destination category contents. Paste never appends to existing destination items.
+- Desktop pointer selection supports ranges and a distinct fill handle. Tablet/mobile avoid ambiguous drag gestures and expose copy commands in More.
+- Item menus and `Alt+ArrowUp/ArrowDown` provide deterministic ordering without drag latency.
+
+The item editor focuses the title, supports normal Tab order, submits with Enter, and allows either time to be cleared.
+
+### Responsive behavior
+
+- Desktop uses an approximately 58/42 resizable matrix/map split with frozen Date and Day columns.
+- Tablet landscape uses a compact 56/44 split with a 380px minimum map width and in-pane matrix scrolling.
+- Tablet portrait and mobile use a full-width matrix plus a persistent 100px map peek. The map expands in an overlay Sheet without changing routes or losing grid selection.
+- Mobile controls are touch-safe, forms use at least 16px input text, and safe-area insets are respected.
+- The map is an intentional Phase 3 empty state and has no provider scripts or requests.
 
 ## Local development
 
@@ -110,33 +166,53 @@ The migration has indexes for ownership, membership lookup, variants, days, plac
 ## Quality checks
 
 ```bash
+npm test
+npx tsc --noEmit
 npm run lint
 npm run build
 ```
 
-## Phase 1 manual test
+The itinerary tests cover optional and cleared times, typed car-rental validation, copy independence, ordering, RLS usage, keyboard movement, range/fill calculations, clipboard validation, optimistic rollback hooks, and responsive/state contracts.
+
+## Phase 2 manual verification
 
 1. Set the three Phase 1 variables in `.env.local` and allow `http://localhost:3000/**` in Supabase Auth redirect URLs.
 2. Run `npm install` and `npm run dev`, then open `http://localhost:3000`.
 3. Create an account at `/signup`. If email confirmation is enabled, follow the email link; for a fully local Supabase stack, use Mailpit at `http://localhost:54324`.
 4. Log in and create a trip with multiple dates.
-5. Confirm the trip detail shows Route A and one numbered section for every date.
-6. Refresh the page, update the title/timezone/currency, and confirm the data persists.
-7. Log out and confirm `/trips` redirects to `/login`.
-8. Create a second account in another browser profile. Paste the first account's trip URL and confirm it returns the not-found page. This verifies the RLS isolation path, not just frontend navigation.
-9. Log back in as the owner, delete the test trip, and confirm it disappears from `/trips`.
+5. Open `/trips/[tripId]`, add two items to one category/day cell, leave both times empty on one item, and refresh.
+6. Edit and clear start/end times, add valid pickup/return car-rental details, and confirm all changes persist.
+7. Copy a populated category cell to another day. Confirm existing destination-category items are replaced, IDs differ, and editing the copy does not change the source.
+8. Reorder items with the item menu or `Alt+ArrowUp/ArrowDown`, refresh, and confirm the order persists.
+9. Check arrow, Tab, Shift+Tab, Enter, Escape, copy/paste, Copy to days, Copy previous day, and unsupported clipboard feedback.
+10. At 1280, 1440, and 1920px, confirm the map remains visible, the divider resizes, frozen columns work, and the page has no global horizontal overflow.
+11. At 1024×768, 834×1194, and 768×1024, confirm compact split/portrait peek behavior, touch-sized controls, contained matrix scrolling, and overlay Sheets.
+12. At 390×844, 393×852, and 430×932, confirm sticky columns, horizontal matrix scrolling, 16px editor inputs, safe-area spacing, map expansion, and preserved selection.
+13. In browser network/devtools, confirm the planner loads no Google scripts and makes no Maps or Places API requests.
+14. Log out and confirm `/trips` redirects to `/login`. With a second account, confirm the first account's trip cannot be read or mutated through direct URLs/actions.
+15. Confirm trip create/update/delete and Route A/day generation still work.
 
 For every completed phase, the handoff should include required configuration, migration/deployment actions, automated checks, and a phase-specific local manual test checklist.
 
 ## Planned phases
 
 1. ✅ Supabase, authentication, database schema, RLS, and trip CRUD
-2. Itinerary workspace and item reordering
+2. ✅ Core itinerary workspace, editing interactions, and responsive layouts
 3. Google Maps and Places API (New)
 4. Alternative route variants
 5. Google Routes API
 6. Public read-only sharing
 7. External travel research links
-8. Responsive, accessibility, state, and deployment polish
+8. Offline, conflict, and deployment polish
 
 Each phase is implemented and verified independently before work begins on the next.
+
+### Explicitly deferred from Phase 2
+
+- Live Google Maps and Places API integration
+- Place search, provider pins, and selected-place details
+- Alternative route variants and route comparison
+- Google Routes API directions
+- Public sharing and itinerary export
+- Travel research integrations
+- Offline-first synchronization and multi-user conflict resolution
