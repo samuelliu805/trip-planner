@@ -1,22 +1,8 @@
-import Link from "next/link";
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
-      <div className="w-full max-w-md">
-        <Link className="mb-8 block text-center text-sm font-semibold uppercase tracking-[0.2em] text-primary" href="/">
-          Trip Planner
-        </Link>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Welcome</CardTitle>
-            <CardDescription>Sign in to build and manage your itineraries.</CardDescription>
-          </CardHeader>
-          <CardContent>{children}</CardContent>
-        </Card>
-      </div>
+    <main className="relative flex min-h-screen items-start justify-center overflow-hidden bg-background px-4 py-8 sm:items-center sm:bg-muted sm:px-6 sm:py-12">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-background to-transparent" />
+      <div className="relative w-full max-w-[420px]">{children}</div>
     </main>
   );
 }

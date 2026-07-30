@@ -11,5 +11,16 @@ export default async function LoginPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect("/trips");
 
-  return <AuthForm action={login} alternateHref="/signup" alternateLabel="Need an account? Sign up" submitLabel="Log in" />;
+  return (
+    <AuthForm
+      action={login}
+      alternateHref="/signup"
+      alternateLead="Don’t have an account?"
+      alternateLabel="Create account"
+      description="Sign in to continue planning your trips."
+      heading="Welcome back"
+      mode="login"
+      submitLabel="Log in"
+    />
+  );
 }

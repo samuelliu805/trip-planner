@@ -11,5 +11,16 @@ export default async function SignupPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect("/trips");
 
-  return <AuthForm action={signup} alternateHref="/login" alternateLabel="Already have an account? Log in" submitLabel="Create account" />;
+  return (
+    <AuthForm
+      action={signup}
+      alternateHref="/login"
+      alternateLead="Already have an account?"
+      alternateLabel="Log in"
+      description="Start with your first trip in a few minutes."
+      heading="Create your account"
+      mode="signup"
+      submitLabel="Create account"
+    />
+  );
 }
