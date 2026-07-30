@@ -59,3 +59,23 @@
 body {
   @apply bg-background text-foreground antialiased;
 }
+
+[data-add-item] {
+  pointer-events: none;
+}
+
+[role="gridcell"][aria-selected="true"] > [data-add-item] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+[data-fill-dragging="true"] [data-add-item] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+[data-fill-dragging="true"] [role="gridcell"][aria-selected="true"] > :not([aria-label="Fill selected cells down"]) {
+  filter: blur(1.5px);
+  opacity: 0.4;
+  transition: filter 100ms ease, opacity 100ms ease;
+}

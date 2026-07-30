@@ -24,6 +24,8 @@ export type Database = {
           id: string
           notes: string | null
           place_id: string | null
+          schedule_kind: Database["public"]["Enums"]["itinerary_schedule_kind"]
+          schedule_text: string | null
           sort_order: number
           start_time: string | null
           title: string
@@ -41,6 +43,8 @@ export type Database = {
           id?: string
           notes?: string | null
           place_id?: string | null
+          schedule_kind?: Database["public"]["Enums"]["itinerary_schedule_kind"]
+          schedule_text?: string | null
           sort_order?: number
           start_time?: string | null
           title: string
@@ -58,6 +62,8 @@ export type Database = {
           id?: string
           notes?: string | null
           place_id?: string | null
+          schedule_kind?: Database["public"]["Enums"]["itinerary_schedule_kind"]
+          schedule_text?: string | null
           sort_order?: number
           start_time?: string | null
           title?: string
@@ -324,6 +330,7 @@ export type Database = {
         | "flight"
         | "train"
         | "note"
+      itinerary_schedule_kind: "none" | "all_day" | "period" | "approximate" | "exact" | "range"
       place_source: "google" | "custom"
       trip_member_role: "owner" | "editor" | "viewer"
     }
@@ -464,6 +471,7 @@ export const Constants = {
         "train",
         "note",
       ],
+      itinerary_schedule_kind: ["none", "all_day", "period", "approximate", "exact", "range"],
       place_source: ["google", "custom"],
       trip_member_role: ["owner", "editor", "viewer"],
     },

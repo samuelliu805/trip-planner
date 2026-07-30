@@ -10,6 +10,7 @@ import {
   reorderItineraryItems,
   updateItineraryItem,
 } from "@/features/itinerary/actions";
+import { scheduleKind } from "@/features/itinerary/mutation-helpers";
 import type {
   CopyItineraryItemsInput,
   CreateItineraryItemInput,
@@ -64,6 +65,7 @@ export function useCreateItineraryItem(tripId: string) {
         booking_url: input.bookingUrl || null, created_at: new Date().toISOString(), day_id: input.dayId,
         details: input.details ?? {}, end_time: input.endTime || null, id: `optimistic-${crypto.randomUUID()}`,
         notes: input.notes || null, place_id: input.placeId ?? null, sort_order: day?.items.length ?? 0,
+        schedule_kind: scheduleKind(input.startTime, input.endTime), schedule_text: null,
         start_time: input.startTime || null, title: input.title.trim(), trip_id: input.tripId, type: input.type,
         updated_at: new Date().toISOString(), variant_id: input.variantId,
       };
@@ -92,6 +94,7 @@ export function useUpdateItineraryItem(tripId: string) {
         ...(input.notes !== undefined && { notes: input.notes || null }),
         ...(input.placeId !== undefined && { place_id: input.placeId }),
         ...(input.startTime !== undefined && { start_time: input.startTime || null }),
+        ...((input.startTime !== undefined || input.endTime !== undefined) && { schedule_kind: scheduleKind(input.startTime === undefined ? existing.start_time : input.startTime, input.endTime === undefined ? existing.end_time : input.endTime) }),
         ...(input.title !== undefined && { title: input.title.trim() }),
         ...(input.type !== undefined && { type: input.type }),
       }));
@@ -120,7 +123,26 @@ export function useCopyItineraryItems(tripId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: CopyItineraryItemsInput) => requireData(await copyItineraryItems(input)),
-    onSuccess: (items) => client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) => items.reduce((workspace, item) => replaceItem(workspace, item), current)),
+    onMutate: async (input) => {
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
+      const sources = input.sourceItemIds.map((id) => previous?.days.flatMap(({ items }) => items).find((item) => item.id === id)).filter((item): item is ItineraryItem => Boolean(item));
+      const destination = previous?.days.find(({ id }) => id === input.targetDayId);
+      const nextOrder = destination?.items.reduce((maximum, item) => Math.max(maximum, item.sort_order), -1) ?? -1;
+      const optimistic = sources.map((source, index): ItineraryItem => ({
+        ...source,
+        created_at: new Date().toISOString(),
+        day_id: input.targetDayId,
+        id: `optimistic-${crypto.randomUUID()}`,
+        place_id: input.preservePlace === false ? null : source.place_id,
+        sort_order: nextOrder + index + 1,
+        updated_at: new Date().toISOString(),
+      }));
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) => optimistic.reduce((workspace, item) => replaceItem(workspace, item), current));
+      return { optimisticIds: optimistic.map(({ id }) => id), previous };
+    },
+    onError: (_error, _input, context) => client.setQueryData(plannerQueryKey(tripId), context?.previous),
+    onSuccess: (items, _input, context) => client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) => items.reduce((workspace, item) => replaceItem(workspace, item), context?.optimisticIds.reduce((workspace, id) => removeItem(workspace, id), current))),
   });
 }
 

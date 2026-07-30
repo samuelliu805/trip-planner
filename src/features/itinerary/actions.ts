@@ -15,7 +15,7 @@ import {
   type UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
-import { buildCopyRows, normalizedOptional, normalizedTimes } from "@/features/itinerary/mutation-helpers";
+import { buildCopyRows, normalizedOptional, normalizedTimes, scheduleKind } from "@/features/itinerary/mutation-helpers";
 import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, TablesInsert, TablesUpdate } from "@/types/database";
@@ -48,13 +48,15 @@ export async function createItineraryItem(input: CreateItineraryItemInput): Prom
     .maybeSingle();
   if (orderError) return { error: mutationError(orderError.message) };
 
+  const times = normalizedTimes(parsed.data.startTime, parsed.data.endTime);
   const values: TablesInsert<"itinerary_items"> = {
     booking_url: normalizedOptional(parsed.data.bookingUrl),
     day_id: parsed.data.dayId,
     details: parsed.data.details as Json,
-    ...normalizedTimes(parsed.data.startTime, parsed.data.endTime),
+    ...times,
     notes: normalizedOptional(parsed.data.notes),
     place_id: parsed.data.placeId ?? null,
+    schedule_kind: scheduleKind(times.start_time, times.end_time),
     sort_order: (lastItem?.sort_order ?? -1) + 1,
     title: parsed.data.title.trim(),
     trip_id: parsed.data.tripId,
@@ -72,6 +74,7 @@ export async function updateItineraryItem(input: UpdateItineraryItemInput): Prom
   const parsed = updateItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
+  const supabase = await createClient();
   const values: TablesUpdate<"itinerary_items"> = {};
   if (parsed.data.bookingUrl !== undefined) values.booking_url = normalizedOptional(parsed.data.bookingUrl);
   if (parsed.data.dayId !== undefined) values.day_id = parsed.data.dayId;
@@ -84,7 +87,22 @@ export async function updateItineraryItem(input: UpdateItineraryItemInput): Prom
   if (parsed.data.type !== undefined) values.type = parsed.data.type;
   if (parsed.data.variantId !== undefined) values.variant_id = parsed.data.variantId;
 
-  const supabase = await createClient();
+  if (parsed.data.startTime !== undefined || parsed.data.endTime !== undefined) {
+    let startTime = normalizedOptional(parsed.data.startTime);
+    let endTime = normalizedOptional(parsed.data.endTime);
+    if (parsed.data.startTime === undefined || parsed.data.endTime === undefined) {
+      const { data: current, error: readError } = await supabase.from("itinerary_items")
+        .select("start_time, end_time")
+        .eq("id", parsed.data.id)
+        .eq("trip_id", parsed.data.tripId)
+        .maybeSingle();
+      if (readError || !current) return { error: mutationError(readError?.message ?? "You do not have permission to change this item.") };
+      if (parsed.data.startTime === undefined) startTime = current.start_time;
+      if (parsed.data.endTime === undefined) endTime = current.end_time;
+    }
+    values.schedule_kind = scheduleKind(startTime, endTime);
+  }
+
   const { data, error } = await supabase
     .from("itinerary_items")
     .update(values)

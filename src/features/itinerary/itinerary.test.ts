@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { buildCopyRows, normalizedTimes } from "./mutation-helpers.ts";
+import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
+import { encodePlannerClipboard, fillTargetRows, moveGridFocus, parsePlannerClipboard, selectionBounds, selectionContains } from "./grid-interactions.ts";
 import {
   carRentalDetailsSchema,
   copyItineraryItemsSchema,
@@ -32,6 +33,7 @@ test("create accepts missing, start-only, and end-only time", () => {
 
 test("edit and delete inputs validate", () => {
   assert.equal(updateItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip, title: "Edited", type: "activity" }).success, true);
+  assert.equal(updateItineraryItemSchema.safeParse({ endTime: "", id: ids.item, startTime: "", tripId: ids.trip, type: "activity" }).success, true);
   assert.equal(deleteItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip }).success, true);
 });
 
@@ -51,7 +53,7 @@ test("reorder payload persists explicit unique sort orders", () => {
 test("copies get new IDs, destination ordering, and independent values", () => {
   const source = {
     booking_url: "https://example.com", created_at: "2026-01-01", day_id: ids.day, details: { confirmed: true },
-    end_time: null, id: ids.item, notes: "Original", place_id: null, sort_order: 2, start_time: null,
+    end_time: null, id: ids.item, notes: "Original", place_id: null, schedule_kind: "none", schedule_text: null, sort_order: 2, start_time: null,
     title: "Museum", trip_id: ids.trip, type: "activity", updated_at: "2026-01-01", variant_id: ids.variant,
   } satisfies ItineraryItem;
   const [copy] = buildCopyRows([source], ids.targetDay, 7, true, () => "00000000-0000-4000-8000-000000000006");
@@ -69,4 +71,83 @@ test("RLS remains the write authority and server actions do not use a service ro
   assert.match(migration, /itinerary_items_(insert|update|delete)_owners/);
   assert.match(migration, /public\.is_trip_owner\(trip_id\)/);
   assert.doesNotMatch(actions, /service[_-]?role/i);
+});
+
+test("schedule metadata follows nullable start and end times", async () => {
+  const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  assert.equal(scheduleKind(null, null), "none");
+  assert.equal(scheduleKind("09:00", null), "exact");
+  assert.equal(scheduleKind(null, "10:00"), "exact");
+  assert.equal(scheduleKind("09:00", "10:00"), "range");
+  assert.match(actions, /schedule_kind: scheduleKind/);
+  assert.match(actions, /values\.schedule_kind = scheduleKind/);
+});
+
+test("keyboard navigation wraps rows and clamps to the grid", () => {
+  assert.deepEqual(moveGridFocus({ row: 0, column: 0 }, "ArrowRight", 3, 4), { row: 0, column: 1 });
+  assert.deepEqual(moveGridFocus({ row: 0, column: 3 }, "Tab", 3, 4), { row: 1, column: 0 });
+  assert.deepEqual(moveGridFocus({ row: 1, column: 0 }, "Tab", 3, 4, true), { row: 0, column: 3 });
+  assert.deepEqual(moveGridFocus({ row: 0, column: 0 }, "ArrowUp", 3, 4), { row: 0, column: 0 });
+  assert.deepEqual(moveGridFocus({ row: 1, column: 1 }, "ArrowDown", 3, 4), { row: 2, column: 1 });
+  assert.deepEqual(moveGridFocus({ row: 1, column: 1 }, "ArrowLeft", 3, 4), { row: 1, column: 0 });
+});
+
+test("selection extension and fill targets use normalized bounds", () => {
+  const anchor = { row: 3, column: 4 };
+  const end = { row: 1, column: 2 };
+  assert.deepEqual(selectionBounds(anchor, end), { top: 1, bottom: 3, left: 2, right: 4 });
+  assert.equal(selectionContains(anchor, end, { row: 2, column: 3 }), true);
+  assert.equal(selectionContains(anchor, end, { row: 0, column: 3 }), false);
+  assert.deepEqual(fillTargetRows(anchor, end), [2, 3]);
+});
+
+test("planner clipboard copy and paste preserves typed item IDs", () => {
+  const payload = { cells: [{ columnOffset: 0, items: [ids.item], rowOffset: 0 }], kind: "trip-planner/items" as const, version: 1 as const };
+  assert.deepEqual(parsePlannerClipboard(encodePlannerClipboard(payload)), payload);
+});
+
+test("malformed and unrelated clipboard input is rejected safely", () => {
+  assert.equal(parsePlannerClipboard("not json"), null);
+  assert.equal(parsePlannerClipboard(JSON.stringify({ kind: "other", version: 1, cells: [] })), null);
+  assert.equal(parsePlannerClipboard(JSON.stringify({ kind: "trip-planner/items", version: 1, cells: [{ rowOffset: -1, columnOffset: 0, items: [ids.item] }] })), null);
+});
+
+test("spreadsheet UI uses stable lightweight reorder controls plus rollback hooks", async () => {
+  const workspace = await readFile(new URL("./components/planner-workspace.tsx", import.meta.url), "utf8");
+  const form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
+  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  assert.match(workspace, />Move up /);
+  assert.match(workspace, />Move down /);
+  assert.match(workspace, /event\.altKey && event\.key === "ArrowUp"/);
+  assert.match(workspace, /event\.altKey && event\.key === "ArrowDown"/);
+  assert.match(workspace, /aria-label="Fill selected cells down"/);
+  assert.match(workspace, /Release to fill/);
+  assert.match(workspace, /requestAnimationFrame/);
+  assert.match(workspace, /replacedItems/);
+  assert.match(workspace, /replaceCategoryItems/);
+  assert.match(workspace, /sourceItemIds: sourceDay\.items\.filter/);
+  assert.match(workspace, /startRangeSelection/);
+  assert.match(workspace, /window\.addEventListener\("pointermove", move\)/);
+  assert.match(workspace, /onDoubleClick=\{openEditorFromDoubleClick\}/);
+  assert.match(workspace, /data-edit-item=\{item\.id\}/);
+  assert.match(workspace, /data-add-item/);
+  assert.match(styles, /aria-selected="true"[\s\S]*data-add-item/);
+  assert.doesNotMatch(workspace, />Fill down</);
+  assert.doesNotMatch(workspace, />Duplicate /);
+  assert.match(workspace, /setSelectionAnchor\(\{ column: -1, row: -1 \}\)/);
+  assert.match(styles, /data-fill-dragging="true"[\s\S]*filter: blur/);
+  assert.match(workspace, /Promise\.all\(replacements\.flatMap/);
+  assert.match(workspace, /replacedIds/);
+  assert.doesNotMatch(workspace, /DndContext|useSortable|DndDescribedBy/);
+  assert.doesNotMatch(workspace, /@\/components\/ui\/popover/);
+  assert.match(workspace, /internalClipboard/);
+  assert.match(form, /<form/);
+  assert.match(form, /type="submit"/);
+  assert.match(form, /event\.key === "Escape"/);
+  assert.match(form, /Clear start time/);
+  assert.match(form, /Clear end time/);
+  assert.match(form, /requestAnimationFrame\(\(\) => titleRef\.current\?\.focus\(\)\)/);
+  assert.match(queries, /useCopyItineraryItems[\s\S]*onMutate/);
+  assert.match(queries, /onError:[\s\S]*context\?\.previous/);
 });

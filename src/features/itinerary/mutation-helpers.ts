@@ -9,6 +9,12 @@ export function normalizedTimes(startTime?: string | null, endTime?: string | nu
   return { end_time: normalizedOptional(endTime), start_time: normalizedOptional(startTime) };
 }
 
+export function scheduleKind(startTime?: string | null, endTime?: string | null) {
+  if (startTime && endTime) return "range" as const;
+  if (startTime || endTime) return "exact" as const;
+  return "none" as const;
+}
+
 export function buildCopyRows(
   sources: ItineraryItem[],
   targetDayId: string,
@@ -24,6 +30,8 @@ export function buildCopyRows(
     id: createId(),
     notes: source.notes,
     place_id: preservePlace ? source.place_id : null,
+    schedule_kind: source.schedule_kind,
+    schedule_text: source.schedule_text,
     sort_order: firstSortOrder + index,
     start_time: source.start_time,
     title: source.title,

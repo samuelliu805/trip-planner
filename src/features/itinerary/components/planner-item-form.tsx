@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,14 @@ type PlannerItemFormProps = {
   dayId: string;
   item?: ItineraryItem;
   onCancel: () => void;
+  onError: (message: string) => void;
   onSaved: (item: ItineraryItem) => void;
   tripId: string;
   type: ItineraryItemType;
   variantId: string;
 };
 
-export function PlannerItemForm({ dayId, item, onCancel, onSaved, tripId, type, variantId }: PlannerItemFormProps) {
+export function PlannerItemForm({ dayId, item, onCancel, onError, onSaved, tripId, type, variantId }: PlannerItemFormProps) {
   const existingCar = item?.type === "car_rental" ? item.details as Partial<CarRentalDetails> : {};
   const [title, setTitle] = useState(item?.title ?? "");
   const [startTime, setStartTime] = useState(item?.start_time?.slice(0, 5) ?? "");
@@ -37,21 +39,24 @@ export function PlannerItemForm({ dayId, item, onCancel, onSaved, tripId, type, 
   const createMutation = useCreateItineraryItem(tripId);
   const updateMutation = useUpdateItineraryItem(tripId);
   const deleteMutation = useDeleteItineraryItem(tripId);
+  const titleRef = useRef<HTMLInputElement>(null);
   const pending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
   const error = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
 
-  async function save() {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => titleRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  function save() {
+    if (pending || !title.trim() || (type === "car_rental" && !carLocation.trim())) return;
     const details: Record<string, Json> = type === "car_rental"
       ? { action: carAction, confirmed: carConfirmed, location: carLocation, provider: carProvider || null, time: startTime || null }
       : (item?.details as Record<string, Json> | undefined) ?? {};
-    try {
-      const saved = item
-        ? await updateMutation.mutateAsync({ bookingUrl, details: details as never, endTime, id: item.id, notes, startTime, title, tripId, type })
-        : await createMutation.mutateAsync({ bookingUrl, dayId, details: details as never, endTime, notes, startTime, title, tripId, type, variantId });
-      onSaved(saved);
-    } catch {
-      // TanStack Query exposes the mutation error in the form below.
-    }
+    const callbacks = { onError: (mutationError: Error) => onError(mutationError.message), onSuccess: onSaved };
+    if (item) updateMutation.mutate({ bookingUrl, details: details as never, endTime, id: item.id, notes, startTime, title, tripId, type }, callbacks);
+    else createMutation.mutate({ bookingUrl, dayId, details: details as never, endTime, notes, startTime, title, tripId, type, variantId }, callbacks);
+    onCancel();
   }
 
   async function remove() {
@@ -64,11 +69,11 @@ export function PlannerItemForm({ dayId, item, onCancel, onSaved, tripId, type, 
     }
   }
 
-  return <div className="space-y-4">
-    <div className="space-y-1.5"><Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>Title</Label><Input autoFocus id={`item-title-${item?.id ?? dayId}-${type}`} onChange={(event) => setTitle(event.target.value)} placeholder="Add a plan" value={title} /></div>
+  return <form className="space-y-4" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); onCancel(); } }} onSubmit={(event) => { event.preventDefault(); save(); }}>
+    <div className="space-y-1.5"><Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>Title</Label><Input autoFocus id={`item-title-${item?.id ?? dayId}-${type}`} onChange={(event) => setTitle(event.target.value)} placeholder="Add a plan" ref={titleRef} value={title} /></div>
     <div className="grid grid-cols-2 gap-3">
-      <div className="space-y-1.5"><Label htmlFor={`item-start-${item?.id ?? dayId}-${type}`}>Start time <span className="font-normal text-muted-foreground">optional</span></Label><Input id={`item-start-${item?.id ?? dayId}-${type}`} onChange={(event) => setStartTime(event.target.value)} type="time" value={startTime} /></div>
-      <div className="space-y-1.5"><Label htmlFor={`item-end-${item?.id ?? dayId}-${type}`}>End time <span className="font-normal text-muted-foreground">optional</span></Label><Input id={`item-end-${item?.id ?? dayId}-${type}`} onChange={(event) => setEndTime(event.target.value)} type="time" value={endTime} /></div>
+      <div className="space-y-1.5"><Label htmlFor={`item-start-${item?.id ?? dayId}-${type}`}>Start time <span className="font-normal text-muted-foreground">optional</span></Label><div className="relative"><Input className="pr-9" id={`item-start-${item?.id ?? dayId}-${type}`} onChange={(event) => setStartTime(event.target.value)} type="time" value={startTime} />{startTime ? <button aria-label="Clear start time" className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setStartTime("")} tabIndex={-1} type="button"><X className="size-3.5" /></button> : null}</div></div>
+      <div className="space-y-1.5"><Label htmlFor={`item-end-${item?.id ?? dayId}-${type}`}>End time <span className="font-normal text-muted-foreground">optional</span></Label><div className="relative"><Input className="pr-9" id={`item-end-${item?.id ?? dayId}-${type}`} onChange={(event) => setEndTime(event.target.value)} type="time" value={endTime} />{endTime ? <button aria-label="Clear end time" className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground" onClick={() => setEndTime("")} tabIndex={-1} type="button"><X className="size-3.5" /></button> : null}</div></div>
     </div>
     {type === "car_rental" ? <div className="grid gap-3 rounded-md border bg-muted/25 p-3">
       <div className="grid grid-cols-2 gap-3"><div className="space-y-1.5"><Label htmlFor={`car-action-${item?.id ?? dayId}`}>Action</Label><Select onValueChange={(value) => setCarAction(value as CarRentalDetails["action"])} value={carAction}><SelectTrigger id={`car-action-${item?.id ?? dayId}`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="pickup">Pickup</SelectItem><SelectItem value="return">Return</SelectItem></SelectContent></Select></div><label className="flex min-h-11 items-end gap-2 pb-2 text-sm"><Checkbox checked={carConfirmed} onCheckedChange={(checked) => setCarConfirmed(checked === true)} />Confirmed</label></div>
@@ -80,7 +85,7 @@ export function PlannerItemForm({ dayId, item, onCancel, onSaved, tripId, type, 
     {error ? <p className="text-sm text-destructive" role="alert">{error.message}</p> : null}
     <div className="flex items-center justify-between gap-2">
       <div>{item ? <AlertDialog><AlertDialogTrigger asChild><Button disabled={pending} size="sm" type="button" variant="ghost">Delete</Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete “{item.title}”?</AlertDialogTitle><AlertDialogDescription>This removes the item from the trip. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={remove}>Delete item</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog> : null}</div>
-      <div className="flex gap-2"><Button onClick={onCancel} size="sm" type="button" variant="ghost">Cancel</Button><Button disabled={pending || !title.trim() || (type === "car_rental" && !carLocation.trim())} onClick={save} size="sm" type="button">{pending ? "Saving…" : item ? "Save" : "Add item"}</Button></div>
+      <div className="flex gap-2"><Button onClick={onCancel} size="sm" type="button" variant="ghost">Cancel</Button><Button disabled={pending || !title.trim() || (type === "car_rental" && !carLocation.trim())} size="sm" type="submit">{pending ? "Saving…" : item ? "Save" : "Add item"}</Button></div>
     </div>
-  </div>;
+  </form>;
 }
