@@ -75,10 +75,14 @@ body {
   pointer-events: none !important;
 }
 
-[data-fill-dragging="true"] [role="gridcell"][aria-selected="true"] > :not([aria-label="Fill selected cells down"]) {
+[data-fill-dragging="true"]
+  [role="gridcell"][aria-selected="true"]
+  > :not([aria-label="Fill selected cells down"]) {
   filter: blur(1.5px);
   opacity: 0.4;
-  transition: filter 100ms ease, opacity 100ms ease;
+  transition:
+    filter 100ms ease,
+    opacity 100ms ease;
 }
 
 .planner-layout {
@@ -88,7 +92,6 @@ body {
 .planner-map-peek {
   display: none;
 }
-
 
 @media (min-width: 900px) and (max-width: 1199px) {
   .planner-workspace {
@@ -194,7 +197,6 @@ body {
     left: 0;
     width: 5rem;
   }
-
 }
 
 @media (max-width: 639px) {

@@ -13,12 +13,14 @@ export const metadata: Metadata = {
   description: "A modern workspace for planning complex trips.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><QueryProvider><TooltipProvider delayDuration={350}>{children}</TooltipProvider></QueryProvider></body>
+      <body>
+        <QueryProvider>
+          <TooltipProvider delayDuration={350}>{children}</TooltipProvider>
+        </QueryProvider>
+      </body>
     </html>
   );
 }

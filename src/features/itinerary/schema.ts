@@ -12,19 +12,48 @@ export const itineraryItemTypes = [
   "note",
 ] as const;
 
-const optionalTime = z.union([z.literal(""), z.iso.time({ precision: -1 })]).optional().nullable();
+const optionalTime = z
+  .union([z.literal(""), z.iso.time({ precision: -1 })])
+  .optional()
+  .nullable();
 const optionalText = (maximum: number) => z.string().trim().max(maximum).optional().nullable();
-const optionalUrl = z.union([z.literal(""), z.url().refine((url) => /^https?:\/\//i.test(url), "Use an HTTP(S) URL.")]).optional().nullable();
+const optionalUrl = z
+  .union([z.literal(""), z.url().refine((url) => /^https?:\/\//i.test(url), "Use an HTTP(S) URL.")])
+  .optional()
+  .nullable();
 
-export const carRentalDetailsSchema = z.object({
-  action: z.enum(["pickup", "return"]),
-  address: optionalText(300),
-  provider: optionalText(120),
-}).strict();
+export const carRentalDetailsSchema = z
+  .object({
+    action: z.enum(["pickup", "return"]),
+    address: optionalText(300),
+    provider: optionalText(120),
+  })
+  .strict();
 
 const addressDetailsSchema = z.object({ address: optionalText(300) }).strict();
 const mealDetailsSchema = z.object({ location: optionalText(300) }).strict();
-const transportDetailsSchema = z.object({ location: optionalText(300), mode: z.enum(["flight", "train", "self_driving", "bus", "ferry", "taxi", "rideshare", "bike", "walk", "subway", "tram", "shuttle", "cable_car", "motorcycle", "other"]) }).strict();
+const transportDetailsSchema = z
+  .object({
+    location: optionalText(300),
+    mode: z.enum([
+      "flight",
+      "train",
+      "self_driving",
+      "bus",
+      "ferry",
+      "taxi",
+      "rideshare",
+      "bike",
+      "walk",
+      "subway",
+      "tram",
+      "shuttle",
+      "cable_car",
+      "motorcycle",
+      "other",
+    ]),
+  })
+  .strict();
 const activityDetailsSchema = z.object({ location: optionalText(300) }).strict();
 
 const genericDetailsSchema = z.record(z.string(), z.json());
@@ -41,59 +70,122 @@ const itemBaseSchema = z.object({
   variantId: z.uuid(),
 });
 
-export const createItineraryItemSchema = z.discriminatedUnion("type", [
-  itemBaseSchema.extend({ type: z.literal("car_rental"), details: carRentalDetailsSchema }),
-  itemBaseSchema.extend({ type: z.literal("hotel"), details: addressDetailsSchema }),
-  itemBaseSchema.extend({ type: z.literal("meal"), details: mealDetailsSchema }),
-  itemBaseSchema.extend({ type: z.literal("transport"), details: transportDetailsSchema }),
-  itemBaseSchema.extend({ type: z.literal("activity"), details: activityDetailsSchema }),
-  ...itineraryItemTypes
-    .filter((type) => !["car_rental", "hotel", "meal", "transport", "activity"].includes(type))
-    .map((type) => itemBaseSchema.extend({ type: z.literal(type), details: genericDetailsSchema.optional().default({}) })),
-]).refine((value) => !value.endTime || !value.startTime || value.endTime >= value.startTime, {
-  message: "End time must be on or after start time.",
-  path: ["endTime"],
-}).superRefine((value, context) => {
-  if (["transport", "flight", "train", "hotel", "note"].includes(value.type) && (value.startTime || value.endTime)) context.addIssue({ code: "custom", message: "This item type does not support times.", path: ["startTime"] });
-  if (["car_rental", "meal"].includes(value.type) && value.endTime) context.addIssue({ code: "custom", message: "This item type supports one time only.", path: ["endTime"] });
-  if (["location", "note"].includes(value.type) && value.bookingUrl) context.addIssue({ code: "custom", message: "This item type does not support links.", path: ["bookingUrl"] });
-});
+export const createItineraryItemSchema = z
+  .discriminatedUnion("type", [
+    itemBaseSchema.extend({ type: z.literal("car_rental"), details: carRentalDetailsSchema }),
+    itemBaseSchema.extend({ type: z.literal("hotel"), details: addressDetailsSchema }),
+    itemBaseSchema.extend({ type: z.literal("meal"), details: mealDetailsSchema }),
+    itemBaseSchema.extend({ type: z.literal("transport"), details: transportDetailsSchema }),
+    itemBaseSchema.extend({ type: z.literal("activity"), details: activityDetailsSchema }),
+    ...itineraryItemTypes
+      .filter((type) => !["car_rental", "hotel", "meal", "transport", "activity"].includes(type))
+      .map((type) =>
+        itemBaseSchema.extend({
+          type: z.literal(type),
+          details: genericDetailsSchema.optional().default({}),
+        }),
+      ),
+  ])
+  .refine((value) => !value.endTime || !value.startTime || value.endTime >= value.startTime, {
+    message: "End time must be on or after start time.",
+    path: ["endTime"],
+  })
+  .superRefine((value, context) => {
+    if (
+      ["transport", "flight", "train", "hotel", "note"].includes(value.type) &&
+      (value.startTime || value.endTime)
+    )
+      context.addIssue({
+        code: "custom",
+        message: "This item type does not support times.",
+        path: ["startTime"],
+      });
+    if (["car_rental", "meal"].includes(value.type) && value.endTime)
+      context.addIssue({
+        code: "custom",
+        message: "This item type supports one time only.",
+        path: ["endTime"],
+      });
+    if (["location", "note"].includes(value.type) && value.bookingUrl)
+      context.addIssue({
+        code: "custom",
+        message: "This item type does not support links.",
+        path: ["bookingUrl"],
+      });
+  });
 
-export const updateItineraryItemSchema = z.object({
-  ...itemBaseSchema.partial().shape,
-  details: z.record(z.string(), z.json()).optional(),
-  id: z.uuid(),
-  tripId: z.uuid(),
-  type: z.enum(itineraryItemTypes),
-}).refine((value) => !value.endTime || !value.startTime || value.endTime >= value.startTime, {
-  message: "End time must be on or after start time.",
-  path: ["endTime"],
-}).superRefine((value, context) => {
-  if (value.type === "car_rental") {
-    const parsed = carRentalDetailsSchema.safeParse(value.details);
-    if (!parsed.success) parsed.error.issues.forEach((issue) => context.addIssue({ ...issue, path: ["details", ...issue.path] }));
-  }
-  if (["transport", "flight", "train", "hotel", "note"].includes(value.type) && (value.startTime || value.endTime)) context.addIssue({ code: "custom", message: "This item type does not support times.", path: ["startTime"] });
-  if (["car_rental", "meal"].includes(value.type) && value.endTime) context.addIssue({ code: "custom", message: "This item type supports one time only.", path: ["endTime"] });
-  if (["location", "note"].includes(value.type) && value.bookingUrl) context.addIssue({ code: "custom", message: "This item type does not support links.", path: ["bookingUrl"] });
-});
+export const updateItineraryItemSchema = z
+  .object({
+    ...itemBaseSchema.partial().shape,
+    details: z.record(z.string(), z.json()).optional(),
+    id: z.uuid(),
+    tripId: z.uuid(),
+    type: z.enum(itineraryItemTypes),
+  })
+  .refine((value) => !value.endTime || !value.startTime || value.endTime >= value.startTime, {
+    message: "End time must be on or after start time.",
+    path: ["endTime"],
+  })
+  .superRefine((value, context) => {
+    if (value.type === "car_rental") {
+      const parsed = carRentalDetailsSchema.safeParse(value.details);
+      if (!parsed.success)
+        parsed.error.issues.forEach((issue) =>
+          context.addIssue({ ...issue, path: ["details", ...issue.path] }),
+        );
+    }
+    if (
+      ["transport", "flight", "train", "hotel", "note"].includes(value.type) &&
+      (value.startTime || value.endTime)
+    )
+      context.addIssue({
+        code: "custom",
+        message: "This item type does not support times.",
+        path: ["startTime"],
+      });
+    if (["car_rental", "meal"].includes(value.type) && value.endTime)
+      context.addIssue({
+        code: "custom",
+        message: "This item type supports one time only.",
+        path: ["endTime"],
+      });
+    if (["location", "note"].includes(value.type) && value.bookingUrl)
+      context.addIssue({
+        code: "custom",
+        message: "This item type does not support links.",
+        path: ["bookingUrl"],
+      });
+  });
 
 export const deleteItineraryItemSchema = z.object({ id: z.uuid(), tripId: z.uuid() });
-export const insertTripDaySchema = z.object({ beforeDayNumber: z.number().int().min(1).max(366), tripId: z.uuid() });
+export const insertTripDaySchema = z.object({
+  beforeDayNumber: z.number().int().min(1).max(366),
+  tripId: z.uuid(),
+});
 export const removeTripDaySchema = z.object({ dayId: z.uuid(), tripId: z.uuid() });
 
-export const reorderItineraryItemsSchema = z.object({
-  dayId: z.uuid(),
-  items: z.array(z.object({ id: z.uuid(), sortOrder: z.number().int().min(0) })).min(1),
-  tripId: z.uuid(),
-}).refine((value) => new Set(value.items.map(({ id }) => id)).size === value.items.length, "Items must be unique.");
+export const reorderItineraryItemsSchema = z
+  .object({
+    dayId: z.uuid(),
+    items: z.array(z.object({ id: z.uuid(), sortOrder: z.number().int().min(0) })).min(1),
+    tripId: z.uuid(),
+  })
+  .refine(
+    (value) => new Set(value.items.map(({ id }) => id)).size === value.items.length,
+    "Items must be unique.",
+  );
 
-export const copyItineraryItemsSchema = z.object({
-  preservePlace: z.boolean().optional().default(true),
-  sourceItemIds: z.array(z.uuid()).min(1),
-  targetDayId: z.uuid(),
-  tripId: z.uuid(),
-}).refine((value) => new Set(value.sourceItemIds).size === value.sourceItemIds.length, "Items must be unique.");
+export const copyItineraryItemsSchema = z
+  .object({
+    preservePlace: z.boolean().optional().default(true),
+    sourceItemIds: z.array(z.uuid()).min(1),
+    targetDayId: z.uuid(),
+    tripId: z.uuid(),
+  })
+  .refine(
+    (value) => new Set(value.sourceItemIds).size === value.sourceItemIds.length,
+    "Items must be unique.",
+  );
 
 export type CreateItineraryItemInput = z.input<typeof createItineraryItemSchema>;
 export type UpdateItineraryItemInput = z.input<typeof updateItineraryItemSchema>;

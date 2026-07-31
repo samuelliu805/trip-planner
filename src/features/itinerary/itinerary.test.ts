@@ -3,7 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
-import { encodePlannerClipboard, fillTargetRows, moveGridFocus, parsePlannerClipboard, selectionBounds, selectionContains } from "./grid-interactions.ts";
+import {
+  encodePlannerClipboard,
+  fillTargetRows,
+  moveGridFocus,
+  parsePlannerClipboard,
+  selectionBounds,
+  selectionContains,
+} from "./grid-interactions.ts";
 import {
   carRentalDetailsSchema,
   copyItineraryItemsSchema,
@@ -24,7 +31,14 @@ const ids = {
   variant: "00000000-0000-4000-8000-000000000002",
 };
 
-const base = { dayId: ids.day, details: {}, title: "Museum", tripId: ids.trip, type: "activity" as const, variantId: ids.variant };
+const base = {
+  dayId: ids.day,
+  details: {},
+  title: "Museum",
+  tripId: ids.trip,
+  type: "activity" as const,
+  variantId: ids.variant,
+};
 
 test("create accepts missing, start-only, and end-only time", () => {
   assert.equal(createItineraryItemSchema.safeParse(base).success, true);
@@ -34,46 +48,123 @@ test("create accepts missing, start-only, and end-only time", () => {
 });
 
 test("edit and delete inputs validate", () => {
-  assert.equal(updateItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip, title: "Edited", type: "activity" }).success, true);
-  assert.equal(updateItineraryItemSchema.safeParse({ endTime: "", id: ids.item, startTime: "", tripId: ids.trip, type: "activity" }).success, true);
-  assert.equal(deleteItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip }).success, true);
+  assert.equal(
+    updateItineraryItemSchema.safeParse({
+      id: ids.item,
+      tripId: ids.trip,
+      title: "Edited",
+      type: "activity",
+    }).success,
+    true,
+  );
+  assert.equal(
+    updateItineraryItemSchema.safeParse({
+      endTime: "",
+      id: ids.item,
+      startTime: "",
+      tripId: ids.trip,
+      type: "activity",
+    }).success,
+    true,
+  );
+  assert.equal(
+    deleteItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip }).success,
+    true,
+  );
 });
 
 test("car rental details restrict action while address and provider remain optional", () => {
   assert.equal(carRentalDetailsSchema.safeParse({ action: "pickup" }).success, true);
-  assert.equal(carRentalDetailsSchema.safeParse({ action: "return", address: "BER", provider: "Sixt" }).success, true);
-  assert.equal(carRentalDetailsSchema.safeParse({ action: "dropoff", address: "BER" }).success, false);
+  assert.equal(
+    carRentalDetailsSchema.safeParse({ action: "return", address: "BER", provider: "Sixt" })
+      .success,
+    true,
+  );
+  assert.equal(
+    carRentalDetailsSchema.safeParse({ action: "dropoff", address: "BER" }).success,
+    false,
+  );
 });
 
 test("reorder payload persists explicit unique sort orders", () => {
-  const parsed = reorderItineraryItemsSchema.parse({ dayId: ids.day, items: [{ id: ids.item, sortOrder: 1 }], tripId: ids.trip });
+  const parsed = reorderItineraryItemsSchema.parse({
+    dayId: ids.day,
+    items: [{ id: ids.item, sortOrder: 1 }],
+    tripId: ids.trip,
+  });
   assert.deepEqual(parsed.items, [{ id: ids.item, sortOrder: 1 }]);
-  assert.equal(reorderItineraryItemsSchema.safeParse({ dayId: ids.day, items: [{ id: ids.item, sortOrder: 0 }, { id: ids.item, sortOrder: 1 }], tripId: ids.trip }).success, false);
+  assert.equal(
+    reorderItineraryItemsSchema.safeParse({
+      dayId: ids.day,
+      items: [
+        { id: ids.item, sortOrder: 0 },
+        { id: ids.item, sortOrder: 1 },
+      ],
+      tripId: ids.trip,
+    }).success,
+    false,
+  );
 });
 
 test("day insertion and removal inputs stay scoped to a trip", () => {
-  assert.equal(insertTripDaySchema.safeParse({ beforeDayNumber: 2, tripId: ids.trip }).success, true);
-  assert.equal(insertTripDaySchema.safeParse({ beforeDayNumber: 0, tripId: ids.trip }).success, false);
+  assert.equal(
+    insertTripDaySchema.safeParse({ beforeDayNumber: 2, tripId: ids.trip }).success,
+    true,
+  );
+  assert.equal(
+    insertTripDaySchema.safeParse({ beforeDayNumber: 0, tripId: ids.trip }).success,
+    false,
+  );
   assert.equal(removeTripDaySchema.safeParse({ dayId: ids.day, tripId: ids.trip }).success, true);
 });
 
 test("copies get new IDs, destination ordering, and independent values", () => {
   const source = {
-    booking_url: "https://example.com", created_at: "2026-01-01", day_id: ids.day, details: { confirmed: true },
-    end_time: null, id: ids.item, notes: "Original", place_id: null, schedule_kind: "none", schedule_text: null, sort_order: 2, start_time: null,
-    title: "Museum", trip_id: ids.trip, type: "activity", updated_at: "2026-01-01", variant_id: ids.variant,
+    booking_url: "https://example.com",
+    created_at: "2026-01-01",
+    day_id: ids.day,
+    details: { confirmed: true },
+    end_time: null,
+    id: ids.item,
+    notes: "Original",
+    place_id: null,
+    schedule_kind: "none",
+    schedule_text: null,
+    sort_order: 2,
+    start_time: null,
+    title: "Museum",
+    trip_id: ids.trip,
+    type: "activity",
+    updated_at: "2026-01-01",
+    variant_id: ids.variant,
   } satisfies ItineraryItem;
-  const [copy] = buildCopyRows([source], ids.targetDay, 7, true, () => "00000000-0000-4000-8000-000000000006");
+  const [copy] = buildCopyRows(
+    [source],
+    ids.targetDay,
+    7,
+    true,
+    () => "00000000-0000-4000-8000-000000000006",
+  );
   assert.notEqual(copy.id, source.id);
   assert.equal(copy.day_id, ids.targetDay);
   assert.equal(copy.sort_order, 7);
   copy.title = "Independent edit";
   assert.equal(source.title, "Museum");
-  assert.equal(copyItineraryItemsSchema.safeParse({ sourceItemIds: [ids.item], targetDayId: ids.targetDay, tripId: ids.trip }).success, true);
+  assert.equal(
+    copyItineraryItemsSchema.safeParse({
+      sourceItemIds: [ids.item],
+      targetDayId: ids.targetDay,
+      tripId: ids.trip,
+    }).success,
+    true,
+  );
 });
 
 test("RLS remains the write authority and server actions do not use a service role", async () => {
-  const migration = await readFile(new URL("../../../supabase/migrations/20260729160000_initial_schema.sql", import.meta.url), "utf8");
+  const migration = await readFile(
+    new URL("../../../supabase/migrations/20260729160000_initial_schema.sql", import.meta.url),
+    "utf8",
+  );
   const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
   assert.match(migration, /itinerary_items_(insert|update|delete)_owners/);
   assert.match(migration, /public\.is_trip_owner\(trip_id\)/);
@@ -109,23 +200,46 @@ test("selection extension and fill targets use normalized bounds", () => {
 });
 
 test("planner clipboard copy and paste preserves typed item IDs", () => {
-  const payload = { cells: [{ columnOffset: 0, items: [ids.item], rowOffset: 0 }], kind: "trip-planner/items" as const, sourceColumn: 2, version: 2 as const };
+  const payload = {
+    cells: [{ columnOffset: 0, items: [ids.item], rowOffset: 0 }],
+    kind: "trip-planner/items" as const,
+    sourceColumn: 2,
+    version: 2 as const,
+  };
   assert.deepEqual(parsePlannerClipboard(encodePlannerClipboard(payload)), payload);
 });
 
 test("malformed and unrelated clipboard input is rejected safely", () => {
   assert.equal(parsePlannerClipboard("not json"), null);
-  assert.equal(parsePlannerClipboard(JSON.stringify({ kind: "other", version: 1, cells: [] })), null);
-  assert.equal(parsePlannerClipboard(JSON.stringify({ kind: "trip-planner/items", version: 1, cells: [{ rowOffset: -1, columnOffset: 0, items: [ids.item] }] })), null);
+  assert.equal(
+    parsePlannerClipboard(JSON.stringify({ kind: "other", version: 1, cells: [] })),
+    null,
+  );
+  assert.equal(
+    parsePlannerClipboard(
+      JSON.stringify({
+        kind: "trip-planner/items",
+        version: 1,
+        cells: [{ rowOffset: -1, columnOffset: 0, items: [ids.item] }],
+      }),
+    ),
+    null,
+  );
 });
 
 test("spreadsheet UI uses stable lightweight reorder controls plus rollback hooks", async () => {
-  const workspace = await readFile(new URL("./components/planner-workspace.tsx", import.meta.url), "utf8");
-  const form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
+  const workspace = await readFile(
+    new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+  const form = await readFile(
+    new URL("./components/planner-item-form.tsx", import.meta.url),
+    "utf8",
+  );
   const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
   const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
-  assert.match(workspace, />Move up /);
-  assert.match(workspace, />Move down /);
+  assert.match(workspace, />\s*Move up /);
+  assert.match(workspace, />\s*Move down /);
   assert.match(workspace, /event\.altKey && event\.key === "ArrowUp"/);
   assert.match(workspace, /event\.altKey && event\.key === "ArrowDown"/);
   assert.match(workspace, /aria-label="Fill selected cells down"/);
@@ -133,7 +247,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /requestAnimationFrame/);
   assert.match(workspace, /replacedItems/);
   assert.match(workspace, /replaceCategoryItems/);
-  assert.match(workspace, /sourceItemIds: sourceDay\.items\.filter/);
+  assert.match(workspace, /sourceItemIds:\s*sourceDay\.items\s*\.filter/);
   assert.match(workspace, /startRangeSelection/);
   assert.match(workspace, /window\.addEventListener\("pointermove", move\)/);
   assert.match(workspace, /onDoubleClick=\{openEditorFromDoubleClick\}/);
@@ -149,11 +263,11 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /location="mobilebar"/);
   assert.match(workspace, /selectedCount === 1 && !activeCellAtCapacity/);
-  assert.match(workspace, /const active = selectedCount === 1/);
-  assert.match(workspace, /lastSelected && selectionAnchor\.row === selectionEnd\.row/);
+  assert.match(workspace, /const active =\s*selectedCount === 1/);
+  assert.match(workspace, /lastSelected &&\s*selectionAnchor\.row === selectionEnd\.row/);
   assert.match(workspace, /selectedDayRow/);
   assert.match(workspace, />Edit item</);
-  assert.match(workspace, />Delete item</);
+  assert.match(workspace, />\s*Delete item\s*</);
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
@@ -162,7 +276,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /Remove Day/);
   assert.match(styles, /aria-selected="true"[\s\S]*data-add-item/);
   assert.match(styles, /aria-selected="true"[\s\S]*display: flex/);
-  assert.match(workspace, /Copy selected cells[\s\S]*>Paste</);
+  assert.match(workspace, /Copy selected cells[\s\S]*Paste/);
   assert.doesNotMatch(workspace, />Fill down</);
   assert.doesNotMatch(workspace, />Duplicate /);
   assert.match(workspace, /setSelectionAnchor\(\{ column: -1, row: -1 \}\)/);
@@ -176,7 +290,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /planner-map-peek/);
   assert.match(workspace, /open=\{mapExpanded\}/);
   assert.match(workspace, /Map and Places activate in Phase 3/);
-  assert.match(workspace, /Promise\.all\(replacements\.flatMap/);
+  assert.match(workspace, /Promise\.all\(\s*replacements\.flatMap/);
   assert.match(workspace, /replacedIds/);
   assert.doesNotMatch(workspace, /DndContext|useSortable|DndDescribedBy/);
   assert.doesNotMatch(workspace, /@\/components\/ui\/popover/);
@@ -194,7 +308,10 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
 });
 
 test("mobile workspace keeps the matrix editable and uses safe overlay sheets", async () => {
-  const workspace = await readFile(new URL("./components/planner-workspace.tsx", import.meta.url), "utf8");
+  const workspace = await readFile(
+    new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
   const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
   assert.match(styles, /max-width: 639px/);
   assert.match(styles, /safe-area-inset-left/);
@@ -204,11 +321,17 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(workspace, /selectedMapItem/);
   assert.match(workspace, /contextLabel=\{selectedMapItem\?\.title\}/);
   assert.match(workspace, /planner-map-sheet/);
-  assert.match(workspace, /Copy selected cells[\s\S]*>Paste[\s\S]*Copy to days[\s\S]*Copy previous day/);
+  assert.match(
+    workspace,
+    /Copy selected cells[\s\S]*Paste[\s\S]*Copy to days[\s\S]*Copy previous day/,
+  );
 });
 
 test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", async () => {
-  const workspace = await readFile(new URL("./components/planner-workspace.tsx", import.meta.url), "utf8");
+  const workspace = await readFile(
+    new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
   const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
   const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
   assert.match(workspace, /This itinerary is empty/);

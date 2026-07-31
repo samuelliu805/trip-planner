@@ -67,7 +67,10 @@ export function AuthForm({
       <CardContent className="px-0 pb-7 sm:px-8">
         <form action={formAction} className="space-y-4" aria-busy={pending}>
           {state.error ? (
-            <div className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+            <div
+              className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+              role="alert"
+            >
               <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
               <p>{state.error}</p>
             </div>
@@ -103,7 +106,11 @@ export function AuthForm({
                 onClick={() => setShowPassword((visible) => !visible)}
                 type="button"
               >
-                {showPassword ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
+                {showPassword ? (
+                  <EyeOff aria-hidden="true" className="size-5" />
+                ) : (
+                  <Eye aria-hidden="true" className="size-5" />
+                )}
               </button>
             </div>
             {mode === "signup" ? (
@@ -118,7 +125,9 @@ export function AuthForm({
                 <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
                 {mode === "login" ? "Logging in…" : "Creating account…"}
               </>
-            ) : submitLabel}
+            ) : (
+              submitLabel
+            )}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             {alternateLead}{" "}

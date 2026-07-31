@@ -8,7 +8,9 @@ export const metadata = { title: "Sign up" };
 
 export default async function SignupPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (user) redirect("/trips");
 
   return (

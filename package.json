@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "node src/features/itinerary/itinerary.test.ts",
     "start": "next start",
     "lint": "eslint ."
@@ -37,6 +39,7 @@
     "@types/react-dom": "latest",
     "eslint": "latest",
     "eslint-config-next": "16.2.12",
+    "prettier": "3.9.6",
     "shadcn": "latest",
     "tailwindcss": "4.3.3",
     "tw-animate-css": "latest",

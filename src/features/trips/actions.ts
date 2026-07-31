@@ -65,7 +65,8 @@ export async function updateTrip(
     trip_currency: parsed.data.currency,
   } as never);
 
-  if (error || !data) return { error: error?.message ?? "You do not have permission to update this trip." };
+  if (error || !data)
+    return { error: error?.message ?? "You do not have permission to update this trip." };
   revalidatePath("/trips");
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { success: "Trip settings saved." };
@@ -76,7 +77,12 @@ export async function deleteTrip(formData: FormData) {
   if (!parsed.success) return;
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("trips").delete().eq("id", parsed.data).select("id").maybeSingle();
+  const { data, error } = await supabase
+    .from("trips")
+    .delete()
+    .eq("id", parsed.data)
+    .select("id")
+    .maybeSingle();
   if (error || !data) redirect(`/trips/${parsed.data}?error=delete`);
   redirect("/trips");
 }
