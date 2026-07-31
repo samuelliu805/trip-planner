@@ -55,8 +55,8 @@ export default function Home() {
             Your whole trip, beyond the spreadsheet.
           </h1>
           <p className="mt-6 max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">
-            A structured, reliable blueprint for complex itineraries. Architect
-            your journey with precision and keep every plan in one calm workspace.
+            A structured, reliable blueprint for complex itineraries. Architect your journey with
+            precision and keep every plan in one calm workspace.
           </p>
           <div className="mt-8 flex flex-col gap-3 min-[420px]:flex-row">
             <Button asChild className="min-h-12 px-6 text-base">

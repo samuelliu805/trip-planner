@@ -64,16 +64,16 @@ The server actions use the signed-in Supabase client. Database RLS remains the a
 
 The spreadsheet is a projection of normalized records, not a database table shape:
 
-| Matrix column | Persisted source |
-| --- | --- |
-| Date, Day | `trip_days` |
-| City | `itinerary_items.type = location` |
-| Activities | `activity` |
-| Transport | `transport`, `flight`, `train` |
-| Hotel | `hotel` |
-| Car rental | `car_rental` |
-| Meals | `meal` |
-| Notes | `note` |
+| Matrix column | Persisted source                  |
+| ------------- | --------------------------------- |
+| Date, Day     | `trip_days`                       |
+| City          | `itinerary_items.type = location` |
+| Activities    | `activity`                        |
+| Transport     | `transport`, `flight`, `train`    |
+| Hotel         | `hotel`                           |
+| Car rental    | `car_rental`                      |
+| Meals         | `meal`                            |
+| Notes         | `note`                            |
 
 A day may contain multiple items in every category. `start_time` and `end_time` are nullable and appear inline only when present. Copies insert independent rows with new IDs and destination `sort_order` values.
 
@@ -119,14 +119,14 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Copy `.env.example` to `.env.local` and provide the Supabase values before using authentication or trip routes.
 
-| Variable | Scope | Used from |
-| --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Browser/server | Phase 1 |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/server | Phase 1 |
-| `NEXT_PUBLIC_SITE_URL` | Auth redirects | Phase 1 |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Browser | Phase 3 |
-| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | Browser | Phase 3 |
-| `GOOGLE_ROUTES_API_KEY` | Server only | Phase 5 |
+| Variable                               | Scope          | Used from |
+| -------------------------------------- | -------------- | --------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Browser/server | Phase 1   |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/server | Phase 1   |
+| `NEXT_PUBLIC_SITE_URL`                 | Auth redirects | Phase 1   |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`      | Browser        | Phase 3   |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`       | Browser        | Phase 3   |
+| `GOOGLE_ROUTES_API_KEY`                | Server only    | Phase 5   |
 
 Never expose the server-only Routes API key through a `NEXT_PUBLIC_` variable.
 

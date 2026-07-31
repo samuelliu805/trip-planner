@@ -11,10 +11,7 @@ const credentialsSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters."),
 });
 
-export async function login(
-  _state: AuthActionState,
-  formData: FormData,
-): Promise<AuthActionState> {
+export async function login(_state: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid credentials." };

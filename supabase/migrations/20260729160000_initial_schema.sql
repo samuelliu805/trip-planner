@@ -1,5 +1,4 @@
 create extension if not exists pgcrypto;
-
 create type public.trip_member_role as enum ('owner', 'editor', 'viewer');
 create type public.place_source as enum ('google', 'custom');
 create type public.itinerary_item_type as enum (
@@ -13,7 +12,6 @@ create type public.itinerary_item_type as enum (
   'train',
   'note'
 );
-
 create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   username text unique,
@@ -24,7 +22,6 @@ create table public.profiles (
     username is null or username ~ '^[a-zA-Z0-9_]{3,30}$'
   )
 );
-
 create table public.trips (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users (id) on delete cascade,
@@ -39,7 +36,6 @@ create table public.trips (
   constraint trips_date_order check (end_date >= start_date),
   constraint trips_currency_format check (currency ~ '^[A-Z]{3}$')
 );
-
 create table public.trip_members (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.trips (id) on delete cascade,
@@ -47,7 +43,6 @@ create table public.trip_members (
   role public.trip_member_role not null,
   constraint trip_members_trip_user_unique unique (trip_id, user_id)
 );
-
 create table public.route_variants (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.trips (id) on delete cascade,
@@ -59,11 +54,9 @@ create table public.route_variants (
   constraint route_variants_color_format check (color ~ '^#[0-9A-Fa-f]{6}$'),
   constraint route_variants_trip_name_unique unique (trip_id, name)
 );
-
 create unique index route_variants_one_primary_per_trip
   on public.route_variants (trip_id)
   where is_primary;
-
 create table public.trip_days (
   id uuid primary key default gen_random_uuid(),
   variant_id uuid not null references public.route_variants (id) on delete cascade,
@@ -75,7 +68,6 @@ create table public.trip_days (
   constraint trip_days_variant_day_unique unique (variant_id, day_number),
   constraint trip_days_variant_date_unique unique (variant_id, date)
 );
-
 create table public.places (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.trips (id) on delete cascade,
@@ -92,7 +84,6 @@ create table public.places (
   constraint places_latitude_range check (custom_lat is null or custom_lat between -90 and 90),
   constraint places_longitude_range check (custom_lng is null or custom_lng between -180 and 180)
 );
-
 create table public.itinerary_items (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.trips (id) on delete cascade,
@@ -113,7 +104,6 @@ create table public.itinerary_items (
   constraint itinerary_items_time_order check (end_time is null or start_time is null or end_time >= start_time),
   constraint itinerary_items_details_object check (jsonb_typeof(details) = 'object')
 );
-
 create index trips_owner_id_idx on public.trips (owner_id);
 create index trips_dates_idx on public.trips (start_date, end_date);
 create index trip_members_user_id_idx on public.trip_members (user_id);
@@ -128,7 +118,6 @@ create index itinerary_items_trip_id_idx on public.itinerary_items (trip_id);
 create index itinerary_items_variant_id_idx on public.itinerary_items (variant_id);
 create index itinerary_items_day_order_idx on public.itinerary_items (day_id, sort_order);
 create index itinerary_items_place_id_idx on public.itinerary_items (place_id);
-
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -139,15 +128,12 @@ begin
   return new;
 end;
 $$;
-
 create trigger trips_set_updated_at
 before update on public.trips
 for each row execute function public.set_updated_at();
-
 create trigger itinerary_items_set_updated_at
 before update on public.itinerary_items
 for each row execute function public.set_updated_at();
-
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -165,11 +151,9 @@ begin
   return new;
 end;
 $$;
-
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
-
 create or replace function public.is_trip_member(target_trip_id uuid)
 returns boolean
 language sql
@@ -184,7 +168,6 @@ as $$
       and user_id = (select auth.uid())
   );
 $$;
-
 create or replace function public.is_trip_owner(target_trip_id uuid)
 returns boolean
 language sql
@@ -200,7 +183,6 @@ as $$
       and role = 'owner'
   );
 $$;
-
 create or replace function public.variant_trip_id(target_variant_id uuid)
 returns uuid
 language sql
@@ -210,7 +192,6 @@ set search_path = ''
 as $$
   select trip_id from public.route_variants where id = target_variant_id;
 $$;
-
 create or replace function public.create_trip(
   trip_title text,
   trip_start_date date,
@@ -273,7 +254,6 @@ begin
   return new_trip_id;
 end;
 $$;
-
 revoke all on function public.set_updated_at() from public;
 revoke all on function public.handle_new_user() from public;
 revoke all on function public.is_trip_member(uuid) from public;
@@ -284,7 +264,6 @@ grant execute on function public.is_trip_member(uuid) to authenticated;
 grant execute on function public.is_trip_owner(uuid) to authenticated;
 grant execute on function public.variant_trip_id(uuid) to authenticated;
 grant execute on function public.create_trip(text, date, date, text, text) to authenticated;
-
 alter table public.profiles enable row level security;
 alter table public.trips enable row level security;
 alter table public.trip_members enable row level security;
@@ -292,105 +271,81 @@ alter table public.route_variants enable row level security;
 alter table public.trip_days enable row level security;
 alter table public.places enable row level security;
 alter table public.itinerary_items enable row level security;
-
 create policy "profiles_select_self" on public.profiles
 for select to authenticated
 using (id = (select auth.uid()));
-
 create policy "profiles_insert_self" on public.profiles
 for insert to authenticated
 with check (id = (select auth.uid()));
-
 create policy "profiles_update_self" on public.profiles
 for update to authenticated
 using (id = (select auth.uid()))
 with check (id = (select auth.uid()));
-
 create policy "trips_select_members" on public.trips
 for select to authenticated
 using (public.is_trip_member(id));
-
 create policy "trips_update_owners" on public.trips
 for update to authenticated
 using (public.is_trip_owner(id))
 with check (owner_id = (select auth.uid()) and public.is_trip_owner(id));
-
 create policy "trips_delete_owners" on public.trips
 for delete to authenticated
 using (public.is_trip_owner(id));
-
 create policy "trip_members_select_members" on public.trip_members
 for select to authenticated
 using (public.is_trip_member(trip_id));
-
 create policy "trip_members_insert_owners" on public.trip_members
 for insert to authenticated
 with check (public.is_trip_owner(trip_id));
-
 create policy "trip_members_update_owners" on public.trip_members
 for update to authenticated
 using (public.is_trip_owner(trip_id))
 with check (public.is_trip_owner(trip_id));
-
 create policy "trip_members_delete_owners" on public.trip_members
 for delete to authenticated
 using (public.is_trip_owner(trip_id));
-
 create policy "route_variants_select_members" on public.route_variants
 for select to authenticated
 using (public.is_trip_member(trip_id));
-
 create policy "route_variants_insert_owners" on public.route_variants
 for insert to authenticated
 with check (public.is_trip_owner(trip_id));
-
 create policy "route_variants_update_owners" on public.route_variants
 for update to authenticated
 using (public.is_trip_owner(trip_id))
 with check (public.is_trip_owner(trip_id));
-
 create policy "route_variants_delete_owners" on public.route_variants
 for delete to authenticated
 using (public.is_trip_owner(trip_id));
-
 create policy "trip_days_select_members" on public.trip_days
 for select to authenticated
 using (public.is_trip_member(public.variant_trip_id(variant_id)));
-
 create policy "trip_days_insert_owners" on public.trip_days
 for insert to authenticated
 with check (public.is_trip_owner(public.variant_trip_id(variant_id)));
-
 create policy "trip_days_update_owners" on public.trip_days
 for update to authenticated
 using (public.is_trip_owner(public.variant_trip_id(variant_id)))
 with check (public.is_trip_owner(public.variant_trip_id(variant_id)));
-
 create policy "trip_days_delete_owners" on public.trip_days
 for delete to authenticated
 using (public.is_trip_owner(public.variant_trip_id(variant_id)));
-
 create policy "places_select_members" on public.places
 for select to authenticated
 using (public.is_trip_member(trip_id));
-
 create policy "places_insert_owners" on public.places
 for insert to authenticated
 with check (public.is_trip_owner(trip_id));
-
 create policy "places_update_owners" on public.places
 for update to authenticated
 using (public.is_trip_owner(trip_id))
 with check (public.is_trip_owner(trip_id));
-
 create policy "places_delete_owners" on public.places
 for delete to authenticated
 using (public.is_trip_owner(trip_id));
-
 create policy "itinerary_items_select_members" on public.itinerary_items
 for select to authenticated
 using (public.is_trip_member(trip_id));
-
 create policy "itinerary_items_insert_owners" on public.itinerary_items
 for insert to authenticated
 with check (
@@ -405,7 +360,6 @@ with check (
     where id = itinerary_items.place_id and trip_id = itinerary_items.trip_id
   ))
 );
-
 create policy "itinerary_items_update_owners" on public.itinerary_items
 for update to authenticated
 using (public.is_trip_owner(trip_id))
@@ -421,7 +375,6 @@ with check (
     where id = itinerary_items.place_id and trip_id = itinerary_items.trip_id
   ))
 );
-
 create policy "itinerary_items_delete_owners" on public.itinerary_items
 for delete to authenticated
 using (public.is_trip_owner(trip_id));
