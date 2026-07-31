@@ -9,6 +9,8 @@ import {
   copyItineraryItemsSchema,
   createItineraryItemSchema,
   deleteItineraryItemSchema,
+  insertTripDaySchema,
+  removeTripDaySchema,
   reorderItineraryItemsSchema,
   updateItineraryItemSchema,
 } from "./schema.ts";
@@ -37,17 +39,22 @@ test("edit and delete inputs validate", () => {
   assert.equal(deleteItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip }).success, true);
 });
 
-test("car rental details require action, location, and confirmed while time/provider remain optional", () => {
-  assert.equal(carRentalDetailsSchema.safeParse({ action: "pickup", confirmed: false, location: "Berlin Hbf" }).success, true);
-  assert.equal(carRentalDetailsSchema.safeParse({ action: "return", confirmed: true, location: "BER", provider: "Sixt", time: "16:30" }).success, true);
-  assert.equal(carRentalDetailsSchema.safeParse({ action: "pickup", confirmed: false }).success, false);
-  assert.equal(carRentalDetailsSchema.safeParse({ action: "dropoff", confirmed: false, location: "BER" }).success, false);
+test("car rental details restrict action while address and provider remain optional", () => {
+  assert.equal(carRentalDetailsSchema.safeParse({ action: "pickup" }).success, true);
+  assert.equal(carRentalDetailsSchema.safeParse({ action: "return", address: "BER", provider: "Sixt" }).success, true);
+  assert.equal(carRentalDetailsSchema.safeParse({ action: "dropoff", address: "BER" }).success, false);
 });
 
 test("reorder payload persists explicit unique sort orders", () => {
   const parsed = reorderItineraryItemsSchema.parse({ dayId: ids.day, items: [{ id: ids.item, sortOrder: 1 }], tripId: ids.trip });
   assert.deepEqual(parsed.items, [{ id: ids.item, sortOrder: 1 }]);
   assert.equal(reorderItineraryItemsSchema.safeParse({ dayId: ids.day, items: [{ id: ids.item, sortOrder: 0 }, { id: ids.item, sortOrder: 1 }], tripId: ids.trip }).success, false);
+});
+
+test("day insertion and removal inputs stay scoped to a trip", () => {
+  assert.equal(insertTripDaySchema.safeParse({ beforeDayNumber: 2, tripId: ids.trip }).success, true);
+  assert.equal(insertTripDaySchema.safeParse({ beforeDayNumber: 0, tripId: ids.trip }).success, false);
+  assert.equal(removeTripDaySchema.safeParse({ dayId: ids.day, tripId: ids.trip }).success, true);
 });
 
 test("copies get new IDs, destination ordering, and independent values", () => {
@@ -102,7 +109,7 @@ test("selection extension and fill targets use normalized bounds", () => {
 });
 
 test("planner clipboard copy and paste preserves typed item IDs", () => {
-  const payload = { cells: [{ columnOffset: 0, items: [ids.item], rowOffset: 0 }], kind: "trip-planner/items" as const, version: 1 as const };
+  const payload = { cells: [{ columnOffset: 0, items: [ids.item], rowOffset: 0 }], kind: "trip-planner/items" as const, sourceColumn: 2, version: 2 as const };
   assert.deepEqual(parsePlannerClipboard(encodePlannerClipboard(payload)), payload);
 });
 
@@ -122,7 +129,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /event\.altKey && event\.key === "ArrowUp"/);
   assert.match(workspace, /event\.altKey && event\.key === "ArrowDown"/);
   assert.match(workspace, /aria-label="Fill selected cells down"/);
-  assert.match(workspace, /Release to fill/);
+  assert.match(workspace, /Only this column will change/);
   assert.match(workspace, /requestAnimationFrame/);
   assert.match(workspace, /replacedItems/);
   assert.match(workspace, /replaceCategoryItems/);
@@ -131,10 +138,28 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /window\.addEventListener\("pointermove", move\)/);
   assert.match(workspace, /onDoubleClick=\{openEditorFromDoubleClick\}/);
   assert.match(workspace, /data-edit-item=\{item\.id\}/);
-  assert.match(workspace, /event\.detail >= 2/);
+  assert.match(workspace, /interactive=\{selected\}/);
+  assert.match(workspace, /pointer-events-none/);
+  assert.match(workspace, /M12 3V9M9 6H15/);
+  assert.match(workspace, /M12 15V21M9 18H15/);
+  assert.match(workspace, />Add day before</);
+  assert.match(workspace, />Add day after</);
+  assert.match(workspace, /insertIcon\("up"\)/);
+  assert.match(workspace, /insertIcon\("down"\)/);
+  assert.match(workspace, /min-w-max select-none/);
+  assert.match(workspace, /location="mobilebar"/);
+  assert.match(workspace, /selectedCount === 1 && !activeCellAtCapacity/);
+  assert.match(workspace, /const active = selectedCount === 1/);
+  assert.match(workspace, /lastSelected && selectionAnchor\.row === selectionEnd\.row/);
+  assert.match(workspace, /selectedDayRow/);
   assert.match(workspace, />Edit item</);
+  assert.match(workspace, />Delete item</);
+  assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
+  assert.match(workspace, /Insert day above/);
+  assert.match(workspace, /Insert day below/);
+  assert.match(workspace, /Remove Day/);
   assert.match(styles, /aria-selected="true"[\s\S]*data-add-item/);
   assert.match(styles, /aria-selected="true"[\s\S]*display: flex/);
   assert.match(workspace, /Copy selected cells[\s\S]*>Paste</);
@@ -156,6 +181,8 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.doesNotMatch(workspace, /DndContext|useSortable|DndDescribedBy/);
   assert.doesNotMatch(workspace, /@\/components\/ui\/popover/);
   assert.match(workspace, /internalClipboard/);
+  assert.match(workspace, /destination\.column !== payload\.sourceColumn/);
+  assert.match(workspace, /cells selected across one row only/);
   assert.match(form, /<form/);
   assert.match(form, /type="submit"/);
   assert.match(form, /event\.key === "Escape"/);

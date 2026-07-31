@@ -22,16 +22,15 @@ export function ItemDetailsEditor({ item, onSaved }: { item: ItineraryItem; onSa
   const [notes, setNotes] = useState(item.notes ?? "");
   const existingCar = item.type === "car_rental" ? item.details as Partial<CarRentalDetails> : {};
   const [carAction, setCarAction] = useState<CarRentalDetails["action"]>(existingCar.action ?? "pickup");
-  const [carLocation, setCarLocation] = useState(existingCar.location ?? "");
+  const [carLocation, setCarLocation] = useState(existingCar.address ?? "");
   const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
-  const [carConfirmed, setCarConfirmed] = useState(existingCar.confirmed ?? false);
   const mutation = useUpdateItineraryItem(item.trip_id);
 
   if (!open) return <Button className="h-7 px-2 text-xs" onClick={() => setOpen(true)} type="button" variant="ghost">Details</Button>;
 
   async function save() {
     const details = type === "car_rental"
-      ? { action: carAction, confirmed: carConfirmed, location: carLocation, provider: carProvider || null, time: startTime || null }
+      ? { action: carAction, address: carLocation || null, provider: carProvider || null }
       : item.details as Record<string, Json>;
     const saved = await mutation.mutateAsync({
       details: details as never, endTime, id: item.id, notes, startTime, title, tripId: item.trip_id, type,
@@ -50,7 +49,6 @@ export function ItemDetailsEditor({ item, onSaved }: { item: ItineraryItem; onSa
         <div className="space-y-1.5"><Label htmlFor={`action-${item.id}`}>Action</Label><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" id={`action-${item.id}`} onChange={(event) => setCarAction(event.target.value as CarRentalDetails["action"])} value={carAction}><option value="pickup">Pickup</option><option value="return">Return</option></select></div>
         <div className="space-y-1.5"><Label htmlFor={`location-${item.id}`}>Location</Label><Input id={`location-${item.id}`} onChange={(event) => setCarLocation(event.target.value)} value={carLocation} /></div>
         <div className="space-y-1.5"><Label htmlFor={`provider-${item.id}`}>Provider (optional)</Label><Input id={`provider-${item.id}`} onChange={(event) => setCarProvider(event.target.value)} value={carProvider} /></div>
-        <label className="flex min-h-11 items-center gap-2 text-sm"><input checked={carConfirmed} onChange={(event) => setCarConfirmed(event.target.checked)} type="checkbox" />Confirmed</label>
       </> : null}
       <div className="space-y-1.5 md:col-span-2"><Label htmlFor={`notes-${item.id}`}>Notes</Label><Textarea id={`notes-${item.id}`} onChange={(event) => setNotes(event.target.value)} value={notes} /></div>
       {mutation.error ? <p className="text-sm text-destructive md:col-span-2" role="alert">{mutation.error.message}</p> : null}

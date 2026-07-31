@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      itinerary_item_links: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          label: string
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          label?: string
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          label?: string
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_item_links_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itinerary_items: {
         Row: {
           booking_url: string | null
@@ -145,6 +180,8 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          default_currency: string
+          default_timezone: string | null
           display_name: string | null
           id: string
           username: string | null
@@ -152,6 +189,8 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          default_currency?: string
+          default_timezone?: string | null
           display_name?: string | null
           id: string
           username?: string | null
@@ -159,6 +198,8 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          default_currency?: string
+          default_timezone?: string | null
           display_name?: string | null
           id?: string
           username?: string | null
@@ -202,7 +243,7 @@ export type Database = {
       }
       trip_days: {
         Row: {
-          date: string
+          date: string | null
           day_number: number
           id: string
           notes: string | null
@@ -210,7 +251,7 @@ export type Database = {
           variant_id: string
         }
         Insert: {
-          date: string
+          date?: string | null
           day_number: number
           id?: string
           notes?: string | null
@@ -218,7 +259,7 @@ export type Database = {
           variant_id: string
         }
         Update: {
-          date?: string
+          date?: string | null
           day_number?: number
           id?: string
           notes?: string | null
@@ -268,10 +309,11 @@ export type Database = {
         Row: {
           created_at: string
           currency: string
-          end_date: string
+          day_count: number
+          end_date: string | null
           id: string
           owner_id: string
-          start_date: string
+          start_date: string | null
           timezone: string
           title: string
           updated_at: string
@@ -279,10 +321,11 @@ export type Database = {
         Insert: {
           created_at?: string
           currency?: string
-          end_date: string
+          day_count?: number
+          end_date?: string | null
           id?: string
           owner_id: string
-          start_date: string
+          start_date?: string | null
           timezone: string
           title: string
           updated_at?: string
@@ -290,10 +333,11 @@ export type Database = {
         Update: {
           created_at?: string
           currency?: string
-          end_date?: string
+          day_count?: number
+          end_date?: string | null
           id?: string
           owner_id?: string
-          start_date?: string
+          start_date?: string | null
           timezone?: string
           title?: string
           updated_at?: string
@@ -305,9 +349,44 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      copy_itinerary_items_to_days: {
+        Args: { source_item_ids: string[]; target_day_ids: string[] }
+        Returns: number
+      }
       create_trip: {
         Args: {
           trip_currency?: string
+          trip_day_count?: number
+          trip_end_date?: string
+          trip_start_date?: string
+          trip_timezone?: string
+          trip_title: string
+        }
+        Returns: string
+      }
+      insert_trip_day: {
+        Args: { before_day_number: number; target_trip_id: string }
+        Returns: string
+      }
+      is_trip_member: { Args: { target_trip_id: string }; Returns: boolean }
+      is_trip_owner: { Args: { target_trip_id: string }; Returns: boolean }
+      itinerary_item_trip_id: {
+        Args: { target_item_id: string }
+        Returns: string
+      }
+      remove_trip_day: {
+        Args: { target_day_id: string; target_trip_id: string }
+        Returns: string
+      }
+      reorder_itinerary_items: {
+        Args: { ordered_item_ids: string[]; target_day_id: string }
+        Returns: undefined
+      }
+      update_trip_plan: {
+        Args: {
+          target_trip_id: string
+          trip_currency: string
+          trip_day_count: number
           trip_end_date: string
           trip_start_date: string
           trip_timezone: string
@@ -315,8 +394,6 @@ export type Database = {
         }
         Returns: string
       }
-      is_trip_member: { Args: { target_trip_id: string }; Returns: boolean }
-      is_trip_owner: { Args: { target_trip_id: string }; Returns: boolean }
       variant_trip_id: { Args: { target_variant_id: string }; Returns: string }
     }
     Enums: {
@@ -330,7 +407,13 @@ export type Database = {
         | "flight"
         | "train"
         | "note"
-      itinerary_schedule_kind: "none" | "all_day" | "period" | "approximate" | "exact" | "range"
+      itinerary_schedule_kind:
+        | "none"
+        | "all_day"
+        | "period"
+        | "approximate"
+        | "exact"
+        | "range"
       place_source: "google" | "custom"
       trip_member_role: "owner" | "editor" | "viewer"
     }
@@ -471,7 +554,14 @@ export const Constants = {
         "train",
         "note",
       ],
-      itinerary_schedule_kind: ["none", "all_day", "period", "approximate", "exact", "range"],
+      itinerary_schedule_kind: [
+        "none",
+        "all_day",
+        "period",
+        "approximate",
+        "exact",
+        "range",
+      ],
       place_source: ["google", "custom"],
       trip_member_role: ["owner", "editor", "viewer"],
     },

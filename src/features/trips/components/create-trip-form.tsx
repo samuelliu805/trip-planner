@@ -34,13 +34,14 @@ export function CreateTripForm() {
         <p className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title.length} / 120</p>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="start_date">Start date</Label>
-        <Input id="start_date" name="start_date" required type="date" />
+        <Label htmlFor="start_date">Start date <span className="font-normal text-muted-foreground">optional</span></Label>
+        <Input id="start_date" name="start_date" type="date" />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="end_date">End date</Label>
-        <Input id="end_date" name="end_date" required type="date" />
+        <Label htmlFor="end_date">End date <span className="font-normal text-muted-foreground">optional</span></Label>
+        <Input id="end_date" name="end_date" type="date" />
       </div>
+      <div className="space-y-2 sm:col-span-2"><Label htmlFor="day_count">Planning days <span className="font-normal text-muted-foreground">optional</span></Label><Input id="day_count" max={366} min={1} name="day_count" placeholder="Start with 1 day" type="number" /><p className="text-xs text-muted-foreground">Not sure yet? Leave dates and length blank—you can add or change them while planning.</p></div>
       <div className="space-y-2">
         <Label htmlFor="timezone">Timezone</Label>
         <Input autoComplete="off" id="timezone" list="iana-timezones" name="timezone" onChange={(event) => setTimezone(event.target.value)} required role="combobox" value={timezone} />

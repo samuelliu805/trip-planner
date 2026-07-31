@@ -89,6 +89,7 @@ body {
   display: none;
 }
 
+
 @media (min-width: 900px) and (max-width: 1199px) {
   .planner-workspace {
     box-sizing: border-box;
@@ -100,7 +101,6 @@ body {
   }
 
   .planner-matrix [data-edit-item],
-  .planner-matrix [data-add-item],
   .planner-matrix [aria-label^="Actions for"] {
     min-height: 44px;
     min-width: 44px;
@@ -171,7 +171,6 @@ body {
   }
 
   .planner-matrix [data-edit-item],
-  .planner-matrix [data-add-item],
   .planner-matrix [aria-label^="Actions for"] {
     min-height: 44px;
     min-width: 44px;
@@ -184,6 +183,18 @@ body {
   .planner-matrix [aria-label="Fill selected cells down"] {
     display: none;
   }
+
+  .planner-matrix [role="row"] > [role="columnheader"]:nth-child(2),
+  .planner-matrix [role="row"] > [role="rowheader"]:nth-child(2) {
+    display: none;
+  }
+
+  .planner-matrix [role="row"] > [role="columnheader"]:first-child,
+  .planner-matrix [role="row"] > [role="rowheader"]:first-child {
+    left: 0;
+    width: 5rem;
+  }
+
 }
 
 @media (max-width: 639px) {

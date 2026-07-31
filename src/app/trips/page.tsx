@@ -36,7 +36,7 @@ export default async function TripsPage() {
                 <CardHeader className="flex-row items-start justify-between gap-4">
                   <div className="min-w-0">
                     <CardTitle className="truncate text-lg sm:text-xl"><Link className="hover:text-primary focus-visible:outline-none focus-visible:underline" href={`/trips/${trip.id}`}>{trip.title}</Link></CardTitle>
-                    <CardDescription className="mt-1 flex items-center gap-2"><CalendarDays className="size-4 shrink-0" aria-hidden="true" />{format(parseISO(trip.start_date), "MMM d, yyyy")} – {format(parseISO(trip.end_date), "MMM d, yyyy")}</CardDescription>
+                    <CardDescription className="mt-1 flex items-center gap-2"><CalendarDays className="size-4 shrink-0" aria-hidden="true" />{trip.start_date && trip.end_date ? `${format(parseISO(trip.start_date), "MMM d, yyyy")} – ${format(parseISO(trip.end_date), "MMM d, yyyy")}` : `${trip.day_count} planning ${trip.day_count === 1 ? "day" : "days"} · Dates TBD`}</CardDescription>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button aria-label={`Actions for ${trip.title}`} className="-mr-2 -mt-2 size-11 shrink-0 px-0" variant="ghost"><MoreVertical aria-hidden="true" className="size-5" /></Button></DropdownMenuTrigger>

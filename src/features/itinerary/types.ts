@@ -16,11 +16,25 @@ export type ItineraryItemType = ItineraryItem["type"];
 
 export type CarRentalDetails = {
   action: "pickup" | "return";
-  confirmed: boolean;
-  location: string;
+  address?: string;
   provider?: string;
-  time?: string;
 };
+
+export const transportModes = ["flight", "train", "self_driving", "bus", "ferry", "taxi", "rideshare", "bike", "walk", "subway", "tram", "shuttle", "cable_car", "motorcycle", "other"] as const;
+export type TransportMode = (typeof transportModes)[number];
+
+export const transportModeLabels: Record<TransportMode, string> = {
+  bike: "Bike", bus: "Bus", cable_car: "Cable car", ferry: "Ferry", flight: "Flight",
+  motorcycle: "Motorcycle", other: "Other", rideshare: "Rideshare", self_driving: "Drive",
+  shuttle: "Shuttle", subway: "Subway / metro", taxi: "Taxi", train: "Train", tram: "Tram", walk: "Walk",
+};
+
+export function normalizeTransportMode(value?: string): TransportMode {
+  if (value === "coach") return "bus";
+  if (value === "metro" || value === "light_rail") return "subway";
+  if (value === "rental_car") return "self_driving";
+  return transportModes.includes(value as TransportMode) ? value as TransportMode : "train";
+}
 
 export type ItemDetails = Json;
 

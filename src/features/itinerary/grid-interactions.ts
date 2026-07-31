@@ -11,7 +11,8 @@ export type ClipboardCell = {
 export type PlannerClipboard = {
   cells: ClipboardCell[];
   kind: "trip-planner/items";
-  version: 1;
+  sourceColumn: number;
+  version: 2;
 };
 
 const clipboardSchema = z.object({
@@ -21,7 +22,8 @@ const clipboardSchema = z.object({
     rowOffset: z.number().int().min(0),
   })).min(1),
   kind: z.literal("trip-planner/items"),
-  version: z.literal(1),
+  sourceColumn: z.number().int().min(0),
+  version: z.literal(2),
 }).strict();
 
 export function selectionBounds(anchor: GridCoordinate, end: GridCoordinate) {

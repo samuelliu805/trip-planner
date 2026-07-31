@@ -6,11 +6,15 @@ import {
   copyItineraryItemsSchema,
   createItineraryItemSchema,
   deleteItineraryItemSchema,
+  insertTripDaySchema,
+  removeTripDaySchema,
   reorderItineraryItemsSchema,
   updateItineraryItemSchema,
   type CopyItineraryItemsInput,
   type CreateItineraryItemInput,
   type DeleteItineraryItemInput,
+  type InsertTripDayInput,
+  type RemoveTripDayInput,
   type ReorderItineraryItemsInput,
   type UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
@@ -29,6 +33,7 @@ function firstIssue(error: { issues: { message: string }[] }) {
 }
 
 function mutationError(message?: string) {
+  if (message?.includes("itinerary_items_unique_transport_mode_per_day")) return "That transport type is already planned for this day. Choose a different type.";
   return message?.includes("row-level security") || message?.includes("permission denied")
     ? "You do not have permission to change itinerary items."
     : message ?? "The itinerary item could not be saved.";
@@ -39,6 +44,17 @@ export async function createItineraryItem(input: CreateItineraryItemInput): Prom
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
+  if (parsed.data.type === "hotel") {
+    const { count, error: hotelError } = await supabase.from("itinerary_items").select("id", { count: "exact", head: true }).eq("day_id", parsed.data.dayId).eq("type", "hotel");
+    if (hotelError) return { error: mutationError(hotelError.message) };
+    if (count) return { error: "Only one hotel is allowed per day. Edit the existing hotel instead." };
+  }
+  if (parsed.data.type === "transport") {
+    const mode = parsed.data.details.mode;
+    const { count, error: transportError } = await supabase.from("itinerary_items").select("id", { count: "exact", head: true }).eq("day_id", parsed.data.dayId).eq("type", "transport").contains("details", { mode });
+    if (transportError) return { error: mutationError(transportError.message) };
+    if (count) return { error: `This day already has ${parsed.data.title}. Choose a different transport type.` };
+  }
   const { data: lastItem, error: orderError } = await supabase
     .from("itinerary_items")
     .select("sort_order")
@@ -75,6 +91,15 @@ export async function updateItineraryItem(input: UpdateItineraryItemInput): Prom
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
+  if (parsed.data.type === "transport" && parsed.data.details && "mode" in parsed.data.details) {
+    const { data: current, error: currentError } = await supabase.from("itinerary_items").select("day_id").eq("id", parsed.data.id).eq("trip_id", parsed.data.tripId).maybeSingle();
+    if (currentError || !current) return { error: mutationError(currentError?.message ?? "You do not have permission to change this item.") };
+    const dayId = parsed.data.dayId ?? current.day_id;
+    const mode = parsed.data.details.mode as string;
+    const { count, error: transportError } = await supabase.from("itinerary_items").select("id", { count: "exact", head: true }).eq("day_id", dayId).eq("type", "transport").contains("details", { mode }).neq("id", parsed.data.id);
+    if (transportError) return { error: mutationError(transportError.message) };
+    if (count) return { error: `This day already has ${parsed.data.title ?? "that transport type"}. Choose a different transport type.` };
+  }
   const values: TablesUpdate<"itinerary_items"> = {};
   if (parsed.data.bookingUrl !== undefined) values.booking_url = normalizedOptional(parsed.data.bookingUrl);
   if (parsed.data.dayId !== undefined) values.day_id = parsed.data.dayId;
@@ -132,6 +157,26 @@ export async function deleteItineraryItem(input: DeleteItineraryItemInput): Prom
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data };
+}
+
+export async function insertTripDay(input: InsertTripDayInput): Promise<MutationResult<{ id: string }>> {
+  const parsed = insertTripDaySchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("insert_trip_day", { before_day_number: parsed.data.beforeDayNumber, target_trip_id: parsed.data.tripId });
+  if (error || !data) return { error: mutationError(error?.message ?? "The day could not be inserted.") };
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return { data: { id: data } };
+}
+
+export async function removeTripDay(input: RemoveTripDayInput): Promise<MutationResult<{ id: string }>> {
+  const parsed = removeTripDaySchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("remove_trip_day", { target_day_id: parsed.data.dayId, target_trip_id: parsed.data.tripId });
+  if (error || !data) return { error: mutationError(error?.message ?? "The day could not be removed.") };
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return { data: { id: data } };
 }
 
 export async function reorderItineraryItems(input: ReorderItineraryItemsInput): Promise<MutationResult<ItineraryItem[]>> {

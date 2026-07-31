@@ -6,8 +6,10 @@ import {
   copyItineraryItems,
   createItineraryItem,
   deleteItineraryItem,
+  insertTripDay,
   loadPlannerWorkspace,
   reorderItineraryItems,
+  removeTripDay,
   updateItineraryItem,
 } from "@/features/itinerary/actions";
 import { scheduleKind } from "@/features/itinerary/mutation-helpers";
@@ -15,7 +17,9 @@ import type {
   CopyItineraryItemsInput,
   CreateItineraryItemInput,
   DeleteItineraryItemInput,
+  InsertTripDayInput,
   ReorderItineraryItemsInput,
+  RemoveTripDayInput,
   UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
@@ -116,6 +120,22 @@ export function useDeleteItineraryItem(tripId: string) {
       return { previous };
     },
     onError: (_error, _input, context) => client.setQueryData(plannerQueryKey(tripId), context?.previous),
+  });
+}
+
+export function useInsertTripDay(tripId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: InsertTripDayInput) => requireData(await insertTripDay(input)),
+    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId) }),
+  });
+}
+
+export function useRemoveTripDay(tripId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: RemoveTripDayInput) => requireData(await removeTripDay(input)),
+    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId) }),
   });
 }
 
