@@ -115,7 +115,10 @@ export function createGoogleRoutesProvider(options?: {
         };
       } catch (error) {
         if (error instanceof RouteProviderError) throw error;
-        if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
+        if (
+          error instanceof Error &&
+          (error.name === "TimeoutError" || error.name === "AbortError")
+        )
           throw new RouteProviderError("timeout", "Route calculation timed out. Try again.");
         throw new RouteProviderError("unavailable", "The route service could not be reached.");
       }

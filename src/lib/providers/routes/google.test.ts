@@ -39,12 +39,14 @@ test("Google provider uses a narrow mask and normalizes its response", async () 
       headers = init?.headers;
       return new Response(
         JSON.stringify({
-          routes: [{
-            distanceMeters: 1200,
-            duration: "600s",
-            legs: [{ distanceMeters: 1200, duration: "600s" }],
-            polyline: { encodedPolyline: "encoded" },
-          }],
+          routes: [
+            {
+              distanceMeters: 1200,
+              duration: "600s",
+              legs: [{ distanceMeters: 1200, duration: "600s" }],
+              polyline: { encodedPolyline: "encoded" },
+            },
+          ],
         }),
       );
     },
@@ -56,8 +58,17 @@ test("Google provider uses a narrow mask and normalizes its response", async () 
 });
 
 test("Google provider maps quota and empty route responses", async () => {
-  const quota = createGoogleRoutesProvider({ apiKey: "x", fetch: async () => new Response("", { status: 429 }) });
-  await assert.rejects(() => quota.calculate({ travelMode: "walk", waypoints: waypoints.slice(0, 2) }), (error) => error instanceof RouteProviderError && error.code === "quota");
+  const quota = createGoogleRoutesProvider({
+    apiKey: "x",
+    fetch: async () => new Response("", { status: 429 }),
+  });
+  await assert.rejects(
+    () => quota.calculate({ travelMode: "walk", waypoints: waypoints.slice(0, 2) }),
+    (error) => error instanceof RouteProviderError && error.code === "quota",
+  );
   const empty = createGoogleRoutesProvider({ apiKey: "x", fetch: async () => new Response("{}") });
-  await assert.rejects(() => empty.calculate({ travelMode: "walk", waypoints: waypoints.slice(0, 2) }), (error) => error instanceof RouteProviderError && error.code === "no_route");
+  await assert.rejects(
+    () => empty.calculate({ travelMode: "walk", waypoints: waypoints.slice(0, 2) }),
+    (error) => error instanceof RouteProviderError && error.code === "no_route",
+  );
 });
