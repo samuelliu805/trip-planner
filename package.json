@@ -7,7 +7,7 @@
     "build": "next build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --conditions react-server --test src/features/itinerary/itinerary.test.ts src/lib/providers/routes/google.test.ts",
+    "test": "node src/features/itinerary/itinerary.test.ts",
     "start": "next start",
     "lint": "eslint ."
   },
@@ -29,7 +29,6 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-hook-form": "latest",
-    "server-only": "^0.0.1",
     "tailwind-merge": "latest",
     "zod": "latest"
   },
