@@ -4,9 +4,9 @@ Trip Planner is a modern travel-planning workspace intended to replace the sprea
 
 ## Current status
 
-Phase 4 — Primary Route A calculation and visualization — is implemented and has passed automated verification. The authenticated Phase 3 smoke test and the Phase 4 browser/device checklist remain pending, so neither phase is marked fully verified yet.
+Phase 3 — Google Maps and Places — is implemented and awaiting the authenticated configuration smoke test. The authenticated `/trips/[tripId]` workspace now adds persisted place snapshots, live itinerary markers, Places API (New) autocomplete, and item/marker selection synchronization to the Phase 2 spreadsheet experience.
 
-Alternative itinerary variants, sharing, export, and travel research remain intentionally deferred. Phase 5 variants will reuse the per-day route engine delivered here.
+Route alternatives, directions, sharing, export, and travel research remain intentionally deferred to later phases.
 
 ## Foundation stack
 
@@ -126,11 +126,8 @@ Copy `.env.example` to `.env.local` and provide the Supabase values before using
 | `NEXT_PUBLIC_SITE_URL`                 | Auth redirects | Phase 1   |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`      | Browser        | Phase 3   |
 | `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`       | Browser        | Phase 3   |
-| `GOOGLE_ROUTES_API_KEY`                | Server only    | Phase 4   |
 
-Enable Maps JavaScript API and Places API (New) for the public browser key. Restrict that key by HTTP referrer and those APIs. Enable Routes API in the same Cloud project and create a separate server key restricted to Routes API—never reuse the browser key or apply browser-referrer restrictions to it. Store `GOOGLE_ROUTES_API_KEY` only in local server and Vercel server environments. Configure conservative Routes quotas, billing budgets, and alerts before production testing.
-
-Route A is calculated only after an explicit user action. A day requires 2–27 saved, non-flight place stops and uses one mode (`walk`, `drive`, `bicycle`, or `transit`) for the whole day. Ordering is always user-defined; Google alternatives and waypoint optimization are disabled. Flights, ferry/cable-car mixed legs, turn-by-turn navigation, and automatic per-edit recalculation are unsupported. Walking and cycling results include an in-product caution.
+Enable only Maps JavaScript API and Places API (New). Use a browser key restricted by HTTP referrer and by those two APIs, including localhost, production, and intended Vercel preview origins. Create a Google Maps Map ID for advanced markers. Configure quotas and budget alerts before production testing. Do not add a Routes API key during Phase 3.
 
 ## Supabase setup
 
@@ -203,8 +200,8 @@ For every completed phase, the handoff should include required configuration, mi
 1. ✅ Supabase, authentication, database schema, RLS, and trip CRUD
 2. ✅ Core itinerary workspace, editing interactions, and responsive layouts
 3. Google Maps and Places API (New) — implementation complete; authenticated smoke test pending
-4. Primary Route A calculation and visualization — implementation complete; authenticated/browser verification pending
-5. Alternative itinerary variants — reuse the Phase 4 per-day route engine
+4. Alternative route variants
+5. Google Routes API
 6. Public read-only sharing
 7. External travel research links
 8. Offline, conflict, and deployment polish

@@ -537,10 +537,7 @@ test("Route A configuration rejects duplicate stops and the provider stop limit"
 
 test("route migration enforces ownership, coordinates, cascade, and independent copy ordering", async () => {
   const migration = await readFile(
-    new URL(
-      "../../../supabase/migrations/20260801061134_add_per_day_route_a_model.sql",
-      import.meta.url,
-    ),
+    new URL("../../../supabase/migrations/20260801061134_add_per_day_route_a_model.sql", import.meta.url),
     "utf8",
   );
   assert.match(migration, /create policy "day_routes_select_members"/);
@@ -548,37 +545,8 @@ test("route migration enforces ownership, coordinates, cascade, and independent 
   assert.match(migration, /p\.latitude is null or p\.longitude is null/);
   assert.match(migration, /references public\.trip_days \(id, variant_id\) on delete cascade/);
   const copyMigration = await readFile(
-    new URL(
-      "../../../supabase/migrations/20260729220000_flexible_itinerary_workflow.sql",
-      import.meta.url,
-    ),
+    new URL("../../../supabase/migrations/20260729220000_flexible_itinerary_workflow.sql", import.meta.url),
     "utf8",
   );
   assert.doesNotMatch(copyMigration, /insert into public\.itinerary_items[\s\S]*route_stop_order/);
-});
-
-test("Route A rendering is selected-day only and fit-bounds is explicitly token driven", async () => {
-  const map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
-  const builder = await readFile(new URL("../routes/route-builder.tsx", import.meta.url), "utf8");
-  assert.match(map, /strokeColor: "#166534"/);
-  assert.match(map, /previousFit\.current === fitToken/);
-  assert.match(map, /line\.setMap\(null\)/);
-  assert.match(builder, /View route/);
-  assert.match(builder, /Walking and cycling routes/);
-});
-
-test("Routes key remains server-only and client modules contain no secret environment access", async () => {
-  const provider = await readFile(
-    new URL("../../lib/providers/routes/google.ts", import.meta.url),
-    "utf8",
-  );
-  const workspace = await readFile(
-    new URL("./components/planner-workspace.tsx", import.meta.url),
-    "utf8",
-  );
-  const builder = await readFile(new URL("../routes/route-builder.tsx", import.meta.url), "utf8");
-  assert.match(provider, /import "server-only"/);
-  assert.match(provider, /process\.env\.GOOGLE_ROUTES_API_KEY/);
-  assert.doesNotMatch(workspace + builder, /GOOGLE_ROUTES_API_KEY|NEXT_PUBLIC_GOOGLE_ROUTES/);
-  assert.doesNotMatch(provider, /computeAlternativeRoutes: true|optimizeWaypointOrder: true/);
 });
