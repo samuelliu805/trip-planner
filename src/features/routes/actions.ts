@@ -102,7 +102,9 @@ export async function calculateDayRoute(dayId: string) {
       if (error) return { error: "The calculated route could not be cached." };
     }
     revalidatePath("/trips");
-    return { data: { ...calculated.result, cacheHit: calculated.cacheHit, waypointSignature: signature } };
+    return {
+      data: { ...calculated.result, cacheHit: calculated.cacheHit, waypointSignature: signature },
+    };
   } catch (error) {
     return {
       error:

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 
 import type { PlannerWorkspace } from "./types";
+import { waypointSignature } from "@/features/routes/signature";
 
 export async function getPlannerWorkspace(
   tripId: string,
@@ -75,11 +76,30 @@ export async function getPlannerWorkspace(
   return {
     data: {
       variant,
-      days: (days ?? []).map((day) => ({
-        ...day,
-        items: itemsByDay.get(day.id) ?? [],
-        route: (routes ?? []).find((route) => route.day_id === day.id) ?? null,
-      })),
+      days: (days ?? []).map((day) => {
+        const dayItems = itemsByDay.get(day.id) ?? [];
+        const route = (routes ?? []).find((candidate) => candidate.day_id === day.id) ?? null;
+        const waypoints = dayItems
+          .filter((item) => item.route_stop_order !== null && item.place)
+          .sort((a, b) => (a.route_stop_order ?? 0) - (b.route_stop_order ?? 0))
+          .map((item) => ({
+            itemId: item.id,
+            latitude: item.place!.latitude,
+            longitude: item.place!.longitude,
+          }));
+        const currentSignature = waypointSignature({
+          dayId: day.id,
+          variantId: day.variant_id,
+          travelMode: day.route_travel_mode,
+          waypoints,
+        });
+        return {
+          ...day,
+          items: dayItems,
+          route,
+          route_is_stale: Boolean(route && route.waypoint_signature !== currentSignature),
+        };
+      }),
     },
     error: null,
   };

@@ -3,6 +3,22 @@
 import { AdvancedMarker, Map, Pin, useApiLoadingStatus, useMap } from "@vis.gl/react-google-maps";
 import { AlertTriangle, MapPinned } from "lucide-react";
 import { useEffect, useId, useMemo, useRef } from "react";
+import { decodePolyline } from "./polyline";
+
+declare const google: {
+  maps: {
+    LatLngBounds: new () => { extend(point: { lat: number; lng: number }): void };
+    Polyline: new (options: {
+      clickable: boolean;
+      map: object;
+      path: { lat: number; lng: number }[];
+      strokeColor: string;
+      strokeOpacity: number;
+      strokeWeight: number;
+      zIndex: number;
+    }) => { setMap(map: null): void };
+  };
+};
 
 import { useMapConfiguration } from "@/features/maps/planner-map-provider";
 
@@ -97,6 +113,48 @@ function MapViewport({
   return null;
 }
 
+function RouteLine({
+  encodedPolyline,
+  fitToken,
+  mapInstanceId,
+  selected,
+}: {
+  encodedPolyline: string;
+  fitToken?: number;
+  mapInstanceId: string;
+  selected: boolean;
+}) {
+  const map = useMap(mapInstanceId);
+  const path = useMemo(() => decodePolyline(encodedPolyline), [encodedPolyline]);
+  const lineRef = useRef<{ setMap(map: null): void } | null>(null);
+  const previousFit = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!map || !path.length) return;
+    const line = new google.maps.Polyline({
+      map,
+      path,
+      clickable: false,
+      strokeColor: "#166534",
+      strokeOpacity: selected ? 0.95 : 0.65,
+      strokeWeight: selected ? 6 : 4,
+      zIndex: 1,
+    });
+    lineRef.current = line;
+    return () => {
+      line.setMap(null);
+      lineRef.current = null;
+    };
+  }, [map, path, selected]);
+  useEffect(() => {
+    if (!map || !fitToken || previousFit.current === fitToken || !path.length) return;
+    previousFit.current = fitToken;
+    const bounds = new google.maps.LatLngBounds();
+    path.forEach((point) => bounds.extend(point));
+    map.fitBounds(bounds, 72);
+  }, [fitToken, map, path]);
+  return null;
+}
+
 function State({
   error = false,
   message,
@@ -126,11 +184,15 @@ export function PlannerMapCanvas({
   markers,
   onMarkerClick,
   selectedId,
+  route,
+  routeFitToken,
 }: {
   compact?: boolean;
   markers: PlannerMapMarker[];
   onMarkerClick: (id: string) => void;
   selectedId?: string;
+  route?: { encodedPolyline: string; selected: boolean };
+  routeFitToken?: number;
 }) {
   const { apiError, apiKey, mapId } = useMapConfiguration();
   const loadingStatus = useApiLoadingStatus();
@@ -169,6 +231,14 @@ export function PlannerMapCanvas({
       streetViewControl={false}
     >
       <MapViewport mapInstanceId={mapInstanceId} markers={markers} selectedId={selectedId} />
+      {route ? (
+        <RouteLine
+          encodedPolyline={route.encodedPolyline}
+          fitToken={routeFitToken}
+          mapInstanceId={mapInstanceId}
+          selected={route.selected}
+        />
+      ) : null}
       {markers.map((marker) => {
         const selectedEntry = marker.entries.find(({ itemId }) => itemId === selectedId);
         const entry = selectedEntry ?? marker.entries[0];

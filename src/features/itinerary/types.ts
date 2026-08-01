@@ -22,7 +22,11 @@ export type PlannerVariant = Pick<
   "color" | "id" | "is_primary" | "name" | "trip_id"
 >;
 
-export type PlannerDay = TripDay & { items: ItineraryItem[]; route: DayRoute | null };
+export type PlannerDay = TripDay & {
+  items: ItineraryItem[];
+  route: DayRoute | null;
+  route_is_stale: boolean;
+};
 
 export type PlannerWorkspace = {
   days: PlannerDay[];

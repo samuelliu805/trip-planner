@@ -24,15 +24,42 @@ test("waypoint signatures are stable and sensitive to order", () => {
 test("cache hit avoids the provider and cache miss calls it once", async () => {
   let calls = 0;
   const result = { distanceMeters: 1, durationSeconds: 2, encodedPolyline: "x", legs: [] };
-  const provider = { calculate: async () => { calls += 1; return result; } };
-  await calculateWithCache({ cached: { ...result, waypointSignature: "same" }, provider, request, signature: "same" });
+  const provider = {
+    calculate: async () => {
+      calls += 1;
+      return result;
+    },
+  };
+  await calculateWithCache({
+    cached: { ...result, waypointSignature: "same" },
+    provider,
+    request,
+    signature: "same",
+  });
   assert.equal(calls, 0);
   await calculateWithCache({ cached: null, provider, request, signature: "new" });
   assert.equal(calls, 1);
 });
 
 test("failed recalculation leaves the supplied previous cache unchanged", async () => {
-  const cached = { distanceMeters: 1, durationSeconds: 2, encodedPolyline: "old", legs: [], waypointSignature: "old" };
-  await assert.rejects(() => calculateWithCache({ cached, provider: { calculate: async () => { throw new Error("failed"); } }, request, signature: "new" }));
+  const cached = {
+    distanceMeters: 1,
+    durationSeconds: 2,
+    encodedPolyline: "old",
+    legs: [],
+    waypointSignature: "old",
+  };
+  await assert.rejects(() =>
+    calculateWithCache({
+      cached,
+      provider: {
+        calculate: async () => {
+          throw new Error("failed");
+        },
+      },
+      request,
+      signature: "new",
+    }),
+  );
   assert.equal(cached.encodedPolyline, "old");
 });
