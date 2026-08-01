@@ -12,17 +12,15 @@ export type ItineraryItem = Tables<"itinerary_items"> & {
 export type PersistedPlaceSnapshot = PlaceSnapshot & { id: string };
 export type TripDay = Pick<
   Tables<"trip_days">,
-  "date" | "day_number" | "id" | "notes" | "route_travel_mode" | "title" | "variant_id"
+  "date" | "day_number" | "id" | "notes" | "title" | "variant_id"
 >;
-
-export type DayRoute = Tables<"day_routes">;
 
 export type PlannerVariant = Pick<
   Tables<"route_variants">,
   "color" | "id" | "is_primary" | "name" | "trip_id"
 >;
 
-export type PlannerDay = TripDay & { items: ItineraryItem[]; route: DayRoute | null };
+export type PlannerDay = TripDay & { items: ItineraryItem[] };
 
 export type PlannerWorkspace = {
   days: PlannerDay[];
