@@ -1,18 +1,14 @@
-import type { Coordinates } from "@/lib/providers/maps/types";
+export type RouteTravelMode = "walk" | "drive" | "bicycle" | "transit";
 
-export type TravelMode = "driving" | "walking";
+export type RouteWaypoint = { itemId: string; latitude: number; longitude: number };
 
-export interface RouteRequest {
-  origin: Coordinates;
-  destination: Coordinates;
-  intermediates?: Coordinates[];
-  travelMode: TravelMode;
-}
+export interface RouteRequest { waypoints: RouteWaypoint[]; travelMode: RouteTravelMode }
 
 export interface RouteResult {
   encodedPolyline: string;
   distanceMeters: number;
   durationSeconds: number;
+  legs: Array<{ distanceMeters: number; durationSeconds: number }>;
 }
 
 export interface RouteProvider {
