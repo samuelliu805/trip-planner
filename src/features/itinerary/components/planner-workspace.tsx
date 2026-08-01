@@ -92,7 +92,6 @@ import {
 import type { Tables } from "@/types/database";
 import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
-import { RouteBuilder } from "@/features/routes/route-builder";
 
 const markerKindLabels: Record<MarkerKind, string> = {
   city: "Cities",
@@ -469,8 +468,6 @@ function MapShell({
   selectedId,
   visibleKinds,
   onToggleKind,
-  route,
-  routeFitToken,
 }: {
   compact?: boolean;
   markers: PlannerMapMarker[];
@@ -479,8 +476,6 @@ function MapShell({
   selectedId?: string;
   visibleKinds: Set<MarkerKind>;
   onToggleKind: (kind: MarkerKind) => void;
-  route?: { encodedPolyline: string; selected: boolean };
-  routeFitToken?: number;
 }) {
   const visibleMarkers = visibleKinds.size
     ? markers.filter((marker) => visibleKinds.has(marker.entries[0].kind))
@@ -495,8 +490,6 @@ function MapShell({
         markers={visibleMarkers}
         onMarkerClick={onMarkerClick}
         selectedId={selectedId}
-        route={route}
-        routeFitToken={routeFitToken}
       />
       {!compact && selectedId
         ? (() => {
@@ -629,7 +622,6 @@ export function PlannerWorkspace({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copyDaysOpen, setCopyDaysOpen] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
-  const [routeView, setRouteView] = useState<{ dayId: string; token: number }>();
   const [visibleMarkerKinds, setVisibleMarkerKinds] = useState<Set<MarkerKind>>(() => new Set());
   const [targetDays, setTargetDays] = useState<Set<string>>(new Set());
   const [interactionError, setInteractionError] = useState<string>();
@@ -725,9 +717,6 @@ export function PlannerWorkspace({
       }
     return [...grouped.values()];
   }, [workspace.days]);
-  const viewedRouteDay = workspace.days.find(({ id }) => id === routeView?.dayId);
-  const viewRoute = (dayId: string) =>
-    setRouteView((current) => ({ dayId, token: (current?.token ?? 0) + 1 }));
   function selectMarker(itemId: string) {
     workspace.days.some((day, row) => {
       const item = day.items.find(({ id }) => id === itemId);
@@ -1610,7 +1599,7 @@ export function PlannerWorkspace({
           role="separator"
           tabIndex={0}
         />
-        <div className="planner-map-pane relative min-w-0">
+        <div className="planner-map-pane min-w-0">
           <div className="planner-map-landscape h-full">
             <MapShell
               markers={mapMarkers}
@@ -1618,21 +1607,7 @@ export function PlannerWorkspace({
               onToggleKind={toggleMarkerKind}
               selectedId={selectedMapItem?.id}
               visibleKinds={visibleMarkerKinds}
-              route={
-                viewedRouteDay?.route
-                  ? { encodedPolyline: viewedRouteDay.route.encoded_polyline, selected: true }
-                  : undefined
-              }
-              routeFitToken={routeView?.token}
             />
-            <div className="absolute right-3 top-14 z-30 w-[min(320px,calc(100%-1.5rem))]">
-              <RouteBuilder
-                initialDayId={activeDay?.id}
-                onViewRoute={viewRoute}
-                tripId={trip.id}
-                workspace={workspace}
-              />
-            </div>
           </div>
           <div className="planner-map-peek h-full">
             <MapShell
@@ -1643,12 +1618,6 @@ export function PlannerWorkspace({
               onToggleKind={toggleMarkerKind}
               selectedId={selectedMapItem?.id}
               visibleKinds={visibleMarkerKinds}
-              route={
-                viewedRouteDay?.route
-                  ? { encodedPolyline: viewedRouteDay.route.encoded_polyline, selected: true }
-                  : undefined
-              }
-              routeFitToken={routeView?.token}
             />
           </div>
         </div>
@@ -1687,28 +1656,13 @@ export function PlannerWorkspace({
             <SheetTitle>{selectedMapItem?.title ?? "Itinerary map"}</SheetTitle>
             <SheetDescription>Saved places from your itinerary.</SheetDescription>
           </SheetHeader>
-          <div className="max-h-[46dvh] overflow-y-auto px-3 pb-3">
-            <RouteBuilder
-              compact
-              initialDayId={activeDay?.id}
-              onViewRoute={viewRoute}
-              tripId={trip.id}
-              workspace={workspace}
-            />
-          </div>
-          <div className="min-h-[220px] flex-1">
+          <div className="min-h-0 flex-1">
             <MapShell
               markers={mapMarkers}
               onMarkerClick={selectMarker}
               onToggleKind={toggleMarkerKind}
               selectedId={selectedMapItem?.id}
               visibleKinds={visibleMarkerKinds}
-              route={
-                viewedRouteDay?.route
-                  ? { encodedPolyline: viewedRouteDay.route.encoded_polyline, selected: true }
-                  : undefined
-              }
-              routeFitToken={routeView?.token}
             />
           </div>
         </SheetContent>

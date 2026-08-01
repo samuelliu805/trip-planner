@@ -37,7 +37,6 @@ function replaceItem(workspace: PlannerWorkspace | undefined, item: ItineraryIte
     ...workspace,
     days: workspace.days.map((day) => ({
       ...day,
-      route_is_stale: day.route_is_stale || item.route_stop_order !== null,
       items:
         day.id === item.day_id
           ? [...day.items.filter(({ id }) => id !== item.id), item].sort(
