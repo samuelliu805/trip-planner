@@ -25,11 +25,6 @@ function durationLabel(seconds: number) {
   return hours ? `${hours} hr ${minutes} min` : `${minutes} min`;
 }
 
-function distanceLabel(meters: number) {
-  const useMiles = typeof navigator !== "undefined" && /^en-US\b/i.test(navigator.language);
-  return useMiles ? `${(meters / 1609.344).toFixed(1)} mi` : `${(meters / 1000).toFixed(1)} km`;
-}
-
 export function RouteBuilder({
   compact = false,
   initialDayId,
@@ -209,7 +204,7 @@ export function RouteBuilder({
           </div>
           {day.route ? (
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{distanceLabel(day.route.distance_meters)}</span>
+              <span>{(day.route.distance_meters / 1000).toFixed(1)} km</span>
               <span>{durationLabel(day.route.duration_seconds)}</span>
             </div>
           ) : null}
