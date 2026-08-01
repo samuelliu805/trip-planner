@@ -90,6 +90,7 @@ export function useCreateItineraryItem(tripId: string) {
         })),
         notes: input.notes || null,
         place_id: input.placeId ?? null,
+        route_stop_order: null,
         place: input.placeSnapshot
           ? { ...input.placeSnapshot, id: `optimistic-place-${crypto.randomUUID()}` }
           : null,
@@ -230,6 +231,7 @@ export function useCopyItineraryItems(tripId: string) {
         day_id: input.targetDayId,
         id: `optimistic-${crypto.randomUUID()}`,
         place_id: input.preservePlace === false ? null : source.place_id,
+        route_stop_order: null,
         sort_order: nextOrder + index + 1,
         updated_at: new Date().toISOString(),
       }));

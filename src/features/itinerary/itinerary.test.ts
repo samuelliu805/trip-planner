@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { validateRouteConfiguration } from "../routes/configuration.ts";
 import {
   deduplicatePlaceSnapshots,
   normalizeGooglePlace,
@@ -166,6 +167,7 @@ test("copies get new IDs, destination ordering, and independent values", () => {
     id: ids.item,
     notes: "Original",
     place_id: null,
+    route_stop_order: null,
     schedule_kind: "none",
     schedule_text: null,
     sort_order: 2,
@@ -517,4 +519,34 @@ test("replace-copy clears constrained destination rows before inserting preserve
   assert.ok(deletePosition >= 0 && copyPosition > deletePosition);
   assert.match(queries, /place_id === item\.place_id/);
   assert.match(queries, /source\?\.place/);
+});
+test("Route A configuration rejects duplicate stops and the provider stop limit", () => {
+  assert.match(
+    validateRouteConfiguration({ dayId: "day", itemIds: ["a", "a"], travelMode: "walk" }) ?? "",
+    /only be included once/,
+  );
+  assert.match(
+    validateRouteConfiguration({
+      dayId: "day",
+      itemIds: Array.from({ length: 28 }, (_, index) => `item-${index}`),
+      travelMode: "drive",
+    }) ?? "",
+    /27 stops/,
+  );
+});
+
+test("route migration enforces ownership, coordinates, cascade, and independent copy ordering", async () => {
+  const migration = await readFile(
+    new URL("../../../supabase/migrations/20260801061134_add_per_day_route_a_model.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /create policy "day_routes_select_members"/);
+  assert.match(migration, /public\.is_trip_owner/);
+  assert.match(migration, /p\.latitude is null or p\.longitude is null/);
+  assert.match(migration, /references public\.trip_days \(id, variant_id\) on delete cascade/);
+  const copyMigration = await readFile(
+    new URL("../../../supabase/migrations/20260729220000_flexible_itinerary_workflow.sql", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(copyMigration, /insert into public\.itinerary_items[\s\S]*route_stop_order/);
 });

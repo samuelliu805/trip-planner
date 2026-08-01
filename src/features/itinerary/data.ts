@@ -16,10 +16,14 @@ export async function getPlannerWorkspace(
   if (variantError || !variant)
     return { data: null, error: variantError?.message ?? "Primary Route A was not found." };
 
-  const [{ data: days, error: daysError }, { data: items, error: itemsError }] = await Promise.all([
+  const [
+    { data: days, error: daysError },
+    { data: items, error: itemsError },
+    { data: routes, error: routesError },
+  ] = await Promise.all([
     supabase
       .from("trip_days")
-      .select("id, variant_id, day_number, date, title, notes")
+      .select("id, variant_id, day_number, date, title, notes, route_travel_mode")
       .eq("variant_id", variant.id)
       .order("day_number", { ascending: true }),
     supabase
@@ -31,12 +35,17 @@ export async function getPlannerWorkspace(
       .eq("variant_id", variant.id)
       .order("day_id", { ascending: true })
       .order("sort_order", { ascending: true }),
+    supabase.from("day_routes").select("*").eq("variant_id", variant.id),
   ]);
 
-  if (daysError || itemsError)
+  if (daysError || itemsError || routesError)
     return {
       data: null,
-      error: daysError?.message ?? itemsError?.message ?? "Could not load the planner.",
+      error:
+        daysError?.message ??
+        itemsError?.message ??
+        routesError?.message ??
+        "Could not load the planner.",
     };
 
   const itemsByDay = new Map<string, import("./types").ItineraryItem[]>();
@@ -66,7 +75,11 @@ export async function getPlannerWorkspace(
   return {
     data: {
       variant,
-      days: (days ?? []).map((day) => ({ ...day, items: itemsByDay.get(day.id) ?? [] })),
+      days: (days ?? []).map((day) => ({
+        ...day,
+        items: itemsByDay.get(day.id) ?? [],
+        route: (routes ?? []).find((route) => route.day_id === day.id) ?? null,
+      })),
     },
     error: null,
   };

@@ -59,6 +59,7 @@ export type Database = {
           id: string
           notes: string | null
           place_id: string | null
+          route_stop_order: number | null
           schedule_kind: Database["public"]["Enums"]["itinerary_schedule_kind"]
           schedule_text: string | null
           sort_order: number
@@ -78,6 +79,7 @@ export type Database = {
           id?: string
           notes?: string | null
           place_id?: string | null
+          route_stop_order?: number | null
           schedule_kind?: Database["public"]["Enums"]["itinerary_schedule_kind"]
           schedule_text?: string | null
           sort_order?: number
@@ -97,6 +99,7 @@ export type Database = {
           id?: string
           notes?: string | null
           place_id?: string | null
+          route_stop_order?: number | null
           schedule_kind?: Database["public"]["Enums"]["itinerary_schedule_kind"]
           schedule_text?: string | null
           sort_order?: number
@@ -135,6 +138,53 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "route_variants"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      day_routes: {
+        Row: {
+          computed_at: string
+          day_id: string
+          distance_meters: number
+          duration_seconds: number
+          encoded_polyline: string
+          id: string
+          legs: Json
+          travel_mode: Database["public"]["Enums"]["route_travel_mode"]
+          variant_id: string
+          waypoint_signature: string
+        }
+        Insert: {
+          computed_at?: string
+          day_id: string
+          distance_meters: number
+          duration_seconds: number
+          encoded_polyline: string
+          id?: string
+          legs?: Json
+          travel_mode: Database["public"]["Enums"]["route_travel_mode"]
+          variant_id: string
+          waypoint_signature: string
+        }
+        Update: {
+          computed_at?: string
+          day_id?: string
+          distance_meters?: number
+          duration_seconds?: number
+          encoded_polyline?: string
+          id?: string
+          legs?: Json
+          travel_mode?: Database["public"]["Enums"]["route_travel_mode"]
+          variant_id?: string
+          waypoint_signature?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_routes_day_variant_fkey"
+            columns: ["day_id", "variant_id"]
+            isOneToOne: true
+            referencedRelation: "trip_days"
+            referencedColumns: ["id", "variant_id"]
           },
         ]
       }
@@ -259,6 +309,7 @@ export type Database = {
           day_number: number
           id: string
           notes: string | null
+          route_travel_mode: Database["public"]["Enums"]["route_travel_mode"]
           title: string | null
           variant_id: string
         }
@@ -267,6 +318,7 @@ export type Database = {
           day_number: number
           id?: string
           notes?: string | null
+          route_travel_mode?: Database["public"]["Enums"]["route_travel_mode"]
           title?: string | null
           variant_id: string
         }
@@ -275,6 +327,7 @@ export type Database = {
           day_number?: number
           id?: string
           notes?: string | null
+          route_travel_mode?: Database["public"]["Enums"]["route_travel_mode"]
           title?: string | null
           variant_id?: string
         }
@@ -361,6 +414,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      configure_day_route: {
+        Args: {
+          ordered_item_ids: string[]
+          requested_travel_mode: Database["public"]["Enums"]["route_travel_mode"]
+          target_day_id: string
+        }
+        Returns: undefined
+      }
       copy_itinerary_items_to_days: {
         Args: { source_item_ids: string[]; target_day_ids: string[] }
         Returns: number
@@ -438,6 +499,7 @@ export type Database = {
         | "exact"
         | "range"
       place_source: "google" | "custom"
+      route_travel_mode: "walk" | "drive" | "bicycle" | "transit"
       trip_member_role: "owner" | "editor" | "viewer"
     }
     CompositeTypes: {
@@ -586,6 +648,7 @@ export const Constants = {
         "range",
       ],
       place_source: ["google", "custom"],
+      route_travel_mode: ["walk", "drive", "bicycle", "transit"],
       trip_member_role: ["owner", "editor", "viewer"],
     },
   },
