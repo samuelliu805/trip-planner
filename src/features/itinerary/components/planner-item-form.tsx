@@ -8,7 +8,9 @@ import {
   CarTaxiFront,
   Footprints,
   Plane,
+  Plus,
   Ship,
+  Trash2,
   TrainFront,
   TramFront,
   X,
@@ -38,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
 import {
   useCreateItineraryItem,
   useDeleteItineraryItem,
@@ -53,6 +56,7 @@ import {
   type TransportMode,
 } from "@/features/itinerary/types";
 import type { Json } from "@/types/database";
+import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 type PlannerItemFormProps = {
   dayId: string;
@@ -109,17 +113,26 @@ export function PlannerItemForm({
   const existingCar =
     item?.type === "car_rental" ? (item.details as Partial<CarRentalDetails>) : {};
   const existingDetails = (item?.details as Record<string, string> | undefined) ?? {};
-  const [title, setTitle] = useState(item?.title ?? "");
+  const [title, setTitle] = useState(
+    item && ["location", "hotel"].includes(item.type) && item.place?.displayName === item.title
+      ? ""
+      : (item?.title ?? ""),
+  );
   const [startTime, setStartTime] = useState(item?.start_time?.slice(0, 5) ?? "");
   const [endTime, setEndTime] = useState(item?.end_time?.slice(0, 5) ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
-  const [bookingUrl, setBookingUrl] = useState(item?.booking_url ?? "");
+  const [links, setLinks] = useState(() =>
+    item?.links?.length
+      ? item.links.map(({ label, url }) => ({ label, url }))
+      : item?.booking_url
+        ? [{ label: "Booking", url: item.booking_url }]
+        : [],
+  );
   const [carAction, setCarAction] = useState<CarRentalDetails["action"]>(
     existingCar.action ?? "pickup",
   );
-  const [address, setAddress] = useState(existingCar.address ?? existingDetails.address ?? "");
-  const [location, setLocation] = useState(existingDetails.location ?? "");
   const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
+  const [place, setPlace] = useState<PlaceSnapshot | null>(item?.place ?? null);
   const existingTransportMode = normalizeTransportMode(existingDetails.mode);
   const availableTransportModes = transportModes.filter(
     (mode) =>
@@ -137,11 +150,20 @@ export function PlannerItemForm({
   const error = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
 
   useEffect(() => {
+    if (!item && ["location", "hotel"].includes(type)) return;
     const frame = requestAnimationFrame(() => titleRef.current?.focus());
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [item, type]);
 
   function save() {
+    if (type === "location" && !place) {
+      onError("Choose a city from Google Maps before saving.");
+      return;
+    }
+    if (type === "hotel" && !place && !title.trim()) {
+      onError("Choose a hotel location or enter a displayed hotel name.");
+      return;
+    }
     const savedTitle =
       type === "car_rental"
         ? carAction === "pickup"
@@ -149,29 +171,40 @@ export function PlannerItemForm({
           : "Return"
         : type === "transport"
           ? transportModeLabels[transportMode]
-          : title.trim();
+          : type === "location"
+            ? title.trim() || place?.displayName || ""
+            : type === "hotel"
+              ? title.trim() || place?.displayName || ""
+              : title.trim();
     if (pending || !savedTitle) return;
+    const placeText = place?.formattedAddress ?? place?.displayName ?? null;
     const details: Record<string, Json> =
       type === "car_rental"
-        ? { action: carAction, address: address || null, provider: carProvider || null }
+        ? { action: carAction, address: placeText, provider: carProvider || null }
         : type === "hotel"
-          ? { address: address || null }
+          ? { address: placeText }
           : type === "meal"
-            ? { location: location || null }
+            ? { location: placeText }
             : type === "transport"
-              ? { location: location || null, mode: transportMode }
+              ? { mode: transportMode }
               : type === "activity"
-                ? { location: location || null }
+                ? { location: placeText }
                 : {};
     const supportsRange = ["location", "activity"].includes(type);
     const supportsOneTime = ["car_rental", "meal"].includes(type);
     const supportsLink = !["location", "note"].includes(type);
+    const supportsPlace = !["note", "transport", "flight", "train"].includes(type);
     const callbacks = {
       onError: (mutationError: Error) => onError(mutationError.message),
       onSuccess: onSaved,
     };
+    const googlePlace =
+      place?.provider === "google" && place.providerPlaceId
+        ? { ...place, provider: "google" as const, providerPlaceId: place.providerPlaceId }
+        : undefined;
     const values = {
-      bookingUrl: supportsLink ? bookingUrl : "",
+      bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
+      links: supportsLink ? links : [],
       details: details as never,
       endTime: supportsRange ? endTime : "",
       notes: type === "note" ? "" : notes,
@@ -179,10 +212,11 @@ export function PlannerItemForm({
       title: savedTitle,
       tripId,
       type,
+      placeId: supportsPlace && place ? item?.place_id : null,
+      placeSnapshot: supportsPlace ? googlePlace : undefined,
     };
     if (item) updateMutation.mutate({ ...values, id: item.id }, callbacks);
     else createMutation.mutate({ ...values, dayId, variantId }, callbacks);
-    onCancel();
   }
 
   async function remove() {
@@ -196,15 +230,20 @@ export function PlannerItemForm({
   }
 
   const copy = itemCopy[type];
-  const locationLabel =
-    type === "hotel" || type === "car_rental"
-      ? "Address"
-      : type === "transport"
-        ? "Route / location"
-        : "Location";
-  const showsLocation = ["activity", "transport", "hotel", "car_rental", "meal"].includes(type);
-  const locationValue = type === "hotel" || type === "car_rental" ? address : location;
-  const setLocationValue = type === "hotel" || type === "car_rental" ? setAddress : setLocation;
+  const canSave =
+    type === "location"
+      ? Boolean(place)
+      : type === "hotel"
+        ? Boolean(place || title.trim())
+        : ["car_rental", "transport"].includes(type) || Boolean(title.trim());
+  const placeLabel =
+    type === "location"
+      ? "City location"
+      : type === "hotel"
+        ? "Hotel location"
+        : type === "car_rental"
+          ? "Address"
+          : "Location";
   const linkLabel =
     type === "hotel"
       ? "Hotel link"
@@ -273,7 +312,7 @@ export function PlannerItemForm({
             </SelectContent>
           </Select>
         </div>
-      ) : (
+      ) : !["location", "hotel"].includes(type) ? (
         <div className="space-y-1.5">
           <Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>{copy.label}</Label>
           <Input
@@ -285,26 +324,65 @@ export function PlannerItemForm({
             value={title}
           />
         </div>
-      )}
-      {showsLocation ? (
+      ) : null}
+      {!["note", "transport", "flight", "train"].includes(type) ? (
         <div className="space-y-1.5">
-          <Label htmlFor={`item-location-${item?.id ?? dayId}-${type}`}>
-            {locationLabel} <span className="font-normal text-muted-foreground">optional</span>
+          <Label>
+            {placeLabel}{" "}
+            {type === "location" ? (
+              <span className="text-destructive">*</span>
+            ) : type === "hotel" ? (
+              <span className="font-normal text-muted-foreground">
+                optional if a displayed name is provided
+              </span>
+            ) : (
+              <span className="font-normal text-muted-foreground">optional</span>
+            )}
+          </Label>
+          <PlaceAutocomplete
+            autoFocus={!item && ["location", "hotel"].includes(type)}
+            disabled={pending}
+            onChange={(nextPlace) => {
+              setPlace(nextPlace);
+              if (!nextPlace) return;
+              if (
+                !title.trim() &&
+                type !== "location" &&
+                type !== "hotel" &&
+                type !== "car_rental" &&
+                type !== "transport"
+              )
+                setTitle(nextPlace.displayName);
+            }}
+            onSelected={() => requestAnimationFrame(() => titleRef.current?.focus())}
+            value={place}
+          />
+        </div>
+      ) : null}
+      {["location", "hotel"].includes(type) ? (
+        <div className="space-y-1.5">
+          <Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>
+            {type === "location" ? "Displayed city name" : "Displayed hotel name"}{" "}
+            <span className="font-normal text-muted-foreground">
+              {type === "hotel" && !place ? "required without a location" : "optional"}
+            </span>
           </Label>
           <Input
-            id={`item-location-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setLocationValue(event.target.value)}
+            id={`item-title-${item?.id ?? dayId}-${type}`}
+            onChange={(event) => setTitle(event.target.value)}
             placeholder={
-              type === "transport"
-                ? "e.g. SFO → Downtown"
-                : type === "meal"
-                  ? "Restaurant or neighborhood"
-                  : type === "activity"
-                    ? "Venue or address"
-                    : "Street address"
+              place?.displayName ?? `Enter a ${type === "location" ? "city" : "hotel"} name`
             }
-            value={locationValue}
+            ref={titleRef}
+            value={title}
           />
+          <p className="text-xs text-muted-foreground">
+            {place
+              ? `Leave blank to display the selected ${type === "location" ? "city" : "hotel"}’s Google Maps name.`
+              : type === "hotel"
+                ? "Use this when an exact map location is unavailable."
+                : "Choose a city location above."}
+          </p>
         </div>
       ) : null}
       {type === "car_rental" ? (
@@ -391,18 +469,48 @@ export function PlannerItemForm({
         </div>
       ) : null}
       {!["location", "note"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`item-booking-${item?.id ?? dayId}-${type}`}>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">
             {linkLabel} <span className="font-normal text-muted-foreground">optional</span>
-          </Label>
-          <Input
-            id={`item-booking-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setBookingUrl(event.target.value)}
-            placeholder="https://"
-            type="url"
-            value={bookingUrl}
-          />
-        </div>
+          </legend>
+          {links.map((link, index) => (
+            <div className="flex gap-2" key={index}>
+              <Input
+                aria-label={`Link ${index + 1} URL`}
+                onChange={(event) =>
+                  setLinks((current) =>
+                    current.map((value, linkIndex) =>
+                      linkIndex === index ? { ...value, url: event.target.value } : value,
+                    ),
+                  )
+                }
+                placeholder="https://"
+                type="url"
+                value={link.url}
+              />
+              <Button
+                aria-label={`Remove link ${index + 1}`}
+                onClick={() =>
+                  setLinks((current) => current.filter((_, linkIndex) => linkIndex !== index))
+                }
+                className="size-9 p-0"
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+          <Button
+            onClick={() => setLinks((current) => [...current, { label: linkLabel, url: "" }])}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <Plus className="size-4" /> Add link
+          </Button>
+        </fieldset>
       ) : null}
       {type !== "note" ? (
         <div className="space-y-1.5">
@@ -450,11 +558,7 @@ export function PlannerItemForm({
           <Button onClick={onCancel} size="sm" type="button" variant="ghost">
             Cancel
           </Button>
-          <Button
-            disabled={pending || (!["car_rental", "transport"].includes(type) && !title.trim())}
-            size="sm"
-            type="submit"
-          >
+          <Button disabled={pending || !canSave} size="sm" type="submit">
             {pending ? "Saving…" : item ? "Save" : "Add item"}
           </Button>
         </div>

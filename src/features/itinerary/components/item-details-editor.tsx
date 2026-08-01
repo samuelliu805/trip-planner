@@ -32,7 +32,6 @@ export function ItemDetailsEditor({
   const [carAction, setCarAction] = useState<CarRentalDetails["action"]>(
     existingCar.action ?? "pickup",
   );
-  const [carLocation, setCarLocation] = useState(existingCar.address ?? "");
   const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
   const mutation = useUpdateItineraryItem(item.trip_id);
 
@@ -51,7 +50,11 @@ export function ItemDetailsEditor({
   async function save() {
     const details =
       type === "car_rental"
-        ? { action: carAction, address: carLocation || null, provider: carProvider || null }
+        ? {
+            action: carAction,
+            address: item.place?.formattedAddress ?? item.place?.displayName ?? null,
+            provider: carProvider || null,
+          }
         : (item.details as Record<string, Json>);
     const saved = await mutation.mutateAsync({
       details: details as never,
@@ -62,6 +65,7 @@ export function ItemDetailsEditor({
       title,
       tripId: item.trip_id,
       type,
+      placeId: item.place_id,
     });
     onSaved(saved);
     setOpen(false);
@@ -123,14 +127,6 @@ export function ItemDetailsEditor({
               <option value="pickup">Pickup</option>
               <option value="return">Return</option>
             </select>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`location-${item.id}`}>Location</Label>
-            <Input
-              id={`location-${item.id}`}
-              onChange={(event) => setCarLocation(event.target.value)}
-              value={carLocation}
-            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`provider-${item.id}`}>Provider (optional)</Label>

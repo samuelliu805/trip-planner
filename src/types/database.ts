@@ -143,8 +143,12 @@ export type Database = {
           custom_lat: number | null
           custom_lng: number | null
           custom_name: string | null
+          display_name: string | null
+          formatted_address: string | null
           google_place_id: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
           source: Database["public"]["Enums"]["place_source"]
           trip_id: string
         }
@@ -152,8 +156,12 @@ export type Database = {
           custom_lat?: number | null
           custom_lng?: number | null
           custom_name?: string | null
+          display_name?: string | null
+          formatted_address?: string | null
           google_place_id?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           source: Database["public"]["Enums"]["place_source"]
           trip_id: string
         }
@@ -161,8 +169,12 @@ export type Database = {
           custom_lat?: number | null
           custom_lng?: number | null
           custom_name?: string | null
+          display_name?: string | null
+          formatted_address?: string | null
           google_place_id?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           source?: Database["public"]["Enums"]["place_source"]
           trip_id?: string
         }
@@ -381,6 +393,17 @@ export type Database = {
       reorder_itinerary_items: {
         Args: { ordered_item_ids: string[]; target_day_id: string }
         Returns: undefined
+      }
+      upsert_google_place_snapshot: {
+        Args: {
+          place_display_name: string
+          place_formatted_address: string
+          place_latitude: number
+          place_longitude: number
+          provider_place_id: string
+          target_trip_id: string
+        }
+        Returns: string
       }
       update_trip_plan: {
         Args: {

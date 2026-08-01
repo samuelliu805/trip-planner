@@ -21,6 +21,19 @@ const optionalUrl = z
   .union([z.literal(""), z.url().refine((url) => /^https?:\/\//i.test(url), "Use an HTTP(S) URL.")])
   .optional()
   .nullable();
+const itemLinkSchema = z.object({
+  label: z.string().trim().min(1, "Add a link label.").max(80),
+  url: z.url().refine((url) => /^https?:\/\//i.test(url), "Use an HTTP(S) URL."),
+});
+
+export const placeSnapshotSchema = z.object({
+  displayName: z.string().trim().min(1).max(300),
+  formattedAddress: z.string().trim().max(500).optional(),
+  latitude: z.number().finite().min(-90).max(90),
+  longitude: z.number().finite().min(-180).max(180),
+  provider: z.literal("google"),
+  providerPlaceId: z.string().trim().min(1).max(300),
+});
 
 export const carRentalDetailsSchema = z
   .object({
@@ -34,7 +47,6 @@ const addressDetailsSchema = z.object({ address: optionalText(300) }).strict();
 const mealDetailsSchema = z.object({ location: optionalText(300) }).strict();
 const transportDetailsSchema = z
   .object({
-    location: optionalText(300),
     mode: z.enum([
       "flight",
       "train",
@@ -60,10 +72,12 @@ const genericDetailsSchema = z.record(z.string(), z.json());
 
 const itemBaseSchema = z.object({
   bookingUrl: optionalUrl,
+  links: z.array(itemLinkSchema).max(20, "Add no more than 20 links.").optional(),
   dayId: z.uuid(),
   endTime: optionalTime,
   notes: optionalText(5000),
   placeId: z.uuid().optional().nullable(),
+  placeSnapshot: placeSnapshotSchema.optional().nullable(),
   startTime: optionalTime,
   title: z.string().trim().min(1, "Enter an item title.").max(200),
   tripId: z.uuid(),
@@ -91,6 +105,12 @@ export const createItineraryItemSchema = z
     path: ["endTime"],
   })
   .superRefine((value, context) => {
+    if (value.type === "location" && !value.placeId && !value.placeSnapshot)
+      context.addIssue({
+        code: "custom",
+        message: "Choose a city from Google Maps.",
+        path: ["placeSnapshot"],
+      });
     if (
       ["transport", "flight", "train", "hotel", "note"].includes(value.type) &&
       (value.startTime || value.endTime)
@@ -106,11 +126,11 @@ export const createItineraryItemSchema = z
         message: "This item type supports one time only.",
         path: ["endTime"],
       });
-    if (["location", "note"].includes(value.type) && value.bookingUrl)
+    if (["location", "note"].includes(value.type) && (value.bookingUrl || value.links?.length))
       context.addIssue({
         code: "custom",
         message: "This item type does not support links.",
-        path: ["bookingUrl"],
+        path: ["links"],
       });
   });
 
@@ -127,6 +147,12 @@ export const updateItineraryItemSchema = z
     path: ["endTime"],
   })
   .superRefine((value, context) => {
+    if (value.type === "location" && !value.placeId && !value.placeSnapshot)
+      context.addIssue({
+        code: "custom",
+        message: "Choose a city from Google Maps.",
+        path: ["placeSnapshot"],
+      });
     if (value.type === "car_rental") {
       const parsed = carRentalDetailsSchema.safeParse(value.details);
       if (!parsed.success)
@@ -149,11 +175,11 @@ export const updateItineraryItemSchema = z
         message: "This item type supports one time only.",
         path: ["endTime"],
       });
-    if (["location", "note"].includes(value.type) && value.bookingUrl)
+    if (["location", "note"].includes(value.type) && (value.bookingUrl || value.links?.length))
       context.addIssue({
         code: "custom",
         message: "This item type does not support links.",
-        path: ["bookingUrl"],
+        path: ["links"],
       });
   });
 
