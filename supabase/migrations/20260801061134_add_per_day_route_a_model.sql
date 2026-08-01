@@ -96,6 +96,7 @@ begin
   from unnest(coalesce(ordered_item_ids, '{}'::uuid[])) with ordinality submitted(item_id, position)
   where i.id = submitted.item_id;
   update public.trip_days set route_travel_mode = requested_travel_mode where id = target_day_id;
+  delete from public.day_routes where day_id = target_day_id;
 end;
 $$;
 
