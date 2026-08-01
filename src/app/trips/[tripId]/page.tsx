@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { PlannerWorkspace } from "@/features/itinerary/components/planner-workspace";
+import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
@@ -25,19 +26,21 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
 
   return (
     <main className="h-[calc(100dvh-4rem)] overflow-hidden">
-      <PlannerWorkspace
-        initialWorkspace={workspace}
-        trip={trip}
-        deleteError={query.error === "delete"}
-        settings={
-          <div className="space-y-6">
-            <UpdateTripForm trip={trip} />
-            <div className="border-t pt-5">
-              <DeleteTripDialog title={trip.title} tripId={trip.id} />
+      <PlannerMapProvider>
+        <PlannerWorkspace
+          initialWorkspace={workspace}
+          trip={trip}
+          deleteError={query.error === "delete"}
+          settings={
+            <div className="space-y-6">
+              <UpdateTripForm trip={trip} />
+              <div className="border-t pt-5">
+                <DeleteTripDialog title={trip.title} tripId={trip.id} />
+              </div>
             </div>
-          </div>
-        }
-      />
+          }
+        />
+      </PlannerMapProvider>
     </main>
   );
 }

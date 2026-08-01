@@ -24,7 +24,9 @@ export async function getPlannerWorkspace(
       .order("day_number", { ascending: true }),
     supabase
       .from("itinerary_items")
-      .select("*")
+      .select(
+        "*, links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude)",
+      )
       .eq("trip_id", tripId)
       .eq("variant_id", variant.id)
       .order("day_id", { ascending: true })
@@ -37,8 +39,25 @@ export async function getPlannerWorkspace(
       error: daysError?.message ?? itemsError?.message ?? "Could not load the planner.",
     };
 
-  const itemsByDay = new Map<string, NonNullable<typeof items>>();
-  for (const item of items ?? []) {
+  const itemsByDay = new Map<string, import("./types").ItineraryItem[]>();
+  for (const row of items ?? []) {
+    const snapshot = row.place;
+    const item = {
+      ...row,
+      links: [...(row.links ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+      place:
+        snapshot?.display_name && snapshot.latitude !== null && snapshot.longitude !== null
+          ? {
+              id: snapshot.id,
+              provider: snapshot.source,
+              ...(snapshot.google_place_id && { providerPlaceId: snapshot.google_place_id }),
+              displayName: snapshot.display_name,
+              ...(snapshot.formatted_address && { formattedAddress: snapshot.formatted_address }),
+              latitude: snapshot.latitude,
+              longitude: snapshot.longitude,
+            }
+          : null,
+    } satisfies import("./types").ItineraryItem;
     const dayItems = itemsByDay.get(item.day_id) ?? [];
     dayItems.push(item);
     itemsByDay.set(item.day_id, dayItems);

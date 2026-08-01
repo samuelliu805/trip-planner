@@ -4,9 +4,9 @@ Trip Planner is a modern travel-planning workspace intended to replace the sprea
 
 ## Current status
 
-Phase 2 — the core trip planner — is complete. The authenticated `/trips/[tripId]` route is one responsive editing workspace for desktop, tablet, and mobile browsers. It supports grouped-day itinerary editing, optional times, typed car-rental details, ordering, keyboard navigation, selection, replace-style copy/paste, fill, and copy-to-day operations. A provider-ready map region remains visible without loading Google APIs.
+Phase 3 — Google Maps and Places — is implemented and awaiting the authenticated configuration smoke test. The authenticated `/trips/[tripId]` workspace now adds persisted place snapshots, live itinerary markers, Places API (New) autocomplete, and item/marker selection synchronization to the Phase 2 spreadsheet experience.
 
-Live Maps and Places, route alternatives, directions, sharing, export, and travel research remain intentionally deferred to later phases.
+Route alternatives, directions, sharing, export, and travel research remain intentionally deferred to later phases.
 
 ## Foundation stack
 
@@ -17,7 +17,7 @@ Live Maps and Places, route alternatives, directions, sharing, export, and trave
 - ESLint with the Next.js Core Web Vitals and TypeScript presets
 - npm for dependency and lockfile management
 
-Phase 2 uses Supabase, TanStack Query, React Hook Form, Zod, and date-fns. Provider packages may be installed, but the Phase 2 planner does not initialize Google Maps or make Maps/Places requests.
+The planner uses Supabase, TanStack Query, React Hook Form, Zod, date-fns, and `@vis.gl/react-google-maps`. Google SDK values are normalized at the provider boundary and are never stored in itinerary domain data.
 
 ## Architecture
 
@@ -126,9 +126,8 @@ Copy `.env.example` to `.env.local` and provide the Supabase values before using
 | `NEXT_PUBLIC_SITE_URL`                 | Auth redirects | Phase 1   |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`      | Browser        | Phase 3   |
 | `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`       | Browser        | Phase 3   |
-| `GOOGLE_ROUTES_API_KEY`                | Server only    | Phase 5   |
 
-Never expose the server-only Routes API key through a `NEXT_PUBLIC_` variable.
+Enable only Maps JavaScript API and Places API (New). Use a browser key restricted by HTTP referrer and by those two APIs, including localhost, production, and intended Vercel preview origins. Create a Google Maps Map ID for advanced markers. Configure quotas and budget alerts before production testing. Do not add a Routes API key during Phase 3.
 
 ## Supabase setup
 
@@ -174,7 +173,7 @@ npm run build
 
 The itinerary tests cover optional and cleared times, typed car-rental validation, copy independence, ordering, RLS usage, keyboard movement, range/fill calculations, clipboard validation, optimistic rollback hooks, and responsive/state contracts.
 
-## Phase 2 manual verification
+## Phase 3 manual verification
 
 1. Set the three Phase 1 variables in `.env.local` and allow `http://localhost:3000/**` in Supabase Auth redirect URLs.
 2. Run `npm install` and `npm run dev`, then open `http://localhost:3000`.
@@ -188,9 +187,11 @@ The itinerary tests cover optional and cleared times, typed car-rental validatio
 10. At 1280, 1440, and 1920px, confirm the map remains visible, the divider resizes, frozen columns work, and the page has no global horizontal overflow.
 11. At 1024×768, 834×1194, and 768×1024, confirm compact split/portrait peek behavior, touch-sized controls, contained matrix scrolling, and overlay Sheets.
 12. At 390×844, 393×852, and 430×932, confirm sticky columns, horizontal matrix scrolling, 16px editor inputs, safe-area spacing, map expansion, and preserved selection.
-13. In browser network/devtools, confirm the planner loads no Google scripts and makes no Maps or Places API requests.
-14. Log out and confirm `/trips` redirects to `/login`. With a second account, confirm the first account's trip cannot be read or mutated through direct URLs/actions.
-15. Confirm trip create/update/delete and Route A/day generation still work.
+13. Add map places to a city, hotel, activity, and meal; refresh and confirm persisted markers render without per-marker Place Details requests.
+14. Select items and markers in both directions, clear and replace a place, and verify mobile map-sheet selection is preserved.
+15. Test missing and invalid Google configuration; matrix editing must remain available. In browser network tools, confirm no Routes API, directions, or polyline requests occur.
+16. Log out and confirm `/trips` redirects to `/login`. With a second account, confirm the first account's trip cannot be read or mutated through direct URLs/actions.
+17. Confirm trip create/update/delete and Route A/day generation still work.
 
 For every completed phase, the handoff should include required configuration, migration/deployment actions, automated checks, and a phase-specific local manual test checklist.
 
@@ -198,7 +199,7 @@ For every completed phase, the handoff should include required configuration, mi
 
 1. ✅ Supabase, authentication, database schema, RLS, and trip CRUD
 2. ✅ Core itinerary workspace, editing interactions, and responsive layouts
-3. Google Maps and Places API (New)
+3. Google Maps and Places API (New) — implementation complete; authenticated smoke test pending
 4. Alternative route variants
 5. Google Routes API
 6. Public read-only sharing

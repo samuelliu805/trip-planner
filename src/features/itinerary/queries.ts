@@ -76,15 +76,24 @@ export function useCreateItineraryItem(tripId: string) {
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
       const day = previous?.days.find(({ id }) => id === input.dayId);
       const optimistic: ItineraryItem = {
-        booking_url: input.bookingUrl || null,
+        booking_url: input.links?.[0]?.url ?? input.bookingUrl ?? null,
         created_at: new Date().toISOString(),
         day_id: input.dayId,
         details: input.details ?? {},
         end_time: input.endTime || null,
         id: `optimistic-${crypto.randomUUID()}`,
+        links: (input.links ?? []).map((link, sort_order) => ({
+          ...link,
+          id: `optimistic-link-${crypto.randomUUID()}`,
+          item_id: "",
+          sort_order,
+        })),
         notes: input.notes || null,
         place_id: input.placeId ?? null,
-        sort_order: day?.items.length ?? 0,
+        place: input.placeSnapshot
+          ? { ...input.placeSnapshot, id: `optimistic-place-${crypto.randomUUID()}` }
+          : null,
+        sort_order: Math.max(-1, ...(day?.items.map(({ sort_order }) => sort_order) ?? [])) + 1,
         schedule_kind: scheduleKind(input.startTime, input.endTime),
         schedule_text: null,
         start_time: input.startTime || null,
@@ -122,12 +131,31 @@ export function useUpdateItineraryItem(tripId: string) {
           plannerQueryKey(tripId),
           replaceItem(previous, {
             ...existing,
-            ...(input.bookingUrl !== undefined && { booking_url: input.bookingUrl || null }),
+            ...(input.links !== undefined && {
+              booking_url: input.links[0]?.url ?? null,
+              links: input.links.map((link, sort_order) => ({
+                ...link,
+                id: `optimistic-link-${crypto.randomUUID()}`,
+                item_id: input.id,
+                sort_order,
+              })),
+            }),
+            ...(input.links === undefined &&
+              input.bookingUrl !== undefined && { booking_url: input.bookingUrl || null }),
             ...(input.dayId !== undefined && { day_id: input.dayId }),
             ...(input.details !== undefined && { details: input.details }),
             ...(input.endTime !== undefined && { end_time: input.endTime || null }),
             ...(input.notes !== undefined && { notes: input.notes || null }),
             ...(input.placeId !== undefined && { place_id: input.placeId }),
+            ...(input.placeSnapshot !== undefined && {
+              place: input.placeSnapshot
+                ? {
+                    ...input.placeSnapshot,
+                    id: existing.place_id ?? `optimistic-place-${crypto.randomUUID()}`,
+                  }
+                : null,
+            }),
+            ...(input.placeSnapshot === undefined && input.placeId === null && { place: null }),
             ...(input.startTime !== undefined && { start_time: input.startTime || null }),
             ...((input.startTime !== undefined || input.endTime !== undefined) && {
               schedule_kind: scheduleKind(
@@ -208,14 +236,22 @@ export function useCopyItineraryItems(tripId: string) {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
         optimistic.reduce((workspace, item) => replaceItem(workspace, item), current),
       );
-      return { optimisticIds: optimistic.map(({ id }) => id), previous };
+      return { optimisticIds: optimistic.map(({ id }) => id), previous, sources };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId), context?.previous),
-    onSuccess: (items, _input, context) =>
+    onSuccess: (items, input, context) =>
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
         items.reduce(
-          (workspace, item) => replaceItem(workspace, item),
+          (workspace, item) => {
+            const source = context?.sources.find(
+              ({ place_id }) => Boolean(place_id) && place_id === item.place_id,
+            );
+            return replaceItem(workspace, {
+              ...item,
+              place: input.preservePlace === false ? null : (source?.place ?? null),
+            });
+          },
           context?.optimisticIds.reduce((workspace, id) => removeItem(workspace, id), current),
         ),
       ),

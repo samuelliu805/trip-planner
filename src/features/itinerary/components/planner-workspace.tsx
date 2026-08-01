@@ -15,12 +15,10 @@ import {
   ClipboardPaste,
   Copy,
   Footprints,
-  MapPinned,
   Maximize2,
   MoreHorizontal,
   Plane,
   Plus,
-  Route,
   Settings2,
   Ship,
   TrainFront,
@@ -29,6 +27,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -91,6 +90,22 @@ import {
   type TransportMode,
 } from "@/features/itinerary/types";
 import type { Tables } from "@/types/database";
+import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
+
+const markerKindLabels: Record<MarkerKind, string> = {
+  city: "Cities",
+  activity: "Activities",
+  hotel: "Hotels",
+  carRental: "Car rentals",
+  meal: "Meals",
+};
+const allMarkerKinds = Object.keys(markerKindLabels) as MarkerKind[];
+
+const PlannerMapCanvas = dynamic(
+  () => import("@/features/maps/planner-map-canvas").then((module) => module.PlannerMapCanvas),
+  { ssr: false },
+);
 
 type Category = "city" | "activities" | "transport" | "hotel" | "car_rental" | "meals" | "notes";
 type EditorState = { dayId: string; item?: ItineraryItem; type: ItineraryItemType };
@@ -336,6 +351,8 @@ function ItemRow({
   onDelete,
   onEdit,
   onMove,
+  onSelect,
+  selected,
 }: {
   canMoveDown: boolean;
   canMoveUp: boolean;
@@ -344,6 +361,8 @@ function ItemRow({
   onDelete: (item: ItineraryItem) => void;
   onEdit: (item: ItineraryItem) => void;
   onMove: (direction: -1 | 1) => void;
+  onSelect: (item: ItineraryItem) => void;
+  selected: boolean;
 }) {
   const start = timeLabel(item.start_time);
   const details = item.details as Record<string, string | undefined>;
@@ -361,11 +380,16 @@ function ItemRow({
   const title = mode ? transportModeLabels[mode] : item.title;
   return (
     <div
-      className={`group/item flex min-w-0 items-center rounded ${interactive ? "hover:bg-muted/70" : ""}`}
+      className={`group/item flex min-w-0 items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
     >
       <button
-        className={`min-w-0 flex-1 rounded px-1.5 py-1 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${interactive ? "" : "pointer-events-none"}`}
+        className="min-w-0 flex-1 rounded px-1.5 py-1 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-edit-item={item.id}
+        aria-pressed={selected}
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(item);
+        }}
         onDoubleClick={(event) => {
           if (interactive) {
             event.stopPropagation();
@@ -438,55 +462,131 @@ function ItemRow({
 
 function MapShell({
   compact = false,
-  contextLabel,
+  markers,
   onExpand,
+  onMarkerClick,
+  selectedId,
+  visibleKinds,
+  onToggleKind,
 }: {
   compact?: boolean;
-  contextLabel?: string;
+  markers: PlannerMapMarker[];
   onExpand?: () => void;
+  onMarkerClick: (id: string) => void;
+  selectedId?: string;
+  visibleKinds: Set<MarkerKind>;
+  onToggleKind: (kind: MarkerKind) => void;
 }) {
+  const visibleMarkers = visibleKinds.size
+    ? markers.filter((marker) => visibleKinds.has(marker.entries[0].kind))
+    : markers;
   return (
     <section
-      aria-label="Map preview"
+      aria-label="Itinerary map"
       className="relative h-full min-w-0 overflow-hidden bg-muted/40"
     >
-      <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [background-size:42px_42px]" />
-      <div className="absolute left-4 top-3 rounded-md border bg-background/90 px-2.5 py-1 text-[10px] font-medium shadow-sm">
-        Map preview · P3
-      </div>
+      <PlannerMapCanvas
+        compact={compact}
+        markers={visibleMarkers}
+        onMarkerClick={onMarkerClick}
+        selectedId={selectedId}
+      />
+      {!compact && selectedId
+        ? (() => {
+            const marker = visibleMarkers.find(({ itemIds }) => itemIds.includes(selectedId));
+            const entry = marker?.entries.find(({ itemId }) => itemId === selectedId);
+            const dayCount = new Set(marker?.entries.map(({ dayNumber }) => dayNumber)).size;
+            const dateRanges = marker ? mergeMarkerDateRanges(marker.entries) : "";
+            const staySummary =
+              entry?.kind === "hotel"
+                ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} at this hotel`
+                : entry?.kind === "city"
+                  ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} in this city`
+                  : null;
+            const eventSummary = entry
+              ? entry.kind === "activity"
+                ? `${marker?.entries.length} ${marker?.entries.length === 1 ? "activity" : "activities"} here`
+                : entry.kind === "meal"
+                  ? `${marker?.entries.length} ${marker?.entries.length === 1 ? "meal" : "meals"} here`
+                  : entry.kind === "carRental"
+                    ? `${marker?.entries.length} car rental ${marker?.entries.length === 1 ? "event" : "events"} here`
+                    : `${marker?.entries.length} car rental ${marker?.entries.length === 1 ? "event" : "events"} here`
+              : "";
+            return marker && entry ? (
+              <div
+                className="absolute bottom-3 left-3 right-3 z-10 rounded-lg border bg-background/95 px-3 py-2 shadow-lg backdrop-blur"
+                aria-live="polite"
+              >
+                <p className="truncate text-sm font-semibold">{entry.title}</p>
+                {marker.address ? (
+                  <p className="truncate text-xs text-muted-foreground">{marker.address}</p>
+                ) : null}
+                {staySummary ? (
+                  <p className="mt-1 text-xs">
+                    <span className="font-medium">{staySummary}</span>
+                    <span className="text-muted-foreground"> · {dateRanges}</span>
+                  </p>
+                ) : marker.entries.length === 1 ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{entry.dayLabel}</p>
+                ) : compact ? (
+                  <p className="mt-1 truncate text-[10px] font-medium text-muted-foreground">
+                    {eventSummary} · {dateRanges}
+                  </p>
+                ) : (
+                  <details className="group mt-2 border-t pt-2">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium marker:content-none">
+                      <span>{eventSummary}</span>
+                      <ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2 max-h-36 overflow-y-auto rounded-md border bg-background/80">
+                      {marker.entries.map((candidate) => (
+                        <button
+                          aria-current={candidate.itemId === selectedId ? "true" : undefined}
+                          className={`grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b px-2.5 py-1.5 text-left text-xs last:border-b-0 ${candidate.itemId === selectedId ? "bg-primary/10 font-medium" : "hover:bg-muted"}`}
+                          key={candidate.itemId}
+                          onClick={() => onMarkerClick(candidate.itemId)}
+                          type="button"
+                        >
+                          <span className="truncate">{candidate.title}</span>
+                          <span className="text-muted-foreground">{candidate.dayLabel}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            ) : null;
+          })()
+        : null}
       {onExpand ? (
         <button
-          aria-label="Expand map preview"
-          className="absolute right-2 top-2 z-20 flex size-11 items-center justify-center rounded-md border bg-background/90 shadow-sm"
+          aria-label="Open full-screen map"
+          className="absolute right-2 top-2 z-20 flex h-10 items-center justify-center gap-1.5 rounded-md border bg-background/95 px-3 text-xs font-medium shadow-sm backdrop-blur"
           onClick={onExpand}
           type="button"
         >
           <Maximize2 className="size-4" />
+          Open map
         </button>
       ) : null}
-      <div
-        className={`absolute inset-0 flex items-center justify-center ${compact ? "px-20" : "p-8"}`}
-      >
+      {!compact ? (
         <div
-          className={`${compact ? "min-w-0 border-0 bg-transparent p-0 text-center shadow-none" : "max-w-sm rounded-xl border bg-background/95 p-6 text-center shadow-lg"}`}
+          className="absolute left-2 top-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap gap-1 overflow-x-auto"
+          aria-label="Map pin filters"
         >
-          <span
-            className={`${compact ? "hidden" : "mx-auto flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary"}`}
-          >
-            <MapPinned className="size-5" />
-          </span>
-          <h2 className={`${compact ? "truncate text-xs font-semibold" : "mt-4 font-semibold"}`}>
-            {contextLabel ?? "Map and Places activate in Phase 3"}
-          </h2>
-          {compact ? (
-            <p className="truncate text-[10px] text-muted-foreground">Map activates in Phase 3</p>
-          ) : (
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              No Google scripts or provider requests are loaded during Phase 2.
-            </p>
-          )}
+          {allMarkerKinds.map((kind) => (
+            <button
+              aria-pressed={visibleKinds.has(kind)}
+              className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm ${visibleKinds.has(kind) ? "border-primary bg-primary text-primary-foreground" : "bg-background/90 text-muted-foreground"}`}
+              key={kind}
+              onClick={() => onToggleKind(kind)}
+              type="button"
+            >
+              {markerKindLabels[kind]}
+            </button>
+          ))}
         </div>
-      </div>
+      ) : null}
     </section>
   );
 }
@@ -517,10 +617,12 @@ export function PlannerWorkspace({
   const [selectionAnchor, setSelectionAnchor] = useState<GridCoordinate>({ row: -1, column: -1 });
   const [selectionEnd, commitSelectionEnd] = useState<GridCoordinate>({ row: -1, column: -1 });
   const [selectedDayRow, setSelectedDayRow] = useState<number | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string>();
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [copyDaysOpen, setCopyDaysOpen] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
+  const [visibleMarkerKinds, setVisibleMarkerKinds] = useState<Set<MarkerKind>>(() => new Set());
   const [targetDays, setTargetDays] = useState<Set<string>>(new Set());
   const [interactionError, setInteractionError] = useState<string>();
   const [internalClipboard, setInternalClipboard] = useState<PlannerClipboard | null>(null);
@@ -570,10 +672,77 @@ export function PlannerWorkspace({
   const selectedMapItem = useMemo(() => {
     const day = workspace.days[selectionEnd.row];
     const category = categories[selectionEnd.column];
-    return day && category
-      ? day.items.find((item) => category.types.includes(item.type))
-      : undefined;
-  }, [selectionEnd.column, selectionEnd.row, workspace.days]);
+    if (!day || !category) return undefined;
+    const cellItems = day.items.filter((item) => category.types.includes(item.type));
+    return cellItems.find(({ id }) => id === selectedItemId) ?? cellItems[0];
+  }, [selectedItemId, selectionEnd.column, selectionEnd.row, workspace.days]);
+  const mapMarkers = useMemo(() => {
+    const grouped = new Map<string, PlannerMapMarker>();
+    for (const day of workspace.days)
+      for (const item of day.items) {
+        if (!item.place || ["transport", "flight", "train", "note"].includes(item.type)) continue;
+        const entry: PlannerMapMarker["entries"][number] = {
+          dayLabel: day.date ? format(parseISO(day.date), "MMM d") : `Day ${day.day_number}`,
+          dayNumber: day.day_number,
+          itemId: item.id,
+          kind:
+            item.type === "location"
+              ? "city"
+              : item.type === "activity"
+                ? "activity"
+                : item.type === "hotel"
+                  ? "hotel"
+                  : item.type === "car_rental"
+                    ? "carRental"
+                    : item.type === "meal"
+                      ? "meal"
+                      : "carRental",
+          title: item.title,
+        };
+        const groupKey = `${item.place.id}:${entry.kind}`;
+        const existing = grouped.get(groupKey);
+        if (existing) {
+          existing.entries.push(entry);
+          existing.itemIds.push(item.id);
+        } else {
+          grouped.set(groupKey, {
+            address: item.place.formattedAddress,
+            entries: [entry],
+            id: groupKey,
+            itemIds: [item.id],
+            latitude: item.place.latitude,
+            longitude: item.place.longitude,
+          });
+        }
+      }
+    return [...grouped.values()];
+  }, [workspace.days]);
+  function selectMarker(itemId: string) {
+    workspace.days.some((day, row) => {
+      const item = day.items.find(({ id }) => id === itemId);
+      if (!item) return false;
+      const column = categories.findIndex(({ types }) => types.includes(item.type));
+      const coordinate = { row, column };
+      setSelectionAnchor(coordinate);
+      setSelectionEnd(coordinate);
+      setSelectedItemId(item.id);
+      return true;
+    });
+  }
+  function toggleMarkerKind(kind: MarkerKind) {
+    setVisibleMarkerKinds((current) => {
+      if (!current.size) return new Set([kind]);
+      const next = new Set(current);
+      if (next.has(kind)) {
+        if (next.size === 1) return new Set();
+        next.delete(kind);
+      } else {
+        next.add(kind);
+        if (next.size === allMarkerKinds.length) return new Set();
+      }
+      return next;
+    });
+  }
   const dayMutationPending = insertDayMutation.isPending || removeDayMutation.isPending;
 
   async function insertDay(beforeDayNumber: number) {
@@ -654,18 +823,18 @@ export function PlannerWorkspace({
     operations: { sourceItemIds: string[]; targetDay: PlannerDay; types: ItineraryItemType[] }[],
   ) {
     const previous = queryClient.getQueryData<PlannerWorkspaceData>(plannerQueryKey(trip.id));
-    const replacements = operations.map((operation) => ({
-      ...operation,
-      replacedItems: operation.targetDay.items.filter((item) =>
-        operation.types.includes(item.type),
-      ),
-    }));
+    const replacements = operations
+      .filter(
+        (operation) =>
+          !operation.targetDay.items.some((item) => operation.sourceItemIds.includes(item.id)),
+      )
+      .map((operation) => ({
+        ...operation,
+        replacedItems: operation.targetDay.items.filter((item) =>
+          operation.types.includes(item.type),
+        ),
+      }));
     try {
-      const copyPromises = replacements
-        .filter(({ sourceItemIds }) => sourceItemIds.length > 0)
-        .map(({ sourceItemIds, targetDay }) =>
-          copyMutation.mutateAsync({ sourceItemIds, targetDayId: targetDay.id, tripId: trip.id }),
-        );
       const replacedIds = new Set(
         replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
       );
@@ -680,11 +849,17 @@ export function PlannerWorkspace({
             }
           : current,
       );
-      await Promise.all(copyPromises);
       await Promise.all(
         replacements.flatMap(({ replacedItems }) =>
           replacedItems.map((item) => deleteMutation.mutateAsync({ id: item.id, tripId: trip.id })),
         ),
+      );
+      await Promise.all(
+        replacements
+          .filter(({ sourceItemIds }) => sourceItemIds.length > 0)
+          .map(({ sourceItemIds, targetDay }) =>
+            copyMutation.mutateAsync({ sourceItemIds, targetDayId: targetDay.id, tripId: trip.id }),
+          ),
       );
       setInteractionError(undefined);
     } catch (error) {
@@ -783,9 +958,14 @@ export function PlannerWorkspace({
     const bounds = selectionBounds(selectionAnchor, selectionEnd);
     const sourceDay = workspace.days[bounds.top];
     if (!sourceDay) return;
+    const destinationDayIds = [...targetDays].filter((dayId) => dayId !== sourceDay.id);
+    if (!destinationDayIds.length) {
+      setInteractionError("Choose a destination day other than the source day.");
+      return;
+    }
     const selectedCategories = categories.slice(bounds.left, bounds.right + 1);
     await replaceCategoryItems(
-      [...targetDays].flatMap((dayId) => {
+      destinationDayIds.flatMap((dayId) => {
         const targetDay = workspace.days.find((day) => day.id === dayId);
         return targetDay
           ? selectedCategories.map((category) => ({
@@ -848,6 +1028,7 @@ export function PlannerWorkspace({
       return;
     }
     setSelectedDayRow(null);
+    setSelectedItemId(undefined);
     if (extend) setSelectionEnd(coordinate);
     else {
       setSelectionAnchor(coordinate);
@@ -862,6 +1043,7 @@ export function PlannerWorkspace({
 
   function selectDay(row: number) {
     setSelectedDayRow(row);
+    setSelectedItemId(undefined);
     setSelectionAnchor({ column: -1, row: -1 });
     setSelectionEnd({ column: -1, row: -1 });
     setInteractionError(undefined);
@@ -1064,14 +1246,6 @@ export function PlannerWorkspace({
             )}
             <span>{mutating ? "Saving…" : "Saved"}</span>
           </span>
-          <Button
-            className="hidden h-11 gap-1.5 px-3 text-xs sm:flex xl:h-9"
-            disabled
-            variant="outline"
-          >
-            <Route className="size-3.5" />
-            Route A <span className="text-[9px] text-muted-foreground">P4</span>
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -1109,11 +1283,6 @@ export function PlannerWorkspace({
               <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
                 <Settings2 className="size-4" />
                 Trip settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>
-                <Route className="size-4" />
-                Route variants <span className="ml-auto text-[10px]">P4</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1377,6 +1546,13 @@ export function PlannerWorkspace({
                               onMove={(direction) =>
                                 void moveItem(day, items, itemIndex, direction)
                               }
+                              onSelect={() => {
+                                const coordinate = { row, column };
+                                setSelectionAnchor(coordinate);
+                                setSelectionEnd(coordinate);
+                                setSelectedItemId(item.id);
+                              }}
+                              selected={item.id === selectedMapItem?.id}
                             />
                           ))}
                         </div>
@@ -1425,13 +1601,23 @@ export function PlannerWorkspace({
         />
         <div className="planner-map-pane min-w-0">
           <div className="planner-map-landscape h-full">
-            <MapShell />
+            <MapShell
+              markers={mapMarkers}
+              onMarkerClick={selectMarker}
+              onToggleKind={toggleMarkerKind}
+              selectedId={selectedMapItem?.id}
+              visibleKinds={visibleMarkerKinds}
+            />
           </div>
           <div className="planner-map-peek h-full">
             <MapShell
               compact
-              contextLabel={selectedMapItem?.title}
+              markers={mapMarkers}
               onExpand={() => setMapExpanded(true)}
+              onMarkerClick={selectMarker}
+              onToggleKind={toggleMarkerKind}
+              selectedId={selectedMapItem?.id}
+              visibleKinds={visibleMarkerKinds}
             />
           </div>
         </div>
@@ -1467,11 +1653,17 @@ export function PlannerWorkspace({
       <Sheet onOpenChange={setMapExpanded} open={mapExpanded}>
         <SheetContent className="planner-map-sheet h-[86dvh] max-h-none p-0" side="bottom">
           <SheetHeader className="py-4">
-            <SheetTitle>{selectedMapItem?.title ?? "Map preview"}</SheetTitle>
-            <SheetDescription>Map and Places activate in Phase 3.</SheetDescription>
+            <SheetTitle>{selectedMapItem?.title ?? "Itinerary map"}</SheetTitle>
+            <SheetDescription>Saved places from your itinerary.</SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1">
-            <MapShell contextLabel={selectedMapItem?.title} />
+            <MapShell
+              markers={mapMarkers}
+              onMarkerClick={selectMarker}
+              onToggleKind={toggleMarkerKind}
+              selectedId={selectedMapItem?.id}
+              visibleKinds={visibleMarkerKinds}
+            />
           </div>
         </SheetContent>
       </Sheet>
@@ -1497,11 +1689,20 @@ export function PlannerWorkspace({
           <div className="flex-1 space-y-2 overflow-y-auto p-5">
             {workspace.days.map((day) => (
               <label
-                className="flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm"
+                className={`flex min-h-11 items-center gap-3 rounded-md border px-3 text-sm ${day.id === workspace.days[selectionBounds(selectionAnchor, selectionEnd).top]?.id ? "opacity-50" : ""}`}
                 key={day.id}
               >
                 <Checkbox
-                  checked={targetDays.has(day.id)}
+                  checked={
+                    day.id ===
+                    workspace.days[selectionBounds(selectionAnchor, selectionEnd).top]?.id
+                      ? false
+                      : targetDays.has(day.id)
+                  }
+                  disabled={
+                    day.id ===
+                    workspace.days[selectionBounds(selectionAnchor, selectionEnd).top]?.id
+                  }
                   onCheckedChange={(checked) =>
                     setTargetDays((current) => {
                       const next = new Set(current);

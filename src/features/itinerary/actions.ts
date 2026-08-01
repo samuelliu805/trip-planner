@@ -26,8 +26,9 @@ import {
   scheduleKind,
 } from "@/features/itinerary/mutation-helpers";
 import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
+import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import { createClient } from "@/lib/supabase/server";
-import type { Json, TablesInsert, TablesUpdate } from "@/types/database";
+import type { Json, Tables, TablesInsert, TablesUpdate } from "@/types/database";
 
 export async function loadPlannerWorkspace(tripId: string) {
   return getPlannerWorkspace(tripId);
@@ -45,6 +46,84 @@ function mutationError(message?: string) {
     : (message ?? "The itinerary item could not be saved.");
 }
 
+async function persistPlaceSnapshot(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tripId: string,
+  snapshot?: PlaceSnapshot | null,
+) {
+  if (!snapshot) return null;
+  if (snapshot.provider !== "google" || !snapshot.providerPlaceId)
+    throw new Error("Only normalized Google place snapshots can be persisted here.");
+  const { data, error } = await supabase.rpc("upsert_google_place_snapshot", {
+    place_display_name: snapshot.displayName,
+    place_formatted_address: snapshot.formattedAddress ?? "",
+    place_latitude: snapshot.latitude,
+    place_longitude: snapshot.longitude,
+    provider_place_id: snapshot.providerPlaceId,
+    target_trip_id: tripId,
+  });
+  if (error || !data)
+    throw new Error(mutationError(error?.message ?? "The map place could not be saved."));
+  return data;
+}
+
+function withPlace(
+  item: Tables<"itinerary_items">,
+  snapshot?: PlaceSnapshot | null,
+  placeId?: string | null,
+): ItineraryItem {
+  return { ...item, place: snapshot && placeId ? { ...snapshot, id: placeId } : null };
+}
+
+async function replaceItemLinks(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  itemId: string,
+  links: { label: string; url: string }[],
+) {
+  const { data: existing, error: readError } = await supabase
+    .from("itinerary_item_links")
+    .select("id")
+    .eq("item_id", itemId);
+  if (readError) throw new Error(mutationError(readError.message));
+  const existingIds = (existing ?? []).map(({ id }) => id);
+  if (!links.length) {
+    if (existingIds.length) {
+      const { error } = await supabase.from("itinerary_item_links").delete().in("id", existingIds);
+      if (error) throw new Error(mutationError(error.message));
+    }
+    return [];
+  }
+  const { data, error } = await supabase
+    .from("itinerary_item_links")
+    .insert(
+      links.map((link, sort_order) => ({
+        item_id: itemId,
+        label: link.label,
+        url: link.url,
+        sort_order,
+      })),
+    )
+    .select("id, item_id, label, url, sort_order");
+  if (error) throw new Error(mutationError(error.message));
+  if (existingIds.length) {
+    const { error: deleteError } = await supabase
+      .from("itinerary_item_links")
+      .delete()
+      .in("id", existingIds);
+    if (deleteError) {
+      await supabase
+        .from("itinerary_item_links")
+        .delete()
+        .in(
+          "id",
+          (data ?? []).map(({ id }) => id),
+        );
+      throw new Error(mutationError(deleteError.message));
+    }
+  }
+  return data ?? [];
+}
+
 export async function createItineraryItem(
   input: CreateItineraryItemInput,
 ): Promise<MutationResult> {
@@ -52,6 +131,16 @@ export async function createItineraryItem(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
+  let persistedPlaceId: string | null = null;
+  try {
+    persistedPlaceId = await persistPlaceSnapshot(
+      supabase,
+      parsed.data.tripId,
+      parsed.data.placeSnapshot,
+    );
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "The map place could not be saved." };
+  }
   if (parsed.data.type === "hotel") {
     const { count, error: hotelError } = await supabase
       .from("itinerary_items")
@@ -87,12 +176,12 @@ export async function createItineraryItem(
 
   const times = normalizedTimes(parsed.data.startTime, parsed.data.endTime);
   const values: TablesInsert<"itinerary_items"> = {
-    booking_url: normalizedOptional(parsed.data.bookingUrl),
+    booking_url: parsed.data.links?.[0]?.url ?? normalizedOptional(parsed.data.bookingUrl),
     day_id: parsed.data.dayId,
     details: parsed.data.details as Json,
     ...times,
     notes: normalizedOptional(parsed.data.notes),
-    place_id: parsed.data.placeId ?? null,
+    place_id: persistedPlaceId ?? parsed.data.placeId ?? null,
     schedule_kind: scheduleKind(times.start_time, times.end_time),
     sort_order: (lastItem?.sort_order ?? -1) + 1,
     title: parsed.data.title.trim(),
@@ -107,8 +196,18 @@ export async function createItineraryItem(
     .maybeSingle();
   if (error || !data) return { error: mutationError(error?.message) };
 
+  let links;
+  try {
+    links = await replaceItemLinks(supabase, data.id, parsed.data.links ?? []);
+  } catch (linkError) {
+    await supabase.from("itinerary_items").delete().eq("id", data.id);
+    return {
+      error: linkError instanceof Error ? linkError.message : "The links could not be saved.",
+    };
+  }
+
   revalidatePath(`/trips/${data.trip_id}`);
-  return { data };
+  return { data: { ...withPlace(data, parsed.data.placeSnapshot, persistedPlaceId), links } };
 }
 
 export async function updateItineraryItem(
@@ -118,6 +217,14 @@ export async function updateItineraryItem(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
+  let persistedPlaceId: string | null | undefined;
+  try {
+    persistedPlaceId = parsed.data.placeSnapshot
+      ? await persistPlaceSnapshot(supabase, parsed.data.tripId, parsed.data.placeSnapshot)
+      : undefined;
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "The map place could not be saved." };
+  }
   if (parsed.data.type === "transport" && parsed.data.details && "mode" in parsed.data.details) {
     const { data: current, error: currentError } = await supabase
       .from("itinerary_items")
@@ -147,13 +254,15 @@ export async function updateItineraryItem(
       };
   }
   const values: TablesUpdate<"itinerary_items"> = {};
-  if (parsed.data.bookingUrl !== undefined)
+  if (parsed.data.links !== undefined) values.booking_url = parsed.data.links[0]?.url ?? null;
+  else if (parsed.data.bookingUrl !== undefined)
     values.booking_url = normalizedOptional(parsed.data.bookingUrl);
   if (parsed.data.dayId !== undefined) values.day_id = parsed.data.dayId;
   if (parsed.data.details !== undefined) values.details = parsed.data.details;
   if (parsed.data.endTime !== undefined) values.end_time = normalizedOptional(parsed.data.endTime);
   if (parsed.data.notes !== undefined) values.notes = normalizedOptional(parsed.data.notes);
-  if (parsed.data.placeId !== undefined) values.place_id = parsed.data.placeId;
+  if (persistedPlaceId !== undefined) values.place_id = persistedPlaceId;
+  else if (parsed.data.placeId !== undefined) values.place_id = parsed.data.placeId;
   if (parsed.data.startTime !== undefined)
     values.start_time = normalizedOptional(parsed.data.startTime);
   if (parsed.data.title !== undefined) values.title = parsed.data.title.trim();
@@ -194,8 +303,28 @@ export async function updateItineraryItem(
       error: mutationError(error?.message ?? "You do not have permission to change this item."),
     };
 
+  let links;
+  try {
+    links =
+      parsed.data.links === undefined
+        ? undefined
+        : await replaceItemLinks(supabase, data.id, parsed.data.links);
+  } catch (linkError) {
+    return {
+      error: linkError instanceof Error ? linkError.message : "The links could not be saved.",
+    };
+  }
+
   revalidatePath(`/trips/${data.trip_id}`);
-  return { data };
+  return {
+    data:
+      persistedPlaceId !== undefined
+        ? {
+            ...withPlace(data, parsed.data.placeSnapshot, persistedPlaceId),
+            ...(links && { links }),
+          }
+        : { ...data, ...(links && { links }) },
+  };
 }
 
 export async function deleteItineraryItem(
@@ -323,7 +452,7 @@ export async function copyItineraryItems(
     await Promise.all([
       supabase
         .from("itinerary_items")
-        .select("*")
+        .select("*, links:itinerary_item_links(id, item_id, label, url, sort_order)")
         .eq("trip_id", parsed.data.tripId)
         .in("id", parsed.data.sourceItemIds),
       supabase
@@ -370,8 +499,32 @@ export async function copyItineraryItems(
   if (error || !data || data.length !== copies.length)
     return { error: mutationError(error?.message ?? "Not all items could be copied.") };
 
+  const copiedLinks = orderedSources.flatMap((source, index) =>
+    (source.links ?? []).map((link) => ({
+      item_id: data[index].id,
+      label: link.label,
+      sort_order: link.sort_order,
+      url: link.url,
+    })),
+  );
+  if (copiedLinks.length) {
+    const { error: linksError } = await supabase.from("itinerary_item_links").insert(copiedLinks);
+    if (linksError) {
+      await supabase
+        .from("itinerary_items")
+        .delete()
+        .in(
+          "id",
+          data.map(({ id }) => id),
+        );
+      return { error: mutationError(linksError.message) };
+    }
+  }
+
   revalidatePath(`/trips/${parsed.data.tripId}`);
-  return { data };
+  return {
+    data: data.map((item, index) => ({ ...item, links: orderedSources[index].links ?? [] })),
+  };
 }
 
 export async function copyItemToDay(

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import {
+  deduplicatePlaceSnapshots,
+  normalizeGooglePlace,
+} from "../../lib/providers/places/normalize.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
@@ -11,6 +15,7 @@ import {
   selectionBounds,
   selectionContains,
 } from "./grid-interactions.ts";
+import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import {
   carRentalDetailsSchema,
   copyItineraryItemsSchema,
@@ -45,6 +50,39 @@ test("create accepts missing, start-only, and end-only time", () => {
   assert.equal(createItineraryItemSchema.safeParse({ ...base, startTime: "09:30" }).success, true);
   assert.equal(createItineraryItemSchema.safeParse({ ...base, endTime: "11:00" }).success, true);
   assert.deepEqual(normalizedTimes("", undefined), { start_time: null, end_time: null });
+});
+
+test("URL-capable items accept multiple labeled links", () => {
+  const links = [
+    { label: "Booking", url: "https://example.com/reservation" },
+    { label: "Menu", url: "https://example.com/menu" },
+  ];
+  assert.equal(createItineraryItemSchema.safeParse({ ...base, links }).success, true);
+  assert.equal(
+    createItineraryItemSchema.safeParse({ ...base, links: [{ label: "", url: "bad" }] }).success,
+    false,
+  );
+});
+
+test("map marker dates merge consecutive day intervals", () => {
+  assert.equal(
+    mergeMarkerDateRanges([
+      { dayLabel: "Feb 10", dayNumber: 1 },
+      { dayLabel: "Feb 12", dayNumber: 3 },
+      { dayLabel: "Feb 13", dayNumber: 4 },
+      { dayLabel: "Feb 14", dayNumber: 5 },
+      { dayLabel: "Feb 16", dayNumber: 7 },
+      { dayLabel: "Feb 17", dayNumber: 8 },
+    ]),
+    "Feb 10, Feb 12–14, Feb 16–17",
+  );
+  assert.equal(
+    mergeMarkerDateRanges([
+      { dayLabel: "Day 2", dayNumber: 2 },
+      { dayLabel: "Day 3", dayNumber: 3 },
+    ]),
+    "Day 2–3",
+  );
 });
 
 test("edit and delete inputs validate", () => {
@@ -289,7 +327,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /h-14[\s\S]*xl:h-\[72px\]/);
   assert.match(workspace, /planner-map-peek/);
   assert.match(workspace, /open=\{mapExpanded\}/);
-  assert.match(workspace, /Map and Places activate in Phase 3/);
+  assert.match(workspace, /PlannerMapCanvas/);
   assert.match(workspace, /Promise\.all\(\s*replacements\.flatMap/);
   assert.match(workspace, /replacedIds/);
   assert.doesNotMatch(workspace, /DndContext|useSortable|DndDescribedBy/);
@@ -319,7 +357,7 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(workspace, /selectedMapItem/);
-  assert.match(workspace, /contextLabel=\{selectedMapItem\?\.title\}/);
+  assert.match(workspace, /selectedId=\{selectedMapItem\?\.id\}/);
   assert.match(workspace, /planner-map-sheet/);
   assert.match(
     workspace,
@@ -341,4 +379,142 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
   assert.match(workspace, /previous order was restored/);
   assert.match(queries, /onError:[\s\S]*context\?\.previous/);
   assert.match(actions, /You do not have permission to change itinerary items/);
+});
+test("Google place normalization keeps only provider-neutral requested fields", () => {
+  assert.deepEqual(
+    normalizeGooglePlace({
+      id: " ChIJ123 ",
+      displayName: " Ferry Building ",
+      formattedAddress: " 1 Ferry Building, San Francisco, CA ",
+      location: { lat: () => 37.7955, lng: () => -122.3937 },
+    }),
+    {
+      provider: "google",
+      providerPlaceId: "ChIJ123",
+      displayName: "Ferry Building",
+      formattedAddress: "1 Ferry Building, San Francisco, CA",
+      latitude: 37.7955,
+      longitude: -122.3937,
+    },
+  );
+});
+
+test("place snapshot deduplication uses provider identity", () => {
+  const place = normalizeGooglePlace({
+    id: "same",
+    displayName: "Original",
+    location: { lat: 1, lng: 2 },
+  });
+  assert.equal(deduplicatePlaceSnapshots([place, { ...place, displayName: "Updated" }]).length, 1);
+});
+
+test("Google place normalization rejects invalid coordinates", () => {
+  assert.throws(
+    () => normalizeGooglePlace({ id: "bad", displayName: "Bad", location: { lat: 91, lng: 0 } }),
+    /invalid coordinates/,
+  );
+});
+
+test("city items require a Google place while the displayed name remains optional", () => {
+  const city = { ...base, details: {}, title: "Paris", type: "location" as const };
+  assert.equal(createItineraryItemSchema.safeParse(city).success, false);
+  assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...city,
+      placeSnapshot: {
+        displayName: "Paris",
+        formattedAddress: "Paris, France",
+        latitude: 48.8566,
+        longitude: 2.3522,
+        provider: "google",
+        providerPlaceId: "paris-place-id",
+      },
+    }).success,
+    true,
+  );
+});
+
+test("hotel permits a displayed name without an exact place and transport has no location", () => {
+  assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...base,
+      details: {},
+      title: "Private apartment",
+      type: "hotel",
+    }).success,
+    true,
+  );
+  assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...base,
+      details: { location: "Old transport location", mode: "train" },
+      title: "Train",
+      type: "transport",
+    }).success,
+    false,
+  );
+  assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...base,
+      details: { mode: "train" },
+      title: "Train",
+      type: "transport",
+    }).success,
+    true,
+  );
+});
+
+test("address and location controls use normalized map places", async () => {
+  const form = await readFile(
+    new URL("./components/planner-item-form.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(form, /const placeLabel/);
+  assert.match(form, /\? "Address"/);
+  assert.match(form, /: "Location"/);
+  assert.match(form, /<PlaceAutocomplete/);
+  assert.doesNotMatch(form, /item-location-/);
+  assert.match(form, /const placeText = place\?\.formattedAddress \?\? place\?\.displayName/);
+});
+
+test("Phase 3 keeps exact item and marker selection synchronized", async () => {
+  const workspace = await readFile(
+    new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+  const map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  const places = await readFile(
+    new URL("../places/place-autocomplete.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(workspace, /selectedItemId/);
+  assert.match(workspace, /setSelectedItemId\(item\.id\)/);
+  assert.match(workspace, /entry\.dayLabel/);
+  assert.doesNotMatch(workspace, /Map preview · P3|P4/);
+  assert.match(map, /AdvancedMarker/);
+  assert.match(map, /entry\.title/);
+  assert.match(places, /PlaceAutocompleteElement/);
+  assert.match(places, /gmp-select/);
+  assert.match(places, /placeFields/);
+  assert.match(workspace, /kind:/);
+  assert.match(map, /markerStyles/);
+  assert.match(map, /glyph=\{style\.glyph\}/);
+  assert.match(workspace, /groupKey = `\$\{item\.place\.id\}:\$\{entry\.kind\}`/);
+  assert.match(workspace, /entries\.push\(entry\)/);
+  assert.match(workspace, /Map pin filters/);
+  assert.match(workspace, /mergeMarkerDateRanges\(marker\.entries\)/);
+  assert.match(map, /itemIds\.includes\(selectedId\)/);
+});
+
+test("replace-copy clears constrained destination rows before inserting preserved places", async () => {
+  const workspace = await readFile(
+    new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  const deletePosition = workspace.indexOf("deleteMutation.mutateAsync");
+  const copyPosition = workspace.indexOf("copyMutation.mutateAsync", deletePosition);
+  assert.ok(deletePosition >= 0 && copyPosition > deletePosition);
+  assert.match(queries, /place_id === item\.place_id/);
+  assert.match(queries, /source\?\.place/);
 });

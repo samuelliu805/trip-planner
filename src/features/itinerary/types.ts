@@ -1,6 +1,15 @@
 import type { Json, Tables } from "@/types/database";
+import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
-export type ItineraryItem = Tables<"itinerary_items">;
+export type ItineraryItemLink = Pick<
+  Tables<"itinerary_item_links">,
+  "id" | "item_id" | "label" | "url" | "sort_order"
+>;
+export type ItineraryItem = Tables<"itinerary_items"> & {
+  links?: ItineraryItemLink[];
+  place?: PersistedPlaceSnapshot | null;
+};
+export type PersistedPlaceSnapshot = PlaceSnapshot & { id: string };
 export type TripDay = Pick<
   Tables<"trip_days">,
   "date" | "day_number" | "id" | "notes" | "title" | "variant_id"
