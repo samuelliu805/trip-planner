@@ -16,6 +16,8 @@ import {
   selectionContains,
 } from "./grid-interactions.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
+import { validateDayRouteDraft } from "../routes/route-config.ts";
+import { routeLegModes, type DayRouteDraft } from "../routes/types.ts";
 import {
   carRentalDetailsSchema,
   copyItineraryItemsSchema,
@@ -44,6 +46,151 @@ const base = {
   type: "activity" as const,
   variantId: ids.variant,
 };
+
+const routeStop = (
+  itemId: string,
+  type: string,
+  latitude: number,
+  longitude: number,
+): DayRouteDraft["stops"][number] => ({
+  coordinates: { latitude, longitude },
+  dayId: ids.day,
+  itemId,
+  tripId: ids.trip,
+  type,
+  variantId: ids.variant,
+});
+
+const routeDraft = (overrides: Partial<DayRouteDraft> = {}): DayRouteDraft => ({
+  dayId: ids.day,
+  legModes: ["walk"],
+  stops: [
+    routeStop("00000000-0000-4000-8000-000000000010", "activity", 37.7749, -122.4194),
+    routeStop("00000000-0000-4000-8000-000000000011", "meal", 37.7849, -122.4094),
+  ],
+  tripId: ids.trip,
+  variantId: ids.variant,
+  ...overrides,
+});
+
+test("route configuration accepts only eligible same-day places and synchronized modes", () => {
+  assert.equal(validateDayRouteDraft(routeDraft()), null);
+  for (const type of ["location", "transport", "car_rental", "note", "flight", "train"]) {
+    assert.match(
+      validateDayRouteDraft(
+        routeDraft({
+          stops: [
+            routeStop("00000000-0000-4000-8000-000000000010", type, 37.7749, -122.4194),
+            routeStop("00000000-0000-4000-8000-000000000011", "meal", 37.7849, -122.4094),
+          ],
+        }),
+      ) ?? "",
+      /Activity, Meal, and Hotel/,
+    );
+  }
+  assert.match(
+    validateDayRouteDraft(routeDraft({ legModes: [] })) ?? "",
+    /mode count must equal stop count minus one/i,
+  );
+  assert.match(
+    validateDayRouteDraft(
+      routeDraft({ stops: [routeStop("missing", "activity", 37.7749, -122.4194)] }),
+    ) ?? "",
+    /between 2 and 20/,
+  );
+  assert.match(
+    validateDayRouteDraft(
+      routeDraft({
+        stops: [
+          { ...routeStop("same", "activity", 37.7749, -122.4194), coordinates: null },
+          routeStop("other", "meal", 37.7849, -122.4094),
+        ],
+      }),
+    ) ?? "",
+    /saved map place/,
+  );
+  assert.equal(routeLegModes.length, 15);
+});
+
+test("route configuration permits only one Hotel repeated first and final", () => {
+  const hotel = routeStop("hotel", "hotel", 37.7749, -122.4194);
+  const meal = routeStop("meal", "meal", 37.7849, -122.4094);
+  assert.equal(
+    validateDayRouteDraft(routeDraft({ legModes: ["walk", "taxi"], stops: [hotel, meal, hotel] })),
+    null,
+  );
+  assert.match(
+    validateDayRouteDraft(routeDraft({ legModes: ["walk"], stops: [meal, meal] })) ?? "",
+    /repeated Hotel/,
+  );
+  assert.match(
+    validateDayRouteDraft(
+      routeDraft({ legModes: ["walk", "walk"], stops: [meal, hotel, hotel] }),
+    ) ?? "",
+    /first and final/,
+  );
+  assert.match(
+    validateDayRouteDraft(routeDraft({ stops: [hotel, hotel] })) ?? "",
+    /two distinct coordinate/,
+  );
+});
+
+test("manual route migration enforces normalized ownership and cascade contracts", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260802130101_add_manual_day_route_plans.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const hardening = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260802130920_harden_manual_day_route_plans.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const databaseTypes = await readFile(new URL("../../types/database.ts", import.meta.url), "utf8");
+  const copyMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260729220000_flexible_itinerary_workflow.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  for (const table of [
+    "day_route_plans",
+    "day_route_stops",
+    "day_route_legs",
+    "day_route_calculations",
+  ]) {
+    assert.match(migration, new RegExp(`alter table public\\.${table} enable row level security`));
+    assert.match(migration, new RegExp(`grant select on table public\\.${table} to authenticated`));
+    assert.match(migration, new RegExp(`revoke all on table public\\.${table} from anon`));
+    assert.match(databaseTypes, new RegExp(`${table}: \\{`));
+  }
+
+  assert.match(migration, /references public\.trip_days \(id, variant_id\) on delete cascade/);
+  assert.match(
+    migration,
+    /item_id uuid not null references public\.itinerary_items \(id\) on delete cascade/,
+  );
+  assert.doesNotMatch(migration, /unique \(plan_id, item_id\)/);
+  assert.match(migration, /security definer[\s\S]*set search_path = ''/);
+  assert.match(migration, /not between 2 and 20/);
+  assert.match(migration, /item\.type not in \('activity', 'meal', 'hotel'\)/);
+  assert.match(migration, /Only one Hotel may repeat, exactly at the first and final positions/);
+  assert.match(migration, /count\(distinct \(place\.latitude, place\.longitude\)\)/);
+  assert.match(migration, /mode_count <> submitted_count - 1/);
+  assert.match(migration, /and variant\.is_primary/);
+  assert.match(hardening, /from anon/);
+  assert.doesNotMatch(copyMigration, /day_route_plans|day_route_stops|day_route_legs/);
+
+  for (const mode of routeLegModes) {
+    assert.match(migration, new RegExp(`'${mode}'`));
+  }
+});
 
 test("create accepts missing, start-only, and end-only time", () => {
   assert.equal(createItineraryItemSchema.safeParse(base).success, true);
