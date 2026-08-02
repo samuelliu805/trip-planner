@@ -393,8 +393,10 @@ test("no-route falls back while Transit omits schedule fields and carries estima
 
 test("provider errors are actionable, safe, and never silently become fallback", async () => {
   for (const [status, code] of [
+    [400, "invalid_request"],
     [401, "authentication"],
     [403, "permission"],
+    [404, "invalid_response"],
     [429, "quota"],
     [504, "timeout"],
     [500, "provider_unavailable"],
@@ -426,6 +428,22 @@ test("provider errors are actionable, safe, and never silently become fallback",
       }) as typeof fetch,
     }).calculateLeg(providerLeg()),
     (error) => error instanceof RouteProviderError && error.code === "timeout",
+  );
+  await assert.rejects(
+    createGoogleRoutesProvider({
+      apiKey: "key",
+      fetchImplementation: (async () => {
+        throw new TypeError("fetch failed", {
+          cause: new Error("connect ETIMEDOUT routes.googleapis.com"),
+        });
+      }) as typeof fetch,
+    }).calculateLeg(providerLeg()),
+    (error) => {
+      assert.ok(error instanceof RouteProviderError);
+      assert.equal(error.code, "network");
+      assert.doesNotMatch(error.message, /ETIMEDOUT|routes\.googleapis\.com/);
+      return true;
+    },
   );
   assert.equal(parseGoogleDurationSeconds("1.6s"), 2);
   assert.throws(() => parseGoogleDurationSeconds("soon"), RouteProviderError);
@@ -865,6 +883,9 @@ test("Routes server key stays in the server-only provider and out of client modu
     new URL("../../lib/providers/routes/google-routes.server.ts", import.meta.url),
     "utf8",
   );
+  const packageJson = JSON.parse(
+    await readFile(new URL("../../../package.json", import.meta.url), "utf8"),
+  ) as { scripts?: Record<string, string> };
   const clientSources = await Promise.all(
     [
       "../routes/day-route-overlay.tsx",
@@ -877,6 +898,8 @@ test("Routes server key stays in the server-only provider and out of client modu
   assert.match(serverProvider, /import "server-only"/);
   assert.match(serverProvider, /process\.env\.GOOGLE_ROUTES_API_KEY/);
   assert.doesNotMatch(clientSources.join("\n"), /GOOGLE_ROUTES_API_KEY|process\.env/);
+  assert.match(packageJson.scripts?.dev ?? "", /node --use-env-proxy/);
+  assert.match(packageJson.scripts?.start ?? "", /node --use-env-proxy/);
 });
 
 test("edit and delete inputs validate", () => {

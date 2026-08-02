@@ -47,11 +47,13 @@ function routeRequestBody(request: RouteLegRequest, travelMode: GoogleRouteTrave
 }
 
 function providerErrorForStatus(status: number): RouteProviderError {
+  if (status === 400 || status === 422) return new RouteProviderError("invalid_request");
   if (status === 401) return new RouteProviderError("authentication");
   if (status === 403) return new RouteProviderError("permission");
   if (status === 429) return new RouteProviderError("quota");
   if (status === 408 || status === 504) return new RouteProviderError("timeout");
-  return new RouteProviderError("provider_unavailable");
+  if (status >= 500) return new RouteProviderError("provider_unavailable");
+  return new RouteProviderError("invalid_response");
 }
 
 export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions): RouteProvider {
@@ -83,7 +85,7 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
         if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
           throw new RouteProviderError("timeout", { cause: error });
         }
-        throw new RouteProviderError("provider_unavailable", { cause: error });
+        throw new RouteProviderError("network", { cause: error });
       } finally {
         clearTimeout(timeout);
       }

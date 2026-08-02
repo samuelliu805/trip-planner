@@ -128,7 +128,7 @@ Requests use one origin and destination, `computeAlternativeRoutes: false`, no i
 
 ## Local development
 
-Requirements: Node.js 22+, npm 10+, and the Supabase CLI for database work.
+Requirements: Node.js 22.21+, npm 10+, and the Supabase CLI for database work.
 
 ```bash
 npm install
@@ -137,6 +137,8 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+The `dev` and `start` scripts enable Node's environment-proxy support. When outbound HTTPS requires a proxy, set standard `HTTPS_PROXY`, `HTTP_PROXY`, and `NO_PROXY` variables in the shell before starting the server, then restart it. These machine-level variables are intentionally not stored in `.env.local` or exposed to the browser.
 
 ## Environment variables
 
