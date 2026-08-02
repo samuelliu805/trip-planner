@@ -1,5 +1,6 @@
 import type { Json, Tables } from "@/types/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
+import type { DayRoutePlan } from "@/features/routes/types";
 
 export type ItineraryItemLink = Pick<
   Tables<"itinerary_item_links">,
@@ -24,6 +25,7 @@ export type PlannerDay = TripDay & { items: ItineraryItem[] };
 
 export type PlannerWorkspace = {
   days: PlannerDay[];
+  routePlans: DayRoutePlan[];
   variant: PlannerVariant;
 };
 

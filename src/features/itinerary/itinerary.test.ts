@@ -28,7 +28,12 @@ import {
 } from "./grid-interactions.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import { validateDayRouteDraft } from "../routes/route-config.ts";
+import { calculateRouteConfiguration } from "../routes/calculator.ts";
+import { buildRouteConfigSignature } from "../routes/signatures.ts";
+import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
 import { routeLegModes, type DayRouteDraft } from "../routes/types.ts";
+import type { DayRouteCalculation, RouteCalculationConfig } from "../routes/types.ts";
+import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
   carRentalDetailsSchema,
   copyItineraryItemsSchema,
@@ -105,6 +110,162 @@ const googleResponse = () =>
     }),
     { headers: { "Content-Type": "application/json" }, status: 200 },
   );
+
+const calculationConfig = (): RouteCalculationConfig => ({
+  dayId: ids.day,
+  legModes: ["walk", "taxi"],
+  stops: [
+    { coordinates: { latitude: 37.7749, longitude: -122.4194 }, itemId: "hotel" },
+    { coordinates: { latitude: 37.7849, longitude: -122.4094 }, itemId: "museum" },
+    { coordinates: { latitude: 37.7949, longitude: -122.3994 }, itemId: "restaurant" },
+  ],
+  tripId: ids.trip,
+  variantId: ids.variant,
+});
+
+const calculatedLeg = (
+  request: RouteLegRequest,
+  durationSeconds: number | null = 600,
+): CalculatedRouteLeg => ({
+  computedAt: "2026-08-02T00:00:00.000Z",
+  distanceMeters: 1_000,
+  durationSeconds,
+  geometry: { destination: request.destination, origin: request.origin, source: "straight" },
+  legSignature: request.legSignature,
+  mode: request.mode,
+  position: request.position,
+  providerMode: null,
+  warnings: [],
+});
+
+test("route signatures ignore display and schedule metadata but track route inputs", () => {
+  const config = calculationConfig();
+  const decorated = {
+    ...config,
+    stops: config.stops.map((stop, index) => ({
+      ...stop,
+      endTime: `${index + 10}:00`,
+      notes: "Display only",
+      startTime: `${index + 9}:00`,
+      title: `Stop ${index}`,
+    })),
+  };
+  assert.equal(buildRouteConfigSignature(config), buildRouteConfigSignature(decorated));
+  assert.notEqual(
+    buildRouteConfigSignature(config),
+    buildRouteConfigSignature({
+      ...config,
+      stops: [config.stops[1], config.stops[0], config.stops[2]],
+    }),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config),
+    buildRouteConfigSignature({ ...config, legModes: ["bike", "taxi"] }),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config),
+    buildRouteConfigSignature({
+      ...config,
+      stops: config.stops.map((stop, index) =>
+        index === 1 ? { ...stop, coordinates: { ...stop.coordinates, latitude: 37.785 } } : stop,
+      ),
+    }),
+  );
+});
+
+test("route calculation uses full cache hits and only recalculates changed legs", async () => {
+  const config = calculationConfig();
+  let calls = 0;
+  const first = await calculateRouteConfiguration(config, null, async (request) => {
+    calls += 1;
+    return calculatedLeg(request);
+  });
+  assert.equal(first.cache, "miss");
+  assert.equal(calls, 2);
+  const previous: DayRouteCalculation = {
+    calculatedLegs: first.legs,
+    computed_at: "2026-08-02T00:00:00.000Z",
+    config_signature: first.configSignature,
+    plan_id: "plan",
+    provider_schema_version: "routes-v1",
+    total_distance_meters: first.totalDistanceMeters,
+    total_duration_seconds: first.totalDurationSeconds,
+  };
+
+  calls = 0;
+  const full = await calculateRouteConfiguration(config, previous, async (request) => {
+    calls += 1;
+    return calculatedLeg(request);
+  });
+  assert.equal(full.cache, "full");
+  assert.equal(calls, 0);
+
+  const changed: RouteCalculationConfig = { ...config, legModes: ["walk", "rideshare"] };
+  calls = 0;
+  const partial = await calculateRouteConfiguration(changed, previous, async (request) => {
+    calls += 1;
+    return calculatedLeg(request);
+  });
+  assert.equal(partial.cache, "partial");
+  assert.equal(calls, 1);
+});
+
+test("failed recalculation leaves the prior snapshot untouched and caps concurrency", async () => {
+  const config: RouteCalculationConfig = {
+    ...calculationConfig(),
+    legModes: ["walk", "walk", "walk", "walk", "walk"],
+    stops: Array.from({ length: 6 }, (_, index) => ({
+      coordinates: { latitude: 37.7 + index * 0.01, longitude: -122.4 + index * 0.01 },
+      itemId: `item-${index}`,
+    })),
+  };
+  let active = 0;
+  let maximumActive = 0;
+  const result = await calculateRouteConfiguration(
+    config,
+    null,
+    async (request) => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      active -= 1;
+      return calculatedLeg(request, request.position === 3 ? null : 600);
+    },
+    3,
+  );
+  assert.equal(maximumActive, 3);
+  assert.equal(result.totalDurationSeconds, null);
+
+  const previous = structuredClone(result.legs);
+  await assert.rejects(
+    calculateRouteConfiguration(
+      { ...config, legModes: ["walk", "walk", "bike", "walk", "walk"] },
+      {
+        calculatedLegs: result.legs,
+        computed_at: "2026-08-02T00:00:00.000Z",
+        config_signature: result.configSignature,
+        plan_id: "plan",
+        provider_schema_version: "routes-v1",
+        total_distance_meters: result.totalDistanceMeters,
+        total_duration_seconds: result.totalDurationSeconds,
+      },
+      async () => {
+        throw new RouteProviderError("quota");
+      },
+    ),
+    (error) => error instanceof RouteProviderError && error.code === "quota",
+  );
+  assert.deepEqual(result.legs, previous);
+});
+
+test("transport suggestions are restrained and never use unknown-to-Train normalization", () => {
+  const item = (mode: string): ItineraryItem =>
+    ({ details: { mode }, id: mode, type: "transport" }) as unknown as ItineraryItem;
+  assert.equal(suggestedDraftLegMode([item("bus")]), "bus");
+  assert.equal(suggestedDraftLegMode([item("bus"), item("train")]), "walk");
+  assert.equal(suggestedDraftLegMode([item("unknown")]), "walk");
+  assert.equal(suggestedDraftLegMode([]), "walk");
+});
 
 test("route mode mapping is explicit and unknown modes never become Transit", () => {
   const expected = {
