@@ -2,6 +2,7 @@
 
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   BedDouble,
   Footprints,
@@ -60,14 +61,14 @@ function Status({ route }: { route: DayRouteUi }) {
 }
 
 const SelectedPlaceSlot = ({ children }: { children?: React.ReactNode }) =>
-  children ? <div className="border-b p-3">{children}</div> : null;
+  children ? <div className="border-b px-3 py-2">{children}</div> : null;
 
 function Editor({
-  onClose,
+  onBack,
   route,
   selectedPlace,
 }: {
-  onClose: () => void;
+  onBack: () => void;
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
@@ -90,12 +91,12 @@ function Editor({
           <div className="flex items-center gap-2">
             <Status route={route} />
             <button
-              aria-label="Close route panel"
+              aria-label="Back to route summary"
               className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-              onClick={onClose}
+              onClick={onBack}
               type="button"
             >
-              <X className="size-4" />
+              <ArrowLeft className="size-4" />
             </button>
           </div>
         </div>
@@ -307,7 +308,7 @@ function Summary({
   return (
     <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
         <div className="mr-auto min-w-0">
           <div className="flex items-center gap-2">
             <Route className="size-4 text-primary" />
@@ -399,12 +400,12 @@ export function DayRouteOverlay({
       </section>
     );
   if (route.editing)
-    return <Editor onClose={onClose} route={route} selectedPlace={selectedPlace} />;
+    return <Editor onBack={route.cancelEditing} route={route} selectedPlace={selectedPlace} />;
   if (route.plan) return <Summary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
   return (
     <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
-      <div className="flex flex-wrap items-center gap-3 p-3">
+      <div className="flex flex-wrap items-center gap-3 px-3 py-2">
         <div className="mr-auto">
           <p className="text-sm font-semibold">Day {route.activeDay.day_number} · No day route</p>
           <p className="text-xs text-muted-foreground">

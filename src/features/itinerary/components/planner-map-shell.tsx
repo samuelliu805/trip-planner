@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Maximize2, X } from "lucide-react";
+import { ChevronDown, Maximize2, Minus, Pencil, Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
@@ -12,7 +12,6 @@ import type {
   PlannerMapMarker,
 } from "@/features/maps/planner-map-canvas";
 import type { PlannerDay } from "@/features/itinerary/types";
-import { Button } from "@/components/ui/button";
 import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import { OverviewRouteOverlay } from "@/features/routes/overview-route-overlay";
@@ -81,7 +80,6 @@ function SelectedPlaceContent({
   dayRoute,
   mapMode,
   marker,
-  onClear,
   onEditMapItem,
   onMarkerClick,
   selectedId,
@@ -89,7 +87,6 @@ function SelectedPlaceContent({
   dayRoute: DayRouteUi;
   mapMode: PlannerMapMode;
   marker: PlannerMapMarker;
-  onClear?: () => void;
   onEditMapItem: (itemId: string) => void;
   onMarkerClick: (id?: string) => void;
   selectedId: string;
@@ -121,15 +118,37 @@ function SelectedPlaceContent({
             <p className="truncate text-xs text-muted-foreground">{marker.address}</p>
           ) : null}
         </div>
-        {onClear ? (
-          <button
-            aria-label="Deselect place"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            onClick={onClear}
-            type="button"
-          >
-            <X className="size-4" />
-          </button>
+        <button
+          aria-label={`Edit ${entry.title}`}
+          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={() => onEditMapItem(entry.itemId)}
+          title="Edit item"
+          type="button"
+        >
+          <Pencil className="size-4" />
+        </button>
+        {mapMode === "day_route" && eligibleDayStop && dayRoute.editing ? (
+          dayRoute.draft?.itemIds.includes(entry.itemId) ? (
+            <button
+              aria-label={`Remove ${entry.title} from route`}
+              className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={() => dayRoute.removeItem(entry.itemId)}
+              title="Remove from route"
+              type="button"
+            >
+              <Minus className="size-4" />
+            </button>
+          ) : (
+            <button
+              aria-label={`Add ${entry.title} to route`}
+              className="flex size-10 shrink-0 items-center justify-center rounded-md text-primary hover:bg-primary/10"
+              onClick={() => dayRoute.addStop(entry.itemId)}
+              title="Add to route"
+              type="button"
+            >
+              <Plus className="size-4" />
+            </button>
+          )
         ) : null}
       </div>
       {marker.summary ? (
@@ -163,34 +182,6 @@ function SelectedPlaceContent({
           </div>
         </details>
       )}
-      <div className="mt-2 flex flex-wrap justify-end gap-2">
-        <Button
-          onClick={() => onEditMapItem(entry.itemId)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          Edit item
-        </Button>
-        {mapMode === "day_route" && eligibleDayStop ? (
-          dayRoute.editing ? (
-            dayRoute.draft?.itemIds.includes(entry.itemId) ? (
-              <Button
-                onClick={() => dayRoute.removeItem(entry.itemId)}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                Remove from route
-              </Button>
-            ) : (
-              <Button onClick={() => dayRoute.addStop(entry.itemId)} size="sm" type="button">
-                Add to route
-              </Button>
-            )
-          ) : null
-        ) : null}
-      </div>
     </div>
   );
 }
@@ -233,21 +224,30 @@ export function PlannerMapShell({
   viewportKey?: string;
 }) {
   const activeDayId = dayRoute.activeDay?.id ?? "no-day";
+  const [overviewPanelOpen, setOverviewPanelOpen] = useState(true);
   const [dayPanelState, setDayPanelState] = useState<{
     dayId: string;
     open: boolean;
   } | null>(null);
   const storedDayPanelOpen = dayPanelState?.dayId === activeDayId ? dayPanelState.open : true;
+  const overviewPanelVisible = Boolean(selectedId || overviewRoute.editing || overviewPanelOpen);
   const dayPanelOpen = Boolean(selectedId || dayRoute.editing || storedDayPanelOpen);
   const setDayPanelOpen = (open: boolean) => setDayPanelState({ dayId: activeDayId, open });
   const handleMarkerClick = (id?: string) => {
-    if (mapMode === "day_route" && id) setDayPanelOpen(true);
+    if (id) {
+      if (mapMode === "day_route") setDayPanelOpen(true);
+      else setOverviewPanelOpen(true);
+    }
     onMarkerClick(id);
+  };
+  const closeOverviewPanel = () => {
+    setOverviewPanelOpen(false);
+    overviewRoute.setEditing(false);
+    onMapSelectionClear();
   };
   const closeDayPanel = () => {
     setDayPanelOpen(false);
     onMapSelectionClear();
-    if (dayRoute.editing) dayRoute.cancelEditing();
   };
   const visibleMarkers = markers;
   const selectedMarker = selectedId
@@ -259,7 +259,6 @@ export function PlannerMapShell({
         dayRoute={dayRoute}
         mapMode={mapMode}
         marker={selectedMarker}
-        onClear={mapMode === "overview" ? onMapSelectionClear : undefined}
         onEditMapItem={onEditMapItem}
         onMarkerClick={handleMarkerClick}
         selectedId={selectedId}
@@ -302,6 +301,7 @@ export function PlannerMapShell({
               key={mode}
               onClick={() => {
                 if (mode === "day_route") setDayPanelOpen(true);
+                else setOverviewPanelOpen(true);
                 onMapModeChange(mode);
               }}
               type="button"
@@ -346,22 +346,15 @@ export function PlannerMapShell({
           ))}
         </div>
       ) : null}
-      {!compact && mapMode === "overview" ? (
-        <OverviewRouteOverlay route={overviewRoute} selectedPlace={selectedPlace} />
+      {!compact && mapMode === "overview" && overviewPanelVisible ? (
+        <OverviewRouteOverlay
+          onClose={closeOverviewPanel}
+          route={overviewRoute}
+          selectedPlace={selectedPlace}
+        />
       ) : null}
       {!compact && mapMode === "day_route" && dayPanelOpen ? (
         <DayRouteOverlay onClose={closeDayPanel} route={dayRoute} selectedPlace={selectedPlace} />
-      ) : null}
-      {!compact && mapMode === "day_route" && !dayPanelOpen ? (
-        <Button
-          className="absolute bottom-3 right-3 z-20 shadow-lg"
-          onClick={() => setDayPanelOpen(true)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          Show Route A panel
-        </Button>
       ) : null}
     </section>
   );
