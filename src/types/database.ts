@@ -14,6 +14,190 @@ export type Database = {
   }
   public: {
     Tables: {
+      day_route_calculations: {
+        Row: {
+          calculated_legs: Json
+          computed_at: string
+          config_signature: string
+          plan_id: string
+          provider_schema_version: string
+          total_distance_meters: number
+          total_duration_seconds: number | null
+        }
+        Insert: {
+          calculated_legs: Json
+          computed_at?: string
+          config_signature: string
+          plan_id: string
+          provider_schema_version?: string
+          total_distance_meters: number
+          total_duration_seconds?: number | null
+        }
+        Update: {
+          calculated_legs?: Json
+          computed_at?: string
+          config_signature?: string
+          plan_id?: string
+          provider_schema_version?: string
+          total_distance_meters?: number
+          total_duration_seconds?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_route_calculations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: true
+            referencedRelation: "day_route_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      day_route_legs: {
+        Row: {
+          created_at: string
+          from_stop_id: string
+          id: string
+          mode: string
+          plan_id: string
+          position: number
+          to_stop_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          from_stop_id: string
+          id?: string
+          mode: string
+          plan_id: string
+          position: number
+          to_stop_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          from_stop_id?: string
+          id?: string
+          mode?: string
+          plan_id?: string
+          position?: number
+          to_stop_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_route_legs_from_stop_fkey"
+            columns: ["from_stop_id", "plan_id"]
+            isOneToOne: false
+            referencedRelation: "day_route_stops"
+            referencedColumns: ["id", "plan_id"]
+          },
+          {
+            foreignKeyName: "day_route_legs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "day_route_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_route_legs_to_stop_fkey"
+            columns: ["to_stop_id", "plan_id"]
+            isOneToOne: false
+            referencedRelation: "day_route_stops"
+            referencedColumns: ["id", "plan_id"]
+          },
+        ]
+      }
+      day_route_plans: {
+        Row: {
+          created_at: string
+          day_id: string
+          id: string
+          trip_id: string
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_id: string
+          id?: string
+          trip_id: string
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          day_id?: string
+          id?: string
+          trip_id?: string
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_route_plans_day_variant_fkey"
+            columns: ["day_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id", "variant_id"]
+          },
+          {
+            foreignKeyName: "day_route_plans_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_route_plans_variant_trip_fkey"
+            columns: ["variant_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id", "trip_id"]
+          },
+        ]
+      }
+      day_route_stops: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          plan_id: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          plan_id: string
+          position: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          plan_id?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_route_stops_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "day_route_stops_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "day_route_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       itinerary_item_links: {
         Row: {
           created_at: string
@@ -361,6 +545,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_day_route_plan: {
+        Args: { target_day_id: string; target_variant_id: string }
+        Returns: undefined
+      }
       copy_itinerary_items_to_days: {
         Args: { source_item_ids: string[]; target_day_ids: string[] }
         Returns: number
@@ -394,14 +582,23 @@ export type Database = {
         Args: { ordered_item_ids: string[]; target_day_id: string }
         Returns: undefined
       }
-      upsert_google_place_snapshot: {
+      save_day_route_calculation: {
         Args: {
-          place_display_name: string
-          place_formatted_address: string
-          place_latitude: number
-          place_longitude: number
-          provider_place_id: string
-          target_trip_id: string
+          calculated_config_signature: string
+          calculated_provider_schema_version?: string
+          calculated_total_distance_meters: number
+          calculated_total_duration_seconds: number
+          normalized_calculated_legs: Json
+          target_plan_id: string
+        }
+        Returns: undefined
+      }
+      save_day_route_plan: {
+        Args: {
+          ordered_item_ids: string[]
+          requested_leg_modes: string[]
+          target_day_id: string
+          target_variant_id: string
         }
         Returns: string
       }
@@ -414,6 +611,17 @@ export type Database = {
           trip_start_date: string
           trip_timezone: string
           trip_title: string
+        }
+        Returns: string
+      }
+      upsert_google_place_snapshot: {
+        Args: {
+          place_display_name: string
+          place_formatted_address: string
+          place_latitude: number
+          place_longitude: number
+          provider_place_id: string
+          target_trip_id: string
         }
         Returns: string
       }

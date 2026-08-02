@@ -1,8 +1,12 @@
 "use client";
 
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import { categories } from "@/features/itinerary/components/planner-config";
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { DayRouteUi } from "@/features/routes/use-day-route";
+import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerStatus({
   deleteError,
@@ -65,29 +69,59 @@ export function PlannerStatus({
 }
 
 export function PlannerMapPane({
+  dayCityLayerAvailable,
+  dayMapLayer,
+  dayRoute,
+  emptyState,
+  lines,
+  mapMode,
   markers,
   onExpand,
+  onEditMapItem,
+  onDayMapLayerChange,
   onMarkerClick,
-  onToggleKind,
+  onMapModeChange,
+  onMapSelectionClear,
+  overviewRoute,
   selectedId,
-  visibleKinds,
+  viewportKey,
 }: {
+  dayCityLayerAvailable: boolean;
+  dayMapLayer: DayMapLayer;
+  dayRoute: DayRouteUi;
+  emptyState?: { message: string; title: string };
+  lines: PlannerMapLine[];
+  mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
   onExpand: () => void;
-  onMarkerClick: (id: string) => void;
-  onToggleKind: (kind: MarkerKind) => void;
+  onEditMapItem: (itemId: string) => void;
+  onDayMapLayerChange: (layer: DayMapLayer) => void;
+  onMarkerClick: (id?: string) => void;
+  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapSelectionClear: () => void;
+  overviewRoute: OverviewRouteUi;
   selectedId?: string;
-  visibleKinds: Set<MarkerKind>;
+  viewportKey?: string;
 }) {
   const map = (compact = false) => (
     <PlannerMapShell
       compact={compact}
+      dayCityLayerAvailable={dayCityLayerAvailable}
+      dayMapLayer={dayMapLayer}
+      dayRoute={dayRoute}
+      emptyState={emptyState}
+      lines={lines}
+      mapMode={mapMode}
       markers={markers}
       onExpand={compact ? onExpand : undefined}
+      onEditMapItem={onEditMapItem}
+      onDayMapLayerChange={onDayMapLayerChange}
       onMarkerClick={onMarkerClick}
-      onToggleKind={onToggleKind}
+      onMapModeChange={onMapModeChange}
+      onMapSelectionClear={onMapSelectionClear}
+      overviewRoute={overviewRoute}
       selectedId={selectedId}
-      visibleKinds={visibleKinds}
+      viewportKey={viewportKey}
     />
   );
   return (

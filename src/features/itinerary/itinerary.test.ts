@@ -5,17 +5,59 @@ import {
   deduplicatePlaceSnapshots,
   normalizeGooglePlace,
 } from "../../lib/providers/places/normalize.ts";
+import { RouteProviderError } from "../../lib/providers/routes/errors.ts";
+import { straightFallbackLeg } from "../../lib/providers/routes/fallback.ts";
+import { decodeEncodedPolyline, haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
+import {
+  createGoogleRoutesProvider,
+  googleRoutesEndpoint,
+  googleRoutesFieldMask,
+  parseGoogleDurationSeconds,
+} from "../../lib/providers/routes/google-routes-core.ts";
+import { googleTravelMode } from "../../lib/providers/routes/mode-mapping.ts";
+import type { RouteLegRequest } from "../../lib/providers/routes/types.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
   encodePlannerClipboard,
   fillTargetRows,
+  initialPlannerSelection,
   moveGridFocus,
   parsePlannerClipboard,
   selectionBounds,
   selectionContains,
 } from "./grid-interactions.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
+import {
+  buildOverviewRouteLines,
+  deriveOverviewStages,
+  isOverviewRouteLeg,
+} from "../routes/overview.ts";
+import {
+  neighboringCityConflict,
+  neighboringCityConflictAfterRemoving,
+  orderedCityOccurrences,
+  prospectiveNeighboringCityConflict,
+} from "../routes/city-order.ts";
+import {
+  deriveOverviewDefaultModes,
+  overviewFlightThresholdMeters,
+} from "../routes/overview-transport.ts";
+import {
+  buildDayRouteLines,
+  buildDayRouteMarkers,
+  eligibleDayRouteItems,
+} from "../routes/day-route-map.ts";
+import { buildDayCityMarkers, buildDayCityRouteLines } from "../routes/day-city-map.ts";
+import { validateDayRouteDraft } from "../routes/route-config.ts";
+import { calculateRouteConfiguration } from "../routes/calculator.ts";
+import { buildRouteConfigSignature } from "../routes/signatures.ts";
+import { resolveRouteCalculationConfig } from "../routes/plan-config.ts";
+import { dayRouteStatus } from "../routes/status.ts";
+import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
+import { overviewRouteModes, routeLegModes, type DayRouteDraft } from "../routes/types.ts";
+import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "../routes/types.ts";
+import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
   carRentalDetailsSchema,
   copyItineraryItemsSchema,
@@ -26,7 +68,7 @@ import {
   reorderItineraryItemsSchema,
   updateItineraryItemSchema,
 } from "./schema.ts";
-import type { ItineraryItem } from "./types.ts";
+import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
@@ -44,6 +86,575 @@ const base = {
   type: "activity" as const,
   variantId: ids.variant,
 };
+
+const routeStop = (
+  itemId: string,
+  type: string,
+  latitude: number,
+  longitude: number,
+): DayRouteDraft["stops"][number] => ({
+  coordinates: { latitude, longitude },
+  dayId: ids.day,
+  itemId,
+  tripId: ids.trip,
+  type,
+  variantId: ids.variant,
+});
+
+const routeDraft = (overrides: Partial<DayRouteDraft> = {}): DayRouteDraft => ({
+  dayId: ids.day,
+  legModes: ["walk"],
+  stops: [
+    routeStop("00000000-0000-4000-8000-000000000010", "activity", 37.7749, -122.4194),
+    routeStop("00000000-0000-4000-8000-000000000011", "meal", 37.7849, -122.4094),
+  ],
+  tripId: ids.trip,
+  variantId: ids.variant,
+  ...overrides,
+});
+
+const providerLeg = (mode: DayRouteDraft["legModes"][number] = "walk"): RouteLegRequest => ({
+  destination: { latitude: 34.0522, longitude: -118.2437 },
+  legSignature: "leg-signature",
+  mode,
+  origin: { latitude: 37.7749, longitude: -122.4194 },
+  position: 1,
+});
+
+test("planner initially selects the first City cell", () => {
+  assert.deepEqual(initialPlannerSelection(3, 0), { column: 0, row: 0 });
+  assert.deepEqual(initialPlannerSelection(0, 0), { column: -1, row: -1 });
+  assert.deepEqual(initialPlannerSelection(3, -1), { column: -1, row: -1 });
+});
+
+const googleResponse = () =>
+  new Response(
+    JSON.stringify({
+      routes: [
+        {
+          distanceMeters: 12_345,
+          duration: "901.4s",
+          polyline: { encodedPolyline: "_p~iF~ps|U_ulLnnqC_mqNvxq`@" },
+        },
+      ],
+    }),
+    { headers: { "Content-Type": "application/json" }, status: 200 },
+  );
+
+const calculationConfig = (): RouteCalculationConfig => ({
+  dayId: ids.day,
+  legModes: ["walk", "taxi"],
+  stops: [
+    { coordinates: { latitude: 37.7749, longitude: -122.4194 }, itemId: "hotel" },
+    { coordinates: { latitude: 37.7849, longitude: -122.4094 }, itemId: "museum" },
+    { coordinates: { latitude: 37.7949, longitude: -122.3994 }, itemId: "restaurant" },
+  ],
+  tripId: ids.trip,
+  variantId: ids.variant,
+});
+
+const calculatedLeg = (
+  request: RouteLegRequest,
+  durationSeconds: number | null = 600,
+): CalculatedRouteLeg => ({
+  computedAt: "2026-08-02T00:00:00.000Z",
+  distanceMeters: 1_000,
+  durationSeconds,
+  geometry: { destination: request.destination, origin: request.origin, source: "straight" },
+  legSignature: request.legSignature,
+  mode: request.mode,
+  position: request.position,
+  providerMode: null,
+  warnings: [],
+});
+
+test("route signatures ignore display and schedule metadata but track route inputs", () => {
+  const config = calculationConfig();
+  const decorated = {
+    ...config,
+    stops: config.stops.map((stop, index) => ({
+      ...stop,
+      endTime: `${index + 10}:00`,
+      notes: "Display only",
+      startTime: `${index + 9}:00`,
+      title: `Stop ${index}`,
+    })),
+  };
+  assert.equal(buildRouteConfigSignature(config), buildRouteConfigSignature(decorated));
+  assert.notEqual(
+    buildRouteConfigSignature(config),
+    buildRouteConfigSignature({
+      ...config,
+      stops: [config.stops[1], config.stops[0], config.stops[2]],
+    }),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config),
+    buildRouteConfigSignature({ ...config, legModes: ["bike", "taxi"] }),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config),
+    buildRouteConfigSignature({
+      ...config,
+      stops: config.stops.map((stop, index) =>
+        index === 1 ? { ...stop, coordinates: { ...stop.coordinates, latitude: 37.785 } } : stop,
+      ),
+    }),
+  );
+});
+
+test("route calculation uses full cache hits and only recalculates changed legs", async () => {
+  const config = calculationConfig();
+  let calls = 0;
+  const first = await calculateRouteConfiguration(config, null, async (request) => {
+    calls += 1;
+    return calculatedLeg(request);
+  });
+  assert.equal(first.cache, "miss");
+  assert.equal(calls, 2);
+  const previous: DayRouteCalculation = {
+    calculatedLegs: first.legs,
+    computed_at: "2026-08-02T00:00:00.000Z",
+    config_signature: first.configSignature,
+    plan_id: "plan",
+    provider_schema_version: "routes-v1",
+    total_distance_meters: first.totalDistanceMeters,
+    total_duration_seconds: first.totalDurationSeconds,
+  };
+
+  calls = 0;
+  const full = await calculateRouteConfiguration(config, previous, async (request) => {
+    calls += 1;
+    return calculatedLeg(request);
+  });
+  assert.equal(full.cache, "full");
+  assert.equal(calls, 0);
+
+  const changed: RouteCalculationConfig = { ...config, legModes: ["walk", "rideshare"] };
+  calls = 0;
+  const partial = await calculateRouteConfiguration(changed, previous, async (request) => {
+    calls += 1;
+    return calculatedLeg(request);
+  });
+  assert.equal(partial.cache, "partial");
+  assert.equal(calls, 1);
+});
+
+test("failed recalculation leaves the prior snapshot untouched and caps concurrency", async () => {
+  const config: RouteCalculationConfig = {
+    ...calculationConfig(),
+    legModes: ["walk", "walk", "walk", "walk", "walk"],
+    stops: Array.from({ length: 6 }, (_, index) => ({
+      coordinates: { latitude: 37.7 + index * 0.01, longitude: -122.4 + index * 0.01 },
+      itemId: `item-${index}`,
+    })),
+  };
+  let active = 0;
+  let maximumActive = 0;
+  const result = await calculateRouteConfiguration(
+    config,
+    null,
+    async (request) => {
+      active += 1;
+      maximumActive = Math.max(maximumActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      active -= 1;
+      return calculatedLeg(request, request.position === 3 ? null : 600);
+    },
+    3,
+  );
+  assert.equal(maximumActive, 3);
+  assert.equal(result.totalDurationSeconds, null);
+
+  const previous = structuredClone(result.legs);
+  await assert.rejects(
+    calculateRouteConfiguration(
+      { ...config, legModes: ["walk", "walk", "bike", "walk", "walk"] },
+      {
+        calculatedLegs: result.legs,
+        computed_at: "2026-08-02T00:00:00.000Z",
+        config_signature: result.configSignature,
+        plan_id: "plan",
+        provider_schema_version: "routes-v1",
+        total_distance_meters: result.totalDistanceMeters,
+        total_duration_seconds: result.totalDurationSeconds,
+      },
+      async () => {
+        throw new RouteProviderError("quota");
+      },
+    ),
+    (error) => error instanceof RouteProviderError && error.code === "quota",
+  );
+  assert.deepEqual(result.legs, previous);
+});
+
+test("transport suggestions are restrained and never use unknown-to-Train normalization", () => {
+  const item = (mode: string): ItineraryItem =>
+    ({ details: { mode }, id: mode, type: "transport" }) as unknown as ItineraryItem;
+  assert.equal(suggestedDraftLegMode([item("bus")]), "bus");
+  assert.equal(suggestedDraftLegMode([item("bus"), item("train")]), "walk");
+  assert.equal(suggestedDraftLegMode([item("unknown")]), "walk");
+  assert.equal(suggestedDraftLegMode([]), "walk");
+});
+
+test("Overview transport defaults use the restricted priority and distance threshold", () => {
+  const city = (
+    dayNumber: number,
+    id: string,
+    latitude: number,
+    longitude: number,
+    modes: string[] = [],
+  ): PlannerDay =>
+    ({
+      day_number: dayNumber,
+      id: `day-${dayNumber}`,
+      items: [
+        {
+          id: `city-${id}`,
+          place: {
+            formattedAddress: id,
+            id: `place-${id}`,
+            latitude,
+            longitude,
+          },
+          sort_order: 0,
+          title: id,
+          type: "location",
+        },
+        ...modes.map((mode, index) => ({
+          details: { mode },
+          id: `${id}-${mode}-${index}`,
+          sort_order: index + 1,
+          title: mode,
+          type: "transport" as const,
+        })),
+      ],
+    }) as unknown as PlannerDay;
+
+  assert.deepEqual(overviewRouteModes, ["self_driving", "flight", "train", "bus", "bike"]);
+  assert.equal(overviewFlightThresholdMeters, 500_000);
+
+  const priorityDays = [
+    city(1, "Origin", 37.7749, -122.4194),
+    city(2, "Priority", 37.8044, -122.2712, ["bike", "bus", "train", "self_driving", "flight"]),
+    city(3, "Transit priority", 37.8715, -122.273, ["bike", "bus", "train"]),
+  ];
+  assert.deepEqual(deriveOverviewDefaultModes(priorityDays, deriveOverviewStages(priorityDays)), [
+    "flight",
+    "train",
+  ]);
+
+  const distanceDays = [
+    city(1, "San Francisco", 37.7749, -122.4194),
+    city(2, "Oakland", 37.8044, -122.2712),
+    city(3, "Los Angeles", 34.0522, -118.2437),
+  ];
+  assert.deepEqual(deriveOverviewDefaultModes(distanceDays, deriveOverviewStages(distanceDays)), [
+    "self_driving",
+    "flight",
+  ]);
+
+  const unknownDays = [
+    city(1, "Unknown origin", 37.7749, -122.4194),
+    city(2, "Unknown destination", 37.8044, -122.2712, ["ferry", "other"]),
+  ];
+  assert.deepEqual(deriveOverviewDefaultModes(unknownDays, deriveOverviewStages(unknownDays)), [
+    "self_driving",
+  ]);
+});
+
+test("route mode mapping is explicit and unknown modes never become Transit", () => {
+  const expected = {
+    bike: "BICYCLE",
+    bus: "TRANSIT",
+    cable_car: null,
+    ferry: null,
+    flight: null,
+    motorcycle: null,
+    other: null,
+    rideshare: "DRIVE",
+    self_driving: "DRIVE",
+    shuttle: "TRANSIT",
+    subway: "TRANSIT",
+    taxi: "DRIVE",
+    train: "TRANSIT",
+    tram: "TRANSIT",
+    walk: "WALK",
+  } as const;
+  for (const mode of routeLegModes) assert.equal(googleTravelMode(mode), expected[mode]);
+  assert.equal(googleTravelMode("unknown"), null);
+});
+
+test("route geometry utilities use Haversine distance and decode Google polylines", () => {
+  assert.ok(
+    Math.abs(
+      haversineDistanceMeters(
+        { latitude: 36.12, longitude: -86.67 },
+        { latitude: 33.94, longitude: -118.4 },
+      ) - 2_885_104,
+    ) < 2_000,
+  );
+  assert.deepEqual(decodeEncodedPolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@"), [
+    { latitude: 38.5, longitude: -120.2 },
+    { latitude: 40.7, longitude: -120.95 },
+    { latitude: 43.252, longitude: -126.453 },
+  ]);
+  assert.throws(() => decodeEncodedPolyline("~"), /invalid/);
+});
+
+test("Google route provider sends one narrow primary-route request per leg", async () => {
+  let requestUrl = "";
+  let requestInit: RequestInit | undefined;
+  const fetchImplementation = (async (url: string | URL | Request, init?: RequestInit) => {
+    requestUrl = String(url);
+    requestInit = init;
+    return googleResponse();
+  }) as typeof fetch;
+  const result = await createGoogleRoutesProvider({
+    apiKey: "server-secret",
+    fetchImplementation,
+    now: () => "2026-08-02T00:00:00.000Z",
+  }).calculateLeg(providerLeg("self_driving"));
+
+  assert.equal(requestUrl, googleRoutesEndpoint);
+  assert.equal(requestInit?.method, "POST");
+  assert.equal(new Headers(requestInit?.headers).get("X-Goog-FieldMask"), googleRoutesFieldMask);
+  assert.equal(new Headers(requestInit?.headers).get("X-Goog-Api-Key"), "server-secret");
+  const body = JSON.parse(String(requestInit?.body));
+  assert.deepEqual(body.origin.location.latLng, providerLeg().origin);
+  assert.deepEqual(body.destination.location.latLng, providerLeg().destination);
+  assert.equal(body.travelMode, "DRIVE");
+  assert.equal(body.routingPreference, "TRAFFIC_UNAWARE");
+  assert.equal(body.computeAlternativeRoutes, false);
+  assert.equal("intermediates" in body, false);
+  assert.equal("optimizeWaypointOrder" in body, false);
+  assert.equal("departureTime" in body, false);
+  assert.equal(result.geometry.source, "google");
+  assert.equal(result.durationSeconds, 901);
+  assert.equal(result.distanceMeters, 12_345);
+});
+
+test("unsupported route modes use straight fallback without fetch or invented duration", async () => {
+  let fetchCount = 0;
+  const provider = createGoogleRoutesProvider({
+    apiKey: "",
+    fetchImplementation: (async () => {
+      fetchCount += 1;
+      return googleResponse();
+    }) as typeof fetch,
+    now: () => "2026-08-02T00:00:00.000Z",
+  });
+  for (const mode of ["flight", "ferry", "cable_car", "motorcycle", "other"] as const) {
+    const result = await provider.calculateLeg(providerLeg(mode));
+    assert.equal(result.geometry.source, "straight");
+    assert.equal(result.durationSeconds, null);
+    assert.equal(result.fallbackReason, "unsupported_mode");
+  }
+  assert.equal(fetchCount, 0);
+  assert.equal(straightFallbackLeg(providerLeg("flight"), "unsupported_mode").providerMode, null);
+});
+
+test("no-route falls back while Transit omits schedule fields and carries estimate metadata", async () => {
+  const noRoute = await createGoogleRoutesProvider({
+    apiKey: "key",
+    fetchImplementation: (async () =>
+      new Response(JSON.stringify({ routes: [] }), { status: 200 })) as typeof fetch,
+  }).calculateLeg(providerLeg("walk"));
+  assert.equal(noRoute.geometry.source, "straight");
+  assert.equal(noRoute.fallbackReason, "no_route");
+  assert.equal(noRoute.durationSeconds, null);
+  assert.ok(noRoute.warnings.some(({ code }) => code === "walking_safety"));
+
+  let transitBody: Record<string, unknown> = {};
+  const transit = await createGoogleRoutesProvider({
+    apiKey: "key",
+    fetchImplementation: (async (_url, init) => {
+      transitBody = JSON.parse(String(init?.body));
+      return googleResponse();
+    }) as typeof fetch,
+  }).calculateLeg(providerLeg("subway"));
+  assert.equal(transit.estimateKind, "transit_current_service");
+  assert.equal("routingPreference" in transitBody, false);
+  assert.equal("departureTime" in transitBody, false);
+  assert.equal("arrivalTime" in transitBody, false);
+});
+
+test("provider errors are actionable, safe, and never silently become fallback", async () => {
+  for (const [status, code] of [
+    [400, "invalid_request"],
+    [401, "authentication"],
+    [403, "permission"],
+    [404, "invalid_response"],
+    [429, "quota"],
+    [504, "timeout"],
+    [500, "provider_unavailable"],
+  ] as const) {
+    const provider = createGoogleRoutesProvider({
+      apiKey: "server-secret",
+      fetchImplementation: (async () =>
+        new Response("sensitive provider body", { status })) as typeof fetch,
+    });
+    await assert.rejects(provider.calculateLeg(providerLeg()), (error) => {
+      assert.ok(error instanceof RouteProviderError);
+      assert.equal(error.code, code);
+      assert.doesNotMatch(error.message, /server-secret|sensitive provider body/);
+      return true;
+    });
+  }
+
+  await assert.rejects(
+    createGoogleRoutesProvider({ apiKey: "" }).calculateLeg(providerLeg()),
+    (error) => error instanceof RouteProviderError && error.code === "missing_key",
+  );
+  await assert.rejects(
+    createGoogleRoutesProvider({
+      apiKey: "key",
+      fetchImplementation: (async () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        throw error;
+      }) as typeof fetch,
+    }).calculateLeg(providerLeg()),
+    (error) => error instanceof RouteProviderError && error.code === "timeout",
+  );
+  await assert.rejects(
+    createGoogleRoutesProvider({
+      apiKey: "key",
+      fetchImplementation: (async () => {
+        throw new TypeError("fetch failed", {
+          cause: new Error("connect ETIMEDOUT routes.googleapis.com"),
+        });
+      }) as typeof fetch,
+    }).calculateLeg(providerLeg()),
+    (error) => {
+      assert.ok(error instanceof RouteProviderError);
+      assert.equal(error.code, "network");
+      assert.doesNotMatch(error.message, /ETIMEDOUT|routes\.googleapis\.com/);
+      return true;
+    },
+  );
+  assert.equal(parseGoogleDurationSeconds("1.6s"), 2);
+  assert.throws(() => parseGoogleDurationSeconds("soon"), RouteProviderError);
+});
+
+test("route configuration accepts only eligible same-day places and synchronized modes", () => {
+  assert.equal(validateDayRouteDraft(routeDraft()), null);
+  for (const type of ["location", "transport", "car_rental", "note", "flight", "train"]) {
+    assert.match(
+      validateDayRouteDraft(
+        routeDraft({
+          stops: [
+            routeStop("00000000-0000-4000-8000-000000000010", type, 37.7749, -122.4194),
+            routeStop("00000000-0000-4000-8000-000000000011", "meal", 37.7849, -122.4094),
+          ],
+        }),
+      ) ?? "",
+      /Activity, Meal, and Hotel/,
+    );
+  }
+  assert.match(
+    validateDayRouteDraft(routeDraft({ legModes: [] })) ?? "",
+    /mode count must equal stop count minus one/i,
+  );
+  assert.match(
+    validateDayRouteDraft(
+      routeDraft({ stops: [routeStop("missing", "activity", 37.7749, -122.4194)] }),
+    ) ?? "",
+    /between 2 and 20/,
+  );
+  assert.match(
+    validateDayRouteDraft(
+      routeDraft({
+        stops: [
+          { ...routeStop("same", "activity", 37.7749, -122.4194), coordinates: null },
+          routeStop("other", "meal", 37.7849, -122.4094),
+        ],
+      }),
+    ) ?? "",
+    /saved map place/,
+  );
+  assert.equal(routeLegModes.length, 15);
+});
+
+test("route configuration permits only one Hotel repeated first and final", () => {
+  const hotel = routeStop("hotel", "hotel", 37.7749, -122.4194);
+  const meal = routeStop("meal", "meal", 37.7849, -122.4094);
+  assert.equal(
+    validateDayRouteDraft(routeDraft({ legModes: ["walk", "taxi"], stops: [hotel, meal, hotel] })),
+    null,
+  );
+  assert.match(
+    validateDayRouteDraft(routeDraft({ legModes: ["walk"], stops: [meal, meal] })) ?? "",
+    /repeated Hotel/,
+  );
+  assert.match(
+    validateDayRouteDraft(
+      routeDraft({ legModes: ["walk", "walk"], stops: [meal, hotel, hotel] }),
+    ) ?? "",
+    /first and final/,
+  );
+  assert.match(
+    validateDayRouteDraft(routeDraft({ stops: [hotel, hotel] })) ?? "",
+    /two distinct coordinate/,
+  );
+});
+
+test("manual route migration enforces normalized ownership and cascade contracts", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260802130101_add_manual_day_route_plans.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const hardening = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260802130920_harden_manual_day_route_plans.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const databaseTypes = await readFile(new URL("../../types/database.ts", import.meta.url), "utf8");
+  const copyMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260729220000_flexible_itinerary_workflow.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  for (const table of [
+    "day_route_plans",
+    "day_route_stops",
+    "day_route_legs",
+    "day_route_calculations",
+  ]) {
+    assert.match(migration, new RegExp(`alter table public\\.${table} enable row level security`));
+    assert.match(migration, new RegExp(`grant select on table public\\.${table} to authenticated`));
+    assert.match(migration, new RegExp(`revoke all on table public\\.${table} from anon`));
+    assert.match(databaseTypes, new RegExp(`${table}: \\{`));
+  }
+
+  assert.match(migration, /references public\.trip_days \(id, variant_id\) on delete cascade/);
+  assert.match(
+    migration,
+    /item_id uuid not null references public\.itinerary_items \(id\) on delete cascade/,
+  );
+  assert.doesNotMatch(migration, /unique \(plan_id, item_id\)/);
+  assert.match(migration, /security definer[\s\S]*set search_path = ''/);
+  assert.match(migration, /not between 2 and 20/);
+  assert.match(migration, /item\.type not in \('activity', 'meal', 'hotel'\)/);
+  assert.match(migration, /Only one Hotel may repeat, exactly at the first and final positions/);
+  assert.match(migration, /count\(distinct \(place\.latitude, place\.longitude\)\)/);
+  assert.match(migration, /mode_count <> submitted_count - 1/);
+  assert.match(migration, /and variant\.is_primary/);
+  assert.match(hardening, /from anon/);
+  assert.doesNotMatch(copyMigration, /day_route_plans|day_route_stops|day_route_legs/);
+
+  for (const mode of routeLegModes) {
+    assert.match(migration, new RegExp(`'${mode}'`));
+  }
+});
 
 test("create accepts missing, start-only, and end-only time", () => {
   assert.equal(createItineraryItemSchema.safeParse(base).success, true);
@@ -83,6 +694,646 @@ test("map marker dates merge consecutive day intervals", () => {
     ]),
     "Day 2–3",
   );
+});
+
+test("overview keeps every City occurrence and gives same-day stages the first date label", () => {
+  const city = (id: string, placeId: string, sortOrder: number, title: string) =>
+    ({
+      id,
+      place: {
+        formattedAddress: `${title} address`,
+        id: placeId,
+        latitude: sortOrder + 10,
+        longitude: sortOrder + 20,
+      },
+      sort_order: sortOrder,
+      title,
+      type: "location",
+    }) as unknown as ItineraryItem;
+  const activity = {
+    ...city("activity", "museum", 0, "Museum"),
+    type: "activity",
+  } as unknown as ItineraryItem;
+  const days = [
+    { day_number: 3, id: "day-3", items: [city("berlin-3", "berlin", 0, "Berlin")] },
+    { day_number: 2, id: "day-2", items: [activity] },
+    {
+      date: "2026-08-02",
+      day_number: 1,
+      id: "day-1",
+      items: [
+        city("paris-2", "paris", 2, "Paris stay"),
+        city("paris-1", "paris", 1, "Paris arrival"),
+        city("london", "london", 3, "London"),
+      ],
+    },
+    { day_number: 4, id: "day-4", items: [city("paris-4", "paris", 0, "Paris return")] },
+  ] as unknown as PlannerDay[];
+
+  const stages = deriveOverviewStages(days);
+  assert.deepEqual(
+    stages.map(({ dayRangeLabel, firstDayLabel, entries, placeId, position }) => ({
+      firstDayLabel,
+      dayRangeLabel,
+      itemIds: entries.map(({ itemId }) => itemId),
+      placeId,
+      position,
+    })),
+    [
+      {
+        dayRangeLabel: "Aug 2",
+        firstDayLabel: "Aug 2",
+        itemIds: ["paris-1"],
+        placeId: "paris",
+        position: 1,
+      },
+      {
+        dayRangeLabel: "Aug 2",
+        firstDayLabel: "Aug 2",
+        itemIds: ["paris-2"],
+        placeId: "paris",
+        position: 2,
+      },
+      {
+        dayRangeLabel: "Aug 2",
+        firstDayLabel: "Aug 2",
+        itemIds: ["london"],
+        placeId: "london",
+        position: 3,
+      },
+      {
+        dayRangeLabel: "Day 3",
+        firstDayLabel: "Day 3",
+        itemIds: ["berlin-3"],
+        placeId: "berlin",
+        position: 4,
+      },
+      {
+        dayRangeLabel: "Day 4",
+        firstDayLabel: "Day 4",
+        itemIds: ["paris-4"],
+        placeId: "paris",
+        position: 5,
+      },
+    ],
+  );
+  assert.deepEqual(
+    stages.slice(0, 3).map(({ firstDayLabel }) => firstDayLabel),
+    ["Aug 2", "Aug 2", "Aug 2"],
+  );
+  assert.equal(neighboringCityConflict(orderedCityOccurrences(days))?.to.itemId, "paris-2");
+});
+
+test("overview allows the same City across days and omits the no-travel stay boundary", () => {
+  const days = [
+    {
+      day_number: 1,
+      items: [
+        {
+          id: "rome-1",
+          place: { id: "rome", latitude: 41.9, longitude: 12.5 },
+          sort_order: 0,
+          title: "Rome",
+          type: "location",
+        },
+      ],
+    },
+    { day_number: 2, items: [] },
+    {
+      day_number: 3,
+      items: [
+        {
+          id: "rome-3",
+          place: { id: "rome", latitude: 41.9, longitude: 12.5 },
+          sort_order: 0,
+          title: "Rome",
+          type: "location",
+        },
+      ],
+    },
+  ] as unknown as PlannerDay[];
+  const stages = deriveOverviewStages(days);
+  assert.deepEqual(
+    stages.map(({ dayRangeLabel }) => dayRangeLabel),
+    ["Day 1", "Day 3"],
+  );
+  assert.deepEqual(
+    stages.map(({ entries }) => entries[0].itemId),
+    ["rome-1", "rome-3"],
+  );
+  assert.equal(neighboringCityConflict(orderedCityOccurrences(days)), null);
+  assert.equal(isOverviewRouteLeg(stages[0], stages[1]), false);
+  assert.deepEqual(buildOverviewRouteLines(stages, []), []);
+});
+
+test("overview keeps real legs around a repeated cross-day City boundary", () => {
+  const days = [
+    {
+      day_number: 1,
+      id: "day-1",
+      items: [
+        {
+          id: "city-a",
+          place: { id: "place-a", latitude: 1, longitude: 1 },
+          sort_order: 0,
+          title: "A",
+          type: "location",
+        },
+        {
+          id: "city-b-1",
+          place: { id: "place-b", latitude: 2, longitude: 2 },
+          sort_order: 1,
+          title: "B",
+          type: "location",
+        },
+      ],
+    },
+    {
+      day_number: 2,
+      id: "day-2",
+      items: [
+        {
+          id: "city-b-2",
+          place: { id: "place-b", latitude: 2, longitude: 2 },
+          sort_order: 0,
+          title: "B",
+          type: "location",
+        },
+        {
+          id: "city-c",
+          place: { id: "place-c", latitude: 3, longitude: 3 },
+          sort_order: 1,
+          title: "C",
+          type: "location",
+        },
+      ],
+    },
+  ] as unknown as PlannerDay[];
+  const stages = deriveOverviewStages(days);
+  assert.equal(neighboringCityConflict(orderedCityOccurrences(days)), null);
+  assert.deepEqual(
+    buildOverviewRouteLines(stages, []).map(({ position }) => position),
+    [1, 3],
+  );
+  assert.deepEqual(deriveOverviewDefaultModes(days, stages), [
+    "self_driving",
+    undefined,
+    "self_driving",
+  ]);
+});
+
+test("neighboring City validation rejects only adjacent identical places", () => {
+  const days = [
+    {
+      day_number: 1,
+      id: "day-1",
+      items: [
+        {
+          id: "city-a",
+          place: { id: "place-a", latitude: 1, longitude: 1 },
+          sort_order: 0,
+          title: "A",
+          type: "location",
+        },
+        {
+          id: "city-b",
+          place: { id: "place-b", latitude: 2, longitude: 2 },
+          sort_order: 1,
+          title: "B",
+          type: "location",
+        },
+      ],
+    },
+  ] as unknown as PlannerDay[];
+  assert.equal(
+    prospectiveNeighboringCityConflict(days, [
+      {
+        dayId: "day-1",
+        itemId: "new-a",
+        placeKey: "place:place-a",
+        sortOrder: 2,
+        title: "A again",
+      },
+    ]),
+    null,
+  );
+  assert.ok(
+    prospectiveNeighboringCityConflict(days, [
+      {
+        dayId: "day-1",
+        itemId: "new-b",
+        placeKey: "place:place-b",
+        sortOrder: 2,
+        title: "B again",
+      },
+    ]),
+  );
+  assert.equal(
+    prospectiveNeighboringCityConflict(
+      [...days, { day_number: 2, id: "day-2", items: [] } as unknown as PlannerDay],
+      [
+        {
+          dayId: "day-2",
+          itemId: "next-day-b",
+          placeKey: "place:place-b",
+          sortOrder: 0,
+          title: "B next day",
+        },
+      ],
+    ),
+    null,
+  );
+  const withReturn = structuredClone(days) as PlannerDay[];
+  withReturn[0].items.push({
+    ...withReturn[0].items[0],
+    id: "city-a-return",
+    sort_order: 2,
+  });
+  assert.ok(neighboringCityConflictAfterRemoving(withReturn, ["city-b"]));
+});
+
+test("Overview starts with straight previews and replaces only calculated City legs", () => {
+  const stages = deriveOverviewStages([
+    {
+      day_number: 1,
+      items: [
+        {
+          id: "city-a",
+          place: { id: "place-a", latitude: 38.5, longitude: -120.2 },
+          sort_order: 0,
+          title: "City A",
+          type: "location",
+        },
+      ],
+    },
+    {
+      day_number: 2,
+      items: [
+        {
+          id: "city-b",
+          place: { id: "place-b", latitude: 40.7, longitude: -120.95 },
+          sort_order: 0,
+          title: "City B",
+          type: "location",
+        },
+      ],
+    },
+  ] as unknown as PlannerDay[]);
+
+  const [preview] = buildOverviewRouteLines(stages, []);
+  assert.equal(preview.dashed, true);
+  assert.deepEqual(preview.path, [
+    { lat: 38.5, lng: -120.2 },
+    { lat: 40.7, lng: -120.95 },
+  ]);
+
+  const [calculated] = buildOverviewRouteLines(stages, [
+    {
+      computedAt: "2026-08-02T00:00:00.000Z",
+      distanceMeters: 1_000,
+      durationSeconds: 600,
+      geometry: { encodedPolyline: "_p~iF~ps|U_ulLnnqC", source: "google" },
+      legSignature: "overview-leg",
+      mode: "walk",
+      position: 1,
+      providerMode: "WALK",
+      warnings: [],
+    },
+  ]);
+  assert.equal(calculated.dashed, false);
+  assert.deepEqual(calculated.path, [
+    { lat: 38.5, lng: -120.2 },
+    { lat: 40.7, lng: -120.95 },
+  ]);
+});
+
+test("Day map City layer shows same-day City transfers separately from route stops", () => {
+  const day = {
+    date: "2026-08-02",
+    day_number: 1,
+    id: "day-1",
+    items: [
+      {
+        id: "city-a",
+        place: { id: "place-a", latitude: 38.5, longitude: -120.2 },
+        sort_order: 0,
+        title: "City A",
+        type: "location",
+      },
+      {
+        id: "city-b",
+        place: { id: "place-b", latitude: 40.7, longitude: -120.95 },
+        sort_order: 1,
+        title: "City B",
+        type: "location",
+      },
+      {
+        id: "activity",
+        place: { id: "activity-place", latitude: 39, longitude: -121 },
+        sort_order: 2,
+        title: "Museum",
+        type: "activity",
+      },
+    ],
+  } as unknown as PlannerDay;
+  const stages = deriveOverviewStages([day]);
+  const cityMarkers = buildDayCityMarkers(day, stages);
+  assert.equal(cityMarkers.length, 2);
+  assert.deepEqual(
+    cityMarkers.map(({ appearance, label }) => ({ appearance, label })),
+    [
+      { appearance: "day-city", label: "Aug 2" },
+      { appearance: "day-city", label: "Aug 2" },
+    ],
+  );
+  const [cityLine] = buildDayCityRouteLines(day, stages, []);
+  assert.equal(cityLine.color, "#2563eb");
+  assert.equal(cityLine.dashed, true);
+  assert.equal(cityLine.routeLayer, "city");
+  assert.equal(buildDayRouteMarkers(day, []).length, 1);
+});
+
+test("Day route markers include only eligible places and combine repeated Hotel positions", () => {
+  const item = (id: string, type: string, placeId: string | null, sortOrder: number) =>
+    ({
+      id,
+      place: placeId
+        ? {
+            displayName: id,
+            id: placeId,
+            latitude: 40 + sortOrder,
+            longitude: -70 - sortOrder,
+          }
+        : null,
+      sort_order: sortOrder,
+      title: id,
+      type,
+    }) as unknown as ItineraryItem;
+  const day = {
+    day_number: 2,
+    id: ids.day,
+    items: [
+      item("city", "location", "city-place", 0),
+      item("hotel", "hotel", "hotel-place", 1),
+      item("activity", "activity", "activity-place", 2),
+      item("meal-no-place", "meal", null, 3),
+      item("transport", "transport", "transport-place", 4),
+    ],
+  } as unknown as PlannerDay;
+
+  assert.deepEqual(
+    eligibleDayRouteItems(day).map(({ id }) => id),
+    ["hotel", "activity"],
+  );
+  const markers = buildDayRouteMarkers(day, ["hotel", "activity", "hotel"]);
+  assert.equal(markers.length, 2);
+  assert.equal(markers.find(({ itemIds }) => itemIds.includes("hotel"))?.label, "1 · 3");
+  assert.equal(
+    markers.find(({ itemIds }) => itemIds.includes("activity"))?.appearance,
+    "route-planned",
+  );
+});
+
+test("Day route renders Google legs solid and straight fallbacks dashed", () => {
+  const calculation = {
+    calculatedLegs: [
+      {
+        geometry: { encodedPolyline: "_p~iF~ps|U_ulLnnqC", source: "google" },
+        legSignature: "google-leg",
+        position: 1,
+      },
+      {
+        geometry: {
+          destination: { latitude: 38, longitude: -121 },
+          origin: { latitude: 37, longitude: -122 },
+          source: "straight",
+        },
+        legSignature: "straight-leg",
+        position: 2,
+      },
+    ],
+  } as unknown as DayRouteCalculation;
+  const lines = buildDayRouteLines(calculation);
+  assert.equal(lines.length, 2);
+  assert.equal(lines[0].dashed, false);
+  assert.equal(lines[1].dashed, true);
+  assert.deepEqual(lines[1].path, [
+    { lat: 37, lng: -122 },
+    { lat: 38, lng: -121 },
+  ]);
+});
+
+test("route status ignores display changes and detects coordinate, deletion, and place changes", () => {
+  const item = (id: string, latitude: number, longitude: number) =>
+    ({
+      day_id: ids.day,
+      id,
+      place: { displayName: id, id: `${id}-place`, latitude, longitude },
+      start_time: "09:00:00",
+      title: id,
+      trip_id: ids.trip,
+      type: id === "hotel" ? "hotel" : "activity",
+      variant_id: ids.variant,
+    }) as unknown as ItineraryItem;
+  const workspace = {
+    days: [
+      {
+        day_number: 1,
+        id: ids.day,
+        items: [item("hotel", 37.7, -122.4), item("museum", 37.8, -122.3)],
+      },
+    ],
+    routePlans: [],
+    variant: { id: ids.variant, is_primary: true, trip_id: ids.trip },
+  } as unknown as PlannerWorkspace;
+  const now = "2026-08-02T00:00:00.000Z";
+  const plan: DayRoutePlan = {
+    calculation: null,
+    created_at: now,
+    day_id: ids.day,
+    id: "plan",
+    legs: [
+      {
+        created_at: now,
+        from_stop_id: "stop-1",
+        id: "leg-1",
+        mode: "walk",
+        plan_id: "plan",
+        position: 1,
+        to_stop_id: "stop-2",
+        updated_at: now,
+      },
+    ],
+    stops: [
+      {
+        created_at: now,
+        id: "stop-1",
+        item_id: "hotel",
+        plan_id: "plan",
+        position: 1,
+        updated_at: now,
+      },
+      {
+        created_at: now,
+        id: "stop-2",
+        item_id: "museum",
+        plan_id: "plan",
+        position: 2,
+        updated_at: now,
+      },
+    ],
+    trip_id: ids.trip,
+    updated_at: now,
+    variant_id: ids.variant,
+  };
+  workspace.routePlans = [plan];
+  const resolved = resolveRouteCalculationConfig(workspace, plan);
+  assert.ok(resolved.config);
+  plan.calculation = {
+    calculatedLegs: [],
+    computed_at: now,
+    config_signature: buildRouteConfigSignature(resolved.config),
+    plan_id: plan.id,
+    provider_schema_version: "routes-v1",
+    total_distance_meters: 0,
+    total_duration_seconds: 0,
+  };
+  assert.equal(dayRouteStatus(workspace, plan), "current");
+
+  workspace.days[0].items[0].title = "Renamed hotel";
+  workspace.days[0].items[0].start_time = "14:00:00";
+  assert.equal(dayRouteStatus(workspace, plan), "current");
+  workspace.days[0].items[0].place!.latitude = 37.71;
+  assert.equal(dayRouteStatus(workspace, plan), "stale");
+  workspace.days[0].items[0].place = null;
+  assert.equal(dayRouteStatus(workspace, plan), "needs_edit");
+  workspace.days[0].items = workspace.days[0].items.filter(({ id }) => id !== "hotel");
+  assert.equal(dayRouteStatus(workspace, plan), "needs_edit");
+});
+
+test("Overview routing is explicit and map interactions stay synchronized", async () => {
+  const overview = await readFile(new URL("../routes/overview.ts", import.meta.url), "utf8");
+  const overviewHook = await readFile(
+    new URL("../routes/use-overview-route.ts", import.meta.url),
+    "utf8",
+  );
+  const overviewUi = await readFile(
+    new URL("../routes/overview-route-overlay.tsx", import.meta.url),
+    "utf8",
+  );
+  const actions = await readFile(new URL("../routes/actions.ts", import.meta.url), "utf8");
+  const itemActions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  const dayActions = await readFile(new URL("./day-actions.ts", import.meta.url), "utf8");
+  const mapHook = await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
+  const interactions = await readFile(
+    new URL("./hooks/use-planner-interactions.ts", import.meta.url),
+    "utf8",
+  );
+  let mapShell = await readFile(
+    new URL("./components/planner-map-shell.tsx", import.meta.url),
+    "utf8",
+  );
+  mapShell += await readFile(
+    new URL("./components/planner-map-controls.tsx", import.meta.url),
+    "utf8",
+  );
+  mapShell += await readFile(
+    new URL("./components/planner-map-selected-place.tsx", import.meta.url),
+    "utf8",
+  );
+  let routeUi = await readFile(new URL("../routes/day-route-overlay.tsx", import.meta.url), "utf8");
+  routeUi += await readFile(new URL("../routes/day-route-editor.tsx", import.meta.url), "utf8");
+  routeUi += await readFile(new URL("../routes/route-icon-button.tsx", import.meta.url), "utf8");
+  const canvas = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
+  assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
+  assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
+  assert.match(overviewUi, /Not set · straight line/);
+  assert.match(overviewUi, /overviewRouteModes\.map/);
+  assert.match(overviewUi, /!hasPendingCalculation/);
+  assert.match(overviewUi, /Calculate route/);
+  assert.match(overviewUi, /hasPendingCalculation \? "default" : "outline"/);
+  assert.match(overviewUi, /Route details/);
+  assert.match(overviewUi, /Collapse/);
+  assert.match(overviewUi, /Close Overview panel/);
+  assert.doesNotMatch(overviewUi, /Overview route leg times/);
+  assert.match(overviewUi, /Duration unavailable/);
+  assert.match(overviewHook, /mode && !calculatedLeg/);
+  assert.match(overviewHook, /isOverviewRouteLeg/);
+  assert.match(actions, /calculateOverviewRoute/);
+  assert.match(actions, /mapWithConcurrency\(tasks, 3\)/);
+  assert.match(actions, /isOverviewRouteLeg/);
+  assert.match(actions, /is_trip_owner/);
+  assert.match(mapHook, /day-route:\$\{dayRoute\.activeDay\?\.id/);
+  assert.match(mapHook, /firstCity/);
+  assert.match(interactions, /hasDayRoute\(day\.id\) \? "day_route" : "overview"/);
+  assert.match(interactions, /routeExists \? "day_route" : "overview"/);
+  assert.match(interactions, /setMapMode\("overview"\)/);
+  assert.match(mapShell, /Day map layers/);
+  assert.match(mapShell, /City transfers/);
+  assert.match(mapShell, /Day stops/);
+  assert.match(mapShell, /closeOverviewPanel[\s\S]*onMapSelectionClear/);
+  assert.match(mapShell, /closeDayPanel[\s\S]*onMapSelectionClear/);
+  assert.match(mapShell, /PanelBottomOpen/);
+  assert.match(mapShell, /Open Overview panel/);
+  assert.match(mapShell, /Open day route panel/);
+  assert.match(mapShell, /title="Edit item"/);
+  assert.doesNotMatch(mapShell, /Show Route A panel/);
+  assert.match(mapShell, /DayRouteOverlay[\s\S]*onClose=\{closeDayPanel\}/);
+  assert.doesNotMatch(mapShell, /day-route-place-card/);
+  assert.match(routeUi, /Discard changes and collapse route editor/);
+  assert.match(routeUi, /Discard changes and return to route summary/);
+  assert.match(routeUi, /onBack=\{route\.cancelEditing\}/);
+  assert.match(routeUi, /Close route panel/);
+  assert.match(routeUi, /route\.openEdit/);
+  assert.match(routeUi, /label="Edit route"[\s\S]*variant="secondary"/);
+  assert.match(routeUi, /label="Create route"[\s\S]*variant="primary"/);
+  assert.match(routeUi, /primary: "bg-primary text-primary-foreground/);
+  assert.match(routeUi, /secondary: "border bg-background text-foreground/);
+  assert.match(routeUi, /destructive: "text-destructive hover:bg-destructive\/10"/);
+  assert.match(routeUi, /useState\(true\)/);
+  assert.match(routeUi, /aria-expanded=\{unplannedOpen\}/);
+  assert.match(routeUi, /Add \$\{item\.title\} to route/);
+  assert.doesNotMatch(routeUi, /View route|requestFit/);
+  assert.match(routeUi, /Manual order is used/);
+  assert.match(routeUi, /Save & calculate/);
+  assert.doesNotMatch(
+    routeUi,
+    /[">]Route [BC][<"]|alternative route|schedule selector|time order/i,
+  );
+  assert.doesNotMatch(routeUi, /drag(handle)?|draggable/i);
+  assert.doesNotMatch(canvas, /draggable|editable/);
+  assert.match(canvas, /day-city/);
+  assert.match(canvas, /#2563eb/);
+  assert.match(itemActions, /prospectiveNeighboringCityConflict/);
+  assert.match(dayActions, /prospectiveNeighboringCityConflict/);
+  assert.match(actions, /neighboringOverviewCityConflict/);
+});
+
+test("Routes server key stays in the server-only provider and out of client modules", async () => {
+  const serverProvider = await readFile(
+    new URL("../../lib/providers/routes/google-routes.server.ts", import.meta.url),
+    "utf8",
+  );
+  const packageJson = JSON.parse(
+    await readFile(new URL("../../../package.json", import.meta.url), "utf8"),
+  ) as { scripts?: Record<string, string> };
+  const clientSources = await Promise.all(
+    [
+      "../routes/day-route-overlay.tsx",
+      "../routes/use-day-route.ts",
+      "../routes/overview-route-overlay.tsx",
+      "../routes/use-overview-route.ts",
+      "./hooks/use-planner-map.ts",
+      "./components/planner-map-shell.tsx",
+      "../maps/planner-map-canvas.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  assert.match(serverProvider, /import "server-only"/);
+  assert.match(serverProvider, /process\.env\.GOOGLE_ROUTES_API_KEY/);
+  assert.doesNotMatch(clientSources.join("\n"), /GOOGLE_ROUTES_API_KEY|process\.env/);
+  assert.match(packageJson.scripts?.dev ?? "", /node --use-env-proxy/);
+  assert.match(packageJson.scripts?.start ?? "", /node --use-env-proxy/);
 });
 
 test("edit and delete inputs validate", () => {
@@ -320,6 +1571,11 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /replaceCategoryItems/);
   assert.match(workspace, /sourceItemIds:\s*sourceDay\.items\s*\.filter/);
   assert.match(workspace, /startRangeSelection/);
+  assert.match(
+    workspace,
+    /initialPlannerSelection\([\s\S]*initialWorkspace\.days\.length[\s\S]*id === "city"/,
+  );
+  assert.match(workspace, /useState<GridCoordinate>\(\(\) => initialSelection\)/);
   assert.match(workspace, /window\.addEventListener\("pointermove", move\)/);
   assert.match(workspace, /onDoubleClick=\{openEditorFromDoubleClick\}/);
   assert.match(workspace, /data-edit-item=\{item\.id\}/);
@@ -397,6 +1653,10 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(styles, /planner-editor-sheet input,[\s\S]*font-size: 16px/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
+  assert.match(
+    styles,
+    /\.map-panel-reopen \{\s*bottom: max\(2\.75rem, calc\(env\(safe-area-inset-bottom\)/,
+  );
   assert.match(workspace, /selectedMapItem/);
   assert.match(workspace, /selectedId=\{selectedMapItem\?\.id\}/);
   assert.match(workspace, /planner-map-sheet/);
@@ -533,12 +1793,21 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
     "utf8",
   );
   const map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
-  const mapShell = await readFile(
+  let mapShell = await readFile(
     new URL("./components/planner-map-shell.tsx", import.meta.url),
+    "utf8",
+  );
+  mapShell += await readFile(
+    new URL("./components/planner-map-controls.tsx", import.meta.url),
+    "utf8",
+  );
+  mapShell += await readFile(
+    new URL("./components/planner-map-selected-place.tsx", import.meta.url),
     "utf8",
   );
   workspace += mapShell;
   workspace += await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
+  workspace += await readFile(new URL("../routes/day-route-map.ts", import.meta.url), "utf8");
   const places = await readFile(
     new URL("../places/place-autocomplete.tsx", import.meta.url),
     "utf8",
@@ -554,10 +1823,11 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(places, /placeFields/);
   assert.match(workspace, /kind:/);
   assert.match(map, /markerStyles/);
-  assert.match(map, /glyph=\{style\.glyph\}/);
-  assert.match(workspace, /groupKey = `\$\{item\.place\.id\}:\$\{entry\.kind\}`/);
-  assert.match(workspace, /entries\.push\(entry\)/);
-  assert.match(mapShell, /Map pin filters/);
+  assert.match(map, /const glyph =/);
+  assert.match(map, /glyph=\{glyph\}/);
+  assert.match(workspace, /const key = item\.place!\.id/);
+  assert.match(workspace, /existing\.entries\.push\(entry\)/);
+  assert.match(mapShell, /aria-label="Map level"/);
   assert.match(mapShell, /mergeMarkerDateRanges\(marker\.entries\)/);
   assert.match(map, /itemIds\.includes\(selectedId\)/);
 });

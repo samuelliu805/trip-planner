@@ -16,7 +16,7 @@ import {
   normalizedTimes,
   scheduleKind,
 } from "@/features/itinerary/mutation-helpers";
-import type { MutationResult } from "@/features/itinerary/types";
+import type { MutationResult, PlannerWorkspace } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, TablesInsert, TablesUpdate } from "@/types/database";
 import {
@@ -26,6 +26,58 @@ import {
   replaceItemLinks,
   withPlace,
 } from "@/features/itinerary/action-helpers";
+import {
+  cityInputPlaceKey,
+  neighboringCityError,
+  neighboringCityConflictAfterRemoving,
+  prospectiveNeighboringCityConflict,
+} from "@/features/routes/city-order";
+
+function prospectiveCityError(
+  workspace: PlannerWorkspace,
+  input: {
+    dayId: string;
+    itemId?: string;
+    placeId?: string | null;
+    providerPlaceId?: string;
+    title: string;
+  },
+) {
+  const day = workspace.days.find(({ id }) => id === input.dayId);
+  if (!day) return "The selected City day is unavailable.";
+  const current = input.itemId
+    ? workspace.days.flatMap(({ items }) => items).find(({ id }) => id === input.itemId)
+    : undefined;
+  const placeKey = cityInputPlaceKey(workspace.days, input.placeId, input.providerPlaceId);
+  if (!placeKey) return "Choose a city from Google Maps.";
+  const conflict = prospectiveNeighboringCityConflict(workspace.days, [
+    {
+      dayId: day.id,
+      itemId: input.itemId ?? "prospective-city",
+      placeKey,
+      sortOrder:
+        current?.sort_order ?? Math.max(-1, ...day.items.map(({ sort_order }) => sort_order)) + 1,
+      title: input.title,
+    },
+  ]);
+  return conflict ? neighboringCityError() : null;
+}
+
+async function validateProspectiveCity(input: {
+  dayId: string;
+  itemId?: string;
+  placeId?: string | null;
+  providerPlaceId?: string;
+  title: string;
+  tripId: string;
+  variantId?: string;
+}) {
+  const { data: workspace, error } = await getPlannerWorkspace(input.tripId);
+  if (error || !workspace) return error ?? "The City order could not be checked.";
+  if (input.variantId && workspace.variant.id !== input.variantId)
+    return "Cities can only be changed within the primary Route A.";
+  return prospectiveCityError(workspace, input);
+}
 
 export async function loadPlannerWorkspace(tripId: string) {
   return getPlannerWorkspace(tripId);
@@ -36,6 +88,18 @@ export async function createItineraryItem(
 ): Promise<MutationResult> {
   const parsed = createItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  if (parsed.data.type === "location") {
+    const cityError = await validateProspectiveCity({
+      dayId: parsed.data.dayId,
+      placeId: parsed.data.placeId,
+      providerPlaceId: parsed.data.placeSnapshot?.providerPlaceId,
+      title: parsed.data.title,
+      tripId: parsed.data.tripId,
+      variantId: parsed.data.variantId,
+    });
+    if (cityError) return { error: cityError };
+  }
 
   const supabase = await createClient();
   let persistedPlaceId: string | null = null;
@@ -122,6 +186,24 @@ export async function updateItineraryItem(
 ): Promise<MutationResult> {
   const parsed = updateItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  if (parsed.data.type === "location") {
+    const currentWorkspace = await getPlannerWorkspace(parsed.data.tripId);
+    const currentItem = currentWorkspace.data?.days
+      .flatMap(({ items }) => items)
+      .find(({ id }) => id === parsed.data.id);
+    const cityError =
+      currentWorkspace.error || !currentWorkspace.data || !currentItem
+        ? (currentWorkspace.error ?? "The City order could not be checked.")
+        : prospectiveCityError(currentWorkspace.data, {
+            dayId: parsed.data.dayId ?? currentItem.day_id,
+            itemId: parsed.data.id,
+            placeId: parsed.data.placeId,
+            providerPlaceId: parsed.data.placeSnapshot?.providerPlaceId,
+            title: parsed.data.title ?? currentItem.title,
+          });
+    if (cityError) return { error: cityError };
+  }
 
   const supabase = await createClient();
   let persistedPlaceId: string | null | undefined;
@@ -241,6 +323,23 @@ export async function deleteItineraryItem(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
+  const { data: currentItem, error: readError } = await supabase
+    .from("itinerary_items")
+    .select("id, type")
+    .eq("id", parsed.data.id)
+    .eq("trip_id", parsed.data.tripId)
+    .maybeSingle();
+  if (readError || !currentItem)
+    return {
+      error: mutationError(readError?.message ?? "You do not have permission to delete this item."),
+    };
+  if (currentItem.type === "location") {
+    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+    if (workspaceResult.error || !workspaceResult.data)
+      return { error: workspaceResult.error ?? "The City order could not be checked." };
+    if (neighboringCityConflictAfterRemoving(workspaceResult.data.days, [currentItem.id]))
+      return { error: neighboringCityError() };
+  }
   const { data, error } = await supabase
     .from("itinerary_items")
     .delete()

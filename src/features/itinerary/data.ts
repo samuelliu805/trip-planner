@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import { isRouteLegMode } from "@/features/routes/route-config";
+import { parseCalculatedRouteLegs } from "@/features/routes/results";
+import type { DayRouteCalculation, DayRouteLeg, DayRoutePlan } from "@/features/routes/types";
+import type { Tables } from "@/types/database";
 
 import type { PlannerWorkspace } from "./types";
 
@@ -16,7 +20,11 @@ export async function getPlannerWorkspace(
   if (variantError || !variant)
     return { data: null, error: variantError?.message ?? "Primary Route A was not found." };
 
-  const [{ data: days, error: daysError }, { data: items, error: itemsError }] = await Promise.all([
+  const [
+    { data: days, error: daysError },
+    { data: items, error: itemsError },
+    { data: routePlans, error: routePlansError },
+  ] = await Promise.all([
     supabase
       .from("trip_days")
       .select("id, variant_id, day_number, date, title, notes")
@@ -31,13 +39,56 @@ export async function getPlannerWorkspace(
       .eq("variant_id", variant.id)
       .order("day_id", { ascending: true })
       .order("sort_order", { ascending: true }),
+    supabase
+      .from("day_route_plans")
+      .select("*")
+      .eq("trip_id", tripId)
+      .eq("variant_id", variant.id)
+      .order("day_id", { ascending: true }),
   ]);
 
-  if (daysError || itemsError)
+  if (daysError || itemsError || routePlansError)
     return {
       data: null,
-      error: daysError?.message ?? itemsError?.message ?? "Could not load the planner.",
+      error:
+        daysError?.message ??
+        itemsError?.message ??
+        routePlansError?.message ??
+        "Could not load the planner.",
     };
+
+  const planIds = (routePlans ?? []).map(({ id }) => id);
+  let routeStops: Tables<"day_route_stops">[] = [];
+  let routeLegs: Tables<"day_route_legs">[] = [];
+  let routeCalculations: Tables<"day_route_calculations">[] = [];
+  if (planIds.length) {
+    const [stopsResult, legsResult, calculationsResult] = await Promise.all([
+      supabase
+        .from("day_route_stops")
+        .select("*")
+        .in("plan_id", planIds)
+        .order("position", { ascending: true }),
+      supabase
+        .from("day_route_legs")
+        .select("*")
+        .in("plan_id", planIds)
+        .order("position", { ascending: true }),
+      supabase.from("day_route_calculations").select("*").in("plan_id", planIds),
+    ]);
+    if (stopsResult.error || legsResult.error || calculationsResult.error) {
+      return {
+        data: null,
+        error:
+          stopsResult.error?.message ??
+          legsResult.error?.message ??
+          calculationsResult.error?.message ??
+          "Could not load day routes.",
+      };
+    }
+    routeStops = stopsResult.data ?? [];
+    routeLegs = legsResult.data ?? [];
+    routeCalculations = calculationsResult.data ?? [];
+  }
 
   const itemsByDay = new Map<string, import("./types").ItineraryItem[]>();
   for (const row of items ?? []) {
@@ -67,6 +118,36 @@ export async function getPlannerWorkspace(
     data: {
       variant,
       days: (days ?? []).map((day) => ({ ...day, items: itemsByDay.get(day.id) ?? [] })),
+      routePlans: (routePlans ?? []).map((plan): DayRoutePlan => {
+        const calculation = routeCalculations.find(({ plan_id }) => plan_id === plan.id);
+        const calculatedLegs = calculation
+          ? parseCalculatedRouteLegs(calculation.calculated_legs)
+          : null;
+        const normalizedCalculation: DayRouteCalculation | null =
+          calculation && calculatedLegs
+            ? {
+                computed_at: calculation.computed_at,
+                config_signature: calculation.config_signature,
+                plan_id: calculation.plan_id,
+                provider_schema_version: calculation.provider_schema_version,
+                total_distance_meters: calculation.total_distance_meters,
+                total_duration_seconds: calculation.total_duration_seconds,
+                calculatedLegs,
+              }
+            : null;
+        return {
+          ...plan,
+          calculation: normalizedCalculation,
+          legs: routeLegs
+            .filter(
+              (leg): leg is DayRouteLeg => leg.plan_id === plan.id && isRouteLegMode(leg.mode),
+            )
+            .sort((a, b) => a.position - b.position),
+          stops: routeStops
+            .filter(({ plan_id }) => plan_id === plan.id)
+            .sort((a, b) => a.position - b.position),
+        };
+      }),
     },
     error: null,
   };

@@ -14,58 +14,82 @@ import {
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { DayRouteUi } from "@/features/routes/use-day-route";
+import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 type PlannerSheetsProps = {
   copyDaysOpen: boolean;
   copyPending: boolean;
+  dayCityLayerAvailable: boolean;
+  dayMapLayer: DayMapLayer;
+  dayRoute: DayRouteUi;
   editor: EditorState | null;
   mapExpanded: boolean;
+  mapEmptyState?: { message: string; title: string };
+  mapLines: PlannerMapLine[];
+  mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
   onCopyDaysOpenChange: (open: boolean) => void;
   onCopyToSelectedDays: () => void;
+  onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditorClose: () => void;
+  onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
   onMapExpandedChange: (open: boolean) => void;
-  onMarkerClick: (id: string) => void;
+  onMarkerClick: (id?: string) => void;
+  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapSelectionClear: () => void;
   onSettingsOpenChange: (open: boolean) => void;
   onTargetDaysChange: (days: Set<string>) => void;
-  onToggleMarkerKind: (kind: MarkerKind) => void;
   selectedItem?: ItineraryItem;
+  overviewRoute: OverviewRouteUi;
   selectionSourceDayId?: string;
   settings: React.ReactNode;
   settingsOpen: boolean;
   targetDays: Set<string>;
   tripId: string;
   unavailableTransportModes: TransportMode[];
-  visibleMarkerKinds: Set<MarkerKind>;
+  mapViewportKey?: string;
   workspace: PlannerWorkspace;
 };
 
 export function PlannerSheets({
   copyDaysOpen,
   copyPending,
+  dayCityLayerAvailable,
+  dayMapLayer,
+  dayRoute,
   editor,
   mapExpanded,
+  mapEmptyState,
+  mapLines,
+  mapMode,
   mapMarkers,
   onCopyDaysOpenChange,
   onCopyToSelectedDays,
+  onDayMapLayerChange,
   onEditorClose,
+  onEditMapItem,
   onInteractionError,
   onMapExpandedChange,
   onMarkerClick,
+  onMapModeChange,
+  onMapSelectionClear,
   onSettingsOpenChange,
   onTargetDaysChange,
-  onToggleMarkerKind,
   selectedItem,
+  overviewRoute,
   selectionSourceDayId,
   settings,
   settingsOpen,
   targetDays,
   tripId,
   unavailableTransportModes,
-  visibleMarkerKinds,
+  mapViewportKey,
   workspace,
 }: PlannerSheetsProps) {
   return (
@@ -106,11 +130,21 @@ export function PlannerSheets({
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell
+              dayCityLayerAvailable={dayCityLayerAvailable}
+              dayMapLayer={dayMapLayer}
+              dayRoute={dayRoute}
+              emptyState={mapEmptyState}
+              lines={mapLines}
+              mapMode={mapMode}
               markers={mapMarkers}
               onMarkerClick={onMarkerClick}
-              onToggleKind={onToggleMarkerKind}
+              onDayMapLayerChange={onDayMapLayerChange}
+              onEditMapItem={onEditMapItem}
+              onMapModeChange={onMapModeChange}
+              onMapSelectionClear={onMapSelectionClear}
+              overviewRoute={overviewRoute}
               selectedId={selectedItem?.id}
-              visibleKinds={visibleMarkerKinds}
+              viewportKey={mapViewportKey}
             />
           </div>
         </SheetContent>

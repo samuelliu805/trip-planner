@@ -17,11 +17,18 @@ import {
 } from "@/features/itinerary/components/planner-config";
 import { selectionContains, type GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { DayRouteUi } from "@/features/routes/use-day-route";
+import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerMatrix({
   containerRef,
+  dayCityLayerAvailable,
+  dayMapLayer,
   dayMutationPending,
+  dayRoute,
   deleteItem,
   fillDragging,
   fillSourceRight,
@@ -29,12 +36,19 @@ export function PlannerMatrix({
   gridTemplate,
   handleCellKey,
   isFillDragging,
+  mapEmptyState,
+  mapLines,
+  mapMode,
   mapMarkers,
   moveItem,
   onMapExpand,
+  onDayMapLayerChange,
+  onEditMapItem,
   onMarkerClick,
-  onToggleMarkerKind,
+  onMapModeChange,
+  onMapSelectionClear,
   openEditorFromDoubleClick,
+  overviewRoute,
   removeDay,
   insertDay,
   selectedCount,
@@ -45,8 +59,7 @@ export function PlannerMatrix({
   selectionEnd,
   selectionEndRef,
   setEditor,
-  setSelectedItemId,
-  setSelectionAnchor,
+  selectItem,
   setSelectionEnd,
   setSplit,
   split,
@@ -54,12 +67,15 @@ export function PlannerMatrix({
   startRangeSelection,
   startResize,
   tripTitle,
-  visibleMarkerKinds,
+  mapViewportKey,
   visibleSelectionBounds,
   workspace,
 }: {
   containerRef: MutableRefObject<HTMLDivElement | null>;
+  dayCityLayerAvailable: boolean;
+  dayMapLayer: DayMapLayer;
   dayMutationPending: boolean;
+  dayRoute: DayRouteUi;
   deleteItem: (item: ItineraryItem) => Promise<void>;
   fillDragging: MutableRefObject<boolean>;
   fillSourceRight: MutableRefObject<number>;
@@ -74,6 +90,9 @@ export function PlannerMatrix({
   ) => void;
   insertDay: (position: number) => Promise<void>;
   isFillDragging: boolean;
+  mapEmptyState?: { message: string; title: string };
+  mapLines: PlannerMapLine[];
+  mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
   moveItem: (
     day: PlannerDay,
@@ -82,9 +101,13 @@ export function PlannerMatrix({
     direction: -1 | 1,
   ) => Promise<void>;
   onMapExpand: () => void;
-  onMarkerClick: (id: string) => void;
-  onToggleMarkerKind: (kind: MarkerKind) => void;
+  onDayMapLayerChange: (layer: DayMapLayer) => void;
+  onEditMapItem: (itemId: string) => void;
+  onMarkerClick: (id?: string) => void;
+  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapSelectionClear: () => void;
   openEditorFromDoubleClick: (event: React.MouseEvent<HTMLDivElement>) => void;
+  overviewRoute: OverviewRouteUi;
   removeDay: (id: string) => Promise<void>;
   selectedCount: number;
   selectDay: (row: number) => void;
@@ -94,8 +117,7 @@ export function PlannerMatrix({
   selectionEnd: GridCoordinate;
   selectionEndRef: MutableRefObject<GridCoordinate>;
   setEditor: Dispatch<SetStateAction<EditorState | null>>;
-  setSelectedItemId: Dispatch<SetStateAction<string | undefined>>;
-  setSelectionAnchor: Dispatch<SetStateAction<GridCoordinate>>;
+  selectItem: (item: ItineraryItem, coordinate: GridCoordinate) => void;
   setSelectionEnd: (coordinate: GridCoordinate) => void;
   setSplit: Dispatch<SetStateAction<number>>;
   split: number;
@@ -103,7 +125,7 @@ export function PlannerMatrix({
   startRangeSelection: (event: React.PointerEvent<HTMLDivElement>) => void;
   startResize: (event: React.PointerEvent<HTMLDivElement>) => void;
   tripTitle: string;
-  visibleMarkerKinds: Set<MarkerKind>;
+  mapViewportKey?: string;
   visibleSelectionBounds: { top: number; bottom: number; left: number; right: number };
   workspace: PlannerWorkspace;
 }) {
@@ -224,10 +246,8 @@ export function PlannerMatrix({
                             }
                             onMove={(direction) => void moveItem(day, items, itemIndex, direction)}
                             onSelect={() => {
-                              const coordinate = { row, column };
-                              setSelectionAnchor(coordinate);
-                              setSelectionEnd(coordinate);
-                              setSelectedItemId(item.id);
+                              if (item.id === selectedMapItem?.id) onMapSelectionClear();
+                              else selectItem(item, { row, column });
                             }}
                             selected={item.id === selectedMapItem?.id}
                           />
@@ -259,12 +279,22 @@ export function PlannerMatrix({
       </section>
       <PlannerDivider onResize={startResize} onSplitChange={setSplit} split={split} />
       <PlannerMapPane
+        dayCityLayerAvailable={dayCityLayerAvailable}
+        dayMapLayer={dayMapLayer}
+        dayRoute={dayRoute}
+        emptyState={mapEmptyState}
+        lines={mapLines}
+        mapMode={mapMode}
         markers={mapMarkers}
         onExpand={() => onMapExpand()}
+        onDayMapLayerChange={onDayMapLayerChange}
+        onEditMapItem={onEditMapItem}
         onMarkerClick={onMarkerClick}
-        onToggleKind={onToggleMarkerKind}
+        onMapModeChange={onMapModeChange}
+        onMapSelectionClear={onMapSelectionClear}
+        overviewRoute={overviewRoute}
         selectedId={selectedMapItem?.id}
-        visibleKinds={visibleMarkerKinds}
+        viewportKey={mapViewportKey}
       />
     </div>
   );

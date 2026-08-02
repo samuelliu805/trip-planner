@@ -1,0 +1,167 @@
+"use client";
+
+import { Pencil, Plus, Route, X } from "lucide-react";
+
+import { transportModeLabels } from "@/features/itinerary/types";
+
+import { DayRouteEditor } from "./day-route-editor";
+import {
+  DayRouteStatusBadge,
+  formatRouteDistance,
+  formatRouteDuration,
+  SelectedPlaceSlot,
+} from "./day-route-panel-ui";
+import { RouteIconButton } from "./route-icon-button";
+import type { DayRouteUi } from "./use-day-route";
+
+function DayRouteSummary({
+  onClose,
+  route,
+  selectedPlace,
+}: {
+  onClose: () => void;
+  route: DayRouteUi;
+  selectedPlace?: React.ReactNode;
+}) {
+  const calculation = route.plan?.calculation;
+  const stops = route.plan?.stops.length ?? 0;
+  const modes = [...new Set(route.plan?.legs.map(({ mode }) => transportModeLabels[mode]) ?? [])];
+  const missingDurations = calculation?.calculatedLegs
+    .filter(({ durationSeconds }) => durationSeconds === null)
+    .map(({ position }) => position);
+  const warnings = [
+    ...new Set(
+      calculation?.calculatedLegs.flatMap(({ warnings: legWarnings }) =>
+        legWarnings.map(({ message }) => message),
+      ) ?? [],
+    ),
+  ];
+  const transitEstimate = calculation?.calculatedLegs.some(
+    ({ estimateKind }) => estimateKind === "transit_current_service",
+  );
+
+  return (
+    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
+        <div className="mr-auto min-w-0">
+          <div className="flex items-center gap-2">
+            <Route className="size-4 text-primary" />
+            <p className="truncate text-sm font-semibold">
+              Day {route.activeDay?.day_number} · Route A
+            </p>
+            <DayRouteStatusBadge route={route} />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {stops} stops
+            {calculation ? ` · ${formatRouteDistance(calculation.total_distance_meters)}` : ""}
+            {calculation?.total_duration_seconds !== null &&
+            calculation?.total_duration_seconds !== undefined
+              ? ` · ${formatRouteDuration(calculation.total_duration_seconds)}`
+              : calculation
+                ? " · Duration incomplete"
+                : " · Not calculated"}
+            {modes.length ? ` · ${modes.join(", ")}` : ""}
+          </p>
+        </div>
+        <RouteIconButton
+          label="Edit route"
+          onClick={route.openEdit}
+          title="Edit route"
+          variant="secondary"
+        >
+          <Pencil className="size-4" />
+        </RouteIconButton>
+        <RouteIconButton label="Close route panel" onClick={onClose} title="Close panel">
+          <X className="size-4" />
+        </RouteIconButton>
+      </div>
+      {missingDurations?.length ? (
+        <p className="px-3 text-[11px] text-muted-foreground">
+          Duration unknown for {missingDurations.map((position) => `leg ${position}`).join(", ")}.
+        </p>
+      ) : null}
+      {transitEstimate ? (
+        <p className="px-3 text-[11px] text-muted-foreground">
+          Transit is an approximate current-service estimate, not an itinerary-time calculation.
+        </p>
+      ) : null}
+      {warnings.length ? (
+        <details className="px-3 text-[11px] text-amber-900">
+          <summary className="cursor-pointer">{warnings.length} route warning(s)</summary>
+          <ul className="mt-1 list-disc pl-4">
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {route.error ? (
+        <p
+          className="m-3 mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
+          role="alert"
+        >
+          {route.error}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+export function DayRouteOverlay({
+  onClose,
+  route,
+  selectedPlace,
+}: {
+  onClose: () => void;
+  route: DayRouteUi;
+  selectedPlace?: React.ReactNode;
+}) {
+  if (!route.activeDay)
+    return (
+      <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-4 text-center shadow-lg backdrop-blur">
+        <RouteIconButton
+          className="absolute right-2 top-2"
+          label="Close route panel"
+          onClick={onClose}
+          title="Close panel"
+        >
+          <X className="size-4" />
+        </RouteIconButton>
+        <p className="text-sm font-semibold">Select a day</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Choose a matrix day to view its eligible places.
+        </p>
+      </section>
+    );
+  if (route.editing)
+    return (
+      <DayRouteEditor onBack={route.cancelEditing} route={route} selectedPlace={selectedPlace} />
+    );
+  if (route.plan)
+    return <DayRouteSummary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
+  return (
+    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
+      <div className="flex flex-wrap items-center gap-3 px-3 py-2">
+        <div className="mr-auto">
+          <p className="text-sm font-semibold">Day {route.activeDay.day_number} · No day route</p>
+          <p className="text-xs text-muted-foreground">
+            Eligible saved places are shown in gray. Nothing is routed until you save.
+          </p>
+        </div>
+        <RouteIconButton
+          label="Create route"
+          onClick={route.openCreate}
+          title="Create route"
+          variant="primary"
+        >
+          <Plus className="size-4" />
+        </RouteIconButton>
+        <RouteIconButton label="Close route panel" onClick={onClose} title="Close panel">
+          <X className="size-4" />
+        </RouteIconButton>
+      </div>
+    </section>
+  );
+}
