@@ -1,20 +1,50 @@
-import type { Coordinates } from "@/lib/providers/maps/types";
+import type { Coordinates } from "../maps/types";
 
-export type TravelMode = "driving" | "walking";
+import type { RouteLegMode } from "../../../features/routes/types";
 
-export interface RouteRequest {
-  origin: Coordinates;
+export type GoogleRouteTravelMode = "WALK" | "DRIVE" | "TRANSIT" | "BICYCLE";
+
+export type RouteLegWarningCode =
+  "unsupported_mode" | "no_route" | "walking_safety" | "bicycle_safety";
+
+export type RouteLegWarning = {
+  code: RouteLegWarningCode;
+  message: string;
+};
+
+export type RouteLegRequest = {
   destination: Coordinates;
-  intermediates?: Coordinates[];
-  travelMode: TravelMode;
-}
+  legSignature: string;
+  mode: RouteLegMode;
+  origin: Coordinates;
+  position: number;
+};
 
-export interface RouteResult {
+export type GoogleLegGeometry = {
   encodedPolyline: string;
+  source: "google";
+};
+
+export type StraightLegGeometry = {
+  destination: Coordinates;
+  origin: Coordinates;
+  source: "straight";
+};
+
+export type CalculatedRouteLeg = {
+  computedAt: string;
   distanceMeters: number;
-  durationSeconds: number;
-}
+  durationSeconds: number | null;
+  estimateKind?: "transit_current_service";
+  fallbackReason?: "unsupported_mode" | "no_route";
+  geometry: GoogleLegGeometry | StraightLegGeometry;
+  legSignature: string;
+  mode: RouteLegMode;
+  position: number;
+  providerMode: GoogleRouteTravelMode | null;
+  warnings: RouteLegWarning[];
+};
 
 export interface RouteProvider {
-  calculate(request: RouteRequest): Promise<RouteResult>;
+  calculateLeg(request: RouteLegRequest): Promise<CalculatedRouteLeg>;
 }

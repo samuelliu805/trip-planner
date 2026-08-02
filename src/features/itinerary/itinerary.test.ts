@@ -5,6 +5,17 @@ import {
   deduplicatePlaceSnapshots,
   normalizeGooglePlace,
 } from "../../lib/providers/places/normalize.ts";
+import { RouteProviderError } from "../../lib/providers/routes/errors.ts";
+import { straightFallbackLeg } from "../../lib/providers/routes/fallback.ts";
+import { decodeEncodedPolyline, haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
+import {
+  createGoogleRoutesProvider,
+  googleRoutesEndpoint,
+  googleRoutesFieldMask,
+  parseGoogleDurationSeconds,
+} from "../../lib/providers/routes/google-routes-core.ts";
+import { googleTravelMode } from "../../lib/providers/routes/mode-mapping.ts";
+import type { RouteLegRequest } from "../../lib/providers/routes/types.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
@@ -71,6 +82,184 @@ const routeDraft = (overrides: Partial<DayRouteDraft> = {}): DayRouteDraft => ({
   tripId: ids.trip,
   variantId: ids.variant,
   ...overrides,
+});
+
+const providerLeg = (mode: DayRouteDraft["legModes"][number] = "walk"): RouteLegRequest => ({
+  destination: { latitude: 34.0522, longitude: -118.2437 },
+  legSignature: "leg-signature",
+  mode,
+  origin: { latitude: 37.7749, longitude: -122.4194 },
+  position: 1,
+});
+
+const googleResponse = () =>
+  new Response(
+    JSON.stringify({
+      routes: [
+        {
+          distanceMeters: 12_345,
+          duration: "901.4s",
+          polyline: { encodedPolyline: "_p~iF~ps|U_ulLnnqC_mqNvxq`@" },
+        },
+      ],
+    }),
+    { headers: { "Content-Type": "application/json" }, status: 200 },
+  );
+
+test("route mode mapping is explicit and unknown modes never become Transit", () => {
+  const expected = {
+    bike: "BICYCLE",
+    bus: "TRANSIT",
+    cable_car: null,
+    ferry: null,
+    flight: null,
+    motorcycle: null,
+    other: null,
+    rideshare: "DRIVE",
+    self_driving: "DRIVE",
+    shuttle: "TRANSIT",
+    subway: "TRANSIT",
+    taxi: "DRIVE",
+    train: "TRANSIT",
+    tram: "TRANSIT",
+    walk: "WALK",
+  } as const;
+  for (const mode of routeLegModes) assert.equal(googleTravelMode(mode), expected[mode]);
+  assert.equal(googleTravelMode("unknown"), null);
+});
+
+test("route geometry utilities use Haversine distance and decode Google polylines", () => {
+  assert.ok(
+    Math.abs(
+      haversineDistanceMeters(
+        { latitude: 36.12, longitude: -86.67 },
+        { latitude: 33.94, longitude: -118.4 },
+      ) - 2_885_104,
+    ) < 2_000,
+  );
+  assert.deepEqual(decodeEncodedPolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@"), [
+    { latitude: 38.5, longitude: -120.2 },
+    { latitude: 40.7, longitude: -120.95 },
+    { latitude: 43.252, longitude: -126.453 },
+  ]);
+  assert.throws(() => decodeEncodedPolyline("~"), /invalid/);
+});
+
+test("Google route provider sends one narrow primary-route request per leg", async () => {
+  let requestUrl = "";
+  let requestInit: RequestInit | undefined;
+  const fetchImplementation = (async (url: string | URL | Request, init?: RequestInit) => {
+    requestUrl = String(url);
+    requestInit = init;
+    return googleResponse();
+  }) as typeof fetch;
+  const result = await createGoogleRoutesProvider({
+    apiKey: "server-secret",
+    fetchImplementation,
+    now: () => "2026-08-02T00:00:00.000Z",
+  }).calculateLeg(providerLeg("self_driving"));
+
+  assert.equal(requestUrl, googleRoutesEndpoint);
+  assert.equal(requestInit?.method, "POST");
+  assert.equal(new Headers(requestInit?.headers).get("X-Goog-FieldMask"), googleRoutesFieldMask);
+  assert.equal(new Headers(requestInit?.headers).get("X-Goog-Api-Key"), "server-secret");
+  const body = JSON.parse(String(requestInit?.body));
+  assert.deepEqual(body.origin.location.latLng, providerLeg().origin);
+  assert.deepEqual(body.destination.location.latLng, providerLeg().destination);
+  assert.equal(body.travelMode, "DRIVE");
+  assert.equal(body.routingPreference, "TRAFFIC_UNAWARE");
+  assert.equal(body.computeAlternativeRoutes, false);
+  assert.equal("intermediates" in body, false);
+  assert.equal("optimizeWaypointOrder" in body, false);
+  assert.equal("departureTime" in body, false);
+  assert.equal(result.geometry.source, "google");
+  assert.equal(result.durationSeconds, 901);
+  assert.equal(result.distanceMeters, 12_345);
+});
+
+test("unsupported route modes use straight fallback without fetch or invented duration", async () => {
+  let fetchCount = 0;
+  const provider = createGoogleRoutesProvider({
+    apiKey: "",
+    fetchImplementation: (async () => {
+      fetchCount += 1;
+      return googleResponse();
+    }) as typeof fetch,
+    now: () => "2026-08-02T00:00:00.000Z",
+  });
+  for (const mode of ["flight", "ferry", "cable_car", "motorcycle", "other"] as const) {
+    const result = await provider.calculateLeg(providerLeg(mode));
+    assert.equal(result.geometry.source, "straight");
+    assert.equal(result.durationSeconds, null);
+    assert.equal(result.fallbackReason, "unsupported_mode");
+  }
+  assert.equal(fetchCount, 0);
+  assert.equal(straightFallbackLeg(providerLeg("flight"), "unsupported_mode").providerMode, null);
+});
+
+test("no-route falls back while Transit omits schedule fields and carries estimate metadata", async () => {
+  const noRoute = await createGoogleRoutesProvider({
+    apiKey: "key",
+    fetchImplementation: (async () =>
+      new Response(JSON.stringify({ routes: [] }), { status: 200 })) as typeof fetch,
+  }).calculateLeg(providerLeg("walk"));
+  assert.equal(noRoute.geometry.source, "straight");
+  assert.equal(noRoute.fallbackReason, "no_route");
+  assert.equal(noRoute.durationSeconds, null);
+  assert.ok(noRoute.warnings.some(({ code }) => code === "walking_safety"));
+
+  let transitBody: Record<string, unknown> = {};
+  const transit = await createGoogleRoutesProvider({
+    apiKey: "key",
+    fetchImplementation: (async (_url, init) => {
+      transitBody = JSON.parse(String(init?.body));
+      return googleResponse();
+    }) as typeof fetch,
+  }).calculateLeg(providerLeg("subway"));
+  assert.equal(transit.estimateKind, "transit_current_service");
+  assert.equal("routingPreference" in transitBody, false);
+  assert.equal("departureTime" in transitBody, false);
+  assert.equal("arrivalTime" in transitBody, false);
+});
+
+test("provider errors are actionable, safe, and never silently become fallback", async () => {
+  for (const [status, code] of [
+    [401, "authentication"],
+    [403, "permission"],
+    [429, "quota"],
+    [504, "timeout"],
+    [500, "provider_unavailable"],
+  ] as const) {
+    const provider = createGoogleRoutesProvider({
+      apiKey: "server-secret",
+      fetchImplementation: (async () =>
+        new Response("sensitive provider body", { status })) as typeof fetch,
+    });
+    await assert.rejects(provider.calculateLeg(providerLeg()), (error) => {
+      assert.ok(error instanceof RouteProviderError);
+      assert.equal(error.code, code);
+      assert.doesNotMatch(error.message, /server-secret|sensitive provider body/);
+      return true;
+    });
+  }
+
+  await assert.rejects(
+    createGoogleRoutesProvider({ apiKey: "" }).calculateLeg(providerLeg()),
+    (error) => error instanceof RouteProviderError && error.code === "missing_key",
+  );
+  await assert.rejects(
+    createGoogleRoutesProvider({
+      apiKey: "key",
+      fetchImplementation: (async () => {
+        const error = new Error("aborted");
+        error.name = "AbortError";
+        throw error;
+      }) as typeof fetch,
+    }).calculateLeg(providerLeg()),
+    (error) => error instanceof RouteProviderError && error.code === "timeout",
+  );
+  assert.equal(parseGoogleDurationSeconds("1.6s"), 2);
+  assert.throws(() => parseGoogleDurationSeconds("soon"), RouteProviderError);
 });
 
 test("route configuration accepts only eligible same-day places and synchronized modes", () => {
