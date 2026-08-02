@@ -140,6 +140,7 @@ export async function calculateDayRoute(
         calculated_config_signature: calculated.configSignature,
         calculated_provider_schema_version: "routes-v1",
         calculated_total_distance_meters: calculated.totalDistanceMeters,
+        // Postgres accepts NULL here; the generated RPC argument omits nullability.
         calculated_total_duration_seconds: calculated.totalDurationSeconds as number,
         normalized_calculated_legs: normalized,
         target_plan_id: plan.id,

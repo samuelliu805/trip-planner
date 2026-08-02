@@ -28,6 +28,11 @@ import {
 } from "./grid-interactions.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import { deriveOverviewStages } from "../routes/overview.ts";
+import {
+  buildDayRouteLines,
+  buildDayRouteMarkers,
+  eligibleDayRouteItems,
+} from "../routes/day-route-map.ts";
 import { validateDayRouteDraft } from "../routes/route-config.ts";
 import { calculateRouteConfiguration } from "../routes/calculator.ts";
 import { buildRouteConfigSignature } from "../routes/signatures.ts";
@@ -674,6 +679,76 @@ test("overview skips missing City days and collapses a consecutive stay across t
   );
 });
 
+test("Day route markers include only eligible places and combine repeated Hotel positions", () => {
+  const item = (id: string, type: string, placeId: string | null, sortOrder: number) =>
+    ({
+      id,
+      place: placeId
+        ? {
+            displayName: id,
+            id: placeId,
+            latitude: 40 + sortOrder,
+            longitude: -70 - sortOrder,
+          }
+        : null,
+      sort_order: sortOrder,
+      title: id,
+      type,
+    }) as unknown as ItineraryItem;
+  const day = {
+    day_number: 2,
+    id: ids.day,
+    items: [
+      item("city", "location", "city-place", 0),
+      item("hotel", "hotel", "hotel-place", 1),
+      item("activity", "activity", "activity-place", 2),
+      item("meal-no-place", "meal", null, 3),
+      item("transport", "transport", "transport-place", 4),
+    ],
+  } as unknown as PlannerDay;
+
+  assert.deepEqual(
+    eligibleDayRouteItems(day).map(({ id }) => id),
+    ["hotel", "activity"],
+  );
+  const markers = buildDayRouteMarkers(day, ["hotel", "activity", "hotel"]);
+  assert.equal(markers.length, 2);
+  assert.equal(markers.find(({ itemIds }) => itemIds.includes("hotel"))?.label, "1 · 3");
+  assert.equal(
+    markers.find(({ itemIds }) => itemIds.includes("activity"))?.appearance,
+    "route-planned",
+  );
+});
+
+test("Day route renders Google legs solid and straight fallbacks dashed", () => {
+  const calculation = {
+    calculatedLegs: [
+      {
+        geometry: { encodedPolyline: "_p~iF~ps|U_ulLnnqC", source: "google" },
+        legSignature: "google-leg",
+        position: 1,
+      },
+      {
+        geometry: {
+          destination: { latitude: 38, longitude: -121 },
+          origin: { latitude: 37, longitude: -122 },
+          source: "straight",
+        },
+        legSignature: "straight-leg",
+        position: 2,
+      },
+    ],
+  } as unknown as DayRouteCalculation;
+  const lines = buildDayRouteLines(calculation);
+  assert.equal(lines.length, 2);
+  assert.equal(lines[0].dashed, false);
+  assert.equal(lines[1].dashed, true);
+  assert.deepEqual(lines[1].path, [
+    { lat: 37, lng: -122 },
+    { lat: 38, lng: -121 },
+  ]);
+});
+
 test("edit and delete inputs validate", () => {
   assert.equal(
     updateItineraryItemSchema.safeParse({
@@ -1147,7 +1222,7 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(map, /glyph=\{glyph\}/);
   assert.match(workspace, /groupKey = `\$\{item\.place\.id\}:\$\{entry\.kind\}`/);
   assert.match(workspace, /entries\.push\(entry\)/);
-  assert.match(mapShell, /Map pin filters/);
+  assert.match(mapShell, /aria-label="Map level"/);
   assert.match(mapShell, /mergeMarkerDateRanges\(marker\.entries\)/);
   assert.match(map, /itemIds\.includes\(selectedId\)/);
 });

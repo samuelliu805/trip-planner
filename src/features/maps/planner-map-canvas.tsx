@@ -9,7 +9,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import { AlertTriangle, MapPinned } from "lucide-react";
-import { useEffect, useId, useMemo, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 import { useMapConfiguration } from "@/features/maps/planner-map-provider";
 
@@ -56,40 +56,40 @@ const markerOffsets: Record<MarkerKind, [number, number]> = {
 };
 
 function MapViewport({
+  fitKey,
+  lines,
   mapInstanceId,
   markers,
   selectedId,
 }: {
+  fitKey?: string;
+  lines: PlannerMapLine[];
   mapInstanceId: string;
   markers: PlannerMapMarker[];
   selectedId?: string;
 }) {
   const map = useMap(mapInstanceId);
-  const markerKey = useMemo(
-    () =>
-      markers
-        .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
-        .sort()
-        .join("|"),
-    [markers],
-  );
-  const previousMarkerKey = useRef<string | undefined>(undefined);
+  const previousFitKey = useRef<string | undefined>(undefined);
   const skipSelectedPan = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!map || previousMarkerKey.current === markerKey) return;
-    previousMarkerKey.current = markerKey;
+    if (!map || !fitKey || previousFitKey.current === fitKey) return;
+    previousFitKey.current = fitKey;
     skipSelectedPan.current = selectedId;
-    if (!markers.length) return;
-    if (markers.length === 1) {
+    const points = [
+      ...markers.map(({ latitude, longitude }) => ({ lat: latitude, lng: longitude })),
+      ...lines.flatMap(({ path }) => path),
+    ];
+    if (!points.length) return;
+    if (points.length === 1) {
       map.moveCamera({
-        center: { lat: markers[0].latitude, lng: markers[0].longitude },
+        center: points[0],
         zoom: 14,
       });
       return;
     }
-    const latitudes = markers.map(({ latitude }) => latitude);
-    const longitudes = markers.map(({ longitude }) => longitude);
+    const latitudes = points.map(({ lat }) => lat);
+    const longitudes = points.map(({ lng }) => lng);
     map.fitBounds(
       {
         east: Math.max(...longitudes),
@@ -99,7 +99,7 @@ function MapViewport({
       },
       72,
     );
-  }, [map, markerKey, markers, selectedId]);
+  }, [fitKey, lines, map, markers, selectedId]);
 
   useEffect(() => {
     if (!map || !selectedId) return;
@@ -145,6 +145,7 @@ export function PlannerMapCanvas({
   markers,
   onMarkerClick,
   selectedId,
+  viewportKey,
 }: {
   compact?: boolean;
   emptyState?: { message: string; title: string };
@@ -152,6 +153,7 @@ export function PlannerMapCanvas({
   markers: PlannerMapMarker[];
   onMarkerClick: (id: string) => void;
   selectedId?: string;
+  viewportKey?: string;
 }) {
   const { apiError, apiKey, mapId } = useMapConfiguration();
   const loadingStatus = useApiLoadingStatus();
@@ -190,7 +192,13 @@ export function PlannerMapCanvas({
         mapTypeControl={false}
         streetViewControl={false}
       >
-        <MapViewport mapInstanceId={mapInstanceId} markers={markers} selectedId={selectedId} />
+        <MapViewport
+          fitKey={viewportKey}
+          lines={lines}
+          mapInstanceId={mapInstanceId}
+          markers={markers}
+          selectedId={selectedId}
+        />
         {lines.map((line) => (
           <Polyline
             geodesic

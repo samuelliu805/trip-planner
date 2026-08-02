@@ -3,11 +3,8 @@
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
 import { categories } from "@/features/itinerary/components/planner-config";
-import type {
-  MarkerKind,
-  PlannerMapLine,
-  PlannerMapMarker,
-} from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { DayRouteUi } from "@/features/routes/use-day-route";
 
 export function PlannerStatus({
   deleteError,
@@ -70,41 +67,44 @@ export function PlannerStatus({
 }
 
 export function PlannerMapPane({
+  dayRoute,
   emptyState,
   lines,
   mapMode,
   markers,
   onExpand,
+  onEditMapItem,
   onMarkerClick,
   onMapModeChange,
-  onToggleKind,
   selectedId,
-  visibleKinds,
+  viewportKey,
 }: {
+  dayRoute: DayRouteUi;
   emptyState?: { message: string; title: string };
   lines: PlannerMapLine[];
   mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
   onExpand: () => void;
+  onEditMapItem: (itemId: string) => void;
   onMarkerClick: (id: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
-  onToggleKind: (kind: MarkerKind) => void;
   selectedId?: string;
-  visibleKinds: Set<MarkerKind>;
+  viewportKey?: string;
 }) {
   const map = (compact = false) => (
     <PlannerMapShell
       compact={compact}
+      dayRoute={dayRoute}
       emptyState={emptyState}
       lines={lines}
       mapMode={mapMode}
       markers={markers}
       onExpand={compact ? onExpand : undefined}
+      onEditMapItem={onEditMapItem}
       onMarkerClick={onMarkerClick}
       onMapModeChange={onMapModeChange}
-      onToggleKind={onToggleKind}
       selectedId={selectedId}
-      visibleKinds={visibleKinds}
+      viewportKey={viewportKey}
     />
   );
   return (

@@ -18,15 +18,13 @@ import {
 import { selectionContains, type GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
-import type {
-  MarkerKind,
-  PlannerMapLine,
-  PlannerMapMarker,
-} from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { DayRouteUi } from "@/features/routes/use-day-route";
 
 export function PlannerMatrix({
   containerRef,
   dayMutationPending,
+  dayRoute,
   deleteItem,
   fillDragging,
   fillSourceRight,
@@ -40,9 +38,9 @@ export function PlannerMatrix({
   mapMarkers,
   moveItem,
   onMapExpand,
+  onEditMapItem,
   onMarkerClick,
   onMapModeChange,
-  onToggleMarkerKind,
   openEditorFromDoubleClick,
   removeDay,
   insertDay,
@@ -63,12 +61,13 @@ export function PlannerMatrix({
   startRangeSelection,
   startResize,
   tripTitle,
-  visibleMarkerKinds,
+  mapViewportKey,
   visibleSelectionBounds,
   workspace,
 }: {
   containerRef: MutableRefObject<HTMLDivElement | null>;
   dayMutationPending: boolean;
+  dayRoute: DayRouteUi;
   deleteItem: (item: ItineraryItem) => Promise<void>;
   fillDragging: MutableRefObject<boolean>;
   fillSourceRight: MutableRefObject<number>;
@@ -94,9 +93,9 @@ export function PlannerMatrix({
     direction: -1 | 1,
   ) => Promise<void>;
   onMapExpand: () => void;
+  onEditMapItem: (itemId: string) => void;
   onMarkerClick: (id: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
-  onToggleMarkerKind: (kind: MarkerKind) => void;
   openEditorFromDoubleClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   removeDay: (id: string) => Promise<void>;
   selectedCount: number;
@@ -116,7 +115,7 @@ export function PlannerMatrix({
   startRangeSelection: (event: React.PointerEvent<HTMLDivElement>) => void;
   startResize: (event: React.PointerEvent<HTMLDivElement>) => void;
   tripTitle: string;
-  visibleMarkerKinds: Set<MarkerKind>;
+  mapViewportKey?: string;
   visibleSelectionBounds: { top: number; bottom: number; left: number; right: number };
   workspace: PlannerWorkspace;
 }) {
@@ -272,16 +271,17 @@ export function PlannerMatrix({
       </section>
       <PlannerDivider onResize={startResize} onSplitChange={setSplit} split={split} />
       <PlannerMapPane
+        dayRoute={dayRoute}
         emptyState={mapEmptyState}
         lines={mapLines}
         mapMode={mapMode}
         markers={mapMarkers}
         onExpand={() => onMapExpand()}
+        onEditMapItem={onEditMapItem}
         onMarkerClick={onMarkerClick}
         onMapModeChange={onMapModeChange}
-        onToggleKind={onToggleMarkerKind}
         selectedId={selectedMapItem?.id}
-        visibleKinds={visibleMarkerKinds}
+        viewportKey={mapViewportKey}
       />
     </div>
   );

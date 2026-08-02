@@ -11,6 +11,9 @@ import type {
   PlannerMapMarker,
 } from "@/features/maps/planner-map-canvas";
 import type { PlannerDay } from "@/features/itinerary/types";
+import { Button } from "@/components/ui/button";
+import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
+import type { DayRouteUi } from "@/features/routes/use-day-route";
 
 const markerKindLabels: Record<MarkerKind, string> = {
   city: "Cities",
@@ -72,33 +75,32 @@ const PlannerMapCanvas = dynamic(
 
 export function PlannerMapShell({
   compact = false,
+  dayRoute,
   emptyState,
   lines = [],
   mapMode,
   markers,
   onExpand,
+  onEditMapItem,
   onMapModeChange,
   onMarkerClick,
   selectedId,
-  visibleKinds,
-  onToggleKind,
+  viewportKey,
 }: {
   compact?: boolean;
+  dayRoute: DayRouteUi;
   emptyState?: { message: string; title: string };
   lines?: PlannerMapLine[];
   mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
   onExpand?: () => void;
+  onEditMapItem: (itemId: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
   onMarkerClick: (id: string) => void;
   selectedId?: string;
-  visibleKinds: Set<MarkerKind>;
-  onToggleKind: (kind: MarkerKind) => void;
+  viewportKey?: string;
 }) {
-  const visibleMarkers =
-    mapMode === "day_route" && visibleKinds.size
-      ? markers.filter((marker) => visibleKinds.has(marker.entries[0].kind))
-      : markers;
+  const visibleMarkers = markers;
   return (
     <section
       aria-label="Itinerary map"
@@ -111,6 +113,7 @@ export function PlannerMapShell({
         markers={visibleMarkers}
         onMarkerClick={onMarkerClick}
         selectedId={selectedId}
+        viewportKey={viewportKey}
       />
       {!compact && selectedId
         ? (() => {
@@ -133,7 +136,7 @@ export function PlannerMapShell({
               : "";
             return marker && entry ? (
               <div
-                className="absolute bottom-3 left-3 right-3 z-10 rounded-lg border bg-background/95 px-3 py-2 shadow-lg backdrop-blur"
+                className={`absolute left-3 right-3 z-10 rounded-lg border bg-background/95 px-3 py-2 shadow-lg backdrop-blur ${mapMode === "day_route" ? (dayRoute.editing ? "day-route-place-card" : dayRoute.plan ? "bottom-32" : "bottom-28") : "bottom-3"}`}
                 aria-live="polite"
               >
                 <p className="truncate text-sm font-semibold">{entry.title}</p>
@@ -171,6 +174,42 @@ export function PlannerMapShell({
                     </div>
                   </details>
                 )}
+                {mapMode === "day_route" ? (
+                  <div className="mt-2 flex flex-wrap justify-end gap-2 border-t pt-2">
+                    <Button
+                      onClick={() => onEditMapItem(entry.itemId)}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      Edit item
+                    </Button>
+                    {dayRoute.editing ? (
+                      dayRoute.draft?.itemIds.includes(entry.itemId) ? (
+                        <Button
+                          onClick={() => dayRoute.removeItem(entry.itemId)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          Remove from route
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => dayRoute.addStop(entry.itemId)}
+                          size="sm"
+                          type="button"
+                        >
+                          Add to route
+                        </Button>
+                      )
+                    ) : dayRoute.plan ? (
+                      <Button onClick={dayRoute.openEdit} size="sm" type="button">
+                        Edit route
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null;
           })()
@@ -204,24 +243,7 @@ export function PlannerMapShell({
           ))}
         </div>
       ) : null}
-      {!compact && mapMode === "day_route" ? (
-        <div
-          className="absolute left-2 top-14 z-20 flex max-w-[calc(100%-1rem)] flex-wrap gap-1 overflow-x-auto"
-          aria-label="Map pin filters"
-        >
-          {allMarkerKinds.map((kind) => (
-            <button
-              aria-pressed={visibleKinds.has(kind)}
-              className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-medium shadow-sm ${visibleKinds.has(kind) ? "border-primary bg-primary text-primary-foreground" : "bg-background/90 text-muted-foreground"}`}
-              key={kind}
-              onClick={() => onToggleKind(kind)}
-              type="button"
-            >
-              {markerKindLabels[kind]}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {!compact && mapMode === "day_route" ? <DayRouteOverlay route={dayRoute} /> : null}
     </section>
   );
 }

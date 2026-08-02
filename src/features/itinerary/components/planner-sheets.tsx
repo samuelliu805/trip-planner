@@ -16,15 +16,13 @@ import { PlannerItemForm } from "@/features/itinerary/components/planner-item-fo
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
-import type {
-  MarkerKind,
-  PlannerMapLine,
-  PlannerMapMarker,
-} from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { DayRouteUi } from "@/features/routes/use-day-route";
 
 type PlannerSheetsProps = {
   copyDaysOpen: boolean;
   copyPending: boolean;
+  dayRoute: DayRouteUi;
   editor: EditorState | null;
   mapExpanded: boolean;
   mapEmptyState?: { message: string; title: string };
@@ -34,13 +32,13 @@ type PlannerSheetsProps = {
   onCopyDaysOpenChange: (open: boolean) => void;
   onCopyToSelectedDays: () => void;
   onEditorClose: () => void;
+  onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
   onSettingsOpenChange: (open: boolean) => void;
   onTargetDaysChange: (days: Set<string>) => void;
-  onToggleMarkerKind: (kind: MarkerKind) => void;
   selectedItem?: ItineraryItem;
   selectionSourceDayId?: string;
   settings: React.ReactNode;
@@ -48,13 +46,14 @@ type PlannerSheetsProps = {
   targetDays: Set<string>;
   tripId: string;
   unavailableTransportModes: TransportMode[];
-  visibleMarkerKinds: Set<MarkerKind>;
+  mapViewportKey?: string;
   workspace: PlannerWorkspace;
 };
 
 export function PlannerSheets({
   copyDaysOpen,
   copyPending,
+  dayRoute,
   editor,
   mapExpanded,
   mapEmptyState,
@@ -64,13 +63,13 @@ export function PlannerSheets({
   onCopyDaysOpenChange,
   onCopyToSelectedDays,
   onEditorClose,
+  onEditMapItem,
   onInteractionError,
   onMapExpandedChange,
   onMarkerClick,
   onMapModeChange,
   onSettingsOpenChange,
   onTargetDaysChange,
-  onToggleMarkerKind,
   selectedItem,
   selectionSourceDayId,
   settings,
@@ -78,7 +77,7 @@ export function PlannerSheets({
   targetDays,
   tripId,
   unavailableTransportModes,
-  visibleMarkerKinds,
+  mapViewportKey,
   workspace,
 }: PlannerSheetsProps) {
   return (
@@ -119,15 +118,16 @@ export function PlannerSheets({
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell
+              dayRoute={dayRoute}
               emptyState={mapEmptyState}
               lines={mapLines}
               mapMode={mapMode}
               markers={mapMarkers}
               onMarkerClick={onMarkerClick}
+              onEditMapItem={onEditMapItem}
               onMapModeChange={onMapModeChange}
-              onToggleKind={onToggleMarkerKind}
               selectedId={selectedItem?.id}
-              visibleKinds={visibleMarkerKinds}
+              viewportKey={mapViewportKey}
             />
           </div>
         </SheetContent>

@@ -29,6 +29,7 @@ import {
   type PlannerWorkspace as PlannerWorkspaceData,
 } from "@/features/itinerary/types";
 import type { Tables } from "@/types/database";
+import { useDayRoute } from "@/features/routes/use-day-route";
 
 export function PlannerWorkspace({
   deleteError,
@@ -82,6 +83,8 @@ export function PlannerWorkspace({
       ? `${format(parseISO(trip.start_date), "MMM d")} – ${format(parseISO(trip.end_date), "MMM d, yyyy")}`
       : `${trip.day_count} planning ${trip.day_count === 1 ? "day" : "days"} · Dates not set`;
   const gridTemplate = `minmax(520px, ${split}fr) 4px minmax(360px, ${100 - split}fr)`;
+  const routeDay = activeDay ?? selectedDay ?? workspace.days[0];
+  const dayRoute = useDayRoute(workspace, routeDay, trip.id);
 
   const { dayMutationPending, deleteItem, insertDay, moveItem, removeDay } = usePlannerMutations(
     trip.id,
@@ -106,13 +109,22 @@ export function PlannerWorkspace({
     mapLines,
     mapMode,
     mapMarkers,
+    mapViewportKey,
     selectedMapItem,
     selectMarker,
     setSelectedItemId,
     setMapMode,
-    toggleMarkerKind,
-    visibleMarkerKinds,
-  } = usePlannerMap(workspace, selectionEnd, setSelectionAnchor, setSelectionEnd);
+  } = usePlannerMap(workspace, selectionEnd, setSelectionAnchor, setSelectionEnd, dayRoute);
+
+  function editMapItem(itemId: string) {
+    for (const day of workspace.days) {
+      const item = day.items.find(({ id }) => id === itemId);
+      if (item) {
+        setEditor({ dayId: day.id, item, type: item.type });
+        return;
+      }
+    }
+  }
 
   const {
     clipboardPayload,
@@ -222,6 +234,7 @@ export function PlannerWorkspace({
       <PlannerMatrix
         containerRef={containerRef}
         dayMutationPending={dayMutationPending}
+        dayRoute={dayRoute}
         deleteItem={deleteItem}
         fillDragging={fillDragging}
         fillSourceRight={fillSourceRight}
@@ -234,11 +247,12 @@ export function PlannerWorkspace({
         mapLines={mapLines}
         mapMode={mapMode}
         mapMarkers={mapMarkers}
+        mapViewportKey={mapViewportKey}
         moveItem={moveItem}
         onMapExpand={() => setMapExpanded(true)}
+        onEditMapItem={editMapItem}
         onMarkerClick={selectMarker}
         onMapModeChange={setMapMode}
-        onToggleMarkerKind={toggleMarkerKind}
         openEditorFromDoubleClick={openEditorFromDoubleClick}
         removeDay={removeDay}
         selectedCount={selectedCount}
@@ -258,29 +272,30 @@ export function PlannerWorkspace({
         startRangeSelection={startRangeSelection}
         startResize={startResize}
         tripTitle={trip.title}
-        visibleMarkerKinds={visibleMarkerKinds}
         visibleSelectionBounds={visibleSelectionBounds}
         workspace={workspace}
       />
       <PlannerSheets
         copyDaysOpen={copyDaysOpen}
         copyPending={copyMutation.isPending}
+        dayRoute={dayRoute}
         editor={editor}
         mapExpanded={mapExpanded}
         mapEmptyState={mapEmptyState}
         mapLines={mapLines}
         mapMode={mapMode}
         mapMarkers={mapMarkers}
+        mapViewportKey={mapViewportKey}
         onCopyDaysOpenChange={setCopyDaysOpen}
         onCopyToSelectedDays={() => void copyToSelectedDays()}
         onEditorClose={() => setEditor(null)}
+        onEditMapItem={editMapItem}
         onInteractionError={setInteractionError}
         onMapExpandedChange={setMapExpanded}
         onMarkerClick={selectMarker}
         onMapModeChange={setMapMode}
         onSettingsOpenChange={setSettingsOpen}
         onTargetDaysChange={setTargetDays}
-        onToggleMarkerKind={toggleMarkerKind}
         selectedItem={selectedMapItem}
         selectionSourceDayId={workspace.days[visibleSelectionBounds.top]?.id}
         settings={settings}
@@ -288,7 +303,6 @@ export function PlannerWorkspace({
         targetDays={targetDays}
         tripId={trip.id}
         unavailableTransportModes={unavailableTransportModes}
-        visibleMarkerKinds={visibleMarkerKinds}
         workspace={workspace}
       />
     </div>

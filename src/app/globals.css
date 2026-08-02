@@ -97,6 +97,12 @@ body {
   display: none;
 }
 
+.day-route-place-card {
+  bottom: 0.75rem;
+  right: 23.25rem;
+  z-index: 25;
+}
+
 @media (min-width: 900px) and (max-width: 1199px) {
   .planner-workspace {
     box-sizing: border-box;
@@ -159,6 +165,28 @@ body {
 
   .planner-map-peek {
     display: block;
+  }
+
+  .day-route-editor {
+    bottom: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: auto;
+    width: auto;
+    max-height: min(66%, 34rem);
+  }
+
+  .day-route-place-card {
+    bottom: auto;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 3.75rem;
+    z-index: 25;
+  }
+
+  .day-route-summary button,
+  .day-route-editor button {
+    min-height: 44px;
   }
 
   .planner-editor-sheet {
