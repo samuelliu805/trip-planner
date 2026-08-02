@@ -1259,14 +1259,21 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.match(mapShell, /Day stops/);
   assert.match(mapShell, /closeOverviewPanel[\s\S]*onMapSelectionClear/);
   assert.match(mapShell, /closeDayPanel[\s\S]*onMapSelectionClear/);
+  assert.match(mapShell, /PanelBottomOpen/);
+  assert.match(mapShell, /Open Overview panel/);
+  assert.match(mapShell, /Open day route panel/);
   assert.match(mapShell, /title="Edit item"/);
   assert.doesNotMatch(mapShell, /Show Route A panel/);
   assert.match(mapShell, /DayRouteOverlay[\s\S]*onClose=\{closeDayPanel\}/);
   assert.doesNotMatch(mapShell, /day-route-place-card/);
-  assert.match(routeUi, /Back to route summary/);
+  assert.match(routeUi, /Discard changes and collapse route editor/);
+  assert.match(routeUi, /Discard changes and return to route summary/);
   assert.match(routeUi, /onBack=\{route\.cancelEditing\}/);
   assert.match(routeUi, /Close route panel/);
   assert.match(routeUi, /route\.openEdit/);
+  assert.match(routeUi, /useState\(true\)/);
+  assert.match(routeUi, /aria-expanded=\{unplannedOpen\}/);
+  assert.match(routeUi, /Add \$\{item\.title\} to route/);
   assert.doesNotMatch(routeUi, /View route|requestFit/);
   assert.match(routeUi, /Manual order is used/);
   assert.match(routeUi, /Save & calculate/);
@@ -1621,6 +1628,10 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(styles, /planner-editor-sheet input,[\s\S]*font-size: 16px/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
+  assert.match(
+    styles,
+    /\.map-panel-reopen \{\s*bottom: max\(2\.75rem, calc\(env\(safe-area-inset-bottom\)/,
+  );
   assert.match(workspace, /selectedMapItem/);
   assert.match(workspace, /selectedId=\{selectedMapItem\?\.id\}/);
   assert.match(workspace, /planner-map-sheet/);

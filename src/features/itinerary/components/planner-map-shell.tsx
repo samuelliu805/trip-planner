@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Maximize2, Minus, Pencil, Plus } from "lucide-react";
+import { ChevronDown, Maximize2, Minus, PanelBottomOpen, Pencil, Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 import { format, parseISO } from "date-fns";
 import { useState } from "react";
@@ -120,7 +120,7 @@ function SelectedPlaceContent({
         </div>
         <button
           aria-label={`Edit ${entry.title}`}
-          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={() => onEditMapItem(entry.itemId)}
           title="Edit item"
           type="button"
@@ -131,7 +131,7 @@ function SelectedPlaceContent({
           dayRoute.draft?.itemIds.includes(entry.itemId) ? (
             <button
               aria-label={`Remove ${entry.title} from route`}
-              className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={() => dayRoute.removeItem(entry.itemId)}
               title="Remove from route"
               type="button"
@@ -141,7 +141,7 @@ function SelectedPlaceContent({
           ) : (
             <button
               aria-label={`Add ${entry.title} to route`}
-              className="flex size-10 shrink-0 items-center justify-center rounded-md text-primary hover:bg-primary/10"
+              className="flex size-11 shrink-0 items-center justify-center rounded-md text-primary hover:bg-primary/10"
               onClick={() => dayRoute.addStop(entry.itemId)}
               title="Add to route"
               type="button"
@@ -232,6 +232,7 @@ export function PlannerMapShell({
   const storedDayPanelOpen = dayPanelState?.dayId === activeDayId ? dayPanelState.open : true;
   const overviewPanelVisible = Boolean(selectedId || overviewRoute.editing || overviewPanelOpen);
   const dayPanelOpen = Boolean(selectedId || dayRoute.editing || storedDayPanelOpen);
+  const panelDismissed = mapMode === "overview" ? !overviewPanelVisible : !dayPanelOpen;
   const setDayPanelOpen = (open: boolean) => setDayPanelState({ dayId: activeDayId, open });
   const handleMarkerClick = (id?: string) => {
     if (id) {
@@ -281,7 +282,7 @@ export function PlannerMapShell({
       {onExpand ? (
         <button
           aria-label="Open full-screen map"
-          className="absolute right-2 top-2 z-20 flex h-10 items-center justify-center gap-1.5 rounded-md border bg-background/95 px-3 text-xs font-medium shadow-sm backdrop-blur"
+          className="absolute right-2 top-2 z-20 flex min-h-11 items-center justify-center gap-1.5 rounded-md border bg-background/95 px-3 text-xs font-medium shadow-sm backdrop-blur"
           onClick={onExpand}
           type="button"
         >
@@ -297,7 +298,7 @@ export function PlannerMapShell({
           {(["overview", "day_route"] as const).map((mode) => (
             <button
               aria-pressed={mapMode === mode}
-              className={`min-h-9 rounded-md px-3 text-xs font-medium ${mapMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+              className={`min-h-11 rounded-md px-3 text-xs font-medium ${mapMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
               key={mode}
               onClick={() => {
                 if (mode === "day_route") setDayPanelOpen(true);
@@ -325,7 +326,7 @@ export function PlannerMapShell({
           ).map(({ label, value }) => (
             <button
               aria-pressed={dayMapLayer === value}
-              className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium ${dayMapLayer === value ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/70"}`}
+              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium ${dayMapLayer === value ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/70"}`}
               key={value}
               onClick={() => onDayMapLayerChange(value)}
               type="button"
@@ -345,6 +346,21 @@ export function PlannerMapShell({
             </button>
           ))}
         </div>
+      ) : null}
+      {!compact && panelDismissed ? (
+        <button
+          aria-label={mapMode === "overview" ? "Open Overview panel" : "Open day route panel"}
+          className="map-panel-reopen absolute left-3 z-20 flex min-h-11 items-center gap-2 rounded-full border bg-background/95 px-3 text-xs font-semibold text-foreground shadow-lg backdrop-blur hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={() => {
+            if (mapMode === "overview") setOverviewPanelOpen(true);
+            else setDayPanelOpen(true);
+          }}
+          title={mapMode === "overview" ? "Open Overview panel" : "Open day route panel"}
+          type="button"
+        >
+          <PanelBottomOpen className="size-4 text-primary" />
+          <span>{mapMode === "overview" ? "Overview details" : "Route details"}</span>
+        </button>
       ) : null}
       {!compact && mapMode === "overview" && overviewPanelVisible ? (
         <OverviewRouteOverlay

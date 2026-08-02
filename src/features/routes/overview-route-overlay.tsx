@@ -1,6 +1,6 @@
 "use client";
 
-import { Route, X } from "lucide-react";
+import { RotateCcw, Route, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,7 @@ export function OverviewRouteOverlay({
         {selectedPlace}
         <button
           aria-label="Close Overview panel"
-          className="absolute right-2 top-2 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={onClose}
           type="button"
         >
@@ -84,7 +84,7 @@ export function OverviewRouteOverlay({
           </Button>
           <button
             aria-label="Close Overview panel"
-            className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={onClose}
             type="button"
           >
@@ -157,15 +157,16 @@ export function OverviewRouteOverlay({
             </ol>
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               {hasConfiguration ? (
-                <Button
+                <button
+                  aria-label="Reset transport defaults"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                   disabled={route.pending}
                   onClick={route.reset}
-                  size="sm"
+                  title="Reset transport defaults"
                   type="button"
-                  variant="ghost"
                 >
-                  Reset defaults
-                </Button>
+                  <RotateCcw className="size-4" />
+                </button>
               ) : null}
               <Button
                 disabled={

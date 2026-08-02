@@ -2,16 +2,20 @@
 
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   BedDouble,
+  ChevronDown,
   Footprints,
   MapPin,
+  Pencil,
+  Plus,
   Route,
+  Save,
   Trash2,
   Utensils,
   X,
 } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -72,6 +76,7 @@ function Editor({
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
+  const [unplannedOpen, setUnplannedOpen] = useState(true);
   const draft = route.draft!;
   const itemsById = new Map(route.activeDay?.items.map((item) => [item.id, item]) ?? []);
   const planned = new Set(draft.itemIds);
@@ -91,12 +96,13 @@ function Editor({
           <div className="flex items-center gap-2">
             <Status route={route} />
             <button
-              aria-label="Back to route summary"
-              className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Discard changes and collapse route editor"
+              className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={onBack}
+              title="Discard changes and return to route summary"
               type="button"
             >
-              <ArrowLeft className="size-4" />
+              <ChevronDown className="size-4" />
             </button>
           </div>
         </div>
@@ -128,27 +134,30 @@ function Editor({
                     </span>
                     <button
                       aria-label={`Move stop ${index + 1} up`}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
                       disabled={index === 0 || route.pending}
                       onClick={() => route.moveStop(index, -1)}
+                      title="Move stop up"
                       type="button"
                     >
                       <ArrowUp className="size-4" />
                     </button>
                     <button
                       aria-label={`Move stop ${index + 1} down`}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted disabled:opacity-30"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
                       disabled={index === draft.itemIds.length - 1 || route.pending}
                       onClick={() => route.moveStop(index, 1)}
+                      title="Move stop down"
                       type="button"
                     >
                       <ArrowDown className="size-4" />
                     </button>
                     <button
                       aria-label={`Remove stop ${index + 1}`}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 disabled:opacity-30"
+                      className="flex size-11 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
                       disabled={route.pending}
                       onClick={() => route.removeStop(index)}
+                      title="Remove stop"
                       type="button"
                     >
                       <Trash2 className="size-4" />
@@ -202,36 +211,50 @@ function Editor({
           </Button>
         ) : null}
 
-        <details className="mt-3 rounded-lg border" open={!draft.itemIds.length}>
-          <summary className="flex min-h-11 cursor-pointer items-center px-3 text-xs font-semibold">
-            Unplanned places ({unplanned.length})
-          </summary>
-          <div className="border-t p-2">
-            {unplanned.length ? (
-              <ul className="space-y-1">
-                {unplanned.map((item) => (
-                  <li className="flex min-h-11 items-center gap-2" key={item.id}>
-                    <span className="text-muted-foreground">
-                      <StopIcon item={item} />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-xs">{item.title}</span>
-                    <Button
-                      disabled={route.pending}
-                      onClick={() => route.addStop(item.id)}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      Add
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="p-2 text-xs text-muted-foreground">All eligible places are planned.</p>
-            )}
-          </div>
-        </details>
+        <div className="mt-3 overflow-hidden rounded-lg border">
+          <button
+            aria-expanded={unplannedOpen}
+            className="flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            onClick={() => setUnplannedOpen((open) => !open)}
+            type="button"
+          >
+            <span>Unplanned places ({unplanned.length})</span>
+            <ChevronDown
+              aria-hidden="true"
+              className={`size-4 shrink-0 text-muted-foreground transition-transform ${unplannedOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          {unplannedOpen ? (
+            <div className="border-t p-2">
+              {unplanned.length ? (
+                <ul className="space-y-1">
+                  {unplanned.map((item) => (
+                    <li className="flex min-h-11 items-center gap-2" key={item.id}>
+                      <span className="text-muted-foreground">
+                        <StopIcon item={item} />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-xs">{item.title}</span>
+                      <button
+                        aria-label={`Add ${item.title} to route`}
+                        className="flex size-11 shrink-0 items-center justify-center rounded-md border text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                        disabled={route.pending}
+                        onClick={() => route.addStop(item.id)}
+                        title="Add to route"
+                        type="button"
+                      >
+                        <Plus className="size-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="p-2 text-xs text-muted-foreground">
+                  All eligible places are planned.
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
 
         {route.error ? (
           <p
@@ -242,36 +265,30 @@ function Editor({
           </p>
         ) : null}
       </div>
-      <footer className="flex flex-wrap justify-end gap-2 border-t p-3">
+      <footer className="flex items-center gap-2 border-t p-3">
         {route.plan ? (
-          <Button
+          <button
+            aria-label="Clear saved route"
+            className="flex size-11 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             disabled={route.pending}
             onClick={() => {
               if (window.confirm("Clear this saved day route and its calculation?"))
                 void route.clearRoute();
             }}
-            size="sm"
+            title="Clear saved route"
             type="button"
-            variant="ghost"
           >
-            Clear route
-          </Button>
+            <Trash2 className="size-4" />
+          </button>
         ) : null}
         <Button
-          disabled={route.pending}
-          onClick={route.cancelEditing}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          Cancel
-        </Button>
-        <Button
+          className="ml-auto"
           disabled={draft.itemIds.length < 2 || route.pending}
           onClick={() => void route.saveAndCalculate()}
           size="sm"
           type="button"
         >
+          <Save className="size-4" />
           {route.pending ? "Saving…" : "Save & calculate"}
         </Button>
       </footer>
@@ -329,12 +346,18 @@ function Summary({
             {modes.length ? ` · ${modes.join(", ")}` : ""}
           </p>
         </div>
-        <Button onClick={route.openEdit} size="sm" type="button">
-          Edit route
-        </Button>
+        <button
+          aria-label="Edit route"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={route.openEdit}
+          title="Edit route"
+          type="button"
+        >
+          <Pencil className="size-4" />
+        </button>
         <button
           aria-label="Close route panel"
-          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={onClose}
           type="button"
         >
@@ -387,7 +410,7 @@ export function DayRouteOverlay({
       <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-4 text-center shadow-lg backdrop-blur">
         <button
           aria-label="Close route panel"
-          className="absolute right-2 top-2 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={onClose}
           type="button"
         >
@@ -412,12 +435,18 @@ export function DayRouteOverlay({
             Eligible saved places are shown in gray. Nothing is routed until you save.
           </p>
         </div>
-        <Button onClick={route.openCreate} size="sm" type="button">
-          Create route
-        </Button>
+        <button
+          aria-label="Create route"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={route.openCreate}
+          title="Create route"
+          type="button"
+        >
+          <Plus className="size-4" />
+        </button>
         <button
           aria-label="Close route panel"
-          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={onClose}
           type="button"
         >

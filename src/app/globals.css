@@ -172,7 +172,8 @@ body {
 
   .day-route-summary button,
   .day-route-editor button,
-  .overview-route-panel button {
+  .overview-route-panel button,
+  .map-panel-reopen {
     min-height: 44px;
   }
 
@@ -229,6 +230,10 @@ body {
     background-color: var(--muted);
     z-index: 60;
   }
+}
+
+.map-panel-reopen {
+  bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
 }
 
 @media (max-width: 639px) {
