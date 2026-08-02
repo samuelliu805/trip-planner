@@ -69,7 +69,10 @@ export function orderedCityOccurrences(days: PlannerDay[]): CityOccurrence[] {
 
 export function neighboringCityConflict(occurrences: CityOccurrence[]) {
   for (let index = 1; index < occurrences.length; index += 1) {
-    if (occurrences[index - 1].placeKey === occurrences[index].placeKey)
+    if (
+      occurrences[index - 1].dayNumber === occurrences[index].dayNumber &&
+      occurrences[index - 1].placeKey === occurrences[index].placeKey
+    )
       return { from: occurrences[index - 1], to: occurrences[index] };
   }
   return null;
@@ -115,5 +118,5 @@ export function prospectiveNeighboringCityConflict(
 }
 
 export function neighboringCityError() {
-  return "Choose a different City. Neighboring City items cannot use the same map place.";
+  return "Choose a different City. Neighboring City items on the same day cannot use the same map place.";
 }

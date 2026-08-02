@@ -4,7 +4,11 @@ import { useState } from "react";
 
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 
-import { neighboringOverviewCityConflict, type OverviewStage } from "./overview";
+import {
+  isOverviewRouteLeg,
+  neighboringOverviewCityConflict,
+  type OverviewStage,
+} from "./overview";
 import { neighboringCityError } from "./city-order";
 import { useCalculateOverviewRoute } from "./queries";
 import type { OverviewRouteMode } from "./types";
@@ -38,7 +42,10 @@ export type OverviewRouteUi = {
   stages: OverviewStage[];
 };
 
-const keyForStages = (stages: OverviewStage[], defaultModes: OverviewRouteMode[]) =>
+const keyForStages = (
+  stages: OverviewStage[],
+  defaultModes: Array<OverviewRouteMode | undefined>,
+) =>
   `${stages
     .map(
       ({ entries, latitude, longitude, placeId }) =>
@@ -48,7 +55,7 @@ const keyForStages = (stages: OverviewStage[], defaultModes: OverviewRouteMode[]
 
 export function useOverviewRoute(
   stages: OverviewStage[],
-  defaultModes: OverviewRouteMode[],
+  defaultModes: Array<OverviewRouteMode | undefined>,
   tripId: string,
 ): OverviewRouteUi {
   const stageKey = keyForStages(stages, defaultModes);
@@ -73,13 +80,19 @@ export function useOverviewRoute(
     );
   }
 
-  const segments = stages.slice(1).map((to, index) => ({
-    calculatedLeg: currentState.calculatedLegs.find(({ position }) => position === index + 1),
-    from: stages[index],
-    mode: currentState.modes[index],
-    position: index + 1,
-    to,
-  }));
+  const segments = stages.slice(1).flatMap((to, index): OverviewRouteSegment[] => {
+    const from = stages[index];
+    if (!isOverviewRouteLeg(from, to)) return [];
+    return [
+      {
+        calculatedLeg: currentState.calculatedLegs.find(({ position }) => position === index + 1),
+        from,
+        mode: currentState.modes[index],
+        position: index + 1,
+        to,
+      },
+    ];
+  });
 
   async function calculate() {
     if (!segments.length) return;

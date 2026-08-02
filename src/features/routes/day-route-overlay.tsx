@@ -9,6 +9,7 @@ import {
   Route,
   Trash2,
   Utensils,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,15 @@ function Status({ route }: { route: DayRouteUi }) {
 const SelectedPlaceSlot = ({ children }: { children?: React.ReactNode }) =>
   children ? <div className="border-b p-3">{children}</div> : null;
 
-function Editor({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: React.ReactNode }) {
+function Editor({
+  onClose,
+  route,
+  selectedPlace,
+}: {
+  onClose: () => void;
+  route: DayRouteUi;
+  selectedPlace?: React.ReactNode;
+}) {
   const draft = route.draft!;
   const itemsById = new Map(route.activeDay?.items.map((item) => [item.id, item]) ?? []);
   const planned = new Set(draft.itemIds);
@@ -78,7 +87,17 @@ function Editor({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: R
             <p className="text-sm font-semibold">Day {route.activeDay?.day_number} · Route A</p>
             <p className="text-xs text-muted-foreground">Manual order is used.</p>
           </div>
-          <Status route={route} />
+          <div className="flex items-center gap-2">
+            <Status route={route} />
+            <button
+              aria-label="Close route panel"
+              className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              onClick={onClose}
+              type="button"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
       </header>
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
@@ -259,7 +278,15 @@ function Editor({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: R
   );
 }
 
-function Summary({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: React.ReactNode }) {
+function Summary({
+  onClose,
+  route,
+  selectedPlace,
+}: {
+  onClose: () => void;
+  route: DayRouteUi;
+  selectedPlace?: React.ReactNode;
+}) {
   const calculation = route.plan?.calculation;
   const stops = route.plan?.stops.length ?? 0;
   const modes = [...new Set(route.plan?.legs.map(({ mode }) => transportModeLabels[mode]) ?? [])];
@@ -301,14 +328,17 @@ function Summary({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: 
             {modes.length ? ` · ${modes.join(", ")}` : ""}
           </p>
         </div>
-        <Button onClick={route.requestFit} size="sm" type="button" variant="outline">
-          View route
+        <Button onClick={route.openEdit} size="sm" type="button">
+          Edit route
         </Button>
-        {!selectedPlace ? (
-          <Button onClick={route.openEdit} size="sm" type="button">
-            Edit route
-          </Button>
-        ) : null}
+        <button
+          aria-label="Close route panel"
+          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={onClose}
+          type="button"
+        >
+          <X className="size-4" />
+        </button>
       </div>
       {missingDurations?.length ? (
         <p className="px-3 text-[11px] text-muted-foreground">
@@ -343,23 +373,34 @@ function Summary({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: 
 }
 
 export function DayRouteOverlay({
+  onClose,
   route,
   selectedPlace,
 }: {
+  onClose: () => void;
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
   if (!route.activeDay)
     return (
       <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-4 text-center shadow-lg backdrop-blur">
+        <button
+          aria-label="Close route panel"
+          className="absolute right-2 top-2 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={onClose}
+          type="button"
+        >
+          <X className="size-4" />
+        </button>
         <p className="text-sm font-semibold">Select a day</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Choose a matrix day to view its eligible places.
         </p>
       </section>
     );
-  if (route.editing) return <Editor route={route} selectedPlace={selectedPlace} />;
-  if (route.plan) return <Summary route={route} selectedPlace={selectedPlace} />;
+  if (route.editing)
+    return <Editor onClose={onClose} route={route} selectedPlace={selectedPlace} />;
+  if (route.plan) return <Summary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
   return (
     <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
@@ -373,6 +414,14 @@ export function DayRouteOverlay({
         <Button onClick={route.openCreate} size="sm" type="button">
           Create route
         </Button>
+        <button
+          aria-label="Close route panel"
+          className="flex size-10 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={onClose}
+          type="button"
+        >
+          <X className="size-4" />
+        </button>
       </div>
     </section>
   );

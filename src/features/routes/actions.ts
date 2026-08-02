@@ -11,7 +11,11 @@ import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database";
 
 import { calculateRouteConfiguration, mapWithConcurrency } from "./calculator";
-import { deriveOverviewStages, neighboringOverviewCityConflict } from "./overview";
+import {
+  deriveOverviewStages,
+  isOverviewRouteLeg,
+  neighboringOverviewCityConflict,
+} from "./overview";
 import { neighboringCityError } from "./city-order";
 import { resolveRouteCalculationConfig } from "./plan-config";
 import { validateDayRouteDraft } from "./route-config";
@@ -205,6 +209,8 @@ export async function calculateOverviewRoute(
         const from = stages[position - 1];
         const to = stages[position];
         if (!from || !to) throw new Error("The Overview route changed. Review the City stages.");
+        if (!isOverviewRouteLeg(from, to))
+          throw new Error("That City stay boundary does not need a route calculation.");
         const configIdentity = {
           dayId: "trip-overview",
           tripId: parsed.data.tripId,

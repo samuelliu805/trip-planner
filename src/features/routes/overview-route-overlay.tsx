@@ -32,7 +32,7 @@ export function OverviewRouteOverlay({
   route: OverviewRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
-  if (route.stages.length < 2)
+  if (!route.segments.length)
     return selectedPlace ? (
       <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
         {selectedPlace}
@@ -108,15 +108,14 @@ export function OverviewRouteOverlay({
               className="max-h-56 space-y-2 overflow-y-auto pr-1"
               aria-label="Overview route connections"
             >
-              {route.segments.map((segment) => (
+              {route.segments.map((segment, index) => (
                 <li
                   className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,0.8fr)] items-center gap-2 rounded-lg border p-2"
                   key={`${segment.from.id}:${segment.to.id}`}
                 >
                   <div className="min-w-0 text-xs">
                     <span className="block truncate font-medium">
-                      {segment.position}. {segment.from.entries[0].title} →{" "}
-                      {segment.to.entries[0].title}
+                      {index + 1}. {segment.from.entries[0].title} → {segment.to.entries[0].title}
                     </span>
                     <span className="text-[10px] text-muted-foreground">
                       {segment.calculatedLeg

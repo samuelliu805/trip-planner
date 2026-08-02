@@ -1,7 +1,7 @@
 import type { ItineraryItem, PlannerDay } from "../itinerary/types.ts";
 import { haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
 
-import type { OverviewStage } from "./overview.ts";
+import { isOverviewRouteLeg, type OverviewStage } from "./overview.ts";
 import type { OverviewRouteMode } from "./types.ts";
 
 export const overviewFlightThresholdMeters = 500_000;
@@ -48,13 +48,14 @@ function explicitModeForArrivalDay(day?: PlannerDay): OverviewRouteMode | undefi
 export function deriveOverviewDefaultModes(
   days: PlannerDay[],
   stages: OverviewStage[],
-): OverviewRouteMode[] {
+): Array<OverviewRouteMode | undefined> {
   const daysByNumber = new Map(days.map((day) => [day.day_number, day]));
   return stages.slice(1).map((destination, index) => {
+    const origin = stages[index];
+    if (!isOverviewRouteLeg(origin, destination)) return undefined;
     const arrivalDayNumber = Math.min(...destination.entries.map(({ dayNumber }) => dayNumber));
     const explicit = explicitModeForArrivalDay(daysByNumber.get(arrivalDayNumber));
     if (explicit) return explicit;
-    const origin = stages[index];
     const distance = haversineDistanceMeters(
       { latitude: origin.latitude, longitude: origin.longitude },
       { latitude: destination.latitude, longitude: destination.longitude },

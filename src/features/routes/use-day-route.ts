@@ -31,7 +31,6 @@ export type DayRouteUi = {
   plan?: DayRoutePlan;
   removeItem: (itemId: string) => void;
   removeStop: (index: number) => void;
-  requestFit: () => void;
   saveAndCalculate: () => Promise<void>;
   setLegMode: (index: number, mode: RouteLegMode) => void;
   status?: DayRouteStatus;
@@ -53,7 +52,6 @@ export function useDayRoute(
     value: DayRouteEditorDraft;
   } | null>(null);
   const [errorState, setErrorState] = useState<{ dayId: string; value: string } | null>(null);
-  const [fitRequest, setFitRequest] = useState(0);
   const draft = draftState && draftState.dayId === activeDay?.id ? draftState.value : null;
   const error = errorState && errorState.dayId === activeDay?.id ? errorState.value : undefined;
   const plan = workspace.routePlans.find(
@@ -242,10 +240,7 @@ export function useDayRoute(
     editing: draft !== null,
     eligibleItems,
     error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
-    fitKey:
-      calculatedFitKey || fitRequest
-        ? `day-route:${activeDay?.id}:${calculatedFitKey ?? "uncalculated"}:${fitRequest}`
-        : undefined,
+    fitKey: calculatedFitKey ? `day-route:${activeDay?.id}:${calculatedFitKey}` : undefined,
     moveStop,
     openCreate: () => {
       setDraft({ itemIds: [], legModes: [] });
@@ -260,7 +255,6 @@ export function useDayRoute(
     plan,
     removeItem,
     removeStop,
-    requestFit: () => setFitRequest((current) => current + 1),
     saveAndCalculate,
     setLegMode,
     status,

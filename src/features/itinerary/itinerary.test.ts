@@ -27,7 +27,11 @@ import {
   selectionContains,
 } from "./grid-interactions.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
-import { buildOverviewRouteLines, deriveOverviewStages } from "../routes/overview.ts";
+import {
+  buildOverviewRouteLines,
+  deriveOverviewStages,
+  isOverviewRouteLeg,
+} from "../routes/overview.ts";
 import {
   neighboringCityConflict,
   neighboringCityConflictAfterRemoving,
@@ -773,7 +777,7 @@ test("overview keeps every City occurrence and gives same-day stages the first d
   assert.equal(neighboringCityConflict(orderedCityOccurrences(days))?.to.itemId, "paris-2");
 });
 
-test("overview skips missing City days without hiding invalid neighboring duplicates", () => {
+test("overview allows the same City across days and omits the no-travel stay boundary", () => {
   const days = [
     {
       day_number: 1,
@@ -810,7 +814,65 @@ test("overview skips missing City days without hiding invalid neighboring duplic
     stages.map(({ entries }) => entries[0].itemId),
     ["rome-1", "rome-3"],
   );
-  assert.equal(neighboringCityConflict(orderedCityOccurrences(days))?.to.itemId, "rome-3");
+  assert.equal(neighboringCityConflict(orderedCityOccurrences(days)), null);
+  assert.equal(isOverviewRouteLeg(stages[0], stages[1]), false);
+  assert.deepEqual(buildOverviewRouteLines(stages, []), []);
+});
+
+test("overview keeps real legs around a repeated cross-day City boundary", () => {
+  const days = [
+    {
+      day_number: 1,
+      id: "day-1",
+      items: [
+        {
+          id: "city-a",
+          place: { id: "place-a", latitude: 1, longitude: 1 },
+          sort_order: 0,
+          title: "A",
+          type: "location",
+        },
+        {
+          id: "city-b-1",
+          place: { id: "place-b", latitude: 2, longitude: 2 },
+          sort_order: 1,
+          title: "B",
+          type: "location",
+        },
+      ],
+    },
+    {
+      day_number: 2,
+      id: "day-2",
+      items: [
+        {
+          id: "city-b-2",
+          place: { id: "place-b", latitude: 2, longitude: 2 },
+          sort_order: 0,
+          title: "B",
+          type: "location",
+        },
+        {
+          id: "city-c",
+          place: { id: "place-c", latitude: 3, longitude: 3 },
+          sort_order: 1,
+          title: "C",
+          type: "location",
+        },
+      ],
+    },
+  ] as unknown as PlannerDay[];
+  const stages = deriveOverviewStages(days);
+  assert.equal(neighboringCityConflict(orderedCityOccurrences(days)), null);
+  assert.deepEqual(
+    buildOverviewRouteLines(stages, []).map(({ position }) => position),
+    [1, 3],
+  );
+  assert.deepEqual(deriveOverviewDefaultModes(days, stages), [
+    "self_driving",
+    undefined,
+    "self_driving",
+  ]);
 });
 
 test("neighboring City validation rejects only adjacent identical places", () => {
@@ -858,6 +920,21 @@ test("neighboring City validation rejects only adjacent identical places", () =>
         title: "B again",
       },
     ]),
+  );
+  assert.equal(
+    prospectiveNeighboringCityConflict(
+      [...days, { day_number: 2, id: "day-2", items: [] } as unknown as PlannerDay],
+      [
+        {
+          dayId: "day-2",
+          itemId: "next-day-b",
+          placeKey: "place:place-b",
+          sortOrder: 0,
+          title: "B next day",
+        },
+      ],
+    ),
+    null,
   );
   const withReturn = structuredClone(days) as PlannerDay[];
   withReturn[0].items.push({
@@ -1163,8 +1240,10 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.match(overviewUi, /Overview route leg times/);
   assert.match(overviewUi, /Duration unavailable/);
   assert.match(overviewHook, /mode && !calculatedLeg/);
+  assert.match(overviewHook, /isOverviewRouteLeg/);
   assert.match(actions, /calculateOverviewRoute/);
   assert.match(actions, /mapWithConcurrency\(tasks, 3\)/);
+  assert.match(actions, /isOverviewRouteLeg/);
   assert.match(actions, /is_trip_owner/);
   assert.match(mapHook, /day-route:\$\{dayRoute\.activeDay\?\.id/);
   assert.match(mapHook, /firstCity/);
@@ -1175,10 +1254,14 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.match(mapShell, /Day map layers/);
   assert.match(mapShell, /City transfers/);
   assert.match(mapShell, /Day stops/);
-  assert.match(mapShell, /dayRoute\.plan[\s\S]*dayRoute\.openEdit/);
-  assert.match(mapShell, /DayRouteOverlay route=\{dayRoute\} selectedPlace=\{selectedPlace\}/);
+  assert.match(mapShell, /closeDayPanel[\s\S]*onMapSelectionClear/);
+  assert.match(mapShell, /dayRoute\.cancelEditing/);
+  assert.match(mapShell, /Show Route A panel/);
+  assert.match(mapShell, /DayRouteOverlay[\s\S]*onClose=\{closeDayPanel\}/);
   assert.doesNotMatch(mapShell, /day-route-place-card/);
-  assert.match(routeUi, /!selectedPlace[\s\S]*route\.openEdit/);
+  assert.match(routeUi, /Close route panel/);
+  assert.match(routeUi, /route\.openEdit/);
+  assert.doesNotMatch(routeUi, /View route|requestFit/);
   assert.match(routeUi, /Manual order is used/);
   assert.match(routeUi, /Save & calculate/);
   assert.doesNotMatch(

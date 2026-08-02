@@ -68,6 +68,11 @@ export function neighboringOverviewCityConflict(stages: OverviewStage[]) {
   );
 }
 
+export function isOverviewRouteLeg(from: OverviewStage, to: OverviewStage) {
+  const crossesDay = from.entries[0].dayNumber !== to.entries[0].dayNumber;
+  return !crossesDay || from.placeKey !== to.placeKey;
+}
+
 export function buildOverviewRouteLines(
   stages: OverviewStage[],
   calculatedLegs: CalculatedRouteLeg[],
@@ -76,6 +81,7 @@ export function buildOverviewRouteLines(
   return stages.slice(1).flatMap((stage, index) => {
     const position = index + 1;
     const previous = stages[index];
+    if (!isOverviewRouteLeg(previous, stage)) return [];
     const calculated = calculatedByPosition.get(position);
     try {
       const path = calculated
