@@ -3,16 +3,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
-  copyItineraryItems,
   createItineraryItem,
   deleteItineraryItem,
-  insertTripDay,
   loadPlannerWorkspace,
-  reorderItineraryItems,
-  removeTripDay,
   updateItineraryItem,
 } from "@/features/itinerary/actions";
+import {
+  copyItineraryItems,
+  insertTripDay,
+  reorderItineraryItems,
+  removeTripDay,
+} from "@/features/itinerary/day-actions";
 import { scheduleKind } from "@/features/itinerary/mutation-helpers";
+import { removeItem, replaceItem, requireData } from "@/features/itinerary/query-cache";
 import type {
   CopyItineraryItemsInput,
   CreateItineraryItemInput,
@@ -25,38 +28,6 @@ import type {
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 
 export const plannerQueryKey = (tripId: string) => ["planner", tripId] as const;
-
-function requireData<T>(result: { data?: T | null; error?: string | null }) {
-  if (!result.data) throw new Error(result.error ?? "The itinerary change could not be saved.");
-  return result.data;
-}
-
-function replaceItem(workspace: PlannerWorkspace | undefined, item: ItineraryItem) {
-  if (!workspace) return workspace;
-  return {
-    ...workspace,
-    days: workspace.days.map((day) => ({
-      ...day,
-      items:
-        day.id === item.day_id
-          ? [...day.items.filter(({ id }) => id !== item.id), item].sort(
-              (a, b) => a.sort_order - b.sort_order,
-            )
-          : day.items.filter(({ id }) => id !== item.id),
-    })),
-  };
-}
-
-function removeItem(workspace: PlannerWorkspace | undefined, itemId: string) {
-  if (!workspace) return workspace;
-  return {
-    ...workspace,
-    days: workspace.days.map((day) => ({
-      ...day,
-      items: day.items.filter(({ id }) => id !== itemId),
-    })),
-  };
-}
 
 export function usePlannerWorkspace(tripId: string, initialData?: PlannerWorkspace) {
   return useQuery({

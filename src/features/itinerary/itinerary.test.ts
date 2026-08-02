@@ -266,12 +266,45 @@ test("malformed and unrelated clipboard input is rejected safely", () => {
 });
 
 test("spreadsheet UI uses stable lightweight reorder controls plus rollback hooks", async () => {
-  const workspace = await readFile(
+  let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
     "utf8",
   );
-  const form = await readFile(
-    new URL("./components/planner-item-form.tsx", import.meta.url),
+  workspace += await readFile(
+    new URL("./components/planner-grid-elements.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
+    new URL("./components/planner-item-row.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
+    new URL("./components/planner-layout-elements.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
+  for (const file of [
+    "./components/planner-matrix.tsx",
+    "./components/planner-toolbar.tsx",
+    "./hooks/use-planner-clipboard.ts",
+    "./hooks/use-planner-interactions.ts",
+    "./hooks/use-planner-mutations.ts",
+  ])
+    workspace += await readFile(new URL(file, import.meta.url), "utf8");
+  let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
+  form += await readFile(
+    new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(
+    new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  const mapShell = await readFile(
+    new URL("./components/planner-map-shell.tsx", import.meta.url),
     "utf8",
   );
   const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
@@ -281,7 +314,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /event\.altKey && event\.key === "ArrowUp"/);
   assert.match(workspace, /event\.altKey && event\.key === "ArrowDown"/);
   assert.match(workspace, /aria-label="Fill selected cells down"/);
-  assert.match(workspace, /Only this column will change/);
+  assert.match(workspace, /Only this column will\s*change/);
   assert.match(workspace, /requestAnimationFrame/);
   assert.match(workspace, /replacedItems/);
   assert.match(workspace, /replaceCategoryItems/);
@@ -327,7 +360,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /h-14[\s\S]*xl:h-\[72px\]/);
   assert.match(workspace, /planner-map-peek/);
   assert.match(workspace, /open=\{mapExpanded\}/);
-  assert.match(workspace, /PlannerMapCanvas/);
+  assert.match(mapShell, /PlannerMapCanvas/);
   assert.match(workspace, /Promise\.all\(\s*replacements\.flatMap/);
   assert.match(workspace, /replacedIds/);
   assert.doesNotMatch(workspace, /DndContext|useSortable|DndDescribedBy/);
@@ -346,10 +379,18 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
 });
 
 test("mobile workspace keeps the matrix editable and uses safe overlay sheets", async () => {
-  const workspace = await readFile(
+  let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
     "utf8",
   );
+  workspace += await readFile(
+    new URL("./components/planner-layout-elements.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
   assert.match(styles, /max-width: 639px/);
   assert.match(styles, /safe-area-inset-left/);
@@ -366,12 +407,20 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
 });
 
 test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", async () => {
-  const workspace = await readFile(
+  let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
     "utf8",
   );
+  workspace += await readFile(
+    new URL("./components/planner-layout-elements.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./hooks/use-planner-clipboard.ts", import.meta.url), "utf8");
+  workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
   const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
-  const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  let actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  actions += await readFile(new URL("./action-helpers.ts", import.meta.url), "utf8");
   assert.match(workspace, /This itinerary is empty/);
   assert.match(workspace, /planner could not refresh/);
   assert.match(workspace, /Saving…[\s\S]*Saved/);
@@ -465,8 +514,9 @@ test("hotel permits a displayed name without an exact place and transport has no
 });
 
 test("address and location controls use normalized map places", async () => {
-  const form = await readFile(
-    new URL("./components/planner-item-form.tsx", import.meta.url),
+  let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
+  form += await readFile(
+    new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
     "utf8",
   );
   assert.match(form, /const placeLabel/);
@@ -478,18 +528,24 @@ test("address and location controls use normalized map places", async () => {
 });
 
 test("Phase 3 keeps exact item and marker selection synchronized", async () => {
-  const workspace = await readFile(
+  let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
     "utf8",
   );
   const map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  const mapShell = await readFile(
+    new URL("./components/planner-map-shell.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += mapShell;
+  workspace += await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
   const places = await readFile(
     new URL("../places/place-autocomplete.tsx", import.meta.url),
     "utf8",
   );
   assert.match(workspace, /selectedItemId/);
   assert.match(workspace, /setSelectedItemId\(item\.id\)/);
-  assert.match(workspace, /entry\.dayLabel/);
+  assert.match(mapShell, /entry\.dayLabel/);
   assert.doesNotMatch(workspace, /Map preview · P3|P4/);
   assert.match(map, /AdvancedMarker/);
   assert.match(map, /entry\.title/);
@@ -501,14 +557,14 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(map, /glyph=\{style\.glyph\}/);
   assert.match(workspace, /groupKey = `\$\{item\.place\.id\}:\$\{entry\.kind\}`/);
   assert.match(workspace, /entries\.push\(entry\)/);
-  assert.match(workspace, /Map pin filters/);
-  assert.match(workspace, /mergeMarkerDateRanges\(marker\.entries\)/);
+  assert.match(mapShell, /Map pin filters/);
+  assert.match(mapShell, /mergeMarkerDateRanges\(marker\.entries\)/);
   assert.match(map, /itemIds\.includes\(selectedId\)/);
 });
 
 test("replace-copy clears constrained destination rows before inserting preserved places", async () => {
   const workspace = await readFile(
-    new URL("./components/planner-workspace.tsx", import.meta.url),
+    new URL("./hooks/use-planner-clipboard.ts", import.meta.url),
     "utf8",
   );
   const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");

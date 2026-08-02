@@ -1,21 +1,5 @@
 "use client";
 
-import {
-  Bike,
-  BusFront,
-  CableCar,
-  CarFront,
-  CarTaxiFront,
-  Footprints,
-  Plane,
-  Plus,
-  Ship,
-  Trash2,
-  TrainFront,
-  TramFront,
-  X,
-  type LucideIcon,
-} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import {
@@ -30,17 +14,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
 import {
   useCreateItineraryItem,
   useDeleteItineraryItem,
@@ -57,6 +30,9 @@ import {
 } from "@/features/itinerary/types";
 import type { Json } from "@/types/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
+import { PlannerItemPrimaryFields } from "@/features/itinerary/components/planner-item-primary-fields";
+import { PlannerItemSecondaryFields } from "@/features/itinerary/components/planner-item-secondary-fields";
+import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 
 type PlannerItemFormProps = {
   dayId: string;
@@ -68,35 +44,6 @@ type PlannerItemFormProps = {
   type: ItineraryItemType;
   unavailableTransportModes?: TransportMode[];
   variantId: string;
-};
-
-const itemCopy: Record<ItineraryItemType, { label: string; placeholder: string }> = {
-  activity: { label: "Activity", placeholder: "e.g. Louvre Museum" },
-  car_rental: { label: "Car rental", placeholder: "" },
-  flight: { label: "Flight", placeholder: "e.g. UA 238 to Tokyo" },
-  hotel: { label: "Hotel", placeholder: "e.g. Park Hotel Tokyo" },
-  location: { label: "City", placeholder: "e.g. Paris" },
-  meal: { label: "Meal", placeholder: "e.g. Dinner at Septime" },
-  note: { label: "Note", placeholder: "Add a reminder or detail" },
-  train: { label: "Train", placeholder: "e.g. Eurostar to Paris" },
-  transport: { label: "Transport", placeholder: "e.g. Airport to city center" },
-};
-
-const transportModeIcons: Partial<Record<TransportMode, LucideIcon>> = {
-  bike: Bike,
-  bus: BusFront,
-  cable_car: CableCar,
-  ferry: Ship,
-  flight: Plane,
-  motorcycle: Bike,
-  rideshare: CarFront,
-  self_driving: CarFront,
-  shuttle: BusFront,
-  subway: TrainFront,
-  taxi: CarTaxiFront,
-  train: TrainFront,
-  tram: TramFront,
-  walk: Footprints,
 };
 
 export function PlannerItemForm({
@@ -271,260 +218,43 @@ export function PlannerItemForm({
         save();
       }}
     >
-      {type === "car_rental" ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`car-action-${item?.id ?? dayId}`}>Pickup or return</Label>
-          <Select
-            onValueChange={(value) => setCarAction(value as CarRentalDetails["action"])}
-            value={carAction}
-          >
-            <SelectTrigger id={`car-action-${item?.id ?? dayId}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pickup">Pickup</SelectItem>
-              <SelectItem value="return">Return</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      ) : type === "transport" ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`transport-mode-${item?.id ?? dayId}`}>Transport</Label>
-          <Select
-            onValueChange={(value) => setTransportMode(value as TransportMode)}
-            value={transportMode}
-          >
-            <SelectTrigger autoFocus id={`transport-mode-${item?.id ?? dayId}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableTransportModes.map((mode) => {
-                const ModeIcon = transportModeIcons[mode] ?? CarFront;
-                return (
-                  <SelectItem key={mode} value={mode}>
-                    <span className="flex items-center gap-2">
-                      <ModeIcon className="size-4 text-muted-foreground" />
-                      {transportModeLabels[mode]}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : !["location", "hotel"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>{copy.label}</Label>
-          <Input
-            autoFocus
-            id={`item-title-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={copy.placeholder}
-            ref={titleRef}
-            value={title}
-          />
-        </div>
-      ) : null}
-      {!["note", "transport", "flight", "train"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label>
-            {placeLabel}{" "}
-            {type === "location" ? (
-              <span className="text-destructive">*</span>
-            ) : type === "hotel" ? (
-              <span className="font-normal text-muted-foreground">
-                optional if a displayed name is provided
-              </span>
-            ) : (
-              <span className="font-normal text-muted-foreground">optional</span>
-            )}
-          </Label>
-          <PlaceAutocomplete
-            autoFocus={!item && ["location", "hotel"].includes(type)}
-            disabled={pending}
-            onChange={(nextPlace) => {
-              setPlace(nextPlace);
-              if (!nextPlace) return;
-              if (
-                !title.trim() &&
-                type !== "location" &&
-                type !== "hotel" &&
-                type !== "car_rental" &&
-                type !== "transport"
-              )
-                setTitle(nextPlace.displayName);
-            }}
-            onSelected={() => requestAnimationFrame(() => titleRef.current?.focus())}
-            value={place}
-          />
-        </div>
-      ) : null}
-      {["location", "hotel"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>
-            {type === "location" ? "Displayed city name" : "Displayed hotel name"}{" "}
-            <span className="font-normal text-muted-foreground">
-              {type === "hotel" && !place ? "required without a location" : "optional"}
-            </span>
-          </Label>
-          <Input
-            id={`item-title-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={
-              place?.displayName ?? `Enter a ${type === "location" ? "city" : "hotel"} name`
-            }
-            ref={titleRef}
-            value={title}
-          />
-          <p className="text-xs text-muted-foreground">
-            {place
-              ? `Leave blank to display the selected ${type === "location" ? "city" : "hotel"}’s Google Maps name.`
-              : type === "hotel"
-                ? "Use this when an exact map location is unavailable."
-                : "Choose a city location above."}
-          </p>
-        </div>
-      ) : null}
-      {type === "car_rental" ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`car-provider-${item?.id ?? dayId}`}>
-            Rental company <span className="font-normal text-muted-foreground">optional</span>
-          </Label>
-          <Input
-            id={`car-provider-${item?.id ?? dayId}`}
-            onChange={(event) => setCarProvider(event.target.value)}
-            placeholder="e.g. Sixt"
-            value={carProvider}
-          />
-        </div>
-      ) : null}
-      {["location", "activity"].includes(type) ? (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor={`item-start-${item?.id ?? dayId}-${type}`}>
-              {type === "location" ? "Arrive" : "Start time"}{" "}
-              <span className="font-normal text-muted-foreground">optional</span>
-            </Label>
-            <div className="relative">
-              <Input
-                className="pr-9"
-                id={`item-start-${item?.id ?? dayId}-${type}`}
-                onChange={(event) => setStartTime(event.target.value)}
-                type="time"
-                value={startTime}
-              />
-              {startTime ? (
-                <button
-                  aria-label="Clear start time"
-                  className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                  onClick={() => setStartTime("")}
-                  tabIndex={-1}
-                  type="button"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`item-end-${item?.id ?? dayId}-${type}`}>
-              {type === "location" ? "Leave" : "End time"}{" "}
-              <span className="font-normal text-muted-foreground">optional</span>
-            </Label>
-            <div className="relative">
-              <Input
-                className="pr-9"
-                id={`item-end-${item?.id ?? dayId}-${type}`}
-                onChange={(event) => setEndTime(event.target.value)}
-                type="time"
-                value={endTime}
-              />
-              {endTime ? (
-                <button
-                  aria-label="Clear end time"
-                  className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                  onClick={() => setEndTime("")}
-                  tabIndex={-1}
-                  type="button"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {["car_rental", "meal"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`item-time-${item?.id ?? dayId}-${type}`}>
-            {type === "meal" ? "Meal time" : `${carAction === "pickup" ? "Pickup" : "Return"} time`}{" "}
-            <span className="font-normal text-muted-foreground">optional</span>
-          </Label>
-          <Input
-            id={`item-time-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setStartTime(event.target.value)}
-            type="time"
-            value={startTime}
-          />
-        </div>
-      ) : null}
-      {!["location", "note"].includes(type) ? (
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">
-            {linkLabel} <span className="font-normal text-muted-foreground">optional</span>
-          </legend>
-          {links.map((link, index) => (
-            <div className="flex gap-2" key={index}>
-              <Input
-                aria-label={`Link ${index + 1} URL`}
-                onChange={(event) =>
-                  setLinks((current) =>
-                    current.map((value, linkIndex) =>
-                      linkIndex === index ? { ...value, url: event.target.value } : value,
-                    ),
-                  )
-                }
-                placeholder="https://"
-                type="url"
-                value={link.url}
-              />
-              <Button
-                aria-label={`Remove link ${index + 1}`}
-                onClick={() =>
-                  setLinks((current) => current.filter((_, linkIndex) => linkIndex !== index))
-                }
-                className="size-9 p-0"
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          ))}
-          <Button
-            onClick={() => setLinks((current) => [...current, { label: linkLabel, url: "" }])}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <Plus className="size-4" /> Add link
-          </Button>
-        </fieldset>
-      ) : null}
-      {type !== "note" ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`item-notes-${item?.id ?? dayId}-${type}`}>
-            {copy.label} notes <span className="font-normal text-muted-foreground">optional</span>
-          </Label>
-          <Textarea
-            id={`item-notes-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder={`Add ${copy.label.toLowerCase()} details`}
-            value={notes}
-          />
-        </div>
-      ) : null}
+      <PlannerItemPrimaryFields
+        availableTransportModes={availableTransportModes}
+        carAction={carAction}
+        carProvider={carProvider}
+        copyLabel={copy.label}
+        copyPlaceholder={copy.placeholder}
+        dayId={dayId}
+        item={item}
+        pending={pending}
+        place={place}
+        placeLabel={placeLabel}
+        setCarAction={setCarAction}
+        setCarProvider={setCarProvider}
+        setPlace={setPlace}
+        setTitle={setTitle}
+        setTransportMode={setTransportMode}
+        title={title}
+        titleRef={titleRef}
+        transportMode={transportMode}
+        type={type}
+      />
+      <PlannerItemSecondaryFields
+        carAction={carAction}
+        copyLabel={copy.label}
+        dayId={dayId}
+        endTime={endTime}
+        item={item}
+        linkLabel={linkLabel}
+        links={links}
+        notes={notes}
+        setEndTime={setEndTime}
+        setLinks={setLinks}
+        setNotes={setNotes}
+        setStartTime={setStartTime}
+        startTime={startTime}
+        type={type}
+      />
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error.message}

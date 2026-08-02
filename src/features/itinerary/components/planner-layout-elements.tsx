@@ -1,0 +1,158 @@
+"use client";
+
+import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
+import { categories } from "@/features/itinerary/components/planner-config";
+import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+
+export function PlannerStatus({
+  deleteError,
+  fillLabel,
+  fillThroughDay,
+  interactionError,
+  isEmpty,
+  isFillDragging,
+  onDismissError,
+  workspaceError,
+}: {
+  deleteError: boolean;
+  fillLabel: string;
+  fillThroughDay?: number;
+  interactionError?: string;
+  isEmpty: boolean;
+  isFillDragging: boolean;
+  onDismissError: () => void;
+  workspaceError: boolean;
+}) {
+  return (
+    <>
+      {interactionError ? (
+        <div
+          className="flex items-center justify-between border-b bg-destructive/10 px-4 py-1.5 text-xs text-destructive"
+          role="alert"
+        >
+          <span>{interactionError}</span>
+          <button className="underline" onClick={onDismissError} type="button">
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {workspaceError ? (
+        <p className="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive" role="alert">
+          The planner could not refresh. Your last loaded data remains visible.
+        </p>
+      ) : null}
+      {deleteError ? (
+        <p className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
+          The trip could not be deleted.
+        </p>
+      ) : null}
+      {isEmpty ? (
+        <p className="border-b bg-primary/5 px-4 py-2 text-xs text-muted-foreground" role="status">
+          This itinerary is empty. Select a category cell, then choose Add item.
+        </p>
+      ) : null}
+      {isFillDragging ? (
+        <div
+          className="pointer-events-none fixed left-1/2 top-28 z-50 -translate-x-1/2 rounded-full border bg-background/95 px-4 py-2 text-xs font-medium shadow-lg backdrop-blur"
+          role="status"
+        >
+          Release to copy {fillLabel} down through Day {fillThroughDay ?? ""}. Only this column will
+          change.
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+export function PlannerMapPane({
+  markers,
+  onExpand,
+  onMarkerClick,
+  onToggleKind,
+  selectedId,
+  visibleKinds,
+}: {
+  markers: PlannerMapMarker[];
+  onExpand: () => void;
+  onMarkerClick: (id: string) => void;
+  onToggleKind: (kind: MarkerKind) => void;
+  selectedId?: string;
+  visibleKinds: Set<MarkerKind>;
+}) {
+  const map = (compact = false) => (
+    <PlannerMapShell
+      compact={compact}
+      markers={markers}
+      onExpand={compact ? onExpand : undefined}
+      onMarkerClick={onMarkerClick}
+      onToggleKind={onToggleKind}
+      selectedId={selectedId}
+      visibleKinds={visibleKinds}
+    />
+  );
+  return (
+    <div className="planner-map-pane min-w-0">
+      <div className="planner-map-landscape h-full">{map()}</div>
+      <div className="planner-map-peek h-full">{map(true)}</div>
+    </div>
+  );
+}
+
+export function PlannerGridHeader() {
+  return (
+    <div
+      className="sticky top-0 z-30 flex h-9 border-b bg-muted/95 text-[11px] font-semibold text-muted-foreground"
+      role="row"
+    >
+      <div
+        className="sticky left-0 z-40 flex w-24 shrink-0 items-center border-r bg-muted px-2"
+        role="columnheader"
+      >
+        Date
+      </div>
+      <div
+        className="sticky left-24 z-40 flex w-16 shrink-0 items-center border-r bg-muted px-2"
+        role="columnheader"
+      >
+        Day
+      </div>
+      {categories.map((category) => (
+        <div
+          className={`${category.width} flex shrink-0 items-center border-r px-2`}
+          key={category.id}
+          role="columnheader"
+        >
+          {category.label}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function PlannerDivider({
+  onResize,
+  onSplitChange,
+  split,
+}: {
+  onResize: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onSplitChange: (value: number) => void;
+  split: number;
+}) {
+  return (
+    <div
+      aria-label="Resize matrix and map"
+      aria-orientation="vertical"
+      aria-valuemax={68}
+      aria-valuemin={45}
+      aria-valuenow={Math.round(split)}
+      className="planner-divider relative z-40 cursor-col-resize bg-border hover:bg-primary focus-visible:bg-primary focus-visible:outline-none"
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") onSplitChange(Math.max(45, split - 2));
+        if (event.key === "ArrowRight") onSplitChange(Math.min(68, split + 2));
+      }}
+      onPointerDown={onResize}
+      role="separator"
+      tabIndex={0}
+    />
+  );
+}

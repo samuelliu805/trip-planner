@@ -3,125 +3,32 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  copyItineraryItemsSchema,
   createItineraryItemSchema,
   deleteItineraryItemSchema,
-  insertTripDaySchema,
-  removeTripDaySchema,
-  reorderItineraryItemsSchema,
   updateItineraryItemSchema,
-  type CopyItineraryItemsInput,
   type CreateItineraryItemInput,
   type DeleteItineraryItemInput,
-  type InsertTripDayInput,
-  type RemoveTripDayInput,
-  type ReorderItineraryItemsInput,
   type UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import {
-  buildCopyRows,
   normalizedOptional,
   normalizedTimes,
   scheduleKind,
 } from "@/features/itinerary/mutation-helpers";
-import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
-import type { PlaceSnapshot } from "@/lib/providers/places/types";
+import type { MutationResult } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";
-import type { Json, Tables, TablesInsert, TablesUpdate } from "@/types/database";
+import type { Json, TablesInsert, TablesUpdate } from "@/types/database";
+import {
+  firstIssue,
+  mutationError,
+  persistPlaceSnapshot,
+  replaceItemLinks,
+  withPlace,
+} from "@/features/itinerary/action-helpers";
 
 export async function loadPlannerWorkspace(tripId: string) {
   return getPlannerWorkspace(tripId);
-}
-
-function firstIssue(error: { issues: { message: string }[] }) {
-  return error.issues[0]?.message ?? "Check the item and try again.";
-}
-
-function mutationError(message?: string) {
-  if (message?.includes("itinerary_items_unique_transport_mode_per_day"))
-    return "That transport type is already planned for this day. Choose a different type.";
-  return message?.includes("row-level security") || message?.includes("permission denied")
-    ? "You do not have permission to change itinerary items."
-    : (message ?? "The itinerary item could not be saved.");
-}
-
-async function persistPlaceSnapshot(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  tripId: string,
-  snapshot?: PlaceSnapshot | null,
-) {
-  if (!snapshot) return null;
-  if (snapshot.provider !== "google" || !snapshot.providerPlaceId)
-    throw new Error("Only normalized Google place snapshots can be persisted here.");
-  const { data, error } = await supabase.rpc("upsert_google_place_snapshot", {
-    place_display_name: snapshot.displayName,
-    place_formatted_address: snapshot.formattedAddress ?? "",
-    place_latitude: snapshot.latitude,
-    place_longitude: snapshot.longitude,
-    provider_place_id: snapshot.providerPlaceId,
-    target_trip_id: tripId,
-  });
-  if (error || !data)
-    throw new Error(mutationError(error?.message ?? "The map place could not be saved."));
-  return data;
-}
-
-function withPlace(
-  item: Tables<"itinerary_items">,
-  snapshot?: PlaceSnapshot | null,
-  placeId?: string | null,
-): ItineraryItem {
-  return { ...item, place: snapshot && placeId ? { ...snapshot, id: placeId } : null };
-}
-
-async function replaceItemLinks(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  itemId: string,
-  links: { label: string; url: string }[],
-) {
-  const { data: existing, error: readError } = await supabase
-    .from("itinerary_item_links")
-    .select("id")
-    .eq("item_id", itemId);
-  if (readError) throw new Error(mutationError(readError.message));
-  const existingIds = (existing ?? []).map(({ id }) => id);
-  if (!links.length) {
-    if (existingIds.length) {
-      const { error } = await supabase.from("itinerary_item_links").delete().in("id", existingIds);
-      if (error) throw new Error(mutationError(error.message));
-    }
-    return [];
-  }
-  const { data, error } = await supabase
-    .from("itinerary_item_links")
-    .insert(
-      links.map((link, sort_order) => ({
-        item_id: itemId,
-        label: link.label,
-        url: link.url,
-        sort_order,
-      })),
-    )
-    .select("id, item_id, label, url, sort_order");
-  if (error) throw new Error(mutationError(error.message));
-  if (existingIds.length) {
-    const { error: deleteError } = await supabase
-      .from("itinerary_item_links")
-      .delete()
-      .in("id", existingIds);
-    if (deleteError) {
-      await supabase
-        .from("itinerary_item_links")
-        .delete()
-        .in(
-          "id",
-          (data ?? []).map(({ id }) => id),
-        );
-      throw new Error(mutationError(deleteError.message));
-    }
-  }
-  return data ?? [];
 }
 
 export async function createItineraryItem(
@@ -348,193 +255,4 @@ export async function deleteItineraryItem(
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data };
-}
-
-export async function insertTripDay(
-  input: InsertTripDayInput,
-): Promise<MutationResult<{ id: string }>> {
-  const parsed = insertTripDaySchema.safeParse(input);
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("insert_trip_day", {
-    before_day_number: parsed.data.beforeDayNumber,
-    target_trip_id: parsed.data.tripId,
-  });
-  if (error || !data)
-    return { error: mutationError(error?.message ?? "The day could not be inserted.") };
-  revalidatePath(`/trips/${parsed.data.tripId}`);
-  return { data: { id: data } };
-}
-
-export async function removeTripDay(
-  input: RemoveTripDayInput,
-): Promise<MutationResult<{ id: string }>> {
-  const parsed = removeTripDaySchema.safeParse(input);
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("remove_trip_day", {
-    target_day_id: parsed.data.dayId,
-    target_trip_id: parsed.data.tripId,
-  });
-  if (error || !data)
-    return { error: mutationError(error?.message ?? "The day could not be removed.") };
-  revalidatePath(`/trips/${parsed.data.tripId}`);
-  return { data: { id: data } };
-}
-
-export async function reorderItineraryItems(
-  input: ReorderItineraryItemsInput,
-): Promise<MutationResult<ItineraryItem[]>> {
-  const parsed = reorderItineraryItemsSchema.safeParse(input);
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-
-  const supabase = await createClient();
-  const ids = parsed.data.items.map(({ id }) => id);
-  const { data: current, error: readError } = await supabase
-    .from("itinerary_items")
-    .select("id, sort_order")
-    .eq("trip_id", parsed.data.tripId)
-    .eq("day_id", parsed.data.dayId)
-    .in("id", ids);
-  if (readError || current?.length !== ids.length)
-    return {
-      error: mutationError(
-        readError?.message ?? "You do not have permission to reorder these items.",
-      ),
-    };
-
-  const updates = [];
-  for (const { id, sortOrder } of parsed.data.items) {
-    const result = await supabase
-      .from("itinerary_items")
-      .update({ sort_order: sortOrder })
-      .eq("id", id)
-      .eq("trip_id", parsed.data.tripId)
-      .eq("day_id", parsed.data.dayId)
-      .select("*")
-      .maybeSingle();
-    updates.push(result);
-    if (result.error || !result.data) {
-      const originalOrders = new Map(current.map((item) => [item.id, item.sort_order]));
-      await Promise.all(
-        updates
-          .filter(({ data }) => data)
-          .map(({ data }) =>
-            supabase
-              .from("itinerary_items")
-              .update({ sort_order: originalOrders.get(data!.id) })
-              .eq("id", data!.id)
-              .eq("trip_id", parsed.data.tripId),
-          ),
-      );
-      return {
-        error: mutationError(result.error?.message ?? "The new item order could not be saved."),
-      };
-    }
-  }
-
-  const data = updates
-    .map(({ data }) => data)
-    .filter((item): item is ItineraryItem => Boolean(item));
-  data.sort((a, b) => a.sort_order - b.sort_order);
-  revalidatePath(`/trips/${parsed.data.tripId}`);
-  return { data };
-}
-
-export async function copyItineraryItems(
-  input: CopyItineraryItemsInput,
-): Promise<MutationResult<ItineraryItem[]>> {
-  const parsed = copyItineraryItemsSchema.safeParse(input);
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-
-  const supabase = await createClient();
-  const [{ data: sources, error: sourceError }, { data: targetDay, error: dayError }] =
-    await Promise.all([
-      supabase
-        .from("itinerary_items")
-        .select("*, links:itinerary_item_links(id, item_id, label, url, sort_order)")
-        .eq("trip_id", parsed.data.tripId)
-        .in("id", parsed.data.sourceItemIds),
-      supabase
-        .from("trip_days")
-        .select("id, variant_id")
-        .eq("id", parsed.data.targetDayId)
-        .maybeSingle(),
-    ]);
-  if (
-    sourceError ||
-    dayError ||
-    !targetDay ||
-    sources?.length !== parsed.data.sourceItemIds.length
-  ) {
-    return {
-      error: mutationError(
-        sourceError?.message ??
-          dayError?.message ??
-          "You do not have permission to copy these items.",
-      ),
-    };
-  }
-  if (sources.some(({ variant_id }) => variant_id !== targetDay.variant_id))
-    return { error: "Items can only be copied within Route A." };
-
-  const { data: lastItem, error: orderError } = await supabase
-    .from("itinerary_items")
-    .select("sort_order")
-    .eq("day_id", targetDay.id)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (orderError) return { error: mutationError(orderError.message) };
-
-  const sourceById = new Map((sources ?? []).map((item) => [item.id, item]));
-  const orderedSources = parsed.data.sourceItemIds.map((id) => sourceById.get(id)!);
-  const copies: TablesInsert<"itinerary_items">[] = buildCopyRows(
-    orderedSources,
-    targetDay.id,
-    (lastItem?.sort_order ?? -1) + 1,
-    parsed.data.preservePlace,
-  );
-  const { data, error } = await supabase.from("itinerary_items").insert(copies).select("*");
-  if (error || !data || data.length !== copies.length)
-    return { error: mutationError(error?.message ?? "Not all items could be copied.") };
-
-  const copiedLinks = orderedSources.flatMap((source, index) =>
-    (source.links ?? []).map((link) => ({
-      item_id: data[index].id,
-      label: link.label,
-      sort_order: link.sort_order,
-      url: link.url,
-    })),
-  );
-  if (copiedLinks.length) {
-    const { error: linksError } = await supabase.from("itinerary_item_links").insert(copiedLinks);
-    if (linksError) {
-      await supabase
-        .from("itinerary_items")
-        .delete()
-        .in(
-          "id",
-          data.map(({ id }) => id),
-        );
-      return { error: mutationError(linksError.message) };
-    }
-  }
-
-  revalidatePath(`/trips/${parsed.data.tripId}`);
-  return {
-    data: data.map((item, index) => ({ ...item, links: orderedSources[index].links ?? [] })),
-  };
-}
-
-export async function copyItemToDay(
-  input: CopyItineraryItemsInput,
-): Promise<MutationResult<ItineraryItem[]>> {
-  return copyItineraryItems(input);
-}
-
-export async function copyPreviousDaySelectedValues(
-  input: CopyItineraryItemsInput,
-): Promise<MutationResult<ItineraryItem[]>> {
-  return copyItineraryItems(input);
 }
