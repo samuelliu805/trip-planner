@@ -17,7 +17,12 @@ import {
 } from "@/features/itinerary/components/planner-config";
 import { selectionContains, type GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
+import type {
+  MarkerKind,
+  PlannerMapLine,
+  PlannerMapMarker,
+} from "@/features/maps/planner-map-canvas";
 
 export function PlannerMatrix({
   containerRef,
@@ -29,10 +34,14 @@ export function PlannerMatrix({
   gridTemplate,
   handleCellKey,
   isFillDragging,
+  mapEmptyState,
+  mapLines,
+  mapMode,
   mapMarkers,
   moveItem,
   onMapExpand,
   onMarkerClick,
+  onMapModeChange,
   onToggleMarkerKind,
   openEditorFromDoubleClick,
   removeDay,
@@ -74,6 +83,9 @@ export function PlannerMatrix({
   ) => void;
   insertDay: (position: number) => Promise<void>;
   isFillDragging: boolean;
+  mapEmptyState?: { message: string; title: string };
+  mapLines: PlannerMapLine[];
+  mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
   moveItem: (
     day: PlannerDay,
@@ -83,6 +95,7 @@ export function PlannerMatrix({
   ) => Promise<void>;
   onMapExpand: () => void;
   onMarkerClick: (id: string) => void;
+  onMapModeChange: (mode: PlannerMapMode) => void;
   onToggleMarkerKind: (kind: MarkerKind) => void;
   openEditorFromDoubleClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   removeDay: (id: string) => Promise<void>;
@@ -259,9 +272,13 @@ export function PlannerMatrix({
       </section>
       <PlannerDivider onResize={startResize} onSplitChange={setSplit} split={split} />
       <PlannerMapPane
+        emptyState={mapEmptyState}
+        lines={mapLines}
+        mapMode={mapMode}
         markers={mapMarkers}
         onExpand={() => onMapExpand()}
         onMarkerClick={onMarkerClick}
+        onMapModeChange={onMapModeChange}
         onToggleKind={onToggleMarkerKind}
         selectedId={selectedMapItem?.id}
         visibleKinds={visibleMarkerKinds}

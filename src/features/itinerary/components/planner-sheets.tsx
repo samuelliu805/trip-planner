@@ -14,14 +14,22 @@ import {
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type {
+  MarkerKind,
+  PlannerMapLine,
+  PlannerMapMarker,
+} from "@/features/maps/planner-map-canvas";
 
 type PlannerSheetsProps = {
   copyDaysOpen: boolean;
   copyPending: boolean;
   editor: EditorState | null;
   mapExpanded: boolean;
+  mapEmptyState?: { message: string; title: string };
+  mapLines: PlannerMapLine[];
+  mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
   onCopyDaysOpenChange: (open: boolean) => void;
   onCopyToSelectedDays: () => void;
@@ -29,6 +37,7 @@ type PlannerSheetsProps = {
   onInteractionError: (message?: string) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id: string) => void;
+  onMapModeChange: (mode: PlannerMapMode) => void;
   onSettingsOpenChange: (open: boolean) => void;
   onTargetDaysChange: (days: Set<string>) => void;
   onToggleMarkerKind: (kind: MarkerKind) => void;
@@ -48,6 +57,9 @@ export function PlannerSheets({
   copyPending,
   editor,
   mapExpanded,
+  mapEmptyState,
+  mapLines,
+  mapMode,
   mapMarkers,
   onCopyDaysOpenChange,
   onCopyToSelectedDays,
@@ -55,6 +67,7 @@ export function PlannerSheets({
   onInteractionError,
   onMapExpandedChange,
   onMarkerClick,
+  onMapModeChange,
   onSettingsOpenChange,
   onTargetDaysChange,
   onToggleMarkerKind,
@@ -106,8 +119,12 @@ export function PlannerSheets({
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell
+              emptyState={mapEmptyState}
+              lines={mapLines}
+              mapMode={mapMode}
               markers={mapMarkers}
               onMarkerClick={onMarkerClick}
+              onMapModeChange={onMapModeChange}
               onToggleKind={onToggleMarkerKind}
               selectedId={selectedItem?.id}
               visibleKinds={visibleMarkerKinds}

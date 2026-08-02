@@ -27,6 +27,7 @@ import {
   selectionContains,
 } from "./grid-interactions.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
+import { deriveOverviewStages } from "../routes/overview.ts";
 import { validateDayRouteDraft } from "../routes/route-config.ts";
 import { calculateRouteConfiguration } from "../routes/calculator.ts";
 import { buildRouteConfigSignature } from "../routes/signatures.ts";
@@ -44,7 +45,7 @@ import {
   reorderItineraryItemsSchema,
   updateItineraryItemSchema,
 } from "./schema.ts";
-import type { ItineraryItem } from "./types.ts";
+import type { ItineraryItem, PlannerDay } from "./types.ts";
 
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
@@ -582,6 +583,97 @@ test("map marker dates merge consecutive day intervals", () => {
   );
 });
 
+test("overview orders City stages manually and collapses only consecutive places", () => {
+  const city = (id: string, placeId: string, sortOrder: number, title: string) =>
+    ({
+      id,
+      place: {
+        formattedAddress: `${title} address`,
+        id: placeId,
+        latitude: sortOrder + 10,
+        longitude: sortOrder + 20,
+      },
+      sort_order: sortOrder,
+      title,
+      type: "location",
+    }) as unknown as ItineraryItem;
+  const activity = {
+    ...city("activity", "museum", 0, "Museum"),
+    type: "activity",
+  } as unknown as ItineraryItem;
+  const days = [
+    { day_number: 3, id: "day-3", items: [city("berlin-3", "berlin", 0, "Berlin")] },
+    { day_number: 2, id: "day-2", items: [activity] },
+    {
+      day_number: 1,
+      id: "day-1",
+      items: [
+        city("paris-2", "paris", 2, "Paris stay"),
+        city("paris-1", "paris", 1, "Paris arrival"),
+        city("london", "london", 3, "London"),
+      ],
+    },
+    { day_number: 4, id: "day-4", items: [city("paris-4", "paris", 0, "Paris return")] },
+  ] as unknown as PlannerDay[];
+
+  const stages = deriveOverviewStages(days);
+  assert.deepEqual(
+    stages.map(({ dayRangeLabel, entries, placeId, position }) => ({
+      dayRangeLabel,
+      itemIds: entries.map(({ itemId }) => itemId),
+      placeId,
+      position,
+    })),
+    [
+      {
+        dayRangeLabel: "Day 1",
+        itemIds: ["paris-1", "paris-2"],
+        placeId: "paris",
+        position: 1,
+      },
+      { dayRangeLabel: "Day 1", itemIds: ["london"], placeId: "london", position: 2 },
+      { dayRangeLabel: "Day 3", itemIds: ["berlin-3"], placeId: "berlin", position: 3 },
+      { dayRangeLabel: "Day 4", itemIds: ["paris-4"], placeId: "paris", position: 4 },
+    ],
+  );
+});
+
+test("overview skips missing City days and collapses a consecutive stay across the gap", () => {
+  const days = [
+    {
+      day_number: 1,
+      items: [
+        {
+          id: "rome-1",
+          place: { id: "rome", latitude: 41.9, longitude: 12.5 },
+          sort_order: 0,
+          title: "Rome",
+          type: "location",
+        },
+      ],
+    },
+    { day_number: 2, items: [] },
+    {
+      day_number: 3,
+      items: [
+        {
+          id: "rome-3",
+          place: { id: "rome", latitude: 41.9, longitude: 12.5 },
+          sort_order: 0,
+          title: "Rome",
+          type: "location",
+        },
+      ],
+    },
+  ] as unknown as PlannerDay[];
+  const [stage] = deriveOverviewStages(days);
+  assert.equal(stage.dayRangeLabel, "Days 1–3");
+  assert.deepEqual(
+    stage.entries.map(({ itemId }) => itemId),
+    ["rome-1", "rome-3"],
+  );
+});
+
 test("edit and delete inputs validate", () => {
   assert.equal(
     updateItineraryItemSchema.safeParse({
@@ -1051,7 +1143,8 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(places, /placeFields/);
   assert.match(workspace, /kind:/);
   assert.match(map, /markerStyles/);
-  assert.match(map, /glyph=\{style\.glyph\}/);
+  assert.match(map, /const glyph =/);
+  assert.match(map, /glyph=\{glyph\}/);
   assert.match(workspace, /groupKey = `\$\{item\.place\.id\}:\$\{entry\.kind\}`/);
   assert.match(workspace, /entries\.push\(entry\)/);
   assert.match(mapShell, /Map pin filters/);

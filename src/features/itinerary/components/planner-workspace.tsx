@@ -102,10 +102,14 @@ export function PlannerWorkspace({
   }
 
   const {
+    mapEmptyState,
+    mapLines,
+    mapMode,
     mapMarkers,
     selectedMapItem,
     selectMarker,
     setSelectedItemId,
+    setMapMode,
     toggleMarkerKind,
     visibleMarkerKinds,
   } = usePlannerMap(workspace, selectionEnd, setSelectionAnchor, setSelectionEnd);
@@ -226,10 +230,14 @@ export function PlannerWorkspace({
         handleCellKey={handleCellKey}
         insertDay={insertDay}
         isFillDragging={isFillDragging}
+        mapEmptyState={mapEmptyState}
+        mapLines={mapLines}
+        mapMode={mapMode}
         mapMarkers={mapMarkers}
         moveItem={moveItem}
         onMapExpand={() => setMapExpanded(true)}
         onMarkerClick={selectMarker}
+        onMapModeChange={setMapMode}
         onToggleMarkerKind={toggleMarkerKind}
         openEditorFromDoubleClick={openEditorFromDoubleClick}
         removeDay={removeDay}
@@ -259,6 +267,9 @@ export function PlannerWorkspace({
         copyPending={copyMutation.isPending}
         editor={editor}
         mapExpanded={mapExpanded}
+        mapEmptyState={mapEmptyState}
+        mapLines={mapLines}
+        mapMode={mapMode}
         mapMarkers={mapMarkers}
         onCopyDaysOpenChange={setCopyDaysOpen}
         onCopyToSelectedDays={() => void copyToSelectedDays()}
@@ -266,6 +277,7 @@ export function PlannerWorkspace({
         onInteractionError={setInteractionError}
         onMapExpandedChange={setMapExpanded}
         onMarkerClick={selectMarker}
+        onMapModeChange={setMapMode}
         onSettingsOpenChange={setSettingsOpen}
         onTargetDaysChange={setTargetDays}
         onToggleMarkerKind={toggleMarkerKind}

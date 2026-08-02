@@ -5,7 +5,11 @@ import dynamic from "next/dynamic";
 import { format, parseISO } from "date-fns";
 
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type {
+  MarkerKind,
+  PlannerMapLine,
+  PlannerMapMarker,
+} from "@/features/maps/planner-map-canvas";
 import type { PlannerDay } from "@/features/itinerary/types";
 
 const markerKindLabels: Record<MarkerKind, string> = {
@@ -17,6 +21,7 @@ const markerKindLabels: Record<MarkerKind, string> = {
 };
 
 export const allMarkerKinds = Object.keys(markerKindLabels) as MarkerKind[];
+export type PlannerMapMode = "overview" | "day_route";
 
 export function buildPlannerMapMarkers(days: PlannerDay[]) {
   const grouped = new Map<string, PlannerMapMarker>();
@@ -67,24 +72,33 @@ const PlannerMapCanvas = dynamic(
 
 export function PlannerMapShell({
   compact = false,
+  emptyState,
+  lines = [],
+  mapMode,
   markers,
   onExpand,
+  onMapModeChange,
   onMarkerClick,
   selectedId,
   visibleKinds,
   onToggleKind,
 }: {
   compact?: boolean;
+  emptyState?: { message: string; title: string };
+  lines?: PlannerMapLine[];
+  mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
   onExpand?: () => void;
+  onMapModeChange: (mode: PlannerMapMode) => void;
   onMarkerClick: (id: string) => void;
   selectedId?: string;
   visibleKinds: Set<MarkerKind>;
   onToggleKind: (kind: MarkerKind) => void;
 }) {
-  const visibleMarkers = visibleKinds.size
-    ? markers.filter((marker) => visibleKinds.has(marker.entries[0].kind))
-    : markers;
+  const visibleMarkers =
+    mapMode === "day_route" && visibleKinds.size
+      ? markers.filter((marker) => visibleKinds.has(marker.entries[0].kind))
+      : markers;
   return (
     <section
       aria-label="Itinerary map"
@@ -92,6 +106,8 @@ export function PlannerMapShell({
     >
       <PlannerMapCanvas
         compact={compact}
+        emptyState={emptyState}
+        lines={lines}
         markers={visibleMarkers}
         onMarkerClick={onMarkerClick}
         selectedId={selectedId}
@@ -124,7 +140,9 @@ export function PlannerMapShell({
                 {marker.address ? (
                   <p className="truncate text-xs text-muted-foreground">{marker.address}</p>
                 ) : null}
-                {staySummary ? (
+                {marker.summary ? (
+                  <p className="mt-1 text-xs font-medium">{marker.summary}</p>
+                ) : staySummary ? (
                   <p className="mt-1 text-xs">
                     <span className="font-medium">{staySummary}</span>
                     <span className="text-muted-foreground"> · {dateRanges}</span>
@@ -170,7 +188,25 @@ export function PlannerMapShell({
       ) : null}
       {!compact ? (
         <div
-          className="absolute left-2 top-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap gap-1 overflow-x-auto"
+          aria-label="Map level"
+          className="absolute left-2 top-2 z-20 flex rounded-lg border bg-background/95 p-0.5 shadow-sm backdrop-blur"
+        >
+          {(["overview", "day_route"] as const).map((mode) => (
+            <button
+              aria-pressed={mapMode === mode}
+              className={`min-h-9 rounded-md px-3 text-xs font-medium ${mapMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+              key={mode}
+              onClick={() => onMapModeChange(mode)}
+              type="button"
+            >
+              {mode === "overview" ? "Overview" : "Day route"}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!compact && mapMode === "day_route" ? (
+        <div
+          className="absolute left-2 top-14 z-20 flex max-w-[calc(100%-1rem)] flex-wrap gap-1 overflow-x-auto"
           aria-label="Map pin filters"
         >
           {allMarkerKinds.map((kind) => (

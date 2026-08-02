@@ -1,8 +1,13 @@
 "use client";
 
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
 import { categories } from "@/features/itinerary/components/planner-config";
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type {
+  MarkerKind,
+  PlannerMapLine,
+  PlannerMapMarker,
+} from "@/features/maps/planner-map-canvas";
 
 export function PlannerStatus({
   deleteError,
@@ -65,16 +70,24 @@ export function PlannerStatus({
 }
 
 export function PlannerMapPane({
+  emptyState,
+  lines,
+  mapMode,
   markers,
   onExpand,
   onMarkerClick,
+  onMapModeChange,
   onToggleKind,
   selectedId,
   visibleKinds,
 }: {
+  emptyState?: { message: string; title: string };
+  lines: PlannerMapLine[];
+  mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
   onExpand: () => void;
   onMarkerClick: (id: string) => void;
+  onMapModeChange: (mode: PlannerMapMode) => void;
   onToggleKind: (kind: MarkerKind) => void;
   selectedId?: string;
   visibleKinds: Set<MarkerKind>;
@@ -82,9 +95,13 @@ export function PlannerMapPane({
   const map = (compact = false) => (
     <PlannerMapShell
       compact={compact}
+      emptyState={emptyState}
+      lines={lines}
+      mapMode={mapMode}
       markers={markers}
       onExpand={compact ? onExpand : undefined}
       onMarkerClick={onMarkerClick}
+      onMapModeChange={onMapModeChange}
       onToggleKind={onToggleKind}
       selectedId={selectedId}
       visibleKinds={visibleKinds}
