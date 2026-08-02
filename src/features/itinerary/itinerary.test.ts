@@ -36,9 +36,11 @@ import {
 import { validateDayRouteDraft } from "../routes/route-config.ts";
 import { calculateRouteConfiguration } from "../routes/calculator.ts";
 import { buildRouteConfigSignature } from "../routes/signatures.ts";
+import { resolveRouteCalculationConfig } from "../routes/plan-config.ts";
+import { dayRouteStatus } from "../routes/status.ts";
 import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
 import { routeLegModes, type DayRouteDraft } from "../routes/types.ts";
-import type { DayRouteCalculation, RouteCalculationConfig } from "../routes/types.ts";
+import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "../routes/types.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
   carRentalDetailsSchema,
@@ -50,7 +52,7 @@ import {
   reorderItineraryItemsSchema,
   updateItineraryItemSchema,
 } from "./schema.ts";
-import type { ItineraryItem, PlannerDay } from "./types.ts";
+import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
@@ -747,6 +749,134 @@ test("Day route renders Google legs solid and straight fallbacks dashed", () => 
     { lat: 37, lng: -122 },
     { lat: 38, lng: -121 },
   ]);
+});
+
+test("route status ignores display changes and detects coordinate, deletion, and place changes", () => {
+  const item = (id: string, latitude: number, longitude: number) =>
+    ({
+      day_id: ids.day,
+      id,
+      place: { displayName: id, id: `${id}-place`, latitude, longitude },
+      start_time: "09:00:00",
+      title: id,
+      trip_id: ids.trip,
+      type: id === "hotel" ? "hotel" : "activity",
+      variant_id: ids.variant,
+    }) as unknown as ItineraryItem;
+  const workspace = {
+    days: [
+      {
+        day_number: 1,
+        id: ids.day,
+        items: [item("hotel", 37.7, -122.4), item("museum", 37.8, -122.3)],
+      },
+    ],
+    routePlans: [],
+    variant: { id: ids.variant, is_primary: true, trip_id: ids.trip },
+  } as unknown as PlannerWorkspace;
+  const now = "2026-08-02T00:00:00.000Z";
+  const plan: DayRoutePlan = {
+    calculation: null,
+    created_at: now,
+    day_id: ids.day,
+    id: "plan",
+    legs: [
+      {
+        created_at: now,
+        from_stop_id: "stop-1",
+        id: "leg-1",
+        mode: "walk",
+        plan_id: "plan",
+        position: 1,
+        to_stop_id: "stop-2",
+        updated_at: now,
+      },
+    ],
+    stops: [
+      {
+        created_at: now,
+        id: "stop-1",
+        item_id: "hotel",
+        plan_id: "plan",
+        position: 1,
+        updated_at: now,
+      },
+      {
+        created_at: now,
+        id: "stop-2",
+        item_id: "museum",
+        plan_id: "plan",
+        position: 2,
+        updated_at: now,
+      },
+    ],
+    trip_id: ids.trip,
+    updated_at: now,
+    variant_id: ids.variant,
+  };
+  workspace.routePlans = [plan];
+  const resolved = resolveRouteCalculationConfig(workspace, plan);
+  assert.ok(resolved.config);
+  plan.calculation = {
+    calculatedLegs: [],
+    computed_at: now,
+    config_signature: buildRouteConfigSignature(resolved.config),
+    plan_id: plan.id,
+    provider_schema_version: "routes-v1",
+    total_distance_meters: 0,
+    total_duration_seconds: 0,
+  };
+  assert.equal(dayRouteStatus(workspace, plan), "current");
+
+  workspace.days[0].items[0].title = "Renamed hotel";
+  workspace.days[0].items[0].start_time = "14:00:00";
+  assert.equal(dayRouteStatus(workspace, plan), "current");
+  workspace.days[0].items[0].place!.latitude = 37.71;
+  assert.equal(dayRouteStatus(workspace, plan), "stale");
+  workspace.days[0].items[0].place = null;
+  assert.equal(dayRouteStatus(workspace, plan), "needs_edit");
+  workspace.days[0].items = workspace.days[0].items.filter(({ id }) => id !== "hotel");
+  assert.equal(dayRouteStatus(workspace, plan), "needs_edit");
+});
+
+test("Overview is local-only and route controls expose no variants or schedule ordering", async () => {
+  const overview = await readFile(new URL("../routes/overview.ts", import.meta.url), "utf8");
+  const mapHook = await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
+  const routeUi = await readFile(
+    new URL("../routes/day-route-overlay.tsx", import.meta.url),
+    "utf8",
+  );
+  const canvas = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
+  assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
+  assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
+  assert.match(routeUi, /Manual order is used/);
+  assert.match(routeUi, /Save & calculate/);
+  assert.doesNotMatch(
+    routeUi,
+    /[">]Route [BC][<"]|alternative route|schedule selector|time order/i,
+  );
+  assert.doesNotMatch(routeUi, /drag(handle)?|draggable/i);
+  assert.doesNotMatch(canvas, /draggable|editable/);
+});
+
+test("Routes server key stays in the server-only provider and out of client modules", async () => {
+  const serverProvider = await readFile(
+    new URL("../../lib/providers/routes/google-routes.server.ts", import.meta.url),
+    "utf8",
+  );
+  const clientSources = await Promise.all(
+    [
+      "../routes/day-route-overlay.tsx",
+      "../routes/use-day-route.ts",
+      "./hooks/use-planner-map.ts",
+      "./components/planner-map-shell.tsx",
+      "../maps/planner-map-canvas.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  assert.match(serverProvider, /import "server-only"/);
+  assert.match(serverProvider, /process\.env\.GOOGLE_ROUTES_API_KEY/);
+  assert.doesNotMatch(clientSources.join("\n"), /GOOGLE_ROUTES_API_KEY|process\.env/);
 });
 
 test("edit and delete inputs validate", () => {
