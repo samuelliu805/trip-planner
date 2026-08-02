@@ -58,7 +58,10 @@ function Status({ route }: { route: DayRouteUi }) {
   );
 }
 
-function Editor({ route }: { route: DayRouteUi }) {
+const SelectedPlaceSlot = ({ children }: { children?: React.ReactNode }) =>
+  children ? <div className="border-b p-3">{children}</div> : null;
+
+function Editor({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: React.ReactNode }) {
   const draft = route.draft!;
   const itemsById = new Map(route.activeDay?.items.map((item) => [item.id, item]) ?? []);
   const planned = new Set(draft.itemIds);
@@ -78,6 +81,7 @@ function Editor({ route }: { route: DayRouteUi }) {
           <Status route={route} />
         </div>
       </header>
+      <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {draft.itemIds.length ? (
           <ol className="space-y-2" aria-label="Planned stops">
@@ -255,7 +259,7 @@ function Editor({ route }: { route: DayRouteUi }) {
   );
 }
 
-function Summary({ route }: { route: DayRouteUi }) {
+function Summary({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: React.ReactNode }) {
   const calculation = route.plan?.calculation;
   const stops = route.plan?.stops.length ?? 0;
   const modes = [...new Set(route.plan?.legs.map(({ mode }) => transportModeLabels[mode]) ?? [])];
@@ -274,8 +278,9 @@ function Summary({ route }: { route: DayRouteUi }) {
   );
 
   return (
-    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3">
         <div className="mr-auto min-w-0">
           <div className="flex items-center gap-2">
             <Route className="size-4 text-primary" />
@@ -304,17 +309,17 @@ function Summary({ route }: { route: DayRouteUi }) {
         </Button>
       </div>
       {missingDurations?.length ? (
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="px-3 text-[11px] text-muted-foreground">
           Duration unknown for {missingDurations.map((position) => `leg ${position}`).join(", ")}.
         </p>
       ) : null}
       {transitEstimate ? (
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="px-3 text-[11px] text-muted-foreground">
           Transit is an approximate current-service estimate, not an itinerary-time calculation.
         </p>
       ) : null}
       {warnings.length ? (
-        <details className="mt-1 text-[11px] text-amber-900">
+        <details className="px-3 text-[11px] text-amber-900">
           <summary className="cursor-pointer">{warnings.length} route warning(s)</summary>
           <ul className="mt-1 list-disc pl-4">
             {warnings.map((warning) => (
@@ -324,7 +329,10 @@ function Summary({ route }: { route: DayRouteUi }) {
         </details>
       ) : null}
       {route.error ? (
-        <p className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive" role="alert">
+        <p
+          className="m-3 mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
+          role="alert"
+        >
           {route.error}
         </p>
       ) : null}
@@ -332,7 +340,13 @@ function Summary({ route }: { route: DayRouteUi }) {
   );
 }
 
-export function DayRouteOverlay({ route }: { route: DayRouteUi }) {
+export function DayRouteOverlay({
+  route,
+  selectedPlace,
+}: {
+  route: DayRouteUi;
+  selectedPlace?: React.ReactNode;
+}) {
   if (!route.activeDay)
     return (
       <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-4 text-center shadow-lg backdrop-blur">
@@ -342,19 +356,22 @@ export function DayRouteOverlay({ route }: { route: DayRouteUi }) {
         </p>
       </section>
     );
-  if (route.editing) return <Editor route={route} />;
-  if (route.plan) return <Summary route={route} />;
+  if (route.editing) return <Editor route={route} selectedPlace={selectedPlace} />;
+  if (route.plan) return <Summary route={route} selectedPlace={selectedPlace} />;
   return (
-    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 flex flex-wrap items-center gap-3 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-      <div className="mr-auto">
-        <p className="text-sm font-semibold">Day {route.activeDay.day_number} · No day route</p>
-        <p className="text-xs text-muted-foreground">
-          Eligible saved places are shown in gray. Nothing is routed until you save.
-        </p>
+    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
+      <div className="flex flex-wrap items-center gap-3 p-3">
+        <div className="mr-auto">
+          <p className="text-sm font-semibold">Day {route.activeDay.day_number} · No day route</p>
+          <p className="text-xs text-muted-foreground">
+            Eligible saved places are shown in gray. Nothing is routed until you save.
+          </p>
+        </div>
+        <Button onClick={route.openCreate} size="sm" type="button">
+          Create route
+        </Button>
       </div>
-      <Button onClick={route.openCreate} size="sm" type="button">
-        Create route
-      </Button>
     </section>
   );
 }

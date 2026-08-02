@@ -7,9 +7,10 @@ import type { PlannerMapMode } from "@/features/itinerary/components/planner-map
 import type { GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
-import { deriveOverviewStages } from "@/features/routes/overview";
+import { buildOverviewRouteLines, deriveOverviewStages } from "@/features/routes/overview";
 import { buildDayRouteLines, buildDayRouteMarkers } from "@/features/routes/day-route-map";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
+import { useOverviewRoute } from "@/features/routes/use-overview-route";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -21,13 +22,15 @@ export function usePlannerMap(
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
   const [selectedItemId, setSelectedItemId] = useState<string>();
   const selectedMapItem = useMemo(() => {
+    if (!selectedItemId) return undefined;
     const day = workspace.days[selectionEnd.row];
     const category = categories[selectionEnd.column];
     if (!day || !category) return undefined;
     const cellItems = day.items.filter((item) => category.types.includes(item.type));
-    return cellItems.find(({ id }) => id === selectedItemId) ?? cellItems[0];
+    return cellItems.find(({ id }) => id === selectedItemId);
   }, [selectedItemId, selectionEnd.column, selectionEnd.row, workspace.days]);
   const overviewStages = useMemo(() => deriveOverviewStages(workspace.days), [workspace.days]);
+  const overviewRoute = useOverviewRoute(overviewStages, workspace.variant.trip_id);
   const overviewMarkers = useMemo<PlannerMapMarker[]>(
     () =>
       overviewStages.map((stage) => ({
@@ -44,16 +47,8 @@ export function usePlannerMap(
     [overviewStages],
   );
   const overviewLines = useMemo<PlannerMapLine[]>(
-    () =>
-      overviewStages.slice(1).map((stage, index) => ({
-        color: "#166534",
-        id: `overview-line:${overviewStages[index].id}:${stage.id}`,
-        path: [
-          { lat: overviewStages[index].latitude, lng: overviewStages[index].longitude },
-          { lat: stage.latitude, lng: stage.longitude },
-        ],
-      })),
-    [overviewStages],
+    () => buildOverviewRouteLines(overviewStages, overviewRoute.calculatedLegs),
+    [overviewRoute.calculatedLegs, overviewStages],
   );
   const routeStopIds = useMemo(
     () =>
@@ -78,8 +73,15 @@ export function usePlannerMap(
   const overviewViewportKey = overviewStages
     .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
     .join("|");
+  const dayRouteViewportKey = dayRouteMarkers
+    .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
+    .join("|");
 
-  function selectMarker(itemId: string) {
+  function selectMarker(itemId?: string) {
+    if (!itemId) {
+      setSelectedItemId(undefined);
+      return;
+    }
     workspace.days.some((day, row) => {
       const item = day.items.find(({ id }) => id === itemId);
       if (!item) return false;
@@ -92,6 +94,24 @@ export function usePlannerMap(
       setSelectedItemId(item.id);
       return true;
     });
+  }
+
+  function changeMapMode(mode: PlannerMapMode) {
+    if (mode === mapMode) return;
+    setMapMode(mode);
+    setSelectedItemId(undefined);
+    if (mode !== "overview") return;
+    const row = selectionEnd.row >= 0 ? selectionEnd.row : 0;
+    const day = workspace.days[row];
+    const cityColumn = categories.findIndex(({ id }) => id === "city");
+    if (!day || cityColumn < 0) return;
+    const coordinate = { column: cityColumn, row };
+    setSelectionAnchor(coordinate);
+    setSelectionEnd(coordinate);
+    const firstCity = day.items
+      .filter(({ type }) => type === "location")
+      .sort((a, b) => a.sort_order - b.sort_order)[0];
+    setSelectedItemId(firstCity?.id);
   }
 
   return {
@@ -110,11 +130,16 @@ export function usePlannerMap(
     mapLines,
     mapMode,
     mapMarkers,
-    mapViewportKey: mapMode === "overview" ? `overview:${overviewViewportKey}` : dayRoute.fitKey,
+    mapViewportKey:
+      mapMode === "overview"
+        ? `overview:${overviewViewportKey}`
+        : `day-route:${dayRoute.activeDay?.id ?? "none"}:${dayRouteViewportKey}:${dayRoute.fitKey ?? "default"}`,
+    overviewRoute,
     selectedMapItem,
     selectMarker,
     selectedItemId,
+    setMapModeFromSelection: setMapMode,
     setSelectedItemId,
-    setMapMode,
+    setMapMode: changeMapMode,
   };
 }

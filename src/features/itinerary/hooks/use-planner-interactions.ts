@@ -13,6 +13,7 @@ import {
   type GridCoordinate,
 } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
 
 type Ref<T> = MutableRefObject<T>;
 type SetCoordinate = (coordinate: GridCoordinate) => void;
@@ -32,6 +33,7 @@ export function usePlannerInteractions({
   setIsFillDragging,
   setSelectedDayRow,
   setSelectedItemId,
+  setMapMode,
   setSelectionAnchor,
   setSelectionEnd,
   setSplit,
@@ -51,6 +53,7 @@ export function usePlannerInteractions({
   setIsFillDragging: Dispatch<SetStateAction<boolean>>;
   setSelectedDayRow: Dispatch<SetStateAction<number | null>>;
   setSelectedItemId: Dispatch<SetStateAction<string | undefined>>;
+  setMapMode: Dispatch<SetStateAction<PlannerMapMode>>;
   setSelectionAnchor: Dispatch<SetStateAction<GridCoordinate>>;
   setSelectionEnd: SetCoordinate;
   setSplit: Dispatch<SetStateAction<number>>;
@@ -63,6 +66,11 @@ export function usePlannerInteractions({
     }
     setSelectedDayRow(null);
     setSelectedItemId(undefined);
+    if (!extend) {
+      const category = categories[coordinate.column];
+      if (category?.id === "city") setMapMode("overview");
+      if (["activities", "hotel", "meals"].includes(category?.id ?? "")) setMapMode("day_route");
+    }
     if (extend) setSelectionEnd(coordinate);
     else {
       setSelectionAnchor(coordinate);
@@ -81,6 +89,23 @@ export function usePlannerInteractions({
     setSelectionAnchor({ column: -1, row: -1 });
     setSelectionEnd({ column: -1, row: -1 });
     setInteractionError(undefined);
+  }
+
+  function selectItem(item: ItineraryItem, coordinate: GridCoordinate) {
+    setSelectedDayRow(null);
+    setSelectionAnchor(coordinate);
+    setSelectionEnd(coordinate);
+    if (item.type === "location") {
+      setMapMode("overview");
+      setSelectedItemId(item.place ? item.id : undefined);
+      return;
+    }
+    if (["activity", "hotel", "meal"].includes(item.type)) {
+      setMapMode("day_route");
+      setSelectedItemId(item.place ? item.id : undefined);
+      return;
+    }
+    setSelectedItemId(undefined);
   }
 
   function startRangeSelection(event: React.PointerEvent<HTMLDivElement>) {
@@ -220,6 +245,7 @@ export function usePlannerInteractions({
     focusCell,
     handleCellKey,
     openEditorFromDoubleClick,
+    selectItem,
     selectDay,
     startFill,
     startRangeSelection,

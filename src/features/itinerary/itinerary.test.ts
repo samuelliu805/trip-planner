@@ -27,7 +27,7 @@ import {
   selectionContains,
 } from "./grid-interactions.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
-import { deriveOverviewStages } from "../routes/overview.ts";
+import { buildOverviewRouteLines, deriveOverviewStages } from "../routes/overview.ts";
 import {
   buildDayRouteLines,
   buildDayRouteMarkers,
@@ -699,6 +699,61 @@ test("overview skips missing City days and collapses a consecutive stay across t
   );
 });
 
+test("Overview starts with straight previews and replaces only calculated City legs", () => {
+  const stages = deriveOverviewStages([
+    {
+      day_number: 1,
+      items: [
+        {
+          id: "city-a",
+          place: { id: "place-a", latitude: 38.5, longitude: -120.2 },
+          sort_order: 0,
+          title: "City A",
+          type: "location",
+        },
+      ],
+    },
+    {
+      day_number: 2,
+      items: [
+        {
+          id: "city-b",
+          place: { id: "place-b", latitude: 40.7, longitude: -120.95 },
+          sort_order: 0,
+          title: "City B",
+          type: "location",
+        },
+      ],
+    },
+  ] as unknown as PlannerDay[]);
+
+  const [preview] = buildOverviewRouteLines(stages, []);
+  assert.equal(preview.dashed, true);
+  assert.deepEqual(preview.path, [
+    { lat: 38.5, lng: -120.2 },
+    { lat: 40.7, lng: -120.95 },
+  ]);
+
+  const [calculated] = buildOverviewRouteLines(stages, [
+    {
+      computedAt: "2026-08-02T00:00:00.000Z",
+      distanceMeters: 1_000,
+      durationSeconds: 600,
+      geometry: { encodedPolyline: "_p~iF~ps|U_ulLnnqC", source: "google" },
+      legSignature: "overview-leg",
+      mode: "walk",
+      position: 1,
+      providerMode: "WALK",
+      warnings: [],
+    },
+  ]);
+  assert.equal(calculated.dashed, false);
+  assert.deepEqual(calculated.path, [
+    { lat: 38.5, lng: -120.2 },
+    { lat: 40.7, lng: -120.95 },
+  ]);
+});
+
 test("Day route markers include only eligible places and combine repeated Hotel positions", () => {
   const item = (id: string, type: string, placeId: string | null, sortOrder: number) =>
     ({
@@ -857,9 +912,26 @@ test("route status ignores display changes and detects coordinate, deletion, and
   assert.equal(dayRouteStatus(workspace, plan), "needs_edit");
 });
 
-test("Overview is local-only and route controls expose no variants or schedule ordering", async () => {
+test("Overview routing is explicit and map interactions stay synchronized", async () => {
   const overview = await readFile(new URL("../routes/overview.ts", import.meta.url), "utf8");
+  const overviewHook = await readFile(
+    new URL("../routes/use-overview-route.ts", import.meta.url),
+    "utf8",
+  );
+  const overviewUi = await readFile(
+    new URL("../routes/overview-route-overlay.tsx", import.meta.url),
+    "utf8",
+  );
+  const actions = await readFile(new URL("../routes/actions.ts", import.meta.url), "utf8");
   const mapHook = await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
+  const interactions = await readFile(
+    new URL("./hooks/use-planner-interactions.ts", import.meta.url),
+    "utf8",
+  );
+  const mapShell = await readFile(
+    new URL("./components/planner-map-shell.tsx", import.meta.url),
+    "utf8",
+  );
   const routeUi = await readFile(
     new URL("../routes/day-route-overlay.tsx", import.meta.url),
     "utf8",
@@ -868,6 +940,19 @@ test("Overview is local-only and route controls expose no variants or schedule o
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
   assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
+  assert.match(overviewUi, /Google is called only when you choose Calculate/);
+  assert.match(overviewUi, /Select transport/);
+  assert.match(overviewHook, /const changed = segments\.filter/);
+  assert.match(actions, /calculateOverviewRoute/);
+  assert.match(actions, /mapWithConcurrency\(tasks, 3\)/);
+  assert.match(actions, /is_trip_owner/);
+  assert.match(mapHook, /day-route:\$\{dayRoute\.activeDay\?\.id/);
+  assert.match(mapHook, /firstCity/);
+  assert.match(interactions, /setMapMode\("day_route"\)/);
+  assert.match(interactions, /setMapMode\("overview"\)/);
+  assert.match(mapShell, /Deselect place/);
+  assert.match(mapShell, /DayRouteOverlay route=\{dayRoute\} selectedPlace=\{selectedPlace\}/);
+  assert.doesNotMatch(mapShell, /day-route-place-card/);
   assert.match(routeUi, /Manual order is used/);
   assert.match(routeUi, /Save & calculate/);
   assert.doesNotMatch(
@@ -890,6 +975,8 @@ test("Routes server key stays in the server-only provider and out of client modu
     [
       "../routes/day-route-overlay.tsx",
       "../routes/use-day-route.ts",
+      "../routes/overview-route-overlay.tsx",
+      "../routes/use-overview-route.ts",
       "./hooks/use-planner-map.ts",
       "./components/planner-map-shell.tsx",
       "../maps/planner-map-canvas.tsx",

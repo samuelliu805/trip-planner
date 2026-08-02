@@ -110,8 +110,10 @@ export function PlannerWorkspace({
     mapMode,
     mapMarkers,
     mapViewportKey,
+    overviewRoute,
     selectedMapItem,
     selectMarker,
+    setMapModeFromSelection,
     setSelectedItemId,
     setMapMode,
   } = usePlannerMap(workspace, selectionEnd, setSelectionAnchor, setSelectionEnd, dayRoute);
@@ -153,6 +155,7 @@ export function PlannerWorkspace({
     focusCell,
     handleCellKey,
     openEditorFromDoubleClick,
+    selectItem,
     selectDay,
     startFill,
     startRangeSelection,
@@ -172,6 +175,7 @@ export function PlannerWorkspace({
     setIsFillDragging,
     setSelectedDayRow,
     setSelectedItemId,
+    setMapMode: setMapModeFromSelection,
     setSelectionAnchor,
     setSelectionEnd,
     setSplit,
@@ -253,6 +257,8 @@ export function PlannerWorkspace({
         onEditMapItem={editMapItem}
         onMarkerClick={selectMarker}
         onMapModeChange={setMapMode}
+        onMapSelectionClear={() => setSelectedItemId(undefined)}
+        overviewRoute={overviewRoute}
         openEditorFromDoubleClick={openEditorFromDoubleClick}
         removeDay={removeDay}
         selectedCount={selectedCount}
@@ -263,8 +269,7 @@ export function PlannerWorkspace({
         selectionEnd={selectionEnd}
         selectionEndRef={selectionEndRef}
         setEditor={setEditor}
-        setSelectedItemId={setSelectedItemId}
-        setSelectionAnchor={setSelectionAnchor}
+        selectItem={selectItem}
         setSelectionEnd={setSelectionEnd}
         setSplit={setSplit}
         split={split}
@@ -294,9 +299,11 @@ export function PlannerWorkspace({
         onMapExpandedChange={setMapExpanded}
         onMarkerClick={selectMarker}
         onMapModeChange={setMapMode}
+        onMapSelectionClear={() => setSelectedItemId(undefined)}
         onSettingsOpenChange={setSettingsOpen}
         onTargetDaysChange={setTargetDays}
         selectedItem={selectedMapItem}
+        overviewRoute={overviewRoute}
         selectionSourceDayId={workspace.days[visibleSelectionBounds.top]?.id}
         settings={settings}
         settingsOpen={settingsOpen}

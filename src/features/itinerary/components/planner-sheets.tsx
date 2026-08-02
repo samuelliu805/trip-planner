@@ -18,6 +18,7 @@ import type { PlannerMapMode } from "@/features/itinerary/components/planner-map
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
+import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 
 type PlannerSheetsProps = {
   copyDaysOpen: boolean;
@@ -35,11 +36,13 @@ type PlannerSheetsProps = {
   onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
   onMapExpandedChange: (open: boolean) => void;
-  onMarkerClick: (id: string) => void;
+  onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapSelectionClear: () => void;
   onSettingsOpenChange: (open: boolean) => void;
   onTargetDaysChange: (days: Set<string>) => void;
   selectedItem?: ItineraryItem;
+  overviewRoute: OverviewRouteUi;
   selectionSourceDayId?: string;
   settings: React.ReactNode;
   settingsOpen: boolean;
@@ -68,9 +71,11 @@ export function PlannerSheets({
   onMapExpandedChange,
   onMarkerClick,
   onMapModeChange,
+  onMapSelectionClear,
   onSettingsOpenChange,
   onTargetDaysChange,
   selectedItem,
+  overviewRoute,
   selectionSourceDayId,
   settings,
   settingsOpen,
@@ -126,6 +131,8 @@ export function PlannerSheets({
               onMarkerClick={onMarkerClick}
               onEditMapItem={onEditMapItem}
               onMapModeChange={onMapModeChange}
+              onMapSelectionClear={onMapSelectionClear}
+              overviewRoute={overviewRoute}
               selectedId={selectedItem?.id}
               viewportKey={mapViewportKey}
             />

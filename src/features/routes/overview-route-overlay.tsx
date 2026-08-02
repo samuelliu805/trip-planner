@@ -1,0 +1,145 @@
+"use client";
+
+import { Route } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { transportModeLabels } from "@/features/itinerary/types";
+
+import { routeLegModes, type RouteLegMode } from "./types";
+import type { OverviewRouteUi } from "./use-overview-route";
+
+export function OverviewRouteOverlay({
+  route,
+  selectedPlace,
+}: {
+  route: OverviewRouteUi;
+  selectedPlace?: React.ReactNode;
+}) {
+  if (route.stages.length < 2)
+    return selectedPlace ? (
+      <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
+        {selectedPlace}
+      </section>
+    ) : null;
+  const calculatedCount = route.segments.filter(({ calculatedLeg }) => calculatedLeg).length;
+  const hasConfiguration = route.segments.some(({ calculatedLeg, mode }) => calculatedLeg || mode);
+
+  return (
+    <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      {selectedPlace ? <div className="border-b p-3">{selectedPlace}</div> : null}
+      <div className="p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Route className="size-4 shrink-0 text-primary" />
+          <div className="mr-auto min-w-0">
+            <p className="truncate text-sm font-semibold">Overview route</p>
+            <p className="text-xs text-muted-foreground">
+              {route.segments.length} City{" "}
+              {route.segments.length === 1 ? "connection" : "connections"}
+              {calculatedCount
+                ? ` · ${calculatedCount}/${route.segments.length} calculated`
+                : " · Straight preview"}
+            </p>
+          </div>
+          <Button
+            onClick={() => route.setEditing(!route.editing)}
+            size="sm"
+            type="button"
+            variant={route.editing ? "ghost" : "outline"}
+          >
+            {route.editing ? "Hide transport" : "Choose transport"}
+          </Button>
+        </div>
+
+        {route.editing ? (
+          <div className="mt-3 border-t pt-3">
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Select one mode per connection. Google is called only when you choose Calculate.
+            </p>
+            <ol
+              className="max-h-56 space-y-2 overflow-y-auto pr-1"
+              aria-label="Overview route connections"
+            >
+              {route.segments.map((segment) => (
+                <li
+                  className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,0.8fr)] items-center gap-2 rounded-lg border p-2"
+                  key={`${segment.from.id}:${segment.to.id}`}
+                >
+                  <div className="min-w-0 text-xs">
+                    <span className="block truncate font-medium">
+                      {segment.position}. {segment.from.entries[0].title} →{" "}
+                      {segment.to.entries[0].title}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {segment.calculatedLeg
+                        ? segment.calculatedLeg.geometry.source === "google"
+                          ? "Calculated route"
+                          : "Straight fallback"
+                        : "Straight preview"}
+                    </span>
+                  </div>
+                  <Select
+                    disabled={route.pending}
+                    onValueChange={(value) =>
+                      route.setMode(segment.position, value as RouteLegMode)
+                    }
+                    value={segment.mode}
+                  >
+                    <SelectTrigger
+                      aria-label={`Transport from ${segment.from.entries[0].title} to ${segment.to.entries[0].title}`}
+                      className="h-10"
+                    >
+                      <SelectValue placeholder="Select transport" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {routeLegModes.map((mode) => (
+                        <SelectItem key={mode} value={mode}>
+                          {transportModeLabels[mode]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              {hasConfiguration ? (
+                <Button
+                  disabled={route.pending}
+                  onClick={route.reset}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Reset to straight
+                </Button>
+              ) : null}
+              <Button
+                disabled={route.pending || route.segments.some(({ mode }) => !mode)}
+                onClick={() => void route.calculate()}
+                size="sm"
+                type="button"
+              >
+                {route.pending ? "Calculating…" : "Calculate overview"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        {route.error ? (
+          <p
+            className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
+            role="alert"
+          >
+            {route.error}
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}

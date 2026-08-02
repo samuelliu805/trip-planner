@@ -70,12 +70,10 @@ function MapViewport({
 }) {
   const map = useMap(mapInstanceId);
   const previousFitKey = useRef<string | undefined>(undefined);
-  const skipSelectedPan = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!map || !fitKey || previousFitKey.current === fitKey) return;
     previousFitKey.current = fitKey;
-    skipSelectedPan.current = selectedId;
     const points = [
       ...markers.map(({ latitude, longitude }) => ({ lat: latitude, lng: longitude })),
       ...lines.flatMap(({ path }) => path),
@@ -103,10 +101,6 @@ function MapViewport({
 
   useEffect(() => {
     if (!map || !selectedId) return;
-    if (skipSelectedPan.current === selectedId) {
-      skipSelectedPan.current = undefined;
-      return;
-    }
     const marker = markers.find(({ itemIds }) => itemIds.includes(selectedId));
     if (marker) map.panTo({ lat: marker.latitude, lng: marker.longitude });
   }, [map, markers, selectedId]);
@@ -151,7 +145,7 @@ export function PlannerMapCanvas({
   emptyState?: { message: string; title: string };
   lines?: PlannerMapLine[];
   markers: PlannerMapMarker[];
-  onMarkerClick: (id: string) => void;
+  onMarkerClick: (id?: string) => void;
   selectedId?: string;
   viewportKey?: string;
 }) {
@@ -237,7 +231,11 @@ export function PlannerMapCanvas({
               key={marker.id}
               onClick={() => {
                 const currentIndex = marker.itemIds.indexOf(selectedId ?? "");
-                onMarkerClick(marker.itemIds[(currentIndex + 1) % marker.itemIds.length]);
+                onMarkerClick(
+                  currentIndex === marker.itemIds.length - 1
+                    ? undefined
+                    : marker.itemIds[currentIndex + 1],
+                );
               }}
               position={{ lat: marker.latitude, lng: marker.longitude }}
               title={`${entry.title} · ${entry.dayLabel}${marker.entries.length > 1 ? ` · ${marker.entries.length} entries` : ""}`}

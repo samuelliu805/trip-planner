@@ -1,4 +1,7 @@
 import type { PlannerDay } from "@/features/itinerary/types";
+import type { PlannerMapLine } from "@/features/maps/planner-map-canvas";
+import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
+import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 
 export type OverviewStageEntry = {
   dayLabel: string;
@@ -68,4 +71,60 @@ export function deriveOverviewStages(days: PlannerDay[]): OverviewStage[] {
     });
   }
   return stages;
+}
+
+export function buildOverviewRouteLines(
+  stages: OverviewStage[],
+  calculatedLegs: CalculatedRouteLeg[],
+): PlannerMapLine[] {
+  const calculatedByPosition = new Map(calculatedLegs.map((leg) => [leg.position, leg]));
+  return stages.slice(1).flatMap((stage, index) => {
+    const position = index + 1;
+    const previous = stages[index];
+    const calculated = calculatedByPosition.get(position);
+    try {
+      const path = calculated
+        ? calculated.geometry.source === "google"
+          ? decodeEncodedPolyline(calculated.geometry.encodedPolyline).map(
+              ({ latitude, longitude }) => ({ lat: latitude, lng: longitude }),
+            )
+          : [
+              {
+                lat: calculated.geometry.origin.latitude,
+                lng: calculated.geometry.origin.longitude,
+              },
+              {
+                lat: calculated.geometry.destination.latitude,
+                lng: calculated.geometry.destination.longitude,
+              },
+            ]
+        : [
+            { lat: previous.latitude, lng: previous.longitude },
+            { lat: stage.latitude, lng: stage.longitude },
+          ];
+      if (path.length < 2) return [];
+      return [
+        {
+          color: "#166534",
+          dashed: !calculated || calculated.geometry.source === "straight",
+          id: calculated
+            ? `overview-route:${position}:${calculated.legSignature}`
+            : `overview-preview:${previous.id}:${stage.id}`,
+          path,
+        },
+      ];
+    } catch {
+      return [
+        {
+          color: "#166534",
+          dashed: true,
+          id: `overview-preview:${previous.id}:${stage.id}`,
+          path: [
+            { lat: previous.latitude, lng: previous.longitude },
+            { lat: stage.latitude, lng: stage.longitude },
+          ],
+        },
+      ];
+    }
+  });
 }

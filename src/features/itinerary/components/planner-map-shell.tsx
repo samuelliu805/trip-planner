@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Maximize2 } from "lucide-react";
+import { ChevronDown, Maximize2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { format, parseISO } from "date-fns";
 
@@ -14,6 +14,8 @@ import type { PlannerDay } from "@/features/itinerary/types";
 import { Button } from "@/components/ui/button";
 import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
+import { OverviewRouteOverlay } from "@/features/routes/overview-route-overlay";
+import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 
 const markerKindLabels: Record<MarkerKind, string> = {
   city: "Cities",
@@ -73,6 +75,121 @@ const PlannerMapCanvas = dynamic(
   { ssr: false },
 );
 
+function SelectedPlaceContent({
+  dayRoute,
+  mapMode,
+  marker,
+  onClear,
+  onEditMapItem,
+  onMarkerClick,
+  selectedId,
+}: {
+  dayRoute: DayRouteUi;
+  mapMode: PlannerMapMode;
+  marker: PlannerMapMarker;
+  onClear: () => void;
+  onEditMapItem: (itemId: string) => void;
+  onMarkerClick: (id?: string) => void;
+  selectedId: string;
+}) {
+  const entry = marker.entries.find(({ itemId }) => itemId === selectedId);
+  if (!entry) return null;
+  const dayCount = new Set(marker.entries.map(({ dayNumber }) => dayNumber)).size;
+  const dateRanges = mergeMarkerDateRanges(marker.entries);
+  const staySummary =
+    entry.kind === "hotel"
+      ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} at this hotel`
+      : entry.kind === "city"
+        ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} in this city`
+        : null;
+  const eventSummary =
+    entry.kind === "activity"
+      ? `${marker.entries.length} ${marker.entries.length === 1 ? "activity" : "activities"} here`
+      : entry.kind === "meal"
+        ? `${marker.entries.length} ${marker.entries.length === 1 ? "meal" : "meals"} here`
+        : `${marker.entries.length} car rental ${marker.entries.length === 1 ? "event" : "events"} here`;
+
+  return (
+    <div aria-live="polite">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{entry.title}</p>
+          {marker.address ? (
+            <p className="truncate text-xs text-muted-foreground">{marker.address}</p>
+          ) : null}
+        </div>
+        <button
+          aria-label="Deselect place"
+          className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={onClear}
+          type="button"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+      {marker.summary ? (
+        <p className="mt-1 text-xs font-medium">{marker.summary}</p>
+      ) : staySummary ? (
+        <p className="mt-1 text-xs">
+          <span className="font-medium">{staySummary}</span>
+          <span className="text-muted-foreground"> · {dateRanges}</span>
+        </p>
+      ) : marker.entries.length === 1 ? (
+        <p className="mt-1 text-xs text-muted-foreground">{entry.dayLabel}</p>
+      ) : (
+        <details className="group mt-2 border-t pt-2">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium marker:content-none">
+            <span>{eventSummary}</span>
+            <ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="mt-2 max-h-36 overflow-y-auto rounded-md border bg-background/80">
+            {marker.entries.map((candidate) => (
+              <button
+                aria-current={candidate.itemId === selectedId ? "true" : undefined}
+                className={`grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b px-2.5 py-1.5 text-left text-xs last:border-b-0 ${candidate.itemId === selectedId ? "bg-primary/10 font-medium" : "hover:bg-muted"}`}
+                key={candidate.itemId}
+                onClick={() => onMarkerClick(candidate.itemId)}
+                type="button"
+              >
+                <span className="truncate">{candidate.title}</span>
+                <span className="text-muted-foreground">{candidate.dayLabel}</span>
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
+      <div className="mt-2 flex flex-wrap justify-end gap-2 border-t pt-2">
+        <Button
+          onClick={() => onEditMapItem(entry.itemId)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Edit item
+        </Button>
+        {mapMode === "day_route" ? (
+          dayRoute.editing ? (
+            dayRoute.draft?.itemIds.includes(entry.itemId) ? (
+              <Button
+                onClick={() => dayRoute.removeItem(entry.itemId)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Remove from route
+              </Button>
+            ) : (
+              <Button onClick={() => dayRoute.addStop(entry.itemId)} size="sm" type="button">
+                Add to route
+              </Button>
+            )
+          ) : null
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function PlannerMapShell({
   compact = false,
   dayRoute,
@@ -83,7 +200,9 @@ export function PlannerMapShell({
   onExpand,
   onEditMapItem,
   onMapModeChange,
+  onMapSelectionClear,
   onMarkerClick,
+  overviewRoute,
   selectedId,
   viewportKey,
 }: {
@@ -96,11 +215,28 @@ export function PlannerMapShell({
   onExpand?: () => void;
   onEditMapItem: (itemId: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
-  onMarkerClick: (id: string) => void;
+  onMapSelectionClear: () => void;
+  onMarkerClick: (id?: string) => void;
+  overviewRoute: OverviewRouteUi;
   selectedId?: string;
   viewportKey?: string;
 }) {
   const visibleMarkers = markers;
+  const selectedMarker = selectedId
+    ? visibleMarkers.find(({ itemIds }) => itemIds.includes(selectedId))
+    : undefined;
+  const selectedPlace =
+    selectedId && selectedMarker ? (
+      <SelectedPlaceContent
+        dayRoute={dayRoute}
+        mapMode={mapMode}
+        marker={selectedMarker}
+        onClear={onMapSelectionClear}
+        onEditMapItem={onEditMapItem}
+        onMarkerClick={onMarkerClick}
+        selectedId={selectedId}
+      />
+    ) : undefined;
   return (
     <section
       aria-label="Itinerary map"
@@ -115,105 +251,6 @@ export function PlannerMapShell({
         selectedId={selectedId}
         viewportKey={viewportKey}
       />
-      {!compact && selectedId
-        ? (() => {
-            const marker = visibleMarkers.find(({ itemIds }) => itemIds.includes(selectedId));
-            const entry = marker?.entries.find(({ itemId }) => itemId === selectedId);
-            const dayCount = new Set(marker?.entries.map(({ dayNumber }) => dayNumber)).size;
-            const dateRanges = marker ? mergeMarkerDateRanges(marker.entries) : "";
-            const staySummary =
-              entry?.kind === "hotel"
-                ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} at this hotel`
-                : entry?.kind === "city"
-                  ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} in this city`
-                  : null;
-            const eventSummary = entry
-              ? entry.kind === "activity"
-                ? `${marker?.entries.length} ${marker?.entries.length === 1 ? "activity" : "activities"} here`
-                : entry.kind === "meal"
-                  ? `${marker?.entries.length} ${marker?.entries.length === 1 ? "meal" : "meals"} here`
-                  : `${marker?.entries.length} car rental ${marker?.entries.length === 1 ? "event" : "events"} here`
-              : "";
-            return marker && entry ? (
-              <div
-                className={`absolute left-3 right-3 z-10 rounded-lg border bg-background/95 px-3 py-2 shadow-lg backdrop-blur ${mapMode === "day_route" ? (dayRoute.editing ? "day-route-place-card" : dayRoute.plan ? "bottom-32" : "bottom-28") : "bottom-3"}`}
-                aria-live="polite"
-              >
-                <p className="truncate text-sm font-semibold">{entry.title}</p>
-                {marker.address ? (
-                  <p className="truncate text-xs text-muted-foreground">{marker.address}</p>
-                ) : null}
-                {marker.summary ? (
-                  <p className="mt-1 text-xs font-medium">{marker.summary}</p>
-                ) : staySummary ? (
-                  <p className="mt-1 text-xs">
-                    <span className="font-medium">{staySummary}</span>
-                    <span className="text-muted-foreground"> · {dateRanges}</span>
-                  </p>
-                ) : marker.entries.length === 1 ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{entry.dayLabel}</p>
-                ) : (
-                  <details className="group mt-2 border-t pt-2">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium marker:content-none">
-                      <span>{eventSummary}</span>
-                      <ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" />
-                    </summary>
-                    <div className="mt-2 max-h-36 overflow-y-auto rounded-md border bg-background/80">
-                      {marker.entries.map((candidate) => (
-                        <button
-                          aria-current={candidate.itemId === selectedId ? "true" : undefined}
-                          className={`grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b px-2.5 py-1.5 text-left text-xs last:border-b-0 ${candidate.itemId === selectedId ? "bg-primary/10 font-medium" : "hover:bg-muted"}`}
-                          key={candidate.itemId}
-                          onClick={() => onMarkerClick(candidate.itemId)}
-                          type="button"
-                        >
-                          <span className="truncate">{candidate.title}</span>
-                          <span className="text-muted-foreground">{candidate.dayLabel}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </details>
-                )}
-                {mapMode === "day_route" ? (
-                  <div className="mt-2 flex flex-wrap justify-end gap-2 border-t pt-2">
-                    <Button
-                      onClick={() => onEditMapItem(entry.itemId)}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      Edit item
-                    </Button>
-                    {dayRoute.editing ? (
-                      dayRoute.draft?.itemIds.includes(entry.itemId) ? (
-                        <Button
-                          onClick={() => dayRoute.removeItem(entry.itemId)}
-                          size="sm"
-                          type="button"
-                          variant="outline"
-                        >
-                          Remove from route
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => dayRoute.addStop(entry.itemId)}
-                          size="sm"
-                          type="button"
-                        >
-                          Add to route
-                        </Button>
-                      )
-                    ) : dayRoute.plan ? (
-                      <Button onClick={dayRoute.openEdit} size="sm" type="button">
-                        Edit route
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ) : null;
-          })()
-        : null}
       {onExpand ? (
         <button
           aria-label="Open full-screen map"
@@ -243,7 +280,12 @@ export function PlannerMapShell({
           ))}
         </div>
       ) : null}
-      {!compact && mapMode === "day_route" ? <DayRouteOverlay route={dayRoute} /> : null}
+      {!compact && mapMode === "overview" ? (
+        <OverviewRouteOverlay route={overviewRoute} selectedPlace={selectedPlace} />
+      ) : null}
+      {!compact && mapMode === "day_route" ? (
+        <DayRouteOverlay route={dayRoute} selectedPlace={selectedPlace} />
+      ) : null}
     </section>
   );
 }

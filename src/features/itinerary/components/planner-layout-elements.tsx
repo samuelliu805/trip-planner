@@ -5,6 +5,7 @@ import type { PlannerMapMode } from "@/features/itinerary/components/planner-map
 import { categories } from "@/features/itinerary/components/planner-config";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
+import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 
 export function PlannerStatus({
   deleteError,
@@ -76,6 +77,8 @@ export function PlannerMapPane({
   onEditMapItem,
   onMarkerClick,
   onMapModeChange,
+  onMapSelectionClear,
+  overviewRoute,
   selectedId,
   viewportKey,
 }: {
@@ -86,8 +89,10 @@ export function PlannerMapPane({
   markers: PlannerMapMarker[];
   onExpand: () => void;
   onEditMapItem: (itemId: string) => void;
-  onMarkerClick: (id: string) => void;
+  onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapSelectionClear: () => void;
+  overviewRoute: OverviewRouteUi;
   selectedId?: string;
   viewportKey?: string;
 }) {
@@ -103,6 +108,8 @@ export function PlannerMapPane({
       onEditMapItem={onEditMapItem}
       onMarkerClick={onMarkerClick}
       onMapModeChange={onMapModeChange}
+      onMapSelectionClear={onMapSelectionClear}
+      overviewRoute={overviewRoute}
       selectedId={selectedId}
       viewportKey={viewportKey}
     />

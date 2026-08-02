@@ -6,13 +6,27 @@ import { plannerQueryKey } from "@/features/itinerary/queries";
 import { requireData } from "@/features/itinerary/query-cache";
 import type { PlannerWorkspace } from "@/features/itinerary/types";
 
-import { calculateDayRoute, clearDayRoutePlan, saveDayRoutePlan } from "./actions";
+import {
+  calculateDayRoute,
+  calculateOverviewRoute,
+  clearDayRoutePlan,
+  saveDayRoutePlan,
+} from "./actions";
 import type {
   CalculateDayRouteInput,
+  CalculateOverviewRouteInput,
   ClearDayRouteInput,
   DayRoutePlan,
   SaveDayRoutePlanInput,
 } from "./types";
+
+export function useCalculateOverviewRoute() {
+  return useMutation({
+    mutationFn: async (input: CalculateOverviewRouteInput) =>
+      requireData(await calculateOverviewRoute(input)),
+    retry: false,
+  });
+}
 
 const replacePlan = (workspace: PlannerWorkspace | undefined, plan: DayRoutePlan) =>
   workspace

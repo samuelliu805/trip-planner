@@ -13,7 +13,7 @@ type CalculationResult = {
   totalDurationSeconds: number | null;
 };
 
-async function mapWithConcurrency<T>(
+export async function mapWithConcurrency<T>(
   tasks: Array<() => Promise<T>>,
   concurrency: number,
 ): Promise<T[]> {

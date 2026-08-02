@@ -6,15 +6,19 @@ import { z } from "zod";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { calculateGoogleRouteLeg } from "@/lib/providers/routes/google-routes.server";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
+import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database";
 
-import { calculateRouteConfiguration } from "./calculator";
+import { calculateRouteConfiguration, mapWithConcurrency } from "./calculator";
+import { deriveOverviewStages } from "./overview";
 import { resolveRouteCalculationConfig } from "./plan-config";
 import { validateDayRouteDraft } from "./route-config";
+import { buildRouteLegSignature } from "./signatures";
 import {
   routeLegModes,
   type CalculateDayRouteInput,
+  type CalculateOverviewRouteInput,
   type ClearDayRouteInput,
   type DayRouteDraft,
   type DayRoutePlan,
@@ -31,6 +35,22 @@ const saveSchema = z.object({
   variantId: identitySchema,
 });
 const calculateSchema = z.object({ planId: identitySchema, tripId: identitySchema });
+const calculateOverviewSchema = z.object({
+  legs: z
+    .array(
+      z.object({
+        mode: z.enum(routeLegModes),
+        position: z.number().int().min(1).max(50),
+      }),
+    )
+    .min(1)
+    .max(50)
+    .superRefine((legs, context) => {
+      if (new Set(legs.map(({ position }) => position)).size !== legs.length)
+        context.addIssue({ code: "custom", message: "Overview leg positions must be unique." });
+    }),
+  tripId: identitySchema,
+});
 const clearSchema = z.object({
   dayId: identitySchema,
   tripId: identitySchema,
@@ -41,7 +61,7 @@ const actionError = (error: unknown) => {
   if (error instanceof RouteProviderError) return error.message;
   if (error instanceof Error) {
     if (/permission|row-level security|owner/i.test(error.message))
-      return "Only the trip owner can change or calculate Route A.";
+      return "Only the trip owner can configure or calculate routes.";
     return error.message;
   }
   return "The day route could not be changed.";
@@ -153,6 +173,66 @@ export async function calculateDayRoute(
     if (!refreshedPlan) throw new Error("The calculated route could not be reloaded.");
     revalidatePath(`/trips/${parsed.data.tripId}`);
     return { cache: calculated.cache, data: refreshedPlan };
+  } catch (error) {
+    return { error: actionError(error) };
+  }
+}
+
+export async function calculateOverviewRoute(
+  input: CalculateOverviewRouteInput,
+): Promise<RouteActionResult<CalculatedRouteLeg[]>> {
+  const parsed = calculateOverviewSchema.safeParse(input);
+  if (!parsed.success) return { error: "The Overview route calculation request is invalid." };
+
+  try {
+    const supabase = await createClient();
+    const { data: owner, error: ownerError } = await supabase.rpc("is_trip_owner", {
+      target_trip_id: parsed.data.tripId,
+    });
+    if (ownerError || !owner) throw new Error("Trip owner access required.");
+
+    const workspace = await loadWorkspace(parsed.data.tripId);
+    const stages = deriveOverviewStages(workspace.days);
+    if (stages.length < 2) return { error: "Add at least two City stages before calculating." };
+
+    const tasks = parsed.data.legs
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map(({ mode, position }) => {
+        const from = stages[position - 1];
+        const to = stages[position];
+        if (!from || !to) throw new Error("The Overview route changed. Review the City stages.");
+        const configIdentity = {
+          dayId: "trip-overview",
+          tripId: parsed.data.tripId,
+          variantId: workspace.variant.id,
+        };
+        const origin = {
+          coordinates: { latitude: from.latitude, longitude: from.longitude },
+          itemId: from.entries[0].itemId,
+        };
+        const destination = {
+          coordinates: { latitude: to.latitude, longitude: to.longitude },
+          itemId: to.entries[0].itemId,
+        };
+        const legSignature = buildRouteLegSignature(
+          configIdentity,
+          position,
+          origin,
+          destination,
+          mode,
+        );
+        return () =>
+          calculateGoogleRouteLeg({
+            destination: destination.coordinates,
+            legSignature,
+            mode,
+            origin: origin.coordinates,
+            position,
+          });
+      });
+
+    return { data: await mapWithConcurrency(tasks, 3) };
   } catch (error) {
     return { error: actionError(error) };
   }

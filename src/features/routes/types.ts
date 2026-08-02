@@ -71,6 +71,10 @@ export type SaveDayRoutePlanInput = {
 };
 
 export type CalculateDayRouteInput = { planId: string; tripId: string };
+export type CalculateOverviewRouteInput = {
+  legs: Array<{ mode: RouteLegMode; position: number }>;
+  tripId: string;
+};
 export type ClearDayRouteInput = { dayId: string; tripId: string; variantId: string };
 
 export type RouteActionResult<T> =
