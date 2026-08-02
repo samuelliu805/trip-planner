@@ -13,7 +13,7 @@ import {
   type GridCoordinate,
 } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 
 type Ref<T> = MutableRefObject<T>;
 type SetCoordinate = (coordinate: GridCoordinate) => void;

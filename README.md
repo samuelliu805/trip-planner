@@ -79,7 +79,7 @@ Matrix interactions include arrow and Tab navigation, Enter/Escape editing, rang
 
 ## Phase 4 map model
 
-The map has two levels, with **Overview** as the default.
+The map has two levels, with **Overview** as the default. The planner initially selects the first day's City cell so the starting map context and spreadsheet selection agree without highlighting an arbitrary City item.
 
 ### Overview
 
@@ -94,6 +94,8 @@ A day has no route until the owner chooses **Create route**, configures at least
 When a day contains at least two City stages, Day route also overlays their transfer path in blue while the Activity/Hotel/Meal Route A path remains forest green. **All**, **City transfers**, and **Day stops** filters control those two visualization layers; both are shown by default. The City layer reuses the current session's Overview calculations and remains a dashed preview where an Overview leg is not calculated. It does not make City items eligible Day route stops.
 
 Map place actions stay inline in the compact selected-place row. Closing a view panel dismisses the complete panel and clears its Pin selection; a compact bottom-left Route details/Overview details control restores it without changing map mode. The Day route editor uses a down-chevron to discard unsaved draft changes and return to the preceding route summary. Unplanned places start expanded, with compact icon actions for adding, moving, removing, editing, and resetting route choices; the consequential Save & calculate action remains explicitly labeled.
+
+Route controls use forest-filled buttons only for the next primary commitment, outlined white controls for secondary edit/add/detail actions, quiet ghost controls for navigation and dismissal, and red ghost controls for destructive removal.
 
 Manual stop order is authoritative. Item time, schedule, title, and notes never sort stops, validate a route, affect a signature, or enter a Google request. A time may appear beside a stop only as passive metadata.
 

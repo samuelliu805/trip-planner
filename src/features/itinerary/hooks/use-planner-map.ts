@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { categories } from "@/features/itinerary/components/planner-config";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";

@@ -21,6 +21,7 @@ import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers
 import {
   encodePlannerClipboard,
   fillTargetRows,
+  initialPlannerSelection,
   moveGridFocus,
   parsePlannerClipboard,
   selectionBounds,
@@ -118,6 +119,12 @@ const providerLeg = (mode: DayRouteDraft["legModes"][number] = "walk"): RouteLeg
   mode,
   origin: { latitude: 37.7749, longitude: -122.4194 },
   position: 1,
+});
+
+test("planner initially selects the first City cell", () => {
+  assert.deepEqual(initialPlannerSelection(3, 0), { column: 0, row: 0 });
+  assert.deepEqual(initialPlannerSelection(0, 0), { column: -1, row: -1 });
+  assert.deepEqual(initialPlannerSelection(3, -1), { column: -1, row: -1 });
 });
 
 const googleResponse = () =>
@@ -1222,14 +1229,21 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
     new URL("./hooks/use-planner-interactions.ts", import.meta.url),
     "utf8",
   );
-  const mapShell = await readFile(
+  let mapShell = await readFile(
     new URL("./components/planner-map-shell.tsx", import.meta.url),
     "utf8",
   );
-  const routeUi = await readFile(
-    new URL("../routes/day-route-overlay.tsx", import.meta.url),
+  mapShell += await readFile(
+    new URL("./components/planner-map-controls.tsx", import.meta.url),
     "utf8",
   );
+  mapShell += await readFile(
+    new URL("./components/planner-map-selected-place.tsx", import.meta.url),
+    "utf8",
+  );
+  let routeUi = await readFile(new URL("../routes/day-route-overlay.tsx", import.meta.url), "utf8");
+  routeUi += await readFile(new URL("../routes/day-route-editor.tsx", import.meta.url), "utf8");
+  routeUi += await readFile(new URL("../routes/route-icon-button.tsx", import.meta.url), "utf8");
   const canvas = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
@@ -1238,6 +1252,7 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.match(overviewUi, /overviewRouteModes\.map/);
   assert.match(overviewUi, /!hasPendingCalculation/);
   assert.match(overviewUi, /Calculate route/);
+  assert.match(overviewUi, /hasPendingCalculation \? "default" : "outline"/);
   assert.match(overviewUi, /Route details/);
   assert.match(overviewUi, /Collapse/);
   assert.match(overviewUi, /Close Overview panel/);
@@ -1271,6 +1286,11 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.match(routeUi, /onBack=\{route\.cancelEditing\}/);
   assert.match(routeUi, /Close route panel/);
   assert.match(routeUi, /route\.openEdit/);
+  assert.match(routeUi, /label="Edit route"[\s\S]*variant="secondary"/);
+  assert.match(routeUi, /label="Create route"[\s\S]*variant="primary"/);
+  assert.match(routeUi, /primary: "bg-primary text-primary-foreground/);
+  assert.match(routeUi, /secondary: "border bg-background text-foreground/);
+  assert.match(routeUi, /destructive: "text-destructive hover:bg-destructive\/10"/);
   assert.match(routeUi, /useState\(true\)/);
   assert.match(routeUi, /aria-expanded=\{unplannedOpen\}/);
   assert.match(routeUi, /Add \$\{item\.title\} to route/);
@@ -1551,6 +1571,11 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /replaceCategoryItems/);
   assert.match(workspace, /sourceItemIds:\s*sourceDay\.items\s*\.filter/);
   assert.match(workspace, /startRangeSelection/);
+  assert.match(
+    workspace,
+    /initialPlannerSelection\([\s\S]*initialWorkspace\.days\.length[\s\S]*id === "city"/,
+  );
+  assert.match(workspace, /useState<GridCoordinate>\(\(\) => initialSelection\)/);
   assert.match(workspace, /window\.addEventListener\("pointermove", move\)/);
   assert.match(workspace, /onDoubleClick=\{openEditorFromDoubleClick\}/);
   assert.match(workspace, /data-edit-item=\{item\.id\}/);
@@ -1768,12 +1793,21 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
     "utf8",
   );
   const map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
-  const mapShell = await readFile(
+  let mapShell = await readFile(
     new URL("./components/planner-map-shell.tsx", import.meta.url),
+    "utf8",
+  );
+  mapShell += await readFile(
+    new URL("./components/planner-map-controls.tsx", import.meta.url),
+    "utf8",
+  );
+  mapShell += await readFile(
+    new URL("./components/planner-map-selected-place.tsx", import.meta.url),
     "utf8",
   );
   workspace += mapShell;
   workspace += await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
+  workspace += await readFile(new URL("../routes/day-route-map.ts", import.meta.url), "utf8");
   const places = await readFile(
     new URL("../places/place-autocomplete.tsx", import.meta.url),
     "utf8",
@@ -1791,8 +1825,8 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(map, /markerStyles/);
   assert.match(map, /const glyph =/);
   assert.match(map, /glyph=\{glyph\}/);
-  assert.match(workspace, /groupKey = `\$\{item\.place\.id\}:\$\{entry\.kind\}`/);
-  assert.match(workspace, /entries\.push\(entry\)/);
+  assert.match(workspace, /const key = item\.place!\.id/);
+  assert.match(workspace, /existing\.entries\.push\(entry\)/);
   assert.match(mapShell, /aria-label="Map level"/);
   assert.match(mapShell, /mergeMarkerDateRanges\(marker\.entries\)/);
   assert.match(map, /itemIds\.includes\(selectedId\)/);

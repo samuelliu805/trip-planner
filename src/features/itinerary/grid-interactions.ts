@@ -15,6 +15,10 @@ export type PlannerClipboard = {
   version: 2;
 };
 
+export function initialPlannerSelection(dayCount: number, cityColumn: number): GridCoordinate {
+  return dayCount > 0 && cityColumn >= 0 ? { column: cityColumn, row: 0 } : { column: -1, row: -1 };
+}
+
 const clipboardSchema = z
   .object({
     cells: z

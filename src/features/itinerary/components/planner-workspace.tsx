@@ -15,6 +15,7 @@ import { PlannerSheets } from "@/features/itinerary/components/planner-sheets";
 import { PlannerToolbar } from "@/features/itinerary/components/planner-toolbar";
 import {
   encodePlannerClipboard,
+  initialPlannerSelection,
   parsePlannerClipboard,
   selectionBounds,
   type GridCoordinate,
@@ -46,9 +47,13 @@ export function PlannerWorkspace({
     trip.id,
     initialWorkspace,
   );
+  const initialSelection = initialPlannerSelection(
+    initialWorkspace.days.length,
+    categories.findIndex(({ id }) => id === "city"),
+  );
   const [split, setSplit] = useState(58);
-  const [selectionAnchor, setSelectionAnchor] = useState<GridCoordinate>({ row: -1, column: -1 });
-  const [selectionEnd, commitSelectionEnd] = useState<GridCoordinate>({ row: -1, column: -1 });
+  const [selectionAnchor, setSelectionAnchor] = useState<GridCoordinate>(() => initialSelection);
+  const [selectionEnd, commitSelectionEnd] = useState<GridCoordinate>(() => initialSelection);
   const [selectedDayRow, setSelectedDayRow] = useState<number | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);

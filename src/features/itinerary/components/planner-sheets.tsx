@@ -14,7 +14,7 @@ import {
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";

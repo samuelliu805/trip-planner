@@ -1,7 +1,7 @@
 "use client";
 
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import { categories } from "@/features/itinerary/components/planner-config";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { overviewRouteModeLabels } from "./overview-transport";
+import { RouteIconButton } from "./route-icon-button";
 import { overviewRouteModes, type OverviewRouteMode } from "./types";
 import type { OverviewRouteUi } from "./use-overview-route";
 
@@ -38,14 +39,14 @@ export function OverviewRouteOverlay({
     return selectedPlace ? (
       <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-3 pr-12 shadow-lg backdrop-blur">
         {selectedPlace}
-        <button
-          aria-label="Close Overview panel"
-          className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        <RouteIconButton
+          className="absolute right-2 top-2"
+          label="Close Overview panel"
           onClick={onClose}
-          type="button"
+          title="Close panel"
         >
           <X className="size-4" />
-        </button>
+        </RouteIconButton>
       </section>
     ) : null;
   const calculatedCount = route.segments.filter(({ calculatedLeg }) => calculatedLeg).length;
@@ -74,7 +75,7 @@ export function OverviewRouteOverlay({
             onClick={() => route.setEditing(!route.editing)}
             size="sm"
             type="button"
-            variant={route.editing ? "ghost" : "outline"}
+            variant={route.editing ? "ghost" : hasPendingCalculation ? "default" : "outline"}
           >
             {route.editing
               ? "Collapse"
@@ -82,14 +83,9 @@ export function OverviewRouteOverlay({
                 ? "Calculate route"
                 : "Route details"}
           </Button>
-          <button
-            aria-label="Close Overview panel"
-            className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            onClick={onClose}
-            type="button"
-          >
+          <RouteIconButton label="Close Overview panel" onClick={onClose} title="Close panel">
             <X className="size-4" />
-          </button>
+          </RouteIconButton>
         </div>
 
         {route.editing ? (
@@ -157,16 +153,14 @@ export function OverviewRouteOverlay({
             </ol>
             <div className="mt-3 flex flex-wrap justify-end gap-2">
               {hasConfiguration ? (
-                <button
-                  aria-label="Reset transport defaults"
-                  className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                <RouteIconButton
                   disabled={route.pending}
+                  label="Reset transport defaults"
                   onClick={route.reset}
                   title="Reset transport defaults"
-                  type="button"
                 >
                   <RotateCcw className="size-4" />
-                </button>
+                </RouteIconButton>
               ) : null}
               <Button
                 disabled={

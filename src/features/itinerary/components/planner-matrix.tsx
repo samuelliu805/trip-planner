@@ -17,7 +17,7 @@ import {
 } from "@/features/itinerary/components/planner-config";
 import { selectionContains, type GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-shell";
+import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";

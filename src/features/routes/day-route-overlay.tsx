@@ -1,302 +1,20 @@
 "use client";
 
-import {
-  ArrowDown,
-  ArrowUp,
-  BedDouble,
-  ChevronDown,
-  Footprints,
-  MapPin,
-  Pencil,
-  Plus,
-  Route,
-  Save,
-  Trash2,
-  Utensils,
-  X,
-} from "lucide-react";
-import { useState } from "react";
+import { Pencil, Plus, Route, X } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { transportModeLabels, type ItineraryItem } from "@/features/itinerary/types";
+import { transportModeLabels } from "@/features/itinerary/types";
 
-import { routeLegModes, type RouteLegMode } from "./types";
+import { DayRouteEditor } from "./day-route-editor";
+import {
+  DayRouteStatusBadge,
+  formatRouteDistance,
+  formatRouteDuration,
+  SelectedPlaceSlot,
+} from "./day-route-panel-ui";
+import { RouteIconButton } from "./route-icon-button";
 import type { DayRouteUi } from "./use-day-route";
 
-const statusLabels = {
-  current: "Current",
-  needs_edit: "Needs editing",
-  stale: "Stale",
-  uncalculated: "Not calculated",
-  updating: "Updating",
-} as const;
-
-const formatDistance = (meters: number) =>
-  meters >= 1_000 ? `${(meters / 1_000).toFixed(1)} km` : `${Math.round(meters)} m`;
-
-const formatDuration = (seconds: number) => {
-  const minutes = Math.round(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  return hours ? `${hours}h ${minutes % 60}m` : `${minutes} min`;
-};
-
-const StopIcon = ({ item }: { item?: ItineraryItem }) => {
-  if (item?.type === "hotel") return <BedDouble className="size-4" />;
-  if (item?.type === "meal") return <Utensils className="size-4" />;
-  return <MapPin className="size-4" />;
-};
-
-function Status({ route }: { route: DayRouteUi }) {
-  if (!route.status) return null;
-  return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${route.status === "current" ? "bg-primary/15 text-primary" : "bg-amber-100 text-amber-900"}`}
-    >
-      {statusLabels[route.status]}
-    </span>
-  );
-}
-
-const SelectedPlaceSlot = ({ children }: { children?: React.ReactNode }) =>
-  children ? <div className="border-b px-3 py-2">{children}</div> : null;
-
-function Editor({
-  onBack,
-  route,
-  selectedPlace,
-}: {
-  onBack: () => void;
-  route: DayRouteUi;
-  selectedPlace?: React.ReactNode;
-}) {
-  const [unplannedOpen, setUnplannedOpen] = useState(true);
-  const draft = route.draft!;
-  const itemsById = new Map(route.activeDay?.items.map((item) => [item.id, item]) ?? []);
-  const planned = new Set(draft.itemIds);
-  const unplanned = route.eligibleItems.filter(({ id }) => !planned.has(id));
-  const hotelCount = route.eligibleItems.filter(({ type }) => type === "hotel").length;
-  return (
-    <section
-      aria-label="Edit Route A"
-      className="day-route-editor absolute bottom-3 right-3 top-14 z-30 flex w-[min(360px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-xl border bg-background/97 shadow-xl backdrop-blur"
-    >
-      <header className="border-b px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">Day {route.activeDay?.day_number} · Route A</p>
-            <p className="text-xs text-muted-foreground">Manual order is used.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Status route={route} />
-            <button
-              aria-label="Discard changes and collapse route editor"
-              className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={onBack}
-              title="Discard changes and return to route summary"
-              type="button"
-            >
-              <ChevronDown className="size-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-      <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {draft.itemIds.length ? (
-          <ol className="space-y-2" aria-label="Planned stops">
-            {draft.itemIds.map((itemId, index) => {
-              const item = itemsById.get(itemId);
-              const time = item?.start_time?.slice(0, 5);
-              return (
-                <li key={`${itemId}:${index}`}>
-                  <div className="flex min-h-11 items-center gap-2 rounded-lg border bg-background px-2 py-1.5">
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                      {index + 1}
-                    </span>
-                    <span className="text-muted-foreground">
-                      <StopIcon item={item} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-medium">
-                        {item?.title ?? "Deleted item"}
-                      </span>
-                      <span className="block truncate text-[10px] text-muted-foreground">
-                        {time ? `${time} · ` : ""}
-                        {item?.place ? item.place.displayName : "Saved place missing"}
-                      </span>
-                    </span>
-                    <button
-                      aria-label={`Move stop ${index + 1} up`}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
-                      disabled={index === 0 || route.pending}
-                      onClick={() => route.moveStop(index, -1)}
-                      title="Move stop up"
-                      type="button"
-                    >
-                      <ArrowUp className="size-4" />
-                    </button>
-                    <button
-                      aria-label={`Move stop ${index + 1} down`}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
-                      disabled={index === draft.itemIds.length - 1 || route.pending}
-                      onClick={() => route.moveStop(index, 1)}
-                      title="Move stop down"
-                      type="button"
-                    >
-                      <ArrowDown className="size-4" />
-                    </button>
-                    <button
-                      aria-label={`Remove stop ${index + 1}`}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30"
-                      disabled={route.pending}
-                      onClick={() => route.removeStop(index)}
-                      title="Remove stop"
-                      type="button"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </div>
-                  {index < draft.legModes.length ? (
-                    <div className="ml-4 flex min-h-12 items-center gap-2 border-l-2 border-dashed border-primary/30 pl-4">
-                      <Footprints className="size-4 shrink-0 text-primary" />
-                      <Select
-                        disabled={route.pending}
-                        onValueChange={(value) => route.setLegMode(index, value as RouteLegMode)}
-                        value={draft.legModes[index]}
-                      >
-                        <SelectTrigger
-                          aria-label={`Travel mode for leg ${index + 1}`}
-                          className="h-10"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {routeLegModes.map((mode) => (
-                            <SelectItem key={mode} value={mode}>
-                              {transportModeLabels[mode]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-            Add stops from Unplanned places or select a gray Pin on the map.
-          </div>
-        )}
-
-        {hotelCount === 1 ? (
-          <Button
-            className="mt-3 w-full"
-            disabled={route.pending}
-            onClick={route.useHotelRoundTrip}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <BedDouble className="size-4" />
-            Use hotel as start &amp; end
-          </Button>
-        ) : null}
-
-        <div className="mt-3 overflow-hidden rounded-lg border">
-          <button
-            aria-expanded={unplannedOpen}
-            className="flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-            onClick={() => setUnplannedOpen((open) => !open)}
-            type="button"
-          >
-            <span>Unplanned places ({unplanned.length})</span>
-            <ChevronDown
-              aria-hidden="true"
-              className={`size-4 shrink-0 text-muted-foreground transition-transform ${unplannedOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-          {unplannedOpen ? (
-            <div className="border-t p-2">
-              {unplanned.length ? (
-                <ul className="space-y-1">
-                  {unplanned.map((item) => (
-                    <li className="flex min-h-11 items-center gap-2" key={item.id}>
-                      <span className="text-muted-foreground">
-                        <StopIcon item={item} />
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-xs">{item.title}</span>
-                      <button
-                        aria-label={`Add ${item.title} to route`}
-                        className="flex size-11 shrink-0 items-center justify-center rounded-md border text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                        disabled={route.pending}
-                        onClick={() => route.addStop(item.id)}
-                        title="Add to route"
-                        type="button"
-                      >
-                        <Plus className="size-4" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="p-2 text-xs text-muted-foreground">
-                  All eligible places are planned.
-                </p>
-              )}
-            </div>
-          ) : null}
-        </div>
-
-        {route.error ? (
-          <p
-            className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
-            role="alert"
-          >
-            {route.error}
-          </p>
-        ) : null}
-      </div>
-      <footer className="flex items-center gap-2 border-t p-3">
-        {route.plan ? (
-          <button
-            aria-label="Clear saved route"
-            className="flex size-11 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-            disabled={route.pending}
-            onClick={() => {
-              if (window.confirm("Clear this saved day route and its calculation?"))
-                void route.clearRoute();
-            }}
-            title="Clear saved route"
-            type="button"
-          >
-            <Trash2 className="size-4" />
-          </button>
-        ) : null}
-        <Button
-          className="ml-auto"
-          disabled={draft.itemIds.length < 2 || route.pending}
-          onClick={() => void route.saveAndCalculate()}
-          size="sm"
-          type="button"
-        >
-          <Save className="size-4" />
-          {route.pending ? "Saving…" : "Save & calculate"}
-        </Button>
-      </footer>
-    </section>
-  );
-}
-
-function Summary({
+function DayRouteSummary({
   onClose,
   route,
   selectedPlace,
@@ -332,37 +50,31 @@ function Summary({
             <p className="truncate text-sm font-semibold">
               Day {route.activeDay?.day_number} · Route A
             </p>
-            <Status route={route} />
+            <DayRouteStatusBadge route={route} />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {stops} stops
-            {calculation ? ` · ${formatDistance(calculation.total_distance_meters)}` : ""}
+            {calculation ? ` · ${formatRouteDistance(calculation.total_distance_meters)}` : ""}
             {calculation?.total_duration_seconds !== null &&
             calculation?.total_duration_seconds !== undefined
-              ? ` · ${formatDuration(calculation.total_duration_seconds)}`
+              ? ` · ${formatRouteDuration(calculation.total_duration_seconds)}`
               : calculation
                 ? " · Duration incomplete"
                 : " · Not calculated"}
             {modes.length ? ` · ${modes.join(", ")}` : ""}
           </p>
         </div>
-        <button
-          aria-label="Edit route"
-          className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <RouteIconButton
+          label="Edit route"
           onClick={route.openEdit}
           title="Edit route"
-          type="button"
+          variant="secondary"
         >
           <Pencil className="size-4" />
-        </button>
-        <button
-          aria-label="Close route panel"
-          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          onClick={onClose}
-          type="button"
-        >
+        </RouteIconButton>
+        <RouteIconButton label="Close route panel" onClick={onClose} title="Close panel">
           <X className="size-4" />
-        </button>
+        </RouteIconButton>
       </div>
       {missingDurations?.length ? (
         <p className="px-3 text-[11px] text-muted-foreground">
@@ -408,14 +120,14 @@ export function DayRouteOverlay({
   if (!route.activeDay)
     return (
       <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-4 text-center shadow-lg backdrop-blur">
-        <button
-          aria-label="Close route panel"
-          className="absolute right-2 top-2 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+        <RouteIconButton
+          className="absolute right-2 top-2"
+          label="Close route panel"
           onClick={onClose}
-          type="button"
+          title="Close panel"
         >
           <X className="size-4" />
-        </button>
+        </RouteIconButton>
         <p className="text-sm font-semibold">Select a day</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Choose a matrix day to view its eligible places.
@@ -423,8 +135,11 @@ export function DayRouteOverlay({
       </section>
     );
   if (route.editing)
-    return <Editor onBack={route.cancelEditing} route={route} selectedPlace={selectedPlace} />;
-  if (route.plan) return <Summary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
+    return (
+      <DayRouteEditor onBack={route.cancelEditing} route={route} selectedPlace={selectedPlace} />
+    );
+  if (route.plan)
+    return <DayRouteSummary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
   return (
     <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
@@ -435,23 +150,17 @@ export function DayRouteOverlay({
             Eligible saved places are shown in gray. Nothing is routed until you save.
           </p>
         </div>
-        <button
-          aria-label="Create route"
-          className="flex size-11 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <RouteIconButton
+          label="Create route"
           onClick={route.openCreate}
           title="Create route"
-          type="button"
+          variant="primary"
         >
           <Plus className="size-4" />
-        </button>
-        <button
-          aria-label="Close route panel"
-          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          onClick={onClose}
-          type="button"
-        >
+        </RouteIconButton>
+        <RouteIconButton label="Close route panel" onClick={onClose} title="Close panel">
           <X className="size-4" />
-        </button>
+        </RouteIconButton>
       </div>
     </section>
   );
