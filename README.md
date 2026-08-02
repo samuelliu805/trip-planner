@@ -85,7 +85,7 @@ The map has two levels, with **Overview** as the default.
 
 Overview derives stages only from persisted City places. It orders City items by trip day and manual item order, collapses consecutive entries with the same place into one stay stage, and connects the nearest explicitly entered stages across City-less days. It never infers or recommends a city and never optimizes the order.
 
-Overview initially connects City stages with dashed straight previews, so opening the map remains free of paid route calls. The owner can explicitly choose one transport mode for every adjacent City connection and select **Calculate overview**. Supported modes then use the same server-only Google Routes provider as Day routes; unsupported and unavailable legs retain a dashed straight fallback. Overview calculations are session-scoped rather than persisted, and changing one mode recalculates only that changed connection during the session.
+Overview initially connects City stages with dashed straight previews, so opening the map remains free of paid route calls. Each connection is limited to Drive, Flight, Train, Bus, or Bike. Its default comes from Transport items on the arrival City stage's first day, with Flight > Drive > Train > Bus > Bike priority when several exist; otherwise distances of at least 500 km default to Flight and shorter distances default to Drive. The owner can explicitly choose **Not set** to keep any connection as a straight preview, and **Calculate overview** calculates only configured, changed connections. Drive, Train/Bus, and Bike use the same server-only Google Routes provider as Day routes; Flight and unavailable routes retain a dashed straight fallback. Overview calculations are session-scoped rather than persisted.
 
 ### Day route
 
@@ -207,7 +207,7 @@ npm run format:check
 npm run build
 ```
 
-Automated coverage includes route-model contracts, RLS/grant/cascade migration contracts, category and duplicate validation, Overview ordering/collapse and straight-to-calculated geometry, per-leg mode mapping, Haversine and polyline geometry, narrow Google requests, no-route fallback, safe provider errors, full/partial cache reuse, stale/needs-edit state, nullable duration, server-key isolation, exact item/Pin selection, clipboard/copy behavior, and responsive Sheet/CSS contracts. Provider tests mock `fetch` and never call Google.
+Automated coverage includes route-model contracts, RLS/grant/cascade migration contracts, category and duplicate validation, Overview ordering/collapse, restricted/default modes, partial straight-to-calculated geometry, per-leg mode mapping, Haversine and polyline geometry, narrow Google requests, no-route fallback, safe provider errors, full/partial cache reuse, stale/needs-edit state, nullable duration, server-key isolation, exact item/Pin selection, clipboard/copy behavior, and responsive Sheet/CSS contracts. Provider tests mock `fetch` and never call Google.
 
 ## Authenticated manual smoke test
 
@@ -216,7 +216,7 @@ This checklist remains pending until valid test-account access and the required 
 1. Link places to City, Activity, Meal, Hotel, and Car rental items; refresh and confirm markers persist without per-marker Place Details calls.
 2. Confirm exact matrix item ↔ Pin selection, including collocated items, mobile map peek, and expanded map selection preservation.
 3. Confirm Overview contains only City stages, preserves same-day City order, collapses consecutive identical stays, and skips City-less days without inference.
-4. Confirm Overview opens with straight previews and makes no Routes API request until every City connection has a user-selected mode and **Calculate overview** is chosen.
+4. Confirm Overview opens with straight previews, derives its five-mode defaults from arrival-day Transport items or the 500 km threshold, and makes no Routes API request until **Calculate overview** is chosen. Set one connection to **Not set** and confirm it remains straight while configured connections calculate.
 5. Confirm a day with no route remains quiet and shows only eligible gray places plus Create route.
 6. Create a route from Activity, Meal, and Hotel items; start and end with the same Hotel and confirm one `1 · N` Pin.
 7. Reorder only with Move up/down and configure mixed Walk, Transit, Drive, and unsupported fallback legs.

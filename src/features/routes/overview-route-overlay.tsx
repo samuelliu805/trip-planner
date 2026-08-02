@@ -10,10 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { transportModeLabels } from "@/features/itinerary/types";
-
-import { routeLegModes, type RouteLegMode } from "./types";
+import { overviewRouteModeLabels } from "./overview-transport";
+import { overviewRouteModes, type OverviewRouteMode } from "./types";
 import type { OverviewRouteUi } from "./use-overview-route";
+
+const notSetValue = "not_set";
 
 export function OverviewRouteOverlay({
   route,
@@ -30,6 +31,9 @@ export function OverviewRouteOverlay({
     ) : null;
   const calculatedCount = route.segments.filter(({ calculatedLeg }) => calculatedLeg).length;
   const hasConfiguration = route.segments.some(({ calculatedLeg, mode }) => calculatedLeg || mode);
+  const hasPendingCalculation = route.segments.some(({ calculatedLeg, mode }) =>
+    Boolean(mode && !calculatedLeg),
+  );
 
   return (
     <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
@@ -60,7 +64,8 @@ export function OverviewRouteOverlay({
         {route.editing ? (
           <div className="mt-3 border-t pt-3">
             <p className="mb-2 text-[11px] text-muted-foreground">
-              Select one mode per connection. Google is called only when you choose Calculate.
+              Defaults come from the arrival day&apos;s Transport items and distance. Set any
+              connection to Not set to keep its straight preview.
             </p>
             <ol
               className="max-h-56 space-y-2 overflow-y-auto pr-1"
@@ -87,9 +92,12 @@ export function OverviewRouteOverlay({
                   <Select
                     disabled={route.pending}
                     onValueChange={(value) =>
-                      route.setMode(segment.position, value as RouteLegMode)
+                      route.setMode(
+                        segment.position,
+                        value === notSetValue ? undefined : (value as OverviewRouteMode),
+                      )
                     }
-                    value={segment.mode}
+                    value={segment.mode ?? notSetValue}
                   >
                     <SelectTrigger
                       aria-label={`Transport from ${segment.from.entries[0].title} to ${segment.to.entries[0].title}`}
@@ -98,9 +106,10 @@ export function OverviewRouteOverlay({
                       <SelectValue placeholder="Select transport" />
                     </SelectTrigger>
                     <SelectContent>
-                      {routeLegModes.map((mode) => (
+                      <SelectItem value={notSetValue}>Not set · straight line</SelectItem>
+                      {overviewRouteModes.map((mode) => (
                         <SelectItem key={mode} value={mode}>
-                          {transportModeLabels[mode]}
+                          {overviewRouteModeLabels[mode]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -117,16 +126,20 @@ export function OverviewRouteOverlay({
                   type="button"
                   variant="ghost"
                 >
-                  Reset to straight
+                  Reset defaults
                 </Button>
               ) : null}
               <Button
-                disabled={route.pending || route.segments.some(({ mode }) => !mode)}
+                disabled={route.pending || !hasPendingCalculation}
                 onClick={() => void route.calculate()}
                 size="sm"
                 type="button"
               >
-                {route.pending ? "Calculating…" : "Calculate overview"}
+                {route.pending
+                  ? "Calculating…"
+                  : hasPendingCalculation
+                    ? "Calculate overview"
+                    : "Routes current"}
               </Button>
             </div>
           </div>

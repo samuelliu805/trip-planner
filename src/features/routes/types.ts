@@ -22,6 +22,9 @@ export const routeLegModes = [
 
 export type RouteLegMode = (typeof routeLegModes)[number];
 
+export const overviewRouteModes = ["self_driving", "flight", "train", "bus", "bike"] as const;
+export type OverviewRouteMode = (typeof overviewRouteModes)[number];
+
 export const eligibleRouteStopTypes = ["activity", "meal", "hotel"] as const;
 export type EligibleRouteStopType = (typeof eligibleRouteStopTypes)[number];
 
@@ -72,7 +75,7 @@ export type SaveDayRoutePlanInput = {
 
 export type CalculateDayRouteInput = { planId: string; tripId: string };
 export type CalculateOverviewRouteInput = {
-  legs: Array<{ mode: RouteLegMode; position: number }>;
+  legs: Array<{ mode: OverviewRouteMode; position: number }>;
   tripId: string;
 };
 export type ClearDayRouteInput = { dayId: string; tripId: string; variantId: string };

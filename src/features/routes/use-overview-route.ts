@@ -6,19 +6,19 @@ import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 
 import type { OverviewStage } from "./overview";
 import { useCalculateOverviewRoute } from "./queries";
-import type { RouteLegMode } from "./types";
+import type { OverviewRouteMode } from "./types";
 
 type OverviewRouteState = {
   calculatedLegs: CalculatedRouteLeg[];
   error?: string;
-  modes: Array<RouteLegMode | undefined>;
+  modes: Array<OverviewRouteMode | undefined>;
   stageKey: string;
 };
 
 export type OverviewRouteSegment = {
   calculatedLeg?: CalculatedRouteLeg;
   from: OverviewStage;
-  mode?: RouteLegMode;
+  mode?: OverviewRouteMode;
   position: number;
   to: OverviewStage;
 };
@@ -32,35 +32,38 @@ export type OverviewRouteUi = {
   reset: () => void;
   segments: OverviewRouteSegment[];
   setEditing: (editing: boolean) => void;
-  setMode: (position: number, mode: RouteLegMode) => void;
+  setMode: (position: number, mode?: OverviewRouteMode) => void;
   stages: OverviewStage[];
 };
 
-const keyForStages = (stages: OverviewStage[]) =>
-  stages
+const keyForStages = (stages: OverviewStage[], defaultModes: OverviewRouteMode[]) =>
+  `${stages
     .map(
       ({ entries, latitude, longitude, placeId }) =>
         `${placeId}:${latitude.toFixed(7)}:${longitude.toFixed(7)}:${entries[0]?.itemId ?? ""}`,
     )
-    .join("|");
+    .join("|")}:${defaultModes.join(",")}`;
 
-export function useOverviewRoute(stages: OverviewStage[], tripId: string): OverviewRouteUi {
-  const stageKey = keyForStages(stages);
-  const segmentCount = Math.max(0, stages.length - 1);
+export function useOverviewRoute(
+  stages: OverviewStage[],
+  defaultModes: OverviewRouteMode[],
+  tripId: string,
+): OverviewRouteUi {
+  const stageKey = keyForStages(stages, defaultModes);
   const [storedState, setStoredState] = useState<OverviewRouteState | null>(null);
   const [editing, setEditing] = useState(false);
   const mutation = useCalculateOverviewRoute();
   const currentState: OverviewRouteState =
     storedState?.stageKey === stageKey
       ? storedState
-      : { calculatedLegs: [], modes: Array<RouteLegMode | undefined>(segmentCount), stageKey };
+      : { calculatedLegs: [], modes: [...defaultModes], stageKey };
 
   function updateState(updater: (current: OverviewRouteState) => OverviewRouteState) {
     setStoredState((stored) =>
       updater(
         stored?.stageKey === stageKey
           ? stored
-          : { calculatedLegs: [], modes: Array(segmentCount), stageKey },
+          : { calculatedLegs: [], modes: [...defaultModes], stageKey },
       ),
     );
   }
@@ -75,14 +78,7 @@ export function useOverviewRoute(stages: OverviewStage[], tripId: string): Overv
 
   async function calculate() {
     if (!segments.length) return;
-    if (segments.some(({ mode }) => !mode)) {
-      updateState((current) => ({
-        ...current,
-        error: "Select a transport mode for every City connection.",
-      }));
-      return;
-    }
-    const changed = segments.filter(({ calculatedLeg }) => !calculatedLeg);
+    const changed = segments.filter(({ calculatedLeg, mode }) => mode && !calculatedLeg);
     if (!changed.length) {
       setEditing(false);
       return;
@@ -121,7 +117,7 @@ export function useOverviewRoute(stages: OverviewStage[], tripId: string): Overv
     error: currentState.error,
     pending: mutation.isPending,
     reset: () => {
-      setStoredState({ calculatedLegs: [], modes: Array(segmentCount), stageKey });
+      setStoredState({ calculatedLegs: [], modes: [...defaultModes], stageKey });
       setEditing(false);
     },
     segments,

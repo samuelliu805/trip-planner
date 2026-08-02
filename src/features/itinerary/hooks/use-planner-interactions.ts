@@ -24,6 +24,7 @@ export function usePlannerInteractions({
   fillDragging,
   fillFrame,
   fillSourceRight,
+  hasDayRoute,
   rangeJustSelected,
   selectionAnchor,
   selectionEnd,
@@ -44,6 +45,7 @@ export function usePlannerInteractions({
   fillDragging: Ref<boolean>;
   fillFrame: Ref<number | null>;
   fillSourceRight: Ref<number>;
+  hasDayRoute: (dayId: string) => boolean;
   rangeJustSelected: Ref<boolean>;
   selectionAnchor: GridCoordinate;
   selectionEnd: GridCoordinate;
@@ -69,7 +71,10 @@ export function usePlannerInteractions({
     if (!extend) {
       const category = categories[coordinate.column];
       if (category?.id === "city") setMapMode("overview");
-      if (["activities", "hotel", "meals"].includes(category?.id ?? "")) setMapMode("day_route");
+      if (["activities", "hotel", "meals"].includes(category?.id ?? "")) {
+        const day = workspace.days[coordinate.row];
+        setMapMode(day && hasDayRoute(day.id) ? "day_route" : "overview");
+      }
     }
     if (extend) setSelectionEnd(coordinate);
     else {
@@ -101,8 +106,9 @@ export function usePlannerInteractions({
       return;
     }
     if (["activity", "hotel", "meal"].includes(item.type)) {
-      setMapMode("day_route");
-      setSelectedItemId(item.place ? item.id : undefined);
+      const routeExists = hasDayRoute(item.day_id);
+      setMapMode(routeExists ? "day_route" : "overview");
+      setSelectedItemId(routeExists && item.place ? item.id : undefined);
       return;
     }
     setSelectedItemId(undefined);

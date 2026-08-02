@@ -304,9 +304,11 @@ function Summary({ route, selectedPlace }: { route: DayRouteUi; selectedPlace?: 
         <Button onClick={route.requestFit} size="sm" type="button" variant="outline">
           View route
         </Button>
-        <Button onClick={route.openEdit} size="sm" type="button">
-          Edit route
-        </Button>
+        {!selectedPlace ? (
+          <Button onClick={route.openEdit} size="sm" type="button">
+            Edit route
+          </Button>
+        ) : null}
       </div>
       {missingDurations?.length ? (
         <p className="px-3 text-[11px] text-muted-foreground">

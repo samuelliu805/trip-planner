@@ -158,7 +158,7 @@ function SelectedPlaceContent({
           </div>
         </details>
       )}
-      <div className="mt-2 flex flex-wrap justify-end gap-2 border-t pt-2">
+      <div className="mt-2 flex flex-wrap justify-end gap-2">
         <Button
           onClick={() => onEditMapItem(entry.itemId)}
           size="sm"
@@ -183,6 +183,10 @@ function SelectedPlaceContent({
                 Add to route
               </Button>
             )
+          ) : dayRoute.plan ? (
+            <Button onClick={dayRoute.openEdit} size="sm" type="button">
+              Edit route
+            </Button>
           ) : null
         ) : null}
       </div>

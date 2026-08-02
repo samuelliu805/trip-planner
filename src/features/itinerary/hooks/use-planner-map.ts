@@ -11,6 +11,7 @@ import { buildOverviewRouteLines, deriveOverviewStages } from "@/features/routes
 import { buildDayRouteLines, buildDayRouteMarkers } from "@/features/routes/day-route-map";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import { useOverviewRoute } from "@/features/routes/use-overview-route";
+import { deriveOverviewDefaultModes } from "@/features/routes/overview-transport";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -30,7 +31,15 @@ export function usePlannerMap(
     return cellItems.find(({ id }) => id === selectedItemId);
   }, [selectedItemId, selectionEnd.column, selectionEnd.row, workspace.days]);
   const overviewStages = useMemo(() => deriveOverviewStages(workspace.days), [workspace.days]);
-  const overviewRoute = useOverviewRoute(overviewStages, workspace.variant.trip_id);
+  const overviewDefaultModes = useMemo(
+    () => deriveOverviewDefaultModes(workspace.days, overviewStages),
+    [overviewStages, workspace.days],
+  );
+  const overviewRoute = useOverviewRoute(
+    overviewStages,
+    overviewDefaultModes,
+    workspace.variant.trip_id,
+  );
   const overviewMarkers = useMemo<PlannerMapMarker[]>(
     () =>
       overviewStages.map((stage) => ({

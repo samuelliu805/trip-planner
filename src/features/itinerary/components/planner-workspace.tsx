@@ -86,6 +86,15 @@ export function PlannerWorkspace({
   const routeDay = activeDay ?? selectedDay ?? workspace.days[0];
   const dayRoute = useDayRoute(workspace, routeDay, trip.id);
 
+  function hasDayRoute(dayId: string) {
+    return (
+      workspace.routePlans.some(
+        (plan) => plan.day_id === dayId && plan.variant_id === workspace.variant.id,
+      ) ||
+      (dayRoute.editing && dayRoute.activeDay?.id === dayId)
+    );
+  }
+
   const { dayMutationPending, deleteItem, insertDay, moveItem, removeDay } = usePlannerMutations(
     trip.id,
     setInteractionError,
@@ -166,6 +175,7 @@ export function PlannerWorkspace({
     fillDragging,
     fillFrame,
     fillSourceRight,
+    hasDayRoute,
     rangeJustSelected,
     selectionAnchor,
     selectionEnd,

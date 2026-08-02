@@ -16,6 +16,7 @@ import { resolveRouteCalculationConfig } from "./plan-config";
 import { validateDayRouteDraft } from "./route-config";
 import { buildRouteLegSignature } from "./signatures";
 import {
+  overviewRouteModes,
   routeLegModes,
   type CalculateDayRouteInput,
   type CalculateOverviewRouteInput,
@@ -39,7 +40,7 @@ const calculateOverviewSchema = z.object({
   legs: z
     .array(
       z.object({
-        mode: z.enum(routeLegModes),
+        mode: z.enum(overviewRouteModes),
         position: z.number().int().min(1).max(50),
       }),
     )

@@ -29,6 +29,10 @@ import {
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import { buildOverviewRouteLines, deriveOverviewStages } from "../routes/overview.ts";
 import {
+  deriveOverviewDefaultModes,
+  overviewFlightThresholdMeters,
+} from "../routes/overview-transport.ts";
+import {
   buildDayRouteLines,
   buildDayRouteMarkers,
   eligibleDayRouteItems,
@@ -39,7 +43,7 @@ import { buildRouteConfigSignature } from "../routes/signatures.ts";
 import { resolveRouteCalculationConfig } from "../routes/plan-config.ts";
 import { dayRouteStatus } from "../routes/status.ts";
 import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
-import { routeLegModes, type DayRouteDraft } from "../routes/types.ts";
+import { overviewRouteModes, routeLegModes, type DayRouteDraft } from "../routes/types.ts";
 import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "../routes/types.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
@@ -273,6 +277,72 @@ test("transport suggestions are restrained and never use unknown-to-Train normal
   assert.equal(suggestedDraftLegMode([item("bus"), item("train")]), "walk");
   assert.equal(suggestedDraftLegMode([item("unknown")]), "walk");
   assert.equal(suggestedDraftLegMode([]), "walk");
+});
+
+test("Overview transport defaults use the restricted priority and distance threshold", () => {
+  const city = (
+    dayNumber: number,
+    id: string,
+    latitude: number,
+    longitude: number,
+    modes: string[] = [],
+  ): PlannerDay =>
+    ({
+      day_number: dayNumber,
+      id: `day-${dayNumber}`,
+      items: [
+        {
+          id: `city-${id}`,
+          place: {
+            formattedAddress: id,
+            id: `place-${id}`,
+            latitude,
+            longitude,
+          },
+          sort_order: 0,
+          title: id,
+          type: "location",
+        },
+        ...modes.map((mode, index) => ({
+          details: { mode },
+          id: `${id}-${mode}-${index}`,
+          sort_order: index + 1,
+          title: mode,
+          type: "transport" as const,
+        })),
+      ],
+    }) as unknown as PlannerDay;
+
+  assert.deepEqual(overviewRouteModes, ["self_driving", "flight", "train", "bus", "bike"]);
+  assert.equal(overviewFlightThresholdMeters, 500_000);
+
+  const priorityDays = [
+    city(1, "Origin", 37.7749, -122.4194),
+    city(2, "Priority", 37.8044, -122.2712, ["bike", "bus", "train", "self_driving", "flight"]),
+    city(3, "Transit priority", 37.8715, -122.273, ["bike", "bus", "train"]),
+  ];
+  assert.deepEqual(deriveOverviewDefaultModes(priorityDays, deriveOverviewStages(priorityDays)), [
+    "flight",
+    "train",
+  ]);
+
+  const distanceDays = [
+    city(1, "San Francisco", 37.7749, -122.4194),
+    city(2, "Oakland", 37.8044, -122.2712),
+    city(3, "Los Angeles", 34.0522, -118.2437),
+  ];
+  assert.deepEqual(deriveOverviewDefaultModes(distanceDays, deriveOverviewStages(distanceDays)), [
+    "self_driving",
+    "flight",
+  ]);
+
+  const unknownDays = [
+    city(1, "Unknown origin", 37.7749, -122.4194),
+    city(2, "Unknown destination", 37.8044, -122.2712, ["ferry", "other"]),
+  ];
+  assert.deepEqual(deriveOverviewDefaultModes(unknownDays, deriveOverviewStages(unknownDays)), [
+    "self_driving",
+  ]);
 });
 
 test("route mode mapping is explicit and unknown modes never become Transit", () => {
@@ -940,19 +1010,23 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
   assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
-  assert.match(overviewUi, /Google is called only when you choose Calculate/);
-  assert.match(overviewUi, /Select transport/);
-  assert.match(overviewHook, /const changed = segments\.filter/);
+  assert.match(overviewUi, /Not set · straight line/);
+  assert.match(overviewUi, /overviewRouteModes\.map/);
+  assert.match(overviewUi, /!hasPendingCalculation/);
+  assert.match(overviewHook, /mode && !calculatedLeg/);
   assert.match(actions, /calculateOverviewRoute/);
   assert.match(actions, /mapWithConcurrency\(tasks, 3\)/);
   assert.match(actions, /is_trip_owner/);
   assert.match(mapHook, /day-route:\$\{dayRoute\.activeDay\?\.id/);
   assert.match(mapHook, /firstCity/);
-  assert.match(interactions, /setMapMode\("day_route"\)/);
+  assert.match(interactions, /hasDayRoute\(day\.id\) \? "day_route" : "overview"/);
+  assert.match(interactions, /routeExists \? "day_route" : "overview"/);
   assert.match(interactions, /setMapMode\("overview"\)/);
   assert.match(mapShell, /Deselect place/);
+  assert.match(mapShell, /dayRoute\.plan[\s\S]*dayRoute\.openEdit/);
   assert.match(mapShell, /DayRouteOverlay route=\{dayRoute\} selectedPlace=\{selectedPlace\}/);
   assert.doesNotMatch(mapShell, /day-route-place-card/);
+  assert.match(routeUi, /!selectedPlace[\s\S]*route\.openEdit/);
   assert.match(routeUi, /Manual order is used/);
   assert.match(routeUi, /Save & calculate/);
   assert.doesNotMatch(
