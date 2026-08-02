@@ -16,6 +16,7 @@ import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import { OverviewRouteOverlay } from "@/features/routes/overview-route-overlay";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 const markerKindLabels: Record<MarkerKind, string> = {
   city: "Cities",
@@ -108,6 +109,7 @@ function SelectedPlaceContent({
       : entry.kind === "meal"
         ? `${marker.entries.length} ${marker.entries.length === 1 ? "meal" : "meals"} here`
         : `${marker.entries.length} car rental ${marker.entries.length === 1 ? "event" : "events"} here`;
+  const eligibleDayStop = ["activity", "hotel", "meal"].includes(entry.kind);
 
   return (
     <div aria-live="polite">
@@ -167,7 +169,7 @@ function SelectedPlaceContent({
         >
           Edit item
         </Button>
-        {mapMode === "day_route" ? (
+        {mapMode === "day_route" && eligibleDayStop ? (
           dayRoute.editing ? (
             dayRoute.draft?.itemIds.includes(entry.itemId) ? (
               <Button
@@ -196,6 +198,8 @@ function SelectedPlaceContent({
 
 export function PlannerMapShell({
   compact = false,
+  dayCityLayerAvailable,
+  dayMapLayer,
   dayRoute,
   emptyState,
   lines = [],
@@ -203,6 +207,7 @@ export function PlannerMapShell({
   markers,
   onExpand,
   onEditMapItem,
+  onDayMapLayerChange,
   onMapModeChange,
   onMapSelectionClear,
   onMarkerClick,
@@ -211,6 +216,8 @@ export function PlannerMapShell({
   viewportKey,
 }: {
   compact?: boolean;
+  dayCityLayerAvailable: boolean;
+  dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
   emptyState?: { message: string; title: string };
   lines?: PlannerMapLine[];
@@ -218,6 +225,7 @@ export function PlannerMapShell({
   markers: PlannerMapMarker[];
   onExpand?: () => void;
   onEditMapItem: (itemId: string) => void;
+  onDayMapLayerChange: (layer: DayMapLayer) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
   onMapSelectionClear: () => void;
   onMarkerClick: (id?: string) => void;
@@ -280,6 +288,41 @@ export function PlannerMapShell({
               type="button"
             >
               {mode === "overview" ? "Overview" : "Day route"}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!compact && mapMode === "day_route" && dayCityLayerAvailable ? (
+        <div
+          aria-label="Day map layers"
+          className="absolute left-2 top-14 z-20 flex max-w-[calc(100%-1rem)] overflow-x-auto rounded-lg border bg-background/95 p-0.5 shadow-sm backdrop-blur"
+        >
+          {(
+            [
+              { label: "All", value: "all" },
+              { label: "City transfers", value: "cities" },
+              { label: "Day stops", value: "places" },
+            ] as const
+          ).map(({ label, value }) => (
+            <button
+              aria-pressed={dayMapLayer === value}
+              className={`flex min-h-10 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium ${dayMapLayer === value ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/70"}`}
+              key={value}
+              onClick={() => onDayMapLayerChange(value)}
+              type="button"
+            >
+              {value === "all" ? (
+                <span aria-hidden="true" className="flex gap-0.5">
+                  <span className="size-2 rounded-full bg-blue-600" />
+                  <span className="size-2 rounded-full bg-green-800" />
+                </span>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className={`size-2 rounded-full ${value === "cities" ? "bg-blue-600" : "bg-green-800"}`}
+                />
+              )}
+              {label}
             </button>
           ))}
         </div>

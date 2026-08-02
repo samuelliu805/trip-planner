@@ -114,6 +114,8 @@ export function PlannerWorkspace({
   }
 
   const {
+    dayCityLayerAvailable,
+    dayMapLayer,
     mapEmptyState,
     mapLines,
     mapMode,
@@ -122,6 +124,7 @@ export function PlannerWorkspace({
     overviewRoute,
     selectedMapItem,
     selectMarker,
+    setDayMapLayer,
     setMapModeFromSelection,
     setSelectedItemId,
     setMapMode,
@@ -247,6 +250,8 @@ export function PlannerWorkspace({
       />
       <PlannerMatrix
         containerRef={containerRef}
+        dayCityLayerAvailable={dayCityLayerAvailable}
+        dayMapLayer={dayMapLayer}
         dayMutationPending={dayMutationPending}
         dayRoute={dayRoute}
         deleteItem={deleteItem}
@@ -264,6 +269,7 @@ export function PlannerWorkspace({
         mapViewportKey={mapViewportKey}
         moveItem={moveItem}
         onMapExpand={() => setMapExpanded(true)}
+        onDayMapLayerChange={setDayMapLayer}
         onEditMapItem={editMapItem}
         onMarkerClick={selectMarker}
         onMapModeChange={setMapMode}
@@ -293,6 +299,8 @@ export function PlannerWorkspace({
       <PlannerSheets
         copyDaysOpen={copyDaysOpen}
         copyPending={copyMutation.isPending}
+        dayCityLayerAvailable={dayCityLayerAvailable}
+        dayMapLayer={dayMapLayer}
         dayRoute={dayRoute}
         editor={editor}
         mapExpanded={mapExpanded}
@@ -303,6 +311,7 @@ export function PlannerWorkspace({
         mapViewportKey={mapViewportKey}
         onCopyDaysOpenChange={setCopyDaysOpen}
         onCopyToSelectedDays={() => void copyToSelectedDays()}
+        onDayMapLayerChange={setDayMapLayer}
         onEditorClose={() => setEditor(null)}
         onEditMapItem={editMapItem}
         onInteractionError={setInteractionError}

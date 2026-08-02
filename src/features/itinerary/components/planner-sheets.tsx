@@ -19,10 +19,13 @@ import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 type PlannerSheetsProps = {
   copyDaysOpen: boolean;
   copyPending: boolean;
+  dayCityLayerAvailable: boolean;
+  dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
   editor: EditorState | null;
   mapExpanded: boolean;
@@ -32,6 +35,7 @@ type PlannerSheetsProps = {
   mapMarkers: PlannerMapMarker[];
   onCopyDaysOpenChange: (open: boolean) => void;
   onCopyToSelectedDays: () => void;
+  onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditorClose: () => void;
   onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
@@ -56,6 +60,8 @@ type PlannerSheetsProps = {
 export function PlannerSheets({
   copyDaysOpen,
   copyPending,
+  dayCityLayerAvailable,
+  dayMapLayer,
   dayRoute,
   editor,
   mapExpanded,
@@ -65,6 +71,7 @@ export function PlannerSheets({
   mapMarkers,
   onCopyDaysOpenChange,
   onCopyToSelectedDays,
+  onDayMapLayerChange,
   onEditorClose,
   onEditMapItem,
   onInteractionError,
@@ -123,12 +130,15 @@ export function PlannerSheets({
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell
+              dayCityLayerAvailable={dayCityLayerAvailable}
+              dayMapLayer={dayMapLayer}
               dayRoute={dayRoute}
               emptyState={mapEmptyState}
               lines={mapLines}
               mapMode={mapMode}
               markers={mapMarkers}
               onMarkerClick={onMarkerClick}
+              onDayMapLayerChange={onDayMapLayerChange}
               onEditMapItem={onEditMapItem}
               onMapModeChange={onMapModeChange}
               onMapSelectionClear={onMapSelectionClear}

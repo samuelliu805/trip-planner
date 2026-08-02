@@ -12,6 +12,11 @@ import { buildDayRouteLines, buildDayRouteMarkers } from "@/features/routes/day-
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import { useOverviewRoute } from "@/features/routes/use-overview-route";
 import { deriveOverviewDefaultModes } from "@/features/routes/overview-transport";
+import {
+  buildDayCityMarkers,
+  buildDayCityRouteLines,
+  type DayMapLayer,
+} from "@/features/routes/day-city-map";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -22,6 +27,10 @@ export function usePlannerMap(
 ) {
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
   const [selectedItemId, setSelectedItemId] = useState<string>();
+  const [dayLayerState, setDayLayerState] = useState<{
+    dayId: string;
+    layer: DayMapLayer;
+  } | null>(null);
   const selectedMapItem = useMemo(() => {
     if (!selectedItemId) return undefined;
     const day = workspace.days[selectionEnd.row];
@@ -48,10 +57,10 @@ export function usePlannerMap(
         entries: stage.entries.map((entry) => ({ ...entry, kind: "city" as const })),
         id: stage.id,
         itemIds: stage.entries.map(({ itemId }) => itemId),
-        label: String(stage.position),
+        label: stage.firstDayLabel,
         latitude: stage.latitude,
         longitude: stage.longitude,
-        summary: `${stage.dayRangeLabel} · ${stage.entries.length} ${stage.entries.length === 1 ? "City item" : "City items"}`,
+        summary: `${stage.firstDayLabel} · City ${stage.position}`,
       })),
     [overviewStages],
   );
@@ -77,12 +86,30 @@ export function usePlannerMap(
     () => buildDayRouteLines(dayRoute.plan?.calculation ?? null),
     [dayRoute.plan?.calculation],
   );
-  const mapMarkers = mapMode === "overview" ? overviewMarkers : dayRouteMarkers;
-  const mapLines = mapMode === "overview" ? overviewLines : dayRouteLines;
+  const dayCityMarkers = useMemo(
+    () => buildDayCityMarkers(dayRoute.activeDay, overviewStages),
+    [dayRoute.activeDay, overviewStages],
+  );
+  const dayCityLines = useMemo(
+    () => buildDayCityRouteLines(dayRoute.activeDay, overviewStages, overviewRoute.calculatedLegs),
+    [dayRoute.activeDay, overviewRoute.calculatedLegs, overviewStages],
+  );
+  const dayMapLayer =
+    dayLayerState && dayLayerState.dayId === dayRoute.activeDay?.id ? dayLayerState.layer : "all";
+  const showDayCities = dayCityMarkers.length > 1 && dayMapLayer !== "places";
+  const showDayPlaces = dayMapLayer !== "cities";
+  const mapMarkers =
+    mapMode === "overview"
+      ? overviewMarkers
+      : [...(showDayCities ? dayCityMarkers : []), ...(showDayPlaces ? dayRouteMarkers : [])];
+  const mapLines =
+    mapMode === "overview"
+      ? overviewLines
+      : [...(showDayCities ? dayCityLines : []), ...(showDayPlaces ? dayRouteLines : [])];
   const overviewViewportKey = overviewStages
     .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
     .join("|");
-  const dayRouteViewportKey = dayRouteMarkers
+  const dayRouteViewportKey = mapMarkers
     .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
     .join("|");
 
@@ -130,24 +157,33 @@ export function usePlannerMap(
             message: "Link a saved map place to a City item to build the trip overview.",
             title: "No City stages yet",
           }
-        : !dayRouteMarkers.length
+        : !mapMarkers.length
           ? {
-              message: "Add a saved place to an Activity, Meal, or Hotel on this day.",
-              title: "No eligible places",
+              message:
+                dayMapLayer === "cities"
+                  ? "Add at least two different, place-linked City items to this day."
+                  : "Add a saved place to an Activity, Meal, or Hotel on this day.",
+              title: dayMapLayer === "cities" ? "No City transfers" : "No eligible places",
             }
           : undefined,
+    dayCityLayerAvailable: dayCityMarkers.length > 1,
+    dayMapLayer,
     mapLines,
     mapMode,
     mapMarkers,
     mapViewportKey:
       mapMode === "overview"
         ? `overview:${overviewViewportKey}`
-        : `day-route:${dayRoute.activeDay?.id ?? "none"}:${dayRouteViewportKey}:${dayRoute.fitKey ?? "default"}`,
+        : `day-route:${dayRoute.activeDay?.id ?? "none"}:${dayMapLayer}:${dayRouteViewportKey}:${dayRoute.fitKey ?? "default"}`,
     overviewRoute,
     selectedMapItem,
     selectMarker,
     selectedItemId,
     setMapModeFromSelection: setMapMode,
+    setDayMapLayer: (layer: DayMapLayer) => {
+      if (dayRoute.activeDay) setDayLayerState({ dayId: dayRoute.activeDay.id, layer });
+      setSelectedItemId(undefined);
+    },
     setSelectedItemId,
     setMapMode: changeMapMode,
   };

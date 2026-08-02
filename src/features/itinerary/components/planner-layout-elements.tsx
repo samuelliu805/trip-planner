@@ -6,6 +6,7 @@ import { categories } from "@/features/itinerary/components/planner-config";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerStatus({
   deleteError,
@@ -68,6 +69,8 @@ export function PlannerStatus({
 }
 
 export function PlannerMapPane({
+  dayCityLayerAvailable,
+  dayMapLayer,
   dayRoute,
   emptyState,
   lines,
@@ -75,6 +78,7 @@ export function PlannerMapPane({
   markers,
   onExpand,
   onEditMapItem,
+  onDayMapLayerChange,
   onMarkerClick,
   onMapModeChange,
   onMapSelectionClear,
@@ -82,6 +86,8 @@ export function PlannerMapPane({
   selectedId,
   viewportKey,
 }: {
+  dayCityLayerAvailable: boolean;
+  dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
   emptyState?: { message: string; title: string };
   lines: PlannerMapLine[];
@@ -89,6 +95,7 @@ export function PlannerMapPane({
   markers: PlannerMapMarker[];
   onExpand: () => void;
   onEditMapItem: (itemId: string) => void;
+  onDayMapLayerChange: (layer: DayMapLayer) => void;
   onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
   onMapSelectionClear: () => void;
@@ -99,6 +106,8 @@ export function PlannerMapPane({
   const map = (compact = false) => (
     <PlannerMapShell
       compact={compact}
+      dayCityLayerAvailable={dayCityLayerAvailable}
+      dayMapLayer={dayMapLayer}
       dayRoute={dayRoute}
       emptyState={emptyState}
       lines={lines}
@@ -106,6 +115,7 @@ export function PlannerMapPane({
       markers={markers}
       onExpand={compact ? onExpand : undefined}
       onEditMapItem={onEditMapItem}
+      onDayMapLayerChange={onDayMapLayerChange}
       onMarkerClick={onMarkerClick}
       onMapModeChange={onMapModeChange}
       onMapSelectionClear={onMapSelectionClear}

@@ -17,7 +17,7 @@ export type MarkerKind = "city" | "activity" | "hotel" | "carRental" | "meal";
 
 export type PlannerMapMarker = {
   address?: string;
-  appearance?: "category" | "overview" | "route-planned" | "route-unplanned";
+  appearance?: "category" | "day-city" | "overview" | "route-planned" | "route-unplanned";
   entries: {
     dayLabel: string;
     dayNumber: number;
@@ -38,6 +38,8 @@ export type PlannerMapLine = {
   dashed?: boolean;
   id: string;
   path: Array<{ lat: number; lng: number }>;
+  position?: number;
+  routeLayer?: "city" | "places";
 };
 
 const markerStyles: Record<MarkerKind, { background: string; glyph: string; label: string }> = {
@@ -223,6 +225,8 @@ export function PlannerMapCanvas({
           const routeMarker = marker.appearance?.startsWith("route-");
           const planned = marker.appearance === "route-planned";
           const overview = marker.appearance === "overview";
+          const dayCity = marker.appearance === "day-city";
+          const cityRouteMarker = overview || dayCity;
           const glyph =
             marker.label ?? (overview ? "" : routeMarker && !planned ? "" : style.glyph);
           return (
@@ -241,29 +245,40 @@ export function PlannerMapCanvas({
               title={`${entry.title} · ${entry.dayLabel}${marker.entries.length > 1 ? ` · ${marker.entries.length} entries` : ""}`}
               zIndex={selected ? 40 : 20}
             >
-              <div
-                style={{
-                  filter: selected
-                    ? "drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #ffffff)"
-                    : undefined,
-                  transform:
-                    marker.appearance && marker.appearance !== "category"
-                      ? undefined
-                      : `translate(${markerOffsets[entry.kind][0]}px, ${markerOffsets[entry.kind][1]}px)`,
-                }}
-              >
-                <Pin
-                  background={
-                    overview || planned ? "#166534" : routeMarker ? "#64748b" : style.background
-                  }
-                  borderColor={
-                    selected ? "#ffffff" : overview || routeMarker ? "#f8fafc" : "#ffffff"
-                  }
-                  glyph={glyph}
-                  glyphColor="#ffffff"
-                  scale={selected ? 1.3 : 1}
-                />
-              </div>
+              {cityRouteMarker ? (
+                <div
+                  className="whitespace-nowrap rounded-full border-2 border-white px-2 py-1 text-[10px] font-semibold text-white shadow-md"
+                  style={{
+                    backgroundColor: dayCity ? "#2563eb" : "#166534",
+                    filter: selected
+                      ? "drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #ffffff)"
+                      : undefined,
+                    transform: dayCity ? "translate(-7px, -7px)" : undefined,
+                  }}
+                >
+                  {marker.label}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    filter: selected
+                      ? "drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #ffffff)"
+                      : undefined,
+                    transform:
+                      marker.appearance && marker.appearance !== "category"
+                        ? undefined
+                        : `translate(${markerOffsets[entry.kind][0]}px, ${markerOffsets[entry.kind][1]}px)`,
+                  }}
+                >
+                  <Pin
+                    background={planned ? "#166534" : routeMarker ? "#64748b" : style.background}
+                    borderColor={selected ? "#ffffff" : routeMarker ? "#f8fafc" : "#ffffff"}
+                    glyph={glyph}
+                    glyphColor="#ffffff"
+                    scale={selected ? 1.3 : 1}
+                  />
+                </div>
+              )}
             </AdvancedMarker>
           );
         })}

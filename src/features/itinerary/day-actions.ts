@@ -16,6 +16,13 @@ import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";
 import type { TablesInsert } from "@/types/database";
 import { firstIssue, mutationError } from "@/features/itinerary/action-helpers";
+import { getPlannerWorkspace } from "@/features/itinerary/data";
+import {
+  cityPlaceKey,
+  neighboringCityConflictAfterRemoving,
+  neighboringCityError,
+  prospectiveNeighboringCityConflict,
+} from "@/features/routes/city-order";
 
 export async function insertTripDay(
   input: InsertTripDayInput,
@@ -39,6 +46,25 @@ export async function removeTripDay(
   const parsed = removeTripDaySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const supabase = await createClient();
+  const { data: removedCities, error: cityReadError } = await supabase
+    .from("itinerary_items")
+    .select("id")
+    .eq("trip_id", parsed.data.tripId)
+    .eq("day_id", parsed.data.dayId)
+    .eq("type", "location");
+  if (cityReadError) return { error: mutationError(cityReadError.message) };
+  if (removedCities?.length) {
+    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+    if (workspaceResult.error || !workspaceResult.data)
+      return { error: workspaceResult.error ?? "The City order could not be checked." };
+    if (
+      neighboringCityConflictAfterRemoving(
+        workspaceResult.data.days,
+        removedCities.map(({ id }) => id),
+      )
+    )
+      return { error: neighboringCityError() };
+  }
   const { data, error } = await supabase.rpc("remove_trip_day", {
     target_day_id: parsed.data.dayId,
     target_trip_id: parsed.data.tripId,
@@ -69,6 +95,27 @@ export async function reorderItineraryItems(
         readError?.message ?? "You do not have permission to reorder these items.",
       ),
     };
+
+  const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+  const reorderDay = workspaceResult.data?.days.find(({ id }) => id === parsed.data.dayId);
+  if (workspaceResult.error || !workspaceResult.data || !reorderDay)
+    return { error: workspaceResult.error ?? "The City order could not be checked." };
+  const requestedOrders = new Map(parsed.data.items.map(({ id, sortOrder }) => [id, sortOrder]));
+  const cityCandidates = reorderDay.items.flatMap((item) => {
+    const placeKey = item.type === "location" ? cityPlaceKey(item) : null;
+    if (!placeKey) return [];
+    return [
+      {
+        dayId: reorderDay.id,
+        itemId: item.id,
+        placeKey,
+        sortOrder: requestedOrders.get(item.id) ?? item.sort_order,
+        title: item.title,
+      },
+    ];
+  });
+  if (prospectiveNeighboringCityConflict(workspaceResult.data.days, cityCandidates))
+    return { error: neighboringCityError() };
 
   const updates = [];
   for (const { id, sortOrder } of parsed.data.items) {
@@ -162,6 +209,38 @@ export async function copyItineraryItems(
     (lastItem?.sort_order ?? -1) + 1,
     parsed.data.preservePlace,
   );
+  const copiedCityIndexes = orderedSources.flatMap((source, index) =>
+    source.type === "location" ? [index] : [],
+  );
+  if (copiedCityIndexes.length) {
+    if (parsed.data.preservePlace === false)
+      return { error: "City items must keep their map place when copied." };
+    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+    if (workspaceResult.error || !workspaceResult.data)
+      return { error: workspaceResult.error ?? "The City order could not be checked." };
+    const itemsById = new Map(
+      workspaceResult.data.days.flatMap(({ items }) => items).map((item) => [item.id, item]),
+    );
+    const cityCandidates = copiedCityIndexes.flatMap((index) => {
+      const source = itemsById.get(orderedSources[index].id);
+      const placeKey = source ? cityPlaceKey(source) : null;
+      if (!source || !placeKey) return [];
+      return [
+        {
+          dayId: targetDay.id,
+          itemId: `copied-city:${source.id}:${index}`,
+          placeKey,
+          sortOrder: (lastItem?.sort_order ?? -1) + index + 1,
+          title: source.title,
+        },
+      ];
+    });
+    if (
+      cityCandidates.length !== copiedCityIndexes.length ||
+      prospectiveNeighboringCityConflict(workspaceResult.data.days, cityCandidates)
+    )
+      return { error: neighboringCityError() };
+  }
   const { data, error } = await supabase.from("itinerary_items").insert(copies).select("*");
   if (error || !data || data.length !== copies.length)
     return { error: mutationError(error?.message ?? "Not all items could be copied.") };

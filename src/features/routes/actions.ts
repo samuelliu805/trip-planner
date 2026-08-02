@@ -11,7 +11,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database";
 
 import { calculateRouteConfiguration, mapWithConcurrency } from "./calculator";
-import { deriveOverviewStages } from "./overview";
+import { deriveOverviewStages, neighboringOverviewCityConflict } from "./overview";
+import { neighboringCityError } from "./city-order";
 import { resolveRouteCalculationConfig } from "./plan-config";
 import { validateDayRouteDraft } from "./route-config";
 import { buildRouteLegSignature } from "./signatures";
@@ -195,6 +196,7 @@ export async function calculateOverviewRoute(
     const workspace = await loadWorkspace(parsed.data.tripId);
     const stages = deriveOverviewStages(workspace.days);
     if (stages.length < 2) return { error: "Add at least two City stages before calculating." };
+    if (neighboringOverviewCityConflict(stages)) return { error: neighboringCityError() };
 
     const tasks = parsed.data.legs
       .slice()

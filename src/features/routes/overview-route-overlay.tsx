@@ -16,6 +16,15 @@ import type { OverviewRouteUi } from "./use-overview-route";
 
 const notSetValue = "not_set";
 
+const formatDistance = (meters: number) =>
+  meters >= 1_000 ? `${(meters / 1_000).toFixed(1)} km` : `${Math.round(meters)} m`;
+
+const formatDuration = (seconds: number) => {
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours}h ${minutes % 60}m` : `${minutes} min`;
+};
+
 export function OverviewRouteOverlay({
   route,
   selectedPlace,
@@ -60,6 +69,34 @@ export function OverviewRouteOverlay({
             {route.editing ? "Hide transport" : "Choose transport"}
           </Button>
         </div>
+
+        <ol aria-label="Overview route leg times" className="mt-2 flex gap-2 overflow-x-auto pb-1">
+          {route.segments.map((segment) => {
+            const leg = segment.calculatedLeg;
+            const duration =
+              leg?.durationSeconds === null
+                ? "Duration unavailable"
+                : leg?.durationSeconds !== undefined
+                  ? `${leg.estimateKind === "transit_current_service" ? "Approx. " : ""}${formatDuration(leg.durationSeconds)}`
+                  : segment.mode
+                    ? "Not calculated"
+                    : "Straight preview";
+            return (
+              <li
+                className="min-w-44 max-w-60 flex-1 rounded-lg border bg-muted/40 px-2.5 py-2 text-[11px]"
+                key={`summary:${segment.from.id}:${segment.to.id}`}
+              >
+                <p className="truncate font-medium">
+                  {segment.from.entries[0].title} → {segment.to.entries[0].title}
+                </p>
+                <p className="mt-0.5 text-muted-foreground">
+                  {segment.mode ? overviewRouteModeLabels[segment.mode] : "Not set"}
+                  {leg ? ` · ${formatDistance(leg.distanceMeters)}` : ""} · {duration}
+                </p>
+              </li>
+            );
+          })}
+        </ol>
 
         {route.editing ? (
           <div className="mt-3 border-t pt-3">
@@ -130,7 +167,9 @@ export function OverviewRouteOverlay({
                 </Button>
               ) : null}
               <Button
-                disabled={route.pending || !hasPendingCalculation}
+                disabled={
+                  route.pending || !hasPendingCalculation || Boolean(route.configurationError)
+                }
                 onClick={() => void route.calculate()}
                 size="sm"
                 type="button"
@@ -144,12 +183,12 @@ export function OverviewRouteOverlay({
             </div>
           </div>
         ) : null}
-        {route.error ? (
+        {route.configurationError || route.error ? (
           <p
             className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
             role="alert"
           >
-            {route.error}
+            {route.configurationError ?? route.error}
           </p>
         ) : null}
       </div>

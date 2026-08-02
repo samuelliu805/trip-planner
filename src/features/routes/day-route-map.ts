@@ -82,6 +82,8 @@ export function buildDayRouteLines(calculation: DayRouteCalculation | null): Pla
           dashed: leg.geometry.source === "straight",
           id: `route-leg:${leg.position}:${leg.legSignature}`,
           path: coordinates.map(({ latitude, longitude }) => ({ lat: latitude, lng: longitude })),
+          position: leg.position,
+          routeLayer: "places",
         },
       ];
     } catch {

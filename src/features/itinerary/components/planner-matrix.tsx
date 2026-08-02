@@ -21,9 +21,12 @@ import type { PlannerMapMode } from "@/features/itinerary/components/planner-map
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerMatrix({
   containerRef,
+  dayCityLayerAvailable,
+  dayMapLayer,
   dayMutationPending,
   dayRoute,
   deleteItem,
@@ -39,6 +42,7 @@ export function PlannerMatrix({
   mapMarkers,
   moveItem,
   onMapExpand,
+  onDayMapLayerChange,
   onEditMapItem,
   onMarkerClick,
   onMapModeChange,
@@ -68,6 +72,8 @@ export function PlannerMatrix({
   workspace,
 }: {
   containerRef: MutableRefObject<HTMLDivElement | null>;
+  dayCityLayerAvailable: boolean;
+  dayMapLayer: DayMapLayer;
   dayMutationPending: boolean;
   dayRoute: DayRouteUi;
   deleteItem: (item: ItineraryItem) => Promise<void>;
@@ -95,6 +101,7 @@ export function PlannerMatrix({
     direction: -1 | 1,
   ) => Promise<void>;
   onMapExpand: () => void;
+  onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditMapItem: (itemId: string) => void;
   onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
@@ -272,12 +279,15 @@ export function PlannerMatrix({
       </section>
       <PlannerDivider onResize={startResize} onSplitChange={setSplit} split={split} />
       <PlannerMapPane
+        dayCityLayerAvailable={dayCityLayerAvailable}
+        dayMapLayer={dayMapLayer}
         dayRoute={dayRoute}
         emptyState={mapEmptyState}
         lines={mapLines}
         mapMode={mapMode}
         markers={mapMarkers}
         onExpand={() => onMapExpand()}
+        onDayMapLayerChange={onDayMapLayerChange}
         onEditMapItem={onEditMapItem}
         onMarkerClick={onMarkerClick}
         onMapModeChange={onMapModeChange}
