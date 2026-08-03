@@ -549,9 +549,26 @@ export type Database = {
         Args: { target_day_id: string; target_variant_id: string }
         Returns: undefined
       }
+      clear_route_variant_items: {
+        Args: {
+          target_item_ids: string[]
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: number
+      }
       copy_itinerary_items_to_days: {
         Args: { source_item_ids: string[]; target_day_ids: string[] }
         Returns: number
+      }
+      create_route_variant: {
+        Args: {
+          source_variant_id: string
+          target_trip_id: string
+          variant_color: string
+          variant_name: string
+        }
+        Returns: string
       }
       create_trip: {
         Args: {
@@ -564,8 +581,29 @@ export type Database = {
         }
         Returns: string
       }
+      delete_route_variant: {
+        Args: { target_trip_id: string; target_variant_id: string }
+        Returns: string
+      }
+      duplicate_route_variant: {
+        Args: {
+          source_variant_id: string
+          target_trip_id: string
+          variant_color: string
+          variant_name: string
+        }
+        Returns: string
+      }
       insert_trip_day: {
         Args: { before_day_number: number; target_trip_id: string }
+        Returns: string
+      }
+      insert_variant_day: {
+        Args: {
+          before_day_number: number
+          target_trip_id: string
+          target_variant_id: string
+        }
         Returns: string
       }
       is_trip_member: { Args: { target_trip_id: string }; Returns: boolean }
@@ -576,6 +614,14 @@ export type Database = {
       }
       remove_trip_day: {
         Args: { target_day_id: string; target_trip_id: string }
+        Returns: string
+      }
+      remove_variant_day: {
+        Args: {
+          target_day_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
         Returns: string
       }
       reorder_itinerary_items: {
@@ -599,6 +645,19 @@ export type Database = {
           requested_leg_modes: string[]
           target_day_id: string
           target_variant_id: string
+        }
+        Returns: string
+      }
+      set_primary_route_variant: {
+        Args: { target_trip_id: string; target_variant_id: string }
+        Returns: string
+      }
+      update_route_variant_metadata: {
+        Args: {
+          target_trip_id: string
+          target_variant_id: string
+          variant_color: string
+          variant_name: string
         }
         Returns: string
       }

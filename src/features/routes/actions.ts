@@ -40,7 +40,11 @@ const saveSchema = z.object({
   tripId: identitySchema,
   variantId: identitySchema,
 });
-const calculateSchema = z.object({ planId: identitySchema, tripId: identitySchema });
+const calculateSchema = z.object({
+  planId: identitySchema,
+  tripId: identitySchema,
+  variantId: identitySchema,
+});
 const calculateOverviewSchema = z.object({
   legs: z
     .array(
@@ -56,6 +60,7 @@ const calculateOverviewSchema = z.object({
         context.addIssue({ code: "custom", message: "Overview leg positions must be unique." });
     }),
   tripId: identitySchema,
+  variantId: identitySchema,
 });
 const clearSchema = z.object({
   dayId: identitySchema,
@@ -73,8 +78,8 @@ const actionError = (error: unknown) => {
   return "The day route could not be changed.";
 };
 
-const loadWorkspace = async (tripId: string) => {
-  const result = await getPlannerWorkspace(tripId);
+const loadWorkspace = async (tripId: string, variantId: string) => {
+  const result = await getPlannerWorkspace(tripId, variantId);
   if (!result.data) throw new Error(result.error ?? "The planner could not be loaded.");
   return result.data;
 };
@@ -89,12 +94,18 @@ export async function saveDayRoutePlan(
     return { error: "Leg mode count must equal stop count minus one." };
 
   try {
-    const workspace = await loadWorkspace(parsed.data.tripId);
+    const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
     const day = workspace.days.find(({ id }) => id === parsed.data.dayId);
-    const itemsById = new Map(day?.items.map((item) => [item.id, item]) ?? []);
+    const previousDay = day
+      ? workspace.days.find(({ day_number }) => day_number === day.day_number - 1)
+      : undefined;
+    const itemsById = new Map(
+      workspace.days.flatMap(({ items }) => items).map((item) => [item.id, item]),
+    );
     const draft: DayRouteDraft = {
       dayId: parsed.data.dayId,
       legModes: parsed.data.legModes,
+      previousDayId: previousDay?.id,
       stops: parsed.data.itemIds.map((itemId) => {
         const item = itemsById.get(itemId);
         return {
@@ -123,7 +134,7 @@ export async function saveDayRoutePlan(
     });
     if (error || !planId)
       throw new Error(error?.message ?? "The route configuration was not saved.");
-    const refreshed = await loadWorkspace(parsed.data.tripId);
+    const refreshed = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
     const plan = refreshed.routePlans.find(({ id }) => id === planId);
     if (!plan) throw new Error("The saved route could not be reloaded.");
     revalidatePath(`/trips/${parsed.data.tripId}`);
@@ -146,7 +157,7 @@ export async function calculateDayRoute(
     });
     if (ownerError || !owner) throw new Error("Trip owner access required.");
 
-    const workspace = await loadWorkspace(parsed.data.tripId);
+    const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
     const plan = workspace.routePlans.find(
       ({ id, trip_id }) => id === parsed.data.planId && trip_id === parsed.data.tripId,
     );
@@ -174,7 +185,7 @@ export async function calculateDayRoute(
       if (error) throw new Error(error.message);
     }
 
-    const refreshed = await loadWorkspace(parsed.data.tripId);
+    const refreshed = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
     const refreshedPlan = refreshed.routePlans.find(({ id }) => id === plan.id);
     if (!refreshedPlan) throw new Error("The calculated route could not be reloaded.");
     revalidatePath(`/trips/${parsed.data.tripId}`);
@@ -197,7 +208,7 @@ export async function calculateOverviewRoute(
     });
     if (ownerError || !owner) throw new Error("Trip owner access required.");
 
-    const workspace = await loadWorkspace(parsed.data.tripId);
+    const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
     const stages = deriveOverviewStages(workspace.days);
     if (stages.length < 2) return { error: "Add at least two City stages before calculating." };
     if (neighboringOverviewCityConflict(stages)) return { error: neighboringCityError() };

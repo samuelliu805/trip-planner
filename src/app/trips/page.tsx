@@ -1,5 +1,5 @@
 import { format, parseISO } from "date-fns";
-import { CalendarDays, MapPin, MoreVertical, Route } from "lucide-react";
+import { CalendarDays, MapPin, MoreVertical } from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,26 @@ import { CreateTripDialog } from "@/features/trips/components/create-trip-dialog
 import { listTrips } from "@/features/trips/data";
 
 export const metadata = { title: "Trips" };
+
+function PrimaryRouteSummary({
+  primaryVariant,
+}: {
+  primaryVariant?: { color: string; name: string };
+}) {
+  if (!primaryVariant)
+    return <p className="mt-1 text-xs font-medium text-destructive">Primary unavailable</p>;
+
+  return (
+    <p className="mt-1 flex items-center justify-end gap-1.5 font-semibold">
+      <span
+        aria-hidden="true"
+        className="size-2.5 shrink-0 rounded-full border border-black/10"
+        style={{ backgroundColor: primaryVariant.color }}
+      />
+      <span className="max-w-32 truncate">{primaryVariant.name}</span>
+    </p>
+  );
+}
 
 export default async function TripsPage() {
   const { data: trips, error } = await listTrips();
@@ -114,9 +134,9 @@ export default async function TripsPage() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Primary
                     </p>
-                    <p className="mt-1 flex items-center gap-1 font-semibold text-primary">
-                      <Route aria-hidden="true" className="size-4" /> Route A
-                    </p>
+                    <PrimaryRouteSummary
+                      primaryVariant={trip.route_variants.find(({ is_primary }) => is_primary)}
+                    />
                   </div>
                 </CardContent>
               </Card>

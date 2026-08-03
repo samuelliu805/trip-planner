@@ -89,9 +89,9 @@ export function PlannerItemForm({
   const [transportMode, setTransportMode] = useState<TransportMode>(
     item?.type === "transport" ? existingTransportMode : (availableTransportModes[0] ?? "train"),
   );
-  const createMutation = useCreateItineraryItem(tripId);
-  const updateMutation = useUpdateItineraryItem(tripId);
-  const deleteMutation = useDeleteItineraryItem(tripId);
+  const createMutation = useCreateItineraryItem(tripId, variantId);
+  const updateMutation = useUpdateItineraryItem(tripId, variantId);
+  const deleteMutation = useDeleteItineraryItem(tripId, variantId);
   const titleRef = useRef<HTMLInputElement>(null);
   const pending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
   const error = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
@@ -159,17 +159,18 @@ export function PlannerItemForm({
       title: savedTitle,
       tripId,
       type,
+      variantId,
       placeId: supportsPlace && place ? item?.place_id : null,
       placeSnapshot: supportsPlace ? googlePlace : undefined,
     };
     if (item) updateMutation.mutate({ ...values, id: item.id }, callbacks);
-    else createMutation.mutate({ ...values, dayId, variantId }, callbacks);
+    else createMutation.mutate({ ...values, dayId }, callbacks);
   }
 
   async function remove() {
     if (!item) return;
     try {
-      await deleteMutation.mutateAsync({ id: item.id, tripId });
+      await deleteMutation.mutateAsync({ id: item.id, tripId, variantId });
       onCancel();
     } catch {
       // TanStack Query exposes the mutation error in the form below.

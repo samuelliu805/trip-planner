@@ -6,19 +6,38 @@ import type { Tables } from "@/types/database";
 
 import type { PlannerWorkspace } from "./types";
 
+export async function getPlannerVariants(
+  tripId: string,
+): Promise<{ data: import("./types").PlannerVariant[] | null; error: string | null }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("route_variants")
+    .select("id, trip_id, name, color, is_primary")
+    .eq("trip_id", tripId)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) return { data: null, error: error.message };
+  return { data: data ?? [], error: null };
+}
+
 export async function getPlannerWorkspace(
   tripId: string,
+  variantId: string,
 ): Promise<{ data: PlannerWorkspace | null; error: string | null }> {
   const supabase = await createClient();
   const { data: variant, error: variantError } = await supabase
     .from("route_variants")
     .select("id, trip_id, name, color, is_primary")
     .eq("trip_id", tripId)
-    .eq("is_primary", true)
+    .eq("id", variantId)
     .maybeSingle();
 
   if (variantError || !variant)
-    return { data: null, error: variantError?.message ?? "Primary Route A was not found." };
+    return {
+      data: null,
+      error: variantError?.message ?? "The selected route variant was not found.",
+    };
 
   const [
     { data: days, error: daysError },

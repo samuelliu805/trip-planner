@@ -33,8 +33,9 @@ export function usePlannerClipboard({
   workspace: PlannerWorkspace;
 }) {
   const queryClient = useQueryClient();
-  const copyMutation = useCopyItineraryItems(tripId);
-  const deleteMutation = useDeleteItineraryItem(tripId);
+  const variantId = workspace.variant.id;
+  const copyMutation = useCopyItineraryItems(tripId, variantId);
+  const deleteMutation = useDeleteItineraryItem(tripId, variantId);
   const [copyDaysOpen, setCopyDaysOpen] = useState(false);
   const [targetDays, setTargetDays] = useState<Set<string>>(new Set());
   const [internalClipboard, setInternalClipboard] = useState<PlannerClipboard | null>(null);
@@ -85,7 +86,7 @@ export function usePlannerClipboard({
   async function replaceCategoryItems(
     operations: { sourceItemIds: string[]; targetDay: PlannerDay; types: ItineraryItemType[] }[],
   ) {
-    const previous = queryClient.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+    const previous = queryClient.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
     const replacements = operations
       .filter(
         (operation) =>
@@ -101,7 +102,7 @@ export function usePlannerClipboard({
       const replacedIds = new Set(
         replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
       );
-      queryClient.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      queryClient.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         current
           ? {
               ...current,
@@ -114,20 +115,27 @@ export function usePlannerClipboard({
       );
       await Promise.all(
         replacements.flatMap(({ replacedItems }) =>
-          replacedItems.map((item) => deleteMutation.mutateAsync({ id: item.id, tripId: tripId })),
+          replacedItems.map((item) =>
+            deleteMutation.mutateAsync({ id: item.id, tripId, variantId }),
+          ),
         ),
       );
       await Promise.all(
         replacements
           .filter(({ sourceItemIds }) => sourceItemIds.length > 0)
           .map(({ sourceItemIds, targetDay }) =>
-            copyMutation.mutateAsync({ sourceItemIds, targetDayId: targetDay.id, tripId: tripId }),
+            copyMutation.mutateAsync({
+              sourceItemIds,
+              targetDayId: targetDay.id,
+              tripId,
+              variantId,
+            }),
           ),
       );
       setInteractionError(undefined);
     } catch (error) {
-      queryClient.setQueryData(plannerQueryKey(tripId), previous);
-      void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId) });
+      queryClient.setQueryData(plannerQueryKey(tripId, variantId), previous);
+      void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       setInteractionError(
         error instanceof Error
           ? `${error.message} Refreshing the planner to confirm saved values.`

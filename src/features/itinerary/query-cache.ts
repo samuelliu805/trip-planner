@@ -31,3 +31,15 @@ export function removeItem(workspace: PlannerWorkspace | undefined, itemId: stri
     })),
   };
 }
+
+export function removeItems(workspace: PlannerWorkspace | undefined, itemIds: string[]) {
+  if (!workspace) return workspace;
+  const removed = new Set(itemIds);
+  return {
+    ...workspace,
+    days: workspace.days.map((day) => ({
+      ...day,
+      items: day.items.filter(({ id }) => !removed.has(id)),
+    })),
+  };
+}

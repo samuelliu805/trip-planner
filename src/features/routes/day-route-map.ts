@@ -18,19 +18,30 @@ export function eligibleDayRouteItems(day?: PlannerDay): ItineraryItem[] {
   );
 }
 
-export function buildDayRouteMarkers(day: PlannerDay | undefined, stopItemIds: string[]) {
+export function buildDayRouteMarkers(
+  day: PlannerDay | undefined,
+  stopItemIds: string[],
+  previousDay?: PlannerDay,
+) {
   const grouped = new Map<string, PlannerMapMarker>();
   const positionsByItem = new Map<string, number[]>();
   stopItemIds.forEach((itemId, index) => {
     positionsByItem.set(itemId, [...(positionsByItem.get(itemId) ?? []), index + 1]);
   });
 
-  for (const item of eligibleDayRouteItems(day)) {
+  const candidates = [
+    ...eligibleDayRouteItems(day).map((item) => ({ day: day!, item })),
+    ...eligibleDayRouteItems(previousDay)
+      .filter(({ id, type }) => type === "hotel" && positionsByItem.has(id))
+      .map((item) => ({ day: previousDay!, item })),
+  ];
+
+  for (const { day: itemDay, item } of candidates) {
     const kind = markerKind(item);
     const key = item.place!.id;
     const entry = {
-      dayLabel: `Day ${day!.day_number}`,
-      dayNumber: day!.day_number,
+      dayLabel: `Day ${itemDay.day_number}`,
+      dayNumber: itemDay.day_number,
       itemId: item.id,
       kind,
       title: item.title,
@@ -45,7 +56,7 @@ export function buildDayRouteMarkers(day: PlannerDay | undefined, stopItemIds: s
       address: item.place!.formattedAddress,
       appearance: "route-unplanned",
       entries: [entry],
-      id: `day-route:${day!.id}:${key}`,
+      id: `day-route:${day?.id ?? itemDay.id}:${key}`,
       itemIds: [item.id],
       latitude: item.place!.latitude,
       longitude: item.place!.longitude,

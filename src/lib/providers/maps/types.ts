@@ -13,14 +13,3 @@ export function hasValidCoordinates(value: Coordinates): boolean {
     value.longitude <= 180
   );
 }
-
-export interface MapMarker {
-  id: string;
-  position: Coordinates;
-  label?: string;
-}
-
-export interface MapProvider {
-  fitToMarkers(markers: MapMarker[]): void;
-  focusMarker(markerId: string): void;
-}

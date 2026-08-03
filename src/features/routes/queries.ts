@@ -82,67 +82,67 @@ const optimisticPlan = (
   };
 };
 
-export function useSaveDayRoutePlan(tripId: string) {
+export function useSaveDayRoutePlan(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: SaveDayRoutePlanInput) => requireData(await saveDayRoutePlan(input)),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       if (previous)
         client.setQueryData(
-          plannerQueryKey(tripId),
+          plannerQueryKey(tripId, variantId),
           replacePlan(previous, optimisticPlan(previous, input)),
         );
       return { previous };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (plan) =>
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replacePlan(current, plan),
       ),
     retry: false,
   });
 }
 
-export function useCalculateDayRoute(tripId: string) {
+export function useCalculateDayRoute(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: CalculateDayRouteInput) =>
       requireData(await calculateDayRoute(input)),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       if (previous) {
         const plan = previous.routePlans.find(({ id }) => id === input.planId);
         if (plan)
           client.setQueryData(
-            plannerQueryKey(tripId),
+            plannerQueryKey(tripId, variantId),
             replacePlan(previous, { ...plan, calculationState: "updating" }),
           );
       }
       return { previous };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (plan) =>
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replacePlan(current, plan),
       ),
     retry: false,
   });
 }
 
-export function useClearDayRoutePlan(tripId: string) {
+export function useClearDayRoutePlan(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: ClearDayRouteInput) => requireData(await clearDayRoutePlan(input)),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       if (previous)
-        client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), {
+        client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), {
           ...previous,
           routePlans: previous.routePlans.filter(
             (plan) => !(plan.day_id === input.dayId && plan.variant_id === input.variantId),
@@ -151,7 +151,7 @@ export function useClearDayRoutePlan(tripId: string) {
       return { previous };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     retry: false,
   });
 }

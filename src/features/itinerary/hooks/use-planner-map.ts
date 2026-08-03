@@ -31,14 +31,14 @@ export function usePlannerMap(
     dayId: string;
     layer: DayMapLayer;
   } | null>(null);
-  const selectedMapItem = useMemo(() => {
-    if (!selectedItemId) return undefined;
-    const day = workspace.days[selectionEnd.row];
-    const category = categories[selectionEnd.column];
-    if (!day || !category) return undefined;
-    const cellItems = day.items.filter((item) => category.types.includes(item.type));
-    return cellItems.find(({ id }) => id === selectedItemId);
-  }, [selectedItemId, selectionEnd.column, selectionEnd.row, workspace.days]);
+  const variantId = workspace.variant.id;
+  const selectedMapItem = useMemo(
+    () =>
+      selectedItemId
+        ? workspace.days.flatMap(({ items }) => items).find(({ id }) => id === selectedItemId)
+        : undefined,
+    [selectedItemId, workspace.days],
+  );
   const overviewStages = useMemo(() => deriveOverviewStages(workspace.days), [workspace.days]);
   const overviewDefaultModes = useMemo(
     () => deriveOverviewDefaultModes(workspace.days, overviewStages),
@@ -48,6 +48,7 @@ export function usePlannerMap(
     overviewStages,
     overviewDefaultModes,
     workspace.variant.trip_id,
+    variantId,
   );
   const overviewMarkers = useMemo<PlannerMapMarker[]>(
     () =>
@@ -79,8 +80,8 @@ export function usePlannerMap(
     [dayRoute.draft?.itemIds, dayRoute.editing, dayRoute.plan?.stops],
   );
   const dayRouteMarkers = useMemo(
-    () => buildDayRouteMarkers(dayRoute.activeDay, routeStopIds),
-    [dayRoute.activeDay, routeStopIds],
+    () => buildDayRouteMarkers(dayRoute.activeDay, routeStopIds, dayRoute.previousDay),
+    [dayRoute.activeDay, dayRoute.previousDay, routeStopIds],
   );
   const dayRouteLines = useMemo(
     () => buildDayRouteLines(dayRoute.plan?.calculation ?? null),
@@ -121,6 +122,10 @@ export function usePlannerMap(
     workspace.days.some((day, row) => {
       const item = day.items.find(({ id }) => id === itemId);
       if (!item) return false;
+      if (mapMode === "day_route" && day.id !== dayRoute.activeDay?.id) {
+        setSelectedItemId(item.id);
+        return true;
+      }
       const coordinate = {
         row,
         column: categories.findIndex(({ types }) => types.includes(item.type)),
@@ -173,8 +178,8 @@ export function usePlannerMap(
     mapMarkers,
     mapViewportKey:
       mapMode === "overview"
-        ? `overview:${overviewViewportKey}`
-        : `day-route:${dayRoute.activeDay?.id ?? "none"}:${dayMapLayer}:${dayRouteViewportKey}:${dayRoute.fitKey ?? "default"}`,
+        ? `overview:${variantId}:${overviewViewportKey}`
+        : `day-route:${variantId}:${dayRoute.activeDay?.id ?? "none"}:${dayMapLayer}:${dayRouteViewportKey}:${dayRoute.fitKey ?? "default"}`,
     overviewRoute,
     selectedMapItem,
     selectMarker,

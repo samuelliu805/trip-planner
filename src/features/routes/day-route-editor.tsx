@@ -46,10 +46,9 @@ export function DayRouteEditor({
 }) {
   const [unplannedOpen, setUnplannedOpen] = useState(true);
   const draft = route.draft!;
-  const itemsById = new Map(route.activeDay?.items.map((item) => [item.id, item]) ?? []);
+  const itemsById = new Map(route.stopItems.map((item) => [item.id, item]));
   const planned = new Set(draft.itemIds);
   const unplanned = route.eligibleItems.filter(({ id }) => !planned.has(id));
-  const hotelCount = route.eligibleItems.filter(({ type }) => type === "hotel").length;
 
   return (
     <section
@@ -80,6 +79,10 @@ export function DayRouteEditor({
           <ol className="space-y-2" aria-label="Planned stops">
             {draft.itemIds.map((itemId, index) => {
               const item = itemsById.get(itemId);
+              const itemDay =
+                item?.day_id === route.previousDay?.id ? route.previousDay : route.activeDay;
+              const previousHotelStart =
+                itemsById.get(draft.itemIds[0])?.day_id === route.previousDay?.id;
               const time = item?.start_time?.slice(0, 5);
               return (
                 <li key={`${itemId}:${index}`}>
@@ -95,12 +98,13 @@ export function DayRouteEditor({
                         {item?.title ?? "Deleted item"}
                       </span>
                       <span className="block truncate text-[10px] text-muted-foreground">
+                        {itemDay ? `Day ${itemDay.day_number} · ` : ""}
                         {time ? `${time} · ` : ""}
                         {item?.place ? item.place.displayName : "Saved place missing"}
                       </span>
                     </span>
                     <RouteIconButton
-                      disabled={index === 0 || route.pending}
+                      disabled={index === 0 || (index === 1 && previousHotelStart) || route.pending}
                       label={`Move stop ${index + 1} up`}
                       onClick={() => route.moveStop(index, -1)}
                       title="Move stop up"
@@ -108,7 +112,11 @@ export function DayRouteEditor({
                       <ArrowUp className="size-4" />
                     </RouteIconButton>
                     <RouteIconButton
-                      disabled={index === draft.itemIds.length - 1 || route.pending}
+                      disabled={
+                        index === draft.itemIds.length - 1 ||
+                        (index === 0 && previousHotelStart) ||
+                        route.pending
+                      }
                       label={`Move stop ${index + 1} down`}
                       onClick={() => route.moveStop(index, 1)}
                       title="Move stop down"
@@ -159,18 +167,26 @@ export function DayRouteEditor({
           </div>
         )}
 
-        {hotelCount === 1 ? (
-          <Button
-            className="mt-3 w-full"
-            disabled={route.pending}
-            onClick={route.useHotelRoundTrip}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <BedDouble className="size-4" />
-            Use hotel as start &amp; end
-          </Button>
+        <Button
+          className="mt-3 w-full"
+          disabled={route.pending || !route.hotelTransferAvailable}
+          onClick={route.useHotelRoundTrip}
+          size="sm"
+          title={
+            route.hotelTransferAvailable
+              ? "Start at the previous day's Hotel and end at today's Hotel"
+              : "Add a place-linked Hotel to both the previous day and this day"
+          }
+          type="button"
+          variant="outline"
+        >
+          <BedDouble className="size-4" />
+          Use Hotels as start &amp; end
+        </Button>
+        {!route.hotelTransferAvailable ? (
+          <p className="mt-1.5 px-1 text-[10px] text-muted-foreground">
+            Requires a place-linked Hotel on both the previous day and this day.
+          </p>
         ) : null}
 
         <div className="mt-3 overflow-hidden rounded-lg border">

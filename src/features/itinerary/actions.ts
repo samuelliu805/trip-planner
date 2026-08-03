@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 
 import {
   createItineraryItemSchema,
+  clearItineraryItemsSchema,
   deleteItineraryItemSchema,
   updateItineraryItemSchema,
   type CreateItineraryItemInput,
+  type ClearItineraryItemsInput,
   type DeleteItineraryItemInput,
   type UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
@@ -16,7 +18,7 @@ import {
   normalizedTimes,
   scheduleKind,
 } from "@/features/itinerary/mutation-helpers";
-import type { MutationResult, PlannerWorkspace } from "@/features/itinerary/types";
+import type { MutationResult } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, TablesInsert, TablesUpdate } from "@/types/database";
 import {
@@ -27,60 +29,17 @@ import {
   withPlace,
 } from "@/features/itinerary/action-helpers";
 import {
-  cityInputPlaceKey,
   neighboringCityError,
   neighboringCityConflictAfterRemoving,
-  prospectiveNeighboringCityConflict,
 } from "@/features/routes/city-order";
+import {
+  prospectiveCityError,
+  validateProspectiveCity,
+  validateVariantDay,
+} from "@/features/itinerary/item-action-validation";
 
-function prospectiveCityError(
-  workspace: PlannerWorkspace,
-  input: {
-    dayId: string;
-    itemId?: string;
-    placeId?: string | null;
-    providerPlaceId?: string;
-    title: string;
-  },
-) {
-  const day = workspace.days.find(({ id }) => id === input.dayId);
-  if (!day) return "The selected City day is unavailable.";
-  const current = input.itemId
-    ? workspace.days.flatMap(({ items }) => items).find(({ id }) => id === input.itemId)
-    : undefined;
-  const placeKey = cityInputPlaceKey(workspace.days, input.placeId, input.providerPlaceId);
-  if (!placeKey) return "Choose a city from Google Maps.";
-  const conflict = prospectiveNeighboringCityConflict(workspace.days, [
-    {
-      dayId: day.id,
-      itemId: input.itemId ?? "prospective-city",
-      placeKey,
-      sortOrder:
-        current?.sort_order ?? Math.max(-1, ...day.items.map(({ sort_order }) => sort_order)) + 1,
-      title: input.title,
-    },
-  ]);
-  return conflict ? neighboringCityError() : null;
-}
-
-async function validateProspectiveCity(input: {
-  dayId: string;
-  itemId?: string;
-  placeId?: string | null;
-  providerPlaceId?: string;
-  title: string;
-  tripId: string;
-  variantId?: string;
-}) {
-  const { data: workspace, error } = await getPlannerWorkspace(input.tripId);
-  if (error || !workspace) return error ?? "The City order could not be checked.";
-  if (input.variantId && workspace.variant.id !== input.variantId)
-    return "Cities can only be changed within the primary Route A.";
-  return prospectiveCityError(workspace, input);
-}
-
-export async function loadPlannerWorkspace(tripId: string) {
-  return getPlannerWorkspace(tripId);
+export async function loadPlannerWorkspace(tripId: string, variantId: string) {
+  return getPlannerWorkspace(tripId, variantId);
 }
 
 export async function createItineraryItem(
@@ -88,6 +47,13 @@ export async function createItineraryItem(
 ): Promise<MutationResult> {
   const parsed = createItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const dayError = await validateVariantDay(
+    parsed.data.tripId,
+    parsed.data.variantId,
+    parsed.data.dayId,
+  );
+  if (dayError) return { error: dayError };
 
   if (parsed.data.type === "location") {
     const cityError = await validateProspectiveCity({
@@ -187,8 +153,17 @@ export async function updateItineraryItem(
   const parsed = updateItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
+  if (parsed.data.dayId) {
+    const dayError = await validateVariantDay(
+      parsed.data.tripId,
+      parsed.data.variantId,
+      parsed.data.dayId,
+    );
+    if (dayError) return { error: dayError };
+  }
+
   if (parsed.data.type === "location") {
-    const currentWorkspace = await getPlannerWorkspace(parsed.data.tripId);
+    const currentWorkspace = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
     const currentItem = currentWorkspace.data?.days
       .flatMap(({ items }) => items)
       .find(({ id }) => id === parsed.data.id);
@@ -220,6 +195,7 @@ export async function updateItineraryItem(
       .select("day_id")
       .eq("id", parsed.data.id)
       .eq("trip_id", parsed.data.tripId)
+      .eq("variant_id", parsed.data.variantId)
       .maybeSingle();
     if (currentError || !current)
       return {
@@ -256,8 +232,6 @@ export async function updateItineraryItem(
     values.start_time = normalizedOptional(parsed.data.startTime);
   if (parsed.data.title !== undefined) values.title = parsed.data.title.trim();
   if (parsed.data.type !== undefined) values.type = parsed.data.type;
-  if (parsed.data.variantId !== undefined) values.variant_id = parsed.data.variantId;
-
   if (parsed.data.startTime !== undefined || parsed.data.endTime !== undefined) {
     let startTime = normalizedOptional(parsed.data.startTime);
     let endTime = normalizedOptional(parsed.data.endTime);
@@ -267,6 +241,7 @@ export async function updateItineraryItem(
         .select("start_time, end_time")
         .eq("id", parsed.data.id)
         .eq("trip_id", parsed.data.tripId)
+        .eq("variant_id", parsed.data.variantId)
         .maybeSingle();
       if (readError || !current)
         return {
@@ -285,6 +260,7 @@ export async function updateItineraryItem(
     .update(values)
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
+    .eq("variant_id", parsed.data.variantId)
     .select("*")
     .maybeSingle();
   if (error || !data)
@@ -328,13 +304,14 @@ export async function deleteItineraryItem(
     .select("id, type")
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
+    .eq("variant_id", parsed.data.variantId)
     .maybeSingle();
   if (readError || !currentItem)
     return {
       error: mutationError(readError?.message ?? "You do not have permission to delete this item."),
     };
   if (currentItem.type === "location") {
-    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
     if (workspaceResult.error || !workspaceResult.data)
       return { error: workspaceResult.error ?? "The City order could not be checked." };
     if (neighboringCityConflictAfterRemoving(workspaceResult.data.days, [currentItem.id]))
@@ -345,6 +322,7 @@ export async function deleteItineraryItem(
     .delete()
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
+    .eq("variant_id", parsed.data.variantId)
     .select("id")
     .maybeSingle();
   if (error || !data)
@@ -354,4 +332,37 @@ export async function deleteItineraryItem(
 
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data };
+}
+
+export async function clearItineraryItems(
+  input: ClearItineraryItemsInput,
+): Promise<MutationResult<{ ids: string[] }>> {
+  const parsed = clearItineraryItemsSchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
+  if (workspaceResult.error || !workspaceResult.data)
+    return { error: workspaceResult.error ?? "The selected cells could not be checked." };
+
+  const existingIds = new Set(
+    workspaceResult.data.days.flatMap(({ items }) => items.map(({ id }) => id)),
+  );
+  if (parsed.data.itemIds.some((id) => !existingIds.has(id)))
+    return { error: "The selected cells changed. Review the selection and try again." };
+  if (neighboringCityConflictAfterRemoving(workspaceResult.data.days, parsed.data.itemIds))
+    return { error: neighboringCityError() };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("clear_route_variant_items", {
+    target_item_ids: parsed.data.itemIds,
+    target_trip_id: parsed.data.tripId,
+    target_variant_id: parsed.data.variantId,
+  });
+  if (error || data !== parsed.data.itemIds.length)
+    return {
+      error: mutationError(error?.message ?? "The selected cells could not be cleared."),
+    };
+
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return { data: { ids: parsed.data.itemIds } };
 }

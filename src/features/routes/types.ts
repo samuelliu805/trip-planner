@@ -40,6 +40,7 @@ export type RouteStopCandidate = {
 export type DayRouteDraft = {
   dayId: string;
   legModes: RouteLegMode[];
+  previousDayId?: string;
   stops: RouteStopCandidate[];
   tripId: string;
   variantId: string;
@@ -73,10 +74,11 @@ export type SaveDayRoutePlanInput = {
   variantId: string;
 };
 
-export type CalculateDayRouteInput = { planId: string; tripId: string };
+export type CalculateDayRouteInput = { planId: string; tripId: string; variantId: string };
 export type CalculateOverviewRouteInput = {
   legs: Array<{ mode: OverviewRouteMode; position: number }>;
   tripId: string;
+  variantId: string;
 };
 export type ClearDayRouteInput = { dayId: string; tripId: string; variantId: string };
 
