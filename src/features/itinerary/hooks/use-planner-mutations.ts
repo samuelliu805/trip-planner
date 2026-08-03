@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
+  useClearItineraryItems,
   useDeleteItineraryItem,
   useInsertTripDay,
   useRemoveTripDay,
@@ -13,17 +14,19 @@ import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 
 export function usePlannerMutations(
   tripId: string,
+  variantId: string,
   setInteractionError: Dispatch<SetStateAction<string | undefined>>,
 ) {
   const router = useRouter();
-  const deleteMutation = useDeleteItineraryItem(tripId);
-  const insertDayMutation = useInsertTripDay(tripId);
-  const removeDayMutation = useRemoveTripDay(tripId);
-  const reorderMutation = useReorderItineraryItems(tripId);
+  const deleteMutation = useDeleteItineraryItem(tripId, variantId);
+  const clearMutation = useClearItineraryItems(tripId, variantId);
+  const insertDayMutation = useInsertTripDay(tripId, variantId);
+  const removeDayMutation = useRemoveTripDay(tripId, variantId);
+  const reorderMutation = useReorderItineraryItems(tripId, variantId);
 
   async function insertDay(beforeDayNumber: number) {
     try {
-      await insertDayMutation.mutateAsync({ beforeDayNumber, tripId });
+      await insertDayMutation.mutateAsync({ beforeDayNumber, tripId, variantId });
       setInteractionError(undefined);
       router.refresh();
     } catch (error) {
@@ -35,7 +38,7 @@ export function usePlannerMutations(
 
   async function removeDay(dayId: string) {
     try {
-      await removeDayMutation.mutateAsync({ dayId, tripId });
+      await removeDayMutation.mutateAsync({ dayId, tripId, variantId });
       setInteractionError(undefined);
       router.refresh();
     } catch (error) {
@@ -67,6 +70,7 @@ export function usePlannerMutations(
         dayId: day.id,
         items: ordered.map((item, sortOrder) => ({ id: item.id, sortOrder })),
         tripId,
+        variantId,
       });
       setInteractionError(undefined);
     } catch {
@@ -76,15 +80,34 @@ export function usePlannerMutations(
 
   async function deleteItem(item: ItineraryItem) {
     try {
-      await deleteMutation.mutateAsync({ id: item.id, tripId });
+      await deleteMutation.mutateAsync({ id: item.id, tripId, variantId });
       setInteractionError(undefined);
     } catch {
       setInteractionError(`“${item.title}” could not be deleted. Please try again.`);
     }
   }
 
+  async function clearItems(items: ItineraryItem[]) {
+    try {
+      await clearMutation.mutateAsync({
+        itemIds: items.map(({ id }) => id),
+        tripId,
+        variantId,
+      });
+      setInteractionError(undefined);
+      return true;
+    } catch (error) {
+      setInteractionError(
+        error instanceof Error ? error.message : "The selected cells could not be cleared.",
+      );
+      return false;
+    }
+  }
+
   return {
     dayMutationPending: insertDayMutation.isPending || removeDayMutation.isPending,
+    clearItems,
+    clearPending: clearMutation.isPending,
     deleteItem,
     insertDay,
     moveItem,

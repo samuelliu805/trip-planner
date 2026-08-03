@@ -141,6 +141,7 @@ export const updateItineraryItemSchema = z
     id: z.uuid(),
     tripId: z.uuid(),
     type: z.enum(itineraryItemTypes),
+    variantId: z.uuid(),
   })
   .refine((value) => !value.endTime || !value.startTime || value.endTime >= value.startTime, {
     message: "End time must be on or after start time.",
@@ -183,18 +184,38 @@ export const updateItineraryItemSchema = z
       });
   });
 
-export const deleteItineraryItemSchema = z.object({ id: z.uuid(), tripId: z.uuid() });
+export const deleteItineraryItemSchema = z.object({
+  id: z.uuid(),
+  tripId: z.uuid(),
+  variantId: z.uuid(),
+});
+export const clearItineraryItemsSchema = z
+  .object({
+    itemIds: z.array(z.uuid()).min(1).max(2000),
+    tripId: z.uuid(),
+    variantId: z.uuid(),
+  })
+  .refine(
+    (value) => new Set(value.itemIds).size === value.itemIds.length,
+    "Selected items must be unique.",
+  );
 export const insertTripDaySchema = z.object({
   beforeDayNumber: z.number().int().min(1).max(366),
   tripId: z.uuid(),
+  variantId: z.uuid(),
 });
-export const removeTripDaySchema = z.object({ dayId: z.uuid(), tripId: z.uuid() });
+export const removeTripDaySchema = z.object({
+  dayId: z.uuid(),
+  tripId: z.uuid(),
+  variantId: z.uuid(),
+});
 
 export const reorderItineraryItemsSchema = z
   .object({
     dayId: z.uuid(),
     items: z.array(z.object({ id: z.uuid(), sortOrder: z.number().int().min(0) })).min(1),
     tripId: z.uuid(),
+    variantId: z.uuid(),
   })
   .refine(
     (value) => new Set(value.items.map(({ id }) => id)).size === value.items.length,
@@ -207,6 +228,7 @@ export const copyItineraryItemsSchema = z
     sourceItemIds: z.array(z.uuid()).min(1),
     targetDayId: z.uuid(),
     tripId: z.uuid(),
+    variantId: z.uuid(),
   })
   .refine(
     (value) => new Set(value.sourceItemIds).size === value.sourceItemIds.length,
@@ -216,6 +238,7 @@ export const copyItineraryItemsSchema = z
 export type CreateItineraryItemInput = z.input<typeof createItineraryItemSchema>;
 export type UpdateItineraryItemInput = z.input<typeof updateItineraryItemSchema>;
 export type DeleteItineraryItemInput = z.input<typeof deleteItineraryItemSchema>;
+export type ClearItineraryItemsInput = z.input<typeof clearItineraryItemsSchema>;
 export type InsertTripDayInput = z.input<typeof insertTripDaySchema>;
 export type RemoveTripDayInput = z.input<typeof removeTripDaySchema>;
 export type ReorderItineraryItemsInput = z.input<typeof reorderItineraryItemsSchema>;

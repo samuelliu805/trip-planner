@@ -45,8 +45,9 @@ export type OverviewRouteUi = {
 const keyForStages = (
   stages: OverviewStage[],
   defaultModes: Array<OverviewRouteMode | undefined>,
+  variantId: string,
 ) =>
-  `${stages
+  `${variantId}:${stages
     .map(
       ({ entries, latitude, longitude, placeId }) =>
         `${placeId}:${latitude.toFixed(7)}:${longitude.toFixed(7)}:${entries[0]?.itemId ?? ""}`,
@@ -57,8 +58,9 @@ export function useOverviewRoute(
   stages: OverviewStage[],
   defaultModes: Array<OverviewRouteMode | undefined>,
   tripId: string,
+  variantId: string,
 ): OverviewRouteUi {
-  const stageKey = keyForStages(stages, defaultModes);
+  const stageKey = keyForStages(stages, defaultModes, variantId);
   const [storedState, setStoredState] = useState<OverviewRouteState | null>(null);
   const [editing, setEditing] = useState(false);
   const mutation = useCalculateOverviewRoute();
@@ -107,6 +109,7 @@ export function useOverviewRoute(
       const calculated = await mutation.mutateAsync({
         legs: changed.map(({ mode, position }) => ({ mode: mode!, position })),
         tripId,
+        variantId,
       });
       updateState((current) => {
         const changedPositions = new Set(calculated.map(({ position }) => position));

@@ -2,8 +2,10 @@
 
 import { useIsMutating } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { PlannerClearCellsDialog } from "@/features/itinerary/components/planner-clear-cells-dialog";
+import { PlannerWorkspaceEventBoundary } from "@/features/itinerary/components/planner-workspace-event-boundary";
 import { PlannerMatrix } from "@/features/itinerary/components/planner-matrix";
 import {
   categories,
@@ -14,9 +16,7 @@ import {
 import { PlannerSheets } from "@/features/itinerary/components/planner-sheets";
 import { PlannerToolbar } from "@/features/itinerary/components/planner-toolbar";
 import {
-  encodePlannerClipboard,
   initialPlannerSelection,
-  parsePlannerClipboard,
   selectionBounds,
   type GridCoordinate,
 } from "@/features/itinerary/grid-interactions";
@@ -27,24 +27,35 @@ import { usePlannerMap } from "@/features/itinerary/hooks/use-planner-map";
 import { usePlannerMutations } from "@/features/itinerary/hooks/use-planner-mutations";
 import {
   normalizeTransportMode,
+  type PlannerVariant,
   type PlannerWorkspace as PlannerWorkspaceData,
 } from "@/features/itinerary/types";
 import type { Tables } from "@/types/database";
 import { useDayRoute } from "@/features/routes/use-day-route";
+import { RouteVariantControls } from "@/features/variants/components/route-variant-controls";
 
-export function PlannerWorkspace({
-  deleteError,
-  initialWorkspace,
-  settings,
-  trip,
-}: {
+type PlannerWorkspaceProps = {
   deleteError: boolean;
+  initialVariants: PlannerVariant[];
   initialWorkspace: PlannerWorkspaceData;
   settings: React.ReactNode;
   trip: Tables<"trips">;
-}) {
+};
+
+export function PlannerWorkspace(props: PlannerWorkspaceProps) {
+  return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
+}
+
+function PlannerWorkspaceVariant({
+  deleteError,
+  initialVariants,
+  initialWorkspace,
+  settings,
+  trip,
+}: PlannerWorkspaceProps) {
   const { data: workspace = initialWorkspace, error: workspaceError } = usePlannerWorkspace(
     trip.id,
+    initialWorkspace.variant.id,
     initialWorkspace,
   );
   const initialSelection = initialPlannerSelection(
@@ -59,6 +70,9 @@ export function PlannerWorkspace({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [interactionError, setInteractionError] = useState<string>();
+  const [clearTargetItems, setClearTargetItems] = useState<
+    PlannerWorkspaceData["days"][number]["items"]
+  >([]);
   const [isFillDragging, setIsFillDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const selectionEndRef = useRef(selectionEnd);
@@ -82,6 +96,23 @@ export function PlannerWorkspace({
         .map((item) => normalizeTransportMode((item.details as Record<string, string>).mode)) ?? [])
     : [];
   const visibleSelectionBounds = selectionBounds(selectionAnchor, selectionEnd);
+  const selectedItems = useMemo(
+    () =>
+      workspace.days
+        .slice(visibleSelectionBounds.top, visibleSelectionBounds.bottom + 1)
+        .flatMap((day) =>
+          categories
+            .slice(visibleSelectionBounds.left, visibleSelectionBounds.right + 1)
+            .flatMap((category) => day.items.filter((item) => category.types.includes(item.type))),
+        ),
+    [
+      visibleSelectionBounds.bottom,
+      visibleSelectionBounds.left,
+      visibleSelectionBounds.right,
+      visibleSelectionBounds.top,
+      workspace.days,
+    ],
+  );
   const itemCount = workspace.days.reduce((count, day) => count + day.items.length, 0);
   const dateRange =
     trip.start_date && trip.end_date
@@ -100,10 +131,30 @@ export function PlannerWorkspace({
     );
   }
 
-  const { dayMutationPending, deleteItem, insertDay, moveItem, removeDay } = usePlannerMutations(
-    trip.id,
-    setInteractionError,
-  );
+  const {
+    clearItems,
+    clearPending,
+    dayMutationPending,
+    deleteItem,
+    insertDay,
+    moveItem,
+    removeDay,
+  } = usePlannerMutations(trip.id, workspace.variant.id, setInteractionError);
+
+  function requestClearSelection() {
+    if (!selectedItems.length) return;
+    setInteractionError(undefined);
+    setClearTargetItems(selectedItems);
+  }
+
+  async function confirmClearSelection() {
+    const cleared = await clearItems(clearTargetItems);
+    if (!cleared) return;
+    clearTargetItems.forEach(({ id }) => dayRoute.removeItem(id));
+    if (editor?.item && clearTargetItems.some(({ id }) => id === editor.item?.id)) setEditor(null);
+    setSelectedItemId(undefined);
+    setClearTargetItems([]);
+  }
 
   function setSelectionEnd(coordinate: GridCoordinate) {
     selectionEndRef.current = coordinate;
@@ -201,29 +252,14 @@ export function PlannerWorkspace({
   });
 
   return (
-    <div
-      className="planner-workspace flex h-full min-h-0 flex-col overflow-hidden bg-background"
-      onCopy={(event) => {
-        const payload = clipboardPayload();
-        if (payload) {
-          event.preventDefault();
-          event.clipboardData.setData("text/plain", encodePlannerClipboard(payload));
-          setInternalClipboard(payload);
-          setInteractionError(undefined);
-        }
-      }}
-      onPaste={(event) => {
-        const payload =
-          parsePlannerClipboard(event.clipboardData.getData("text/plain")) ?? internalClipboard;
-        if (!payload) {
-          setInteractionError(
-            "Unsupported clipboard data. Copy cells from this planner before pasting.",
-          );
-          return;
-        }
-        event.preventDefault();
-        void pastePayload(payload);
-      }}
+    <PlannerWorkspaceEventBoundary
+      clipboardPayload={clipboardPayload}
+      internalClipboard={internalClipboard}
+      onClearRequest={requestClearSelection}
+      pastePayload={pastePayload}
+      selectedItemCount={selectedItems.length}
+      setInteractionError={setInteractionError}
+      setInternalClipboard={setInternalClipboard}
     >
       <PlannerToolbar
         activeCategory={activeCategory}
@@ -231,6 +267,8 @@ export function PlannerWorkspace({
         activeDay={activeDay}
         copyPreviousDay={copyPreviousDay}
         copySelectionToClipboard={copySelectionToClipboard}
+        clearItemCount={selectedItems.length}
+        clearPending={clearPending}
         dateRange={dateRange}
         dayMutationPending={dayMutationPending}
         deleteError={deleteError}
@@ -242,6 +280,7 @@ export function PlannerWorkspace({
         isFillDragging={isFillDragging}
         mutating={mutating}
         pasteAvailableClipboard={pasteAvailableClipboard}
+        requestClearSelection={requestClearSelection}
         removeDay={removeDay}
         selectedCount={selectedCount}
         selectedDay={selectedDay}
@@ -252,6 +291,13 @@ export function PlannerWorkspace({
         trip={trip}
         workspaceDayCount={workspace.days.length}
         workspaceError={Boolean(workspaceError)}
+        variantControls={
+          <RouteVariantControls
+            activeVariantId={workspace.variant.id}
+            initialVariants={initialVariants}
+            tripId={trip.id}
+          />
+        }
       />
       <PlannerMatrix
         containerRef={containerRef}
@@ -336,6 +382,13 @@ export function PlannerWorkspace({
         unavailableTransportModes={unavailableTransportModes}
         workspace={workspace}
       />
-    </div>
+      <PlannerClearCellsDialog
+        error={interactionError}
+        itemCount={clearTargetItems.length}
+        onCancel={() => setClearTargetItems([])}
+        onConfirm={() => void confirmClearSelection()}
+        pending={clearPending}
+      />
+    </PlannerWorkspaceEventBoundary>
   );
 }

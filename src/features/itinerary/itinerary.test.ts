@@ -60,6 +60,7 @@ import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
   carRentalDetailsSchema,
+  clearItineraryItemsSchema,
   copyItineraryItemsSchema,
   createItineraryItemSchema,
   deleteItineraryItemSchema,
@@ -69,6 +70,7 @@ import {
   updateItineraryItemSchema,
 } from "./schema.ts";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
+import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
@@ -125,6 +127,261 @@ test("planner initially selects the first City cell", () => {
   assert.deepEqual(initialPlannerSelection(3, 0), { column: 0, row: 0 });
   assert.deepEqual(initialPlannerSelection(0, 0), { column: -1, row: -1 });
   assert.deepEqual(initialPlannerSelection(3, -1), { column: -1, row: -1 });
+});
+
+test("active variant resolution honors a valid query and safely falls back to primary", () => {
+  const primary = {
+    color: "#0f766e",
+    id: ids.variant,
+    is_primary: true,
+    name: "Route A",
+    trip_id: ids.trip,
+  };
+  const routeB = {
+    ...primary,
+    color: "#2563eb",
+    id: "00000000-0000-4000-8000-000000000020",
+    is_primary: false,
+    name: "Route B",
+  };
+  assert.deepEqual(resolveActiveVariant([primary, routeB], routeB.id), {
+    activeVariant: routeB,
+    usedFallback: false,
+  });
+  assert.deepEqual(resolveActiveVariant([primary, routeB]), {
+    activeVariant: primary,
+    usedFallback: false,
+  });
+  assert.deepEqual(
+    resolveActiveVariant([primary, routeB], "00000000-0000-4000-8000-000000000099"),
+    {
+      activeVariant: primary,
+      usedFallback: true,
+    },
+  );
+  const broken = resolveActiveVariant([{ ...routeB }]);
+  assert.equal("error" in broken, true);
+  if ("error" in broken) assert.match(broken.error, /exactly one primary/);
+  assert.equal(variantHref(ids.trip, routeB.id), `/trips/${ids.trip}?variant=${routeB.id}`);
+});
+
+test("Phase 5A migration owns atomic lifecycle, isolation, primary, and grant contracts", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260803173303_route_variant_foundation.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const initial = await readFile(
+    new URL("../../../supabase/migrations/20260729160000_initial_schema.sql", import.meta.url),
+    "utf8",
+  );
+  const manualRoutes = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260802130101_add_manual_day_route_plans.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  for (const signature of [
+    /create function public\.create_route_variant\([\s\S]*target_trip_id uuid,[\s\S]*source_variant_id uuid,[\s\S]*variant_name text,[\s\S]*variant_color text/,
+    /create function public\.duplicate_route_variant\([\s\S]*target_trip_id uuid,[\s\S]*source_variant_id uuid,[\s\S]*variant_name text,[\s\S]*variant_color text/,
+    /create function public\.update_route_variant_metadata/,
+    /create function public\.set_primary_route_variant/,
+    /create function public\.delete_route_variant/,
+  ])
+    assert.match(migration, signature);
+
+  const securityDefinerFunctions = [
+    "create_route_variant",
+    "duplicate_route_variant",
+    "update_route_variant_metadata",
+    "set_primary_route_variant",
+    "delete_route_variant",
+    "insert_variant_day",
+    "remove_variant_day",
+    "save_day_route_plan",
+    "clear_day_route_plan",
+  ];
+  for (const name of securityDefinerFunctions) {
+    const start = migration.indexOf(`function public.${name}(`);
+    assert.notEqual(start, -1, `${name} must exist`);
+    const end = migration.indexOf("\n$$;", start);
+    const body = migration.slice(start, end);
+    assert.match(body, /security definer/);
+    assert.match(body, /set search_path = ''/);
+    assert.match(body, /auth\.uid\(\)/);
+    assert.match(body, /owner_id|is_trip_owner/);
+  }
+
+  assert.match(migration, /route_variants_max_three/);
+  assert.match(migration, /count\(\*\)[\s\S]*>= 3/);
+  assert.match(migration, /route_variants_trip_name_ci_unique/);
+  assert.match(migration, /lower\(btrim\(name\)\)/);
+  assert.match(migration, /deferrable initially deferred/);
+  assert.match(migration, /VARIANT_PRIMARY_REQUIRED/);
+  assert.match(migration, /VARIANT_PRIMARY_DELETE_FORBIDDEN/);
+  assert.match(migration, /VARIANT_FINAL_DELETE_FORBIDDEN/);
+  assert.match(migration, /source\.trip_id = target_trip_id/);
+  assert.match(migration, /VARIANT_SOURCE_NOT_FOUND/);
+
+  for (const mapping of ["day_id_map", "item_id_map", "plan_id_map", "stop_id_map"])
+    assert.match(migration, new RegExp(mapping));
+  assert.match(migration, /new_day_id := gen_random_uuid\(\)/);
+  assert.match(migration, /new_item_id := gen_random_uuid\(\)/);
+  assert.match(migration, /new_plan_id := gen_random_uuid\(\)/);
+  assert.match(migration, /new_stop_id := gen_random_uuid\(\)/);
+  assert.match(migration, /source_item\.place_id/);
+  assert.match(migration, /source_stop\.position/);
+  assert.match(migration, /source_leg\.mode/);
+  assert.match(migration, /mapped_from_stop_id/);
+  assert.match(migration, /mapped_to_stop_id/);
+  assert.match(migration, /day_route_calculations are intentionally not copied/);
+  const duplicateBody = migration.slice(
+    migration.indexOf("function public.duplicate_route_variant("),
+    migration.indexOf("function public.update_route_variant_metadata("),
+  );
+  assert.doesNotMatch(duplicateBody, /insert into public\.places/);
+  assert.doesNotMatch(duplicateBody, /insert into public\.day_route_calculations/);
+
+  for (const table of ["route_variants", "trip_days", "itinerary_items", "places"])
+    assert.match(initial, new RegExp(`alter table public\\.${table} enable row level security`));
+  for (const table of [
+    "day_route_plans",
+    "day_route_stops",
+    "day_route_legs",
+    "day_route_calculations",
+  ])
+    assert.match(
+      manualRoutes,
+      new RegExp(`alter table public\\.${table} enable row level security`),
+    );
+
+  assert.match(
+    migration,
+    /revoke all on function public\.duplicate_route_variant[\s\S]*from public, anon/,
+  );
+  assert.match(
+    migration,
+    /grant execute on function public\.duplicate_route_variant[\s\S]*to authenticated/,
+  );
+  assert.doesNotMatch(migration, /grant execute[^;]+to anon/);
+  assert.match(
+    migration,
+    /revoke insert, update, delete[\s\S]*route_variants from anon, authenticated/,
+  );
+  assert.match(migration, /revoke insert, update, delete[\s\S]*trip_days from anon, authenticated/);
+});
+
+test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-aware", async () => {
+  const page = await readFile(
+    new URL("../../app/trips/[tripId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const data = await readFile(new URL("./data.ts", import.meta.url), "utf8");
+  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  const routeQueries = await readFile(new URL("../routes/queries.ts", import.meta.url), "utf8");
+  const workspace = await readFile(
+    new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+  const mapHook = await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
+  const dayRoute = await readFile(new URL("../routes/use-day-route.ts", import.meta.url), "utf8");
+  const variantActions = await readFile(new URL("../variants/actions.ts", import.meta.url), "utf8");
+  const controls = await readFile(
+    new URL("../variants/components/route-variant-controls.tsx", import.meta.url),
+    "utf8",
+  );
+  const variantSwitcher = await readFile(
+    new URL("../variants/components/route-variant-switcher.tsx", import.meta.url),
+    "utf8",
+  );
+  const variantManagement = await readFile(
+    new URL("../variants/components/manage-route-variants-dialog.tsx", import.meta.url),
+    "utf8",
+  );
+  const variantEditor = await readFile(
+    new URL("../variants/components/route-variant-editor-dialog.tsx", import.meta.url),
+    "utf8",
+  );
+  const variantIdentity = await readFile(
+    new URL("../variants/components/route-variant-identity.tsx", import.meta.url),
+    "utf8",
+  );
+  const variantUi = [
+    controls,
+    variantSwitcher,
+    variantManagement,
+    variantEditor,
+    variantIdentity,
+  ].join("\n");
+  const variantQueries = await readFile(new URL("../variants/queries.ts", import.meta.url), "utf8");
+  const toolbar = await readFile(
+    new URL("./components/planner-toolbar.tsx", import.meta.url),
+    "utf8",
+  );
+  const clearDialog = await readFile(
+    new URL("./components/planner-clear-cells-dialog.tsx", import.meta.url),
+    "utf8",
+  );
+  const workspaceEvents = await readFile(
+    new URL("./components/planner-workspace-event-boundary.tsx", import.meta.url),
+    "utf8",
+  );
+  const itineraryActions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  const tripsPage = await readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8");
+  const tripsData = await readFile(new URL("../trips/data.ts", import.meta.url), "utf8");
+
+  assert.match(page, /resolveActiveVariant\(variantsResult\.data, query\.variant\)/);
+  assert.match(page, /getPlannerWorkspace\(\s*tripId,\s*resolution\.activeVariant\.id/);
+  assert.match(data, /getPlannerVariants/);
+  assert.match(data, /select\("id, trip_id, name, color, is_primary"\)/);
+  assert.match(data, /getPlannerWorkspace\(\s*tripId: string,\s*variantId: string/);
+  assert.match(data, /\.eq\("id", variantId\)/);
+  assert.match(queries, /\["planner", tripId, variantId\]/);
+  assert.match(routeQueries, /plannerQueryKey\(tripId, variantId\)/);
+  assert.match(workspace, /key=\{props\.initialWorkspace\.variant\.id\}/);
+  assert.match(dayRoute, /useSaveDayRoutePlan\(tripId, variantId\)/);
+  assert.match(dayRoute, /variantId: workspace\.variant\.id/);
+  assert.match(mapHook, /overview:\$\{variantId\}/);
+
+  assert.match(controls, /router\.push\(variantHref/);
+  assert.match(variantUi, /<Sheet[\s\S]*side="bottom"/);
+  assert.match(variantUi, /PrimaryBadge/);
+  assert.match(variantUi, />\s*Primary\s*</);
+  assert.match(variantUi, /Maximum of three variants reached/);
+  assert.match(variantUi, /<AlertDialog/);
+  assert.doesNotMatch(variantUi, /window\.confirm/);
+  assert.match(variantUi, /min-h-11|h-11/);
+  assert.match(variantUi, /z-\[90\]/);
+  assert.match(variantUi, /is now the primary route/);
+  assert.match(variantUi, /router\.refresh\(\)/);
+  assert.match(variantQueries, /is_primary: variant\.id === input\.variantId/);
+  assert.match(variantQueries, /onError:[\s\S]*context\?\.previous/);
+  assert.match(workspaceEvents, /event\.key === "Backspace"/);
+  assert.match(clearDialog, /<AlertDialog/);
+  assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
+  assert.match(toolbar, />\s*Clear\s*</);
+  assert.match(toolbar, /hidden min-w-0 sm:block/);
+  assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
+  assert.match(
+    variantUi,
+    /wasActive[\s\S]*find\(\(\{ is_primary \}\) => is_primary\)[\s\S]*router\.push/,
+  );
+  assert.match(tripsData, /route_variants\(id, name, color, is_primary\)/);
+  assert.match(tripsData, /\.eq\("route_variants\.is_primary", true\)/);
+  assert.match(tripsPage, /primaryVariant\.name/);
+  assert.match(tripsPage, /backgroundColor: primaryVariant\.color/);
+  assert.doesNotMatch(tripsPage, />\s*Route A\s*</);
+  assert.match(variantActions, /revalidatePath\("\/trips"\)/);
+
+  assert.doesNotMatch(
+    variantActions,
+    /calculateDayRoute|calculateOverviewRoute|calculateGoogleRouteLeg/,
+  );
+  assert.doesNotMatch(variantUi, /calculateDayRoute|calculateOverviewRoute|routes\.googleapis/);
 });
 
 const googleResponse = () =>
@@ -597,6 +854,93 @@ test("route configuration permits only one Hotel repeated first and final", () =
     validateDayRouteDraft(routeDraft({ stops: [hotel, hotel] })) ?? "",
     /two distinct coordinate/,
   );
+});
+
+test("route configuration permits only the previous day Hotel as the first stop", () => {
+  const previousDayId = ids.targetDay;
+  const previousHotel = {
+    ...routeStop("previous-hotel", "hotel", 37.7749, -122.4194),
+    dayId: previousDayId,
+  };
+  const todayHotel = routeStop("today-hotel", "hotel", 37.7849, -122.4094);
+  assert.equal(
+    validateDayRouteDraft(routeDraft({ previousDayId, stops: [previousHotel, todayHotel] })),
+    null,
+  );
+  assert.match(
+    validateDayRouteDraft(routeDraft({ stops: [previousHotel, todayHotel] })) ?? "",
+    /first stop may be the previous day Hotel/,
+  );
+  assert.match(
+    validateDayRouteDraft(routeDraft({ previousDayId, stops: [todayHotel, previousHotel] })) ?? "",
+    /first stop may be the previous day Hotel/,
+  );
+  assert.match(
+    validateDayRouteDraft(
+      routeDraft({
+        previousDayId,
+        stops: [{ ...previousHotel, type: "activity" }, todayHotel],
+      }),
+    ) ?? "",
+    /first stop may be the previous day Hotel/,
+  );
+});
+
+test("previous day Hotel is projected only when it is a planned start", () => {
+  const previousDay = {
+    day_number: 1,
+    id: ids.targetDay,
+    items: [
+      {
+        id: "previous-hotel",
+        place: {
+          displayName: "Previous Hotel",
+          id: "previous-hotel-place",
+          latitude: 39,
+          longitude: -71,
+        },
+        sort_order: 0,
+        title: "Previous Hotel",
+        type: "hotel",
+      },
+    ],
+  } as unknown as PlannerDay;
+  const today = {
+    day_number: 2,
+    id: ids.day,
+    items: [],
+  } as unknown as PlannerDay;
+  assert.equal(buildDayRouteMarkers(today, [], previousDay).length, 0);
+  const [marker] = buildDayRouteMarkers(today, ["previous-hotel"], previousDay);
+  assert.equal(marker.entries[0].dayLabel, "Day 1");
+  assert.equal(marker.label, "1");
+});
+
+test("route and cell-clear hardening migration keeps narrow atomic contracts", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260803183257_allow_previous_day_hotel_route_start.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /create or replace function public\.save_day_route_plan/);
+  assert.match(migration, /previous_day\.day_number = day\.day_number - 1/);
+  assert.match(migration, /submitted\.position = 1[\s\S]*item\.type = 'hotel'/);
+  assert.match(migration, /create function public\.clear_route_variant_items/);
+  assert.match(migration, /security definer[\s\S]*set search_path = ''/);
+  assert.match(migration, /auth\.uid\(\)/);
+  assert.match(migration, /trip\.owner_id = current_user_id/);
+  assert.match(migration, /item\.id = any\(target_item_ids\)/);
+  assert.match(
+    migration,
+    /revoke all on function public\.clear_route_variant_items[\s\S]*from public, anon/,
+  );
+  assert.match(
+    migration,
+    /grant execute on function public\.clear_route_variant_items[\s\S]*to authenticated/,
+  );
+  assert.doesNotMatch(migration, /grant execute[^;]+to anon/);
 });
 
 test("manual route migration enforces normalized ownership and cascade contracts", async () => {
@@ -1223,6 +1567,10 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   );
   const actions = await readFile(new URL("../routes/actions.ts", import.meta.url), "utf8");
   const itemActions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  const itemValidation = await readFile(
+    new URL("./item-action-validation.ts", import.meta.url),
+    "utf8",
+  );
   const dayActions = await readFile(new URL("./day-actions.ts", import.meta.url), "utf8");
   const mapHook = await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
   const interactions = await readFile(
@@ -1266,7 +1614,7 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.match(actions, /mapWithConcurrency\(tasks, 3\)/);
   assert.match(actions, /isOverviewRouteLeg/);
   assert.match(actions, /is_trip_owner/);
-  assert.match(mapHook, /day-route:\$\{dayRoute\.activeDay\?\.id/);
+  assert.match(mapHook, /day-route:\$\{variantId\}:\$\{dayRoute\.activeDay\?\.id/);
   assert.match(mapHook, /firstCity/);
   assert.match(interactions, /hasDayRoute\(day\.id\) \? "day_route" : "overview"/);
   assert.match(interactions, /routeExists \? "day_route" : "overview"/);
@@ -1309,7 +1657,7 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.doesNotMatch(canvas, /draggable|editable/);
   assert.match(canvas, /day-city/);
   assert.match(canvas, /#2563eb/);
-  assert.match(itemActions, /prospectiveNeighboringCityConflict/);
+  assert.match(itemActions + itemValidation, /prospectiveNeighboringCityConflict/);
   assert.match(dayActions, /prospectiveNeighboringCityConflict/);
   assert.match(actions, /neighboringOverviewCityConflict/);
 });
@@ -1347,6 +1695,7 @@ test("edit and delete inputs validate", () => {
       tripId: ids.trip,
       title: "Edited",
       type: "activity",
+      variantId: ids.variant,
     }).success,
     true,
   );
@@ -1357,12 +1706,30 @@ test("edit and delete inputs validate", () => {
       startTime: "",
       tripId: ids.trip,
       type: "activity",
+      variantId: ids.variant,
     }).success,
     true,
   );
   assert.equal(
-    deleteItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip }).success,
+    deleteItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip, variantId: ids.variant })
+      .success,
     true,
+  );
+  assert.equal(
+    clearItineraryItemsSchema.safeParse({
+      itemIds: [ids.item],
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
+    true,
+  );
+  assert.equal(
+    clearItineraryItemsSchema.safeParse({
+      itemIds: [ids.item, ids.item],
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
+    false,
   );
 });
 
@@ -1384,6 +1751,7 @@ test("reorder payload persists explicit unique sort orders", () => {
     dayId: ids.day,
     items: [{ id: ids.item, sortOrder: 1 }],
     tripId: ids.trip,
+    variantId: ids.variant,
   });
   assert.deepEqual(parsed.items, [{ id: ids.item, sortOrder: 1 }]);
   assert.equal(
@@ -1394,21 +1762,37 @@ test("reorder payload persists explicit unique sort orders", () => {
         { id: ids.item, sortOrder: 1 },
       ],
       tripId: ids.trip,
+      variantId: ids.variant,
     }).success,
     false,
   );
 });
 
-test("day insertion and removal inputs stay scoped to a trip", () => {
+test("day insertion and removal inputs stay scoped to a trip and variant", () => {
   assert.equal(
-    insertTripDaySchema.safeParse({ beforeDayNumber: 2, tripId: ids.trip }).success,
+    insertTripDaySchema.safeParse({
+      beforeDayNumber: 2,
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
     true,
   );
   assert.equal(
-    insertTripDaySchema.safeParse({ beforeDayNumber: 0, tripId: ids.trip }).success,
+    insertTripDaySchema.safeParse({
+      beforeDayNumber: 0,
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
     false,
   );
-  assert.equal(removeTripDaySchema.safeParse({ dayId: ids.day, tripId: ids.trip }).success, true);
+  assert.equal(
+    removeTripDaySchema.safeParse({
+      dayId: ids.day,
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
+    true,
+  );
 });
 
 test("copies get new IDs, destination ordering, and independent values", () => {
@@ -1448,6 +1832,7 @@ test("copies get new IDs, destination ordering, and independent values", () => {
       sourceItemIds: [ids.item],
       targetDayId: ids.targetDay,
       tripId: ids.trip,
+      variantId: ids.variant,
     }).success,
     true,
   );
@@ -1544,6 +1929,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   for (const file of [
     "./components/planner-matrix.tsx",
     "./components/planner-toolbar.tsx",
+    "./components/planner-workspace-event-boundary.tsx",
     "./hooks/use-planner-clipboard.ts",
     "./hooks/use-planner-interactions.ts",
     "./hooks/use-planner-mutations.ts",
@@ -1680,6 +2066,10 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
     "utf8",
   );
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
+  workspace += await readFile(
+    new URL("./components/planner-workspace-event-boundary.tsx", import.meta.url),
+    "utf8",
+  );
   workspace += await readFile(new URL("./hooks/use-planner-clipboard.ts", import.meta.url), "utf8");
   workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
   const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");

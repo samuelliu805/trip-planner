@@ -10,9 +10,10 @@ import {
   MoreHorizontal,
   Plus,
   Settings2,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,8 @@ export function PlannerToolbar({
   activeDay,
   copyPreviousDay,
   copySelectionToClipboard,
+  clearItemCount,
+  clearPending,
   dateRange,
   dayMutationPending,
   deleteError,
@@ -46,6 +49,7 @@ export function PlannerToolbar({
   isFillDragging,
   mutating,
   pasteAvailableClipboard,
+  requestClearSelection,
   removeDay,
   selectedCount,
   selectedDay,
@@ -56,12 +60,15 @@ export function PlannerToolbar({
   trip,
   workspaceError,
   workspaceDayCount,
+  variantControls,
 }: {
   activeCategory?: PlannerCategory;
   activeCellAtCapacity: boolean;
   activeDay?: PlannerDay;
   copyPreviousDay: () => Promise<void>;
   copySelectionToClipboard: () => Promise<void>;
+  clearItemCount: number;
+  clearPending: boolean;
   dateRange: string;
   dayMutationPending: boolean;
   deleteError: boolean;
@@ -73,6 +80,7 @@ export function PlannerToolbar({
   isFillDragging: boolean;
   mutating: boolean;
   pasteAvailableClipboard: () => Promise<void>;
+  requestClearSelection: () => void;
   removeDay: (dayId: string) => Promise<void>;
   selectedCount: number;
   selectedDay: PlannerDay | null;
@@ -83,6 +91,7 @@ export function PlannerToolbar({
   trip: Tables<"trips">;
   workspaceError: boolean;
   workspaceDayCount: number;
+  variantControls: ReactNode;
 }) {
   return (
     <>
@@ -98,7 +107,7 @@ export function PlannerToolbar({
             </TooltipTrigger>
             <TooltipContent>Back to Trips</TooltipContent>
           </Tooltip>
-          <div className="min-w-0">
+          <div className="hidden min-w-0 sm:block">
             <h1 className="max-w-[180px] truncate text-base font-semibold sm:max-w-[260px] xl:max-w-none xl:text-lg">
               {trip.title}
             </h1>
@@ -107,6 +116,7 @@ export function PlannerToolbar({
               {dateRange}
             </p>
           </div>
+          {variantControls}
         </div>
         <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground sm:gap-2">
           <span
@@ -138,6 +148,14 @@ export function PlannerToolbar({
               <DropdownMenuItem className="xl:hidden" onSelect={pasteAvailableClipboard}>
                 <ClipboardPaste className="size-4" />
                 Paste
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="xl:hidden"
+                disabled={!clearItemCount || clearPending}
+                onSelect={requestClearSelection}
+              >
+                <Trash2 className="size-4" />
+                Clear selected cells
               </DropdownMenuItem>
               <DropdownMenuItem className="xl:hidden" onSelect={() => setCopyDaysOpen(true)}>
                 Copy to days…
@@ -211,6 +229,16 @@ export function PlannerToolbar({
           >
             <Copy className="size-3.5" />
             Copy
+          </Button>
+          <Button
+            className="h-7 px-2 text-xs"
+            disabled={!clearItemCount || clearPending}
+            onClick={requestClearSelection}
+            size="sm"
+            variant="ghost"
+          >
+            <Trash2 className="size-3.5" />
+            Clear
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

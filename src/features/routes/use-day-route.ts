@@ -24,16 +24,19 @@ export type DayRouteUi = {
   eligibleItems: ItineraryItem[];
   error?: string;
   fitKey?: string;
+  hotelTransferAvailable: boolean;
   moveStop: (index: number, direction: -1 | 1) => void;
   openCreate: () => void;
   openEdit: () => void;
   pending: boolean;
   plan?: DayRoutePlan;
+  previousDay?: PlannerDay;
   removeItem: (itemId: string) => void;
   removeStop: (index: number) => void;
   saveAndCalculate: () => Promise<void>;
   setLegMode: (index: number, mode: RouteLegMode) => void;
   status?: DayRouteStatus;
+  stopItems: ItineraryItem[];
   useHotelRoundTrip: () => void;
 };
 
@@ -58,14 +61,27 @@ export function useDayRoute(
     (candidate) =>
       candidate.day_id === activeDay?.id && candidate.variant_id === workspace.variant.id,
   );
+  const previousDay = activeDay
+    ? workspace.days.find(({ day_number }) => day_number === activeDay.day_number - 1)
+    : undefined;
   const eligibleItems = useMemo(() => eligibleDayRouteItems(activeDay), [activeDay]);
+  const previousHotel = useMemo(
+    () => eligibleDayRouteItems(previousDay).find(({ type }) => type === "hotel"),
+    [previousDay],
+  );
+  const currentHotel = eligibleItems.find(({ type }) => type === "hotel");
+  const stopItems = useMemo(
+    () => (previousHotel ? [previousHotel, ...eligibleItems] : eligibleItems),
+    [eligibleItems, previousHotel],
+  );
   const suggestedMode = useMemo(
     () => suggestedDraftLegMode(activeDay?.items ?? []),
     [activeDay?.items],
   );
-  const saveMutation = useSaveDayRoutePlan(tripId);
-  const calculateMutation = useCalculateDayRoute(tripId);
-  const clearMutation = useClearDayRoutePlan(tripId);
+  const variantId = workspace.variant.id;
+  const saveMutation = useSaveDayRoutePlan(tripId, variantId);
+  const calculateMutation = useCalculateDayRoute(tripId, variantId);
+  const clearMutation = useClearDayRoutePlan(tripId, variantId);
   const pending = saveMutation.isPending || calculateMutation.isPending || clearMutation.isPending;
 
   function setError(value?: string) {
@@ -95,7 +111,10 @@ export function useDayRoute(
         current.itemIds.length >= 2 &&
         current.itemIds[0] === current.itemIds.at(-1) &&
         eligibleItems.find(({ id }) => id === current.itemIds[0])?.type === "hotel";
-      const insertAt = repeatedHotel ? current.itemIds.length - 1 : current.itemIds.length;
+      const hotelTransfer =
+        current.itemIds[0] === previousHotel?.id && current.itemIds.at(-1) === currentHotel?.id;
+      const insertAt =
+        repeatedHotel || hotelTransfer ? current.itemIds.length - 1 : current.itemIds.length;
       const itemIds = [...current.itemIds];
       itemIds.splice(insertAt, 0, itemId);
       const legModes = [...current.legModes];
@@ -136,6 +155,8 @@ export function useDayRoute(
     updateDraft((current) => {
       const destination = index + direction;
       if (destination < 0 || destination >= current.itemIds.length) return current;
+      if (current.itemIds[0] === previousHotel?.id && (index === 0 || destination === 0))
+        return current;
       const itemIds = [...current.itemIds];
       [itemIds[index], itemIds[destination]] = [itemIds[destination], itemIds[index]];
       return { ...current, itemIds };
@@ -152,11 +173,12 @@ export function useDayRoute(
   }
 
   function useHotelRoundTrip() {
-    const hotels = eligibleItems.filter(({ type }) => type === "hotel");
-    if (hotels.length !== 1) return;
+    if (!previousHotel || !currentHotel) return;
     updateDraft((current) => {
-      const withoutHotel = current.itemIds.filter((itemId) => itemId !== hotels[0].id);
-      const itemIds = [hotels[0].id, ...withoutHotel, hotels[0].id];
+      const withoutHotels = current.itemIds.filter(
+        (itemId) => itemId !== previousHotel.id && itemId !== currentHotel.id,
+      );
+      const itemIds = [previousHotel.id, ...withoutHotels, currentHotel.id];
       return {
         itemIds,
         legModes: Array.from({ length: Math.max(0, itemIds.length - 1) }, (_, index) =>
@@ -168,10 +190,11 @@ export function useDayRoute(
 
   async function saveAndCalculate() {
     if (!activeDay || !draft) return;
-    const itemsById = new Map(activeDay.items.map((item) => [item.id, item]));
+    const itemsById = new Map(stopItems.map((item) => [item.id, item]));
     const routeDraft: DayRouteDraft = {
       dayId: activeDay.id,
       legModes: draft.legModes,
+      previousDayId: previousDay?.id,
       stops: draft.itemIds.map((itemId) => {
         const item = itemsById.get(itemId);
         return {
@@ -202,7 +225,7 @@ export function useDayRoute(
         tripId,
         variantId: workspace.variant.id,
       });
-      await calculateMutation.mutateAsync({ planId: saved.id, tripId });
+      await calculateMutation.mutateAsync({ planId: saved.id, tripId, variantId });
       setDraft(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The day route could not be calculated.");
@@ -241,6 +264,7 @@ export function useDayRoute(
     eligibleItems,
     error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
     fitKey: calculatedFitKey ? `day-route:${activeDay?.id}:${calculatedFitKey}` : undefined,
+    hotelTransferAvailable: Boolean(previousHotel && currentHotel),
     moveStop,
     openCreate: () => {
       setDraft({ itemIds: [], legModes: [] });
@@ -253,11 +277,13 @@ export function useDayRoute(
     },
     pending,
     plan,
+    previousDay,
     removeItem,
     removeStop,
     saveAndCalculate,
     setLegMode,
     status,
+    stopItems,
     useHotelRoundTrip,
   };
 }

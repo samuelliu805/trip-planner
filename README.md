@@ -1,14 +1,15 @@
 # Trip Planner
 
-Trip Planner is a responsive, spreadsheet-style workspace for building complex trips from normalized days, itinerary items, persisted places, and an optional primary Route A for each day.
+Trip Planner is a responsive, spreadsheet-style workspace for building complex trips from normalized days, itinerary items, persisted places, route variants, and optional manual routes for each active-variant day.
 
 ## Current status
 
 - Phase 1 and Phase 2 are complete.
 - Phase 3 — live Google Maps and Places API (New) — is implemented. Persisted place snapshots, Advanced Markers, exact item/Pin selection, and the mobile map Sheet are live; the authenticated configuration smoke test is still pending.
 - Phase 4 — Primary Route A Overview and optional manual Day routes — is implemented. Its migrations are applied and automated checks pass; the authenticated browser and deployed-configuration smoke test is still pending, so Phase 4 is not marked complete.
+- Phase 5A — Route Variant Foundation — is implemented. Its forward-only migration is applied to the linked project, linked integration/domain checks and all repository checks pass, and unauthenticated responsive shell checks pass. The authenticated product checklist remains pending.
 
-Route B/C variants, public sharing/export, and travel research remain intentionally deferred.
+Phase 5B map comparison, Phase 5C decision summaries, public sharing/export, and travel research remain intentionally deferred.
 
 ## Foundation stack
 
@@ -35,6 +36,7 @@ src/
     maps/                      Provider-neutral map canvas and marker behavior
     places/                    Place autocomplete and persisted snapshots
     routes/                    Overview stages, route drafts, signatures, status, actions, and UI
+    variants/                  Active resolution, lifecycle actions, query state, and responsive controls
   lib/
     providers/
       maps/
@@ -67,7 +69,7 @@ The matrix is a projection of normalized records:
 
 A day may contain multiple items in each category. Nullable start/end times are passive itinerary metadata. Copies create independent item rows and do not copy Day route plans.
 
-Matrix interactions include arrow and Tab navigation, Enter/Escape editing, range selection, clipboard replacement, Copy to days, Copy previous day, and deterministic Move up/down controls. No drag-and-drop is used.
+Matrix interactions include arrow and Tab navigation, Enter/Escape editing, range selection, clipboard replacement, Copy to days, Copy previous day, deterministic Move up/down controls, and multi-cell clearing. Backspace/Delete and the editing toolbar both open one compact confirmation that states the item count and saved-route impact; the confirmed delete is one owner-authorized database transaction with optimistic rollback. A confirmation is used instead of a misleading undo because recreating deleted item IDs would not faithfully restore saved route references. No drag-and-drop is used.
 
 ## Phase 3 map and Places behavior
 
@@ -101,6 +103,8 @@ Manual stop order is authoritative. Item time, schedule, title, and notes never 
 
 One Hotel item may be referenced twice, exactly at the first and final positions. It remains one itinerary item and one physical Pin, with a combined label such as `1 · 5`. Other duplicate item references are rejected.
 
+The Hotel shortcut is available only when both the immediately previous day and active day contain a place-linked Hotel. It uses the previous day's Hotel as the locked first stop and today's Hotel as the final stop; activities and meals added afterward are inserted between those endpoints. The database accepts the previous-day Hotel only in position 1, while every other stop remains scoped to the active day and variant.
+
 Travel mode belongs to each adjacent leg:
 
 | Product mode                                             | Provider behavior |
@@ -131,6 +135,24 @@ X-Goog-FieldMask: routes.distanceMeters,routes.duration,routes.polyline.encodedP
 ```
 
 Requests use one origin and destination, `computeAlternativeRoutes: false`, no intermediate waypoints, no waypoint optimization, and no itinerary time.
+
+## Phase 5A route variants
+
+A Route Variant is a complete independent planning branch, not a Google road alternative. The planner stays at `/trips/[tripId]`; a valid `/trips/[tripId]?variant=[variantId]` selects that trip's active variant, while a missing or invalid query falls back to the single primary variant. Broken legacy data without exactly one primary returns an explicit error. The initial request loads the lightweight variant list plus only the active variant's complete workspace.
+
+The compact header control always pairs color with the variant name. Desktop/tablet landscape shows the textual **Primary** badge in the trigger and uses a dropdown plus dialogs. Tablet portrait/mobile uses a quieter 44px route-name trigger and bottom Sheet; the Sheet and management list retain the textual **Primary** label, and only one variant is editable. The route dropdown is portaled above the sticky Matrix header. A trip can contain at most three variants, enforced by a database trigger and every creation RPC.
+
+Variant lifecycle operations are owner-authorized database transactions:
+
+- Blank creation copies the source variant's day numbers and dates, intentionally clears day title/notes, and creates no itinerary items, saved Day route plans, or calculations.
+- Duplication creates new IDs for the variant, days, items, links, plans, stops, and legs. It remaps every relationship, preserves item metadata, place references, stop occurrences (including a duplicate first/final Hotel), and leg modes, but does not copy `day_route_calculations` or create `places` rows.
+- Rename/color updates may render optimistically but roll back on failure. Names are trimmed, limited to 80 characters, and unique case-insensitively within the trip; colors use validated six-digit hex values.
+- Setting primary atomically unsets the preceding primary and sets the target, with a deferred database invariant requiring exactly one primary at commit. The client updates the badge immediately with rollback, then reloads the authoritative list and announces the successful change.
+- Deletion rejects the primary and final variant, cascades through variant-owned days/items/links/routes/calculations, and leaves trip-level places intact.
+
+Planner and Route A caches use `['planner', tripId, variantId]`. Every item/day/route mutation carries and validates the active variant. Switching variants uses browser history and remounts the variant workspace, clearing matrix selection, selected items/Pins, map mode/viewport projection, panels, and unsaved Day route drafts. Creation, duplication, switching, rename/color, primary changes, and deletion never call Google Routes; calculation remains explicitly user-triggered.
+
+Variant UI is organized by responsibility: the coordinator owns navigation and open state, while desktop/mobile switching, create/duplicate/edit, identity rendering, and primary/delete management live in focused components. Planner clipboard/keyboard event handling, clear confirmation, and server-side item validation are likewise isolated from the workspace and mutation coordinators. Obsolete pre-variant loaders, copy aliases, placeholder provider contracts, and unused shared type/config modules were removed after a repository-wide reference audit.
 
 ## Local development
 
@@ -165,7 +187,7 @@ Add `GOOGLE_ROUTES_API_KEY` to the local server environment and the appropriate 
 
 ## Supabase setup and migration status
 
-The linked project used for Phase 4 was unambiguously identified as:
+The linked project used for Phase 5A was unambiguously identified as:
 
 - Project name: `trip-planner`
 - Project ref: `ewyefmnadibnampbeyzc`
@@ -176,10 +198,12 @@ The forward-only migrations are applied and present in the linked migration hist
 
 - `20260802130101_add_manual_day_route_plans.sql`
 - `20260802130920_harden_manual_day_route_plans.sql`
+- `20260803173303_route_variant_foundation.sql`
+- `20260803183257_allow_previous_day_hotel_route_start.sql`
 
-The first adds normalized plans, independent stop references, per-leg modes, calculation snapshots, RLS, and owner-authorized RPCs. The second adds foreign-key indexes and removes broad legacy function execution grants found by the security advisor. Each remote dry run showed only its expected pending migration before it was pushed. No linked reset or remote seed was used.
+The Phase 5A migration adds the three-variant and exactly-one-primary invariants, case-insensitive names, atomic lifecycle/duplication/day RPCs, active-variant Day route support, and narrow execution/table grants. The follow-up migration narrowly permits an immediately previous-day Hotel as Day route position 1 and adds atomic owner-authorized clearing for selected Matrix items. Its dry run showed only `20260803183257_allow_previous_day_hotel_route_start.sql`; it applied successfully, and the final linked list shows local/remote alignment. No linked reset or remote seed was used.
 
-Docker was unavailable during this phase, so the full local `supabase start` / local-only `supabase db reset` chain could not run. The migration was instead verified with linked dry runs, linked database lint, migration history, generated linked-schema types, direct table/grant/RLS inspection, and domain tests.
+Docker was unavailable during this phase, so the CLI database-test runner could not complete. The same rollback-wrapped 38-assertion pgTAP SQL completed through the linked database interface, including the previous-day Hotel and atomic-clear contracts, and follow-up queries confirmed zero fixture trips/users remained. Verification also used linked dry run/push/list, linked database lint, security advisors, generated linked-schema types, static migration contracts, and application domain tests.
 
 For future schema changes:
 
@@ -194,13 +218,13 @@ Validate the temporary type file before replacing `src/types/database.ts`. Never
 
 ### Route schema and authorization
 
-- `day_route_plans` has one primary-variant plan per day.
+- `day_route_plans` has at most one plan for each active-variant day.
 - `day_route_stops` stores independent positional item references and intentionally has no `(plan_id, item_id)` uniqueness constraint.
 - `day_route_legs` stores constrained user-facing per-leg modes and normalized adjacent stop references.
 - `day_route_calculations` stores the latest complete successful snapshot separately from desired configuration.
 - Day deletion cascades through plans, stops, legs, and calculations. Item deletion removes stop references and leaves the plan safely needing editing.
-- Composite foreign keys and RPC checks keep trip, day, variant, stops, and items in the same Route A ownership scope.
-- RLS is enabled on every route table. Authenticated trip members may read; only the authenticated trip owner may save, calculate, or clear Route A through narrowly granted RPCs.
+- Composite foreign keys and RPC checks keep trip, day, variant, stops, and items in the same active-variant ownership scope.
+- RLS is enabled on every route table. Authenticated trip members may read; only the authenticated trip owner may manage variants or save, calculate, or clear the active variant's route through narrowly granted RPCs.
 - Route tables are not granted to `anon`; direct authenticated writes are not granted. Security-definer RPCs use a fixed empty `search_path`, explicit authorization, and explicit execution grants. No service-role key is used.
 
 ## Quality checks
@@ -213,9 +237,44 @@ npm run format:check
 npm run build
 ```
 
-Automated coverage includes route-model contracts, RLS/grant/cascade migration contracts, category and duplicate validation, one-stage-per-City ordering, same-day neighboring-City restrictions, cross-day stay-boundary suppression, same-day City layers, restricted/default modes, partial straight-to-calculated geometry, visible per-leg metrics, per-leg mode mapping, Haversine and polyline geometry, narrow Google requests, no-route fallback, safe provider errors, full/partial cache reuse, stale/needs-edit state, nullable duration, server-key isolation, exact item/Pin selection, clipboard/copy behavior, and responsive Sheet/CSS contracts. Provider tests mock `fetch` and never call Google.
+The latest Phase 5A verification completed with `npm test` (57/57 tests), `npx tsc --noEmit`, `npm run lint`, `npm run format:check`, and `npm run build`. Linked database lint reported no schema errors. The rollback-wrapped database suite contains 38 assertions covering new IDs/mappings, shared place IDs, duplicate and previous-day Hotel occurrences, leg modes, omitted calculations, source isolation, maximum/unique/primary/delete/cross-trip rules, atomic cell clearing, grants, and RLS. Provider tests mock `fetch` and never call Google.
 
-## Authenticated manual smoke test
+Headless Chrome loaded the built unauthenticated application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`; therefore authenticated variant UI/interaction viewport testing is still part of the manual checklist below.
+
+## Phase 5A authenticated manual checklist
+
+This remains pending until a valid authenticated browser session is available.
+
+1. Open an existing trip and confirm Route A loads unchanged.
+2. Create blank Route B.
+3. Confirm Route B has the same day numbers/dates but no copied itinerary items or saved Day routes.
+4. Add an item to Route B and confirm Route A is unchanged.
+5. Duplicate Route A into Route C.
+6. Confirm Route C has copied days, items, and item links, all with independent IDs.
+7. Confirm copied items reuse the existing trip-level place IDs and no duplicate place rows were created.
+8. Confirm a copied saved Day route retains stop order, duplicate first/final Hotel behavior, and every per-leg mode.
+9. Confirm the copied route has no calculation snapshot, shows that calculation is required, and does not calculate automatically.
+10. Edit Route C and confirm Route A stays unchanged.
+11. Switch A/B/C using direct URLs, the selector, browser Back, and browser Forward.
+12. Refresh on Route B and confirm Route B remains active.
+13. Rename and recolor Route B; confirm its name remains visible beside color at every breakpoint.
+14. Set Route B primary.
+15. Remove the `variant` query and confirm Route B loads as the primary fallback.
+16. Confirm old Route A no longer shows the textual **Primary** badge.
+17. Confirm primary deletion is blocked.
+18. Confirm final-variant deletion is blocked (use a separate one-variant fixture trip).
+19. Delete a non-primary variant and confirm its days/items/links/plans/stops/legs/calculations are cleaned up.
+20. Confirm shared places used by another variant remain intact after deletion.
+21. Confirm no Google Routes request occurs during create, duplicate, switch, rename/color, set-primary, or delete.
+22. Confirm Overview and explicit Day route calculation still work independently in each active variant, without pins, stages, lines, summaries, selections, or drafts leaking across variants.
+23. Verify the authenticated planner at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932, including 44px mobile controls, the map peek/Sheet, the mobile variant Sheet, and one active editable variant only.
+24. Open the desktop route selector over the Matrix and confirm its menu remains above the sticky table header while scrolling.
+25. Set a different primary route and confirm the badge changes immediately, the success message appears, and a refresh/query-free URL keeps the new primary.
+26. On Day 2 or later, add distinct place-linked Hotels to the previous and active day. Confirm the shortcut stays disabled until both exist, then places the previous-day Hotel first and today's Hotel last without allowing another stop before the start.
+27. Select one occupied Matrix cell and then a multi-cell range; clear each using Backspace/Delete and the toolbar/menu action. Confirm the dialog reports the item count, cancellation preserves data, confirmation deletes all selected items atomically, and affected saved routes show **Needs editing**.
+28. At 390×844 and 430×932, confirm the top bar shows the compact route identity without duplicating the trip title or **Primary** badge, while the variant Sheet still shows names and textual primary state.
+
+## Phase 3–4 authenticated manual smoke test
 
 This checklist remains pending until valid test-account access and the required deployed/local Google configuration are available.
 
@@ -237,7 +296,7 @@ This checklist remains pending until valid test-account access and the required 
 16. Verify 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932, including the 100px mobile peek and 44px controls.
 17. Confirm no Routes key appears in browser source, props, serialized query data, or network payloads.
 18. With a second account, confirm member read behavior and owner-only configuration/calculation/clear behavior.
-19. Confirm there is no Route B/C UI, alternative chooser, schedule selector, time-order control, route preference, or waypoint optimization.
+19. Confirm there is no multi-variant map overlay, alternative chooser, schedule selector, time-order control, route preference, or waypoint optimization.
 20. Log out and confirm protected routes redirect to login.
 
 ## Planned phases
@@ -246,9 +305,12 @@ This checklist remains pending until valid test-account access and the required 
 2. ✅ Core itinerary workspace, editing interactions, and responsive layouts
 3. Google Maps and Places API (New) — implementation complete; authenticated smoke test pending
 4. Primary Route A Overview and optional manual Day routes — implementation/database/automated checks complete; authenticated smoke test pending
-5. Itinerary variants, Route B/C, and route comparison
+5. Route variants
+   - ✅ Phase 5A: active variant loading and lifecycle foundation
+   - Phase 5B: map comparison
+   - Phase 5C: decision summaries
 6. Public read-only sharing and export
 7. Travel research and along-the-way city recommendations
 8. Offline, conflict, deployment, and operational polish
 
-Each phase is independently implemented and verified. Phase 5 must not change Route A manual-order semantics or introduce Google alternative-route selection into Phase 4.
+Each phase is independently implemented and verified. Phase 5A preserves manual-order semantics and does not introduce Google alternative-route selection, multi-variant overlays, or comparison summaries.

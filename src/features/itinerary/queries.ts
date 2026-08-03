@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   createItineraryItem,
+  clearItineraryItems,
   deleteItineraryItem,
   loadPlannerWorkspace,
   updateItineraryItem,
@@ -15,9 +16,15 @@ import {
   removeTripDay,
 } from "@/features/itinerary/day-actions";
 import { scheduleKind } from "@/features/itinerary/mutation-helpers";
-import { removeItem, replaceItem, requireData } from "@/features/itinerary/query-cache";
+import {
+  removeItem,
+  removeItems,
+  replaceItem,
+  requireData,
+} from "@/features/itinerary/query-cache";
 import type {
   CopyItineraryItemsInput,
+  ClearItineraryItemsInput,
   CreateItineraryItemInput,
   DeleteItineraryItemInput,
   InsertTripDayInput,
@@ -27,24 +34,29 @@ import type {
 } from "@/features/itinerary/schema";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 
-export const plannerQueryKey = (tripId: string) => ["planner", tripId] as const;
+export const plannerQueryKey = (tripId: string, variantId: string) =>
+  ["planner", tripId, variantId] as const;
 
-export function usePlannerWorkspace(tripId: string, initialData?: PlannerWorkspace) {
+export function usePlannerWorkspace(
+  tripId: string,
+  variantId: string,
+  initialData?: PlannerWorkspace,
+) {
   return useQuery({
     initialData,
-    queryFn: async () => requireData(await loadPlannerWorkspace(tripId)),
-    queryKey: plannerQueryKey(tripId),
+    queryFn: async () => requireData(await loadPlannerWorkspace(tripId, variantId)),
+    queryKey: plannerQueryKey(tripId, variantId),
   });
 }
 
-export function useCreateItineraryItem(tripId: string) {
+export function useCreateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateItineraryItemInput) =>
       requireData(await createItineraryItem(input)),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const day = previous?.days.find(({ id }) => id === input.dayId);
       const optimistic: ItineraryItem = {
         booking_url: input.links?.[0]?.url ?? input.bookingUrl ?? null,
@@ -74,32 +86,32 @@ export function useCreateItineraryItem(tripId: string) {
         updated_at: new Date().toISOString(),
         variant_id: input.variantId,
       };
-      client.setQueryData(plannerQueryKey(tripId), replaceItem(previous, optimistic));
+      client.setQueryData(plannerQueryKey(tripId, variantId), replaceItem(previous, optimistic));
       return { optimisticId: optimistic.id, previous };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (item, _input, context) =>
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(removeItem(current, context?.optimisticId ?? ""), item),
       ),
   });
 }
 
-export function useUpdateItineraryItem(tripId: string) {
+export function useUpdateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpdateItineraryItemInput) =>
       requireData(await updateItineraryItem(input)),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const existing = previous?.days
         .flatMap(({ items }) => items)
         .find(({ id }) => id === input.id);
       if (existing)
         client.setQueryData(
-          plannerQueryKey(tripId),
+          plannerQueryKey(tripId, variantId),
           replaceItem(previous, {
             ...existing,
             ...(input.links !== undefined && {
@@ -141,54 +153,71 @@ export function useUpdateItineraryItem(tripId: string) {
       return { previous };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (item) =>
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(current, item),
       ),
   });
 }
 
-export function useDeleteItineraryItem(tripId: string) {
+export function useDeleteItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: DeleteItineraryItemInput) =>
       requireData(await deleteItineraryItem(input)),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
-      client.setQueryData(plannerQueryKey(tripId), removeItem(previous, input.id));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      client.setQueryData(plannerQueryKey(tripId, variantId), removeItem(previous, input.id));
       return { previous };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
   });
 }
 
-export function useInsertTripDay(tripId: string) {
+export function useClearItineraryItems(tripId: string, variantId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ClearItineraryItemsInput) =>
+      requireData(await clearItineraryItems(input)),
+    onMutate: async (input) => {
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      client.setQueryData(plannerQueryKey(tripId, variantId), removeItems(previous, input.itemIds));
+      return { previous };
+    },
+    onError: (_error, _input, context) =>
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
+    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) }),
+  });
+}
+
+export function useInsertTripDay(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: InsertTripDayInput) => requireData(await insertTripDay(input)),
-    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId) }),
+    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) }),
   });
 }
 
-export function useRemoveTripDay(tripId: string) {
+export function useRemoveTripDay(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: RemoveTripDayInput) => requireData(await removeTripDay(input)),
-    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId) }),
+    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) }),
   });
 }
 
-export function useCopyItineraryItems(tripId: string) {
+export function useCopyItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: CopyItineraryItemsInput) =>
       requireData(await copyItineraryItems(input)),
     onMutate: async (input) => {
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const sources = input.sourceItemIds
         .map((id) => previous?.days.flatMap(({ items }) => items).find((item) => item.id === id))
         .filter((item): item is ItineraryItem => Boolean(item));
@@ -204,15 +233,15 @@ export function useCopyItineraryItems(tripId: string) {
         sort_order: nextOrder + index + 1,
         updated_at: new Date().toISOString(),
       }));
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         optimistic.reduce((workspace, item) => replaceItem(workspace, item), current),
       );
       return { optimisticIds: optimistic.map(({ id }) => id), previous, sources };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (items, input, context) =>
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         items.reduce(
           (workspace, item) => {
             const source = context?.sources.find(
@@ -229,16 +258,16 @@ export function useCopyItineraryItems(tripId: string) {
   });
 }
 
-export function useReorderItineraryItems(tripId: string) {
+export function useReorderItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: ReorderItineraryItemsInput) =>
       requireData(await reorderItineraryItems(input)),
     onMutate: async (input) => {
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId) });
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId));
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const orders = new Map(input.items.map(({ id, sortOrder }) => [id, sortOrder]));
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         current
           ? {
               ...current,
@@ -261,10 +290,10 @@ export function useReorderItineraryItems(tripId: string) {
       return { previous };
     },
     onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId), context?.previous),
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (items) =>
       items.forEach((item) =>
-        client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId), (current) =>
+        client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
           replaceItem(current, item),
         ),
       ),

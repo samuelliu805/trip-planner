@@ -30,14 +30,24 @@ export function validateDayRouteDraft(draft: DayRouteDraft): string | null {
   }
 
   if (
+    draft.stops.some((stop) => stop.tripId !== draft.tripId || stop.variantId !== draft.variantId)
+  ) {
+    return "Every route stop must belong to the active route variant.";
+  }
+
+  if (
     draft.stops.some(
-      (stop) =>
-        stop.tripId !== draft.tripId ||
-        stop.variantId !== draft.variantId ||
-        stop.dayId !== draft.dayId,
+      (stop, index) =>
+        stop.dayId !== draft.dayId &&
+        !(
+          index === 0 &&
+          draft.previousDayId &&
+          stop.dayId === draft.previousDayId &&
+          stop.type === "hotel"
+        ),
     )
   ) {
-    return "Every route stop must belong to the selected day and primary Route A.";
+    return "Route stops must belong to this day, except the first stop may be the previous day Hotel.";
   }
 
   if (draft.stops.some((stop) => !isEligibleRouteStopType(stop.type))) {

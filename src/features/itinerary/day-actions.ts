@@ -30,9 +30,10 @@ export async function insertTripDay(
   const parsed = insertTripDaySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("insert_trip_day", {
+  const { data, error } = await supabase.rpc("insert_variant_day", {
     before_day_number: parsed.data.beforeDayNumber,
     target_trip_id: parsed.data.tripId,
+    target_variant_id: parsed.data.variantId,
   });
   if (error || !data)
     return { error: mutationError(error?.message ?? "The day could not be inserted.") };
@@ -50,11 +51,12 @@ export async function removeTripDay(
     .from("itinerary_items")
     .select("id")
     .eq("trip_id", parsed.data.tripId)
+    .eq("variant_id", parsed.data.variantId)
     .eq("day_id", parsed.data.dayId)
     .eq("type", "location");
   if (cityReadError) return { error: mutationError(cityReadError.message) };
   if (removedCities?.length) {
-    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
     if (workspaceResult.error || !workspaceResult.data)
       return { error: workspaceResult.error ?? "The City order could not be checked." };
     if (
@@ -65,9 +67,10 @@ export async function removeTripDay(
     )
       return { error: neighboringCityError() };
   }
-  const { data, error } = await supabase.rpc("remove_trip_day", {
+  const { data, error } = await supabase.rpc("remove_variant_day", {
     target_day_id: parsed.data.dayId,
     target_trip_id: parsed.data.tripId,
+    target_variant_id: parsed.data.variantId,
   });
   if (error || !data)
     return { error: mutationError(error?.message ?? "The day could not be removed.") };
@@ -87,6 +90,7 @@ export async function reorderItineraryItems(
     .from("itinerary_items")
     .select("id, sort_order")
     .eq("trip_id", parsed.data.tripId)
+    .eq("variant_id", parsed.data.variantId)
     .eq("day_id", parsed.data.dayId)
     .in("id", ids);
   if (readError || current?.length !== ids.length)
@@ -96,7 +100,7 @@ export async function reorderItineraryItems(
       ),
     };
 
-  const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+  const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
   const reorderDay = workspaceResult.data?.days.find(({ id }) => id === parsed.data.dayId);
   if (workspaceResult.error || !workspaceResult.data || !reorderDay)
     return { error: workspaceResult.error ?? "The City order could not be checked." };
@@ -124,6 +128,7 @@ export async function reorderItineraryItems(
       .update({ sort_order: sortOrder })
       .eq("id", id)
       .eq("trip_id", parsed.data.tripId)
+      .eq("variant_id", parsed.data.variantId)
       .eq("day_id", parsed.data.dayId)
       .select("*")
       .maybeSingle();
@@ -138,7 +143,8 @@ export async function reorderItineraryItems(
               .from("itinerary_items")
               .update({ sort_order: originalOrders.get(data!.id) })
               .eq("id", data!.id)
-              .eq("trip_id", parsed.data.tripId),
+              .eq("trip_id", parsed.data.tripId)
+              .eq("variant_id", parsed.data.variantId),
           ),
       );
       return {
@@ -168,11 +174,13 @@ export async function copyItineraryItems(
         .from("itinerary_items")
         .select("*, links:itinerary_item_links(id, item_id, label, url, sort_order)")
         .eq("trip_id", parsed.data.tripId)
+        .eq("variant_id", parsed.data.variantId)
         .in("id", parsed.data.sourceItemIds),
       supabase
         .from("trip_days")
         .select("id, variant_id")
         .eq("id", parsed.data.targetDayId)
+        .eq("variant_id", parsed.data.variantId)
         .maybeSingle(),
     ]);
   if (
@@ -190,7 +198,7 @@ export async function copyItineraryItems(
     };
   }
   if (sources.some(({ variant_id }) => variant_id !== targetDay.variant_id))
-    return { error: "Items can only be copied within Route A." };
+    return { error: "Items can only be copied within the active route variant." };
 
   const { data: lastItem, error: orderError } = await supabase
     .from("itinerary_items")
@@ -215,7 +223,7 @@ export async function copyItineraryItems(
   if (copiedCityIndexes.length) {
     if (parsed.data.preservePlace === false)
       return { error: "City items must keep their map place when copied." };
-    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId);
+    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
     if (workspaceResult.error || !workspaceResult.data)
       return { error: workspaceResult.error ?? "The City order could not be checked." };
     const itemsById = new Map(
@@ -271,16 +279,4 @@ export async function copyItineraryItems(
   return {
     data: data.map((item, index) => ({ ...item, links: orderedSources[index].links ?? [] })),
   };
-}
-
-export async function copyItemToDay(
-  input: CopyItineraryItemsInput,
-): Promise<MutationResult<ItineraryItem[]>> {
-  return copyItineraryItems(input);
-}
-
-export async function copyPreviousDaySelectedValues(
-  input: CopyItineraryItemsInput,
-): Promise<MutationResult<ItineraryItem[]>> {
-  return copyItineraryItems(input);
 }
