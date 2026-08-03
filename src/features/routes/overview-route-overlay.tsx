@@ -56,46 +56,56 @@ export function OverviewRouteOverlay({
   );
 
   return (
-    <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
-      {selectedPlace ? <div className="border-b px-3 py-2">{selectedPlace}</div> : null}
-      <div className="px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <Route className="size-4 shrink-0 text-primary" />
-          <div className="mr-auto min-w-0">
-            <p className="truncate text-sm font-semibold">Overview route</p>
-            <p className="text-xs text-muted-foreground">
-              {route.segments.length} City{" "}
-              {route.segments.length === 1 ? "connection" : "connections"}
-              {calculatedCount
-                ? ` · ${calculatedCount}/${route.segments.length} calculated`
-                : " · Straight preview"}
-            </p>
+    <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[calc(100%-4.5rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      {selectedPlace ? <div className="shrink-0 border-b px-3 py-2">{selectedPlace}</div> : null}
+      <div className="flex min-h-0 flex-1 flex-col px-3 py-2">
+        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <div className="flex min-w-0 items-center gap-2">
+            <Route className="size-4 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">Overview route</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {route.segments.length} City{" "}
+                {route.segments.length === 1 ? "connection" : "connections"}
+                {calculatedCount
+                  ? ` · ${calculatedCount}/${route.segments.length} calculated`
+                  : " · Preview only"}
+              </p>
+            </div>
           </div>
           <Button
+            className={
+              route.editing
+                ? "col-start-2 row-start-1"
+                : "col-span-2 w-full sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:w-auto"
+            }
             onClick={() => route.setEditing(!route.editing)}
             size="sm"
             type="button"
-            variant={route.editing ? "ghost" : hasPendingCalculation ? "default" : "outline"}
+            variant={route.editing ? "outline" : hasPendingCalculation ? "default" : "outline"}
           >
-            {route.editing
-              ? "Collapse"
-              : hasPendingCalculation
-                ? "Calculate route"
-                : "Route details"}
+            {route.editing ? "Done" : hasPendingCalculation ? "Set up route" : "Route details"}
           </Button>
-          <RouteIconButton label="Close Overview panel" onClick={onClose} title="Close panel">
-            <X className="size-4" />
-          </RouteIconButton>
+          {!route.editing ? (
+            <RouteIconButton
+              className="col-start-2 row-start-1 sm:col-start-3 sm:row-start-1"
+              label="Close Overview panel"
+              onClick={onClose}
+              title="Close panel"
+            >
+              <X className="size-4" />
+            </RouteIconButton>
+          ) : null}
         </div>
 
         {route.editing ? (
-          <div className="mt-2 border-t pt-2">
-            <p className="mb-2 text-[11px] leading-4 text-muted-foreground">
-              Defaults come from the arrival day&apos;s Transport items and distance. Set any
-              connection to Not set to keep its straight preview.
+          <div className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2">
+            <p className="mb-2 shrink-0 text-xs leading-4 text-muted-foreground sm:text-[11px]">
+              Choose how you&apos;ll travel between each pair of cities. Leave a connection as Not
+              set to keep a simple preview line.
             </p>
             <ol
-              className="max-h-56 space-y-2 overflow-y-auto pr-1"
+              className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 sm:max-h-56"
               aria-label="Overview route connections"
             >
               {route.segments.map((segment, index) => {
@@ -107,7 +117,7 @@ export function OverviewRouteOverlay({
                       ? `${leg.estimateKind === "transit_current_service" ? "Approx. " : ""}${formatDuration(leg.durationSeconds)}`
                       : segment.mode
                         ? "Ready to calculate"
-                        : "Straight preview";
+                        : "Preview line";
                 return (
                   <li
                     className="grid grid-cols-[minmax(0,1fr)_minmax(8.5rem,0.75fr)] items-center gap-2 rounded-lg border px-2.5 py-2"
@@ -139,7 +149,7 @@ export function OverviewRouteOverlay({
                         <SelectValue placeholder="Select transport" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={notSetValue}>Not set · straight line</SelectItem>
+                        <SelectItem value={notSetValue}>Not set · preview line</SelectItem>
                         {overviewRouteModes.map((mode) => (
                           <SelectItem key={mode} value={mode}>
                             {overviewRouteModeLabels[mode]}
@@ -151,7 +161,7 @@ export function OverviewRouteOverlay({
                 );
               })}
             </ol>
-            <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <div className="mt-3 flex shrink-0 flex-wrap justify-end gap-2">
               {hasConfiguration ? (
                 <RouteIconButton
                   disabled={route.pending}
