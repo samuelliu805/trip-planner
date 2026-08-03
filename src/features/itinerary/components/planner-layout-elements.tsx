@@ -135,11 +135,11 @@ export function PlannerMapPane({
 export function PlannerGridHeader() {
   return (
     <div
-      className="sticky top-0 z-30 flex h-9 border-b bg-muted/95 text-[11px] font-semibold text-muted-foreground"
+      className="sticky top-0 z-[70] flex h-10 border-b bg-muted/95 text-xs font-semibold text-muted-foreground sm:h-9 sm:text-[11px]"
       role="row"
     >
       <div
-        className="sticky left-0 z-40 flex w-24 shrink-0 items-center border-r bg-muted px-2"
+        className="sticky left-0 top-0 z-50 flex w-24 shrink-0 items-center border-r bg-muted px-2"
         role="columnheader"
       >
         Date

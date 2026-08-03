@@ -222,12 +222,13 @@ body {
     box-shadow: 1px 0 0 var(--border);
     left: 0;
     transform: translateZ(0);
-    width: 5rem;
+    width: 5.5rem;
     z-index: 50;
   }
 
   .planner-matrix [role="row"] > [role="columnheader"]:first-child {
     background-color: var(--muted);
+    top: 0;
     z-index: 60;
   }
 }

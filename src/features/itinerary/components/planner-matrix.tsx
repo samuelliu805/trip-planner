@@ -153,10 +153,14 @@ export function PlannerMatrix({
           <PlannerGridHeader />
           {workspace.days.map((day, row) => (
             <div className="contents" key={day.id}>
-              <div className="flex min-h-24 border-b" role="row" aria-rowindex={row + 2}>
+              <div
+                className="flex min-h-16 border-b sm:min-h-24"
+                role="row"
+                aria-rowindex={row + 2}
+              >
                 <div
                   aria-selected={selectedDayRow === row}
-                  className={`sticky left-0 z-20 w-24 shrink-0 cursor-pointer border-r px-2 py-2 font-mono text-[11px] ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                  className={`sticky left-0 z-20 w-24 shrink-0 cursor-pointer border-r px-2 py-1 font-mono text-xs sm:py-2 sm:text-[11px] ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
                   onClick={() => selectDay(row)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -167,15 +171,21 @@ export function PlannerMatrix({
                   role="rowheader"
                   tabIndex={0}
                 >
-                  <span className="block font-sans text-xs font-semibold sm:hidden">
+                  <span className="block font-sans text-sm font-semibold leading-4 sm:hidden">
                     Day {day.day_number}
                   </span>
-                  <span className="mt-1 block text-xs font-medium sm:mt-0">
+                  <span className="mt-0.5 block text-sm font-medium leading-4 sm:mt-0 sm:text-xs sm:leading-normal">
                     {day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}
                   </span>
-                  <span className="mt-0.5 block font-sans text-[10px] text-muted-foreground">
-                    {day.date ? format(parseISO(day.date), "EEE") : "Add dates later"}
-                  </span>
+                  {day.date ? (
+                    <span className="block font-sans text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal">
+                      {format(parseISO(day.date), "EEE")}
+                    </span>
+                  ) : (
+                    <span className="mt-0.5 hidden font-sans text-[10px] text-muted-foreground sm:block">
+                      Add dates later
+                    </span>
+                  )}
                   <DayActions
                     day={day}
                     isOnlyDay={workspace.days.length === 1}

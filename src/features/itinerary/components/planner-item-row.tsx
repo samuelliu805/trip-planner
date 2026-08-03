@@ -88,7 +88,7 @@ export function PlannerItemRow({
       className={`group/item flex min-w-0 items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
     >
       <button
-        className="min-w-0 flex-1 rounded px-1.5 py-1 text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-w-0 flex-1 flex-col justify-center rounded px-1.5 py-1 text-left text-sm leading-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:block sm:text-xs sm:leading-normal"
         data-edit-item={item.id}
         aria-pressed={selected}
         onClick={(event) => {
@@ -117,14 +117,18 @@ export function PlannerItemRow({
         type="button"
       >
         <span className="flex min-w-0 items-center gap-1.5">
-          {ModeIcon ? <ModeIcon className="size-3.5 shrink-0 text-muted-foreground" /> : null}
+          {ModeIcon ? (
+            <ModeIcon className="size-4 shrink-0 text-muted-foreground sm:size-3.5" />
+          ) : null}
           {start ? (
-            <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{start}</span>
+            <span className="shrink-0 font-mono text-xs text-muted-foreground sm:text-[10px]">
+              {start}
+            </span>
           ) : null}
           <span className="truncate font-medium">{title}</span>
         </span>
         {carSummary ? (
-          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+          <span className="block truncate text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal">
             {carSummary}
           </span>
         ) : null}

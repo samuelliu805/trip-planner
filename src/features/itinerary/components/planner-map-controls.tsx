@@ -40,56 +40,65 @@ export function PlannerMapControls({
         </button>
       ) : null}
       {!compact ? (
-        <div
-          aria-label="Map level"
-          className="absolute left-2 top-2 z-20 flex rounded-lg border bg-background/95 p-0.5 shadow-sm backdrop-blur"
-        >
-          {(["overview", "day_route"] as const).map((mode) => (
-            <button
-              aria-pressed={mapMode === mode}
-              className={`min-h-11 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mapMode === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-              key={mode}
-              onClick={() => onMapModeChange(mode)}
-              type="button"
+        <div className="absolute left-2 top-2 z-20 max-w-[calc(100%-1rem)] overflow-hidden rounded-lg border bg-background/95 shadow-sm backdrop-blur">
+          <div aria-label="Map scope" className="flex p-0.5" role="group">
+            {(
+              [
+                { description: "Show the whole trip", label: "Whole trip", value: "overview" },
+                { description: "Show the selected day", label: "This day", value: "day_route" },
+              ] as const
+            ).map(({ description, label, value }) => (
+              <button
+                aria-label={description}
+                aria-pressed={mapMode === value}
+                className={`min-h-11 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mapMode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                key={value}
+                onClick={() => onMapModeChange(value)}
+                title={description}
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {mapMode === "day_route" && dayCityLayerAvailable ? (
+            <div
+              aria-label="Day map content"
+              className="flex overflow-x-auto border-t p-0.5"
+              role="group"
             >
-              {mode === "overview" ? "Overview" : "Day route"}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      {!compact && mapMode === "day_route" && dayCityLayerAvailable ? (
-        <div
-          aria-label="Day map layers"
-          className="absolute left-2 top-14 z-20 flex max-w-[calc(100%-1rem)] overflow-x-auto rounded-lg border bg-background/95 p-0.5 shadow-sm backdrop-blur"
-        >
-          {(
-            [
-              { label: "All", value: "all" },
-              { label: "City transfers", value: "cities" },
-              { label: "Day stops", value: "places" },
-            ] as const
-          ).map(({ label, value }) => (
-            <button
-              aria-pressed={dayMapLayer === value}
-              className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dayMapLayer === value ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/70"}`}
-              key={value}
-              onClick={() => onDayMapLayerChange(value)}
-              type="button"
-            >
-              {value === "all" ? (
-                <span aria-hidden="true" className="flex gap-0.5">
-                  <span className="size-2 rounded-full bg-blue-600" />
-                  <span className="size-2 rounded-full bg-green-800" />
-                </span>
-              ) : (
-                <span
-                  aria-hidden="true"
-                  className={`size-2 rounded-full ${value === "cities" ? "bg-blue-600" : "bg-green-800"}`}
-                />
-              )}
-              {label}
-            </button>
-          ))}
+              {(
+                [
+                  { description: "Show cities and places", label: "All items", value: "all" },
+                  { description: "Show cities for this day", label: "Cities", value: "cities" },
+                  { description: "Show places for this day", label: "Places", value: "places" },
+                ] as const
+              ).map(({ description, label, value }) => (
+                <button
+                  aria-label={description}
+                  aria-pressed={dayMapLayer === value}
+                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dayMapLayer === value ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/70"}`}
+                  key={value}
+                  onClick={() => onDayMapLayerChange(value)}
+                  title={description}
+                  type="button"
+                >
+                  {value === "all" ? (
+                    <span aria-hidden="true" className="flex gap-0.5">
+                      <span className="size-2 rounded-full bg-blue-600" />
+                      <span className="size-2 rounded-full bg-green-800" />
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className={`size-2 rounded-full ${value === "cities" ? "bg-blue-600" : "bg-green-800"}`}
+                    />
+                  )}
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
       {!compact && panelDismissed ? (
