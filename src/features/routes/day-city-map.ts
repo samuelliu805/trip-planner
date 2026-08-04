@@ -1,5 +1,5 @@
 import type { PlannerDay } from "@/features/itinerary/types";
-import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 
 import { buildOverviewRouteLines, type OverviewStage } from "./overview.ts";

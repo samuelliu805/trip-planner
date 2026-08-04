@@ -1,9 +1,13 @@
-import type { PlannerMapLine } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine } from "@/features/maps/planner-map-model";
 import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { PlannerDay } from "@/features/itinerary/types";
 
-import { neighboringCityConflict, orderedCityOccurrences } from "./city-order.ts";
+import {
+  neighboringCityConflict,
+  orderedCityOccurrences,
+  type CityOccurrence,
+} from "./city-order.ts";
 
 export type OverviewStageEntry = {
   dayLabel: string;
@@ -25,30 +29,41 @@ export type OverviewStage = {
   position: number;
 };
 
+export function deriveOverviewStagesFromOccurrences(
+  occurrences: CityOccurrence[],
+  stageId: (entry: CityOccurrence, position: number) => string = (entry, position) =>
+    `overview:${position}:${entry.itemId}`,
+): OverviewStage[] {
+  return occurrences.map((entry, index) => {
+    const position = index + 1;
+    return {
+      address: entry.address,
+      dayRangeLabel: entry.dayLabel,
+      entries: [
+        {
+          dayLabel: entry.dayLabel,
+          dayNumber: entry.dayNumber,
+          itemId: entry.itemId,
+          title: entry.title,
+        },
+      ],
+      firstDayLabel: entry.dayLabel,
+      id: stageId(entry, position),
+      latitude: entry.latitude,
+      longitude: entry.longitude,
+      placeId: entry.placeId,
+      placeKey: entry.placeKey,
+      position,
+    };
+  });
+}
+
 /**
  * Builds the lightweight trip overview from explicit City rows only. Missing days
  * are intentionally ignored; no place or intermediate stage is inferred.
  */
 export function deriveOverviewStages(days: PlannerDay[]): OverviewStage[] {
-  return orderedCityOccurrences(days).map((entry, index) => ({
-    address: entry.address,
-    dayRangeLabel: entry.dayLabel,
-    entries: [
-      {
-        dayLabel: entry.dayLabel,
-        dayNumber: entry.dayNumber,
-        itemId: entry.itemId,
-        title: entry.title,
-      },
-    ],
-    firstDayLabel: entry.dayLabel,
-    id: `overview:${index + 1}:${entry.itemId}`,
-    latitude: entry.latitude,
-    longitude: entry.longitude,
-    placeId: entry.placeId,
-    placeKey: entry.placeKey,
-    position: index + 1,
-  }));
+  return deriveOverviewStagesFromOccurrences(orderedCityOccurrences(days));
 }
 
 export function neighboringOverviewCityConflict(stages: OverviewStage[]) {

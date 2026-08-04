@@ -1,12 +1,14 @@
 "use client";
 
-import { Maximize2, PanelBottomOpen } from "lucide-react";
+import { GitCompareArrows, Maximize2, PanelBottomOpen } from "lucide-react";
+import { useId } from "react";
 
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerMapControls({
   compact,
+  comparisonBlockingReason,
   dayCityLayerAvailable,
   dayMapLayer,
   mapMode,
@@ -17,6 +19,7 @@ export function PlannerMapControls({
   panelDismissed,
 }: {
   compact: boolean;
+  comparisonBlockingReason?: string;
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
   mapMode: PlannerMapMode;
@@ -26,6 +29,7 @@ export function PlannerMapControls({
   onPanelOpen: () => void;
   panelDismissed: boolean;
 }) {
+  const comparisonReasonId = useId();
   return (
     <>
       {onExpand ? (
@@ -46,21 +50,40 @@ export function PlannerMapControls({
               [
                 { description: "Show the whole trip", label: "Whole trip", value: "overview" },
                 { description: "Show the selected day", label: "This day", value: "day_route" },
+                {
+                  description:
+                    comparisonBlockingReason ?? "Compare route variants by their City stages",
+                  disabled: Boolean(comparisonBlockingReason),
+                  label: "Compare",
+                  value: "comparison",
+                },
               ] as const
-            ).map(({ description, label, value }) => (
-              <button
-                aria-label={description}
-                aria-pressed={mapMode === value}
-                className={`min-h-11 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${mapMode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-                key={value}
-                onClick={() => onMapModeChange(value)}
-                title={description}
-                type="button"
-              >
-                {label}
-              </button>
-            ))}
+            ).map(({ description, label, value, ...item }) => {
+              const disabled = "disabled" in item && item.disabled;
+              return (
+                <span className="flex" key={value} title={disabled ? description : undefined}>
+                  <button
+                    aria-describedby={disabled ? comparisonReasonId : undefined}
+                    aria-label={description}
+                    aria-pressed={mapMode === value}
+                    className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                    disabled={disabled}
+                    onClick={() => onMapModeChange(value)}
+                    title={description}
+                    type="button"
+                  >
+                    {value === "comparison" ? <GitCompareArrows className="size-3.5" /> : null}
+                    {label}
+                  </button>
+                </span>
+              );
+            })}
           </div>
+          {comparisonBlockingReason ? (
+            <span className="sr-only" id={comparisonReasonId}>
+              {comparisonBlockingReason}
+            </span>
+          ) : null}
           {mapMode === "day_route" && dayCityLayerAvailable ? (
             <div
               aria-label="Day map content"

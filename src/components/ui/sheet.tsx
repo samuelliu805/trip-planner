@@ -18,10 +18,10 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: "right" | "bottom" }) {
   return (
     <SheetPrimitive.Portal>
-      <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out" />
+      <SheetPrimitive.Overlay className="fixed inset-0 z-50 bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none" />
       <SheetPrimitive.Content
         className={cn(
-          "fixed z-50 flex flex-col border bg-background shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "fixed z-50 flex flex-col border bg-background shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none",
           side === "right"
             ? "inset-y-0 right-0 w-full max-w-md border-l data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right"
             : "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-xl border-t data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
@@ -30,7 +30,7 @@ function SheetContent({
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <SheetPrimitive.Close className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <X className="size-4" aria-hidden="true" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>

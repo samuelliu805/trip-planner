@@ -71,6 +71,7 @@ import {
 } from "./schema.ts";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 import { resolveActiveVariant, variantHref } from "../variants/active.ts";
+import "../variants/comparison.test.ts";
 
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
@@ -1592,7 +1593,9 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   let routeUi = await readFile(new URL("../routes/day-route-overlay.tsx", import.meta.url), "utf8");
   routeUi += await readFile(new URL("../routes/day-route-editor.tsx", import.meta.url), "utf8");
   routeUi += await readFile(new URL("../routes/route-icon-button.tsx", import.meta.url), "utf8");
-  const canvas = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  let canvas = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  canvas += await readFile(new URL("../maps/planner-map-marker.tsx", import.meta.url), "utf8");
+  canvas += await readFile(new URL("../maps/planner-map-line.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
   assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
@@ -1679,6 +1682,8 @@ test("Routes server key stays in the server-only provider and out of client modu
       "./hooks/use-planner-map.ts",
       "./components/planner-map-shell.tsx",
       "../maps/planner-map-canvas.tsx",
+      "../maps/planner-map-line.tsx",
+      "../maps/planner-map-marker.tsx",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
   assert.match(serverProvider, /import "server-only"/);
@@ -2043,6 +2048,7 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(styles, /planner-editor-sheet input,[\s\S]*font-size: 16px/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
+  assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
   assert.match(
     styles,
     /\.map-panel-reopen \{\s*bottom: max\(2\.75rem, calc\(env\(safe-area-inset-bottom\)/,
@@ -2186,7 +2192,8 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
     new URL("./components/planner-workspace.tsx", import.meta.url),
     "utf8",
   );
-  const map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  let map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
+  map += await readFile(new URL("../maps/planner-map-marker.tsx", import.meta.url), "utf8");
   let mapShell = await readFile(
     new URL("./components/planner-map-shell.tsx", import.meta.url),
     "utf8",

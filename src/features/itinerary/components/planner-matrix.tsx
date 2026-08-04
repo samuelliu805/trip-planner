@@ -18,12 +18,18 @@ import {
 import { selectionContains, type GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
-import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
+import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 
 export function PlannerMatrix({
+  compactMapEmptyState,
+  compactMapLines,
+  compactMapMarkers,
+  compactMapViewportKey,
+  comparison,
   containerRef,
   dayCityLayerAvailable,
   dayMapLayer,
@@ -42,6 +48,8 @@ export function PlannerMatrix({
   mapMarkers,
   moveItem,
   onMapExpand,
+  onComparisonExit,
+  onComparisonSheetOpen,
   onDayMapLayerChange,
   onEditMapItem,
   onMarkerClick,
@@ -71,6 +79,11 @@ export function PlannerMatrix({
   visibleSelectionBounds,
   workspace,
 }: {
+  compactMapEmptyState?: { message: string; title: string };
+  compactMapLines: PlannerMapLine[];
+  compactMapMarkers: PlannerMapMarker[];
+  compactMapViewportKey?: string;
+  comparison: VariantComparisonUi;
   containerRef: MutableRefObject<HTMLDivElement | null>;
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
@@ -101,6 +114,8 @@ export function PlannerMatrix({
     direction: -1 | 1,
   ) => Promise<void>;
   onMapExpand: () => void;
+  onComparisonExit: () => void;
+  onComparisonSheetOpen: () => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditMapItem: (itemId: string) => void;
   onMarkerClick: (id?: string) => void;
@@ -289,6 +304,11 @@ export function PlannerMatrix({
       </section>
       <PlannerDivider onResize={startResize} onSplitChange={setSplit} split={split} />
       <PlannerMapPane
+        compactEmptyState={compactMapEmptyState}
+        compactLines={compactMapLines}
+        compactMarkers={compactMapMarkers}
+        compactViewportKey={compactMapViewportKey}
+        comparison={comparison}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
         dayRoute={dayRoute}
@@ -297,6 +317,8 @@ export function PlannerMatrix({
         mapMode={mapMode}
         markers={mapMarkers}
         onExpand={() => onMapExpand()}
+        onComparisonExit={onComparisonExit}
+        onComparisonSheetOpen={onComparisonSheetOpen}
         onDayMapLayerChange={onDayMapLayerChange}
         onEditMapItem={onEditMapItem}
         onMarkerClick={onMarkerClick}

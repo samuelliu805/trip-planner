@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getPlannerVariants } from "@/features/itinerary/data";
 import { createClient } from "@/lib/supabase/server";
 
+import { getVariantComparison } from "./comparison-data";
+
 import {
   createRouteVariantSchema,
   duplicateRouteVariantSchema,
@@ -60,6 +62,10 @@ async function mutationResult(
 
 export async function loadRouteVariants(tripId: string) {
   return getPlannerVariants(tripId);
+}
+
+export async function loadVariantComparison(tripId: string) {
+  return getVariantComparison(tripId);
 }
 
 export async function createRouteVariant(

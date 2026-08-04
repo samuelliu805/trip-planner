@@ -21,6 +21,33 @@ export type CityOrderCandidate = Pick<
   "dayId" | "itemId" | "placeKey" | "sortOrder" | "title"
 >;
 
+export type OrderedCitySourceDay = {
+  cities: Array<{
+    address?: string;
+    itemId: string;
+    latitude: number;
+    longitude: number;
+    placeId: string;
+    placeKey: string;
+    sortOrder: number;
+    title: string;
+  }>;
+  dayId: string;
+  dayLabel: string;
+  dayNumber: number;
+};
+
+export function isValidMapCoordinate(latitude: number, longitude: number) {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
 export function cityPlaceKey(item: ItineraryItem): string | null {
   if (!item.place) return null;
   return item.place.providerPlaceId
@@ -39,32 +66,57 @@ export function cityInputPlaceKey(
   return linkedItem ? cityPlaceKey(linkedItem) : `place:${placeId}`;
 }
 
-export function orderedCityOccurrences(days: PlannerDay[]): CityOccurrence[] {
+export function orderedCityOccurrencesFromDays(days: OrderedCitySourceDay[]): CityOccurrence[] {
   return [...days]
-    .sort((a, b) => a.day_number - b.day_number)
+    .sort((a, b) => a.dayNumber - b.dayNumber || a.dayId.localeCompare(b.dayId))
     .flatMap((day) =>
-      [...day.items]
-        .sort((a, b) => a.sort_order - b.sort_order)
-        .flatMap((item) => {
-          const placeKey = item.type === "location" ? cityPlaceKey(item) : null;
-          if (!item.place || !placeKey) return [];
+      [...day.cities]
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.itemId.localeCompare(b.itemId))
+        .flatMap((city) => {
+          if (!isValidMapCoordinate(city.latitude, city.longitude)) return [];
           return [
             {
-              address: item.place.formattedAddress,
-              dayId: day.id,
-              dayLabel: day.date ? format(parseISO(day.date), "MMM d") : `Day ${day.day_number}`,
-              dayNumber: day.day_number,
-              itemId: item.id,
-              latitude: item.place.latitude,
-              longitude: item.place.longitude,
-              placeId: item.place.id,
-              placeKey,
-              sortOrder: item.sort_order,
-              title: item.title,
+              address: city.address,
+              dayId: day.dayId,
+              dayLabel: day.dayLabel,
+              dayNumber: day.dayNumber,
+              itemId: city.itemId,
+              latitude: city.latitude,
+              longitude: city.longitude,
+              placeId: city.placeId,
+              placeKey: city.placeKey,
+              sortOrder: city.sortOrder,
+              title: city.title,
             },
           ];
         }),
     );
+}
+
+export function orderedCityOccurrences(days: PlannerDay[]): CityOccurrence[] {
+  return orderedCityOccurrencesFromDays(
+    days.map((day) => ({
+      cities: day.items.flatMap((item) => {
+        const placeKey = item.type === "location" ? cityPlaceKey(item) : null;
+        if (!item.place || !placeKey) return [];
+        return [
+          {
+            address: item.place.formattedAddress,
+            itemId: item.id,
+            latitude: item.place.latitude,
+            longitude: item.place.longitude,
+            placeId: item.place.id,
+            placeKey,
+            sortOrder: item.sort_order,
+            title: item.title,
+          },
+        ];
+      }),
+      dayId: day.id,
+      dayLabel: day.date ? format(parseISO(day.date), "MMM d") : `Day ${day.day_number}`,
+      dayNumber: day.day_number,
+    })),
+  );
 }
 
 export function neighboringCityConflict(occurrences: CityOccurrence[]) {

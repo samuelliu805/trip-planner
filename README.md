@@ -8,8 +8,9 @@ Trip Planner is a responsive, spreadsheet-style workspace for building complex t
 - Phase 3 — live Google Maps and Places API (New) — is implemented. Persisted place snapshots, Advanced Markers, exact item/Pin selection, and the mobile map Sheet are live; the authenticated configuration smoke test is still pending.
 - Phase 4 — Primary Route A Overview and optional manual Day routes — is implemented. Its migrations are applied and automated checks pass; the authenticated browser and deployed-configuration smoke test is still pending, so Phase 4 is not marked complete.
 - Phase 5A — Route Variant Foundation — is implemented. Its forward-only migration is applied to the linked project, linked integration/domain checks and all repository checks pass, and unauthenticated responsive shell checks pass. The authenticated product checklist remains pending.
+- Phase 5B — read-only Route Variant comparison — is implemented without a schema migration or new cloud configuration. Focused comparison and repository checks pass; authenticated comparison and responsive acceptance remain pending.
 
-Phase 5B map comparison, Phase 5C decision summaries, public sharing/export, and travel research remain intentionally deferred.
+Phase 5C decision summaries, public sharing/export, and travel research remain intentionally deferred.
 
 ## Foundation stack
 
@@ -154,6 +155,18 @@ Planner and Route A caches use `['planner', tripId, variantId]`. Every item/day/
 
 Variant UI is organized by responsibility: the coordinator owns navigation and open state, while desktop/mobile switching, create/duplicate/edit, identity rendering, and primary/delete management live in focused components. Planner clipboard/keyboard event handling, clear confirmation, and server-side item validation are likewise isolated from the workspace and mutation coordinators. Obsolete pre-variant loaders, copy aliases, placeholder provider contracts, and unused shared type/config modules were removed after a repository-wide reference audit.
 
+## Phase 5B route comparison
+
+Comparison is a read-only projection of complete Route Variants, not another Matrix workspace and not a Google route-alternative chooser. The URL-selected variant remains the only editable variant. At every viewport, the comparison map overlays the locally visible variants; the active variant is always visible, visually strongest, and above inactive read-only markers and lines. The route controls pair stored color with variant name, Primary, Editing/Read only, Visible/Hidden, and the explicit City sequence, so identity never depends on color alone. The desktop legend has one close action that exits comparison rather than a redundant hide/reopen cycle.
+
+The lazy `['variant-comparison', tripId]` query loads only `route_variants`, ordered `trip_days`, City `itinerary_items`, and their referenced persisted `places` snapshots. It retains City-less days and variants with no place-linked Cities, but does not load non-City items, item links, Day route plans/stops/legs/calculations, or provider data. The active complete workspace remains solely in `['planner', tripId, activeVariantId]`; inactive complete workspaces are never created or cached for comparison. RLS on the existing tables remains the authorization boundary.
+
+Comparison reuses the Overview City-order and stay-boundary rules: manual day/item order, multiple Cities in one day, City-less days, repeated explicit later occurrences, coordinate validation, and cross-day same-place no-travel boundaries are preserved. It never infers or optimizes a stage. Every comparison leg is a provider-neutral dashed straight two-point preview with a variant-scoped object ID. The UI identifies these lines as City order, not driving directions. Session-calculated Overview geometry is active-workspace, in-memory state and therefore has no equivalent inactive-variant snapshot; persisted Day route geometry has a different per-day meaning. Both are intentionally ignored so every variant uses the same visual basis and entering, filtering, or refetching comparison makes zero Google Routes requests. Per-variant calculation buttons are intentionally omitted; normal explicit Overview calculation remains available outside comparison.
+
+Below 900px, comparison opens the expanded map with the same multi-variant overlay as desktop. A single **Routes** button opens the bottom Sheet for show/hide controls; closing those controls returns to the map, while closing the expanded map exits comparison. The compact context states `Matrix: Route A · Map: read only`, avoiding a second preview mode or any suggestion that an inactive map route is editable. The mobile Matrix disables boundary overscroll so its sticky header and date columns do not rubber-band when a swipe reaches an edge. Loading and failure stay scoped to comparison, with Retry on failure, while the Matrix remains usable.
+
+Comparison is disabled until a trip has at least two variants. It is also disabled while the existing Day route editor contains an open draft, requiring the owner to use the established save or discard behavior before entering comparison. Rename, recolor, primary, lifecycle, City item/order, and day mutations reconcile or invalidate comparison data; unrelated item edits avoid comparison invalidation where practical.
+
 ## Local development
 
 Requirements: Node.js 22.21+, npm 10+, and the Supabase CLI for database work.
@@ -203,6 +216,8 @@ The forward-only migrations are applied and present in the linked migration hist
 
 The Phase 5A migration adds the three-variant and exactly-one-primary invariants, case-insensitive names, atomic lifecycle/duplication/day RPCs, active-variant Day route support, and narrow execution/table grants. The follow-up migration narrowly permits an immediately previous-day Hotel as Day route position 1 and adds atomic owner-authorized clearing for selected Matrix items. Its dry run showed only `20260803183257_allow_previous_day_hotel_route_start.sql`; it applied successfully, and the final linked list shows local/remote alignment. No linked reset or remote seed was used.
 
+Phase 5B uses the existing read grants, RLS policies, variant/day/item/place tables, and relationships. It required no migration; no empty migration was created and `supabase db push --linked` was not run for this phase. The linked migration list remained fully aligned through `20260803183257`, with no local-only or remote-only entry.
+
 Docker was unavailable during this phase, so the CLI database-test runner could not complete. The same rollback-wrapped 38-assertion pgTAP SQL completed through the linked database interface, including the previous-day Hotel and atomic-clear contracts, and follow-up queries confirmed zero fixture trips/users remained. Verification also used linked dry run/push/list, linked database lint, security advisors, generated linked-schema types, static migration contracts, and application domain tests.
 
 For future schema changes:
@@ -239,7 +254,44 @@ npm run build
 
 The latest Phase 5A verification completed with `npm test` (57/57 tests), `npx tsc --noEmit`, `npm run lint`, `npm run format:check`, and `npm run build`. Linked database lint reported no schema errors. The rollback-wrapped database suite contains 38 assertions covering new IDs/mappings, shared place IDs, duplicate and previous-day Hotel occurrences, leg modes, omitted calculations, source isolation, maximum/unique/primary/delete/cross-trip rules, atomic cell clearing, grants, and RLS. Provider tests mock `fetch` and never call Google.
 
+The Phase 5B verification completed with `npm test` (62/62 tests), `npx tsc --noEmit`, `npm run lint`, `npm run format:check`, and `npm run build`. Comparison coverage includes the City-only projection contract, deterministic/stay-boundary derivation, straight dashed provider-neutral presentation, active/inactive emphasis, read-only marker identity, responsive editing/visibility separation, state reconciliation, cache invalidation, and the absence of comparison route-provider calls.
+
 Headless Chrome loaded the built unauthenticated application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`; therefore authenticated variant UI/interaction viewport testing is still part of the manual checklist below.
+
+## Phase 5B authenticated manual checklist
+
+This remains pending until a valid authenticated browser session with suitable Route A/B/C fixtures is available.
+
+1. Open a trip containing Route A, Route B, and Route C.
+2. Confirm the normal active-variant Matrix, Overview, and map behavior.
+3. Enter **Compare** at 1440×900, 1280×800, and 1024×768.
+4. Confirm the overlay, controls, spacing, hierarchy, and panel behavior match the Phase 5B Stitch references.
+5. Confirm all visible variants show only their explicitly entered City Overview stages.
+6. Confirm each variant uses its stored color.
+7. Confirm the active variant has the strongest line/marker treatment and highest stacking order.
+8. Hide and restore an inactive variant using keyboard and pointer input.
+9. Confirm the active variant's visibility control is checked and disabled.
+10. Confirm every legend row includes variant name plus textual Primary and Editing/Read only state where applicable.
+11. Confirm matching Cities across variants remain understandable through numbered markers and the named legend sequences.
+12. Confirm a variant with no place-linked City stages remains listed as `No City stages`.
+13. Confirm City-less days add no inferred locations or route stages.
+14. Confirm inactive markers cannot select a Matrix cell, open an editor, or mutate/switch a variant.
+15. Edit an active City title/place and confirm comparison refreshes without changing Matrix selection or URL variant.
+16. Rename and recolor a variant and confirm the comparison identity updates.
+17. Delete a non-primary inactive variant and confirm its visibility state is removed safely.
+18. Inspect the network log and confirm entering, filtering, retrying, and refetching comparison make no Google Routes requests.
+19. Exit comparison and confirm the normal active-variant Overview is restored.
+20. Confirm any previous session-calculated Overview geometry is still available outside comparison.
+21. Open a Day route draft and confirm Compare is disabled with the save/discard explanation; then use the established explicit discard behavior and retry.
+22. At 834×1194, 768×1024, 390×844, and 430×932, enter comparison and confirm the expanded map opens with all visible variants overlaid.
+23. Open **Routes**, hide and restore an inactive variant, and confirm the active variant remains checked and cannot be hidden.
+24. Close the route controls and confirm the comparison map remains open with the selected visibility state.
+25. Confirm the Matrix remains bound to and editable for the active URL variant.
+26. Confirm `Matrix: Route A · Map: read only` and textual Editing/Read only identities are visible to assistive technology.
+27. Close the expanded comparison map and confirm normal active Overview is restored.
+28. Use browser Back and Forward to change the active URL variant, then repeat comparison and confirm editing/visibility identities reconcile.
+29. Simulate or mock a comparison load failure and confirm the isolated error and Retry action.
+30. Confirm Matrix editing remains available during comparison loading and failure.
 
 ## Phase 5A authenticated manual checklist
 
@@ -307,10 +359,10 @@ This checklist remains pending until valid test-account access and the required 
 4. Primary Route A Overview and optional manual Day routes — implementation/database/automated checks complete; authenticated smoke test pending
 5. Route variants
    - ✅ Phase 5A: active variant loading and lifecycle foundation
-   - Phase 5B: map comparison
+   - ✅ Phase 5B: read-only City Overview map comparison (authenticated acceptance pending)
    - Phase 5C: decision summaries
 6. Public read-only sharing and export
 7. Travel research and along-the-way city recommendations
 8. Offline, conflict, deployment, and operational polish
 
-Each phase is independently implemented and verified. Phase 5A preserves manual-order semantics and does not introduce Google alternative-route selection, multi-variant overlays, or comparison summaries.
+Each phase is independently implemented and verified. Phase 5B preserves manual-order semantics, adds only read-only structural comparison, and does not introduce Google alternatives, decision metrics, scores, recommendations, or cross-variant editing.

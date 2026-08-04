@@ -33,6 +33,7 @@ import {
 import type { Tables } from "@/types/database";
 import { useDayRoute } from "@/features/routes/use-day-route";
 import { RouteVariantControls } from "@/features/variants/components/route-variant-controls";
+import { useRouteVariants } from "@/features/variants/queries";
 
 type PlannerWorkspaceProps = {
   deleteError: boolean;
@@ -58,6 +59,7 @@ function PlannerWorkspaceVariant({
     initialWorkspace.variant.id,
     initialWorkspace,
   );
+  const { data: variants = initialVariants } = useRouteVariants(trip.id, initialVariants);
   const initialSelection = initialPlannerSelection(
     initialWorkspace.days.length,
     categories.findIndex(({ id }) => id === "city"),
@@ -170,8 +172,16 @@ function PlannerWorkspaceVariant({
   }
 
   const {
+    compactMapEmptyState,
+    compactMapLines,
+    compactMapMarkers,
+    compactMapViewportKey,
+    comparison,
+    comparisonSheetOpen,
     dayCityLayerAvailable,
     dayMapLayer,
+    enterComparison,
+    exitComparison,
     mapEmptyState,
     mapLines,
     mapMode,
@@ -180,11 +190,19 @@ function PlannerWorkspaceVariant({
     overviewRoute,
     selectedMapItem,
     selectMarker,
+    setComparisonSheetOpen,
     setDayMapLayer,
     setMapModeFromSelection,
     setSelectedItemId,
     setMapMode,
-  } = usePlannerMap(workspace, selectionEnd, setSelectionAnchor, setSelectionEnd, dayRoute);
+  } = usePlannerMap(
+    workspace,
+    selectionEnd,
+    setSelectionAnchor,
+    setSelectionEnd,
+    dayRoute,
+    variants,
+  );
 
   function editMapItem(itemId: string) {
     for (const day of workspace.days) {
@@ -294,12 +312,22 @@ function PlannerWorkspaceVariant({
         variantControls={
           <RouteVariantControls
             activeVariantId={workspace.variant.id}
-            initialVariants={initialVariants}
+            comparisonBlockingReason={comparison.blockingReason}
+            onCompare={() => {
+              enterComparison();
+              setMapExpanded(true);
+            }}
             tripId={trip.id}
+            variants={variants}
           />
         }
       />
       <PlannerMatrix
+        compactMapEmptyState={compactMapEmptyState}
+        compactMapLines={compactMapLines}
+        compactMapMarkers={compactMapMarkers}
+        compactMapViewportKey={compactMapViewportKey}
+        comparison={comparison}
         containerRef={containerRef}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
@@ -320,6 +348,8 @@ function PlannerWorkspaceVariant({
         mapViewportKey={mapViewportKey}
         moveItem={moveItem}
         onMapExpand={() => setMapExpanded(true)}
+        onComparisonExit={exitComparison}
+        onComparisonSheetOpen={() => setComparisonSheetOpen(true)}
         onDayMapLayerChange={setDayMapLayer}
         onEditMapItem={editMapItem}
         onMarkerClick={selectMarker}
@@ -348,6 +378,12 @@ function PlannerWorkspaceVariant({
         workspace={workspace}
       />
       <PlannerSheets
+        compactMapEmptyState={compactMapEmptyState}
+        compactMapLines={compactMapLines}
+        compactMapMarkers={compactMapMarkers}
+        compactMapViewportKey={compactMapViewportKey}
+        comparison={comparison}
+        comparisonSheetOpen={comparisonSheetOpen}
         copyDaysOpen={copyDaysOpen}
         copyPending={copyMutation.isPending}
         dayCityLayerAvailable={dayCityLayerAvailable}
@@ -361,12 +397,20 @@ function PlannerWorkspaceVariant({
         mapMarkers={mapMarkers}
         mapViewportKey={mapViewportKey}
         onCopyDaysOpenChange={setCopyDaysOpen}
+        onComparisonExit={exitComparison}
+        onComparisonSheetOpenChange={(open) => {
+          setComparisonSheetOpen(open);
+          setMapExpanded(!open);
+        }}
         onCopyToSelectedDays={() => void copyToSelectedDays()}
         onDayMapLayerChange={setDayMapLayer}
         onEditorClose={() => setEditor(null)}
         onEditMapItem={editMapItem}
         onInteractionError={setInteractionError}
-        onMapExpandedChange={setMapExpanded}
+        onMapExpandedChange={(open) => {
+          setMapExpanded(open);
+          if (!open && mapMode === "comparison" && !comparisonSheetOpen) exitComparison();
+        }}
         onMarkerClick={selectMarker}
         onMapModeChange={setMapMode}
         onMapSelectionClear={() => setSelectedItemId(undefined)}

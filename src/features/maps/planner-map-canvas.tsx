@@ -1,61 +1,13 @@
 "use client";
 
-import {
-  AdvancedMarker,
-  Map,
-  Pin,
-  Polyline,
-  useApiLoadingStatus,
-  useMap,
-} from "@vis.gl/react-google-maps";
+import { Map, useApiLoadingStatus, useMap } from "@vis.gl/react-google-maps";
 import { AlertTriangle, MapPinned } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 
+import { PlannerMapPolyline } from "@/features/maps/planner-map-line";
+import { PlannerMapMarkerOverlay } from "@/features/maps/planner-map-marker";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { useMapConfiguration } from "@/features/maps/planner-map-provider";
-
-export type MarkerKind = "city" | "activity" | "hotel" | "carRental" | "meal";
-
-export type PlannerMapMarker = {
-  address?: string;
-  appearance?: "category" | "day-city" | "overview" | "route-planned" | "route-unplanned";
-  entries: {
-    dayLabel: string;
-    dayNumber: number;
-    itemId: string;
-    kind: MarkerKind;
-    title: string;
-  }[];
-  id: string;
-  itemIds: string[];
-  latitude: number;
-  label?: string;
-  longitude: number;
-  summary?: string;
-};
-
-export type PlannerMapLine = {
-  color?: string;
-  dashed?: boolean;
-  id: string;
-  path: Array<{ lat: number; lng: number }>;
-  position?: number;
-  routeLayer?: "city" | "places";
-};
-
-const markerStyles: Record<MarkerKind, { background: string; glyph: string; label: string }> = {
-  activity: { background: "#d97706", glyph: "A", label: "activity" },
-  carRental: { background: "#475569", glyph: "R", label: "car rental" },
-  city: { background: "#2563eb", glyph: "C", label: "city" },
-  hotel: { background: "#7c3aed", glyph: "H", label: "hotel" },
-  meal: { background: "#dc2626", glyph: "M", label: "meal" },
-};
-const markerOffsets: Record<MarkerKind, [number, number]> = {
-  activity: [7, 0],
-  carRental: [-7, 0],
-  city: [0, -7],
-  hotel: [0, 7],
-  meal: [7, 7],
-};
 
 function MapViewport({
   fitKey,
@@ -196,92 +148,16 @@ export function PlannerMapCanvas({
           selectedId={selectedId}
         />
         {lines.map((line) => (
-          <Polyline
-            geodesic
-            icons={
-              line.dashed
-                ? [
-                    {
-                      icon: { path: "M 0,-1 0,1", strokeOpacity: 1, strokeWeight: 2 },
-                      offset: "0",
-                      repeat: "10px",
-                    },
-                  ]
-                : undefined
-            }
-            key={line.id}
-            path={line.path}
-            strokeColor={line.color ?? "#166534"}
-            strokeOpacity={line.dashed ? 0 : 0.8}
-            strokeWeight={4}
-            zIndex={1}
+          <PlannerMapPolyline key={line.id} line={line} />
+        ))}
+        {markers.map((marker) => (
+          <PlannerMapMarkerOverlay
+            key={marker.id}
+            marker={marker}
+            onMarkerClick={onMarkerClick}
+            selectedId={selectedId}
           />
         ))}
-        {markers.map((marker) => {
-          const selectedEntry = marker.entries.find(({ itemId }) => itemId === selectedId);
-          const entry = selectedEntry ?? marker.entries[0];
-          const selected = Boolean(selectedEntry);
-          const style = markerStyles[entry.kind];
-          const routeMarker = marker.appearance?.startsWith("route-");
-          const planned = marker.appearance === "route-planned";
-          const overview = marker.appearance === "overview";
-          const dayCity = marker.appearance === "day-city";
-          const cityRouteMarker = overview || dayCity;
-          const glyph =
-            marker.label ?? (overview ? "" : routeMarker && !planned ? "" : style.glyph);
-          return (
-            <AdvancedMarker
-              aria-label={`${style.label}: ${entry.title}, ${entry.dayLabel}${marker.address ? `, ${marker.address}` : ""}${marker.entries.length > 1 ? `, ${marker.entries.length} itinerary entries` : ""}`}
-              key={marker.id}
-              onClick={() => {
-                const currentIndex = marker.itemIds.indexOf(selectedId ?? "");
-                onMarkerClick(
-                  currentIndex === marker.itemIds.length - 1
-                    ? undefined
-                    : marker.itemIds[currentIndex + 1],
-                );
-              }}
-              position={{ lat: marker.latitude, lng: marker.longitude }}
-              title={`${entry.title} · ${entry.dayLabel}${marker.entries.length > 1 ? ` · ${marker.entries.length} entries` : ""}`}
-              zIndex={selected ? 40 : 20}
-            >
-              {cityRouteMarker ? (
-                <div
-                  className="whitespace-nowrap rounded-full border-2 border-white px-2 py-1 text-[10px] font-semibold text-white shadow-md"
-                  style={{
-                    backgroundColor: dayCity ? "#2563eb" : "#166534",
-                    filter: selected
-                      ? "drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #ffffff)"
-                      : undefined,
-                    transform: dayCity ? "translate(-7px, -7px)" : undefined,
-                  }}
-                >
-                  {marker.label}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    filter: selected
-                      ? "drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #ffffff)"
-                      : undefined,
-                    transform:
-                      marker.appearance && marker.appearance !== "category"
-                        ? undefined
-                        : `translate(${markerOffsets[entry.kind][0]}px, ${markerOffsets[entry.kind][1]}px)`,
-                  }}
-                >
-                  <Pin
-                    background={planned ? "#166534" : routeMarker ? "#64748b" : style.background}
-                    borderColor={selected ? "#ffffff" : routeMarker ? "#f8fafc" : "#ffffff"}
-                    glyph={glyph}
-                    glyphColor="#ffffff"
-                    scale={selected ? 1.3 : 1}
-                  />
-                </div>
-              )}
-            </AdvancedMarker>
-          );
-        })}
       </Map>
       {emptyState && markers.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">
