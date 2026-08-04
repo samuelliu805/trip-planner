@@ -3,7 +3,7 @@
 import { ChevronDown, Minus, Pencil, Plus } from "lucide-react";
 
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
-import type { PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { RouteIconButton } from "@/features/routes/route-icon-button";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 

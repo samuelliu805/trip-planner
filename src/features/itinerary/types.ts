@@ -1,4 +1,4 @@
-import type { Json, Tables } from "@/types/database";
+import type { Tables } from "@/types/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import type { DayRoutePlan } from "@/features/routes/types";
 
@@ -81,15 +81,5 @@ export function normalizeTransportMode(value?: string): TransportMode {
   return transportModes.includes(value as TransportMode) ? (value as TransportMode) : "train";
 }
 
-export type ItemDetails = Json;
-
 export type MutationResult<T = ItineraryItem> =
   { data: T; error?: never } | { data?: never; error: string };
-
-export type ReorderItemInput = { id: string; sortOrder: number };
-
-export type CopyItemsInput = {
-  preservePlace?: boolean;
-  sourceItemIds: string[];
-  targetDayId: string;
-};

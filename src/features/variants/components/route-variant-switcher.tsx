@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Copy, MoreHorizontal, Plus } from "lucide-react";
+import { Check, ChevronDown, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,8 +26,10 @@ export type RouteVariantAction = "create" | "duplicate" | "manage";
 export function RouteVariantSwitcher({
   activeVariant,
   activeVariantId,
+  comparisonBlockingReason,
   limitReached,
   onAction,
+  onCompare,
   onSheetOpenChange,
   onSwitch,
   sheetOpen,
@@ -35,8 +37,10 @@ export function RouteVariantSwitcher({
 }: {
   activeVariant: PlannerVariant;
   activeVariantId: string;
+  comparisonBlockingReason?: string;
   limitReached: boolean;
   onAction: (action: RouteVariantAction) => void;
+  onCompare: () => void;
   onSheetOpenChange: (open: boolean) => void;
   onSwitch: (variantId: string) => void;
   sheetOpen: boolean;
@@ -62,6 +66,18 @@ export function RouteVariantSwitcher({
                 {variant.id === activeVariantId ? <Check className="ml-auto size-4" /> : null}
               </DropdownMenuItem>
             ))}
+            <DropdownMenuSeparator className="min-[900px]:hidden" />
+            <DropdownMenuItem
+              className="min-[900px]:hidden"
+              disabled={Boolean(comparisonBlockingReason)}
+              onSelect={onCompare}
+              title={comparisonBlockingReason}
+            >
+              <GitCompareArrows className="size-4" /> Compare routes
+              {comparisonBlockingReason ? (
+                <span className="sr-only">{comparisonBlockingReason}</span>
+              ) : null}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={limitReached} onSelect={() => onAction("create")}>
               <Plus className="size-4" /> New route
@@ -114,6 +130,22 @@ export function RouteVariantSwitcher({
               ))}
             </div>
             <div className="mt-4 grid gap-2 border-t pt-4">
+              <Button
+                aria-describedby={
+                  comparisonBlockingReason ? "mobile-comparison-disabled" : undefined
+                }
+                className="h-11 justify-start"
+                disabled={Boolean(comparisonBlockingReason)}
+                onClick={onCompare}
+                variant="outline"
+              >
+                <GitCompareArrows className="size-4" /> Compare routes
+              </Button>
+              {comparisonBlockingReason ? (
+                <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
+                  {comparisonBlockingReason}
+                </p>
+              ) : null}
               <Button
                 className="h-11 justify-start"
                 disabled={limitReached}

@@ -55,7 +55,7 @@ export function usePlannerInteractions({
   setIsFillDragging: Dispatch<SetStateAction<boolean>>;
   setSelectedDayRow: Dispatch<SetStateAction<number | null>>;
   setSelectedItemId: Dispatch<SetStateAction<string | undefined>>;
-  setMapMode: Dispatch<SetStateAction<PlannerMapMode>>;
+  setMapMode: (mode: PlannerMapMode) => void;
   setSelectionAnchor: Dispatch<SetStateAction<GridCoordinate>>;
   setSelectionEnd: SetCoordinate;
   setSplit: Dispatch<SetStateAction<number>>;

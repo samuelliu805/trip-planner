@@ -16,12 +16,20 @@ import { PlannerItemForm } from "@/features/itinerary/components/planner-item-fo
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
-import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
+import { RouteVariantComparisonSheet } from "@/features/variants/components/route-variant-comparison-sheet";
+import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 
 type PlannerSheetsProps = {
+  compactMapEmptyState?: { message: string; title: string };
+  compactMapLines: PlannerMapLine[];
+  compactMapMarkers: PlannerMapMarker[];
+  compactMapViewportKey?: string;
+  comparison: VariantComparisonUi;
+  comparisonSheetOpen: boolean;
   copyDaysOpen: boolean;
   copyPending: boolean;
   dayCityLayerAvailable: boolean;
@@ -34,6 +42,8 @@ type PlannerSheetsProps = {
   mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
   onCopyDaysOpenChange: (open: boolean) => void;
+  onComparisonExit: () => void;
+  onComparisonSheetOpenChange: (open: boolean) => void;
   onCopyToSelectedDays: () => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditorClose: () => void;
@@ -58,6 +68,12 @@ type PlannerSheetsProps = {
 };
 
 export function PlannerSheets({
+  compactMapEmptyState,
+  compactMapLines,
+  compactMapMarkers,
+  compactMapViewportKey,
+  comparison,
+  comparisonSheetOpen,
   copyDaysOpen,
   copyPending,
   dayCityLayerAvailable,
@@ -70,6 +86,8 @@ export function PlannerSheets({
   mapMode,
   mapMarkers,
   onCopyDaysOpenChange,
+  onComparisonExit,
+  onComparisonSheetOpenChange,
   onCopyToSelectedDays,
   onDayMapLayerChange,
   onEditorClose,
@@ -94,6 +112,11 @@ export function PlannerSheets({
 }: PlannerSheetsProps) {
   return (
     <>
+      <RouteVariantComparisonSheet
+        comparison={comparison}
+        onOpenChange={onComparisonSheetOpenChange}
+        open={comparisonSheetOpen}
+      />
       <Sheet onOpenChange={(open) => !open && onEditorClose()} open={Boolean(editor)}>
         <SheetContent className="planner-editor-sheet">
           <SheetHeader>
@@ -130,13 +153,18 @@ export function PlannerSheets({
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell
+              comparison={comparison}
               dayCityLayerAvailable={dayCityLayerAvailable}
               dayMapLayer={dayMapLayer}
               dayRoute={dayRoute}
-              emptyState={mapEmptyState}
-              lines={mapLines}
+              emptyState={
+                mapMode === "comparison" ? (compactMapEmptyState ?? mapEmptyState) : mapEmptyState
+              }
+              lines={mapMode === "comparison" ? compactMapLines : mapLines}
               mapMode={mapMode}
-              markers={mapMarkers}
+              markers={mapMode === "comparison" ? compactMapMarkers : mapMarkers}
+              onComparisonExit={onComparisonExit}
+              onComparisonSheetOpen={() => onComparisonSheetOpenChange(true)}
               onMarkerClick={onMarkerClick}
               onDayMapLayerChange={onDayMapLayerChange}
               onEditMapItem={onEditMapItem}
@@ -144,7 +172,7 @@ export function PlannerSheets({
               onMapSelectionClear={onMapSelectionClear}
               overviewRoute={overviewRoute}
               selectedId={selectedItem?.id}
-              viewportKey={mapViewportKey}
+              viewportKey={mapMode === "comparison" ? compactMapViewportKey : mapViewportKey}
             />
           </div>
         </SheetContent>

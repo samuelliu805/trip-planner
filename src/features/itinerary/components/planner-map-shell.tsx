@@ -6,12 +6,16 @@ import { useState } from "react";
 import { PlannerMapControls } from "@/features/itinerary/components/planner-map-controls";
 import { PlannerMapSelectedPlace } from "@/features/itinerary/components/planner-map-selected-place";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
-import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import { OverviewRouteOverlay } from "@/features/routes/overview-route-overlay";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
+import { RouteVariantComparisonPanel } from "@/features/variants/components/route-variant-comparison-panel";
+import { VariantComparisonMapStatus } from "@/features/variants/components/variant-comparison-feedback";
+import { VariantComparisonMobileBar } from "@/features/variants/components/variant-comparison-mobile-bar";
+import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 
 const PlannerMapCanvas = dynamic(
   () => import("@/features/maps/planner-map-canvas").then((module) => module.PlannerMapCanvas),
@@ -20,6 +24,7 @@ const PlannerMapCanvas = dynamic(
 
 export function PlannerMapShell({
   compact = false,
+  comparison,
   dayCityLayerAvailable,
   dayMapLayer,
   dayRoute,
@@ -27,6 +32,8 @@ export function PlannerMapShell({
   lines = [],
   mapMode,
   markers,
+  onComparisonExit,
+  onComparisonSheetOpen,
   onExpand,
   onEditMapItem,
   onDayMapLayerChange,
@@ -38,6 +45,7 @@ export function PlannerMapShell({
   viewportKey,
 }: {
   compact?: boolean;
+  comparison: VariantComparisonUi;
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
@@ -45,6 +53,8 @@ export function PlannerMapShell({
   lines?: PlannerMapLine[];
   mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
+  onComparisonExit: () => void;
+  onComparisonSheetOpen: () => void;
   onExpand?: () => void;
   onEditMapItem: (itemId: string) => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
@@ -64,7 +74,12 @@ export function PlannerMapShell({
   const storedDayPanelOpen = dayPanelState?.dayId === activeDayId ? dayPanelState.open : true;
   const overviewPanelVisible = Boolean(selectedId || overviewRoute.editing || overviewPanelOpen);
   const dayPanelOpen = Boolean(selectedId || dayRoute.editing || storedDayPanelOpen);
-  const panelDismissed = mapMode === "overview" ? !overviewPanelVisible : !dayPanelOpen;
+  const panelDismissed =
+    mapMode === "overview"
+      ? !overviewPanelVisible
+      : mapMode === "comparison"
+        ? false
+        : !dayPanelOpen;
   const setDayPanelOpen = (open: boolean) => setDayPanelState({ dayId: activeDayId, open });
   const handleMarkerClick = (id?: string) => {
     if (id) {
@@ -87,7 +102,7 @@ export function PlannerMapShell({
     ? visibleMarkers.find(({ itemIds }) => itemIds.includes(selectedId))
     : undefined;
   const selectedPlace =
-    selectedId && selectedMarker ? (
+    selectedId && selectedMarker && mapMode !== "comparison" ? (
       <PlannerMapSelectedPlace
         dayRoute={dayRoute}
         mapMode={mapMode}
@@ -113,6 +128,7 @@ export function PlannerMapShell({
       />
       <PlannerMapControls
         compact={compact}
+        comparisonBlockingReason={comparison.blockingReason}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
         mapMode={mapMode}
@@ -125,7 +141,7 @@ export function PlannerMapShell({
         }}
         onPanelOpen={() => {
           if (mapMode === "overview") setOverviewPanelOpen(true);
-          else setDayPanelOpen(true);
+          else if (mapMode === "day_route") setDayPanelOpen(true);
         }}
         panelDismissed={panelDismissed}
       />
@@ -138,6 +154,20 @@ export function PlannerMapShell({
       ) : null}
       {!compact && mapMode === "day_route" && dayPanelOpen ? (
         <DayRouteOverlay onClose={closeDayPanel} route={dayRoute} selectedPlace={selectedPlace} />
+      ) : null}
+      {mapMode === "comparison" ? (
+        <>
+          <VariantComparisonMapStatus comparison={comparison} />
+          {!compact ? (
+            <>
+              <RouteVariantComparisonPanel comparison={comparison} onExit={onComparisonExit} />
+              <VariantComparisonMobileBar
+                comparison={comparison}
+                onChooseRoutes={onComparisonSheetOpen}
+              />
+            </>
+          ) : null}
+        </>
       ) : null}
     </section>
   );

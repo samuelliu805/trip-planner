@@ -1,1 +1,1 @@
-export type PlannerMapMode = "overview" | "day_route";
+export type PlannerMapMode = "overview" | "day_route" | "comparison";

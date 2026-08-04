@@ -1,5 +1,5 @@
 import type { ItineraryItem, PlannerDay } from "../itinerary/types.ts";
-import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-canvas.tsx";
+import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model.ts";
 import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
 
 import { isEligibleRouteStopType } from "./route-config.ts";

@@ -33,6 +33,7 @@ import type {
   UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
+import { invalidateVariantComparison } from "@/features/variants/queries";
 
 export const plannerQueryKey = (tripId: string, variantId: string) =>
   ["planner", tripId, variantId] as const;
@@ -91,10 +92,12 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (item, _input, context) =>
+    onSuccess: (item, _input, context) => {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(removeItem(current, context?.optimisticId ?? ""), item),
-      ),
+      );
+      if (item.type === "location") void invalidateVariantComparison(client, tripId);
+    },
   });
 }
 
@@ -150,14 +153,17 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
             ...(input.type !== undefined && { type: input.type }),
           }),
         );
-      return { previous };
+      return { existingWasCity: existing?.type === "location", previous };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (item) =>
+    onSuccess: (item, _input, context) => {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(current, item),
-      ),
+      );
+      if (item.type === "location" || context?.existingWasCity)
+        void invalidateVariantComparison(client, tripId);
+    },
   });
 }
 
@@ -169,11 +175,17 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      const deletedCity = previous?.days
+        .flatMap(({ items }) => items)
+        .some((item) => item.id === input.id && item.type === "location");
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItem(previous, input.id));
-      return { previous };
+      return { deletedCity, previous };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
+    onSuccess: (_data, _input, context) => {
+      if (context?.deletedCity) void invalidateVariantComparison(client, tripId);
+    },
   });
 }
 
@@ -185,12 +197,18 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      const clearedCity = previous?.days
+        .flatMap(({ items }) => items)
+        .some((item) => input.itemIds.includes(item.id) && item.type === "location");
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItems(previous, input.itemIds));
-      return { previous };
+      return { clearedCity, previous };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) }),
+    onSuccess: (_data, _input, context) => {
+      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      if (context?.clearedCity) void invalidateVariantComparison(client, tripId);
+    },
   });
 }
 
@@ -198,7 +216,10 @@ export function useInsertTripDay(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: InsertTripDayInput) => requireData(await insertTripDay(input)),
-    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      void invalidateVariantComparison(client, tripId);
+    },
   });
 }
 
@@ -206,7 +227,10 @@ export function useRemoveTripDay(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (input: RemoveTripDayInput) => requireData(await removeTripDay(input)),
-    onSuccess: () => client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      void invalidateVariantComparison(client, tripId);
+    },
   });
 }
 
@@ -240,7 +264,7 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (items, input, context) =>
+    onSuccess: (items, input, context) => {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         items.reduce(
           (workspace, item) => {
@@ -254,7 +278,10 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
           },
           context?.optimisticIds.reduce((workspace, id) => removeItem(workspace, id), current),
         ),
-      ),
+      );
+      if (context?.sources.some(({ type }) => type === "location"))
+        void invalidateVariantComparison(client, tripId);
+    },
   });
 }
 
@@ -266,6 +293,11 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      const reorderedCity = previous?.days
+        .find(({ id }) => id === input.dayId)
+        ?.items.some(
+          (item) => input.items.some(({ id }) => id === item.id) && item.type === "location",
+        );
       const orders = new Map(input.items.map(({ id, sortOrder }) => [id, sortOrder]));
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         current
@@ -287,15 +319,17 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
             }
           : current,
       );
-      return { previous };
+      return { previous, reorderedCity };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (items) =>
+    onSuccess: (items, _input, context) => {
       items.forEach((item) =>
         client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
           replaceItem(current, item),
         ),
-      ),
+      );
+      if (context?.reorderedCity) void invalidateVariantComparison(client, tripId);
+    },
   });
 }

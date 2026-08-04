@@ -6,23 +6,25 @@ import { useState } from "react";
 import type { PlannerVariant } from "@/features/itinerary/types";
 
 import { variantHref } from "../active";
-import { useRouteVariants } from "../queries";
 import { ManageRouteVariantsDialog } from "./manage-route-variants-dialog";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { RouteVariantSwitcher, type RouteVariantAction } from "./route-variant-switcher";
 
 export function RouteVariantControls({
   activeVariantId,
-  initialVariants,
+  comparisonBlockingReason,
+  onCompare,
   tripId,
+  variants,
 }: {
   activeVariantId: string;
-  initialVariants: PlannerVariant[];
+  comparisonBlockingReason?: string;
+  onCompare: () => void;
   tripId: string;
+  variants: PlannerVariant[];
 }) {
   const router = useRouter();
-  const { data: variants = initialVariants } = useRouteVariants(tripId, initialVariants);
-  const activeVariant = variants.find(({ id }) => id === activeVariantId) ?? initialVariants[0];
+  const activeVariant = variants.find(({ id }) => id === activeVariantId) ?? variants[0];
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -55,6 +57,11 @@ export function RouteVariantControls({
         onSwitch={switchVariant}
         sheetOpen={sheetOpen}
         variants={variants}
+        comparisonBlockingReason={comparisonBlockingReason}
+        onCompare={() => {
+          setSheetOpen(false);
+          onCompare();
+        }}
       />
 
       <RouteVariantEditorDialog

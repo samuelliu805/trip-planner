@@ -5,8 +5,8 @@ import { useMemo, useState } from "react";
 import { categories } from "@/features/itinerary/components/planner-config";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { GridCoordinate } from "@/features/itinerary/grid-interactions";
-import type { PlannerWorkspace } from "@/features/itinerary/types";
-import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-canvas";
+import type { PlannerVariant, PlannerWorkspace } from "@/features/itinerary/types";
+import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { buildOverviewRouteLines, deriveOverviewStages } from "@/features/routes/overview";
 import { buildDayRouteLines, buildDayRouteMarkers } from "@/features/routes/day-route-map";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
@@ -17,6 +17,7 @@ import {
   buildDayCityRouteLines,
   type DayMapLayer,
 } from "@/features/routes/day-city-map";
+import { useVariantComparison } from "@/features/variants/use-variant-comparison";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -24,14 +25,23 @@ export function usePlannerMap(
   setSelectionAnchor: (coordinate: GridCoordinate) => void,
   setSelectionEnd: (coordinate: GridCoordinate) => void,
   dayRoute: DayRouteUi,
+  variants: PlannerVariant[],
 ) {
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
   const [selectedItemId, setSelectedItemId] = useState<string>();
+  const [comparisonSheetOpen, setComparisonSheetOpen] = useState(false);
   const [dayLayerState, setDayLayerState] = useState<{
     dayId: string;
     layer: DayMapLayer;
   } | null>(null);
   const variantId = workspace.variant.id;
+  const comparison = useVariantComparison({
+    activeVariantId: variantId,
+    dayRouteEditing: dayRoute.editing,
+    enabled: mapMode === "comparison",
+    tripId: workspace.variant.trip_id,
+    variants,
+  });
   const selectedMapItem = useMemo(
     () =>
       selectedItemId
@@ -99,22 +109,44 @@ export function usePlannerMap(
     dayLayerState && dayLayerState.dayId === dayRoute.activeDay?.id ? dayLayerState.layer : "all";
   const showDayCities = dayCityMarkers.length > 1 && dayMapLayer !== "places";
   const showDayPlaces = dayMapLayer !== "cities";
+  const dayMarkers = [
+    ...(showDayCities ? dayCityMarkers : []),
+    ...(showDayPlaces ? dayRouteMarkers : []),
+  ];
+  const dayLines = [
+    ...(showDayCities ? dayCityLines : []),
+    ...(showDayPlaces ? dayRouteLines : []),
+  ];
+  const comparisonMarkers = comparison.visiblePresentations.flatMap(({ markers }) => markers);
+  const comparisonLines = comparison.visiblePresentations.flatMap(({ lines }) => lines);
+  const compactMapMarkers =
+    mapMode === "comparison"
+      ? comparisonMarkers
+      : mapMode === "overview"
+        ? overviewMarkers
+        : dayMarkers;
+  const compactMapLines =
+    mapMode === "comparison" ? comparisonLines : mapMode === "overview" ? overviewLines : dayLines;
   const mapMarkers =
-    mapMode === "overview"
-      ? overviewMarkers
-      : [...(showDayCities ? dayCityMarkers : []), ...(showDayPlaces ? dayRouteMarkers : [])];
+    mapMode === "comparison"
+      ? comparisonMarkers
+      : mapMode === "overview"
+        ? overviewMarkers
+        : dayMarkers;
   const mapLines =
-    mapMode === "overview"
-      ? overviewLines
-      : [...(showDayCities ? dayCityLines : []), ...(showDayPlaces ? dayRouteLines : [])];
+    mapMode === "comparison" ? comparisonLines : mapMode === "overview" ? overviewLines : dayLines;
   const overviewViewportKey = overviewStages
     .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
     .join("|");
   const dayRouteViewportKey = mapMarkers
     .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
     .join("|");
+  const compactComparisonViewportKey = compactMapMarkers
+    .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
+    .join("|");
 
   function selectMarker(itemId?: string) {
+    if (mapMode === "comparison") return;
     if (!itemId) {
       setSelectedItemId(undefined);
       return;
@@ -139,8 +171,11 @@ export function usePlannerMap(
 
   function changeMapMode(mode: PlannerMapMode) {
     if (mode === mapMode) return;
+    if (mode === "comparison" && comparison.blockingReason) return;
     setMapMode(mode);
     setSelectedItemId(undefined);
+    if (mode === "comparison") return;
+    setComparisonSheetOpen(false);
     if (mode !== "overview") return;
     const row = selectionEnd.row >= 0 ? selectionEnd.row : 0;
     const day = workspace.days[row];
@@ -157,34 +192,70 @@ export function usePlannerMap(
 
   return {
     mapEmptyState:
-      mapMode === "overview"
-        ? {
-            message: "Link a saved map place to a City item to build the trip overview.",
-            title: "No City stages yet",
-          }
-        : !mapMarkers.length
+      mapMode === "comparison"
+        ? !comparison.isLoading && !comparison.error && !mapMarkers.length
           ? {
-              message:
-                dayMapLayer === "cities"
-                  ? "Add at least two different, place-linked City items to this day."
-                  : "Add a saved place to an Activity, Meal, or Hotel on this day.",
-              title: dayMapLayer === "cities" ? "No City transfers" : "No eligible places",
+              message: "Visible route variants do not contain a place-linked City stage.",
+              title: "No City stages to compare",
             }
-          : undefined,
+          : undefined
+        : mapMode === "overview"
+          ? {
+              message: "Link a saved map place to a City item to build the trip overview.",
+              title: "No City stages yet",
+            }
+          : !mapMarkers.length
+            ? {
+                message:
+                  dayMapLayer === "cities"
+                    ? "Add at least two different, place-linked City items to this day."
+                    : "Add a saved place to an Activity, Meal, or Hotel on this day.",
+                title: dayMapLayer === "cities" ? "No City transfers" : "No eligible places",
+              }
+            : undefined,
     dayCityLayerAvailable: dayCityMarkers.length > 1,
     dayMapLayer,
+    compactMapEmptyState:
+      mapMode === "comparison" &&
+      !comparison.isLoading &&
+      !comparison.error &&
+      !compactMapMarkers.length
+        ? {
+            message: "Visible route variants do not contain a place-linked City stage.",
+            title: "No City stages to compare",
+          }
+        : undefined,
+    compactMapLines,
+    compactMapMarkers,
+    compactMapViewportKey:
+      mapMode === "comparison"
+        ? `comparison:${comparison.visiblePresentations.map(({ variantId: id }) => id).join(",")}:${compactComparisonViewportKey}`
+        : undefined,
+    comparison,
+    comparisonSheetOpen,
+    enterComparison: () => {
+      if (comparison.blockingReason) return;
+      setSelectedItemId(undefined);
+      setMapMode("comparison");
+      setComparisonSheetOpen(false);
+    },
+    exitComparison: () => changeMapMode("overview"),
     mapLines,
     mapMode,
     mapMarkers,
     mapViewportKey:
-      mapMode === "overview"
-        ? `overview:${variantId}:${overviewViewportKey}`
-        : `day-route:${variantId}:${dayRoute.activeDay?.id ?? "none"}:${dayMapLayer}:${dayRouteViewportKey}:${dayRoute.fitKey ?? "default"}`,
+      mapMode === "comparison"
+        ? `comparison:${comparison.visiblePresentations.map(({ variantId: id }) => id).join(",")}:${dayRouteViewportKey}`
+        : mapMode === "overview"
+          ? `overview:${variantId}:${overviewViewportKey}`
+          : `day-route:${variantId}:${dayRoute.activeDay?.id ?? "none"}:${dayMapLayer}:${dayRouteViewportKey}:${dayRoute.fitKey ?? "default"}`,
     overviewRoute,
     selectedMapItem,
     selectMarker,
     selectedItemId,
-    setMapModeFromSelection: setMapMode,
+    setComparisonSheetOpen,
+    setMapModeFromSelection: (mode: PlannerMapMode) =>
+      setMapMode((current) => (current === "comparison" ? current : mode)),
     setDayMapLayer: (layer: DayMapLayer) => {
       if (dayRoute.activeDay) setDayLayerState({ dayId: dayRoute.activeDay.id, layer });
       setSelectedItemId(undefined);
