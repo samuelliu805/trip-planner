@@ -172,7 +172,7 @@ Comparison is disabled until a trip has at least two variants. It is also disabl
 
 Decision summary is a factual, read-only layer inside Phase 5B comparison. It uses the Primary variant as the stable baseline and labels every non-primary difference as vs Primary. A positive or negative delta is neutral: it never means better, worse, winner, loser, score, or recommendation. The URL-selected variant remains the only editable Matrix.
 
-The lazy ["variant-decision-summary", tripId] query is independent from the Phase 5B City projection and from every full planner workspace. It loads only variant identity, persisted days, the item types and place fields needed by summary metrics, and normalized saved Day route plans/stops/legs/calculations. It does not load item links, notes, booking data, provider payloads, or inactive PlannerWorkspace objects. Existing table RLS remains the authorization boundary.
+The lazy ["variant-decision-summary", tripId] query is independent from the Phase 5B City projection and from every full planner workspace. It loads only variant identity, persisted days, the item types and place fields needed by summary metrics, and normalized saved Day route plans/stops/legs/calculations. It does not load item links, notes, booking data, provider payloads, or inactive PlannerWorkspace objects. Existing table RLS remains the authorization boundary. Summary derivation is split into City/horizon, route, Hotel, projection, and finalization modules; the legacy `decision-summary-metrics.ts` import remains a small compatibility façade. Planner loading, item mutations, day mutations, and mutation-impact rules are likewise separated behind the existing `queries.ts` API.
 
 Summary metrics use these definitions:
 

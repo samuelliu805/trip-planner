@@ -345,7 +345,15 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
     new URL("../itinerary/hooks/use-planner-map.ts", import.meta.url),
     "utf8",
   );
-  const queries = await readFile(new URL("../itinerary/queries.ts", import.meta.url), "utf8");
+  const queries = (
+    await Promise.all(
+      [
+        "../itinerary/queries.ts",
+        "../itinerary/item-mutations.ts",
+        "../itinerary/day-mutations.ts",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    )
+  ).join("\n");
 
   assert.match(controls, /label: "Compare"/);
   assert.match(controls, /disabled: Boolean\(comparisonBlockingReason\)/);

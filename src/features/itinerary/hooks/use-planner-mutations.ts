@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
-  useClearItineraryItems,
-  useDeleteItineraryItem,
   useInsertTripDay,
   useRemoveTripDay,
   useReorderItineraryItems,
-} from "@/features/itinerary/queries";
+} from "@/features/itinerary/day-mutations";
+import {
+  useClearItineraryItems,
+  useDeleteItineraryItem,
+} from "@/features/itinerary/item-mutations";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 
 export function usePlannerMutations(

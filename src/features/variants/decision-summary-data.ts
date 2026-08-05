@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
-import { deriveVariantDecisionSummaryProjections } from "./decision-summary-metrics";
+import { deriveVariantDecisionSummaryProjections } from "./decision-summary-projection";
 import {
   decisionSummaryItemTypes,
   type DecisionSummaryCalculationRow,

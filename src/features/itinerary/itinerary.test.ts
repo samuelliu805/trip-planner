@@ -74,6 +74,16 @@ import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 import "../variants/comparison.test.ts";
 import "../variants/decision-summary.test.ts";
 
+async function readItineraryQueryModules() {
+  return (
+    await Promise.all(
+      ["./queries.ts", "./planner-query.ts", "./item-mutations.ts", "./day-mutations.ts"].map(
+        (path) => readFile(new URL(path, import.meta.url), "utf8"),
+      ),
+    )
+  ).join("\n");
+}
+
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
   item: "00000000-0000-4000-8000-000000000004",
@@ -283,7 +293,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     "utf8",
   );
   const data = await readFile(new URL("./data.ts", import.meta.url), "utf8");
-  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  const queries = await readItineraryQueryModules();
   const routeQueries = await readFile(new URL("../routes/queries.ts", import.meta.url), "utf8");
   const workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
@@ -1955,7 +1965,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
     "utf8",
   );
   const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
-  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  const queries = await readItineraryQueryModules();
   assert.match(workspace, />\s*Move up /);
   assert.match(workspace, />\s*Move down /);
   assert.match(workspace, /event\.altKey && event\.key === "ArrowUp"/);
@@ -2079,7 +2089,7 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
   );
   workspace += await readFile(new URL("./hooks/use-planner-clipboard.ts", import.meta.url), "utf8");
   workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
-  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  const queries = await readItineraryQueryModules();
   let actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
   actions += await readFile(new URL("./action-helpers.ts", import.meta.url), "utf8");
   assert.match(workspace, /This itinerary is empty/);
@@ -2239,7 +2249,7 @@ test("replace-copy clears constrained destination rows before inserting preserve
     new URL("./hooks/use-planner-clipboard.ts", import.meta.url),
     "utf8",
   );
-  const queries = await readFile(new URL("./queries.ts", import.meta.url), "utf8");
+  const queries = await readItineraryQueryModules();
   const deletePosition = workspace.indexOf("deleteMutation.mutateAsync");
   const copyPosition = workspace.indexOf("copyMutation.mutateAsync", deletePosition);
   assert.ok(deletePosition >= 0 && copyPosition > deletePosition);

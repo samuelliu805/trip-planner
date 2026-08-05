@@ -20,7 +20,7 @@ import {
   selectionBounds,
   type GridCoordinate,
 } from "@/features/itinerary/grid-interactions";
-import { usePlannerWorkspace } from "@/features/itinerary/queries";
+import { usePlannerWorkspace } from "@/features/itinerary/planner-query";
 import { usePlannerClipboard } from "@/features/itinerary/hooks/use-planner-clipboard";
 import { usePlannerInteractions } from "@/features/itinerary/hooks/use-planner-interactions";
 import { usePlannerMap } from "@/features/itinerary/hooks/use-planner-map";

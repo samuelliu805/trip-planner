@@ -872,7 +872,10 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
     await Promise.all(
       [
         "./components/decision-summary-card.tsx",
+        "./components/decision-summary-card-elements.tsx",
         "./components/decision-summary-feedback.tsx",
+        "./components/decision-summary-hotel-details.tsx",
+        "./components/decision-summary-route-details.tsx",
         "./components/route-variant-decision-summary-panel.tsx",
         "./components/route-variant-decision-summary-sheet.tsx",
         "./components/route-variant-comparison-panel.tsx",
@@ -891,9 +894,13 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
   );
   const mutations = (
     await Promise.all(
-      ["../itinerary/queries.ts", "../routes/queries.ts", "./queries.ts"].map((path) =>
-        readFile(new URL(path, import.meta.url), "utf8"),
-      ),
+      [
+        "../itinerary/queries.ts",
+        "../itinerary/item-mutations.ts",
+        "../itinerary/day-mutations.ts",
+        "../routes/queries.ts",
+        "./queries.ts",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
   ).join("\n");
 

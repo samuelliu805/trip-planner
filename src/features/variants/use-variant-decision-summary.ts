@@ -7,7 +7,7 @@ import type { PlannerVariant } from "@/features/itinerary/types";
 import {
   finalizeVariantDecisionSummaries,
   reconcileDecisionSummaryProjections,
-} from "./decision-summary-metrics";
+} from "./decision-summary-finalization";
 import type { VariantDecisionSummary } from "./decision-summary-types";
 import { useVariantDecisionSummaryProjection } from "./queries";
 

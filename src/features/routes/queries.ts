@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { plannerQueryKey } from "@/features/itinerary/queries";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { requireData } from "@/features/itinerary/query-cache";
 import type { PlannerWorkspace } from "@/features/itinerary/types";
 import { invalidateVariantDecisionSummary } from "@/features/variants/queries";
