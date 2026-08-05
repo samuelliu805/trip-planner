@@ -9,8 +9,9 @@ Trip Planner is a responsive, spreadsheet-style workspace for building complex t
 - Phase 4 — Primary Route A Overview and optional manual Day routes — is implemented. Its migrations are applied and automated checks pass; the authenticated browser and deployed-configuration smoke test is still pending, so Phase 4 is not marked complete.
 - Phase 5A — Route Variant Foundation — is implemented. Its forward-only migration is applied to the linked project, linked integration/domain checks and all repository checks pass, and unauthenticated responsive shell checks pass. The authenticated product checklist remains pending.
 - Phase 5B — read-only Route Variant comparison — is implemented without a schema migration or new cloud configuration. Focused comparison and repository checks pass; authenticated comparison and responsive acceptance remain pending.
+- Phase 5C — Route Variant Decision Summary — is implemented without a schema migration or new cloud configuration. The lightweight projection, current-signature aggregation, neutral Primary deltas, desktop panel, and mobile Summary Sheet are covered by automated checks; authenticated responsive acceptance remains pending.
 
-Phase 5C decision summaries, public sharing/export, and travel research remain intentionally deferred.
+Phase 6 public sharing/export and later travel research remain intentionally deferred.
 
 ## Foundation stack
 
@@ -167,6 +168,30 @@ Below 900px, comparison opens the expanded map with the same multi-variant overl
 
 Comparison is disabled until a trip has at least two variants. It is also disabled while the existing Day route editor contains an open draft, requiring the owner to use the established save or discard behavior before entering comparison. Rename, recolor, primary, lifecycle, City item/order, and day mutations reconcile or invalidate comparison data; unrelated item edits avoid comparison invalidation where practical.
 
+## Phase 5C route decision summary
+
+Decision summary is a factual, read-only layer inside Phase 5B comparison. It uses the Primary variant as the stable baseline and labels every non-primary difference as vs Primary. A positive or negative delta is neutral: it never means better, worse, winner, loser, score, or recommendation. The URL-selected variant remains the only editable Matrix.
+
+The lazy ["variant-decision-summary", tripId] query is independent from the Phase 5B City projection and from every full planner workspace. It loads only variant identity, persisted days, the item types and place fields needed by summary metrics, and normalized saved Day route plans/stops/legs/calculations. It does not load item links, notes, booking data, provider payloads, or inactive PlannerWorkspace objects. Existing table RLS remains the authorization boundary.
+
+Summary metrics use these definitions:
+
+- City sequence follows Phase 5B manual day/item order and stay-boundary behavior, but collapses adjacent occurrences of the same normalized City place for readability. City stage count still includes every explicit City occurrence; unique City count deduplicates normalized place identity.
+- Days count persisted variant days. Nights are day count minus one only when every date exists and the ordered dates are one continuous daily sequence. Hotel items never infer nights. If no compared variant has known nights, the Nights row is omitted instead of repeating an unknown value.
+- Unique planned places deduplicate non-null persisted place IDs across City, Activity, Meal, Hotel, and Car rental items. The occurrence count remains available as supporting detail.
+- City span · straight-line is the Haversine sum across Phase 5B explicit City Overview legs, including City-less-day behavior and excluding same-place cross-day no-travel boundaries. It is never driving distance and is omitted when unavailable for every compared variant.
+- Saved route distance is displayed by explicit current leg mode—Walk, Drive, Train, Bus, and the other supported product modes—rather than as one aggregate Day-route number. A calculation is current only when its persisted config signature matches the signature reconstructed from current saved stops, coordinates, occurrence order, and per-leg modes. Stale, uncalculated, needs-editing, and updating plans are counted but excluded from every mode total.
+- Mode distance includes Google and explicit straight-fallback legs because both carry persisted distance. The provider mode never replaces the saved product mode. Aggregate Day-route duration is not shown, and the entire mode-distance section is omitted when every compared variant lacks a current calculated distance.
+- Route coverage shows saved-plan status counts, current calculated legs, fallback legs, no-route fallbacks, and unsupported-mode fallbacks. Saved Day route modes come from current persisted route legs.
+- Trip transport modes come only from explicit Transport, legacy Flight, and legacy Train items. Provider mode and distance never infer a product mode.
+- Hotel comparison treats each explicit Hotel item as an occurrence, using place ID first and normalized title only when no place ID exists. Occurrences align to Primary by actual date when both corresponding days are dated, otherwise by day number; multiple Hotels on one day remain distinct and produce same, changed, added, and removed detail.
+
+City span and saved per-mode route distances are separate metrics and are never added together. Empty all-variant metric groups are suppressed; if at least one variant has a known value, another variant may still show a precise unavailable/not-calculated state. Opening, retrying, refetching, or expanding the summary performs no Google Routes, Place Details, route-alternative, or automatic calculation request.
+
+At 900px and wider, Decision summary is a collapsible panel within the comparison map and shows at most three compact variant columns. Below 900px, Summary is a separate bottom Sheet alongside, not inside, the existing Routes visibility flow. The Matrix remains horizontally scrollable and editable for the active URL variant; opening either summary surface does not switch variants or update the URL. Primary, Editing, Read only, partial, stale, excluded, unknown, and unavailable states are textual and do not rely on color.
+
+Phase 5C uses the existing schema and requires no migration. Relevant item/day/variant/route mutations invalidate the summary query; note-only edits avoid invalidation where practical. Authoritative variant identity reconciles cached projections after rename, recolor, primary, create, or delete operations.
+
 ## Local development
 
 Requirements: Node.js 22.21+, npm 10+, and the Supabase CLI for database work.
@@ -256,7 +281,44 @@ The latest Phase 5A verification completed with `npm test` (57/57 tests), `npx t
 
 The Phase 5B verification completed with `npm test` (62/62 tests), `npx tsc --noEmit`, `npm run lint`, `npm run format:check`, and `npm run build`. Comparison coverage includes the City-only projection contract, deterministic/stay-boundary derivation, straight dashed provider-neutral presentation, active/inactive emphasis, read-only marker identity, responsive editing/visibility separation, state reconciliation, cache invalidation, and the absence of comparison route-provider calls.
 
-Headless Chrome loaded the built unauthenticated application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`; therefore authenticated variant UI/interaction viewport testing is still part of the manual checklist below.
+The Phase 5C verification completed with `npm test` (75/75 tests), `npx tsc --noEmit`, `npm run lint`, `npm run format:check`, and `npm run build`. Focused coverage includes the lightweight trip-scoped/RLS projection contract, adjacent City-sequence collapse without changing stage counts, Haversine span, all-unknown metric suppression, planning horizons, planned-place deduplication, current-signature per-mode route distance, stale/uncalculated/needs-editing exclusion, fallbacks, explicit travel modes, Hotel occurrence alignment, neutral deltas, query reconciliation/invalidation, responsive summary surfaces, and the absence of summary provider calls. `supabase migration list --linked` reported all 12 local migrations matched remotely with no pending migration; no schema push was run.
+
+Headless Chrome loaded the current unauthenticated application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`; therefore authenticated Phase 5A/5B/5C UI and interaction acceptance remains part of the manual checklists below.
+
+## Phase 5C authenticated manual checklist
+
+This remains pending until a valid authenticated browser session with suitable Route A/B/C fixtures is available.
+
+1. Open a trip with Route A, Route B, and Route C containing intentionally varied days, Cities, places, Hotels, transport items, and saved Day routes.
+2. Enter Phase 5B Compare and open Decision summary.
+3. Confirm the desktop panel and mobile/portrait Sheet match the accepted Phase 5C Stitch references.
+4. Confirm Primary is the baseline and every non-primary delta says vs Primary.
+5. Confirm City stage count includes every explicit occurrence while unique City places deduplicate shared place identity.
+6. Confirm City sequence remains based on manual day/item order and collapses only adjacent occurrences of the same City; City stage count still includes every explicit occurrence.
+7. Confirm City span is labeled City span · straight-line.
+8. Confirm City span is never combined with Walk, Drive, Train, or other saved route-mode distances.
+9. Confirm complete continuous dates produce the persisted day count and day count minus one nights.
+10. Confirm Nights is omitted when unknown for every variant, but a variant-specific unknown reason remains visible when another variant has known nights.
+11. Confirm unique planned places deduplicate shared persisted place IDs and exclude null place IDs.
+12. Confirm a duplicated variant can show copied saved routes as uncalculated without creating zero-valued mode distances.
+13. Confirm current successful saved Day route calculations contribute distance to their explicit Walk, Drive, Train, or other saved mode.
+14. Change coordinates, stop order, or a leg mode and confirm the stale route is counted and excluded from totals.
+15. Delete or clear a referenced route item and confirm needs editing is counted and excluded from totals.
+16. Confirm aggregate Day-route distance and duration rows are absent; mode-distance rows use explicit saved leg modes only.
+17. Confirm straight fallback distance remains known in its saved mode bucket without displaying an inferred duration.
+18. Confirm Trip transport items and Saved Day route modes are separate and reflect explicit stored data only.
+19. Expand Hotel occurrences and confirm same, changed, added, removed, and affected date/day details against Primary.
+20. Confirm Hotel occurrences are not described or counted as inferred nights.
+21. Confirm neutral delta chips and assistive labels do not imply a winner, loser, improvement, or recommendation.
+22. Rename, recolor, and set a new Primary; confirm cached summary identity and baseline reconcile safely.
+23. Add, edit, delete, copy, clear, and reorder relevant items; confirm summary data refreshes without changing the URL variant.
+24. Save, calculate, and clear a Day route; confirm route status and per-mode distances refresh.
+25. Inspect the network log while opening, retrying, refetching, and expanding summary details; confirm zero Google Routes and Place Details requests.
+26. Confirm the active URL variant Matrix remains editable and inactive variants remain read only throughout summary use.
+27. At 834×1194, 768×1024, 390×844, and 430×932, confirm the dedicated Summary Sheet, separate Routes Sheet, map return flow, detail expansion, and 44px targets.
+28. Simulate loading and summary failure; confirm the Matrix/comparison remain usable and Retry is isolated to summary.
+29. Verify the complete experience at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932.
+30. Close summary and comparison; confirm the normal active planner, Overview, Day route save/calculate/clear, and variant lifecycle behavior remain unchanged.
 
 ## Phase 5B authenticated manual checklist
 
@@ -360,9 +422,9 @@ This checklist remains pending until valid test-account access and the required 
 5. Route variants
    - ✅ Phase 5A: active variant loading and lifecycle foundation
    - ✅ Phase 5B: read-only City Overview map comparison (authenticated acceptance pending)
-   - Phase 5C: decision summaries
+   - ✅ Phase 5C: factual Route Variant decision summary (authenticated acceptance pending)
 6. Public read-only sharing and export
 7. Travel research and along-the-way city recommendations
 8. Offline, conflict, deployment, and operational polish
 
-Each phase is independently implemented and verified. Phase 5B preserves manual-order semantics, adds only read-only structural comparison, and does not introduce Google alternatives, decision metrics, scores, recommendations, or cross-variant editing.
+Each phase is independently implemented and verified. Phase 5C adds persisted factual decision metrics without Google alternatives, automatic calculation, scores, recommendations, public sharing/export, or cross-variant editing.

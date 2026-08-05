@@ -40,7 +40,10 @@ export function deriveComparisonStages(projection: VariantComparisonProjection):
 
 export function formatCitySequence(stages: OverviewStage[]) {
   return stages.length
-    ? stages.map(({ entries }) => entries[0].title).join(" → ")
+    ? stages
+        .filter((stage, index) => index === 0 || stages[index - 1].placeKey !== stage.placeKey)
+        .map(({ entries }) => entries[0].title)
+        .join(" → ")
     : "No City stages";
 }
 

@@ -218,7 +218,7 @@ test("Phase 5B comparison derivation preserves explicit City structure and stay 
   );
   assert.equal(stages.length, 4, "multiple Cities and repeated later occurrences remain stages");
   assert.equal(presentation.lines.length, 2, "the cross-day Kyoto stay boundary adds no line");
-  assert.equal(formatCitySequence(stages), "Tokyo → Kyoto → Kyoto → Tokyo");
+  assert.equal(formatCitySequence(stages), "Tokyo → Kyoto → Tokyo");
   assert.equal(formatCitySequence([]), "No City stages");
   assert.ok(stages.every(({ id }) => id.startsWith("comparison:route-a:stage:")));
   assert.ok(presentation.lines.every(({ id }) => id.startsWith("comparison:route-a:leg:")));

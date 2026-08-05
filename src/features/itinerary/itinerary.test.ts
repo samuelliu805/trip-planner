@@ -72,6 +72,7 @@ import {
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 import "../variants/comparison.test.ts";
+import "../variants/decision-summary.test.ts";
 
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",

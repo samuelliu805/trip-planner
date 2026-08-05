@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { plannerQueryKey } from "@/features/itinerary/queries";
 import { requireData } from "@/features/itinerary/query-cache";
 import type { PlannerWorkspace } from "@/features/itinerary/types";
+import { invalidateVariantDecisionSummary } from "@/features/variants/queries";
 
 import {
   calculateDayRoute,
@@ -98,10 +99,12 @@ export function useSaveDayRoutePlan(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (plan) =>
+    onSuccess: (plan) => {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replacePlan(current, plan),
-      ),
+      );
+      void invalidateVariantDecisionSummary(client, tripId);
+    },
     retry: false,
   });
 }
@@ -126,10 +129,12 @@ export function useCalculateDayRoute(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (plan) =>
+    onSuccess: (plan) => {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replacePlan(current, plan),
-      ),
+      );
+      void invalidateVariantDecisionSummary(client, tripId);
+    },
     retry: false,
   });
 }
@@ -152,6 +157,7 @@ export function useClearDayRoutePlan(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
+    onSuccess: () => void invalidateVariantDecisionSummary(client, tripId),
     retry: false,
   });
 }

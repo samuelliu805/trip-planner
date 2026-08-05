@@ -21,7 +21,9 @@ import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import { RouteVariantComparisonSheet } from "@/features/variants/components/route-variant-comparison-sheet";
+import { RouteVariantDecisionSummarySheet } from "@/features/variants/components/route-variant-decision-summary-sheet";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
+import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
 type PlannerSheetsProps = {
   compactMapEmptyState?: { message: string; title: string };
@@ -30,6 +32,8 @@ type PlannerSheetsProps = {
   compactMapViewportKey?: string;
   comparison: VariantComparisonUi;
   comparisonSheetOpen: boolean;
+  decisionSummary: VariantDecisionSummaryUi;
+  decisionSummarySheetOpen: boolean;
   copyDaysOpen: boolean;
   copyPending: boolean;
   dayCityLayerAvailable: boolean;
@@ -44,6 +48,7 @@ type PlannerSheetsProps = {
   onCopyDaysOpenChange: (open: boolean) => void;
   onComparisonExit: () => void;
   onComparisonSheetOpenChange: (open: boolean) => void;
+  onDecisionSummarySheetOpenChange: (open: boolean) => void;
   onCopyToSelectedDays: () => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditorClose: () => void;
@@ -74,6 +79,8 @@ export function PlannerSheets({
   compactMapViewportKey,
   comparison,
   comparisonSheetOpen,
+  decisionSummary,
+  decisionSummarySheetOpen,
   copyDaysOpen,
   copyPending,
   dayCityLayerAvailable,
@@ -88,6 +95,7 @@ export function PlannerSheets({
   onCopyDaysOpenChange,
   onComparisonExit,
   onComparisonSheetOpenChange,
+  onDecisionSummarySheetOpenChange,
   onCopyToSelectedDays,
   onDayMapLayerChange,
   onEditorClose,
@@ -116,6 +124,12 @@ export function PlannerSheets({
         comparison={comparison}
         onOpenChange={onComparisonSheetOpenChange}
         open={comparisonSheetOpen}
+      />
+      <RouteVariantDecisionSummarySheet
+        activeVariantId={workspace.variant.id}
+        onOpenChange={onDecisionSummarySheetOpenChange}
+        open={decisionSummarySheetOpen}
+        summary={decisionSummary}
       />
       <Sheet onOpenChange={(open) => !open && onEditorClose()} open={Boolean(editor)}>
         <SheetContent className="planner-editor-sheet">
@@ -154,6 +168,8 @@ export function PlannerSheets({
           <div className="min-h-0 flex-1">
             <PlannerMapShell
               comparison={comparison}
+              decisionSummary={decisionSummary}
+              decisionSummaryPanelOpen={false}
               dayCityLayerAvailable={dayCityLayerAvailable}
               dayMapLayer={dayMapLayer}
               dayRoute={dayRoute}
@@ -165,6 +181,8 @@ export function PlannerSheets({
               markers={mapMode === "comparison" ? compactMapMarkers : mapMarkers}
               onComparisonExit={onComparisonExit}
               onComparisonSheetOpen={() => onComparisonSheetOpenChange(true)}
+              onDecisionSummaryOpen={() => onDecisionSummarySheetOpenChange(true)}
+              onDecisionSummaryPanelClose={() => undefined}
               onMarkerClick={onMarkerClick}
               onDayMapLayerChange={onDayMapLayerChange}
               onEditMapItem={onEditMapItem}

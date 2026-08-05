@@ -13,9 +13,11 @@ import { OverviewRouteOverlay } from "@/features/routes/overview-route-overlay";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import { RouteVariantComparisonPanel } from "@/features/variants/components/route-variant-comparison-panel";
+import { RouteVariantDecisionSummaryPanel } from "@/features/variants/components/route-variant-decision-summary-panel";
 import { VariantComparisonMapStatus } from "@/features/variants/components/variant-comparison-feedback";
 import { VariantComparisonMobileBar } from "@/features/variants/components/variant-comparison-mobile-bar";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
+import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
 const PlannerMapCanvas = dynamic(
   () => import("@/features/maps/planner-map-canvas").then((module) => module.PlannerMapCanvas),
@@ -25,6 +27,8 @@ const PlannerMapCanvas = dynamic(
 export function PlannerMapShell({
   compact = false,
   comparison,
+  decisionSummary,
+  decisionSummaryPanelOpen,
   dayCityLayerAvailable,
   dayMapLayer,
   dayRoute,
@@ -34,6 +38,8 @@ export function PlannerMapShell({
   markers,
   onComparisonExit,
   onComparisonSheetOpen,
+  onDecisionSummaryOpen,
+  onDecisionSummaryPanelClose,
   onExpand,
   onEditMapItem,
   onDayMapLayerChange,
@@ -46,6 +52,8 @@ export function PlannerMapShell({
 }: {
   compact?: boolean;
   comparison: VariantComparisonUi;
+  decisionSummary: VariantDecisionSummaryUi;
+  decisionSummaryPanelOpen: boolean;
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
@@ -55,6 +63,8 @@ export function PlannerMapShell({
   markers: PlannerMapMarker[];
   onComparisonExit: () => void;
   onComparisonSheetOpen: () => void;
+  onDecisionSummaryOpen: () => void;
+  onDecisionSummaryPanelClose: () => void;
   onExpand?: () => void;
   onEditMapItem: (itemId: string) => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
@@ -160,10 +170,24 @@ export function PlannerMapShell({
           <VariantComparisonMapStatus comparison={comparison} />
           {!compact ? (
             <>
-              <RouteVariantComparisonPanel comparison={comparison} onExit={onComparisonExit} />
+              <RouteVariantComparisonPanel
+                comparison={comparison}
+                onExit={onComparisonExit}
+                onSummaryOpen={onDecisionSummaryOpen}
+                summaryOpen={decisionSummaryPanelOpen}
+              />
+              <RouteVariantDecisionSummaryPanel
+                activeVariantId={
+                  comparison.presentations.find(({ isActive }) => isActive)?.variantId ?? ""
+                }
+                onCollapse={onDecisionSummaryPanelClose}
+                open={decisionSummaryPanelOpen}
+                summary={decisionSummary}
+              />
               <VariantComparisonMobileBar
                 comparison={comparison}
                 onChooseRoutes={onComparisonSheetOpen}
+                onSummaryOpen={onDecisionSummaryOpen}
               />
             </>
           ) : null}

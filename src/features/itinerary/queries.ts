@@ -33,7 +33,40 @@ import type {
   UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
-import { invalidateVariantComparison } from "@/features/variants/queries";
+import { decisionSummaryItemTypes } from "@/features/variants/decision-summary-types";
+import {
+  invalidateVariantComparison,
+  invalidateVariantDecisionSummary,
+} from "@/features/variants/queries";
+
+const affectsDecisionSummary = (type?: string) =>
+  decisionSummaryItemTypes.includes(type as (typeof decisionSummaryItemTypes)[number]);
+
+function decisionSummaryItemChanged(previous: ItineraryItem | undefined, next: ItineraryItem) {
+  if (!previous) return affectsDecisionSummary(next.type);
+  if (!affectsDecisionSummary(previous.type) && !affectsDecisionSummary(next.type)) return false;
+  if (
+    previous.type !== next.type ||
+    previous.day_id !== next.day_id ||
+    previous.place_id !== next.place_id
+  )
+    return true;
+  if (
+    (next.type === "location" || next.type === "hotel") &&
+    previous.title.trim() !== next.title.trim()
+  )
+    return true;
+  if (
+    next.type === "transport" &&
+    JSON.stringify(previous.details) !== JSON.stringify(next.details)
+  )
+    return true;
+  return (
+    previous.place?.providerPlaceId !== next.place?.providerPlaceId ||
+    previous.place?.latitude !== next.place?.latitude ||
+    previous.place?.longitude !== next.place?.longitude
+  );
+}
 
 export const plannerQueryKey = (tripId: string, variantId: string) =>
   ["planner", tripId, variantId] as const;
@@ -97,6 +130,7 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
         replaceItem(removeItem(current, context?.optimisticId ?? ""), item),
       );
       if (item.type === "location") void invalidateVariantComparison(client, tripId);
+      if (affectsDecisionSummary(item.type)) void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -153,7 +187,11 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
             ...(input.type !== undefined && { type: input.type }),
           }),
         );
-      return { existingWasCity: existing?.type === "location", previous };
+      return {
+        existing,
+        existingWasCity: existing?.type === "location",
+        previous,
+      };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
@@ -163,6 +201,8 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
       );
       if (item.type === "location" || context?.existingWasCity)
         void invalidateVariantComparison(client, tripId);
+      if (decisionSummaryItemChanged(context?.existing, item))
+        void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -178,13 +218,18 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
       const deletedCity = previous?.days
         .flatMap(({ items }) => items)
         .some((item) => item.id === input.id && item.type === "location");
+      const deletedDecisionSummaryItem = previous?.days
+        .flatMap(({ items }) => items)
+        .some((item) => item.id === input.id && affectsDecisionSummary(item.type));
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItem(previous, input.id));
-      return { deletedCity, previous };
+      return { deletedCity, deletedDecisionSummaryItem, previous };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (_data, _input, context) => {
       if (context?.deletedCity) void invalidateVariantComparison(client, tripId);
+      if (context?.deletedDecisionSummaryItem)
+        void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -200,14 +245,19 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
       const clearedCity = previous?.days
         .flatMap(({ items }) => items)
         .some((item) => input.itemIds.includes(item.id) && item.type === "location");
+      const clearedDecisionSummaryItem = previous?.days
+        .flatMap(({ items }) => items)
+        .some((item) => input.itemIds.includes(item.id) && affectsDecisionSummary(item.type));
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItems(previous, input.itemIds));
-      return { clearedCity, previous };
+      return { clearedCity, clearedDecisionSummaryItem, previous };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (_data, _input, context) => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       if (context?.clearedCity) void invalidateVariantComparison(client, tripId);
+      if (context?.clearedDecisionSummaryItem)
+        void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -219,6 +269,7 @@ export function useInsertTripDay(tripId: string, variantId: string) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       void invalidateVariantComparison(client, tripId);
+      void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -230,6 +281,7 @@ export function useRemoveTripDay(tripId: string, variantId: string) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       void invalidateVariantComparison(client, tripId);
+      void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -281,6 +333,8 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
       );
       if (context?.sources.some(({ type }) => type === "location"))
         void invalidateVariantComparison(client, tripId);
+      if (context?.sources.some(({ type }) => affectsDecisionSummary(type)))
+        void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -297,6 +351,12 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
         .find(({ id }) => id === input.dayId)
         ?.items.some(
           (item) => input.items.some(({ id }) => id === item.id) && item.type === "location",
+        );
+      const reorderedDecisionSummaryItem = previous?.days
+        .find(({ id }) => id === input.dayId)
+        ?.items.some(
+          (item) =>
+            input.items.some(({ id }) => id === item.id) && affectsDecisionSummary(item.type),
         );
       const orders = new Map(input.items.map(({ id, sortOrder }) => [id, sortOrder]));
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
@@ -319,7 +379,7 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
             }
           : current,
       );
-      return { previous, reorderedCity };
+      return { previous, reorderedCity, reorderedDecisionSummaryItem };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
@@ -330,6 +390,8 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
         ),
       );
       if (context?.reorderedCity) void invalidateVariantComparison(client, tripId);
+      if (context?.reorderedDecisionSummaryItem)
+        void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }

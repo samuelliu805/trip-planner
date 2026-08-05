@@ -10,19 +10,27 @@ import {
   deleteRouteVariant,
   duplicateRouteVariant,
   loadRouteVariants,
+  loadVariantDecisionSummary,
   loadVariantComparison,
   setPrimaryRouteVariant,
   updateRouteVariant,
 } from "./actions";
 import type { VariantComparisonProjection } from "./comparison-types";
+import type { VariantDecisionSummaryProjection } from "./decision-summary-types";
 import type { RouteVariantIdentityInput, UpdateRouteVariantInput } from "./schema";
 
 export const variantListQueryKey = (tripId: string) => ["planner-variants", tripId] as const;
 export const variantComparisonQueryKey = (tripId: string) =>
   ["variant-comparison", tripId] as const;
+export const variantDecisionSummaryQueryKey = (tripId: string) =>
+  ["variant-decision-summary", tripId] as const;
 
 export function invalidateVariantComparison(client: QueryClient, tripId: string) {
   return client.invalidateQueries({ queryKey: variantComparisonQueryKey(tripId) });
+}
+
+export function invalidateVariantDecisionSummary(client: QueryClient, tripId: string) {
+  return client.invalidateQueries({ queryKey: variantDecisionSummaryQueryKey(tripId) });
 }
 
 export function useRouteVariants(tripId: string, initialData: PlannerVariant[]) {
@@ -44,6 +52,16 @@ export function useVariantComparisonProjection(tripId: string, enabled: boolean)
   });
 }
 
+export function useVariantDecisionSummaryProjection(tripId: string, enabled: boolean) {
+  return useQuery<VariantDecisionSummaryProjection[]>({
+    enabled,
+    queryFn: async () => requireData(await loadVariantDecisionSummary(tripId)),
+    queryKey: variantDecisionSummaryQueryKey(tripId),
+    retry: false,
+    staleTime: 30_000,
+  });
+}
+
 function useVariantMutation<TInput>(
   tripId: string,
   mutationFn: (
@@ -59,6 +77,7 @@ function useVariantMutation<TInput>(
     onSuccess: ({ variants }) => {
       client.setQueryData(variantListQueryKey(tripId), variants);
       void invalidateVariantComparison(client, tripId);
+      void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -93,6 +112,7 @@ export function useSetPrimaryRouteVariant(tripId: string) {
     onSettled: () => {
       void client.invalidateQueries({ queryKey: variantListQueryKey(tripId) });
       void invalidateVariantComparison(client, tripId);
+      void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
@@ -123,6 +143,7 @@ export function useUpdateRouteVariant(tripId: string) {
     onSuccess: ({ variants }) => {
       client.setQueryData(variantListQueryKey(tripId), variants);
       void invalidateVariantComparison(client, tripId);
+      void invalidateVariantDecisionSummary(client, tripId);
     },
   });
 }
