@@ -23,6 +23,7 @@ import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
+import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
 export function PlannerMatrix({
   compactMapEmptyState,
@@ -30,6 +31,8 @@ export function PlannerMatrix({
   compactMapMarkers,
   compactMapViewportKey,
   comparison,
+  decisionSummary,
+  decisionSummaryPanelOpen,
   containerRef,
   dayCityLayerAvailable,
   dayMapLayer,
@@ -50,6 +53,8 @@ export function PlannerMatrix({
   onMapExpand,
   onComparisonExit,
   onComparisonSheetOpen,
+  onDecisionSummaryOpen,
+  onDecisionSummaryPanelClose,
   onDayMapLayerChange,
   onEditMapItem,
   onMarkerClick,
@@ -84,6 +89,8 @@ export function PlannerMatrix({
   compactMapMarkers: PlannerMapMarker[];
   compactMapViewportKey?: string;
   comparison: VariantComparisonUi;
+  decisionSummary: VariantDecisionSummaryUi;
+  decisionSummaryPanelOpen: boolean;
   containerRef: MutableRefObject<HTMLDivElement | null>;
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
@@ -116,6 +123,8 @@ export function PlannerMatrix({
   onMapExpand: () => void;
   onComparisonExit: () => void;
   onComparisonSheetOpen: () => void;
+  onDecisionSummaryOpen: () => void;
+  onDecisionSummaryPanelClose: () => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditMapItem: (itemId: string) => void;
   onMarkerClick: (id?: string) => void;
@@ -309,6 +318,8 @@ export function PlannerMatrix({
         compactMarkers={compactMapMarkers}
         compactViewportKey={compactMapViewportKey}
         comparison={comparison}
+        decisionSummary={decisionSummary}
+        decisionSummaryPanelOpen={decisionSummaryPanelOpen}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
         dayRoute={dayRoute}
@@ -319,6 +330,8 @@ export function PlannerMatrix({
         onExpand={() => onMapExpand()}
         onComparisonExit={onComparisonExit}
         onComparisonSheetOpen={onComparisonSheetOpen}
+        onDecisionSummaryOpen={onDecisionSummaryOpen}
+        onDecisionSummaryPanelClose={onDecisionSummaryPanelClose}
         onDayMapLayerChange={onDayMapLayerChange}
         onEditMapItem={onEditMapItem}
         onMarkerClick={onMarkerClick}

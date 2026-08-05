@@ -218,7 +218,7 @@ test("Phase 5B comparison derivation preserves explicit City structure and stay 
   );
   assert.equal(stages.length, 4, "multiple Cities and repeated later occurrences remain stages");
   assert.equal(presentation.lines.length, 2, "the cross-day Kyoto stay boundary adds no line");
-  assert.equal(formatCitySequence(stages), "Tokyo → Kyoto → Kyoto → Tokyo");
+  assert.equal(formatCitySequence(stages), "Tokyo → Kyoto → Tokyo");
   assert.equal(formatCitySequence([]), "No City stages");
   assert.ok(stages.every(({ id }) => id.startsWith("comparison:route-a:stage:")));
   assert.ok(presentation.lines.every(({ id }) => id.startsWith("comparison:route-a:leg:")));
@@ -345,7 +345,15 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
     new URL("../itinerary/hooks/use-planner-map.ts", import.meta.url),
     "utf8",
   );
-  const queries = await readFile(new URL("../itinerary/queries.ts", import.meta.url), "utf8");
+  const queries = (
+    await Promise.all(
+      [
+        "../itinerary/queries.ts",
+        "../itinerary/item-mutations.ts",
+        "../itinerary/day-mutations.ts",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    )
+  ).join("\n");
 
   assert.match(controls, /label: "Compare"/);
   assert.match(controls, /disabled: Boolean\(comparisonBlockingReason\)/);

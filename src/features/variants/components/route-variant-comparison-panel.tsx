@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { BarChart3, X } from "lucide-react";
 
 import { VariantComparisonRows } from "@/features/variants/components/variant-comparison-rows";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
@@ -8,9 +8,13 @@ import type { VariantComparisonUi } from "@/features/variants/use-variant-compar
 export function RouteVariantComparisonPanel({
   comparison,
   onExit,
+  onSummaryOpen,
+  summaryOpen,
 }: {
   comparison: VariantComparisonUi;
   onExit: () => void;
+  onSummaryOpen: () => void;
+  summaryOpen: boolean;
 }) {
   if (comparison.isLoading || comparison.error) return null;
   return (
@@ -37,6 +41,17 @@ export function RouteVariantComparisonPanel({
       </div>
       <div className="max-h-[min(25rem,calc(100dvh-10rem))] space-y-1 overflow-y-auto p-2">
         <VariantComparisonRows comparison={comparison} />
+      </div>
+      <div className="border-t p-2">
+        <button
+          aria-expanded={summaryOpen}
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onClick={onSummaryOpen}
+          type="button"
+        >
+          <BarChart3 aria-hidden="true" className="size-4" />
+          {summaryOpen ? "Summary open" : "Decision summary"}
+        </button>
       </div>
     </aside>
   );

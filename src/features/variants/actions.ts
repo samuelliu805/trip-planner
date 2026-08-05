@@ -6,6 +6,7 @@ import { getPlannerVariants } from "@/features/itinerary/data";
 import { createClient } from "@/lib/supabase/server";
 
 import { getVariantComparison } from "./comparison-data";
+import { getVariantDecisionSummary } from "./decision-summary-data";
 
 import {
   createRouteVariantSchema,
@@ -66,6 +67,10 @@ export async function loadRouteVariants(tripId: string) {
 
 export async function loadVariantComparison(tripId: string) {
   return getVariantComparison(tripId);
+}
+
+export async function loadVariantDecisionSummary(tripId: string) {
+  return getVariantDecisionSummary(tripId);
 }
 
 export async function createRouteVariant(

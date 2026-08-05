@@ -20,7 +20,7 @@ import {
   selectionBounds,
   type GridCoordinate,
 } from "@/features/itinerary/grid-interactions";
-import { usePlannerWorkspace } from "@/features/itinerary/queries";
+import { usePlannerWorkspace } from "@/features/itinerary/planner-query";
 import { usePlannerClipboard } from "@/features/itinerary/hooks/use-planner-clipboard";
 import { usePlannerInteractions } from "@/features/itinerary/hooks/use-planner-interactions";
 import { usePlannerMap } from "@/features/itinerary/hooks/use-planner-map";
@@ -178,6 +178,9 @@ function PlannerWorkspaceVariant({
     compactMapViewportKey,
     comparison,
     comparisonSheetOpen,
+    decisionSummary,
+    decisionSummaryPanelOpen,
+    decisionSummarySheetOpen,
     dayCityLayerAvailable,
     dayMapLayer,
     enterComparison,
@@ -191,6 +194,8 @@ function PlannerWorkspaceVariant({
     selectedMapItem,
     selectMarker,
     setComparisonSheetOpen,
+    setDecisionSummaryPanelOpen,
+    setDecisionSummarySheetOpen,
     setDayMapLayer,
     setMapModeFromSelection,
     setSelectedItemId,
@@ -328,6 +333,8 @@ function PlannerWorkspaceVariant({
         compactMapMarkers={compactMapMarkers}
         compactMapViewportKey={compactMapViewportKey}
         comparison={comparison}
+        decisionSummary={decisionSummary}
+        decisionSummaryPanelOpen={decisionSummaryPanelOpen}
         containerRef={containerRef}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
@@ -350,6 +357,8 @@ function PlannerWorkspaceVariant({
         onMapExpand={() => setMapExpanded(true)}
         onComparisonExit={exitComparison}
         onComparisonSheetOpen={() => setComparisonSheetOpen(true)}
+        onDecisionSummaryOpen={() => setDecisionSummaryPanelOpen(true)}
+        onDecisionSummaryPanelClose={() => setDecisionSummaryPanelOpen(false)}
         onDayMapLayerChange={setDayMapLayer}
         onEditMapItem={editMapItem}
         onMarkerClick={selectMarker}
@@ -384,6 +393,8 @@ function PlannerWorkspaceVariant({
         compactMapViewportKey={compactMapViewportKey}
         comparison={comparison}
         comparisonSheetOpen={comparisonSheetOpen}
+        decisionSummary={decisionSummary}
+        decisionSummarySheetOpen={decisionSummarySheetOpen}
         copyDaysOpen={copyDaysOpen}
         copyPending={copyMutation.isPending}
         dayCityLayerAvailable={dayCityLayerAvailable}
@@ -400,6 +411,12 @@ function PlannerWorkspaceVariant({
         onComparisonExit={exitComparison}
         onComparisonSheetOpenChange={(open) => {
           setComparisonSheetOpen(open);
+          if (open) setDecisionSummarySheetOpen(false);
+          setMapExpanded(!open);
+        }}
+        onDecisionSummarySheetOpenChange={(open) => {
+          setDecisionSummarySheetOpen(open);
+          if (open) setComparisonSheetOpen(false);
           setMapExpanded(!open);
         }}
         onCopyToSelectedDays={() => void copyToSelectedDays()}
@@ -409,7 +426,13 @@ function PlannerWorkspaceVariant({
         onInteractionError={setInteractionError}
         onMapExpandedChange={(open) => {
           setMapExpanded(open);
-          if (!open && mapMode === "comparison" && !comparisonSheetOpen) exitComparison();
+          if (
+            !open &&
+            mapMode === "comparison" &&
+            !comparisonSheetOpen &&
+            !decisionSummarySheetOpen
+          )
+            exitComparison();
         }}
         onMarkerClick={selectMarker}
         onMapModeChange={setMapMode}

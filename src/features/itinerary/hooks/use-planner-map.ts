@@ -18,6 +18,7 @@ import {
   type DayMapLayer,
 } from "@/features/routes/day-city-map";
 import { useVariantComparison } from "@/features/variants/use-variant-comparison";
+import { useVariantDecisionSummary } from "@/features/variants/use-variant-decision-summary";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -30,6 +31,8 @@ export function usePlannerMap(
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
   const [selectedItemId, setSelectedItemId] = useState<string>();
   const [comparisonSheetOpen, setComparisonSheetOpen] = useState(false);
+  const [decisionSummaryPanelOpen, setDecisionSummaryPanelOpen] = useState(false);
+  const [decisionSummarySheetOpen, setDecisionSummarySheetOpen] = useState(false);
   const [dayLayerState, setDayLayerState] = useState<{
     dayId: string;
     layer: DayMapLayer;
@@ -39,6 +42,11 @@ export function usePlannerMap(
     activeVariantId: variantId,
     dayRouteEditing: dayRoute.editing,
     enabled: mapMode === "comparison",
+    tripId: workspace.variant.trip_id,
+    variants,
+  });
+  const decisionSummary = useVariantDecisionSummary({
+    enabled: mapMode === "comparison" && (decisionSummaryPanelOpen || decisionSummarySheetOpen),
     tripId: workspace.variant.trip_id,
     variants,
   });
@@ -176,6 +184,8 @@ export function usePlannerMap(
     setSelectedItemId(undefined);
     if (mode === "comparison") return;
     setComparisonSheetOpen(false);
+    setDecisionSummaryPanelOpen(false);
+    setDecisionSummarySheetOpen(false);
     if (mode !== "overview") return;
     const row = selectionEnd.row >= 0 ? selectionEnd.row : 0;
     const day = workspace.days[row];
@@ -233,11 +243,16 @@ export function usePlannerMap(
         : undefined,
     comparison,
     comparisonSheetOpen,
+    decisionSummary,
+    decisionSummaryPanelOpen,
+    decisionSummarySheetOpen,
     enterComparison: () => {
       if (comparison.blockingReason) return;
       setSelectedItemId(undefined);
       setMapMode("comparison");
       setComparisonSheetOpen(false);
+      setDecisionSummaryPanelOpen(false);
+      setDecisionSummarySheetOpen(false);
     },
     exitComparison: () => changeMapMode("overview"),
     mapLines,
@@ -254,6 +269,8 @@ export function usePlannerMap(
     selectMarker,
     selectedItemId,
     setComparisonSheetOpen,
+    setDecisionSummaryPanelOpen,
+    setDecisionSummarySheetOpen,
     setMapModeFromSelection: (mode: PlannerMapMode) =>
       setMapMode((current) => (current === "comparison" ? current : mode)),
     setDayMapLayer: (layer: DayMapLayer) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye } from "lucide-react";
+import { BarChart3, Eye } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
@@ -8,9 +8,11 @@ import type { VariantComparisonUi } from "@/features/variants/use-variant-compar
 export function VariantComparisonMobileBar({
   comparison,
   onChooseRoutes,
+  onSummaryOpen,
 }: {
   comparison: VariantComparisonUi;
   onChooseRoutes: () => void;
+  onSummaryOpen: () => void;
 }) {
   const active = comparison.presentations.find(({ isActive }) => isActive);
   if (!active || comparison.isLoading || comparison.error) return null;
@@ -22,17 +24,29 @@ export function VariantComparisonMobileBar({
           Matrix: {active.name} · Map: read only
         </p>
       </div>
-      <Button
-        className="min-h-11 shrink-0 gap-1.5"
-        onClick={onChooseRoutes}
-        size="sm"
-        variant="outline"
-      >
-        <Eye className="size-4" />
-        <span>
-          Routes {comparison.visiblePresentations.length}/{comparison.presentations.length}
-        </span>
-      </Button>
+      <div className="flex shrink-0 gap-1.5">
+        <Button className="min-h-11 gap-1 px-2" onClick={onSummaryOpen} size="sm" variant="outline">
+          <BarChart3 aria-hidden="true" className="size-4" />
+          <span>Summary</span>
+        </Button>
+        <Button
+          aria-label={
+            "Choose visible routes. Showing " +
+            comparison.visiblePresentations.length +
+            " of " +
+            comparison.presentations.length
+          }
+          className="min-h-11 gap-1 px-2"
+          onClick={onChooseRoutes}
+          size="sm"
+          variant="outline"
+        >
+          <Eye aria-hidden="true" className="size-4" />
+          <span>
+            Routes {comparison.visiblePresentations.length}/{comparison.presentations.length}
+          </span>
+        </Button>
+      </div>
       <span aria-live="polite" className="sr-only" role="status">
         Showing {comparison.visiblePresentations.length} of {comparison.presentations.length}{" "}
         routes.

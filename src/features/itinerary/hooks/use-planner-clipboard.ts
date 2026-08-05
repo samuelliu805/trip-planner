@@ -12,11 +12,9 @@ import {
   type GridCoordinate,
   type PlannerClipboard,
 } from "@/features/itinerary/grid-interactions";
-import {
-  plannerQueryKey,
-  useCopyItineraryItems,
-  useDeleteItineraryItem,
-} from "@/features/itinerary/queries";
+import { useCopyItineraryItems } from "@/features/itinerary/day-mutations";
+import { useDeleteItineraryItem } from "@/features/itinerary/item-mutations";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import type { ItineraryItemType, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 
 export function usePlannerClipboard({

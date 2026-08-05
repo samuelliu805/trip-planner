@@ -18,7 +18,7 @@ import {
   useCreateItineraryItem,
   useDeleteItineraryItem,
   useUpdateItineraryItem,
-} from "@/features/itinerary/queries";
+} from "@/features/itinerary/item-mutations";
 import {
   normalizeTransportMode,
   transportModeLabels,

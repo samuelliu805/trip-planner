@@ -8,6 +8,7 @@ import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
+import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
 export function PlannerStatus({
   deleteError,
@@ -75,6 +76,8 @@ export function PlannerMapPane({
   compactMarkers,
   compactViewportKey,
   comparison,
+  decisionSummary,
+  decisionSummaryPanelOpen,
   dayCityLayerAvailable,
   dayMapLayer,
   dayRoute,
@@ -85,6 +88,8 @@ export function PlannerMapPane({
   onExpand,
   onComparisonExit,
   onComparisonSheetOpen,
+  onDecisionSummaryOpen,
+  onDecisionSummaryPanelClose,
   onEditMapItem,
   onDayMapLayerChange,
   onMarkerClick,
@@ -99,6 +104,8 @@ export function PlannerMapPane({
   compactMarkers: PlannerMapMarker[];
   compactViewportKey?: string;
   comparison: VariantComparisonUi;
+  decisionSummary: VariantDecisionSummaryUi;
+  decisionSummaryPanelOpen: boolean;
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
@@ -109,6 +116,8 @@ export function PlannerMapPane({
   onExpand: () => void;
   onComparisonExit: () => void;
   onComparisonSheetOpen: () => void;
+  onDecisionSummaryOpen: () => void;
+  onDecisionSummaryPanelClose: () => void;
   onEditMapItem: (itemId: string) => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onMarkerClick: (id?: string) => void;
@@ -122,6 +131,8 @@ export function PlannerMapPane({
     <PlannerMapShell
       compact={compact}
       comparison={comparison}
+      decisionSummary={decisionSummary}
+      decisionSummaryPanelOpen={decisionSummaryPanelOpen}
       dayCityLayerAvailable={dayCityLayerAvailable}
       dayMapLayer={dayMapLayer}
       dayRoute={dayRoute}
@@ -131,6 +142,8 @@ export function PlannerMapPane({
       markers={compact ? compactMarkers : markers}
       onComparisonExit={onComparisonExit}
       onComparisonSheetOpen={onComparisonSheetOpen}
+      onDecisionSummaryOpen={onDecisionSummaryOpen}
+      onDecisionSummaryPanelClose={onDecisionSummaryPanelClose}
       onExpand={compact ? onExpand : undefined}
       onEditMapItem={onEditMapItem}
       onDayMapLayerChange={onDayMapLayerChange}
