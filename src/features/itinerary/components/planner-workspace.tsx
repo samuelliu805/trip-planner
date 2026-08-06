@@ -40,6 +40,7 @@ type PlannerWorkspaceProps = {
   initialVariants: PlannerVariant[];
   initialWorkspace: PlannerWorkspaceData;
   settings: React.ReactNode;
+  shareControls?: React.ReactNode;
   trip: Tables<"trips">;
 };
 
@@ -52,6 +53,7 @@ function PlannerWorkspaceVariant({
   initialVariants,
   initialWorkspace,
   settings,
+  shareControls,
   trip,
 }: PlannerWorkspaceProps) {
   const { data: workspace = initialWorkspace, error: workspaceError } = usePlannerWorkspace(
@@ -311,6 +313,7 @@ function PlannerWorkspaceVariant({
         setEditor={setEditor}
         setInteractionError={setInteractionError}
         setSettingsOpen={setSettingsOpen}
+        shareControls={shareControls}
         trip={trip}
         workspaceDayCount={workspace.days.length}
         workspaceError={Boolean(workspaceError)}

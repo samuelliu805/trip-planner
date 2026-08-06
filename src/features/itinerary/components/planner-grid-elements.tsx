@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -13,6 +13,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { PlannerCategory } from "@/features/itinerary/components/planner-config";
 import type { PlannerDay } from "@/features/itinerary/types";
@@ -108,6 +115,55 @@ export function DayActions({
   const insertIcon = (direction: "up" | "down") => (
     <InsertRowIcon direction={direction === "up" ? "above" : "below"} />
   );
+  if (mobile)
+    return (
+      <>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              aria-label={`Actions for Day ${day.day_number}`}
+              className="flex size-11 shrink-0 items-center justify-center gap-1 rounded-md border bg-background px-0 text-xs font-semibold text-foreground min-[420px]:w-auto min-[420px]:px-3"
+              type="button"
+            >
+              <MoreHorizontal className="size-4" />
+              <span className="min-[420px]:hidden">D{day.day_number}</span>
+              <span className="hidden min-[420px]:inline">Day actions</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem disabled={pending} onSelect={() => onInsert(day.day_number)}>
+              {insertIcon("up")} Add day before
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={pending} onSelect={() => onInsert(day.day_number + 1)}>
+              {insertIcon("down")} Add day after
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              disabled={isOnlyDay || pending}
+              onSelect={() => setConfirmOpen(true)}
+            >
+              <Trash2 className="size-4" /> Remove day
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Day {day.day_number}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This also deletes every itinerary item in this day. The remaining days and dates
+                will be renumbered automatically.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep day</AlertDialogCancel>
+              <AlertDialogAction onClick={() => onRemove(day.id)}>Remove day</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
   return (
     <>
       <div

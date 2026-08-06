@@ -1,20 +1,6 @@
 "use client";
 
-import {
-  Bike,
-  BusFront,
-  CableCar,
-  CarFront,
-  CarTaxiFront,
-  Footprints,
-  MoreHorizontal,
-  Plane,
-  Ship,
-  TrainFront,
-  TramFront,
-  Trash2,
-  type LucideIcon,
-} from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -25,28 +11,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   normalizeTransportMode,
-  transportModeLabels,
   type CarRentalDetails,
   type ItineraryItem,
-  type TransportMode,
 } from "@/features/itinerary/types";
-
-const transportModeIcons: Partial<Record<TransportMode, LucideIcon>> = {
-  bike: Bike,
-  bus: BusFront,
-  cable_car: CableCar,
-  ferry: Ship,
-  flight: Plane,
-  motorcycle: Bike,
-  rideshare: CarFront,
-  self_driving: CarFront,
-  shuttle: BusFront,
-  subway: TrainFront,
-  taxi: CarTaxiFront,
-  train: TrainFront,
-  tram: TramFront,
-  walk: Footprints,
-};
+import { MatrixItemSummary } from "@/features/itinerary/components/matrix-presentation";
 
 export function PlannerItemRow({
   canMoveDown,
@@ -79,10 +47,9 @@ export function PlannerItemRow({
         : item.type === "train"
           ? "train"
           : null;
-  const ModeIcon = mode ? (transportModeIcons[mode] ?? CarFront) : null;
   const car = item.type === "car_rental" ? (details as CarRentalDetails) : null;
   const carSummary = car ? [car.provider, car.address].filter(Boolean).join(" · ") : "";
-  const title = mode ? transportModeLabels[mode] : item.title;
+  const title = item.title;
   return (
     <div
       className={`group/item flex min-w-0 items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
@@ -116,22 +83,13 @@ export function PlannerItemRow({
         tabIndex={interactive ? 0 : -1}
         type="button"
       >
-        <span className="flex min-w-0 items-center gap-1.5">
-          {ModeIcon ? (
-            <ModeIcon className="size-4 shrink-0 text-muted-foreground sm:size-3.5" />
-          ) : null}
-          {start ? (
-            <span className="shrink-0 font-mono text-xs text-muted-foreground sm:text-[10px]">
-              {start}
-            </span>
-          ) : null}
-          <span className="truncate font-medium">{title}</span>
-        </span>
-        {carSummary ? (
-          <span className="block truncate text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal">
-            {carSummary}
-          </span>
-        ) : null}
+        <MatrixItemSummary
+          startTime={start}
+          subtitle={carSummary}
+          title={title}
+          transportMode={mode}
+          type={item.type}
+        />
       </button>
       {interactive ? (
         <DropdownMenu>

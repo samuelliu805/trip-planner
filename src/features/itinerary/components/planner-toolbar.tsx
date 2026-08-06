@@ -12,6 +12,7 @@ import {
   Settings2,
   Trash2,
 } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import Link from "next/link";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
@@ -57,6 +58,7 @@ export function PlannerToolbar({
   setEditor,
   setInteractionError,
   setSettingsOpen,
+  shareControls,
   trip,
   workspaceError,
   workspaceDayCount,
@@ -88,6 +90,7 @@ export function PlannerToolbar({
   setEditor: Dispatch<SetStateAction<EditorState | null>>;
   setInteractionError: Dispatch<SetStateAction<string | undefined>>;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
+  shareControls?: ReactNode;
   trip: Tables<"trips">;
   workspaceError: boolean;
   workspaceDayCount: number;
@@ -95,11 +98,15 @@ export function PlannerToolbar({
 }) {
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-2 sm:px-4 xl:h-[72px] xl:gap-4 xl:px-5">
+      <header className="planner-toolbar sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-2 sm:px-4 xl:h-[72px] xl:gap-4 xl:px-5">
         <div className="flex min-w-0 items-center gap-1 sm:gap-2 xl:gap-3">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button asChild className="size-11 p-0 xl:size-9" variant="ghost">
+              <Button
+                asChild
+                className="hidden size-11 p-0 sm:inline-flex xl:size-9"
+                variant="ghost"
+              >
                 <Link aria-label="Back to Trips" href="/trips">
                   <ArrowLeft className="size-4" />
                 </Link>
@@ -107,10 +114,17 @@ export function PlannerToolbar({
             </TooltipTrigger>
             <TooltipContent>Back to Trips</TooltipContent>
           </Tooltip>
-          <div className="hidden min-w-0 sm:block">
-            <h1 className="max-w-[180px] truncate text-base font-semibold sm:max-w-[260px] xl:max-w-none xl:text-lg">
+          <div className="min-w-0">
+            <h1 className="max-w-[88px] truncate text-sm font-semibold sm:max-w-[260px] sm:text-base xl:max-w-none xl:text-lg">
               {trip.title}
             </h1>
+            <p className="mt-0.5 max-w-[104px] truncate text-[10px] leading-none text-muted-foreground sm:hidden">
+              {selectedDay
+                ? `Day ${selectedDay.day_number} · ${
+                    selectedDay.date ? format(parseISO(selectedDay.date), "MMM d") : "Date TBD"
+                  }`
+                : "Tap a date to select a day"}
+            </p>
             <p className="mt-0.5 hidden items-center gap-1.5 text-xs text-muted-foreground xl:flex">
               <CalendarDays className="size-3.5" />
               {dateRange}
@@ -130,6 +144,20 @@ export function PlannerToolbar({
             )}
             <span>{mutating ? "Saving…" : "Saved"}</span>
           </span>
+          {selectedDay ? (
+            <div className="sm:hidden">
+              <DayActions
+                day={selectedDay}
+                isOnlyDay={workspaceDayCount === 1}
+                location="mobilebar"
+                onInsert={(position) => void insertDay(position)}
+                onRemove={(dayId) => void removeDay(dayId)}
+                pending={dayMutationPending}
+                visible
+              />
+            </div>
+          ) : null}
+          {shareControls}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -180,22 +208,6 @@ export function PlannerToolbar({
           </DropdownMenu>
         </div>
       </header>
-      {selectedDay ? (
-        <div className="shrink-0 border-b bg-muted/20 px-3 py-2 sm:hidden">
-          <div className="mb-1.5 text-[11px] font-medium text-muted-foreground">
-            Day {selectedDay.day_number} row actions
-          </div>
-          <DayActions
-            day={selectedDay}
-            isOnlyDay={workspaceDayCount === 1}
-            location="mobilebar"
-            onInsert={(position) => void insertDay(position)}
-            onRemove={(dayId) => void removeDay(dayId)}
-            pending={dayMutationPending}
-            visible
-          />
-        </div>
-      ) : null}
       <div className="hidden h-10 shrink-0 items-center justify-between gap-3 border-b bg-muted/20 px-3 xl:flex">
         <div className="flex items-center gap-1 whitespace-nowrap">
           {selectedCount === 1 && !activeCellAtCapacity ? (

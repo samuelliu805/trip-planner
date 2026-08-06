@@ -3,6 +3,7 @@
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import { categories } from "@/features/itinerary/components/planner-config";
+import { MatrixGridHeader } from "@/features/itinerary/components/matrix-presentation";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
@@ -164,34 +165,7 @@ export function PlannerMapPane({
 }
 
 export function PlannerGridHeader() {
-  return (
-    <div
-      className="sticky top-0 z-[70] flex h-10 border-b bg-muted/95 text-xs font-semibold text-muted-foreground sm:h-9 sm:text-[11px]"
-      role="row"
-    >
-      <div
-        className="sticky left-0 top-0 z-50 flex w-24 shrink-0 items-center border-r bg-muted px-2"
-        role="columnheader"
-      >
-        Date
-      </div>
-      <div
-        className="sticky left-24 z-40 flex w-16 shrink-0 items-center border-r bg-muted px-2"
-        role="columnheader"
-      >
-        Day
-      </div>
-      {categories.map((category) => (
-        <div
-          className={`${category.width} flex shrink-0 items-center border-r px-2`}
-          key={category.id}
-          role="columnheader"
-        >
-          {category.label}
-        </div>
-      ))}
-    </div>
-  );
+  return <MatrixGridHeader columns={categories} />;
 }
 
 export function PlannerDivider({

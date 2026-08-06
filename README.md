@@ -10,8 +10,9 @@ Trip Planner is a responsive, spreadsheet-style workspace for building complex t
 - Phase 5A — Route Variant Foundation — is implemented. Its forward-only migration is applied to the linked project, linked integration/domain checks and all repository checks pass, and unauthenticated responsive shell checks pass. The authenticated product checklist remains pending.
 - Phase 5B — read-only Route Variant comparison — is implemented without a schema migration or new cloud configuration. Focused comparison and repository checks pass; authenticated comparison and responsive acceptance remain pending.
 - Phase 5C — Route Variant Decision Summary — is implemented without a schema migration or new cloud configuration. The lightweight projection, current-signature aggregation, neutral Primary deltas, desktop panel, and mobile Summary Sheet are covered by automated checks; authenticated responsive acceptance remains pending.
+- Phase 6A — secure public sharing — is implemented and its forward-only migrations are applied to the linked project. It adds owner-managed live links, strict public projection, Overview/Table/Timeline, responsive public maps, temporary viewer route exploration, quick actions, Web Share/WeChat/QR fallback, and security metadata. Linked schema and rollback-only RPC checks pass; authenticated browser acceptance remains pending.
 
-Phase 6 public sharing/export and later travel research remain intentionally deferred.
+Phase 6B Print/PDF/CSV, Phase 6C Travel Book, and later travel research remain intentionally deferred.
 
 ## Foundation stack
 
@@ -38,6 +39,7 @@ src/
     maps/                      Provider-neutral map canvas and marker behavior
     places/                    Place autocomplete and persisted snapshots
     routes/                    Overview stages, route drafts, signatures, status, actions, and UI
+    sharing/                   Owner link management, public projection contracts, views, maps, and sharing
     variants/                  Active resolution, lifecycle actions, query state, and responsive controls
   lib/
     providers/
@@ -192,6 +194,32 @@ At 900px and wider, Decision summary is a collapsible panel within the compariso
 
 Phase 5C uses the existing schema and requires no migration. Relevant item/day/variant/route mutations invalidate the summary query; note-only edits avoid invalidation where practical. Authoritative variant identity reconciles cached projections after rename, recolor, primary, create, or delete operations.
 
+## Phase 6A secure public sharing
+
+Only the authenticated trip owner can create or manage a public capability link. One active link belongs to exactly one Route Variant; changing Primary does not retarget it. The link reads current saved rows after refresh, can be rotated atomically, and becomes unavailable immediately after rotation, revocation, Trip deletion, or variant deletion. Invalid, revoked, and deleted targets share one generic unavailable response.
+
+The public page has exactly three local content views:
+
+- **Overview** is the stable default and the time-agnostic whole-trip scan. Each day shows its date and one deduplicated `City A → City B` route header, followed by concise icon-led category groups. Activities, Meals, and Transport each share one icon instead of repeating text labels; Car rental is an independent utility group rather than Transport; and Hotel stays close the day with one Bed icon. Items within each group keep saved manual order. City items never repeat as content sections, all shared items are visible without expansion, and adjacent duplicate Cities are collapsed in both day and whole-trip route summaries. Real shared times are optional quiet inline labels; missing time never creates a column, placeholder, inferred time, duration, or check-in label.
+- **Table** uses the owner Matrix's shared column definitions, header, typography, cell summary, padding, density, and responsive widths. Public mode renders a semantic read-only grid without owner inputs, add/delete/fill/reorder controls, mutation handlers, or a `PlannerWorkspace`. Mobile retains the real horizontally scrollable Matrix and a sticky 96px Day/Date first column.
+- **Timeline** is intentionally more detailed than Overview. Its connected rail contains Activity items only, in saved manual order, with each shared real time, address, note, Primary action, and More links visible when enabled. The closing Hotel is a distinct end-of-day rail endpoint connected directly after the final Activity rather than another Activity node. Transport, Meals, Car rental, and notes remain concise day-detail groups outside the rail. City rows are not repeated and no time is inferred.
+
+`Compact` is not a canonical database or UI value. The new enum accepts only `overview | table | timeline` and defaults to `overview`. The linked project had no partial Phase 6A table or deployed rows, so the migration does not introduce or backfill `compact`. The application decoder temporarily maps a literal legacy `compact` payload to Overview while every new write validator rejects it; an explicit saved Table choice is never rewritten.
+
+At 1200px and wider, public content and Map/Route use an initial adjustable 64/36 split. At 900–1199px landscape width they use 56/44. The left pane keeps independent scroll and stable bounds while views switch or the map collapses. Below 900px, content is full width and the 44px header Map control opens Map & routes in a high/full-height Sheet with focus restoration; no portrait/mobile split screen or content-obscuring floating button is mounted. Empty space after a short itinerary uses the page's tonal layer rather than a large white content margin. Maps stay optional and provider failures do not replace the itinerary.
+
+Content and map selection share one viewer-local state. Clicking a day/item, or activating it with Enter/Space, opens that day scope and fits its shared markers; hover and focus alone never move the map. Choosing a map marker scrolls and focuses the related item or day without changing owner data. Whole-trip marker selection preserves Whole trip scope. Changing Overview/Table/Timeline clears the prior selection while preserving the map-pane size.
+
+An owner-saved route is shown first. Otherwise the viewer sees the shared stop sequence. **Whole trip** deduplicates neighboring City occurrences, uses the owner Overview route's restricted Drive/Flight/Train/Bus/Bike modes, derives only explicit Flight/Train defaults plus the established distance fallback, and calculates only after the viewer presses the button. **Day route** starts with the immediately previous day's last shared Hotel and ends with the current day's last shared Hotel when they exist. Every placed shared Activity/Meal/Hotel stop is selected initially; endpoint Hotels are locked. Every Activity also remains visible in the setup—an Activity without shared coordinates is explicitly disabled as `No map location` instead of silently disappearing. The day selector uses the day's ordered City sequence and condenses long sequences to `first → … → last`. Explore route can include/exclude and move intermediate stops with explicit up/down buttons, choose Drive/Transit/Bike/Walk with visible icon labels, Calculate, a text-labeled Reset, and return to Shared route. It never uses drag-and-drop. `Temporary · Only you` is explicit. Server validation enforces the shared stop whitelist, Hotel endpoints, and the route-specific mode allowlists. Calculation is never automatic, never saved, and has no arbitrary place search, Save, Publish, owner mutation, hidden stop, address-text input, analytics, or storage. Existing server-only Google Routes configuration and provider normalization are reused.
+
+Public items expose the first ordered valid HTTP(S) item link as a labeled Primary action and place remaining links under **More links**. Owner item editing supplies semantic labels; no permanent Matrix link column was added. Links never make the whole row clickable, never show a raw long URL, and open with `noopener noreferrer`. Notes and links are removed in the RPC projection when disabled, and the owner dialog calmly reminds owners to review possible booking references.
+
+Share uses Web Share when available and reports resolve/cancel honestly. Fallbacks include Copy link, local QR generation, and the WeChat guidance `Tap •••, then choose Send to Chat or Moments`; no WeChat SDK credential or remote QR service is used. Open Graph content is derived only from public title, description, day/city metadata, and variant identity.
+
+The `public_itinerary_links` table has RLS enabled and no direct anon/authenticated policies or grants. Owner create/update/list/rotate/revoke and anonymous projection are separate security-definer RPCs with empty `search_path`, qualified relations/extensions, ownership and variant/Trip checks, stable errors, and narrow execute grants. `get_public_itinerary` returns a strict JSON whitelist: public settings/metadata, Trip summary, selected variant, City sequence, days/items, optional fields, and a safe saved-route subset. Car rental receives one purpose-built summary (`action`, `company`, and an address only when exact addresses are enabled); the raw item `details` object is still never returned. Owner/member/profile IDs, other variants, comparison/Decision Summary, private route inputs/provider payloads, and mutation capability remain excluded.
+
+`/share/[token]` is unauthenticated, dynamic, and no-store. Responses set noindex/nofollow/noarchive and `Referrer-Policy: strict-origin`; application code contains no analytics/logger integration and does not intentionally record or attach tokens to errors/provider calls. Capability paths can still appear in hosting or infrastructure access logs, so this is token-propagation reduction rather than a claim that infrastructure never records URLs.
+
 ## Local development
 
 Requirements: Node.js 22.21+, npm 10+, and the Supabase CLI for database work.
@@ -208,14 +236,14 @@ The `dev` and `start` scripts enable Node's environment-proxy support. When outb
 
 ## Environment variables
 
-| Variable                               | Scope                         |
-| -------------------------------------- | ----------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | Browser/server                |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/server                |
-| `NEXT_PUBLIC_SITE_URL`                 | Authentication redirects      |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`      | Browser Maps/Places only      |
-| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`       | Browser Advanced Markers      |
-| `GOOGLE_ROUTES_API_KEY`                | Server-only Google Routes API |
+| Variable                               | Scope                                                               |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Browser/server                                                      |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/server                                                      |
+| `NEXT_PUBLIC_SITE_URL`                 | Authentication redirects and canonical public-share metadata origin |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`      | Browser Maps/Places only                                            |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`       | Browser Advanced Markers                                            |
+| `GOOGLE_ROUTES_API_KEY`                | Server-only Google Routes API                                       |
 
 For Phase 3, enable Maps JavaScript API and Places API (New), create a Map ID, and restrict the browser key by HTTP referrer and those APIs.
 
@@ -238,10 +266,14 @@ The forward-only migrations are applied and present in the linked migration hist
 - `20260802130920_harden_manual_day_route_plans.sql`
 - `20260803173303_route_variant_foundation.sql`
 - `20260803183257_allow_previous_day_hotel_route_start.sql`
+- `20260806125928_phase_6a_secure_public_sharing.sql`
+- `20260806194850_expose_public_car_rental_summary.sql`
 
 The Phase 5A migration adds the three-variant and exactly-one-primary invariants, case-insensitive names, atomic lifecycle/duplication/day RPCs, active-variant Day route support, and narrow execution/table grants. The follow-up migration narrowly permits an immediately previous-day Hotel as Day route position 1 and adds atomic owner-authorized clearing for selected Matrix items. Its dry run showed only `20260803183257_allow_previous_day_hotel_route_start.sql`; it applied successfully, and the final linked list shows local/remote alignment. No linked reset or remote seed was used.
 
 Phase 5B uses the existing read grants, RLS policies, variant/day/item/place tables, and relationships. It required no migration; no empty migration was created and `supabase db push --linked` was not run for this phase. The linked migration list remained fully aligned through `20260803183257`, with no local-only or remote-only entry.
+
+Phase 6A added `20260806125928_phase_6a_secure_public_sharing.sql`. Before application, the linked history contained the same 12 local/remote migrations through `20260803183257`; no existing public-sharing table, legacy `compact`, `show_city_map`, or `show_external_links` fields were found. A later user-directed rental-detail refinement added the forward-only `20260806194850_expose_public_car_rental_summary.sql`; it replaces only the existing public projection function and retains its empty search path and narrow grants. Each dry run planned only its named migration, each linked push applied only that file, and the final migration list shows all 14 versions aligned. Linked lint reports no schema errors. Generated linked types contain the same declarations as `src/types/database.ts`; their remaining diff is declaration ordering only.
 
 Docker was unavailable during this phase, so the CLI database-test runner could not complete. The same rollback-wrapped 38-assertion pgTAP SQL completed through the linked database interface, including the previous-day Hotel and atomic-clear contracts, and follow-up queries confirmed zero fixture trips/users remained. Verification also used linked dry run/push/list, linked database lint, security advisors, generated linked-schema types, static migration contracts, and application domain tests.
 
@@ -283,7 +315,37 @@ The Phase 5B verification completed with `npm test` (62/62 tests), `npx tsc --no
 
 The Phase 5C verification completed with `npm test` (75/75 tests), `npx tsc --noEmit`, `npm run lint`, `npm run format:check`, and `npm run build`. Focused coverage includes the lightweight trip-scoped/RLS projection contract, adjacent City-sequence collapse without changing stage counts, Haversine span, all-unknown metric suppression, planning horizons, planned-place deduplication, current-signature per-mode route distance, stale/uncalculated/needs-editing exclusion, fallbacks, explicit travel modes, Hotel occurrence alignment, neutral deltas, query reconciliation/invalidation, responsive summary surfaces, and the absence of summary provider calls. `supabase migration list --linked` reported all 12 local migrations matched remotely with no pending migration; no schema push was run.
 
+Phase 6A has 15 focused application contract tests in the 90-test repository suite. They cover canonical view/default decoding, sparse-time Overview/manual order/grouping, independent Car rental presentation, the Activity-only detailed Timeline, fail-closed projection schemas, click-only map synchronization, safe quick links, shared and visibly unmapped route candidates, previous/current Hotel endpoints, all-stop defaults, whole-trip defaults, route-specific mode allowlists, owner/public Matrix primitives and modal stacking, responsive shell/content-map synchronization, local-only route exploration, real QR/Web Share behavior, and response security. The rollback-wrapped linked database suite passes all 53 RLS/RPC/constraint/projection/lifecycle assertions, including car rental summary/address privacy, through direct SQL execution. The CLI `supabase test db --linked` wrapper remains unavailable because this environment has no Docker runner; the SQL suite itself ran against the linked project and rolled back. Both forward-only Phase 6A migrations are applied, and linked schema lint reports no errors.
+
+The latest responsive polish was checked in headless Chrome at 390×844 and 430×932. Overview and the Activity-only Timeline rendered without body overflow; the rental summary showed action, company, pickup place, optional time, and enabled exact address concisely. The Map Sheet measured exactly 430px, had no horizontal overflow, and stayed at z-index 110 above the frozen Matrix column at 80. Its map-unavailable state retained Day route controls, every Activity appeared in manual position (including `No map location`), and Reset/Shared route remained visible. Local map tiles/geometry could not be accepted because the existing browser key rejects the temporary `http://localhost:3100` referrer; production/preview origins must remain on the key allowlist.
+
 Headless Chrome loaded the current unauthenticated application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`; therefore authenticated Phase 5A/5B/5C UI and interaction acceptance remains part of the manual checklists below.
+
+## Phase 6A authenticated and public manual checklist
+
+This remains pending until an authenticated owner/non-owner browser fixture is available; the migration is applied and linked RPC verification passes.
+
+1. As owner, create one link for a non-primary variant with Overview selected; confirm the live-link explanation and every privacy default.
+2. Change Primary and confirm the active public link still targets its original variant.
+3. As a non-owner member and as anon, confirm management-read/create/update/rotate/revoke denial and no token disclosure.
+4. Open the link signed out and confirm no owner header, variant switcher, comparison, Decision Summary, edit/mutation controls, or owner query state.
+5. Confirm Overview is the default at every target viewport with a sparse/no-time trip, grouped Plans/Meals/Transport, independent Car rental, closing Hotel, manual order, all shared items visible without expansion, and no invented/empty time slot.
+6. With one real shared time, confirm only that item gains a quiet inline label; turn Times off and confirm it leaves the payload and UI.
+7. Confirm Table matches owner Matrix presentation, remains a real grid on mobile, freezes Day/Date, and scrolls internally without body overflow.
+8. Confirm Timeline uses an Activity-only connected rail in manual order, shows richer enabled Activity details/actions, connects the closing Hotel as the final end-of-day endpoint, keeps Transport/Meals/Car rental/Notes outside the rail, and creates no fake times.
+9. Verify 64/36 at 1440×900 and 1280×800, 56/44 at 1024×768, divider keyboard/pointer resizing, collapse/restore, and stable left-pane scroll/view bounds.
+10. Verify full-width content plus focus-trapped Map/Route Sheet at 834×1194, 768×1024, 390×844, and 430×932; close with Escape and confirm focus/day/document context returns.
+11. Confirm the owner-saved route is first and no route calculates on load. In Whole trip, verify adjacent duplicate Cities are omitted, each City connection has the expected restricted mode, and Calculate whole trip is explicit.
+12. For Day 2+, confirm the previous day's last shared Hotel is the locked start, today's last shared Hotel is the locked end, every placed eligible shared stop starts selected, and every unplaced Activity remains visible as `No map location`. Include/exclude intermediate stops, use the labeled up/down controls without drag-and-drop, switch Drive/Transit/Bike/Walk, Calculate, Reset, and Shared route. Confirm no owner row changes or persistence after refresh.
+13. Click or keyboard-activate days/items in Overview, Table, and Timeline and confirm the map changes to that day; confirm hover/focus alone does not. Select markers and confirm the matching content scrolls/focuses without changing route scope or owner data.
+14. Turn addresses off and inspect the RPC payload, UI, and provider request for address text; turn on and confirm only public item addresses appear.
+15. Turn Notes, links, maps/routes, and exploration off individually and confirm server projection removal/behavior—not CSS hiding.
+16. Confirm Primary and More links use semantic labels, valid HTTP(S), visible labels/targets, and safe new-tab attributes; invalid schemes never render.
+17. Exercise Web Share resolve, cancel, unavailable, Copy, WeChat guidance, and QR; rotate and confirm the QR/URL update while the old link becomes generically unavailable immediately.
+18. Revoke and confirm the same generic unavailable copy used by invalid/deleted Trip/deleted variant cases, with no private metadata.
+19. Simulate map and route provider failures; confirm the itinerary/stop order stay usable and route retry does not lose local order.
+20. Inspect successful/unavailable response headers and metadata for no-store, noindex/nofollow/noarchive, strict-origin, and public-only OG content.
+21. Inspect client/server logs, errors, analytics, provider calls, and outbound links for secondary token propagation while acknowledging infrastructure URL logs may still exist.
 
 ## Phase 5C authenticated manual checklist
 
@@ -423,8 +485,11 @@ This checklist remains pending until valid test-account access and the required 
    - ✅ Phase 5A: active variant loading and lifecycle foundation
    - ✅ Phase 5B: read-only City Overview map comparison (authenticated acceptance pending)
    - ✅ Phase 5C: factual Route Variant decision summary (authenticated acceptance pending)
-6. Public read-only sharing and export
+6. Public itinerary delivery
+   - ✅ Phase 6A: secure live public sharing implementation and migration (authenticated acceptance pending)
+   - Phase 6B: Print/PDF/CSV export — deferred
+   - Phase 6C: Travel Book — deferred
 7. Travel research and along-the-way city recommendations
 8. Offline, conflict, deployment, and operational polish
 
-Each phase is independently implemented and verified. Phase 5C adds persisted factual decision metrics without Google alternatives, automatic calculation, scores, recommendations, public sharing/export, or cross-variant editing.
+Each phase is independently scoped. Phase 6A adds secure live public viewing without Print/PDF/CSV, Travel Book, password/expiration/analytics/invitations/comments, public variant comparison, arbitrary route search, or viewer persistence.

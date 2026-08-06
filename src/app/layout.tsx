@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 
 import { QueryProvider } from "@/components/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getSiteUrl } from "@/features/sharing/site-url";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "Trip Planner",
     template: "%s | Trip Planner",
