@@ -402,6 +402,81 @@ export type Database = {
         }
         Relationships: []
       }
+      public_itinerary_links: {
+        Row: {
+          allow_route_explore: boolean
+          created_at: string
+          created_by: string
+          default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          id: string
+          public_token: string
+          revoked_at: string | null
+          share_description: string | null
+          share_title: string | null
+          show_addresses: boolean
+          show_map_routes: boolean
+          show_notes: boolean
+          show_quick_action_links: boolean
+          show_times: boolean
+          trip_id: string
+          updated_at: string
+          variant_id: string
+        }
+        Insert: {
+          allow_route_explore?: boolean
+          created_at?: string
+          created_by: string
+          default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          id?: string
+          public_token?: string
+          revoked_at?: string | null
+          share_description?: string | null
+          share_title?: string | null
+          show_addresses?: boolean
+          show_map_routes?: boolean
+          show_notes?: boolean
+          show_quick_action_links?: boolean
+          show_times?: boolean
+          trip_id: string
+          updated_at?: string
+          variant_id: string
+        }
+        Update: {
+          allow_route_explore?: boolean
+          created_at?: string
+          created_by?: string
+          default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          id?: string
+          public_token?: string
+          revoked_at?: string | null
+          share_description?: string | null
+          share_title?: string | null
+          show_addresses?: boolean
+          show_map_routes?: boolean
+          show_notes?: boolean
+          show_quick_action_links?: boolean
+          show_times?: boolean
+          trip_id?: string
+          updated_at?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_itinerary_links_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "public_itinerary_links_variant_trip_fkey"
+            columns: ["variant_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id", "trip_id"]
+          },
+        ]
+      }
       route_variants: {
         Row: {
           color: string
@@ -561,6 +636,21 @@ export type Database = {
         Args: { source_item_ids: string[]; target_day_ids: string[] }
         Returns: number
       }
+      create_public_itinerary_link: {
+        Args: {
+          requested_allow_route_explore?: boolean
+          requested_default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_share_description?: string
+          requested_share_title?: string
+          requested_show_addresses?: boolean
+          requested_show_map_routes?: boolean
+          requested_show_notes?: boolean
+          requested_show_quick_action_links?: boolean
+          requested_show_times?: boolean
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       create_route_variant: {
         Args: {
           source_variant_id: string
@@ -606,11 +696,19 @@ export type Database = {
         }
         Returns: string
       }
+      get_public_itinerary: {
+        Args: { shared_token: string }
+        Returns: Json
+      }
       is_trip_member: { Args: { target_trip_id: string }; Returns: boolean }
       is_trip_owner: { Args: { target_trip_id: string }; Returns: boolean }
       itinerary_item_trip_id: {
         Args: { target_item_id: string }
         Returns: string
+      }
+      list_public_itinerary_links: {
+        Args: { target_trip_id: string }
+        Returns: Json
       }
       remove_trip_day: {
         Args: { target_day_id: string; target_trip_id: string }
@@ -623,6 +721,14 @@ export type Database = {
           target_variant_id: string
         }
         Returns: string
+      }
+      revoke_public_itinerary_link: {
+        Args: { target_link_id: string }
+        Returns: undefined
+      }
+      rotate_public_itinerary_link: {
+        Args: { target_link_id: string }
+        Returns: Json
       }
       reorder_itinerary_items: {
         Args: { ordered_item_ids: string[]; target_day_id: string }
@@ -660,6 +766,21 @@ export type Database = {
           variant_name: string
         }
         Returns: string
+      }
+      update_public_itinerary_link: {
+        Args: {
+          requested_allow_route_explore: boolean
+          requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_share_description: string
+          requested_share_title: string
+          requested_show_addresses: boolean
+          requested_show_map_routes: boolean
+          requested_show_notes: boolean
+          requested_show_quick_action_links: boolean
+          requested_show_times: boolean
+          target_link_id: string
+        }
+        Returns: Json
       }
       update_trip_plan: {
         Args: {
@@ -705,6 +826,7 @@ export type Database = {
         | "exact"
         | "range"
       place_source: "google" | "custom"
+      public_itinerary_view: "overview" | "table" | "timeline"
       trip_member_role: "owner" | "editor" | "viewer"
     }
     CompositeTypes: {
@@ -853,6 +975,7 @@ export const Constants = {
         "range",
       ],
       place_source: ["google", "custom"],
+      public_itinerary_view: ["overview", "table", "timeline"],
       trip_member_role: ["owner", "editor", "viewer"],
     },
   },

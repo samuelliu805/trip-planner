@@ -5,6 +5,7 @@ import {
   type ItineraryItemType,
   type PlannerDay,
 } from "@/features/itinerary/types";
+import { matrixCategoryColumns } from "@/features/itinerary/components/matrix-columns";
 
 export type Category =
   "city" | "activities" | "transport" | "hotel" | "car_rental" | "meals" | "notes";
@@ -23,33 +24,20 @@ export type PlannerCategory = {
   width: string;
 };
 
-export const categories: PlannerCategory[] = [
-  { id: "city", label: "City", types: ["location"], defaultType: "location", width: "w-36" },
-  {
-    id: "activities",
-    label: "Activities",
-    types: ["activity"],
-    defaultType: "activity",
-    width: "w-52",
-  },
-  {
-    id: "transport",
-    label: "Transport",
-    types: ["transport", "flight", "train"],
-    defaultType: "transport",
-    width: "w-44",
-  },
-  { id: "hotel", label: "Hotel", types: ["hotel"], defaultType: "hotel", width: "w-44" },
-  {
-    id: "car_rental",
-    label: "Car rental",
-    types: ["car_rental"],
-    defaultType: "car_rental",
-    width: "w-44",
-  },
-  { id: "meals", label: "Meals", types: ["meal"], defaultType: "meal", width: "w-44" },
-  { id: "notes", label: "Notes", types: ["note"], defaultType: "note", width: "w-52" },
-];
+const defaultTypeByCategory: Record<Category, ItineraryItemType> = {
+  activities: "activity",
+  car_rental: "car_rental",
+  city: "location",
+  hotel: "hotel",
+  meals: "meal",
+  notes: "note",
+  transport: "transport",
+};
+
+export const categories: PlannerCategory[] = matrixCategoryColumns.map((column) => ({
+  ...column,
+  defaultType: defaultTypeByCategory[column.id],
+}));
 
 export function isCategoryAtCapacity(day?: PlannerDay, category?: PlannerCategory) {
   if (!day || !category) return false;

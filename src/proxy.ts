@@ -1,8 +1,10 @@
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/share/")) return NextResponse.next();
   return updateSession(request);
 }
 

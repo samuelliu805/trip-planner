@@ -34,6 +34,20 @@ import { PlannerItemPrimaryFields } from "@/features/itinerary/components/planne
 import { PlannerItemSecondaryFields } from "@/features/itinerary/components/planner-item-secondary-fields";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 
+const semanticActionLabels = new Set([
+  "Ticket",
+  "Booking",
+  "Menu",
+  "Website",
+  "Check in",
+  "Open",
+  "Directions",
+]);
+
+function normalizedActionLabel(label: string) {
+  return semanticActionLabels.has(label) ? label : "Open";
+}
+
 type PlannerItemFormProps = {
   dayId: string;
   item?: ItineraryItem;
@@ -70,7 +84,7 @@ export function PlannerItemForm({
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [links, setLinks] = useState(() =>
     item?.links?.length
-      ? item.links.map(({ label, url }) => ({ label, url }))
+      ? item.links.map(({ label, url }) => ({ label: normalizedActionLabel(label), url }))
       : item?.booking_url
         ? [{ label: "Booking", url: item.booking_url }]
         : [],

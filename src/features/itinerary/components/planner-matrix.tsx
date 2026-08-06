@@ -1,8 +1,10 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
+import { Map } from "lucide-react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
+import { Button } from "@/components/ui/button";
 import { AddItemButton, DayActions } from "@/features/itinerary/components/planner-grid-elements";
 import { PlannerItemRow } from "@/features/itinerary/components/planner-item-row";
 import {
@@ -341,6 +343,14 @@ export function PlannerMatrix({
         selectedId={selectedMapItem?.id}
         viewportKey={mapViewportKey}
       />
+      <Button
+        aria-label="Open map and route tools"
+        className="planner-mobile-map-fab absolute bottom-4 right-4 z-30 hidden min-h-11 items-center gap-2 rounded-full px-4 shadow-lg"
+        onClick={onMapExpand}
+        type="button"
+      >
+        <Map aria-hidden="true" className="size-4" /> Map & routes
+      </Button>
     </div>
   );
 }

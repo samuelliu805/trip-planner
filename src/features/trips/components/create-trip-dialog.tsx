@@ -21,7 +21,7 @@ export function CreateTripDialog() {
           <Plus aria-hidden="true" className="size-4" /> New trip
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-full overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">Create Trip</DialogTitle>
           <DialogDescription className="sr-only">

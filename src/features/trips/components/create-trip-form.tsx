@@ -39,9 +39,9 @@ export function CreateTripForm() {
   const [timezones] = useState(supportedTimezones);
 
   return (
-    <form action={action}>
-      <div className="grid gap-5 px-5 py-5 sm:grid-cols-2 sm:px-6">
-        <div className="space-y-2 sm:col-span-2">
+    <form action={action} className="min-w-0 overflow-x-hidden">
+      <div className="grid min-w-0 gap-5 px-5 py-5 sm:grid-cols-2 sm:px-6">
+        <div className="min-w-0 space-y-2 sm:col-span-2">
           <Label htmlFor="title">Trip title</Label>
           <Input
             id="title"
@@ -56,19 +56,19 @@ export function CreateTripForm() {
             {title.length} / 120
           </p>
         </div>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="start_date">
             Start date <span className="font-normal text-muted-foreground">optional</span>
           </Label>
           <Input id="start_date" name="start_date" type="date" />
         </div>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="end_date">
             End date <span className="font-normal text-muted-foreground">optional</span>
           </Label>
           <Input id="end_date" name="end_date" type="date" />
         </div>
-        <div className="space-y-2 sm:col-span-2">
+        <div className="min-w-0 space-y-2 sm:col-span-2">
           <Label htmlFor="day_count">
             Planning days <span className="font-normal text-muted-foreground">optional</span>
           </Label>
@@ -84,7 +84,7 @@ export function CreateTripForm() {
             Not sure yet? Leave dates and length blank—you can add or change them while planning.
           </p>
         </div>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="timezone">Timezone</Label>
           <Input
             autoComplete="off"
@@ -102,7 +102,7 @@ export function CreateTripForm() {
             ))}
           </datalist>
         </div>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor="currency">Currency</Label>
           <input name="currency" type="hidden" value={currency} />
           <Select onValueChange={setCurrency} value={currency}>

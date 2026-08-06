@@ -2,12 +2,16 @@ import { notFound } from "next/navigation";
 
 import { PlannerWorkspace } from "@/features/itinerary/components/planner-workspace";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
+import { PublicShareDialog } from "@/features/sharing/components/public-share-dialog";
+import { listPublicItineraryLinks } from "@/features/sharing/data";
+import { getSiteUrl } from "@/features/sharing/site-url";
 import { getPlannerVariants, getPlannerWorkspace } from "@/features/itinerary/data";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
 import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
+import { createClient } from "@/lib/supabase/server";
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
@@ -36,14 +40,30 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   if (workspaceError || !workspace)
     throw new Error(workspaceError ?? "The selected route variant could not be loaded.");
 
+  const supabase = await createClient();
+  const { data: authData } = await supabase.auth.getUser();
+  const owner = authData.user?.id === trip.owner_id;
+  const shareLinks = owner ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
+
   return (
-    <main className="h-[calc(100dvh-4rem)] overflow-hidden">
+    <main className="trip-planner-page h-[calc(100dvh-3.5rem)] overflow-hidden sm:h-[calc(100dvh-4rem)]">
       <PlannerMapProvider>
         <PlannerWorkspace
           initialVariants={variantsResult.data}
           initialWorkspace={workspace}
           trip={trip}
           deleteError={query.error === "delete"}
+          shareControls={
+            owner ? (
+              <PublicShareDialog
+                activeVariantId={workspace.variant.id}
+                initialLinks={shareLinks.data}
+                siteUrl={getSiteUrl()}
+                trip={trip}
+                variants={variantsResult.data}
+              />
+            ) : null
+          }
           settings={
             <div className="space-y-6">
               <UpdateTripForm trip={trip} />

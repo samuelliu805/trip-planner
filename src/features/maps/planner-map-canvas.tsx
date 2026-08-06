@@ -4,6 +4,7 @@ import { Map, useApiLoadingStatus, useMap } from "@vis.gl/react-google-maps";
 import { AlertTriangle, MapPinned } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
 
+import { Button } from "@/components/ui/button";
 import { PlannerMapPolyline } from "@/features/maps/planner-map-line";
 import { PlannerMapMarkerOverlay } from "@/features/maps/planner-map-marker";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
@@ -65,10 +66,12 @@ function MapViewport({
 function State({
   error = false,
   message,
+  onRetry,
   title,
 }: {
   error?: boolean;
   message: string;
+  onRetry?: () => void;
   title: string;
 }) {
   const Icon = error ? AlertTriangle : MapPinned;
@@ -81,6 +84,11 @@ function State({
         <Icon className={`mx-auto size-6 ${error ? "text-destructive" : "text-primary"}`} />
         <h2 className="mt-3 font-semibold">{title}</h2>
         <p className="mt-1 text-sm leading-5 text-muted-foreground">{message}</p>
+        {onRetry ? (
+          <Button className="mt-4" onClick={onRetry} size="sm" type="button" variant="outline">
+            Retry map
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -88,18 +96,24 @@ function State({
 
 export function PlannerMapCanvas({
   compact = false,
+  configurationState,
   emptyState,
+  failureState,
   lines = [],
   markers,
   onMarkerClick,
+  onRetry,
   selectedId,
   viewportKey,
 }: {
   compact?: boolean;
+  configurationState?: { message: string; title: string };
   emptyState?: { message: string; title: string };
+  failureState?: { message: string; title: string };
   lines?: PlannerMapLine[];
   markers: PlannerMapMarker[];
   onMarkerClick: (id?: string) => void;
+  onRetry?: () => void;
   selectedId?: string;
   viewportKey?: string;
 }) {
@@ -109,19 +123,25 @@ export function PlannerMapCanvas({
   if (!apiKey || !mapId)
     return (
       <State
-        title="Map configuration needed"
-        message="Add the Google Maps browser key and Map ID to view saved places."
+        title={configurationState?.title ?? "Map configuration needed"}
+        message={
+          configurationState?.message ??
+          "Add the Google Maps browser key and Map ID to view saved places."
+        }
+        onRetry={onRetry}
       />
     );
   if (apiError || loadingStatus === "FAILED")
     return (
       <State
         error
-        title="Map unavailable"
+        title={failureState?.title ?? "Map unavailable"}
         message={
+          failureState?.message ??
           apiError ??
-          "Google Maps failed to load. You can keep editing the itinerary and retry later."
+          "Google Maps failed to load. You can keep using the itinerary and retry later."
         }
+        onRetry={onRetry}
       />
     );
   if (loadingStatus !== "LOADED")

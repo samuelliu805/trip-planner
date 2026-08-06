@@ -73,6 +73,7 @@ import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 import "../variants/comparison.test.ts";
 import "../variants/decision-summary.test.ts";
+import "../sharing/sharing.test.ts";
 
 async function readItineraryQueryModules() {
   return (
@@ -376,7 +377,8 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(clearDialog, /<AlertDialog/);
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
   assert.match(toolbar, />\s*Clear\s*</);
-  assert.match(toolbar, /hidden min-w-0 sm:block/);
+  assert.match(toolbar, /<div className="min-w-0">[\s\S]*\{trip\.title\}/);
+  assert.match(toolbar, /Tap a date to select a day/);
   assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
   assert.match(
     variantUi,
@@ -2016,11 +2018,11 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(styles, /data-fill-dragging="true"[\s\S]*filter: blur/);
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
-  assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\) 100px/);
+  assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(styles, /planner-editor-sheet[\s\S]*max-height: 92dvh/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /h-14[\s\S]*xl:h-\[72px\]/);
-  assert.match(workspace, /planner-map-peek/);
+  assert.match(workspace, /planner-mobile-map-fab/);
   assert.match(workspace, /open=\{mapExpanded\}/);
   assert.match(mapShell, /PlannerMapCanvas/);
   assert.match(workspace, /Promise\.all\(\s*replacements\.flatMap/);
@@ -2053,13 +2055,22 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
+  const secondaryFields = await readFile(
+    new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
+    "utf8",
+  );
   const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
+  const tripsLayout = await readFile(
+    new URL("../../app/trips/layout.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(styles, /max-width: 639px/);
   assert.match(styles, /safe-area-inset-left/);
   assert.match(styles, /planner-editor-sheet input,[\s\S]*font-size: 16px/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
+  assert.match(styles, /planner-mobile-map-fab[\s\S]*display: inline-flex/);
   assert.match(
     styles,
     /\.map-panel-reopen \{\s*bottom: max\(2\.75rem, calc\(env\(safe-area-inset-bottom\)/,
@@ -2067,6 +2078,13 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(workspace, /selectedMapItem/);
   assert.match(workspace, /selectedId=\{selectedMapItem\?\.id\}/);
   assert.match(workspace, /planner-map-sheet/);
+  assert.match(workspace, /Tap a date to select a day/);
+  assert.match(workspace, /format\(parseISO\(selectedDay\.date\), "MMM d"\)/);
+  assert.doesNotMatch(workspace, /mobile-selected-day-bar/);
+  assert.match(tripsLayout, /trips-global-header sticky top-0 z-50/);
+  assert.match(tripsLayout, /h-14[\s\S]*sm:h-16/);
+  assert.doesNotMatch(styles, /trips-shell:has\(\.trip-planner-page\)[\s\S]*display: none/);
+  assert.match(secondaryFields, /grid min-w-0 gap-3 sm:grid-cols-2/);
   assert.match(
     workspace,
     /Copy selected cells[\s\S]*Paste[\s\S]*Copy to days[\s\S]*Copy previous day/,
