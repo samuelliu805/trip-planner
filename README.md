@@ -319,6 +319,8 @@ Phase 6A has 15 focused application contract tests in the 90-test repository sui
 
 The latest responsive polish was checked in headless Chrome at 390×844 and 430×932. Overview and the Activity-only Timeline rendered without body overflow; the rental summary showed action, company, pickup place, optional time, and enabled exact address concisely. The Map Sheet measured exactly 430px, had no horizontal overflow, and stayed at z-index 110 above the frozen Matrix column at 80. Its map-unavailable state retained Day route controls, every Activity appeared in manual position (including `No map location`), and Reset/Shared route remained visible. Local map tiles/geometry could not be accepted because the existing browser key rejects the temporary `http://localhost:3100` referrer; production/preview origins must remain on the key allowlist.
 
+Tablet follow-up checks at 1024×768, 834×1194, and 768×1024 confirm that the public header remains at the visual viewport top while Timeline scrolls independently, short Overview/Timeline content paints the full remaining pane instead of exposing a contrasting bottom gutter, and the 56/44 landscape map split reaches the viewport bottom. Owner tablet workspaces likewise remove outer bottom padding while retaining mobile-only safe-area and floating-map clearance.
+
 Headless Chrome loaded the current unauthenticated application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`; therefore authenticated Phase 5A/5B/5C UI and interaction acceptance remains part of the manual checklists below.
 
 ## Phase 6A authenticated and public manual checklist

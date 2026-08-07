@@ -100,7 +100,7 @@ body {
 @media (min-width: 900px) and (max-width: 1199px) {
   .planner-workspace {
     box-sizing: border-box;
-    padding: 0 16px 16px;
+    padding: 0 16px;
   }
 
   .planner-layout {
@@ -126,7 +126,7 @@ body {
   .planner-workspace {
     box-sizing: border-box;
     overscroll-behavior: none;
-    padding: 0 8px 8px;
+    padding: 0 8px;
   }
 
   .planner-layout {
@@ -257,6 +257,27 @@ body {
   background: var(--muted);
 }
 
+.public-overview,
+.public-timeline {
+  background: var(--background);
+}
+
+.public-itinerary-shell {
+  height: 100dvh;
+  max-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+.public-itinerary-header {
+  position: sticky;
+  top: 0;
+  transform: translateZ(0);
+}
+
+.public-view-scroll {
+  overscroll-behavior-y: none;
+}
+
 .public-matrix {
   max-width: 100%;
   scrollbar-gutter: stable;
@@ -295,8 +316,7 @@ body {
     display: inline-flex;
   }
 
-  .public-content-pane > section > div {
-    overscroll-behavior-y: contain;
+  .public-content-pane > section > .public-view-scroll {
     scroll-padding-bottom: 0.75rem;
   }
 
