@@ -483,6 +483,10 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
     new URL("./components/public-itinerary-shell.tsx", import.meta.url),
     "utf8",
   );
+  const views = await readFile(
+    new URL("./components/public-itinerary-views.tsx", import.meta.url),
+    "utf8",
+  );
   const shareSettings = await readFile(
     new URL("./components/public-share-dialog.tsx", import.meta.url),
     "utf8",
@@ -513,14 +517,21 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
   assert.doesNotMatch(overview, /useState|aria-expanded|ChevronDown|hiddenCount/);
   assert.match(styles, /public-itinerary-grid/);
   assert.match(styles, /var\(--public-content-split\)/);
-  assert.match(styles, /public-overview,[\s\S]*public-timeline[\s\S]*min-height: 100%/);
+  assert.match(styles, /\.public-content-pane \{[\s\S]*background: var\(--muted\)/);
+  assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
+  assert.match(styles, /\.public-itinerary-header[\s\S]*position: sticky/);
+  assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
+  assert.doesNotMatch(styles, /public-overview,[\s\S]*public-timeline[\s\S]*min-height: 100%/);
   assert.match(styles, /max-width: 899px/);
   assert.match(styles, /\.public-matrix \.matrix-day-column/);
   assert.match(styles, /width: 6rem/);
   assert.match(styles, /\.public-mobile-map-control/);
   assert.match(shell, /setSelection/);
   assert.match(shell, /onSelectionChange=\{setSelection\}/);
+  assert.match(shell, /public-itinerary-shell isolate/);
   assert.match(shell, /public-itinerary-header sticky top-0 z-\[80\]/);
+  assert.match(shell, /public-content-pane min-h-0 min-w-0 overflow-hidden/);
+  assert.match(views, /public-view-scroll h-full min-w-0/);
   const itemLine = await readFile(
     new URL("./components/public-item-line.tsx", import.meta.url),
     "utf8",

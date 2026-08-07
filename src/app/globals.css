@@ -254,14 +254,28 @@ body {
 }
 
 .public-content-pane {
+  background: var(--muted);
+}
+
+.public-overview,
+.public-timeline {
   background: var(--background);
 }
 
-.public-content-pane > section > div,
-.public-overview,
-.public-timeline {
-  min-height: 100%;
-  background: var(--background);
+.public-itinerary-shell {
+  height: 100dvh;
+  max-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+.public-itinerary-header {
+  position: sticky;
+  top: 0;
+  transform: translateZ(0);
+}
+
+.public-view-scroll {
+  overscroll-behavior-y: none;
 }
 
 .public-matrix {
@@ -302,8 +316,7 @@ body {
     display: inline-flex;
   }
 
-  .public-content-pane > section > div {
-    overscroll-behavior-y: contain;
+  .public-content-pane > section > .public-view-scroll {
     scroll-padding-bottom: 0.75rem;
   }
 

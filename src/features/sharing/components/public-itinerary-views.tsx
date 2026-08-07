@@ -37,7 +37,7 @@ export function PublicItineraryViews({
       role="tabpanel"
     >
       <div
-        className={`h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
+        className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
       >
         {option === "overview" ? (
           <PublicOverview {...viewProps} />
