@@ -98,7 +98,7 @@ export function PlannerToolbar({
 }) {
   return (
     <>
-      <header className="planner-toolbar sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-2 sm:px-4 xl:h-[72px] xl:gap-4 xl:px-5">
+      <header className="planner-toolbar sticky top-0 z-[70] flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background/95 px-2 backdrop-blur sm:px-4 xl:h-[72px] xl:gap-4 xl:px-5">
         <div className="flex min-w-0 items-center gap-1 sm:gap-2 xl:gap-3">
           <Tooltip>
             <TooltipTrigger asChild>

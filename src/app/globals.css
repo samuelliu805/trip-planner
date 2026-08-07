@@ -100,7 +100,7 @@ body {
 @media (min-width: 900px) and (max-width: 1199px) {
   .planner-workspace {
     box-sizing: border-box;
-    padding: 0 16px 16px;
+    padding: 0 16px;
   }
 
   .planner-layout {
@@ -126,7 +126,7 @@ body {
   .planner-workspace {
     box-sizing: border-box;
     overscroll-behavior: none;
-    padding: 0 8px 8px;
+    padding: 0 8px;
   }
 
   .planner-layout {
@@ -254,7 +254,14 @@ body {
 }
 
 .public-content-pane {
-  background: var(--muted);
+  background: var(--background);
+}
+
+.public-content-pane > section > div,
+.public-overview,
+.public-timeline {
+  min-height: 100%;
+  background: var(--background);
 }
 
 .public-matrix {

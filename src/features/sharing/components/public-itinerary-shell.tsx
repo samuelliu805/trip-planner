@@ -112,7 +112,7 @@ export function PublicItineraryShell({
 
   return (
     <main className="flex h-dvh min-w-0 flex-col overflow-hidden bg-background">
-      <header className="shrink-0 border-b bg-background">
+      <header className="public-itinerary-header sticky top-0 z-[80] shrink-0 border-b bg-background/95 backdrop-blur">
         <div className="flex min-h-16 items-center justify-between gap-3 px-3 py-2 sm:px-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">

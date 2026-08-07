@@ -14,8 +14,8 @@ export default async function TripsLayout({ children }: { children: React.ReactN
   if (!user) redirect("/login");
 
   return (
-    <div className="trips-shell min-h-screen bg-background">
-      <header className="trips-global-header sticky top-0 z-50 border-b bg-card">
+    <div className="trips-shell min-h-dvh bg-background">
+      <header className="trips-global-header sticky top-0 z-[80] border-b bg-card/95 backdrop-blur">
         <div className="flex h-14 w-full items-center justify-between px-4 sm:h-16 lg:px-5">
           <Link className="font-semibold tracking-tight" href="/trips">
             Trip Planner

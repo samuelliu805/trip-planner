@@ -2081,7 +2081,10 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(workspace, /Tap a date to select a day/);
   assert.match(workspace, /format\(parseISO\(selectedDay\.date\), "MMM d"\)/);
   assert.doesNotMatch(workspace, /mobile-selected-day-bar/);
-  assert.match(tripsLayout, /trips-global-header sticky top-0 z-50/);
+  assert.match(tripsLayout, /trips-global-header sticky top-0 z-\[80\]/);
+  assert.match(workspace, /planner-toolbar sticky top-0 z-\[70\]/);
+  assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
+  assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);
   assert.match(tripsLayout, /h-14[\s\S]*sm:h-16/);
   assert.doesNotMatch(styles, /trips-shell:has\(\.trip-planner-page\)[\s\S]*display: none/);
   assert.match(secondaryFields, /grid min-w-0 gap-3 sm:grid-cols-2/);
