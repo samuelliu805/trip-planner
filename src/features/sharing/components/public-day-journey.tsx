@@ -1,9 +1,10 @@
-import { Bed } from "lucide-react";
+import { Bed, NotebookText } from "lucide-react";
 
 import { publicDayJourney } from "../presentation";
 import type { PublicItineraryDay } from "../types";
 import { PublicJourneyGroups } from "./public-journey-groups";
 import { PublicItemLine } from "./public-item-line";
+import { PublicOverviewIcon } from "./public-overview-icon";
 import { PublicTransportRow } from "./public-transport-row";
 
 export function PublicDayJourney({
@@ -38,9 +39,12 @@ export function PublicDayJourney({
       />
 
       {notes.length ? (
-        <section aria-label="Notes" className="mt-1 border-t py-2">
-          <h3 className="sr-only">Notes</h3>
-          <div className="space-y-1">
+        <section
+          aria-label="Notes"
+          className="mt-1 grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2 border-t py-2"
+        >
+          <PublicOverviewIcon icon={NotebookText} muted />
+          <div className="min-w-0 space-y-1">
             {notes.map((item) => (
               <PublicItemLine
                 compact
@@ -48,6 +52,7 @@ export function PublicDayJourney({
                 key={item.ref}
                 onSelect={() => onSelectItem(item.ref)}
                 selected={selectedItemRef === item.ref}
+                showIcon={false}
               />
             ))}
           </div>
@@ -57,14 +62,9 @@ export function PublicDayJourney({
       {stays.length ? (
         <section
           aria-label="Stay at the end of the day"
-          className="mt-1 flex min-w-0 items-start gap-2 border-t py-2"
+          className="mt-1 grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2 border-t py-2"
         >
-          <span
-            aria-hidden="true"
-            className="flex size-5 shrink-0 items-center justify-center text-primary"
-          >
-            <Bed className="size-4" />
-          </span>
+          <PublicOverviewIcon icon={Bed} />
           <h3 className="sr-only">Stay</h3>
           <div className="min-w-0 flex-1 space-y-1">
             {stays.map((item) => (

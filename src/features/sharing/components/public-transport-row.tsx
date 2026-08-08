@@ -2,6 +2,7 @@ import { CarFront, Route } from "lucide-react";
 
 import { isPublicTransfer, publicRentalItemLabel, publicTransferItemLabel } from "../presentation";
 import type { PublicItineraryItem } from "../types";
+import { PublicOverviewIcon } from "./public-overview-icon";
 
 function hasMapLocation(item: PublicItineraryItem) {
   return typeof item.place?.latitude === "number" && typeof item.place.longitude === "number";
@@ -49,20 +50,20 @@ export function PublicTransportRow({
   return (
     <section aria-label="Transport" className="mt-1 space-y-1 border-t py-2">
       {transfers ? (
-        <div className="flex min-w-0 items-center gap-2">
-          <Route aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="sr-only">Transport:</span>
+        <div className="grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2">
+          <PublicOverviewIcon icon={Route} muted />
           <p
             className="min-w-0 flex-1 truncate whitespace-nowrap text-sm font-medium leading-5 text-foreground"
             title={transfers}
           >
+            <span className="sr-only">Transport:</span>
             {transfers}
           </p>
         </div>
       ) : null}
       {rentals.length ? (
-        <div className="flex min-w-0 items-center gap-2">
-          <CarFront aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+        <div className="grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2">
+          <PublicOverviewIcon icon={CarFront} muted />
           <p
             className="min-w-0 flex-1 truncate whitespace-nowrap text-sm font-medium leading-5 text-foreground"
             title={rentalLabel}

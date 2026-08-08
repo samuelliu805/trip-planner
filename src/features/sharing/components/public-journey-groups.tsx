@@ -2,6 +2,7 @@ import { Sparkles, Utensils } from "lucide-react";
 
 import type { PublicJourneyGroup } from "../presentation";
 import { PublicItemLine } from "./public-item-line";
+import { PublicOverviewIcon } from "./public-overview-icon";
 
 export function PublicJourneyGroups({
   groups,
@@ -21,17 +22,12 @@ export function PublicJourneyGroups({
         const label = group.kind === "meal" ? "Meals" : "Activities";
         return (
           <li
-            className="flex min-w-0 items-start gap-2 py-1"
+            className="grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2 py-1"
             key={`${group.kind}:${group.items[0].ref}`}
           >
-            <span
-              aria-hidden="true"
-              className="flex size-5 shrink-0 items-center justify-center text-primary"
-            >
-              <Icon className="size-4" />
-            </span>
-            <span className="sr-only">{label}</span>
+            <PublicOverviewIcon icon={Icon} />
             <div className="min-w-0 flex-1 space-y-1">
+              <span className="sr-only">{label}</span>
               {group.items.map((item) => (
                 <PublicItemLine
                   compact

@@ -611,6 +611,10 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
     new URL("./components/public-transport-row.tsx", import.meta.url),
     "utf8",
   );
+  const overviewIcon = await readFile(
+    new URL("./components/public-overview-icon.tsx", import.meta.url),
+    "utf8",
+  );
   const shell = await readFile(
     new URL("./components/public-itinerary-shell.tsx", import.meta.url),
     "utf8",
@@ -645,6 +649,15 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
   assert.match(transportRow, /join\(", "\)/);
   assert.match(transportRow, /truncate whitespace-nowrap/);
   assert.doesNotMatch(transportRow, /rounded-full|overflow-x-auto/);
+  const overviewRowSources = overview + journey + journeyGroups + transportRow;
+  assert.match(overviewIcon, /flex size-5 shrink-0 items-center justify-center/);
+  assert.match(overviewIcon, /className="size-3\.5"/);
+  assert.equal(
+    overviewRowSources.match(/grid-cols-\[1\.25rem_minmax\(0,1fr\)\]/g)?.length,
+    6,
+    "every Overview icon row shares one fixed icon column and gap",
+  );
+  assert.doesNotMatch(overviewRowSources, /gap-1\.5|<Icon className="size-4"/);
   assert.match(journeyGroups, /key=\{`\$\{group\.kind\}:\$\{group\.items\[0\]\.ref\}`\}/);
   assert.doesNotMatch(journeyGroups, /key=\{group\.kind\}/);
   assert.match(timelineSources, /destinations\.length/);
@@ -791,8 +804,8 @@ test("public read-only modes share separate one-line transport and rental rows",
   assert.match(transport, /join\(", "\)/);
   assert.match(transport, /truncate whitespace-nowrap/);
   assert.match(transport, /text-sm/);
-  assert.match(transport, /<Route/);
-  assert.match(transport, /<CarFront/);
+  assert.match(transport, /PublicOverviewIcon icon=\{Route\}/);
+  assert.match(transport, /PublicOverviewIcon icon=\{CarFront\}/);
   assert.match(transport, /hasMapLocation/);
   assert.match(transport, /data-public-item-ref/);
   assert.match(transport, /Focus map on/);

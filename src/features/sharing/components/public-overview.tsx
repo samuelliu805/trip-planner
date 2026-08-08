@@ -4,6 +4,7 @@ import { MapPin } from "lucide-react";
 import { publicDayCitySequence } from "../presentation";
 import type { PublicItinerary } from "../types";
 import { PublicDayJourney } from "./public-day-journey";
+import { PublicOverviewIcon } from "./public-overview-icon";
 
 export function PublicOverview({
   itinerary,
@@ -48,8 +49,8 @@ export function PublicOverview({
             </div>
             <div className="min-w-0 px-3 py-3">
               {citySequence.length ? (
-                <div className="mb-3 flex min-w-0 items-center gap-1.5 text-xs font-semibold">
-                  <MapPin aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
+                <div className="mb-3 grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2 text-xs font-semibold leading-5">
+                  <PublicOverviewIcon icon={MapPin} />
                   <span className="truncate">{citySequence.join(" · ")}</span>
                 </div>
               ) : null}
