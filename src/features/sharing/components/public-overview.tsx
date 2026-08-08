@@ -50,13 +50,12 @@ export function PublicOverview({
               {citySequence.length ? (
                 <div className="mb-3 flex min-w-0 items-center gap-1.5 text-xs font-semibold">
                   <MapPin aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
-                  <span className="truncate">{citySequence.join(" → ")}</span>
+                  <span className="truncate">{citySequence.join(" · ")}</span>
                 </div>
               ) : null}
 
               <PublicDayJourney
                 day={day}
-                mode="overview"
                 onSelectItem={(itemRef) => onSelectItem(itemRef, day.ref)}
                 selectedItemRef={selectedItemRef}
               />

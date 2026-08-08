@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Footprints,
   MapPin,
+  LoaderCircle,
   Plus,
   Save,
   Trash2,
@@ -168,6 +169,7 @@ export function DayRouteEditor({
         )}
 
         <Button
+          aria-busy={route.pending}
           className="mt-3 w-full"
           disabled={route.pending || !route.hotelTransferAvailable}
           onClick={route.useHotelRoundTrip}
@@ -263,7 +265,11 @@ export function DayRouteEditor({
           size="sm"
           type="button"
         >
-          <Save className="size-4" />
+          {route.pending ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <Save className="size-4" />
+          )}
           {route.pending ? "Saving…" : "Save & calculate"}
         </Button>
       </footer>

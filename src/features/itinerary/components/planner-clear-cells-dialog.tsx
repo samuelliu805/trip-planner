@@ -1,5 +1,7 @@
 "use client";
 
+import { LoaderCircle } from "lucide-react";
+
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -42,7 +44,8 @@ export function PlannerClearCellsDialog({
         ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Keep items</AlertDialogCancel>
-          <Button disabled={pending} onClick={onConfirm} variant="destructive">
+          <Button aria-busy={pending} disabled={pending} onClick={onConfirm} variant="destructive">
+            {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {pending ? "Clearing…" : "Clear cells"}
           </Button>
         </AlertDialogFooter>

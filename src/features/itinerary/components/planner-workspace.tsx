@@ -2,6 +2,7 @@
 
 import { useIsMutating } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
+import { LoaderCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PlannerClearCellsDialog } from "@/features/itinerary/components/planner-clear-cells-dialog";
@@ -15,6 +16,7 @@ import {
 } from "@/features/itinerary/components/planner-config";
 import { PlannerSheets } from "@/features/itinerary/components/planner-sheets";
 import { PlannerToolbar } from "@/features/itinerary/components/planner-toolbar";
+import { ArrangeActivitiesSheet } from "@/features/itinerary/components/arrange-activities-sheet";
 import {
   initialPlannerSelection,
   selectionBounds,
@@ -27,9 +29,11 @@ import { usePlannerMap } from "@/features/itinerary/hooks/use-planner-map";
 import { usePlannerMutations } from "@/features/itinerary/hooks/use-planner-mutations";
 import {
   normalizeTransportMode,
+  type ItineraryItem,
   type PlannerVariant,
   type PlannerWorkspace as PlannerWorkspaceData,
 } from "@/features/itinerary/types";
+import { projectWorkspaceDraft } from "@/features/itinerary/query-cache";
 import type { Tables } from "@/types/database";
 import { useDayRoute } from "@/features/routes/use-day-route";
 import { RouteVariantControls } from "@/features/variants/components/route-variant-controls";
@@ -71,7 +75,12 @@ function PlannerWorkspaceVariant({
   const [selectionEnd, commitSelectionEnd] = useState<GridCoordinate>(() => initialSelection);
   const [selectedDayRow, setSelectedDayRow] = useState<number | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const [draftItem, setDraftItem] = useState<ItineraryItem | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [arrangeActivitiesRequest, setArrangeActivitiesRequest] = useState<{
+    dayId: string;
+    initialMovingItemId?: string;
+  }>();
   const [mapExpanded, setMapExpanded] = useState(false);
   const [interactionError, setInteractionError] = useState<string>();
   const [clearTargetItems, setClearTargetItems] = useState<
@@ -87,14 +96,18 @@ function PlannerWorkspaceVariant({
   useEffect(() => {
     selectionEndRef.current = selectionEnd;
   }, [selectionEnd]);
+  const projectedWorkspace = useMemo(
+    () => projectWorkspaceDraft(workspace, draftItem),
+    [draftItem, workspace],
+  );
   const mutating = useIsMutating() > 0;
   const selectedCount = plannerSelectionSize(selectionAnchor, selectionEnd);
-  const selectedDay = selectedDayRow === null ? null : workspace.days[selectedDayRow];
-  const activeDay = workspace.days[selectionEnd.row];
+  const selectedDay = selectedDayRow === null ? null : projectedWorkspace.days[selectedDayRow];
+  const activeDay = projectedWorkspace.days[selectionEnd.row];
   const activeCategory = categories[selectionEnd.column];
   const activeCellAtCapacity = isCategoryAtCapacity(activeDay, activeCategory);
   const unavailableTransportModes = editor
-    ? (workspace.days
+    ? (projectedWorkspace.days
         .find((day) => day.id === editor.dayId)
         ?.items.filter((item) => item.type === "transport" && item.id !== editor.item?.id)
         .map((item) => normalizeTransportMode((item.details as Record<string, string>).mode)) ?? [])
@@ -102,7 +115,7 @@ function PlannerWorkspaceVariant({
   const visibleSelectionBounds = selectionBounds(selectionAnchor, selectionEnd);
   const selectedItems = useMemo(
     () =>
-      workspace.days
+      projectedWorkspace.days
         .slice(visibleSelectionBounds.top, visibleSelectionBounds.bottom + 1)
         .flatMap((day) =>
           categories
@@ -114,26 +127,20 @@ function PlannerWorkspaceVariant({
       visibleSelectionBounds.left,
       visibleSelectionBounds.right,
       visibleSelectionBounds.top,
-      workspace.days,
+      projectedWorkspace.days,
     ],
   );
-  const itemCount = workspace.days.reduce((count, day) => count + day.items.length, 0);
+  const itemCount = projectedWorkspace.days.reduce((count, day) => count + day.items.length, 0);
   const dateRange =
     trip.start_date && trip.end_date
       ? `${format(parseISO(trip.start_date), "MMM d")} – ${format(parseISO(trip.end_date), "MMM d, yyyy")}`
       : `${trip.day_count} planning ${trip.day_count === 1 ? "day" : "days"} · Dates not set`;
   const gridTemplate = `minmax(520px, ${split}fr) 4px minmax(360px, ${100 - split}fr)`;
-  const routeDay = activeDay ?? selectedDay ?? workspace.days[0];
-  const dayRoute = useDayRoute(workspace, routeDay, trip.id);
-
-  function hasDayRoute(dayId: string) {
-    return (
-      workspace.routePlans.some(
-        (plan) => plan.day_id === dayId && plan.variant_id === workspace.variant.id,
-      ) ||
-      (dayRoute.editing && dayRoute.activeDay?.id === dayId)
-    );
-  }
+  const routeDay = activeDay ?? selectedDay ?? projectedWorkspace.days[0];
+  const dayRoute = useDayRoute(projectedWorkspace, routeDay, trip.id);
+  const arrangeActivitiesDay = projectedWorkspace.days.find(
+    ({ id }) => id === arrangeActivitiesRequest?.dayId,
+  );
 
   const {
     clearItems,
@@ -141,7 +148,8 @@ function PlannerWorkspaceVariant({
     dayMutationPending,
     deleteItem,
     insertDay,
-    moveItem,
+    itemOrderPending,
+    reorderItems,
     removeDay,
   } = usePlannerMutations(trip.id, workspace.variant.id, setInteractionError);
 
@@ -203,7 +211,7 @@ function PlannerWorkspaceVariant({
     setSelectedItemId,
     setMapMode,
   } = usePlannerMap(
-    workspace,
+    projectedWorkspace,
     selectionEnd,
     setSelectionAnchor,
     setSelectionEnd,
@@ -212,7 +220,7 @@ function PlannerWorkspaceVariant({
   );
 
   function editMapItem(itemId: string) {
-    for (const day of workspace.days) {
+    for (const day of projectedWorkspace.days) {
       const item = day.items.find(({ id }) => id === itemId);
       if (item) {
         setEditor({ dayId: day.id, item, type: item.type });
@@ -224,7 +232,6 @@ function PlannerWorkspaceVariant({
   const {
     clipboardPayload,
     copyDaysOpen,
-    copyMutation,
     copyPreviousDay,
     copySelectionToClipboard,
     copyToSelectedDays,
@@ -232,6 +239,7 @@ function PlannerWorkspaceVariant({
     internalClipboard,
     pasteAvailableClipboard,
     pastePayload,
+    requestPending,
     setCopyDaysOpen,
     setInternalClipboard,
     setTargetDays,
@@ -243,6 +251,15 @@ function PlannerWorkspaceVariant({
     tripId: trip.id,
     workspace,
   });
+
+  function changeMapModeAndSelection(mode: Parameters<typeof setMapMode>[0]) {
+    setMapMode(mode);
+    if (mode !== "overview") return;
+    setSelectedDayRow(null);
+    setSelectedItemId(undefined);
+    setSelectionAnchor({ column: -1, row: -1 });
+    setSelectionEnd({ column: -1, row: -1 });
+  }
 
   const {
     focusCell,
@@ -259,7 +276,6 @@ function PlannerWorkspaceVariant({
     fillDragging,
     fillFrame,
     fillSourceRight,
-    hasDayRoute,
     rangeJustSelected,
     selectionAnchor,
     selectionEnd,
@@ -286,6 +302,18 @@ function PlannerWorkspaceVariant({
       setInteractionError={setInteractionError}
       setInternalClipboard={setInternalClipboard}
     >
+      {requestPending ? (
+        <div
+          aria-live="polite"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-background/60 backdrop-blur-[1px]"
+          role="status"
+        >
+          <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-medium shadow-lg">
+            <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-primary" />
+            Updating selected cells…
+          </div>
+        </div>
+      ) : null}
       <PlannerToolbar
         activeCategory={activeCategory}
         activeCellAtCapacity={activeCellAtCapacity}
@@ -300,11 +328,13 @@ function PlannerWorkspaceVariant({
         fillLabel={categories[selectionAnchor.column]?.label ?? "this column"}
         fillThroughDay={workspace.days[selectionEnd.row]?.day_number}
         insertDay={insertDay}
+        onArrangeActivities={(day) => setArrangeActivitiesRequest({ dayId: day.id })}
         interactionError={interactionError}
         isEmpty={itemCount === 0}
         isFillDragging={isFillDragging}
         mutating={mutating}
         pasteAvailableClipboard={pasteAvailableClipboard}
+        requestPending={requestPending}
         requestClearSelection={requestClearSelection}
         removeDay={removeDay}
         selectedCount={selectedCount}
@@ -315,7 +345,7 @@ function PlannerWorkspaceVariant({
         setSettingsOpen={setSettingsOpen}
         shareControls={shareControls}
         trip={trip}
-        workspaceDayCount={workspace.days.length}
+        workspaceDayCount={projectedWorkspace.days.length}
         workspaceError={Boolean(workspaceError)}
         variantControls={
           <RouteVariantControls
@@ -356,7 +386,7 @@ function PlannerWorkspaceVariant({
         mapMode={mapMode}
         mapMarkers={mapMarkers}
         mapViewportKey={mapViewportKey}
-        moveItem={moveItem}
+        onArrangeActivities={(day) => setArrangeActivitiesRequest({ dayId: day.id })}
         onMapExpand={() => setMapExpanded(true)}
         onComparisonExit={exitComparison}
         onComparisonSheetOpen={() => setComparisonSheetOpen(true)}
@@ -365,7 +395,7 @@ function PlannerWorkspaceVariant({
         onDayMapLayerChange={setDayMapLayer}
         onEditMapItem={editMapItem}
         onMarkerClick={selectMarker}
-        onMapModeChange={setMapMode}
+        onMapModeChange={changeMapModeAndSelection}
         onMapSelectionClear={() => setSelectedItemId(undefined)}
         overviewRoute={overviewRoute}
         openEditorFromDoubleClick={openEditorFromDoubleClick}
@@ -387,7 +417,7 @@ function PlannerWorkspaceVariant({
         startResize={startResize}
         tripTitle={trip.title}
         visibleSelectionBounds={visibleSelectionBounds}
-        workspace={workspace}
+        workspace={projectedWorkspace}
       />
       <PlannerSheets
         compactMapEmptyState={compactMapEmptyState}
@@ -399,7 +429,7 @@ function PlannerWorkspaceVariant({
         decisionSummary={decisionSummary}
         decisionSummarySheetOpen={decisionSummarySheetOpen}
         copyDaysOpen={copyDaysOpen}
-        copyPending={copyMutation.isPending}
+        copyPending={requestPending}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
         dayRoute={dayRoute}
@@ -424,9 +454,17 @@ function PlannerWorkspaceVariant({
         }}
         onCopyToSelectedDays={() => void copyToSelectedDays()}
         onDayMapLayerChange={setDayMapLayer}
-        onEditorClose={() => setEditor(null)}
+        onEditorClose={() => {
+          setEditor(null);
+          setDraftItem(null);
+        }}
+        onEditorDraftChange={setDraftItem}
         onEditMapItem={editMapItem}
         onInteractionError={setInteractionError}
+        onItemCreated={(item) => {
+          if (["activity", "meal"].includes(item.type))
+            setArrangeActivitiesRequest({ dayId: item.day_id, initialMovingItemId: item.id });
+        }}
         onMapExpandedChange={(open) => {
           setMapExpanded(open);
           if (
@@ -438,7 +476,7 @@ function PlannerWorkspaceVariant({
             exitComparison();
         }}
         onMarkerClick={selectMarker}
-        onMapModeChange={setMapMode}
+        onMapModeChange={changeMapModeAndSelection}
         onMapSelectionClear={() => setSelectedItemId(undefined)}
         onSettingsOpenChange={setSettingsOpen}
         onTargetDaysChange={setTargetDays}
@@ -458,6 +496,18 @@ function PlannerWorkspaceVariant({
         onCancel={() => setClearTargetItems([])}
         onConfirm={() => void confirmClearSelection()}
         pending={clearPending}
+      />
+      <ArrangeActivitiesSheet
+        initialMovingItemId={arrangeActivitiesRequest?.initialMovingItemId}
+        key={`${arrangeActivitiesRequest?.dayId ?? "closed"}:${arrangeActivitiesRequest?.initialMovingItemId ?? "manual"}`}
+        day={arrangeActivitiesDay}
+        onCommit={reorderItems}
+        onInitialPlacementComplete={() => setArrangeActivitiesRequest(undefined)}
+        onOpenChange={(open) => {
+          if (!open) setArrangeActivitiesRequest(undefined);
+        }}
+        open={Boolean(arrangeActivitiesRequest)}
+        pending={itemOrderPending}
       />
     </PlannerWorkspaceEventBoundary>
   );

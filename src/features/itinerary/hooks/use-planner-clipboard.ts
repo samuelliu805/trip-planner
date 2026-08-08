@@ -37,10 +37,23 @@ export function usePlannerClipboard({
   const [copyDaysOpen, setCopyDaysOpen] = useState(false);
   const [targetDays, setTargetDays] = useState<Set<string>>(new Set());
   const [internalClipboard, setInternalClipboard] = useState<PlannerClipboard | null>(null);
+  const [requestPending, setRequestPending] = useState(false);
+  const pendingDepth = useRef(0);
   const selectionEndRef = useRef(selectionEnd);
   useEffect(() => {
     selectionEndRef.current = selectionEnd;
   }, [selectionEnd]);
+
+  async function withRequestPending<T>(request: () => Promise<T>) {
+    pendingDepth.current += 1;
+    setRequestPending(true);
+    try {
+      return await request();
+    } finally {
+      pendingDepth.current -= 1;
+      if (pendingDepth.current === 0) setRequestPending(false);
+    }
+  }
 
   function clipboardPayload(): PlannerClipboard | null {
     const bounds = selectionBounds(selectionAnchor, selectionEnd);
@@ -74,72 +87,78 @@ export function usePlannerClipboard({
     }
     setInternalClipboard(payload);
     setInteractionError(undefined);
-    try {
-      await navigator.clipboard.writeText(encodePlannerClipboard(payload));
-    } catch {
-      /* The internal clipboard remains available. */
-    }
+    await withRequestPending(async () => {
+      try {
+        await navigator.clipboard.writeText(encodePlannerClipboard(payload));
+      } catch {
+        /* The internal clipboard remains available. */
+      }
+    });
   }
 
   async function replaceCategoryItems(
     operations: { sourceItemIds: string[]; targetDay: PlannerDay; types: ItineraryItemType[] }[],
   ) {
-    const previous = queryClient.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
-    const replacements = operations
-      .filter(
-        (operation) =>
-          !operation.targetDay.items.some((item) => operation.sourceItemIds.includes(item.id)),
-      )
-      .map((operation) => ({
-        ...operation,
-        replacedItems: operation.targetDay.items.filter((item) =>
-          operation.types.includes(item.type),
-        ),
-      }));
-    try {
-      const replacedIds = new Set(
-        replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
+    await withRequestPending(async () => {
+      const previous = queryClient.getQueryData<PlannerWorkspace>(
+        plannerQueryKey(tripId, variantId),
       );
-      queryClient.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
-        current
-          ? {
-              ...current,
-              days: current.days.map((day) => ({
-                ...day,
-                items: day.items.filter(({ id }) => !replacedIds.has(id)),
-              })),
-            }
-          : current,
-      );
-      await Promise.all(
-        replacements.flatMap(({ replacedItems }) =>
-          replacedItems.map((item) =>
-            deleteMutation.mutateAsync({ id: item.id, tripId, variantId }),
+      const replacements = operations
+        .filter(
+          (operation) =>
+            !operation.targetDay.items.some((item) => operation.sourceItemIds.includes(item.id)),
+        )
+        .map((operation) => ({
+          ...operation,
+          replacedItems: operation.targetDay.items.filter((item) =>
+            operation.types.includes(item.type),
           ),
-        ),
-      );
-      await Promise.all(
-        replacements
-          .filter(({ sourceItemIds }) => sourceItemIds.length > 0)
-          .map(({ sourceItemIds, targetDay }) =>
-            copyMutation.mutateAsync({
-              sourceItemIds,
-              targetDayId: targetDay.id,
-              tripId,
-              variantId,
-            }),
+        }));
+      try {
+        const replacedIds = new Set(
+          replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
+        );
+        queryClient.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
+          current
+            ? {
+                ...current,
+                days: current.days.map((day) => ({
+                  ...day,
+                  items: day.items.filter(({ id }) => !replacedIds.has(id)),
+                })),
+              }
+            : current,
+        );
+        await Promise.all(
+          replacements.flatMap(({ replacedItems }) =>
+            replacedItems.map((item) =>
+              deleteMutation.mutateAsync({ id: item.id, tripId, variantId }),
+            ),
           ),
-      );
-      setInteractionError(undefined);
-    } catch (error) {
-      queryClient.setQueryData(plannerQueryKey(tripId, variantId), previous);
-      void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-      setInteractionError(
-        error instanceof Error
-          ? `${error.message} Refreshing the planner to confirm saved values.`
-          : "The destination cells could not be replaced.",
-      );
-    }
+        );
+        await Promise.all(
+          replacements
+            .filter(({ sourceItemIds }) => sourceItemIds.length > 0)
+            .map(({ sourceItemIds, targetDay }) =>
+              copyMutation.mutateAsync({
+                sourceItemIds,
+                targetDayId: targetDay.id,
+                tripId,
+                variantId,
+              }),
+            ),
+        );
+        setInteractionError(undefined);
+      } catch (error) {
+        queryClient.setQueryData(plannerQueryKey(tripId, variantId), previous);
+        void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+        setInteractionError(
+          error instanceof Error
+            ? `${error.message} Refreshing the planner to confirm saved values.`
+            : "The destination cells could not be replaced.",
+        );
+      }
+    });
   }
 
   async function pastePayload(payload: PlannerClipboard) {
@@ -168,15 +187,17 @@ export function usePlannerClipboard({
   }
 
   async function pasteAvailableClipboard() {
-    let payload = internalClipboard;
-    if (!payload)
-      try {
-        payload = parsePlannerClipboard(await navigator.clipboard.readText());
-      } catch {
-        /* System clipboard access is optional. */
-      }
-    if (payload) await pastePayload(payload);
-    else setInteractionError("Copy planner cells before pasting.");
+    await withRequestPending(async () => {
+      let payload = internalClipboard;
+      if (!payload)
+        try {
+          payload = parsePlannerClipboard(await navigator.clipboard.readText());
+        } catch {
+          /* System clipboard access is optional. */
+        }
+      if (payload) await pastePayload(payload);
+      else setInteractionError("Copy planner cells before pasting.");
+    });
   }
 
   async function fillDown(anchor = selectionAnchor, end = selectionEndRef.current) {
@@ -262,6 +283,7 @@ export function usePlannerClipboard({
     internalClipboard,
     pasteAvailableClipboard,
     pastePayload,
+    requestPending,
     setCopyDaysOpen,
     setInternalClipboard,
     setTargetDays,

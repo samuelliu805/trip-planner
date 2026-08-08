@@ -65,8 +65,8 @@ export async function loadRouteVariants(tripId: string) {
   return getPlannerVariants(tripId);
 }
 
-export async function loadVariantComparison(tripId: string) {
-  return getVariantComparison(tripId);
+export async function loadVariantComparison(tripId: string, dayNumber?: number) {
+  return getVariantComparison(tripId, dayNumber);
 }
 
 export async function loadVariantDecisionSummary(tripId: string) {

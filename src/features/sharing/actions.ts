@@ -186,7 +186,7 @@ export async function calculatePublicOverviewRoute(
     sharedStops.length !== input.data.stopRefs.length ||
     sharedStops.some(({ ref }, index) => ref !== input.data.stopRefs[index])
   )
-    return { error: "The shared city route changed. Refresh and try again." };
+    return { error: "The shared stage route changed. Refresh and try again." };
 
   return calculatePublicStops({
     legModes: input.data.legModes,

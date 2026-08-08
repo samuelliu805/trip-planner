@@ -250,6 +250,13 @@ export function useDayRoute(
   const status = plan ? dayRouteStatus(workspace, plan) : undefined;
   const resolved = plan ? resolveRouteCalculationConfig(workspace, plan) : undefined;
   const calculatedFitKey = plan?.calculation?.computed_at;
+  const defaultDraft = (): DayRouteEditorDraft => {
+    const itemIds = eligibleItems.slice(0, 20).map(({ id }) => id);
+    return {
+      itemIds,
+      legModes: Array.from({ length: Math.max(0, itemIds.length - 1) }, () => suggestedMode),
+    };
+  };
 
   return {
     activeDay,
@@ -267,12 +274,12 @@ export function useDayRoute(
     hotelTransferAvailable: Boolean(previousHotel && currentHotel),
     moveStop,
     openCreate: () => {
-      setDraft({ itemIds: [], legModes: [] });
+      setDraft(defaultDraft());
       setError(undefined);
     },
     openEdit: () => {
       if (plan) setDraft(savedDraft(plan));
-      else setDraft({ itemIds: [], legModes: [] });
+      else setDraft(defaultDraft());
       setError(undefined);
     },
     pending,

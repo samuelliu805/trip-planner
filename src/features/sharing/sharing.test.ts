@@ -8,14 +8,13 @@ import {
   orderedPublicItems,
   publicDayCitySequence,
   publicDayJourney,
-  publicItemGroup,
+  publicTransportItemLabel,
   safeExternalUrl,
 } from "./presentation.ts";
 import {
   buildPublicOverviewLines,
   buildPublicRouteLines,
   publicDayRoutePlan,
-  publicOverviewDefaultModes,
   publicOverviewStops,
   publicRouteCandidates,
 } from "./public-map-model.ts";
@@ -27,7 +26,7 @@ import {
   publicRouteCalculationInputSchema,
   publicViewSchema,
 } from "./schema.ts";
-import type { PublicItinerary } from "./types.ts";
+import type { PublicItinerary, PublicItineraryItem } from "./types.ts";
 
 const ref = (character: string) => character.repeat(64);
 
@@ -105,11 +104,15 @@ test("Overview preserves manual order and separates activities, transport, meals
   const journey = publicDayJourney(day);
   assert.deepEqual(
     journey.groups.flatMap(({ items }) => items).map(({ title }) => title),
-    ["Museum", "Train", "Late manual item"],
+    ["Museum", "Late manual item"],
   );
   assert.deepEqual(
     journey.groups.map(({ kind }) => kind),
-    ["activity", "transport", "meal"],
+    ["activity", "meal"],
+  );
+  assert.deepEqual(
+    journey.transport.map(({ title }) => title),
+    ["Train"],
   );
   assert.deepEqual(
     journey.stays.map(({ title }) => title),
@@ -119,7 +122,7 @@ test("Overview preserves manual order and separates activities, transport, meals
   assert.equal(day.items.find(({ title }) => title === "Train")?.startTime, "09:15:00");
 });
 
-test("day summaries consolidate repeated meal and transport categories into one icon group", () => {
+test("day summaries preserve manual order through contiguous presentation groups", () => {
   const baseDay = itinerary.days[0];
   const journey = publicDayJourney({
     ...baseDay,
@@ -139,13 +142,21 @@ test("day summaries consolidate repeated meal and transport categories into one 
     })),
     [
       { items: ["Museum"], kind: "activity" },
-      { items: ["Metro", "Train"], kind: "transport" },
       { items: ["Lunch", "Dinner"], kind: "meal" },
     ],
   );
+  assert.deepEqual(
+    journey.transport.map(({ title }) => title),
+    ["Metro", "Train"],
+  );
+  assert.equal(
+    journey.groups.flatMap(({ items }) => items).length,
+    3,
+    "transport is not counted as a destination Activity",
+  );
 });
 
-test("Car rental stays independent from transport in public presentation", () => {
+test("Car rental stays support content in the public Transport row", () => {
   const car = {
     carRental: { action: "pickup" as const, company: "Hertz" },
     place: { displayName: "Milan Central" },
@@ -159,21 +170,34 @@ test("Car rental stays independent from transport in public presentation", () =>
     items: [{ ref: ref("w"), sortOrder: 20, title: "Airport train", type: "train" }, car],
   });
 
-  assert.equal(publicItemGroup(car), "Car rental");
   assert.deepEqual(car.carRental, { action: "pickup", company: "Hertz" });
   assert.deepEqual(
-    journey.groups.map(({ kind, items }) => ({
-      items: items.map(({ title }) => title),
-      kind,
-    })),
-    [
-      { items: ["Airport train"], kind: "transport" },
-      { items: ["Hertz pickup"], kind: "car" },
-    ],
+    journey.transport.map(({ title }) => title),
+    ["Airport train", "Hertz pickup"],
   );
 });
 
-test("multi-city public days show one deduplicated route and a flat ordered journey", () => {
+test("transport text keeps rental context concise and deduplicated", () => {
+  const rental = {
+    carRental: { action: "pickup" as const, company: "Hertz" },
+    place: { displayName: "Kansai Airport" },
+    ref: ref("r"),
+    sortOrder: 1,
+    startTime: "08:30:00",
+    title: "Pickup",
+    type: "car_rental" as const,
+  } satisfies PublicItineraryItem;
+  assert.equal(publicTransportItemLabel(rental), "08:30 · Pickup · Hertz · Kansai Airport");
+  assert.equal(
+    publicTransportItemLabel({
+      ...rental,
+      carRental: { action: "pickup", company: "Kansai Airport" },
+    }),
+    "08:30 · Pickup · Kansai Airport",
+  );
+});
+
+test("public Days and Overview retain intermediate locality clusters", () => {
   const day = publicItinerarySchema.parse({
     ...itinerary,
     days: [
@@ -217,7 +241,11 @@ test("multi-city public days show one deduplicated route and a flat ordered jour
   assert.deepEqual(publicDayCitySequence(day), ["Milan", "Venice"]);
   assert.deepEqual(
     journey.groups.flatMap(({ items }) => items).map(({ title }) => title),
-    ["Duomo", "Train to Venice", "Cicchetti"],
+    ["Duomo", "Cicchetti"],
+  );
+  assert.deepEqual(
+    journey.transport.map(({ title }) => title),
+    ["Train to Venice"],
   );
   assert.deepEqual(
     journey.stays.map(({ title }) => title),
@@ -230,6 +258,76 @@ test("multi-city public days show one deduplicated route and a flat ordered jour
     ["Milan", "Venice"],
   );
   assert.equal(buildPublicOverviewLines({ ...itinerary, days: [day] }).length, 1);
+});
+
+test("public Overview clusters alternating localities and retains the final Hotel return", () => {
+  const day = publicItinerarySchema.parse({
+    ...itinerary,
+    days: [
+      {
+        dayNumber: 1,
+        items: [
+          {
+            place: {
+              displayName: "Breakfast",
+              latitude: 42.36,
+              localityName: "Boston",
+              longitude: -71.06,
+            },
+            ref: ref("q"),
+            sortOrder: 0,
+            title: "Breakfast",
+            type: "meal",
+          },
+          {
+            place: {
+              displayName: "MIT",
+              latitude: 42.36,
+              localityName: "Cambridge",
+              longitude: -71.09,
+            },
+            ref: ref("r"),
+            sortOrder: 1,
+            title: "MIT",
+            type: "activity",
+          },
+          {
+            place: {
+              displayName: "Lunch",
+              latitude: 42.35,
+              localityName: "Boston",
+              longitude: -71.07,
+            },
+            ref: ref("s"),
+            sortOrder: 2,
+            title: "Lunch",
+            type: "meal",
+          },
+          {
+            place: {
+              displayName: "Hotel",
+              latitude: 42.36,
+              localityName: "Boston",
+              longitude: -71.05,
+            },
+            ref: ref("t"),
+            sortOrder: 3,
+            title: "Hotel",
+            type: "hotel",
+          },
+        ],
+        primaryLocality: "Boston",
+        ref: ref("u"),
+      },
+    ],
+  });
+  const stops = publicOverviewStops(day);
+  assert.deepEqual(
+    stops.map(({ title }) => title),
+    ["Boston", "Cambridge", "Boston"],
+  );
+  assert.equal(stops.at(-1)?.ref, ref("t"));
+  assert.equal(buildPublicOverviewLines(day).length, 2);
 });
 
 test("public projection parsing rejects raw planner and owner fields", () => {
@@ -364,12 +462,13 @@ test("public day route defaults to all shared stops between previous and current
   );
 });
 
-test("public whole-trip route defaults mirror explicit owner transport and distance fallback", () => {
+test("public Overview uses straight orientation lines and never transport routing", () => {
   const routed: PublicItinerary = {
     ...itinerary,
     days: [
       {
         ...itinerary.days[0],
+        primaryLocality: "Tokyo",
         items: [
           {
             place: { displayName: "Tokyo", latitude: 35.6762, longitude: 139.6503 },
@@ -383,6 +482,7 @@ test("public whole-trip route defaults mirror explicit owner transport and dista
       {
         ...itinerary.days[0],
         dayNumber: 2,
+        primaryLocality: "Sapporo",
         items: [
           { ref: ref("2"), sortOrder: 5, title: "Flight to Sapporo", type: "flight" },
           {
@@ -398,7 +498,8 @@ test("public whole-trip route defaults mirror explicit owner transport and dista
     ],
   };
 
-  assert.deepEqual(publicOverviewDefaultModes(routed), ["flight"]);
+  assert.equal(buildPublicOverviewLines(routed).length, 1);
+  assert.equal(buildPublicOverviewLines(routed)[0].dashed, true);
 });
 
 test("public route exploration accepts only the modes exposed by each route UI", () => {
@@ -433,7 +534,7 @@ test("public route exploration accepts only the modes exposed by each route UI",
 test("public and owner Matrix use the same canonical category columns", async () => {
   assert.deepEqual(
     matrixCategoryColumns.map(({ label }) => label),
-    ["City", "Activities", "Transport", "Hotel", "Car rental", "Meals", "Notes"],
+    ["Locality", "Activities", "Transport", "Hotel", "Car rental", "Meals", "Notes"],
   );
   const publicTable = await readFile(
     new URL("./components/public-table.tsx", import.meta.url),
@@ -462,6 +563,14 @@ test("public and owner Matrix use the same canonical category columns", async ()
   assert.match(dialog, /z-\[110\]/);
 });
 
+test("owner share controls keep a stable key across the server/client toolbar boundary", async () => {
+  const tripPage = await readFile(
+    new URL("../../app/trips/[tripId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(tripPage, /<PublicShareDialog[\s\S]*key="trip-share-controls"/);
+});
+
 test("public UI contracts keep Overview time-agnostic, Table scrollable, and the map responsive", async () => {
   const overview = await readFile(
     new URL("./components/public-overview.tsx", import.meta.url),
@@ -477,6 +586,18 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
   );
   const journey = await readFile(
     new URL("./components/public-day-journey.tsx", import.meta.url),
+    "utf8",
+  );
+  const journeyGroups = await readFile(
+    new URL("./components/public-journey-groups.tsx", import.meta.url),
+    "utf8",
+  );
+  const timelineDestinations = await readFile(
+    new URL("./components/public-timeline-destinations.tsx", import.meta.url),
+    "utf8",
+  );
+  const transportRow = await readFile(
+    new URL("./components/public-transport-row.tsx", import.meta.url),
     "utf8",
   );
   const shell = await readFile(
@@ -496,24 +617,27 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
   assert.match(shell, /canonicalPublicViews\.map/);
   assert.doesNotMatch(overview, /right-aligned|time column|sort\(.+startTime/);
   assert.match(overview, /PublicDayJourney/);
-  const timelineSources = timeline + timelineDay;
+  const timelineSources = timeline + timelineDay + timelineDestinations + transportRow;
+  const journeySources = journey + journeyGroups + transportRow;
   assert.doesNotMatch(timelineSources, /PublicDayJourney/);
   assert.match(timelineSources, /orderedPublicItems/);
   assert.match(timelineSources, /public-timeline-item/);
-  assert.match(timelineSources, /type === "activity"/);
-  assert.match(timelineSources, /TimelineStay/);
-  assert.match(timelineSources, /public-timeline-stay/);
-  assert.match(timelineSources, /Stay · End of day/);
-  assert.match(timelineSources, /DayDetailGroup/);
-  assert.match(timelineSources, /label="Transport"/);
-  assert.match(timelineSources, /label="Meals"/);
-  assert.match(timelineSources, /Car rental/);
+  assert.match(timelineSources, /type !== "location"/);
+  assert.doesNotMatch(timelineSources, /TimelineStay|DayDetailGroup|Stay · End of day/);
   assert.doesNotMatch(overview + timelineSources, /publicDayStages|stage\.label|stages\.map/);
   assert.match(journey, /publicDayJourney\(day\)/);
-  assert.match(journey, /function JourneyGroup/);
-  assert.match(journey, /showIcon=\{false\}/);
-  assert.doesNotMatch(journey, /categoryLabel/);
-  assert.match(journey, /Stay at the end of the day/);
+  assert.match(journey, /PublicJourneyGroups/);
+  assert.match(journeyGroups, /showIcon=\{false\}/);
+  assert.doesNotMatch(journeySources, /categoryLabel/);
+  assert.match(transportRow, /aria-label="Transport"/);
+  assert.match(journey, /items=\{transport\}/);
+  assert.match(transportRow, /join\(", "\)/);
+  assert.match(transportRow, /truncate whitespace-nowrap/);
+  assert.doesNotMatch(transportRow, /rounded-full|overflow-x-auto/);
+  assert.match(journeyGroups, /key=\{`\$\{group\.kind\}:\$\{group\.items\[0\]\.ref\}`\}/);
+  assert.doesNotMatch(journeyGroups, /key=\{group\.kind\}/);
+  assert.match(timelineSources, /destinations\.length/);
+  assert.match(timelineSources, /isPublicTravel/);
   assert.doesNotMatch(overview, /useState|aria-expanded|ChevronDown|hiddenCount/);
   assert.match(styles, /public-itinerary-grid/);
   assert.match(styles, /var\(--public-content-split\)/);
@@ -577,7 +701,8 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.match(routeSources, /Temporary route/);
   assert.match(routeSources, /Only you/);
   assert.match(routeSources, /Shared route/);
-  assert.match(routeSources, /Whole trip/);
+  assert.match(sharedRoute, /key=\{`\$\{stop\.ref\}:\$\{index\}`\}/);
+  assert.match(routeSources, /Overview connections/);
   assert.match(routeSources, /Day route/);
   assert.match(routeSources, /Temporary route travel mode/);
   assert.match(routeSources, /Drive/);
@@ -585,7 +710,9 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.match(routeSources, /Bike/);
   assert.match(routeSources, /Walk/);
   assert.match(routeSources, /Calculate/);
-  assert.match(routeSources, /publicOverviewDefaultModes/);
+  assert.match(overviewPanel, /Calculate whole trip/);
+  assert.match(overviewPanel, /SelectTrigger/);
+  assert.match(overviewPanel, /overviewRouteModes/);
   assert.match(routeSources, /publicDayRoutePlan/);
   assert.match(routeSources, /defaultStops/);
   assert.match(routeSources, /No map location/);
@@ -599,7 +726,8 @@ test("route exploration is local-only and never exposes owner persistence contro
     /Save route|Publish route|place search|localStorage|sessionStorage/,
   );
   assert.doesNotMatch(actions, /saveDayRoute|upsert|\.insert\(|\.update\(/);
-  assert.match(actions, /calculatePublicOverviewRoute/);
+  assert.match(workspace, /calculatePublicOverviewRoute/);
+  assert.match(workspace, /overviewCalculation/);
   assert.match(actions, /must start at the previous day Hotel/);
   assert.match(actions, /must end at the current day Hotel/);
   const providerCall = actions.slice(
@@ -630,4 +758,26 @@ test("sharing and public route security use real QR, safe new tabs, and no-store
   assert.match(page, /dynamic = "force-dynamic"/);
   assert.match(page, /revalidate = 0/);
   assert.doesNotMatch(sharingSources, /dangerouslySetInnerHTML/);
+});
+
+test("public read-only modes share one concise Transport text row", async () => {
+  const timeline = await readFile(
+    new URL("./components/public-timeline-day.tsx", import.meta.url),
+    "utf8",
+  );
+  const itemLine = await readFile(
+    new URL("./components/public-item-line.tsx", import.meta.url),
+    "utf8",
+  );
+  const transport = await readFile(
+    new URL("./components/public-transport-row.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(timeline, /contextLabel|Item \$\{index/);
+  assert.match(timeline, /PublicTransportRow/);
+  assert.match(transport, /aria-label="Transport"/);
+  assert.match(transport, /join\(", "\)/);
+  assert.match(transport, /truncate whitespace-nowrap/);
+  assert.doesNotMatch(transport, /<button|rounded-full|overflow-x-auto/);
+  assert.doesNotMatch(itemLine, /compactTravel|publicTransportItemLabel|compactRental/);
 });

@@ -18,6 +18,7 @@ import { useVariantComparisonProjection } from "./queries";
 export type VariantComparisonUi = {
   available: boolean;
   blockingReason?: string;
+  dayNumber?: number;
   error?: string;
   isLoading: boolean;
   presentations: VariantComparisonPresentation[];
@@ -29,18 +30,20 @@ export type VariantComparisonUi = {
 
 export function useVariantComparison({
   activeVariantId,
+  dayNumber,
   dayRouteEditing,
   enabled,
   tripId,
   variants,
 }: {
   activeVariantId: string;
+  dayNumber?: number;
   dayRouteEditing: boolean;
   enabled: boolean;
   tripId: string;
   variants: PlannerVariant[];
 }): VariantComparisonUi {
-  const query = useVariantComparisonProjection(tripId, enabled);
+  const query = useVariantComparisonProjection(tripId, enabled, dayNumber);
   const knownVariantIds = useRef(new Set(variants.map(({ id }) => id)));
   const [visibleVariantIds, setVisibleVariantIds] = useState<Set<string>>(
     () => new Set(variants.map(({ id }) => id)),
@@ -71,9 +74,9 @@ export function useVariantComparison({
   const presentations = useMemo(
     () =>
       projections.map((projection) =>
-        deriveVariantComparisonPresentation(projection, activeVariantId),
+        deriveVariantComparisonPresentation(projection, activeVariantId, dayNumber),
       ),
-    [activeVariantId, projections],
+    [activeVariantId, dayNumber, projections],
   );
   const visiblePresentations = useMemo(
     () => visibleComparisonPresentations(presentations, visibleVariantIds, activeVariantId),
@@ -89,6 +92,7 @@ export function useVariantComparison({
   return {
     available,
     blockingReason,
+    dayNumber,
     error:
       query.error instanceof Error
         ? query.error.message

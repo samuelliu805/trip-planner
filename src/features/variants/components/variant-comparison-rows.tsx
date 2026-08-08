@@ -51,7 +51,7 @@ export function VariantComparisonRows({ comparison }: { comparison: VariantCompa
             <VariantBadges isActive={variant.isActive} isPrimary={variant.isPrimary} />
           </span>
           <span
-            aria-label={`City sequence: ${variant.citySequence}`}
+            aria-label={`${comparison.dayNumber ? `Day ${comparison.dayNumber} route` : "Locality"} sequence: ${variant.citySequence}`}
             className="mt-1 block truncate text-[11px] text-muted-foreground"
             title={variant.citySequence}
           >

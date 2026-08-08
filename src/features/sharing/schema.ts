@@ -25,9 +25,14 @@ const publicLinkSchema = z
 const publicPlaceSchema = z
   .object({
     address: z.string().max(500).optional(),
+    countryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .optional(),
     displayName: z.string().min(1).max(300),
     latitude: z.number().min(-90).max(90).nullable().optional(),
     longitude: z.number().min(-180).max(180).nullable().optional(),
+    localityName: z.string().min(1).max(300).optional(),
   })
   .strict();
 const publicCarRentalSchema = z
@@ -58,8 +63,10 @@ const publicDaySchema = z
     date: z.string().nullable().optional(),
     dayNumber: z.number().int().positive(),
     items: z.array(publicItemSchema),
+    localities: z.array(z.string().min(1).max(300)).optional(),
     notes: z.string().max(5000).optional(),
     ref: z.string().length(64),
+    primaryLocality: z.string().min(1).max(300).optional(),
     title: z.string().max(200).nullable().optional(),
   })
   .strict();

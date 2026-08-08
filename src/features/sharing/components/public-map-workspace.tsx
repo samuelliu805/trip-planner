@@ -199,8 +199,8 @@ function PublicMapWorkspaceContent({
     if (overviewStops.length < 2 || overviewStops.length > 20) {
       setOverviewError(
         overviewStops.length > 20
-          ? "Whole-trip calculation supports up to 20 shared Cities."
-          : "Add at least two shared Cities to calculate a route.",
+          ? "Whole-trip calculation supports up to 20 shared stages."
+          : "Add at least two shared stages to calculate a route.",
       );
       return;
     }
@@ -290,6 +290,7 @@ function PublicMapWorkspaceContent({
         <RouteScopePicker onSelect={selectScope} scope={routeScope} />
         {routeScope === "overview" ? (
           <PublicOverviewRoutePanel
+            allowExplore={itinerary.settings.allowRouteExplore}
             calculation={overviewCalculation}
             error={overviewError}
             modes={overviewModes}

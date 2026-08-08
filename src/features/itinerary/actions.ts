@@ -28,15 +28,8 @@ import {
   replaceItemLinks,
   withPlace,
 } from "@/features/itinerary/action-helpers";
-import {
-  neighboringCityError,
-  neighboringCityConflictAfterRemoving,
-} from "@/features/routes/city-order";
-import {
-  prospectiveCityError,
-  validateProspectiveCity,
-  validateVariantDay,
-} from "@/features/itinerary/item-action-validation";
+import { validateVariantDay } from "@/features/itinerary/item-action-validation";
+import { insertedActivityOrderIds } from "@/features/itinerary/activity-order";
 
 export async function loadPlannerWorkspace(tripId: string, variantId: string) {
   return getPlannerWorkspace(tripId, variantId);
@@ -47,6 +40,8 @@ export async function createItineraryItem(
 ): Promise<MutationResult> {
   const parsed = createItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+  if (parsed.data.type === "location")
+    return { error: "City is now derived from Activity places and cannot be added separately." };
 
   const dayError = await validateVariantDay(
     parsed.data.tripId,
@@ -55,19 +50,23 @@ export async function createItineraryItem(
   );
   if (dayError) return { error: dayError };
 
-  if (parsed.data.type === "location") {
-    const cityError = await validateProspectiveCity({
-      dayId: parsed.data.dayId,
-      placeId: parsed.data.placeId,
-      providerPlaceId: parsed.data.placeSnapshot?.providerPlaceId,
-      title: parsed.data.title,
-      tripId: parsed.data.tripId,
-      variantId: parsed.data.variantId,
-    });
-    if (cityError) return { error: cityError };
-  }
-
   const supabase = await createClient();
+  const { data: dayItems, error: orderError } = await supabase
+    .from("itinerary_items")
+    .select("id, sort_order, type")
+    .eq("day_id", parsed.data.dayId)
+    .order("sort_order")
+    .order("id");
+  if (orderError) return { error: mutationError(orderError.message) };
+  const existingDayItems = dayItems ?? [];
+  if (
+    parsed.data.insertAfterItemId &&
+    !existingDayItems.some(
+      ({ id, type }) => id === parsed.data.insertAfterItemId && type !== "hotel",
+    )
+  )
+    return { error: "The selected Activity position changed. Choose its position again." };
+
   let persistedPlaceId: string | null = null;
   try {
     persistedPlaceId = await persistPlaceSnapshot(
@@ -102,15 +101,6 @@ export async function createItineraryItem(
         error: `This day already has ${parsed.data.title}. Choose a different transport type.`,
       };
   }
-  const { data: lastItem, error: orderError } = await supabase
-    .from("itinerary_items")
-    .select("sort_order")
-    .eq("day_id", parsed.data.dayId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (orderError) return { error: mutationError(orderError.message) };
-
   const times = normalizedTimes(parsed.data.startTime, parsed.data.endTime);
   const values: TablesInsert<"itinerary_items"> = {
     booking_url: parsed.data.links?.[0]?.url ?? normalizedOptional(parsed.data.bookingUrl),
@@ -120,7 +110,7 @@ export async function createItineraryItem(
     notes: normalizedOptional(parsed.data.notes),
     place_id: persistedPlaceId ?? parsed.data.placeId ?? null,
     schedule_kind: scheduleKind(times.start_time, times.end_time),
-    sort_order: (lastItem?.sort_order ?? -1) + 1,
+    sort_order: Math.max(-1, ...existingDayItems.map(({ sort_order }) => sort_order)) + 1,
     title: parsed.data.title.trim(),
     trip_id: parsed.data.tripId,
     type: parsed.data.type,
@@ -143,8 +133,28 @@ export async function createItineraryItem(
     };
   }
 
+  const orderedItemIds = insertedActivityOrderIds(
+    existingDayItems,
+    { id: data.id, sort_order: data.sort_order, type: data.type },
+    parsed.data.insertAfterItemId,
+  );
+  const { error: reorderError } = await supabase.rpc("reorder_itinerary_items", {
+    ordered_item_ids: orderedItemIds,
+    target_day_id: parsed.data.dayId,
+  });
+  if (reorderError) {
+    await supabase.from("itinerary_items").delete().eq("id", data.id);
+    return { error: mutationError(reorderError.message) };
+  }
+
   revalidatePath(`/trips/${data.trip_id}`);
-  return { data: { ...withPlace(data, parsed.data.placeSnapshot, persistedPlaceId), links } };
+  return {
+    data: {
+      ...withPlace(data, parsed.data.placeSnapshot, persistedPlaceId),
+      links,
+      sort_order: orderedItemIds.indexOf(data.id),
+    },
+  };
 }
 
 export async function updateItineraryItem(
@@ -152,6 +162,10 @@ export async function updateItineraryItem(
 ): Promise<MutationResult> {
   const parsed = updateItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+  if (parsed.data.type === "location")
+    return {
+      error: "Legacy City data is preserved for compatibility; edit an Activity place instead.",
+    };
 
   if (parsed.data.dayId) {
     const dayError = await validateVariantDay(
@@ -162,25 +176,25 @@ export async function updateItineraryItem(
     if (dayError) return { error: dayError };
   }
 
-  if (parsed.data.type === "location") {
-    const currentWorkspace = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
-    const currentItem = currentWorkspace.data?.days
-      .flatMap(({ items }) => items)
-      .find(({ id }) => id === parsed.data.id);
-    const cityError =
-      currentWorkspace.error || !currentWorkspace.data || !currentItem
-        ? (currentWorkspace.error ?? "The City order could not be checked.")
-        : prospectiveCityError(currentWorkspace.data, {
-            dayId: parsed.data.dayId ?? currentItem.day_id,
-            itemId: parsed.data.id,
-            placeId: parsed.data.placeId,
-            providerPlaceId: parsed.data.placeSnapshot?.providerPlaceId,
-            title: parsed.data.title ?? currentItem.title,
-          });
-    if (cityError) return { error: cityError };
-  }
-
   const supabase = await createClient();
+  const { data: existingItem, error: existingItemError } = await supabase
+    .from("itinerary_items")
+    .select("type, day_id, start_time, end_time")
+    .eq("id", parsed.data.id)
+    .eq("trip_id", parsed.data.tripId)
+    .eq("variant_id", parsed.data.variantId)
+    .maybeSingle();
+  if (existingItemError || !existingItem)
+    return {
+      error: mutationError(
+        existingItemError?.message ?? "You do not have permission to change this item.",
+      ),
+    };
+  if (existingItem.type === "location")
+    return {
+      error: "Legacy City data is preserved for compatibility; edit an Activity place instead.",
+    };
+
   let persistedPlaceId: string | null | undefined;
   try {
     persistedPlaceId = parsed.data.placeSnapshot
@@ -190,20 +204,7 @@ export async function updateItineraryItem(
     return { error: error instanceof Error ? error.message : "The map place could not be saved." };
   }
   if (parsed.data.type === "transport" && parsed.data.details && "mode" in parsed.data.details) {
-    const { data: current, error: currentError } = await supabase
-      .from("itinerary_items")
-      .select("day_id")
-      .eq("id", parsed.data.id)
-      .eq("trip_id", parsed.data.tripId)
-      .eq("variant_id", parsed.data.variantId)
-      .maybeSingle();
-    if (currentError || !current)
-      return {
-        error: mutationError(
-          currentError?.message ?? "You do not have permission to change this item.",
-        ),
-      };
-    const dayId = parsed.data.dayId ?? current.day_id;
+    const dayId = parsed.data.dayId ?? existingItem.day_id;
     const mode = parsed.data.details.mode as string;
     const { count, error: transportError } = await supabase
       .from("itinerary_items")
@@ -235,23 +236,8 @@ export async function updateItineraryItem(
   if (parsed.data.startTime !== undefined || parsed.data.endTime !== undefined) {
     let startTime = normalizedOptional(parsed.data.startTime);
     let endTime = normalizedOptional(parsed.data.endTime);
-    if (parsed.data.startTime === undefined || parsed.data.endTime === undefined) {
-      const { data: current, error: readError } = await supabase
-        .from("itinerary_items")
-        .select("start_time, end_time")
-        .eq("id", parsed.data.id)
-        .eq("trip_id", parsed.data.tripId)
-        .eq("variant_id", parsed.data.variantId)
-        .maybeSingle();
-      if (readError || !current)
-        return {
-          error: mutationError(
-            readError?.message ?? "You do not have permission to change this item.",
-          ),
-        };
-      if (parsed.data.startTime === undefined) startTime = current.start_time;
-      if (parsed.data.endTime === undefined) endTime = current.end_time;
-    }
+    if (parsed.data.startTime === undefined) startTime = existingItem.start_time;
+    if (parsed.data.endTime === undefined) endTime = existingItem.end_time;
     values.schedule_kind = scheduleKind(startTime, endTime);
   }
 
@@ -310,13 +296,8 @@ export async function deleteItineraryItem(
     return {
       error: mutationError(readError?.message ?? "You do not have permission to delete this item."),
     };
-  if (currentItem.type === "location") {
-    const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
-    if (workspaceResult.error || !workspaceResult.data)
-      return { error: workspaceResult.error ?? "The City order could not be checked." };
-    if (neighboringCityConflictAfterRemoving(workspaceResult.data.days, [currentItem.id]))
-      return { error: neighboringCityError() };
-  }
+  if (currentItem.type === "location")
+    return { error: "Legacy City data is retained for compatibility and cannot be deleted here." };
   const { data, error } = await supabase
     .from("itinerary_items")
     .delete()
@@ -349,8 +330,11 @@ export async function clearItineraryItems(
   );
   if (parsed.data.itemIds.some((id) => !existingIds.has(id)))
     return { error: "The selected cells changed. Review the selection and try again." };
-  if (neighboringCityConflictAfterRemoving(workspaceResult.data.days, parsed.data.itemIds))
-    return { error: neighboringCityError() };
+  const itemsById = new Map(
+    workspaceResult.data.days.flatMap(({ items }) => items).map((item) => [item.id, item]),
+  );
+  if (parsed.data.itemIds.some((id) => itemsById.get(id)?.type === "location"))
+    return { error: "Legacy City data is retained for compatibility and cannot be cleared here." };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("clear_route_variant_items", {

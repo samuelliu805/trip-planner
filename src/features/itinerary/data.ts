@@ -52,7 +52,7 @@ export async function getPlannerWorkspace(
     supabase
       .from("itinerary_items")
       .select(
-        "*, links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude)",
+        "*, links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)",
       )
       .eq("trip_id", tripId)
       .eq("variant_id", variant.id)
@@ -123,6 +123,19 @@ export async function getPlannerWorkspace(
               ...(snapshot.google_place_id && { providerPlaceId: snapshot.google_place_id }),
               displayName: snapshot.display_name,
               ...(snapshot.formatted_address && { formattedAddress: snapshot.formatted_address }),
+              ...(snapshot.locality_name && { localityName: snapshot.locality_name }),
+              ...(snapshot.locality_kind && {
+                localityKind:
+                  snapshot.locality_kind as import("@/lib/providers/places/types").LocalityKind,
+              }),
+              ...(snapshot.country_code && { countryCode: snapshot.country_code }),
+              ...(snapshot.administrative_area_name && {
+                administrativeAreaName: snapshot.administrative_area_name,
+              }),
+              ...(snapshot.locality_source && {
+                localitySource:
+                  snapshot.locality_source as import("@/lib/providers/places/types").LocalitySource,
+              }),
               latitude: snapshot.latitude,
               longitude: snapshot.longitude,
             }

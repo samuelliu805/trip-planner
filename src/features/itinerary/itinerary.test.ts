@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   deduplicatePlaceSnapshots,
   normalizeGooglePlace,
+  resolveGooglePlaceLocality,
 } from "../../lib/providers/places/normalize.ts";
 import { RouteProviderError } from "../../lib/providers/routes/errors.ts";
 import { straightFallbackLeg } from "../../lib/providers/routes/fallback.ts";
@@ -55,6 +56,7 @@ import { buildRouteConfigSignature } from "../routes/signatures.ts";
 import { resolveRouteCalculationConfig } from "../routes/plan-config.ts";
 import { dayRouteStatus } from "../routes/status.ts";
 import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
+import { routeLegExplanation } from "../routes/route-leg-presentation.ts";
 import { overviewRouteModes, routeLegModes, type DayRouteDraft } from "../routes/types.ts";
 import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "../routes/types.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
@@ -67,9 +69,25 @@ import {
   insertTripDaySchema,
   removeTripDaySchema,
   reorderItineraryItemsSchema,
+  reorderVariantDaysSchema,
   updateItineraryItemSchema,
 } from "./schema.ts";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
+import {
+  deriveDayLocality,
+  deriveOverviewStageProjections,
+  formatDayLocalitySummary,
+  representativeActivityAnchor,
+} from "./locality.ts";
+import { isSameDayOrder, placeDayAtGap, reorderWorkspaceDays } from "./day-order.ts";
+import {
+  insertActivityAtPlacement,
+  isActivityOrderAnchor,
+  orderedDayActivities,
+  orderedDestinationActivities,
+  placeActivityAtGap,
+  sameActivityOrder,
+} from "./activity-order.ts";
 import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 import "../variants/comparison.test.ts";
 import "../variants/decision-summary.test.ts";
@@ -1054,92 +1072,91 @@ test("map marker dates merge consecutive day intervals", () => {
   );
 });
 
-test("overview keeps every City occurrence and gives same-day stages the first date label", () => {
-  const city = (id: string, placeId: string, sortOrder: number, title: string) =>
+test("Activity locality drives Day summaries and adjacent-only Overview stages", () => {
+  const item = (
+    id: string,
+    type: ItineraryItem["type"],
+    sortOrder: number,
+    localityName: string,
+    latitude: number,
+    longitude: number,
+  ) =>
     ({
       id,
       place: {
-        formattedAddress: `${title} address`,
-        id: placeId,
-        latitude: sortOrder + 10,
-        longitude: sortOrder + 20,
+        displayName: id,
+        id: `place-${id}`,
+        latitude,
+        localityKind: "locality",
+        localityName,
+        localitySource: "google_address_component",
+        longitude,
+        provider: "google",
       },
       sort_order: sortOrder,
-      title,
-      type: "location",
+      title: id,
+      type,
     }) as unknown as ItineraryItem;
-  const activity = {
-    ...city("activity", "museum", 0, "Museum"),
-    type: "activity",
-  } as unknown as ItineraryItem;
   const days = [
-    { day_number: 3, id: "day-3", items: [city("berlin-3", "berlin", 0, "Berlin")] },
-    { day_number: 2, id: "day-2", items: [activity] },
     {
-      date: "2026-08-02",
       day_number: 1,
       id: "day-1",
       items: [
-        city("paris-2", "paris", 2, "Paris stay"),
-        city("paris-1", "paris", 1, "Paris arrival"),
-        city("london", "london", 3, "London"),
+        item("breakfast", "meal", 0, "Boston", 42.36, -71.06),
+        item("mit", "activity", 1, "Cambridge", 42.36, -71.09),
+        item("lunch", "meal", 2, "Boston", 42.35, -71.07),
+        item("harvard", "activity", 3, "Cambridge", 42.37, -71.12),
+        item("hotel", "hotel", 4, "Boston", 42.36, -71.05),
       ],
     },
-    { day_number: 4, id: "day-4", items: [city("paris-4", "paris", 0, "Paris return")] },
+    {
+      day_number: 2,
+      id: "day-2",
+      items: [
+        item("museum", "activity", 0, "Boston", 42.34, -71.09),
+        item("dinner", "meal", 1, "Boston", 42.35, -71.08),
+      ],
+    },
+    {
+      day_number: 3,
+      id: "day-3",
+      items: [item("onsen", "hotel", 0, "Hakone", 35.23, 139.1)],
+    },
+    {
+      day_number: 4,
+      id: "day-4",
+      items: [item("return", "activity", 0, "Boston", 42.36, -71.06)],
+    },
   ] as unknown as PlannerDay[];
 
-  const stages = deriveOverviewStages(days);
+  const firstDay = deriveDayLocality(days[0]);
   assert.deepEqual(
-    stages.map(({ dayRangeLabel, firstDayLabel, entries, placeId, position }) => ({
-      firstDayLabel,
-      dayRangeLabel,
-      itemIds: entries.map(({ itemId }) => itemId),
-      placeId,
-      position,
+    firstDay.localities.map(({ label }) => label),
+    ["Boston", "Cambridge"],
+  );
+  assert.equal(formatDayLocalitySummary(firstDay), "Boston · Cambridge");
+  assert.equal(firstDay.primaryLocality?.label, "Boston");
+
+  const stages = deriveOverviewStageProjections(days);
+  assert.deepEqual(
+    stages.map(({ dayIds, primaryLocality }) => ({
+      dayIds,
+      locality: primaryLocality?.label,
     })),
     [
-      {
-        dayRangeLabel: "Aug 2",
-        firstDayLabel: "Aug 2",
-        itemIds: ["paris-1"],
-        placeId: "paris",
-        position: 1,
-      },
-      {
-        dayRangeLabel: "Aug 2",
-        firstDayLabel: "Aug 2",
-        itemIds: ["paris-2"],
-        placeId: "paris",
-        position: 2,
-      },
-      {
-        dayRangeLabel: "Aug 2",
-        firstDayLabel: "Aug 2",
-        itemIds: ["london"],
-        placeId: "london",
-        position: 3,
-      },
-      {
-        dayRangeLabel: "Day 3",
-        firstDayLabel: "Day 3",
-        itemIds: ["berlin-3"],
-        placeId: "berlin",
-        position: 4,
-      },
-      {
-        dayRangeLabel: "Day 4",
-        firstDayLabel: "Day 4",
-        itemIds: ["paris-4"],
-        placeId: "paris",
-        position: 5,
-      },
+      { dayIds: ["day-1", "day-2"], locality: "Boston" },
+      { dayIds: ["day-3"], locality: "Hakone" },
+      { dayIds: ["day-4"], locality: "Boston" },
     ],
   );
+  assert.ok(stages.every(({ anchor }) => anchor));
+
+  const mapStages = deriveOverviewStages(days);
   assert.deepEqual(
-    stages.slice(0, 3).map(({ firstDayLabel }) => firstDayLabel),
-    ["Aug 2", "Aug 2", "Aug 2"],
+    mapStages.map(({ entries }) => entries[0].title),
+    ["Boston", "Cambridge", "Boston", "Hakone", "Boston"],
   );
-  assert.equal(neighboringCityConflict(orderedCityOccurrences(days))?.to.itemId, "paris-2");
+  assert.equal(mapStages[2].entries[0].itemId, "hotel");
 });
 
 test("overview allows the same City across days and omits the no-travel stay boundary", () => {
@@ -1184,7 +1201,7 @@ test("overview allows the same City across days and omits the no-travel stay bou
   assert.deepEqual(buildOverviewRouteLines(stages, []), []);
 });
 
-test("overview keeps real legs around a repeated cross-day City boundary", () => {
+test("legacy City fallback preserves intermediate stages until Activities gain locality", () => {
   const days = [
     {
       day_number: 1,
@@ -1231,13 +1248,9 @@ test("overview keeps real legs around a repeated cross-day City boundary", () =>
   assert.equal(neighboringCityConflict(orderedCityOccurrences(days)), null);
   assert.deepEqual(
     buildOverviewRouteLines(stages, []).map(({ position }) => position),
-    [1, 3],
+    [1, 2],
   );
-  assert.deepEqual(deriveOverviewDefaultModes(days, stages), [
-    "self_driving",
-    undefined,
-    "self_driving",
-  ]);
+  assert.deepEqual(deriveOverviewDefaultModes(days, stages), ["self_driving", "self_driving"]);
 });
 
 test("neighboring City validation rejects only adjacent identical places", () => {
@@ -1310,7 +1323,7 @@ test("neighboring City validation rejects only adjacent identical places", () =>
   assert.ok(neighboringCityConflictAfterRemoving(withReturn, ["city-b"]));
 });
 
-test("Overview starts with straight previews and replaces only calculated City legs", () => {
+test("Overview previews straight connections and renders explicitly calculated route geometry", () => {
   const stages = deriveOverviewStages([
     {
       day_number: 1,
@@ -1359,13 +1372,14 @@ test("Overview starts with straight previews and replaces only calculated City l
     },
   ]);
   assert.equal(calculated.dashed, false);
+  assert.match(calculated.id, /^overview-route:1:/);
   assert.deepEqual(calculated.path, [
     { lat: 38.5, lng: -120.2 },
     { lat: 40.7, lng: -120.95 },
   ]);
 });
 
-test("Day map City layer shows same-day City transfers separately from route stops", () => {
+test("Day map keeps intermediate locality stages and route candidates separate", () => {
   const day = {
     date: "2026-08-02",
     day_number: 1,
@@ -1397,17 +1411,7 @@ test("Day map City layer shows same-day City transfers separately from route sto
   const stages = deriveOverviewStages([day]);
   const cityMarkers = buildDayCityMarkers(day, stages);
   assert.equal(cityMarkers.length, 2);
-  assert.deepEqual(
-    cityMarkers.map(({ appearance, label }) => ({ appearance, label })),
-    [
-      { appearance: "day-city", label: "Aug 2" },
-      { appearance: "day-city", label: "Aug 2" },
-    ],
-  );
-  const [cityLine] = buildDayCityRouteLines(day, stages, []);
-  assert.equal(cityLine.color, "#2563eb");
-  assert.equal(cityLine.dashed, true);
-  assert.equal(cityLine.routeLayer, "city");
+  assert.equal(buildDayCityRouteLines(day, stages, []).length, 1);
   assert.equal(buildDayRouteMarkers(day, []).length, 1);
 });
 
@@ -1569,7 +1573,7 @@ test("route status ignores display changes and detects coordinate, deletion, and
   assert.equal(dayRouteStatus(workspace, plan), "needs_edit");
 });
 
-test("Overview routing is explicit and map interactions stay synchronized", async () => {
+test("Overview route calculation is explicit while ordinary map rendering stays provider-free", async () => {
   const overview = await readFile(new URL("../routes/overview.ts", import.meta.url), "utf8");
   const overviewHook = await readFile(
     new URL("../routes/use-overview-route.ts", import.meta.url),
@@ -1579,7 +1583,6 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
     new URL("../routes/overview-route-overlay.tsx", import.meta.url),
     "utf8",
   );
-  const actions = await readFile(new URL("../routes/actions.ts", import.meta.url), "utf8");
   const itemActions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
   const itemValidation = await readFile(
     new URL("./item-action-validation.ts", import.meta.url),
@@ -1612,28 +1615,26 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
   assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
-  assert.match(overviewUi, /Not set · preview line/);
-  assert.match(overviewUi, /overviewRouteModes\.map/);
-  assert.match(overviewUi, /!hasPendingCalculation/);
+  assert.match(overviewUi, /Preview only/);
+  assert.match(overviewUi, /Overview route connections/);
   assert.match(overviewUi, /Calculate route/);
-  assert.match(overviewUi, /hasPendingCalculation \? "default" : "outline"/);
-  assert.match(overviewUi, /Route details/);
-  assert.match(overviewUi, /Set up route/);
-  assert.match(overviewUi, /\? "Done"/);
-  assert.match(overviewUi, /!route\.editing \? \(/);
+  assert.match(overviewUi, /overviewRouteModes/);
+  assert.match(overviewUi, /SelectTrigger/);
   assert.match(overviewUi, /Close Overview panel/);
-  assert.doesNotMatch(overviewUi, /Overview route leg times/);
-  assert.match(overviewUi, /Duration unavailable/);
-  assert.match(overviewHook, /mode && !calculatedLeg/);
+  assert.match(overviewHook, /useCalculateOverviewRoute/);
+  assert.match(overviewHook, /mutation\.mutateAsync/);
+  assert.doesNotMatch(overviewHook, /calculateGoogleRouteLeg/);
   assert.match(overviewHook, /isOverviewRouteLeg/);
-  assert.match(actions, /calculateOverviewRoute/);
-  assert.match(actions, /mapWithConcurrency\(tasks, 3\)/);
-  assert.match(actions, /isOverviewRouteLeg/);
-  assert.match(actions, /is_trip_owner/);
+  assert.match(overview, /deriveDayOverviewClusters/);
   assert.match(mapHook, /day-route:\$\{variantId\}:\$\{dayRoute\.activeDay\?\.id/);
-  assert.match(mapHook, /firstCity/);
-  assert.match(interactions, /hasDayRoute\(day\.id\) \? "day_route" : "overview"/);
-  assert.match(interactions, /routeExists \? "day_route" : "overview"/);
+  assert.doesNotMatch(mapHook, /firstCity|type === "location"/);
+  assert.match(mapHook, /Activity locality stage/);
+  assert.match(interactions, /\["activities", "hotel", "meals"\][\s\S]*setMapMode\("day_route"\)/);
+  assert.match(
+    interactions,
+    /\["activity", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedItemId\(item\.place \? item\.id : undefined\)/,
+  );
+  assert.doesNotMatch(interactions, /hasDayRoute|routeExists/);
   assert.match(interactions, /setMapMode\("overview"\)/);
   assert.match(mapShell, /Map scope/);
   assert.match(mapShell, /Whole trip/);
@@ -1673,9 +1674,10 @@ test("Overview routing is explicit and map interactions stay synchronized", asyn
   assert.doesNotMatch(canvas, /draggable|editable/);
   assert.match(canvas, /day-city/);
   assert.match(canvas, /#2563eb/);
-  assert.match(itemActions + itemValidation, /prospectiveNeighboringCityConflict/);
-  assert.match(dayActions, /prospectiveNeighboringCityConflict/);
-  assert.match(actions, /neighboringOverviewCityConflict/);
+  assert.match(itemActions, /City is now derived from Activity places/);
+  assert.doesNotMatch(itemActions, /validateProspectiveCity|prospectiveCityError/);
+  assert.doesNotMatch(dayActions, /prospectiveNeighboringCityConflict/);
+  assert.match(itemValidation, /validateVariantDay/);
 });
 
 test("Routes server key stays in the server-only provider and out of client modules", async () => {
@@ -1923,7 +1925,7 @@ test("malformed and unrelated clipboard input is rejected safely", () => {
   );
 });
 
-test("spreadsheet UI uses stable lightweight reorder controls plus rollback hooks", async () => {
+test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", async () => {
   let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
     "utf8",
@@ -1944,6 +1946,10 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
+  workspace += await readFile(
+    new URL("./components/arrange-activities-sheet.tsx", import.meta.url),
+    "utf8",
+  );
   for (const file of [
     "./components/planner-matrix.tsx",
     "./components/planner-toolbar.tsx",
@@ -1968,10 +1974,11 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   );
   const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
   const queries = await readItineraryQueryModules();
-  assert.match(workspace, />\s*Move up /);
-  assert.match(workspace, />\s*Move down /);
-  assert.match(workspace, /event\.altKey && event\.key === "ArrowUp"/);
-  assert.match(workspace, /event\.altKey && event\.key === "ArrowDown"/);
+  assert.match(workspace, /Arrange Activities/);
+  assert.doesNotMatch(workspace, /Arrange Days/);
+  assert.doesNotMatch(workspace, /PlannerContentTabs/);
+  assert.doesNotMatch(workspace, />\s*Move up /);
+  assert.doesNotMatch(workspace, />\s*Move down /);
   assert.match(workspace, /aria-label="Fill selected cells down"/);
   assert.match(workspace, /Only this column will\s*change/);
   assert.match(workspace, /requestAnimationFrame/);
@@ -1979,6 +1986,7 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /replaceCategoryItems/);
   assert.match(workspace, /sourceItemIds:\s*sourceDay\.items\s*\.filter/);
   assert.match(workspace, /startRangeSelection/);
+  assert.match(workspace, /if \(!moved\) setSelectionAnchor\(\{ column, row \}\)/);
   assert.match(
     workspace,
     /initialPlannerSelection\([\s\S]*initialWorkspace\.days\.length[\s\S]*id === "city"/,
@@ -1998,6 +2006,12 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /location="mobilebar"/);
   assert.match(workspace, /selectedCount === 1 && !activeCellAtCapacity/);
+  assert.doesNotMatch(form, /Place in day|After \$\{|insertAfterItemId/);
+  assert.match(form, /Next: place item/);
+  assert.match(workspace, /Click to place/);
+  assert.match(workspace, /onItemCreated/);
+  assert.match(workspace, /initialMovingItemId/);
+  assert.match(form, /Position · End of day/);
   assert.match(workspace, /const active =\s*selectedCount === 1/);
   assert.match(workspace, /lastSelected &&\s*selectionAnchor\.row === selectionEnd\.row/);
   assert.match(workspace, /selectedDayRow/);
@@ -2032,11 +2046,13 @@ test("spreadsheet UI uses stable lightweight reorder controls plus rollback hook
   assert.match(workspace, /internalClipboard/);
   assert.match(workspace, /destination\.column !== payload\.sourceColumn/);
   assert.match(workspace, /cells selected across one row only/);
+  assert.match(workspace, /Updating selected cells…/);
+  assert.match(workspace, /fixed inset-0 z-\[120\]/);
   assert.match(form, /<form/);
   assert.match(form, /type="submit"/);
   assert.match(form, /event\.key === "Escape"/);
-  assert.match(form, /Clear start time/);
-  assert.match(form, /Clear end time/);
+  assert.match(form, /Clear time/);
+  assert.doesNotMatch(form, /End time|Clear end time|item-end-|setEndTime/);
   assert.match(form, /requestAnimationFrame\(\(\) => titleRef\.current\?\.focus\(\)\)/);
   assert.match(queries, /useCopyItineraryItems[\s\S]*onMutate/);
   assert.match(queries, /onError:[\s\S]*context\?\.previous/);
@@ -2087,7 +2103,8 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);
   assert.match(tripsLayout, /h-14[\s\S]*sm:h-16/);
   assert.doesNotMatch(styles, /trips-shell:has\(\.trip-planner-page\)[\s\S]*display: none/);
-  assert.match(secondaryFields, /grid min-w-0 gap-3 sm:grid-cols-2/);
+  assert.match(secondaryFields, /id=\{`item-time-\$\{item\?\.id \?\? dayId\}-\$\{type\}`\}/);
+  assert.doesNotMatch(secondaryFields, /sm:grid-cols-2|item-end-/);
   assert.match(
     workspace,
     /Copy selected cells[\s\S]*Paste[\s\S]*Copy to days[\s\S]*Copy previous day/,
@@ -2147,6 +2164,307 @@ test("place snapshot deduplication uses provider identity", () => {
     location: { lat: 1, lng: 2 },
   });
   assert.equal(deduplicatePlaceSnapshots([place, { ...place, displayName: "Updated" }]).length, 1);
+});
+
+test("typed Google address components resolve locality deterministically without text search", () => {
+  const resolved = resolveGooglePlaceLocality([
+    { longText: "Nakagyo Ward", types: ["sublocality_level_1"] },
+    { longText: "Kyoto", types: ["locality"] },
+    { longText: "Kyoto Prefecture", types: ["administrative_area_level_1"] },
+    { longText: "Japan", shortText: "JP", types: ["country"] },
+  ]);
+  assert.deepEqual(resolved, {
+    administrativeAreaName: "Kyoto Prefecture",
+    countryCode: "JP",
+    localityKind: "locality",
+    localityName: "Kyoto",
+    localitySource: "google_address_component",
+  });
+  assert.equal(
+    resolveGooglePlaceLocality([
+      { longText: "Cambridge", types: ["postal_town"] },
+      { longText: "United Kingdom", shortText: "GB", types: ["country"] },
+    ]).localityKind,
+    "postal_town",
+  );
+});
+
+test("Day locality uses Stay, dominant frequency, first-appearance ties, and legacy fallback", () => {
+  const placed = (id: string, type: ItineraryItem["type"], order: number, localityName?: string) =>
+    ({
+      id,
+      place: {
+        displayName: id,
+        id: `place-${id}`,
+        latitude: 42 + order / 100,
+        ...(localityName && { localityName }),
+        longitude: -71,
+        provider: "google",
+      },
+      sort_order: order,
+      title: id,
+      type,
+    }) as unknown as ItineraryItem;
+  const tied = {
+    day_number: 1,
+    id: "tie",
+    items: [
+      placed("cambridge", "activity", 0, "Cambridge"),
+      placed("transfer", "transport", 1, "New York"),
+      placed("rental", "car_rental", 2, "Providence"),
+      placed("boston", "meal", 3, "Boston"),
+    ],
+  } as unknown as PlannerDay;
+  assert.equal(deriveDayLocality(tied).primaryLocality?.label, "Cambridge");
+  assert.deepEqual(
+    deriveDayLocality(tied).localities.map(({ label }) => label),
+    ["Cambridge", "Boston"],
+  );
+
+  const stayed = {
+    ...tied,
+    id: "stay",
+    items: [...tied.items, placed("hotel", "hotel", 2, "Boston")],
+  };
+  assert.equal(deriveDayLocality(stayed).primaryLocality?.label, "Boston");
+
+  const legacy = {
+    day_number: 2,
+    id: "legacy",
+    items: [placed("unknown-activity", "activity", 0), placed("Kyoto", "location", 1)],
+  } as unknown as PlannerDay;
+  assert.equal(deriveDayLocality(legacy).primaryLocality?.label, "Kyoto");
+  assert.equal(deriveDayLocality(legacy).usedLegacyFallback, true);
+
+  const unresolved = {
+    day_number: 3,
+    id: "unresolved",
+    items: [placed("unknown", "activity", 0)],
+  } as unknown as PlannerDay;
+  const [stage] = deriveOverviewStageProjections([unresolved]);
+  assert.equal(stage.primaryLocality, null);
+  assert.ok(stage.anchor);
+});
+
+test("Overview anchor is an actual Activity medoid across the antimeridian", () => {
+  const point = (id: string, longitude: number) =>
+    ({
+      id,
+      place: {
+        displayName: id,
+        id: `place-${id}`,
+        latitude: 10,
+        localityName: "Dateline",
+        longitude,
+        provider: "google",
+      },
+      sort_order: Number(id.at(-1)),
+      title: id,
+      type: "activity",
+    }) as unknown as ItineraryItem;
+  const anchor = representativeActivityAnchor([
+    {
+      day_number: 1,
+      id: "dateline-day",
+      items: [point("point-1", 179), point("point-2", -179), point("point-3", 178)],
+    } as unknown as PlannerDay,
+  ]);
+  assert.ok(anchor);
+  assert.ok([179, -179, 178].includes(anchor.longitude));
+  assert.notEqual(anchor.longitude, 0);
+});
+
+test("Day Route candidates follow manual order and ignore optional times", () => {
+  const routeItem = (
+    id: string,
+    type: ItineraryItem["type"],
+    order: number,
+    time?: string,
+    placed = true,
+  ) =>
+    ({
+      id,
+      place: placed
+        ? { displayName: id, id: `place-${id}`, latitude: 40, longitude: -70, provider: "google" }
+        : null,
+      sort_order: order,
+      start_time: time ?? null,
+      title: id,
+      type,
+    }) as unknown as ItineraryItem;
+  const day = {
+    day_number: 1,
+    id: "route-day",
+    items: [
+      routeItem("museum", "activity", 0, "10:00:00"),
+      routeItem("breakfast", "meal", 1, "08:00:00"),
+      routeItem("notes", "note", 2, undefined, false),
+      routeItem("hotel", "hotel", 3),
+    ],
+  } as unknown as PlannerDay;
+  assert.deepEqual(
+    eligibleDayRouteItems(day).map(({ id }) => id),
+    ["museum", "breakfast", "hotel"],
+  );
+});
+
+test("Activity ordering excludes transport support, anchors timed items, and fixes Hotel last", () => {
+  const activity = (
+    id: string,
+    order: number,
+    options: { time?: string; type?: ItineraryItem["type"] } = {},
+  ) =>
+    ({
+      day_id: ids.day,
+      id,
+      sort_order: order,
+      start_time: options.time ?? null,
+      title: id,
+      type: options.type ?? "activity",
+    }) as unknown as ItineraryItem;
+  const items = [
+    activity("hotel", 0, { type: "hotel" }),
+    activity("museum", 1, { time: "10:00:00" }),
+    activity("walk", 2),
+    activity("breakfast", 3, { time: "08:00:00", type: "meal" }),
+    activity("notes", 4, { type: "note" }),
+  ];
+
+  assert.deepEqual(
+    orderedDayActivities(items).map(({ id }) => id),
+    ["museum", "walk", "breakfast", "notes", "hotel"],
+  );
+  assert.deepEqual(
+    orderedDestinationActivities(items).map(({ id }) => id),
+    ["museum", "walk", "breakfast", "hotel"],
+  );
+  assert.equal(isActivityOrderAnchor(items[0]), true);
+  assert.equal(isActivityOrderAnchor(items[1]), true);
+  assert.equal(isActivityOrderAnchor(items[2]), false);
+  assert.deepEqual(placeActivityAtGap(items, "walk", 3), [
+    "museum",
+    "breakfast",
+    "walk",
+    "notes",
+    "hotel",
+  ]);
+  assert.deepEqual(placeActivityAtGap(items, "museum", 3), [
+    "museum",
+    "walk",
+    "breakfast",
+    "notes",
+    "hotel",
+  ]);
+  assert.equal(
+    sameActivityOrder(placeActivityAtGap(items, "walk", 1), [
+      "museum",
+      "walk",
+      "breakfast",
+      "notes",
+      "hotel",
+    ]),
+    true,
+  );
+});
+
+test("new Activities default before Hotel and can be placed in the dedicated next step", () => {
+  const item = (id: string, order: number, type: ItineraryItem["type"] = "activity") =>
+    ({
+      day_id: ids.day,
+      id,
+      sort_order: order,
+      start_time: null,
+      title: id,
+      type,
+    }) as unknown as ItineraryItem;
+  const items = [item("museum", 0), item("hotel", 1, "hotel")];
+  assert.deepEqual(
+    insertActivityAtPlacement(items, item("lunch", 99, "meal"), null).map(({ id, sort_order }) => ({
+      id,
+      sort_order,
+    })),
+    [
+      { id: "lunch", sort_order: 0 },
+      { id: "museum", sort_order: 1 },
+      { id: "hotel", sort_order: 2 },
+    ],
+  );
+});
+
+test("Tap-to-Place ordering handles every edge and preserves stable Day relationships", () => {
+  const ids20 = Array.from({ length: 20 }, (_, index) => `day-${index + 1}`);
+  assert.deepEqual(placeDayAtGap(["a", "b", "c", "d"], "a", 2), ["b", "c", "a", "d"]);
+  assert.deepEqual(placeDayAtGap(["a", "b", "c"], "a", 2), ["b", "c", "a"]);
+  assert.deepEqual(placeDayAtGap(["a", "b", "c"], "c", 0), ["c", "a", "b"]);
+  assert.deepEqual(placeDayAtGap(["a", "b", "c"], "b", 2), ["a", "c", "b"]);
+  assert.ok(isSameDayOrder(placeDayAtGap(["a", "b", "c"], "b", 1), ["a", "b", "c"]));
+  assert.equal(placeDayAtGap(ids20, "day-3", 13)[13], "day-3");
+
+  const workspace = {
+    days: [
+      { date: "2026-01-01", day_number: 1, id: "a", items: [{ day_id: "a", id: "item-a" }] },
+      { date: "2026-01-02", day_number: 2, id: "b", items: [{ day_id: "b", id: "item-b" }] },
+      { date: "2026-01-03", day_number: 3, id: "c", items: [{ day_id: "c", id: "item-c" }] },
+    ],
+    routePlans: [],
+    variant: { id: "variant" },
+  } as unknown as PlannerWorkspace;
+  const reordered = reorderWorkspaceDays(workspace, ["c", "a", "b"])!;
+  assert.deepEqual(
+    reordered.days.map(({ id, day_number, date }) => ({ date, day_number, id })),
+    [
+      { date: "2026-01-01", day_number: 1, id: "c" },
+      { date: "2026-01-02", day_number: 2, id: "a" },
+      { date: "2026-01-03", day_number: 3, id: "b" },
+    ],
+  );
+  assert.equal(reordered.days[0].items[0].day_id, "c");
+  assert.equal(
+    reorderVariantDaysSchema.safeParse({
+      orderedDayIds: [ids.day, ids.targetDay],
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
+    true,
+  );
+  assert.equal(
+    reorderVariantDaysSchema.safeParse({
+      orderedDayIds: [ids.day, ids.day],
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
+    false,
+  );
+});
+
+test("Arrange Activities exposes scroll-safe touch targets and a keyboard path", async () => {
+  let source = await readFile(
+    new URL("./components/arrange-activities-sheet.tsx", import.meta.url),
+    "utf8",
+  );
+  source += await readFile(
+    new URL("./components/arrange-activities-elements.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /Math\.abs\(event\.clientY - current\.startY\) > 10/);
+  assert.match(source, /scrollTop/);
+  assert.match(source, /touchAction: "pan-y"/);
+  assert.match(source, /onPointerUp/);
+  assert.doesNotMatch(source, /onPointerDown=\{[^}]*onPlace/);
+  assert.match(source, /event\.detail === 0/);
+  assert.match(source, /confirmedPointerClick/);
+  assert.doesNotMatch(source, /if \(shouldPlace\) onPlace/);
+  assert.match(source, /event\.key !== "Escape"/);
+  assert.match(source, /ArrowDown/);
+  assert.match(source, /ArrowUp/);
+  assert.match(source, /data-activity-gap/);
+  assert.match(source, /initialMovingItemId/);
+  assert.match(source, /Transport stays in its\s*separate section/);
+  assert.match(source, /aria-live="polite"/);
+  assert.match(source, /sticky top-0 z-20/);
+  assert.match(source, /h-11[\s\S]*xl:h-9/);
+  assert.match(source, /Timed items stay anchored and Hotel stays/);
+  assert.doesNotMatch(source, /drag/i);
 });
 
 test("Google place normalization rejects invalid coordinates", () => {
@@ -2219,6 +2537,20 @@ test("address and location controls use normalized map places", async () => {
   assert.match(form, /const placeText = place\?\.formattedAddress \?\? place\?\.displayName/);
 });
 
+test("new items stay out of the Matrix and map until creation succeeds", async () => {
+  const form = await readFile(
+    new URL("./components/planner-item-form.tsx", import.meta.url),
+    "utf8",
+  );
+  const sheets = await readFile(
+    new URL("./components/planner-sheets.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(form, /if \(!item \|\| !onDraftChange\) return/);
+  assert.match(sheets, /onDraftChange=\{editor\.item \? onEditorDraftChange : undefined\}/);
+  assert.doesNotMatch(form, /draft-item-|insertedActivityOrderIds/);
+});
+
 test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
@@ -2250,6 +2582,10 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(mapShell, /entry\.dayLabel/);
   assert.doesNotMatch(workspace, /Map preview · P3|P4/);
   assert.match(map, /AdvancedMarker/);
+  assert.match(map, /anchorLeft=\{comparison \? "-50%" : undefined\}/);
+  assert.match(map, /anchorTop=\{comparison \? "-100%" : undefined\}/);
+  assert.match(map, /comparison \? \([\s\S]*<Pin/);
+  assert.doesNotMatch(map, /comparison \? \([\s\S]*absolute left-full/);
   assert.match(map, /entry\.title/);
   assert.match(places, /PlaceAutocompleteElement/);
   assert.match(places, /gmp-select/);
@@ -2276,4 +2612,66 @@ test("replace-copy clears constrained destination rows before inserting preserve
   assert.ok(deletePosition >= 0 && copyPosition > deletePosition);
   assert.match(queries, /place_id === item\.place_id/);
   assert.match(queries, /source\?\.place/);
+});
+
+test("cell whitespace deselects in sync with Whole trip without changing item click behavior", async () => {
+  const interactions = await readFile(
+    new URL("./hooks/use-planner-interactions.ts", import.meta.url),
+    "utf8",
+  );
+  const workspace = await readFile(
+    new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+  let matrix = await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
+  matrix += await readFile(new URL("./components/planner-item-row.tsx", import.meta.url), "utf8");
+  assert.match(interactions, /const selectedAgain =/);
+  assert.match(interactions, /selectedAgain[\s\S]*setSelectionAnchor\(\{ column: -1, row: -1 \}\)/);
+  assert.match(interactions, /selectedAgain[\s\S]*setMapMode\("overview"\)/);
+  assert.match(workspace, /function changeMapModeAndSelection/);
+  assert.match(workspace, /mode !== "overview"[\s\S]*setSelectionEnd\(\{ column: -1, row: -1 \}\)/);
+  assert.match(matrix, /onClick=\{\(event\) => focusCell\(coordinate, event\.shiftKey\)\}/);
+  assert.match(matrix, /event\.stopPropagation\(\)/);
+});
+
+test("copy and route requests retain visible, accessible progress feedback", async () => {
+  const clipboard = await readFile(
+    new URL("./hooks/use-planner-clipboard.ts", import.meta.url),
+    "utf8",
+  );
+  const sheets = await readFile(
+    new URL("./components/planner-sheets.tsx", import.meta.url),
+    "utf8",
+  );
+  const routeDetails = await readFile(
+    new URL("../routes/route-leg-details.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(clipboard, /withRequestPending/);
+  assert.match(clipboard, /pendingDepth/);
+  assert.match(sheets, /aria-busy=\{copyPending\}/);
+  assert.match(sheets, /LoaderCircle[\s\S]*Copying…/);
+  assert.match(routeDetails, /aria-label="Route leg details"/);
+  assert.match(routeDetails, /Time unavailable/);
+  assert.match(routeDetails, /motion-reduce:transition-none/);
+});
+
+test("route leg explanations stay concise and expose fallback semantics", () => {
+  assert.equal(routeLegExplanation({ mode: "walk", position: 1 }), "Walking directions");
+  assert.equal(
+    routeLegExplanation({
+      geometry: { source: "straight" },
+      mode: "flight",
+      position: 2,
+    }),
+    "Route unavailable · direct map line",
+  );
+  assert.equal(
+    routeLegExplanation({
+      estimateKind: "transit_current_service",
+      mode: "train",
+      position: 3,
+    }),
+    "Transit directions · current-service estimate",
+  );
 });

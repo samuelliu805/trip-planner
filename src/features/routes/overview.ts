@@ -1,13 +1,10 @@
 import type { PlannerMapLine } from "@/features/maps/planner-map-model";
-import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { PlannerDay } from "@/features/itinerary/types";
+import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
+import { compareManualDayOrder, deriveDayOverviewClusters } from "../itinerary/locality.ts";
 
-import {
-  neighboringCityConflict,
-  orderedCityOccurrences,
-  type CityOccurrence,
-} from "./city-order.ts";
+import { neighboringCityConflict, type CityOccurrence } from "./city-order.ts";
 
 export type OverviewStageEntry = {
   dayLabel: string;
@@ -58,12 +55,51 @@ export function deriveOverviewStagesFromOccurrences(
   });
 }
 
-/**
- * Builds the lightweight trip overview from explicit City rows only. Missing days
- * are intentionally ignored; no place or intermediate stage is inferred.
- */
+/** Builds mappable stages from ordered Days and their canonical Activity places. */
 export function deriveOverviewStages(days: PlannerDay[]): OverviewStage[] {
-  return deriveOverviewStagesFromOccurrences(orderedCityOccurrences(days));
+  const stages: OverviewStage[] = [];
+  [...days].sort(compareManualDayOrder).forEach((day) => {
+    deriveDayOverviewClusters(day).forEach((cluster, clusterIndex) => {
+      if (!cluster.anchor) return;
+      const dayLabel = `Day ${day.day_number}`;
+      const previous = stages.at(-1);
+      if (
+        previous?.placeKey === cluster.locality.key &&
+        previous.entries.at(-1)?.dayNumber === day.day_number - 1
+      ) {
+        if (!previous.entries.some(({ dayNumber }) => dayNumber === day.day_number))
+          previous.entries.push({
+            dayLabel,
+            dayNumber: day.day_number,
+            itemId: cluster.anchor.itemId,
+            title: cluster.locality.label,
+          });
+        const first = previous.entries[0].dayNumber;
+        previous.dayRangeLabel =
+          first === day.day_number ? `Day ${first}` : `Days ${first}–${day.day_number}`;
+        return;
+      }
+      stages.push({
+        dayRangeLabel: dayLabel,
+        entries: [
+          {
+            dayLabel,
+            dayNumber: day.day_number,
+            itemId: cluster.anchor.itemId,
+            title: cluster.locality.label,
+          },
+        ],
+        firstDayLabel: dayLabel,
+        id: `overview-cluster:${day.id}:${clusterIndex}:${cluster.anchor.itemId}`,
+        latitude: cluster.anchor.latitude,
+        longitude: cluster.anchor.longitude,
+        placeId: cluster.anchor.placeId,
+        placeKey: cluster.locality.key,
+        position: stages.length + 1,
+      });
+    });
+  });
+  return stages;
 }
 
 export function neighboringOverviewCityConflict(stages: OverviewStage[]) {
@@ -128,7 +164,7 @@ export function buildOverviewRouteLines(
             : `overview-preview:${previous.id}:${stage.id}`,
           path,
           position,
-          routeLayer: "city",
+          routeLayer: "city" as const,
         },
       ];
     } catch {
@@ -142,7 +178,7 @@ export function buildOverviewRouteLines(
             { lat: stage.latitude, lng: stage.longitude },
           ],
           position,
-          routeLayer: "city",
+          routeLayer: "city" as const,
         },
       ];
     }

@@ -36,12 +36,10 @@ export function PlannerItemSecondaryFields({
   carAction,
   copyLabel,
   dayId,
-  endTime,
   item,
   linkLabel,
   links,
   notes,
-  setEndTime,
   setLinks,
   setNotes,
   setStartTime,
@@ -51,12 +49,10 @@ export function PlannerItemSecondaryFields({
   carAction: CarRentalDetails["action"];
   copyLabel: string;
   dayId: string;
-  endTime: string;
   item?: ItineraryItem;
   linkLabel: string;
   links: LinkValue[];
   notes: string;
-  setEndTime: Dispatch<SetStateAction<string>>;
   setLinks: Dispatch<SetStateAction<LinkValue[]>>;
   setNotes: Dispatch<SetStateAction<string>>;
   setStartTime: Dispatch<SetStateAction<string>>;
@@ -65,74 +61,38 @@ export function PlannerItemSecondaryFields({
 }) {
   return (
     <>
-      {["location", "activity"].includes(type) ? (
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor={`item-start-${item?.id ?? dayId}-${type}`}>
-              {type === "location" ? "Arrive" : "Start time"}{" "}
-              <span className="font-normal text-muted-foreground">optional</span>
-            </Label>
-            <div className="relative min-w-0">
-              <Input
-                className="min-w-0 pr-9"
-                id={`item-start-${item?.id ?? dayId}-${type}`}
-                onChange={(event) => setStartTime(event.target.value)}
-                type="time"
-                value={startTime}
-              />
-              {startTime ? (
-                <button
-                  aria-label="Clear start time"
-                  className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                  onClick={() => setStartTime("")}
-                  tabIndex={-1}
-                  type="button"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor={`item-end-${item?.id ?? dayId}-${type}`}>
-              {type === "location" ? "Leave" : "End time"}{" "}
-              <span className="font-normal text-muted-foreground">optional</span>
-            </Label>
-            <div className="relative min-w-0">
-              <Input
-                className="min-w-0 pr-9"
-                id={`item-end-${item?.id ?? dayId}-${type}`}
-                onChange={(event) => setEndTime(event.target.value)}
-                type="time"
-                value={endTime}
-              />
-              {endTime ? (
-                <button
-                  aria-label="Clear end time"
-                  className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                  onClick={() => setEndTime("")}
-                  tabIndex={-1}
-                  type="button"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {["car_rental", "meal"].includes(type) ? (
+      {["location", "activity", "car_rental", "meal"].includes(type) ? (
         <div className="space-y-1.5">
           <Label htmlFor={`item-time-${item?.id ?? dayId}-${type}`}>
-            {type === "meal" ? "Meal time" : `${carAction === "pickup" ? "Pickup" : "Return"} time`}{" "}
+            {type === "location"
+              ? "Arrival time"
+              : type === "activity"
+                ? "Time"
+                : type === "meal"
+                  ? "Meal time"
+                  : `${carAction === "pickup" ? "Pickup" : "Return"} time`}{" "}
             <span className="font-normal text-muted-foreground">optional</span>
           </Label>
-          <Input
-            id={`item-time-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setStartTime(event.target.value)}
-            type="time"
-            value={startTime}
-          />
+          <div className="relative min-w-0">
+            <Input
+              className="min-w-0 pr-9"
+              id={`item-time-${item?.id ?? dayId}-${type}`}
+              onChange={(event) => setStartTime(event.target.value)}
+              type="time"
+              value={startTime}
+            />
+            {startTime ? (
+              <button
+                aria-label="Clear time"
+                className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={() => setStartTime("")}
+                tabIndex={-1}
+                type="button"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {!["location", "note"].includes(type) ? (

@@ -8,7 +8,7 @@ export type MatrixCategoryColumn = {
 };
 
 export const matrixCategoryColumns: MatrixCategoryColumn[] = [
-  { id: "city", label: "City", types: ["location"], width: "w-36" },
+  { id: "city", label: "Locality", types: [], width: "w-36" },
   { id: "activities", label: "Activities", types: ["activity"], width: "w-52" },
   {
     id: "transport",

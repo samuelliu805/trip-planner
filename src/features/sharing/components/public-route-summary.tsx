@@ -1,5 +1,6 @@
 import { Compass, MapPinned, Route } from "lucide-react";
 
+import { RouteLegDetails, type RouteLegDetail } from "@/features/routes/route-leg-details";
 import { formatDistance, formatDuration } from "../presentation";
 import type { PublicRouteCalculation } from "../types";
 
@@ -15,6 +16,23 @@ export function RouteTotals({ calculation }: { calculation: PublicRouteCalculati
         .join(" · ") || "Route calculated"}
     </p>
   );
+}
+
+export function PublicRouteLegDetails({
+  defaultOpen = true,
+  labels,
+  legs,
+}: {
+  defaultOpen?: boolean;
+  labels: string[];
+  legs: PublicRouteCalculation["legs"];
+}) {
+  const details: RouteLegDetail[] = legs.map((leg) => ({
+    ...leg,
+    fromLabel: labels[leg.position - 1],
+    toLabel: labels[leg.position],
+  }));
+  return <RouteLegDetails defaultOpen={defaultOpen} legs={details} />;
 }
 
 export function RouteScopePicker({

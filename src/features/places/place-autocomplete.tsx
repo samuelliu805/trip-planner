@@ -11,6 +11,11 @@ import { placeFields, type PlaceSnapshot } from "@/lib/providers/places/types";
 type PlaceSelectEvent = Event & {
   placePrediction?: {
     toPlace(): {
+      addressComponents?: Array<{
+        longText?: string | null;
+        shortText?: string | null;
+        types?: string[] | null;
+      }> | null;
       displayName?: string | null;
       fetchFields(options: { fields: string[] }): Promise<unknown>;
       formattedAddress?: string | null;
@@ -51,9 +56,9 @@ export function PlaceAutocomplete({
         const event = rawEvent as PlaceSelectEvent;
         if (!event.placePrediction) throw new Error("Choose a place from the suggestions.");
         const place = event.placePrediction.toPlace();
-        if (!place.id || !place.displayName || !place.location)
-          await place.fetchFields({ fields: [...placeFields] });
+        await place.fetchFields({ fields: [...placeFields] });
         const normalized = normalizeGooglePlace({
+          addressComponents: place.addressComponents,
           displayName: place.displayName,
           formattedAddress: place.formattedAddress,
           id: place.id,

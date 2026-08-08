@@ -11,7 +11,9 @@ import {
 import { scheduleKind } from "@/features/itinerary/mutation-helpers";
 import {
   affectsDecisionSummary,
+  affectsLocalityProjection,
   decisionSummaryItemChanged,
+  localityProjectionItemChanged,
   plannerWorkspaceItems,
 } from "@/features/itinerary/mutation-impact";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
@@ -32,6 +34,7 @@ import {
   invalidateVariantComparison,
   invalidateVariantDecisionSummary,
 } from "@/features/variants/queries";
+import { insertActivityAtPlacement } from "@/features/itinerary/activity-order";
 
 export function useCreateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
@@ -70,7 +73,21 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
         updated_at: new Date().toISOString(),
         variant_id: input.variantId,
       };
-      client.setQueryData(plannerQueryKey(tripId, variantId), replaceItem(previous, optimistic));
+      const orderedItems = insertActivityAtPlacement(
+        day?.items ?? [],
+        optimistic,
+        input.insertAfterItemId,
+      );
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
+        current
+          ? {
+              ...current,
+              days: current.days.map((entry) =>
+                entry.id === input.dayId ? { ...entry, items: orderedItems } : entry,
+              ),
+            }
+          : current,
+      );
       return { optimisticId: optimistic.id, previous };
     },
     onError: (_error, _input, context) =>
@@ -79,7 +96,7 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(removeItem(current, context?.optimisticId ?? ""), item),
       );
-      if (item.type === "location") void invalidateVariantComparison(client, tripId);
+      if (affectsLocalityProjection(item.type)) void invalidateVariantComparison(client, tripId);
       if (affectsDecisionSummary(item.type)) void invalidateVariantDecisionSummary(client, tripId);
     },
   });
@@ -135,7 +152,7 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
             ...(input.type !== undefined && { type: input.type }),
           }),
         );
-      return { existing, existingWasCity: existing?.type === "location", previous };
+      return { existing, previous };
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
@@ -143,7 +160,7 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(current, item),
       );
-      if (item.type === "location" || context?.existingWasCity)
+      if (localityProjectionItemChanged(context?.existing, item))
         void invalidateVariantComparison(client, tripId);
       if (decisionSummaryItemChanged(context?.existing, item))
         void invalidateVariantDecisionSummary(client, tripId);
@@ -162,7 +179,7 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
       const deleted = plannerWorkspaceItems(previous).find((item) => item.id === input.id);
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItem(previous, input.id));
       return {
-        deletedCity: deleted?.type === "location",
+        deletedLocalitySource: affectsLocalityProjection(deleted?.type),
         deletedDecisionSummaryItem: affectsDecisionSummary(deleted?.type),
         previous,
       };
@@ -170,7 +187,7 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (_data, _input, context) => {
-      if (context?.deletedCity) void invalidateVariantComparison(client, tripId);
+      if (context?.deletedLocalitySource) void invalidateVariantComparison(client, tripId);
       if (context?.deletedDecisionSummaryItem)
         void invalidateVariantDecisionSummary(client, tripId);
     },
@@ -190,7 +207,7 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
       );
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItems(previous, input.itemIds));
       return {
-        clearedCity: clearedItems.some(({ type }) => type === "location"),
+        clearedLocalitySource: clearedItems.some(({ type }) => affectsLocalityProjection(type)),
         clearedDecisionSummaryItem: clearedItems.some(({ type }) => affectsDecisionSummary(type)),
         previous,
       };
@@ -199,7 +216,7 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (_data, _input, context) => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-      if (context?.clearedCity) void invalidateVariantComparison(client, tripId);
+      if (context?.clearedLocalitySource) void invalidateVariantComparison(client, tripId);
       if (context?.clearedDecisionSummaryItem)
         void invalidateVariantDecisionSummary(client, tripId);
     },

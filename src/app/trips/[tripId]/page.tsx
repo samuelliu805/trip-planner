@@ -58,6 +58,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
               <PublicShareDialog
                 activeVariantId={workspace.variant.id}
                 initialLinks={shareLinks.data}
+                key="trip-share-controls"
                 siteUrl={getSiteUrl()}
                 trip={trip}
                 variants={variantsResult.data}

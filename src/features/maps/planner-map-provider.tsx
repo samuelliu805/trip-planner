@@ -26,6 +26,7 @@ export function PlannerMapProvider({ children }: { children: React.ReactNode }) 
       <APIProvider
         apiKey={apiKey}
         authReferrerPolicy="origin"
+        language="en"
         libraries={["places"]}
         onError={(error) =>
           setApiError(error instanceof Error ? error.message : "Google Maps could not be loaded.")
