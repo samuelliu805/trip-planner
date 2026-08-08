@@ -18,22 +18,30 @@ export function isPublicTravel(item: PublicItineraryItem) {
   return isPublicTransfer(item) || item.type === "car_rental";
 }
 
-export function publicTransportItemLabel(item: PublicItineraryItem) {
+function uniqueLabelParts(values: Array<string | undefined>) {
+  return values.filter((value, index, entries): value is string =>
+    Boolean(value && entries.findIndex((entry) => entry === value) === index),
+  );
+}
+
+export function publicTransferItemLabel(item: PublicItineraryItem) {
+  const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
+  return uniqueLabelParts([time, item.title, item.place?.displayName]).join(" · ");
+}
+
+export function publicRentalItemLabel(item: PublicItineraryItem) {
   const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const rentalAction = item.carRental?.action
     ? item.carRental.action === "pickup"
       ? "Pickup"
       : "Return"
-    : undefined;
-  const values =
-    item.type === "car_rental"
-      ? [time, rentalAction ?? item.title, item.carRental?.company, item.place?.displayName]
-      : [time, item.title, item.place?.displayName];
-  return values
-    .filter((value, index, entries): value is string =>
-      Boolean(value && entries.findIndex((entry) => entry === value) === index),
-    )
-    .join(" · ");
+    : "Rental";
+  const details = uniqueLabelParts([
+    time,
+    item.carRental?.company ?? item.title,
+    item.place?.displayName,
+  ]).join(" · ");
+  return `${rentalAction}: ${details}`;
 }
 
 type PublicJourneyGroupKind = "activity" | "meal";

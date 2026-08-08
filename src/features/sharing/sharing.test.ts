@@ -8,7 +8,8 @@ import {
   orderedPublicItems,
   publicDayCitySequence,
   publicDayJourney,
-  publicTransportItemLabel,
+  publicRentalItemLabel,
+  publicTransferItemLabel,
   safeExternalUrl,
 } from "./presentation.ts";
 import {
@@ -177,7 +178,7 @@ test("Car rental stays support content in the public Transport row", () => {
   );
 });
 
-test("transport text keeps rental context concise and deduplicated", () => {
+test("read-only travel text separates transfers from concise rental actions", () => {
   const rental = {
     carRental: { action: "pickup" as const, company: "Hertz" },
     place: { displayName: "Kansai Airport" },
@@ -187,13 +188,23 @@ test("transport text keeps rental context concise and deduplicated", () => {
     title: "Pickup",
     type: "car_rental" as const,
   } satisfies PublicItineraryItem;
-  assert.equal(publicTransportItemLabel(rental), "08:30 · Pickup · Hertz · Kansai Airport");
+  assert.equal(publicRentalItemLabel(rental), "Pickup: 08:30 · Hertz · Kansai Airport");
   assert.equal(
-    publicTransportItemLabel({
+    publicRentalItemLabel({
       ...rental,
       carRental: { action: "pickup", company: "Kansai Airport" },
     }),
-    "08:30 · Pickup · Kansai Airport",
+    "Pickup: 08:30 · Kansai Airport",
+  );
+  assert.equal(
+    publicTransferItemLabel({
+      ref: ref("drive"),
+      sortOrder: 2,
+      startTime: "09:15:00",
+      title: "Drive",
+      type: "transport",
+    }),
+    "09:15 · Drive",
   );
 });
 
@@ -760,7 +771,7 @@ test("sharing and public route security use real QR, safe new tabs, and no-store
   assert.doesNotMatch(sharingSources, /dangerouslySetInnerHTML/);
 });
 
-test("public read-only modes share one concise Transport text row", async () => {
+test("public read-only modes share separate one-line transport and rental rows", async () => {
   const timeline = await readFile(
     new URL("./components/public-timeline-day.tsx", import.meta.url),
     "utf8",
@@ -778,6 +789,9 @@ test("public read-only modes share one concise Transport text row", async () => 
   assert.match(transport, /aria-label="Transport"/);
   assert.match(transport, /join\(", "\)/);
   assert.match(transport, /truncate whitespace-nowrap/);
+  assert.match(transport, /<Route/);
+  assert.match(transport, /<CarFront/);
+  assert.match(transport, /Rental car:/);
   assert.doesNotMatch(transport, /<button|rounded-full|overflow-x-auto/);
-  assert.doesNotMatch(itemLine, /compactTravel|publicTransportItemLabel|compactRental/);
+  assert.doesNotMatch(itemLine, /compactTravel|publicTransferItemLabel|compactRental/);
 });
