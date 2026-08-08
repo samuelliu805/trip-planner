@@ -12,6 +12,7 @@ import {
   SelectedPlaceSlot,
 } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
+import { RouteLegDetails } from "./route-leg-details";
 import type { DayRouteUi } from "./use-day-route";
 
 function DayRouteSummary({
@@ -39,6 +40,16 @@ function DayRouteSummary({
   const transitEstimate = calculation?.calculatedLegs.some(
     ({ estimateKind }) => estimateKind === "transit_current_service",
   );
+  const itemTitles = new Map(route.stopItems.map((item) => [item.id, item.title]));
+  const orderedStops = route.plan?.stops
+    .slice()
+    .sort((left, right) => left.position - right.position);
+  const legDetails =
+    calculation?.calculatedLegs.map((leg) => ({
+      ...leg,
+      fromLabel: itemTitles.get(orderedStops?.[leg.position - 1]?.item_id ?? ""),
+      toLabel: itemTitles.get(orderedStops?.[leg.position]?.item_id ?? ""),
+    })) ?? [];
 
   return (
     <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
@@ -96,6 +107,7 @@ function DayRouteSummary({
           </ul>
         </details>
       ) : null}
+      <RouteLegDetails legs={legDetails} />
       {route.error ? (
         <p
           className="m-3 mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"

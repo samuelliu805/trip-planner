@@ -52,7 +52,10 @@ export function PlannerMapControls({
                 { description: "Show the selected day", label: "This day", value: "day_route" },
                 {
                   description:
-                    comparisonBlockingReason ?? "Compare route variants by their City stages",
+                    comparisonBlockingReason ??
+                    (mapMode === "day_route"
+                      ? "Compare this Day route across variants"
+                      : "Compare route variants by Activity locality stages"),
                   disabled: Boolean(comparisonBlockingReason),
                   label: "Compare",
                   value: "comparison",

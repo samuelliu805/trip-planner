@@ -8,7 +8,6 @@ import type {
   PublicRouteCalculation,
   PublicSavedRoute,
 } from "./types";
-import { samePublicCity } from "./presentation.ts";
 
 function markerKind(type: string): "activity" | "carRental" | "city" | "hotel" | "meal" {
   if (type === "location") return "city";
@@ -19,8 +18,9 @@ function markerKind(type: string): "activity" | "carRental" | "city" | "hotel" |
 }
 
 export function buildPublicMarkers(itinerary: PublicItinerary): PlannerMapMarker[] {
-  return itinerary.days.flatMap((day) =>
+  const activityMarkers = itinerary.days.flatMap((day) =>
     day.items.flatMap((item) => {
+      if (item.type === "location") return [];
       if (typeof item.place?.latitude !== "number" || typeof item.place.longitude !== "number")
         return [];
       const kind = markerKind(item.type);
@@ -51,29 +51,205 @@ export function buildPublicMarkers(itinerary: PublicItinerary): PlannerMapMarker
       ];
     }),
   );
+  const stageMarkers = derivePublicOverviewStages(itinerary).flatMap((stage, index) => {
+    if (!stage.anchor) return [];
+    return [
+      {
+        accessibleLabel: `${stage.title}, ${stage.dayLabel}`,
+        appearance: "category" as const,
+        entries: [
+          {
+            dayLabel: stage.dayLabel,
+            dayNumber: stage.dayNumbers[0],
+            itemId: stage.anchor.ref,
+            kind: "city" as const,
+            title: stage.title,
+          },
+        ],
+        id: `public-stage:${stage.ref}`,
+        itemIds: [stage.anchor.ref],
+        label: String(index + 1),
+        latitude: stage.anchor.latitude,
+        longitude: stage.anchor.longitude,
+        readOnly: true,
+        selectable: stage.anchor.activity,
+        summary: stage.title,
+        variantColor: itinerary.variant.color,
+      },
+    ];
+  });
+  return [...activityMarkers, ...stageMarkers];
 }
 
-export function publicOverviewStops(itinerary: PublicItinerary) {
-  const entries = itinerary.days.flatMap((day) =>
-    day.items
-      .filter(
-        (item) =>
-          item.type === "location" &&
-          typeof item.place?.latitude === "number" &&
-          typeof item.place.longitude === "number",
-      )
-      .sort((left, right) => left.sortOrder - right.sortOrder)
-      .map((item) => ({ dayNumber: day.dayNumber, item })),
+type PublicAnchor = {
+  activity: boolean;
+  latitude: number;
+  longitude: number;
+  ref: string;
+};
+
+function publicLocalityKey(value?: string) {
+  return value?.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en") ?? "";
+}
+
+function publicMedoid(points: PublicAnchor[]) {
+  if (points.length < 2) return points[0] ?? null;
+  return points.reduce((best, candidate) => {
+    const total = (point: PublicAnchor) =>
+      points.reduce(
+        (sum, other) =>
+          sum +
+          haversineDistanceMeters(
+            { latitude: point.latitude, longitude: point.longitude },
+            { latitude: other.latitude, longitude: other.longitude },
+          ),
+        0,
+      );
+    return total(candidate) < total(best) ? candidate : best;
+  });
+}
+
+function orderedPublicItems(day: PublicItineraryDay) {
+  return [...day.items].sort((left, right) => {
+    if (left.type === "hotel" && right.type !== "hotel") return 1;
+    if (left.type !== "hotel" && right.type === "hotel") return -1;
+    return left.sortOrder - right.sortOrder || left.ref.localeCompare(right.ref);
+  });
+}
+
+function publicDayClusters(itinerary: PublicItinerary, day: PublicItineraryDay) {
+  const ordered = orderedPublicItems(day);
+  const canonical = ordered.flatMap((item) => {
+    const title = ["activity", "meal", "hotel"].includes(item.type)
+      ? item.place?.localityName?.trim()
+      : undefined;
+    return title &&
+      typeof item.place?.latitude === "number" &&
+      typeof item.place.longitude === "number"
+      ? [{ item, key: publicLocalityKey(title), title }]
+      : [];
+  });
+  const legacyItems = ordered.flatMap((item) => {
+    const title =
+      item.type === "location"
+        ? item.place?.localityName?.trim() || item.place?.displayName?.trim() || item.title.trim()
+        : undefined;
+    return title &&
+      typeof item.place?.latitude === "number" &&
+      typeof item.place.longitude === "number"
+      ? [{ item, key: publicLocalityKey(title), title }]
+      : [];
+  });
+  const legacySequence = itinerary.citySequence.flatMap((entry) =>
+    entry.dayNumber === day.dayNumber &&
+    typeof entry.latitude === "number" &&
+    typeof entry.longitude === "number"
+      ? [
+          {
+            item: {
+              place: {
+                displayName: entry.name,
+                latitude: entry.latitude,
+                longitude: entry.longitude,
+              },
+              ref: entry.ref,
+            },
+            key: publicLocalityKey(entry.name),
+            title: entry.name,
+          },
+        ]
+      : [],
   );
-  return entries
-    .filter(({ item }, index) => index === 0 || !samePublicCity(entries[index - 1].item, item))
-    .map(({ dayNumber, item }) => ({
-      dayNumber,
+  const evidence = canonical.length ? canonical : legacyItems.length ? legacyItems : legacySequence;
+  const groups = new Map<string, { points: PublicAnchor[]; refs: string[]; title: string }>();
+  evidence.forEach(({ item, key, title }) => {
+    const group = groups.get(key) ?? { points: [], refs: [], title };
+    group.refs.push(item.ref);
+    group.points.push({
+      activity: canonical.length > 0,
       latitude: item.place!.latitude!,
       longitude: item.place!.longitude!,
       ref: item.ref,
-      title: item.title,
-    }));
+    });
+    groups.set(key, group);
+  });
+  const clusters = [...groups.entries()].map(([key, group]) => ({
+    anchor: publicMedoid(group.points),
+    key,
+    ref: group.refs[0],
+    title: group.title,
+  }));
+  const primaryKey = publicLocalityKey(day.primaryLocality);
+  const finalEvidence = evidence.at(-1);
+  const primaryGroup = groups.get(primaryKey);
+  if (
+    clusters.length > 1 &&
+    finalEvidence?.key === primaryKey &&
+    clusters.at(-1)?.key !== primaryKey &&
+    primaryGroup
+  )
+    clusters.push({
+      anchor: {
+        activity: canonical.length > 0,
+        latitude: finalEvidence.item.place!.latitude!,
+        longitude: finalEvidence.item.place!.longitude!,
+        ref: finalEvidence.item.ref,
+      },
+      key: primaryKey,
+      ref: finalEvidence.item.ref,
+      title: finalEvidence.title,
+    });
+  return clusters;
+}
+
+export function derivePublicOverviewStages(itinerary: PublicItinerary) {
+  const stages: Array<{
+    anchor: PublicAnchor | null;
+    dayLabel: string;
+    dayNumbers: number[];
+    ref: string;
+    title: string;
+  }> = [];
+  itinerary.days.forEach((day) => {
+    publicDayClusters(itinerary, day).forEach((cluster) => {
+      const previous = stages.at(-1);
+      if (
+        previous &&
+        publicLocalityKey(previous.title) === cluster.key &&
+        previous.dayNumbers.at(-1) === day.dayNumber - 1
+      ) {
+        if (!previous.dayNumbers.includes(day.dayNumber)) previous.dayNumbers.push(day.dayNumber);
+        const first = previous.dayNumbers[0];
+        previous.dayLabel =
+          first === day.dayNumber ? `Day ${first}` : `Days ${first}–${day.dayNumber}`;
+        return;
+      }
+      stages.push({
+        anchor: cluster.anchor,
+        dayLabel: `Day ${day.dayNumber}`,
+        dayNumbers: [day.dayNumber],
+        ref: cluster.ref,
+        title: cluster.title,
+      });
+    });
+  });
+  return stages;
+}
+
+export function publicOverviewStops(itinerary: PublicItinerary) {
+  return derivePublicOverviewStages(itinerary).flatMap((stage) =>
+    stage.anchor
+      ? [
+          {
+            dayNumber: stage.dayNumbers[0],
+            latitude: stage.anchor.latitude,
+            longitude: stage.anchor.longitude,
+            ref: stage.ref,
+            title: stage.title,
+          },
+        ]
+      : [],
+  );
 }
 
 const publicOverviewFlightThresholdMeters = 500_000;

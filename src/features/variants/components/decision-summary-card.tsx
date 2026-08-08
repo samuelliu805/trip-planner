@@ -63,9 +63,9 @@ export function DecisionSummaryCard({
       </header>
 
       <div className="rounded-md bg-muted/40 p-2">
-        <p className="text-[11px] font-medium text-muted-foreground">City sequence</p>
+        <p className="text-[11px] font-medium text-muted-foreground">Locality sequence</p>
         <p className="mt-0.5 text-xs font-medium">
-          {summary.citySequence.length ? summary.citySequence.join(" → ") : "No City stages"}
+          {summary.citySequence.length ? summary.citySequence.join(" → ") : "No locality stages"}
         </p>
       </div>
 
@@ -91,14 +91,14 @@ export function DecisionSummaryCard({
         ) : null}
         <DecisionSummaryMetric
           delta={summary.deltas?.cityStages}
-          deltaKind="City stage"
-          label="City stages"
+          deltaKind="locality stage"
+          label="Locality stages"
           value={summary.cityStageCount.toLocaleString()}
         />
         <DecisionSummaryMetric
           delta={summary.deltas?.uniqueCityPlaces}
-          deltaKind="unique City place"
-          label="Unique City places"
+          deltaKind="unique locality"
+          label="Unique localities"
           value={summary.uniqueCityPlaceCount.toLocaleString()}
         />
         <DecisionSummaryMetric
@@ -111,9 +111,9 @@ export function DecisionSummaryCard({
         {visibility.citySpan ? (
           <DecisionSummaryMetric
             delta={summary.deltas?.citySpanMeters}
-            deltaKind="City span"
-            detail="Straight-line City Overview legs; never combined with routed distance"
-            label="City span · straight-line"
+            deltaKind="locality span"
+            detail="Straight-line Overview stage connections; never combined with routed distance"
+            label="Locality span · straight-line"
             value={citySpanValue}
           />
         ) : null}

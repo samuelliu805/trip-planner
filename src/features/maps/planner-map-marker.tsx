@@ -44,6 +44,8 @@ export function PlannerMapMarkerOverlay({
 
   return (
     <AdvancedMarker
+      anchorLeft={comparison ? "-50%" : undefined}
+      anchorTop={comparison ? "-100%" : undefined}
       aria-label={
         marker.accessibleLabel ??
         `${style.label}: ${entry.title}, ${entry.dayLabel}${marker.address ? `, ${marker.address}` : ""}${marker.entries.length > 1 ? `, ${marker.entries.length} itinerary entries` : ""}`
@@ -63,28 +65,19 @@ export function PlannerMapMarkerOverlay({
       position={{ lat: marker.latitude, lng: marker.longitude }}
       title={
         comparison
-          ? `${marker.variantName} · ${entry.title} · Stage ${marker.stageNumber} · Read only`
+          ? `${marker.variantName} · ${entry.title} · ${marker.stageNumber ? `Stage ${marker.stageNumber}` : `Route stop ${marker.label}`} · Read only`
           : `${entry.title} · ${entry.dayLabel}${marker.entries.length > 1 ? ` · ${marker.entries.length} entries` : ""}`
       }
       zIndex={marker.zIndex ?? (selected ? 40 : 20)}
     >
       {comparison ? (
-        <div
-          className="pointer-events-none flex items-center gap-1 whitespace-nowrap"
-          style={{ opacity: activeComparison ? 1 : 0.68 }}
-        >
-          <span
-            className={`flex items-center justify-center rounded-full border-2 border-white font-semibold text-white shadow-md ${activeComparison ? "size-7 text-xs" : "size-5 text-[10px]"}`}
-            style={{ backgroundColor: marker.variantColor }}
-          >
-            {marker.stageNumber}
-          </span>
-          <span
-            className={`rounded border bg-background/95 px-1.5 py-0.5 text-foreground shadow-sm ${activeComparison ? "text-[11px] font-semibold" : "text-[10px]"}`}
-          >
-            {entry.title}
-          </span>
-        </div>
+        <Pin
+          background={marker.variantColor}
+          borderColor="#ffffff"
+          glyph={marker.label ?? String(marker.stageNumber ?? "")}
+          glyphColor="#ffffff"
+          scale={activeComparison ? 1.08 : 0.82}
+        />
       ) : cityRouteMarker ? (
         <div
           className="whitespace-nowrap rounded-full border-2 border-white px-2 py-1 text-[10px] font-semibold text-white shadow-md"

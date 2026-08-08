@@ -11,7 +11,7 @@ import type { PublicItinerary, PublicItineraryLink } from "./types";
 
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_itinerary", { shared_token: token });
+  const { data, error } = await supabase.rpc("get_public_itinerary_v2", { shared_token: token });
   if (error) return null;
   if (unavailablePublicItinerarySchema.safeParse(data).success) return null;
   const parsed = publicItinerarySchema.safeParse(data);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Share2 } from "lucide-react";
+import { LoaderCircle, Share2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -183,7 +183,8 @@ export function PublicShareDialog({
           <Button onClick={() => setOpen(false)} type="button" variant="outline">
             Close
           </Button>
-          <Button disabled={pending} onClick={save} type="button">
+          <Button aria-busy={pending} disabled={pending} onClick={save} type="button">
+            {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {pending ? "Saving…" : activeLink ? "Save shared content" : "Create public link"}
           </Button>
         </DialogFooter>

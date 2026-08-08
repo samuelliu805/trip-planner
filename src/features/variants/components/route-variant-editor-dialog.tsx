@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, LoaderCircle } from "lucide-react";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -199,7 +199,13 @@ export function RouteVariantEditorDialog({
           >
             Cancel
           </Button>
-          <Button disabled={pending || !name.trim()} onClick={() => void submit()} type="button">
+          <Button
+            aria-busy={pending}
+            disabled={pending || !name.trim()}
+            onClick={() => void submit()}
+            type="button"
+          >
+            {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {pending
               ? "Saving…"
               : mode === "blank"

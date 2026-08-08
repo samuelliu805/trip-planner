@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ListOrdered, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -93,6 +93,7 @@ export function DayActions({
   day,
   isOnlyDay,
   location,
+  onArrange,
   onInsert,
   onRemove,
   pending,
@@ -101,6 +102,7 @@ export function DayActions({
   day: PlannerDay;
   isOnlyDay: boolean;
   location: "cell" | "mobilebar";
+  onArrange: (day: PlannerDay) => void;
   onInsert: (position: number) => void;
   onRemove: (dayId: string) => void;
   pending: boolean;
@@ -131,6 +133,10 @@ export function DayActions({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => onArrange(day)}>
+              <ListOrdered className="size-4" /> Arrange Activities
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem disabled={pending} onSelect={() => onInsert(day.day_number)}>
               {insertIcon("up")} Add day before
             </DropdownMenuItem>
@@ -170,9 +176,25 @@ export function DayActions({
         className={
           mobile
             ? "grid w-full grid-cols-2 gap-2"
-            : "mt-2 hidden grid-cols-3 overflow-hidden rounded-md border bg-background shadow-sm sm:grid"
+            : "mt-2 hidden grid-cols-4 overflow-hidden rounded-md border bg-background shadow-sm sm:grid"
         }
       >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              aria-label={`Arrange Day ${day.day_number} Activities`}
+              className={buttonClass}
+              onClick={(event) => {
+                event.stopPropagation();
+                onArrange(day);
+              }}
+              type="button"
+            >
+              <ListOrdered className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Arrange Day {day.day_number} Activities</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -195,7 +217,7 @@ export function DayActions({
           <TooltipTrigger asChild>
             <button
               aria-label={`Insert day below day ${day.day_number}`}
-              className={`${buttonClass} ${!mobile ? "border-l" : ""}`}
+              className={`${buttonClass} border-l`}
               disabled={pending}
               onClick={(event) => {
                 event.stopPropagation();

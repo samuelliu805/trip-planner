@@ -25,10 +25,14 @@ export function RouteVariantComparisonSheet({
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent className="comparison-sheet max-h-[82dvh]" side="bottom">
         <SheetHeader className="py-4">
-          <SheetTitle>Routes on map</SheetTitle>
+          <SheetTitle>
+            {comparison.dayNumber ? `Day ${comparison.dayNumber} routes` : "Routes on map"}
+          </SheetTitle>
           <SheetDescription>
-            Dashed lines show City order—not driving directions. The Matrix stays on{" "}
-            {active?.name ?? "the route being edited"}.
+            {comparison.dayNumber
+              ? "Solid lines are saved routes; dashed lines preview Activity stop order."
+              : "Dashed lines show locality order—not driving directions."}{" "}
+            The Matrix stays on {active?.name ?? "the route being edited"}.
           </SheetDescription>
         </SheetHeader>
         <div className="space-y-2 overflow-y-auto p-4">

@@ -36,10 +36,10 @@ export function decisionSummaryMetricVisibility(
 export type NeutralDeltaKind =
   | "planning day"
   | "night"
-  | "City stage"
-  | "unique City place"
+  | "locality stage"
+  | "unique locality"
   | "unique planned place"
-  | "City span"
+  | "locality span"
   | "known Day route distance"
   | "known duration"
   | "Hotel added"
@@ -74,14 +74,14 @@ export function formatHotelAlignmentLabel(label: string) {
 }
 
 function metricValue(kind: NeutralDeltaKind, value: number) {
-  if (kind === "City span" || kind === "known Day route distance")
+  if (kind === "locality span" || kind === "known Day route distance")
     return formatSummaryDistance(Math.abs(value));
   if (kind === "known duration") return formatSummaryDuration(Math.abs(value));
   return Math.abs(value).toLocaleString();
 }
 
 function pluralMetric(kind: NeutralDeltaKind, value: number) {
-  if (Math.abs(value) === 1 || kind.includes("distance") || kind === "City span") return kind;
+  if (Math.abs(value) === 1 || kind.includes("distance") || kind === "locality span") return kind;
   if (kind === "Hotel added" || kind === "Hotel changed" || kind === "Hotel removed")
     return `${kind} occurrences`;
   return `${kind}s`;
@@ -110,7 +110,7 @@ export function neutralDeltaAccessibleLabel(kind: NeutralDeltaKind, value: numbe
   }
   if (value === 0) return `Same ${kind} as Primary`;
   const direction = value > 0 ? "additional" : "fewer";
-  if (kind === "City span" || kind === "known Day route distance" || kind === "known duration")
+  if (kind === "locality span" || kind === "known Day route distance" || kind === "known duration")
     return `${metricValue(kind, value)} ${value > 0 ? "greater" : "less"} ${kind} versus Primary`;
   return `${metricValue(kind, value)} ${direction} ${pluralMetric(kind, value)} versus Primary`;
 }

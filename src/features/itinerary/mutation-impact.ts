@@ -4,6 +4,11 @@ import { decisionSummaryItemTypes } from "@/features/variants/decision-summary-t
 export const affectsDecisionSummary = (type?: string) =>
   decisionSummaryItemTypes.includes(type as (typeof decisionSummaryItemTypes)[number]);
 
+const localityProjectionTypes = ["location", "activity", "meal", "hotel"] as const;
+
+export const affectsLocalityProjection = (type?: string) =>
+  localityProjectionTypes.includes(type as (typeof localityProjectionTypes)[number]);
+
 export function plannerWorkspaceItems(workspace: PlannerWorkspace | undefined) {
   return workspace?.days.flatMap(({ items }) => items) ?? [];
 }
@@ -33,6 +38,28 @@ export function decisionSummaryItemChanged(
   return (
     previous.place?.providerPlaceId !== next.place?.providerPlaceId ||
     previous.place?.latitude !== next.place?.latitude ||
-    previous.place?.longitude !== next.place?.longitude
+    previous.place?.longitude !== next.place?.longitude ||
+    previous.place?.localityName !== next.place?.localityName ||
+    previous.place?.countryCode !== next.place?.countryCode
+  );
+}
+
+export function localityProjectionItemChanged(
+  previous: ItineraryItem | undefined,
+  next: ItineraryItem,
+) {
+  if (!previous) return affectsLocalityProjection(next.type);
+  if (!affectsLocalityProjection(previous.type) && !affectsLocalityProjection(next.type))
+    return false;
+  return (
+    previous.type !== next.type ||
+    previous.day_id !== next.day_id ||
+    previous.place_id !== next.place_id ||
+    (next.type === "location" && previous.title.trim() !== next.title.trim()) ||
+    previous.place?.providerPlaceId !== next.place?.providerPlaceId ||
+    previous.place?.latitude !== next.place?.latitude ||
+    previous.place?.longitude !== next.place?.longitude ||
+    previous.place?.localityName !== next.place?.localityName ||
+    previous.place?.countryCode !== next.place?.countryCode
   );
 }

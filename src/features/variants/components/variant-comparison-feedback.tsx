@@ -20,7 +20,10 @@ function Feedback({ comparison }: { comparison: VariantComparisonUi }) {
         {comparison.error ? "Comparison unavailable" : "Loading route comparison"}
       </h2>
       <p className="mt-1 text-sm leading-5 text-muted-foreground">
-        {comparison.error ?? "Loading City stages while the Matrix stays available."}
+        {comparison.error ??
+          (comparison.dayNumber
+            ? `Loading saved and planned Day ${comparison.dayNumber} routes while the Matrix stays available.`
+            : "Loading Activity locality stages while the Matrix stays available.")}
       </p>
       {comparison.error ? (
         <Button className="mt-4 min-h-11 gap-2" onClick={comparison.retry} size="sm">

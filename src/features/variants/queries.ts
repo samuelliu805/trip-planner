@@ -20,13 +20,13 @@ import type { VariantDecisionSummaryProjection } from "./decision-summary-types"
 import type { RouteVariantIdentityInput, UpdateRouteVariantInput } from "./schema";
 
 export const variantListQueryKey = (tripId: string) => ["planner-variants", tripId] as const;
-export const variantComparisonQueryKey = (tripId: string) =>
-  ["variant-comparison", tripId] as const;
+export const variantComparisonQueryKey = (tripId: string, dayNumber?: number) =>
+  ["variant-comparison", tripId, dayNumber ?? "overview"] as const;
 export const variantDecisionSummaryQueryKey = (tripId: string) =>
   ["variant-decision-summary", tripId] as const;
 
 export function invalidateVariantComparison(client: QueryClient, tripId: string) {
-  return client.invalidateQueries({ queryKey: variantComparisonQueryKey(tripId) });
+  return client.invalidateQueries({ queryKey: ["variant-comparison", tripId] });
 }
 
 export function invalidateVariantDecisionSummary(client: QueryClient, tripId: string) {
@@ -42,11 +42,15 @@ export function useRouteVariants(tripId: string, initialData: PlannerVariant[]) 
   });
 }
 
-export function useVariantComparisonProjection(tripId: string, enabled: boolean) {
+export function useVariantComparisonProjection(
+  tripId: string,
+  enabled: boolean,
+  dayNumber?: number,
+) {
   return useQuery<VariantComparisonProjection[]>({
     enabled,
-    queryFn: async () => requireData(await loadVariantComparison(tripId)),
-    queryKey: variantComparisonQueryKey(tripId),
+    queryFn: async () => requireData(await loadVariantComparison(tripId, dayNumber)),
+    queryKey: variantComparisonQueryKey(tripId, dayNumber),
     retry: false,
     staleTime: 30_000,
   });

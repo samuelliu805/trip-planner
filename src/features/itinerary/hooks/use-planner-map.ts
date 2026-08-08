@@ -12,11 +12,7 @@ import { buildDayRouteLines, buildDayRouteMarkers } from "@/features/routes/day-
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import { useOverviewRoute } from "@/features/routes/use-overview-route";
 import { deriveOverviewDefaultModes } from "@/features/routes/overview-transport";
-import {
-  buildDayCityMarkers,
-  buildDayCityRouteLines,
-  type DayMapLayer,
-} from "@/features/routes/day-city-map";
+import type { DayMapLayer } from "@/features/routes/day-city-map";
 import { useVariantComparison } from "@/features/variants/use-variant-comparison";
 import { useVariantDecisionSummary } from "@/features/variants/use-variant-decision-summary";
 
@@ -29,6 +25,9 @@ export function usePlannerMap(
   variants: PlannerVariant[],
 ) {
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
+  const [comparisonDayNumber, setComparisonDayNumber] = useState<number>();
+  const [comparisonReturnMode, setComparisonReturnMode] =
+    useState<Exclude<PlannerMapMode, "comparison">>("overview");
   const [selectedItemId, setSelectedItemId] = useState<string>();
   const [comparisonSheetOpen, setComparisonSheetOpen] = useState(false);
   const [decisionSummaryPanelOpen, setDecisionSummaryPanelOpen] = useState(false);
@@ -40,6 +39,7 @@ export function usePlannerMap(
   const variantId = workspace.variant.id;
   const comparison = useVariantComparison({
     activeVariantId: variantId,
+    dayNumber: comparisonDayNumber,
     dayRouteEditing: dayRoute.editing,
     enabled: mapMode === "comparison",
     tripId: workspace.variant.trip_id,
@@ -79,7 +79,7 @@ export function usePlannerMap(
         label: stage.firstDayLabel,
         latitude: stage.latitude,
         longitude: stage.longitude,
-        summary: `${stage.firstDayLabel} · City ${stage.position}`,
+        summary: `${stage.dayRangeLabel} · Locality stage ${stage.position}`,
       })),
     [overviewStages],
   );
@@ -105,26 +105,10 @@ export function usePlannerMap(
     () => buildDayRouteLines(dayRoute.plan?.calculation ?? null),
     [dayRoute.plan?.calculation],
   );
-  const dayCityMarkers = useMemo(
-    () => buildDayCityMarkers(dayRoute.activeDay, overviewStages),
-    [dayRoute.activeDay, overviewStages],
-  );
-  const dayCityLines = useMemo(
-    () => buildDayCityRouteLines(dayRoute.activeDay, overviewStages, overviewRoute.calculatedLegs),
-    [dayRoute.activeDay, overviewRoute.calculatedLegs, overviewStages],
-  );
   const dayMapLayer =
     dayLayerState && dayLayerState.dayId === dayRoute.activeDay?.id ? dayLayerState.layer : "all";
-  const showDayCities = dayCityMarkers.length > 1 && dayMapLayer !== "places";
-  const showDayPlaces = dayMapLayer !== "cities";
-  const dayMarkers = [
-    ...(showDayCities ? dayCityMarkers : []),
-    ...(showDayPlaces ? dayRouteMarkers : []),
-  ];
-  const dayLines = [
-    ...(showDayCities ? dayCityLines : []),
-    ...(showDayPlaces ? dayRouteLines : []),
-  ];
+  const dayMarkers = dayRouteMarkers;
+  const dayLines = dayRouteLines;
   const comparisonMarkers = comparison.visiblePresentations.flatMap(({ markers }) => markers);
   const comparisonLines = comparison.visiblePresentations.flatMap(({ lines }) => lines);
   const compactMapMarkers =
@@ -180,24 +164,20 @@ export function usePlannerMap(
   function changeMapMode(mode: PlannerMapMode) {
     if (mode === mapMode) return;
     if (mode === "comparison" && comparison.blockingReason) return;
+    if (mode === "comparison") {
+      const returnMode = mapMode === "day_route" ? "day_route" : "overview";
+      setComparisonReturnMode(returnMode);
+      setComparisonDayNumber(
+        returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,
+      );
+    }
     setMapMode(mode);
     setSelectedItemId(undefined);
     if (mode === "comparison") return;
     setComparisonSheetOpen(false);
     setDecisionSummaryPanelOpen(false);
     setDecisionSummarySheetOpen(false);
-    if (mode !== "overview") return;
-    const row = selectionEnd.row >= 0 ? selectionEnd.row : 0;
-    const day = workspace.days[row];
-    const cityColumn = categories.findIndex(({ id }) => id === "city");
-    if (!day || cityColumn < 0) return;
-    const coordinate = { column: cityColumn, row };
-    setSelectionAnchor(coordinate);
-    setSelectionEnd(coordinate);
-    const firstCity = day.items
-      .filter(({ type }) => type === "location")
-      .sort((a, b) => a.sort_order - b.sort_order)[0];
-    setSelectedItemId(firstCity?.id);
+    if (mode === "overview") setSelectedItemId(undefined);
   }
 
   return {
@@ -205,25 +185,27 @@ export function usePlannerMap(
       mapMode === "comparison"
         ? !comparison.isLoading && !comparison.error && !mapMarkers.length
           ? {
-              message: "Visible route variants do not contain a place-linked City stage.",
-              title: "No City stages to compare",
+              message: comparison.dayNumber
+                ? `Visible route variants do not contain mappable Activity, Meal, or Hotel stops for Day ${comparison.dayNumber}.`
+                : "Visible route variants do not contain a mappable Activity locality stage.",
+              title: comparison.dayNumber
+                ? `No Day ${comparison.dayNumber} routes to compare`
+                : "No locality stages to compare",
             }
           : undefined
         : mapMode === "overview"
           ? {
-              message: "Link a saved map place to a City item to build the trip overview.",
-              title: "No City stages yet",
+              message:
+                "Add a saved place with locality data to an Activity to map the trip overview.",
+              title: "No mappable locality stages yet",
             }
           : !mapMarkers.length
             ? {
-                message:
-                  dayMapLayer === "cities"
-                    ? "Add at least two different, place-linked City items to this day."
-                    : "Add a saved place to an Activity, Meal, or Hotel on this day.",
-                title: dayMapLayer === "cities" ? "No City transfers" : "No eligible places",
+                message: "Add a saved place to an Activity, Meal, or Hotel on this day.",
+                title: "No eligible places",
               }
             : undefined,
-    dayCityLayerAvailable: dayCityMarkers.length > 1,
+    dayCityLayerAvailable: false,
     dayMapLayer,
     compactMapEmptyState:
       mapMode === "comparison" &&
@@ -231,8 +213,12 @@ export function usePlannerMap(
       !comparison.error &&
       !compactMapMarkers.length
         ? {
-            message: "Visible route variants do not contain a place-linked City stage.",
-            title: "No City stages to compare",
+            message: comparison.dayNumber
+              ? `Visible route variants do not contain mappable Activity, Meal, or Hotel stops for Day ${comparison.dayNumber}.`
+              : "Visible route variants do not contain a mappable Activity locality stage.",
+            title: comparison.dayNumber
+              ? `No Day ${comparison.dayNumber} routes to compare`
+              : "No locality stages to compare",
           }
         : undefined,
     compactMapLines,
@@ -248,13 +234,18 @@ export function usePlannerMap(
     decisionSummarySheetOpen,
     enterComparison: () => {
       if (comparison.blockingReason) return;
+      const returnMode = mapMode === "day_route" ? "day_route" : "overview";
+      setComparisonReturnMode(returnMode);
+      setComparisonDayNumber(
+        returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,
+      );
       setSelectedItemId(undefined);
       setMapMode("comparison");
       setComparisonSheetOpen(false);
       setDecisionSummaryPanelOpen(false);
       setDecisionSummarySheetOpen(false);
     },
-    exitComparison: () => changeMapMode("overview"),
+    exitComparison: () => changeMapMode(comparisonReturnMode),
     mapLines,
     mapMode,
     mapMarkers,

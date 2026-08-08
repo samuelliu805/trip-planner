@@ -17,23 +17,17 @@ import {
 import { MatrixItemSummary } from "@/features/itinerary/components/matrix-presentation";
 
 export function PlannerItemRow({
-  canMoveDown,
-  canMoveUp,
   interactive,
   item,
   onDelete,
   onEdit,
-  onMove,
   onSelect,
   selected,
 }: {
-  canMoveDown: boolean;
-  canMoveUp: boolean;
   interactive: boolean;
   item: ItineraryItem;
   onDelete: (item: ItineraryItem) => void;
   onEdit: (item: ItineraryItem) => void;
-  onMove: (direction: -1 | 1) => void;
   onSelect: (item: ItineraryItem) => void;
   selected: boolean;
 }) {
@@ -68,18 +62,6 @@ export function PlannerItemRow({
             onEdit(item);
           }
         }}
-        onKeyDown={(event) => {
-          if (event.altKey && event.key === "ArrowUp" && canMoveUp) {
-            event.preventDefault();
-            event.stopPropagation();
-            onMove(-1);
-          }
-          if (event.altKey && event.key === "ArrowDown" && canMoveDown) {
-            event.preventDefault();
-            event.stopPropagation();
-            onMove(1);
-          }
-        }}
         tabIndex={interactive ? 0 : -1}
         type="button"
       >
@@ -105,13 +87,6 @@ export function PlannerItemRow({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => onEdit(item)}>Edit item</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled={!canMoveUp} onSelect={() => onMove(-1)}>
-              Move up <span className="ml-auto text-xs text-muted-foreground">Alt+↑</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!canMoveDown} onSelect={() => onMove(1)}>
-              Move down <span className="ml-auto text-xs text-muted-foreground">Alt+↓</span>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"

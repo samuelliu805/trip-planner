@@ -210,7 +210,7 @@ export async function calculateOverviewRoute(
 
     const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
     const stages = deriveOverviewStages(workspace.days);
-    if (stages.length < 2) return { error: "Add at least two City stages before calculating." };
+    if (stages.length < 2) return { error: "Add at least two locality stages before calculating." };
     if (neighboringOverviewCityConflict(stages)) return { error: neighboringCityError() };
 
     const tasks = parsed.data.legs
@@ -219,9 +219,10 @@ export async function calculateOverviewRoute(
       .map(({ mode, position }) => {
         const from = stages[position - 1];
         const to = stages[position];
-        if (!from || !to) throw new Error("The Overview route changed. Review the City stages.");
+        if (!from || !to)
+          throw new Error("The Overview route changed. Review the locality stages.");
         if (!isOverviewRouteLeg(from, to))
-          throw new Error("That City stay boundary does not need a route calculation.");
+          throw new Error("That locality stage boundary does not need a route calculation.");
         const configIdentity = {
           dayId: "trip-overview",
           tripId: parsed.data.tripId,

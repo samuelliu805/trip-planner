@@ -48,35 +48,19 @@ export function usePlannerMutations(
     }
   }
 
-  async function moveItem(
-    day: PlannerDay,
-    categoryItems: ItineraryItem[],
-    itemIndex: number,
-    direction: -1 | 1,
-  ) {
-    const targetIndex = itemIndex + direction;
-    if (targetIndex < 0 || targetIndex >= categoryItems.length) return;
-    const reorderedCategory = [...categoryItems];
-    [reorderedCategory[itemIndex], reorderedCategory[targetIndex]] = [
-      reorderedCategory[targetIndex],
-      reorderedCategory[itemIndex],
-    ];
-    let categoryIndex = 0;
-    const ordered = [...day.items]
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map((item) =>
-        categoryItems.some(({ id }) => id === item.id) ? reorderedCategory[categoryIndex++] : item,
-      );
+  async function reorderItems(day: PlannerDay, orderedItemIds: string[]) {
     try {
       await reorderMutation.mutateAsync({
         dayId: day.id,
-        items: ordered.map((item, sortOrder) => ({ id: item.id, sortOrder })),
+        items: orderedItemIds.map((id, sortOrder) => ({ id, sortOrder })),
         tripId,
         variantId,
       });
       setInteractionError(undefined);
+      return true;
     } catch {
       setInteractionError("The item order could not be saved. The previous order was restored.");
+      return false;
     }
   }
 
@@ -112,7 +96,8 @@ export function usePlannerMutations(
     clearPending: clearMutation.isPending,
     deleteItem,
     insertDay,
-    moveItem,
+    itemOrderPending: reorderMutation.isPending,
+    reorderItems,
     removeDay,
   };
 }

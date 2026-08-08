@@ -18,3 +18,10 @@ These rules apply to all future UI work in this repository.
 
 - Change content-to-map selection only after an explicit click or Enter/Space activation. Hover and focus alone must never move or rescope the map.
 - Keep marker-to-content selection explicit on marker click, with scroll/focus restoration and no owner-data mutation.
+
+## Public auth routes and dev-server route state
+
+- `/login` and `/signup` are permanent public App Router routes. After changing, adding, removing, or renaming anything under `src/app`, verify both with `npm run check:auth-routes`; a valid check returns `200` and the expected form heading for each route.
+- Do not add temporary browser-verification pages under `src/app`. Use existing routes, component fixtures outside the route tree, or a disposable copy/worktree so a long-lived Next.js dev server cannot retain a stale route tree.
+- This repository uses webpack for `npm run dev` because stale Turbopack route state has repeatedly made every nested route return `404` while `/` still returned `200`. Do not remove `--webpack` without proving repeated route add/remove/rename cycles keep `/login` and `/signup` healthy.
+- If `/` works but `/login`, `/signup`, `/trips`, and other nested routes all return `404`, treat the running dev server as stale: stop it, restart `npm run dev`, and rerun `npm run check:auth-routes`. Do not rewrite or duplicate valid route files to work around that process state.

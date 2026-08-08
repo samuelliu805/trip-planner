@@ -1,4 +1,4 @@
-import { Bike, Calculator, Car, Footprints, Route, TrainFront } from "lucide-react";
+import { Bike, Calculator, Car, Footprints, LoaderCircle, Route, TrainFront } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
@@ -12,7 +12,7 @@ import type {
   PublicRouteCalculation,
   PublicSavedRoute,
 } from "../types";
-import { RouteTotals } from "./public-route-summary";
+import { PublicRouteLegDetails, RouteTotals } from "./public-route-summary";
 import { PublicSharedRouteSummary } from "./public-shared-route-summary";
 import { PublicTemporaryRouteStops } from "./public-temporary-route-stops";
 
@@ -128,7 +128,17 @@ export function PublicDayRoutePanel({
             onToggleStop={onToggleStop}
             plan={plan}
           />
-          {calculation ? <RouteTotals calculation={calculation} /> : null}
+          {calculation ? (
+            <>
+              <RouteTotals calculation={calculation} />
+              <PublicRouteLegDetails
+                labels={localStops.map(
+                  (ref) => routeSetupItems.find((item) => item.ref === ref)?.title ?? "Stop",
+                )}
+                legs={calculation.legs}
+              />
+            </>
+          ) : null}
           {error ? (
             <p aria-live="polite" className="text-xs text-destructive">
               {error}
@@ -136,12 +146,17 @@ export function PublicDayRoutePanel({
           ) : null}
           <div className="sticky bottom-0 grid grid-cols-[1fr_auto_auto] gap-2 border-t bg-background pt-2">
             <Button
+              aria-busy={pending}
               className="min-h-11"
               disabled={pending || localStops.length < 2}
               onClick={onCalculate}
               type="button"
             >
-              <Calculator className="size-4" />
+              {pending ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Calculator className="size-4" />
+              )}
               {pending ? "Calculating…" : "Calculate"}
             </Button>
             <Button onClick={onReset} type="button" variant="outline">

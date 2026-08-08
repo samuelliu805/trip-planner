@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  attachVariantComparisonDayRoutes,
   normalizeVariantComparisonProjection,
   reconcileComparisonVisibility,
   reconcileVariantComparisonProjections,
@@ -53,15 +54,18 @@ function comparisonCity(
     day_id,
     id,
     place: {
+      country_code: null,
       formatted_address: "Tokyo, Japan",
       google_place_id: `google-${id}`,
       id: `place-${id}`,
       latitude: 35.6762,
+      locality_name: null,
       longitude: 139.6503,
     },
     place_id: `place-${id}`,
     sort_order: 0,
     title: "Tokyo",
+    type: "location",
     variant_id,
     ...rest,
   };
@@ -91,7 +95,7 @@ function comparisonDay(
   cities: VariantComparisonCity[],
   date: string | null = null,
 ): VariantComparisonDay {
-  return { cities, date, dayNumber, id };
+  return { cities, date, dayNumber, id, route: { calculatedLegs: [], saved: false, stops: [] } };
 }
 
 function comparisonProjection(
@@ -108,12 +112,16 @@ function comparisonProjection(
   };
 }
 
-test("Phase 5B projection is lightweight, City-only, trip-scoped, RLS-protected, and deterministic", async () => {
+test("variant comparison derives one Activity locality stage per Day with legacy fallback", async () => {
   const loader = await readFile(new URL("./comparison-data.ts", import.meta.url), "utf8");
-  const schema = await readFile(
-    new URL("../../../supabase/migrations/20260729160000_initial_schema.sql", import.meta.url),
-    "utf8",
-  );
+  const schema = (
+    await Promise.all(
+      [
+        "../../../supabase/migrations/20260729160000_initial_schema.sql",
+        "../../../supabase/migrations/20260802130101_add_manual_day_route_plans.sql",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    )
+  ).join("\n");
   const normalized = normalizeVariantComparisonProjection(
     comparisonVariants,
     [
@@ -130,8 +138,19 @@ test("Phase 5B projection is lightweight, City-only, trip-scoped, RLS-protected,
       }),
       comparisonCity({
         day_id: "day-a-1",
-        id: "city-first",
+        id: "activity-first",
+        place: {
+          country_code: "JP",
+          formatted_address: "Tokyo, Japan",
+          google_place_id: "google-activity-first",
+          id: "place-activity-first",
+          latitude: 35.6762,
+          locality_name: "Tokyo",
+          longitude: 139.6503,
+        },
+        place_id: "place-activity-first",
         sort_order: 1,
+        type: "activity",
         variant_id: "route-a",
       }),
       comparisonCity({
@@ -157,50 +176,59 @@ test("Phase 5B projection is lightweight, City-only, trip-scoped, RLS-protected,
   );
   assert.deepEqual(
     normalized[0].days[0].cities.map(({ itemId }) => itemId),
-    ["city-first", "city-second"],
+    ["activity-first"],
   );
   assert.equal(normalized[0].days[0].cities[0].latitude, 35.6762);
-  assert.equal(normalized[0].days[0].cities[0].placeId, "place-city-first");
-  assert.equal(normalized[1].days[0].cities.length, 0, "variants with no Cities remain present");
+  assert.equal(normalized[0].days[0].cities[0].placeId, "place-activity-first");
+  assert.equal(normalized[1].days[0].cities.length, 0, "variants without locality remain present");
 
   assert.match(loader, /\.from\("route_variants"\)[\s\S]*\.eq\("trip_id", tripId\)/);
   assert.match(loader, /\.from\("itinerary_items"\)[\s\S]*\.eq\("trip_id", tripId\)/);
-  assert.match(loader, /\.eq\("type", "location"\)/);
+  assert.match(loader, /\.in\("type", \[/);
   assert.match(
     loader,
-    /place:places\(id, google_place_id, formatted_address, latitude, longitude\)/,
+    /place:places\(id, google_place_id, formatted_address, latitude, longitude, locality_name, country_code\)/,
   );
   assert.match(loader, /\.in\("variant_id", variantIds\)/);
   assert.match(loader, /createClient\(\)/);
   assert.doesNotMatch(loader, /service[_-]?role|admin|createService/iu);
-  assert.doesNotMatch(
-    loader,
-    /item_links|day_route_plans|day_route_stops|day_route_legs|day_route_calculations|provider_data/,
-  );
+  assert.doesNotMatch(loader, /item_links|day_route_legs|provider_data/);
+  assert.match(loader, /dayNumber === undefined/);
+  assert.match(loader, /\.from\("day_route_plans"\)/);
+  assert.match(loader, /\.from\("day_route_stops"\)/);
+  assert.match(loader, /\.from\("day_route_calculations"\)/);
+  assert.doesNotMatch(loader, /"transport"|"flight"|"train"|"car_rental"/);
   for (const policy of [
     "route_variants_select_members",
     "trip_days_select_members",
     "places_select_members",
     "itinerary_items_select_members",
+    "day_route_plans_select_members",
+    "day_route_stops_select_members",
+    "day_route_calculations_select_members",
   ])
     assert.match(schema, new RegExp(`create policy "${policy}"[\\s\\S]*is_trip_member`));
 });
 
-test("Phase 5B comparison derivation preserves explicit City structure and stay boundaries", () => {
+test("variant comparison collapses adjacent locality stages but preserves later returns", () => {
   const projection = comparisonProjection([
     comparisonDay(
       "day-1",
       1,
+      [projectedCity("tokyo", "Tokyo", 35.6762, 139.6503, 1)],
+      "2026-09-01",
+    ),
+    comparisonDay(
+      "day-2",
+      2,
       [
         {
           ...projectedCity("kyoto", "Kyoto", 35.0116, 135.7681, 2),
           formattedAddress: "Kyoto, Japan",
         },
-        projectedCity("tokyo", "Tokyo", 35.6762, 139.6503, 1),
       ],
-      "2026-09-01",
+      "2026-09-02",
     ),
-    comparisonDay("day-2", 2, [], "2026-09-02"),
     comparisonDay(
       "day-3",
       3,
@@ -214,14 +242,177 @@ test("Phase 5B comparison derivation preserves explicit City structure and stay 
 
   assert.deepEqual(
     stages.map(({ entries }) => entries[0].title),
-    ["Tokyo", "Kyoto", "Kyoto", "Tokyo"],
+    ["Tokyo", "Kyoto", "Tokyo"],
   );
-  assert.equal(stages.length, 4, "multiple Cities and repeated later occurrences remain stages");
-  assert.equal(presentation.lines.length, 2, "the cross-day Kyoto stay boundary adds no line");
+  assert.equal(stages.length, 3, "adjacent Kyoto Days collapse and the later Tokyo remains");
+  assert.equal(stages[1].entries.length, 2);
+  assert.equal(presentation.lines.length, 2);
   assert.equal(formatCitySequence(stages), "Tokyo → Kyoto → Tokyo");
-  assert.equal(formatCitySequence([]), "No City stages");
+  assert.equal(formatCitySequence([]), "No locality stages");
   assert.ok(stages.every(({ id }) => id.startsWith("comparison:route-a:stage:")));
   assert.ok(presentation.lines.every(({ id }) => id.startsWith("comparison:route-a:leg:")));
+});
+
+test("whole-trip comparison retains intermediate Day locality clusters and the Hotel return", () => {
+  const city = (
+    id: string,
+    locality: string,
+    latitude: number,
+    longitude: number,
+    sortOrder: number,
+    type: "activity" | "hotel" | "meal",
+  ) =>
+    comparisonCity({
+      day_id: "day-a-1",
+      id,
+      place: {
+        country_code: "US",
+        formatted_address: `${locality}, MA`,
+        google_place_id: `google-${id}`,
+        id: `place-${id}`,
+        latitude,
+        locality_name: locality,
+        longitude,
+      },
+      place_id: `place-${id}`,
+      sort_order: sortOrder,
+      title: id,
+      type,
+      variant_id: "route-a",
+    });
+  const normalized = normalizeVariantComparisonProjection(comparisonVariants, comparisonDays, [
+    city("breakfast", "Boston", 42.36, -71.06, 10, "meal"),
+    city("mit", "Cambridge", 42.3601, -71.0942, 20, "activity"),
+    city("dinner", "Boston", 42.351, -71.07, 30, "meal"),
+    city("hotel", "Boston", 42.349, -71.078, 40, "hotel"),
+  ]);
+  const presentation = deriveVariantComparisonPresentation(normalized[0], "route-a");
+
+  assert.deepEqual(
+    normalized[0].days[0].cities.map(({ title }) => title),
+    ["Boston", "Cambridge", "Boston"],
+  );
+  assert.deepEqual(
+    presentation.stages.map(({ entries }) => entries[0].title),
+    ["Boston", "Cambridge", "Boston"],
+  );
+  assert.equal(presentation.lines.length, 2);
+});
+
+test("comparison entered from Day Route scopes every variant to that Day route", () => {
+  const projection = comparisonProjection([
+    {
+      ...comparisonDay("day-7", 7, []),
+      route: {
+        calculatedLegs: [],
+        saved: false,
+        stops: [
+          {
+            itemId: "breakfast",
+            latitude: 42.36,
+            longitude: -71.06,
+            placeId: "place-breakfast",
+            sortOrder: 10,
+            title: "Breakfast",
+            type: "meal",
+          },
+          {
+            itemId: "museum",
+            latitude: 42.34,
+            longitude: -71.09,
+            placeId: "place-museum",
+            sortOrder: 20,
+            title: "Museum",
+            type: "activity",
+          },
+        ],
+      },
+    },
+    comparisonDay("day-8", 8, [projectedCity("other-day", "Kyoto", 35, 135)]),
+  ]);
+  const presentation = deriveVariantComparisonPresentation(projection, "route-a", 7);
+
+  assert.equal(presentation.stages.length, 0);
+  assert.equal(presentation.markers.length, 2);
+  assert.equal(presentation.lines.length, 1);
+  assert.equal(presentation.lines[0].dashed, true);
+  assert.equal(presentation.citySequence, "Breakfast → Museum");
+  assert.ok(presentation.markers.every(({ summary }) => summary?.includes("Day 7 route stop")));
+});
+
+test("saved Day route comparison preserves stop occurrences and stored geometry", () => {
+  const normalized = normalizeVariantComparisonProjection(comparisonVariants, comparisonDays, [
+    comparisonCity({
+      day_id: "day-a-1",
+      id: "hotel",
+      place: {
+        country_code: "US",
+        formatted_address: "Boston",
+        google_place_id: "hotel-place",
+        id: "hotel-place",
+        latitude: 38.5,
+        locality_name: "Boston",
+        longitude: -120.2,
+      },
+      place_id: "hotel-place",
+      title: "Hotel",
+      type: "hotel",
+      variant_id: "route-a",
+    }),
+  ]);
+  const attached = attachVariantComparisonDayRoutes(
+    normalized,
+    [
+      comparisonCity({
+        day_id: "day-a-1",
+        id: "hotel",
+        place: {
+          country_code: "US",
+          formatted_address: "Boston",
+          google_place_id: "hotel-place",
+          id: "hotel-place",
+          latitude: 38.5,
+          locality_name: "Boston",
+          longitude: -120.2,
+        },
+        place_id: "hotel-place",
+        title: "Hotel",
+        type: "hotel",
+        variant_id: "route-a",
+      }),
+    ],
+    [{ day_id: "day-a-1", id: "plan-a", variant_id: "route-a" }],
+    [
+      { item_id: "hotel", plan_id: "plan-a", position: 1 },
+      { item_id: "hotel", plan_id: "plan-a", position: 2 },
+    ],
+    [
+      {
+        calculated_legs: [
+          {
+            computedAt: "2026-08-07T00:00:00.000Z",
+            distanceMeters: 100,
+            durationSeconds: 60,
+            geometry: { encodedPolyline: "_p~iF~ps|U_ulLnnqC_mqNvxq`@", source: "google" },
+            legSignature: "leg-a",
+            mode: "walk",
+            position: 1,
+            providerMode: "WALK",
+            warnings: [],
+          },
+        ],
+        plan_id: "plan-a",
+      },
+    ],
+  );
+  const presentation = deriveVariantComparisonPresentation(attached[0], "route-a", 1);
+
+  assert.equal(attached[0].days[0].route.saved, true);
+  assert.equal(attached[0].days[0].route.stops.length, 2, "returning to one Hotel stays valid");
+  assert.equal(presentation.markers.length, 1);
+  assert.equal(presentation.markers[0].label, "1 · 2");
+  assert.equal(presentation.lines.length, 1);
+  assert.equal(presentation.lines[0].dashed, false);
 });
 
 test("Phase 5B comparison excludes invalid coordinates and applies provider-neutral emphasis", () => {
@@ -231,10 +422,12 @@ test("Phase 5B comparison excludes invalid coordinates and applies provider-neut
       day_id: "day-a-2",
       id: "invalid",
       place: {
+        country_code: null,
         formatted_address: null,
         google_place_id: null,
         id: "place-invalid",
         latitude: 95,
+        locality_name: null,
         longitude: 10,
       },
       place_id: "place-invalid",
@@ -279,7 +472,7 @@ test("Phase 5B comparison excludes invalid coordinates and applies provider-neut
   assert.ok(routeA.lines[0].opacity! > inactiveWithLine.lines[0].opacity!);
   assert.ok(routeA.lines[0].zIndex! > inactiveWithLine.lines[0].zIndex!);
   assert.ok(routeA.markers.every(({ readOnly, selectable }) => readOnly && selectable === false));
-  assert.match(routeA.markers[0].accessibleLabel!, /Route A.*City stage 1.*read-only/);
+  assert.match(routeA.markers[0].accessibleLabel!, /Route A.*locality stage 1.*read-only/);
   assert.deepEqual(
     visibleComparisonPresentations([routeA, routeB], new Set(), "route-a").map(
       ({ variantId }) => variantId,
@@ -366,21 +559,21 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
   assert.match(comparisonUi, /min-h-11/);
   assert.match(comparisonUi, /min-\[900px\]:hidden/);
   assert.match(comparisonUi, /min-\[900px\]:block/);
-  assert.doesNotMatch(
-    comparisonUi,
-    /Hide legend|Show comparison legend|Previewing|Return to active/,
-  );
+  assert.match(comparisonUi, /Show comparison legend/);
+  assert.match(comparisonUi, /Hide comparison legend/);
+  assert.match(comparisonUi, /aria-expanded=\{!collapsed\}/);
   assert.doesNotMatch(comparisonHook, /previewVariantId|panelOpen/);
   assert.match(mapHook, /mapMode === "comparison"\s*\? comparisonMarkers/);
   assert.match(mapHook, /mapMode === "comparison"\s*\? comparisonLines/);
   assert.match(mapHook, /if \(mapMode === "comparison"\) return/);
   assert.match(mapHook, /current === "comparison" \? current : mode/);
+  assert.match(mapHook, /returnMode === "day_route" \? dayRoute\.activeDay\?\.day_number/);
   assert.match(variantControls, /router\.push\(variantHref/);
   assert.doesNotMatch(comparisonUi, /router\.push|variantHref/);
   assert.match(queries, /invalidateVariantComparison/);
   assert.doesNotMatch(
     comparisonDomain + comparisonHook + comparisonUi,
-    /calculateOverviewRoute|calculateDayRoute|googleRoutesEndpoint|routes\.googleapis|encodedPolyline/,
+    /calculateOverviewRoute|calculateDayRoute|googleRoutesEndpoint|routes\.googleapis/,
   );
   assert.doesNotMatch(
     comparisonUi,

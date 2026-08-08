@@ -26,6 +26,7 @@ import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
+import { deriveDayLocality, formatDayLocalitySummary } from "@/features/itinerary/locality";
 
 export function PlannerMatrix({
   compactMapEmptyState,
@@ -51,7 +52,7 @@ export function PlannerMatrix({
   mapLines,
   mapMode,
   mapMarkers,
-  moveItem,
+  onArrangeActivities,
   onMapExpand,
   onComparisonExit,
   onComparisonSheetOpen,
@@ -116,12 +117,7 @@ export function PlannerMatrix({
   mapLines: PlannerMapLine[];
   mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
-  moveItem: (
-    day: PlannerDay,
-    items: ItineraryItem[],
-    index: number,
-    direction: -1 | 1,
-  ) => Promise<void>;
+  onArrangeActivities: (day: PlannerDay) => void;
   onMapExpand: () => void;
   onComparisonExit: () => void;
   onComparisonSheetOpen: () => void;
@@ -216,6 +212,7 @@ export function PlannerMatrix({
                     day={day}
                     isOnlyDay={workspace.days.length === 1}
                     location="cell"
+                    onArrange={onArrangeActivities}
                     onInsert={(position) => void insertDay(position)}
                     onRemove={(dayId) => void removeDay(dayId)}
                     pending={dayMutationPending}
@@ -265,12 +262,20 @@ export function PlannerMatrix({
                       tabIndex={active ? 0 : -1}
                     >
                       <div className="space-y-0.5">
-                        {items.map((item, itemIndex) => (
+                        {category.id === "city" ? (
+                          <div className="rounded-sm bg-muted/50 px-2 py-1.5">
+                            <p className="text-xs font-medium leading-4">
+                              {formatDayLocalitySummary(deriveDayLocality(day))}
+                            </p>
+                            <p className="mt-0.5 text-[10px] leading-3 text-muted-foreground">
+                              Derived from Activity places
+                            </p>
+                          </div>
+                        ) : null}
+                        {items.map((item) => (
                           <PlannerItemRow
                             interactive={selected}
                             onDelete={(selectedItem) => void deleteItem(selectedItem)}
-                            canMoveDown={itemIndex < items.length - 1}
-                            canMoveUp={itemIndex > 0}
                             item={item}
                             key={item.id}
                             onEdit={(selectedItem) =>
@@ -280,7 +285,6 @@ export function PlannerMatrix({
                                 type: selectedItem.type,
                               })
                             }
-                            onMove={(direction) => void moveItem(day, items, itemIndex, direction)}
                             onSelect={() => {
                               if (item.id === selectedMapItem?.id) onMapSelectionClear();
                               else selectItem(item, { row, column });
@@ -289,7 +293,7 @@ export function PlannerMatrix({
                           />
                         ))}
                       </div>
-                      {active ? (
+                      {active && category.id !== "city" ? (
                         <AddItemButton
                           category={category}
                           day={day}

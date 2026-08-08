@@ -101,6 +101,18 @@ export function PublicTable({
                     role="gridcell"
                   >
                     <div className="space-y-1">
+                      {column.id === "city" ? (
+                        <div className="px-1.5 py-1.5 text-xs">
+                          <span className="font-medium">
+                            {day.localities?.join(" · ") ||
+                              day.primaryLocality ||
+                              "Locality unavailable"}
+                          </span>
+                          <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                            Derived from Activity places
+                          </span>
+                        </div>
+                      ) : null}
                       {items.map((item) => (
                         <div
                           aria-current={selectedItemRef === item.ref ? "true" : undefined}
@@ -130,7 +142,7 @@ export function PublicTable({
                         </div>
                       ))}
                     </div>
-                    {!items.length ? (
+                    {!items.length && column.id !== "city" ? (
                       <span className="block px-1.5 py-1 text-xs text-muted-foreground">—</span>
                     ) : null}
                   </div>

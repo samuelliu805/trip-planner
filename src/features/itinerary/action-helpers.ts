@@ -23,10 +23,14 @@ export async function persistPlaceSnapshot(
   if (!snapshot) return null;
   if (snapshot.provider !== "google" || !snapshot.providerPlaceId)
     throw new Error("Only normalized Google place snapshots can be persisted here.");
-  const { data, error } = await supabase.rpc("upsert_google_place_snapshot", {
+  const { data, error } = await supabase.rpc("upsert_google_place_snapshot_v2", {
+    place_administrative_area_name: snapshot.administrativeAreaName,
+    place_country_code: snapshot.countryCode,
     place_display_name: snapshot.displayName,
     place_formatted_address: snapshot.formattedAddress ?? "",
     place_latitude: snapshot.latitude,
+    place_locality_kind: snapshot.localityKind,
+    place_locality_name: snapshot.localityName,
     place_longitude: snapshot.longitude,
     provider_place_id: snapshot.providerPlaceId,
     target_trip_id: tripId,

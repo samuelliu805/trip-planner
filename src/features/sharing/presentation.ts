@@ -1,15 +1,5 @@
 import type { PublicItineraryDay, PublicItineraryItem } from "./types";
 
-type PublicItemGroup = "Car rental" | "Notes" | "Plans" | "Stay" | "Transport";
-
-export function publicItemGroup(item: PublicItineraryItem): PublicItemGroup {
-  if (["transport", "flight", "train"].includes(item.type)) return "Transport";
-  if (item.type === "car_rental") return "Car rental";
-  if (item.type === "hotel") return "Stay";
-  if (item.type === "note") return "Notes";
-  return "Plans";
-}
-
 export function orderedPublicItems(day: PublicItineraryDay) {
   return day.items.slice().sort((left, right) => left.sortOrder - right.sortOrder);
 }
@@ -20,34 +10,73 @@ export function isPublicTransfer(item: PublicItineraryItem) {
   return transferTypes.has(item.type);
 }
 
-type PublicJourneyGroupKind = "activity" | "car" | "meal" | "note" | "transport";
+export function isPublicDestination(item: PublicItineraryItem) {
+  return ["activity", "meal", "hotel"].includes(item.type);
+}
+
+export function isPublicTravel(item: PublicItineraryItem) {
+  return isPublicTransfer(item) || item.type === "car_rental";
+}
+
+function uniqueLabelParts(values: Array<string | undefined>) {
+  return values.filter((value, index, entries): value is string =>
+    Boolean(value && entries.findIndex((entry) => entry === value) === index),
+  );
+}
+
+export function publicTransferItemLabel(item: PublicItineraryItem) {
+  const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
+  return uniqueLabelParts([time, item.title, item.place?.displayName]).join(" · ");
+}
+
+export function publicRentalItemLabel(item: PublicItineraryItem) {
+  const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
+  const rentalAction = item.carRental?.action
+    ? item.carRental.action === "pickup"
+      ? "Rental car pickup"
+      : "Rental car return"
+    : "Rental car";
+  const details = uniqueLabelParts([
+    time,
+    item.carRental?.company ?? item.title,
+    item.place?.displayName,
+  ]).join(" · ");
+  return `${rentalAction}: ${details}`;
+}
+
+type PublicJourneyGroupKind = "activity" | "meal";
 export type PublicJourneyGroup = {
   items: PublicItineraryItem[];
   kind: PublicJourneyGroupKind;
 };
 
 function publicJourneyKind(item: PublicItineraryItem): PublicJourneyGroupKind {
-  if (isPublicTransfer(item)) return "transport";
-  if (item.type === "car_rental") return "car";
   if (item.type === "meal") return "meal";
-  if (item.type === "note") return "note";
   return "activity";
 }
 
 export function publicDayJourney(day: PublicItineraryDay) {
-  const groups: PublicJourneyGroup[] = [];
-  const stays: PublicItineraryItem[] = [];
-  for (const item of orderedPublicItems(day)) {
-    if (item.type === "location") continue;
-    if (item.type === "hotel") stays.push(item);
-    else {
+  function grouped(items: PublicItineraryItem[]) {
+    const groups: PublicJourneyGroup[] = [];
+    for (const item of items) {
       const kind = publicJourneyKind(item);
-      const existing = groups.find((group) => group.kind === kind);
-      if (existing) existing.items.push(item);
+      const previous = groups.at(-1);
+      if (previous?.kind === kind) previous.items.push(item);
       else groups.push({ items: [item], kind });
     }
+    return groups;
   }
-  return { groups, stays };
+
+  const ordered = orderedPublicItems(day).filter(({ type }) => type !== "location");
+  const destinations = ordered.filter((item) => isPublicDestination(item) && item.type !== "hotel");
+  const travel = ordered.filter(isPublicTravel);
+  const notes = ordered.filter(({ type }) => type === "note");
+  return {
+    groups: grouped(destinations),
+    notes,
+    stays: ordered.filter(({ type }) => type === "hotel"),
+    transport: travel,
+  };
 }
 
 function normalizedCityName(value?: string) {
@@ -70,6 +99,7 @@ export function samePublicCity(left: PublicItineraryItem, right: PublicItinerary
 }
 
 export function publicDayCitySequence(day: PublicItineraryDay) {
+  if (day.localities?.length) return [...new Set(day.localities)];
   const cityItems = orderedPublicItems(day).filter((item) => item.type === "location");
   if (!cityItems.length) return day.city ? [day.city] : [];
   return cityItems

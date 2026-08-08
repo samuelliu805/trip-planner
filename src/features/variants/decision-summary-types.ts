@@ -33,9 +33,11 @@ export type DecisionSummaryDayRow = {
 };
 
 export type DecisionSummaryPlaceRow = {
+  country_code: string | null;
   google_place_id: string | null;
   id: string;
   latitude: number | null;
+  locality_name: string | null;
   longitude: number | null;
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw, Route, X } from "lucide-react";
+import { LoaderCircle, RotateCcw, Route, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { overviewRouteModeLabels } from "./overview-transport";
 import { RouteIconButton } from "./route-icon-button";
+import { RouteLegDetails } from "./route-leg-details";
 import { overviewRouteModes, type OverviewRouteMode } from "./types";
 import type { OverviewRouteUi } from "./use-overview-route";
 
@@ -54,6 +55,17 @@ export function OverviewRouteOverlay({
   const hasPendingCalculation = route.segments.some(({ calculatedLeg, mode }) =>
     Boolean(mode && !calculatedLeg),
   );
+  const legDetails = route.segments.flatMap(({ calculatedLeg, from, to }) =>
+    calculatedLeg
+      ? [
+          {
+            ...calculatedLeg,
+            fromLabel: from.entries[0].title,
+            toLabel: to.entries[0].title,
+          },
+        ]
+      : [],
+  );
 
   return (
     <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[calc(100%-4.5rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
@@ -65,7 +77,7 @@ export function OverviewRouteOverlay({
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">Overview route</p>
               <p className="truncate text-xs text-muted-foreground">
-                {route.segments.length} City{" "}
+                {route.segments.length} stage{" "}
                 {route.segments.length === 1 ? "connection" : "connections"}
                 {calculatedCount
                   ? ` · ${calculatedCount}/${route.segments.length} calculated`
@@ -101,12 +113,12 @@ export function OverviewRouteOverlay({
         {route.editing ? (
           <div className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2">
             <p className="mb-2 shrink-0 text-xs leading-4 text-muted-foreground sm:text-[11px]">
-              Choose how you&apos;ll travel between each pair of cities. Leave a connection as Not
-              set to keep a simple preview line.
+              Choose a travel mode for each stage connection. Calculation happens only when you
+              select Calculate route; an unset connection keeps its straight preview line.
             </p>
             <ol
-              className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 sm:max-h-56"
               aria-label="Overview route connections"
+              className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 sm:max-h-56"
             >
               {route.segments.map((segment, index) => {
                 const leg = segment.calculatedLeg;
@@ -143,10 +155,10 @@ export function OverviewRouteOverlay({
                       value={segment.mode ?? notSetValue}
                     >
                       <SelectTrigger
-                        aria-label={`Transport from ${segment.from.entries[0].title} to ${segment.to.entries[0].title}`}
+                        aria-label={`Travel from ${segment.from.entries[0].title} to ${segment.to.entries[0].title}`}
                         className="h-10"
                       >
-                        <SelectValue placeholder="Select transport" />
+                        <SelectValue placeholder="Select travel mode" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={notSetValue}>Not set · preview line</SelectItem>
@@ -165,21 +177,21 @@ export function OverviewRouteOverlay({
               {hasConfiguration ? (
                 <RouteIconButton
                   disabled={route.pending}
-                  label="Reset transport defaults"
+                  label="Reset Overview route"
                   onClick={route.reset}
-                  title="Reset transport defaults"
+                  title="Reset Overview route"
                 >
                   <RotateCcw className="size-4" />
                 </RouteIconButton>
               ) : null}
               <Button
-                disabled={
-                  route.pending || !hasPendingCalculation || Boolean(route.configurationError)
-                }
+                aria-busy={route.pending}
+                disabled={route.pending || !hasPendingCalculation}
                 onClick={() => void route.calculate()}
                 size="sm"
                 type="button"
               >
+                {route.pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
                 {route.pending
                   ? "Calculating…"
                   : hasPendingCalculation
@@ -189,12 +201,13 @@ export function OverviewRouteOverlay({
             </div>
           </div>
         ) : null}
-        {route.configurationError || route.error ? (
+        {!route.editing ? <RouteLegDetails legs={legDetails} /> : null}
+        {route.error ? (
           <p
             className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
             role="alert"
           >
-            {route.configurationError ?? route.error}
+            {route.error}
           </p>
         ) : null}
       </div>

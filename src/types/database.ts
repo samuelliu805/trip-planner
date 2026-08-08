@@ -324,6 +324,8 @@ export type Database = {
       }
       places: {
         Row: {
+          administrative_area_name: string | null
+          country_code: string | null
           custom_lat: number | null
           custom_lng: number | null
           custom_name: string | null
@@ -332,11 +334,16 @@ export type Database = {
           google_place_id: string | null
           id: string
           latitude: number | null
+          locality_kind: string | null
+          locality_name: string | null
+          locality_source: string | null
           longitude: number | null
           source: Database["public"]["Enums"]["place_source"]
           trip_id: string
         }
         Insert: {
+          administrative_area_name?: string | null
+          country_code?: string | null
           custom_lat?: number | null
           custom_lng?: number | null
           custom_name?: string | null
@@ -345,11 +352,16 @@ export type Database = {
           google_place_id?: string | null
           id?: string
           latitude?: number | null
+          locality_kind?: string | null
+          locality_name?: string | null
+          locality_source?: string | null
           longitude?: number | null
           source: Database["public"]["Enums"]["place_source"]
           trip_id: string
         }
         Update: {
+          administrative_area_name?: string | null
+          country_code?: string | null
           custom_lat?: number | null
           custom_lng?: number | null
           custom_name?: string | null
@@ -358,6 +370,9 @@ export type Database = {
           google_place_id?: string | null
           id?: string
           latitude?: number | null
+          locality_kind?: string | null
+          locality_name?: string | null
+          locality_source?: string | null
           longitude?: number | null
           source?: Database["public"]["Enums"]["place_source"]
           trip_id?: string
@@ -684,6 +699,8 @@ export type Database = {
         }
         Returns: string
       }
+      get_public_itinerary: { Args: { shared_token: string }; Returns: Json }
+      get_public_itinerary_v2: { Args: { shared_token: string }; Returns: Json }
       insert_trip_day: {
         Args: { before_day_number: number; target_trip_id: string }
         Returns: string
@@ -695,10 +712,6 @@ export type Database = {
           target_variant_id: string
         }
         Returns: string
-      }
-      get_public_itinerary: {
-        Args: { shared_token: string }
-        Returns: Json
       }
       is_trip_member: { Args: { target_trip_id: string }; Returns: boolean }
       is_trip_owner: { Args: { target_trip_id: string }; Returns: boolean }
@@ -722,6 +735,18 @@ export type Database = {
         }
         Returns: string
       }
+      reorder_itinerary_items: {
+        Args: { ordered_item_ids: string[]; target_day_id: string }
+        Returns: undefined
+      }
+      reorder_variant_days: {
+        Args: {
+          ordered_day_ids: string[]
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: undefined
+      }
       revoke_public_itinerary_link: {
         Args: { target_link_id: string }
         Returns: undefined
@@ -729,10 +754,6 @@ export type Database = {
       rotate_public_itinerary_link: {
         Args: { target_link_id: string }
         Returns: Json
-      }
-      reorder_itinerary_items: {
-        Args: { ordered_item_ids: string[]; target_day_id: string }
-        Returns: undefined
       }
       save_day_route_calculation: {
         Args: {
@@ -758,15 +779,6 @@ export type Database = {
         Args: { target_trip_id: string; target_variant_id: string }
         Returns: string
       }
-      update_route_variant_metadata: {
-        Args: {
-          target_trip_id: string
-          target_variant_id: string
-          variant_color: string
-          variant_name: string
-        }
-        Returns: string
-      }
       update_public_itinerary_link: {
         Args: {
           requested_allow_route_explore: boolean
@@ -781,6 +793,15 @@ export type Database = {
           target_link_id: string
         }
         Returns: Json
+      }
+      update_route_variant_metadata: {
+        Args: {
+          target_trip_id: string
+          target_variant_id: string
+          variant_color: string
+          variant_name: string
+        }
+        Returns: string
       }
       update_trip_plan: {
         Args: {
@@ -799,6 +820,21 @@ export type Database = {
           place_display_name: string
           place_formatted_address: string
           place_latitude: number
+          place_longitude: number
+          provider_place_id: string
+          target_trip_id: string
+        }
+        Returns: string
+      }
+      upsert_google_place_snapshot_v2: {
+        Args: {
+          place_administrative_area_name?: string
+          place_country_code?: string
+          place_display_name: string
+          place_formatted_address: string
+          place_latitude: number
+          place_locality_kind?: string
+          place_locality_name?: string
           place_longitude: number
           provider_place_id: string
           target_trip_id: string

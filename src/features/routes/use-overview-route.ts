@@ -4,12 +4,7 @@ import { useState } from "react";
 
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 
-import {
-  isOverviewRouteLeg,
-  neighboringOverviewCityConflict,
-  type OverviewStage,
-} from "./overview";
-import { neighboringCityError } from "./city-order";
+import { isOverviewRouteLeg, type OverviewStage } from "./overview";
 import { useCalculateOverviewRoute } from "./queries";
 import type { OverviewRouteMode } from "./types";
 
@@ -64,9 +59,6 @@ export function useOverviewRoute(
   const [storedState, setStoredState] = useState<OverviewRouteState | null>(null);
   const [editing, setEditing] = useState(false);
   const mutation = useCalculateOverviewRoute();
-  const configurationError = neighboringOverviewCityConflict(stages)
-    ? neighboringCityError()
-    : undefined;
   const currentState: OverviewRouteState =
     storedState?.stageKey === stageKey
       ? storedState
@@ -97,8 +89,6 @@ export function useOverviewRoute(
   });
 
   async function calculate() {
-    if (!segments.length) return;
-    if (configurationError) return;
     const changed = segments.filter(({ calculatedLeg, mode }) => mode && !calculatedLeg);
     if (!changed.length) {
       setEditing(false);
@@ -135,7 +125,6 @@ export function useOverviewRoute(
   return {
     calculate,
     calculatedLegs: currentState.calculatedLegs,
-    configurationError,
     editing,
     error: currentState.error,
     pending: mutation.isPending,

@@ -19,16 +19,25 @@ export function VariantComparisonMobileBar({
   return (
     <div className="absolute inset-x-2 bottom-2 z-20 flex min-h-14 items-center justify-between gap-3 rounded-lg border bg-background/95 px-3 py-2 shadow-lg backdrop-blur min-[900px]:hidden">
       <div className="min-w-0">
-        <h2 className="text-xs font-semibold">City comparison</h2>
+        <h2 className="text-xs font-semibold">
+          {comparison.dayNumber ? `Day ${comparison.dayNumber} routes` : "Overview comparison"}
+        </h2>
         <p className="truncate text-[11px] text-muted-foreground">
           Matrix: {active.name} · Map: read only
         </p>
       </div>
       <div className="flex shrink-0 gap-1.5">
-        <Button className="min-h-11 gap-1 px-2" onClick={onSummaryOpen} size="sm" variant="outline">
-          <BarChart3 aria-hidden="true" className="size-4" />
-          <span>Summary</span>
-        </Button>
+        {!comparison.dayNumber ? (
+          <Button
+            className="min-h-11 gap-1 px-2"
+            onClick={onSummaryOpen}
+            size="sm"
+            variant="outline"
+          >
+            <BarChart3 aria-hidden="true" className="size-4" />
+            <span>Summary</span>
+          </Button>
+        ) : null}
         <Button
           aria-label={
             "Choose visible routes. Showing " +

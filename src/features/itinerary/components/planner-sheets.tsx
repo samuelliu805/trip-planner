@@ -1,6 +1,7 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
+import { LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -52,8 +53,10 @@ type PlannerSheetsProps = {
   onCopyToSelectedDays: () => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onEditorClose: () => void;
+  onEditorDraftChange: (item: ItineraryItem | null) => void;
   onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
+  onItemCreated: (item: ItineraryItem) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
@@ -99,8 +102,10 @@ export function PlannerSheets({
   onCopyToSelectedDays,
   onDayMapLayerChange,
   onEditorClose,
+  onEditorDraftChange,
   onEditMapItem,
   onInteractionError,
+  onItemCreated,
   onMapExpandedChange,
   onMarkerClick,
   onMapModeChange,
@@ -149,7 +154,12 @@ export function PlannerSheets({
                 item={editor.item}
                 onCancel={onEditorClose}
                 onError={onInteractionError}
-                onSaved={onEditorClose}
+                onDraftChange={editor.item ? onEditorDraftChange : undefined}
+                onSaved={(savedItem) => {
+                  const created = !editor.item;
+                  onEditorClose();
+                  if (created) onItemCreated(savedItem);
+                }}
                 tripId={tripId}
                 type={editor.type}
                 unavailableTransportModes={unavailableTransportModes}
@@ -224,7 +234,7 @@ export function PlannerSheets({
                 >
                   <Checkbox
                     checked={source ? false : targetDays.has(day.id)}
-                    disabled={source}
+                    disabled={source || copyPending}
                     onCheckedChange={(checked) => {
                       const next = new Set(targetDays);
                       if (checked) next.add(day.id);
@@ -239,11 +249,20 @@ export function PlannerSheets({
             })}
           </div>
           <div className="flex justify-end gap-2 border-t p-4">
-            <Button onClick={() => onCopyDaysOpenChange(false)} variant="ghost">
+            <Button
+              disabled={copyPending}
+              onClick={() => onCopyDaysOpenChange(false)}
+              variant="ghost"
+            >
               Cancel
             </Button>
-            <Button disabled={!targetDays.size || copyPending} onClick={onCopyToSelectedDays}>
-              Copy items
+            <Button
+              aria-busy={copyPending}
+              disabled={!targetDays.size || copyPending}
+              onClick={onCopyToSelectedDays}
+            >
+              {copyPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              {copyPending ? "Copying…" : "Copy items"}
             </Button>
           </div>
         </SheetContent>

@@ -95,9 +95,11 @@ function placedItem(
   const placeId = overrides.place_id ?? "place-" + id;
   return item(id, variantId, dayId, type, {
     place: {
+      country_code: null,
       google_place_id: "google-" + placeId,
       id: placeId!,
       latitude,
+      locality_name: null,
       longitude,
     },
     place_id: placeId,
@@ -247,7 +249,7 @@ test("Phase 5C projection is trip-scoped, RLS-protected, lightweight, and determ
     assert.match(routeSchema, new RegExp('create policy "' + policy + '"[\\s\\S]*is_trip_member'));
 });
 
-test("Phase 5C City metrics preserve explicit occurrences, City-less days, and stay boundaries", () => {
+test("decision-summary locality metrics collapse adjacent stages and preserve later returns", () => {
   const days = [
     day("a-1", "route-a", 1, "2026-09-01"),
     day("a-2", "route-a", 2, "2026-09-02"),
@@ -281,7 +283,7 @@ test("Phase 5C City metrics preserve explicit occurrences, City-less days, and s
   );
 
   assert.deepEqual(summary.citySequence, ["Tokyo", "Kyoto", "Tokyo"]);
-  assert.equal(summary.cityStageCount, 4);
+  assert.equal(summary.cityStageCount, 3);
   assert.equal(summary.uniqueCityPlaceCount, 2);
   assert.ok(Math.abs(summary.citySpanMeters! - oneLeg * 2) < 1);
   assert.equal(summary.dayCount, 4, "the City-less second day remains in the horizon");
@@ -762,7 +764,10 @@ test("Phase 5C neutral deltas preserve unknowns, partial duration, and baseline 
     neutralDeltaAccessibleLabel("planning day", 1),
     "1 additional planning day versus Primary",
   );
-  assert.match(neutralDeltaAccessibleLabel("City span", -250), /less City span versus Primary/);
+  assert.match(
+    neutralDeltaAccessibleLabel("locality span", -250),
+    /less locality span versus Primary/,
+  );
   assert.equal(
     neutralDeltaAccessibleLabel("Hotel added", 2),
     "2 Hotel occurrences added versus Primary",
@@ -909,7 +914,7 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
   assert.match(ui, /Decision summary/);
   assert.match(ui, /Primary · baseline/);
   assert.match(ui, /\{isActive \? "Editing" : "Read only"\}/);
-  assert.match(ui, /City span · straight-line/);
+  assert.match(ui, /Locality span · straight-line/);
   assert.match(ui, /Current saved route distance by mode/);
   assert.match(ui, /Walk distance|\{label\} distance/);
   assert.doesNotMatch(ui, /Known day-route distance|Known duration|Nights unknown/);

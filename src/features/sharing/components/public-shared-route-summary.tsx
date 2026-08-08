@@ -5,6 +5,7 @@ import { transportModeLabels } from "@/features/itinerary/types";
 
 import { formatDistance, formatDuration } from "../presentation";
 import type { PublicItineraryItem, PublicSavedRoute } from "../types";
+import { PublicRouteLegDetails } from "./public-route-summary";
 
 export function PublicSharedRouteSummary({
   canExplore,
@@ -42,7 +43,10 @@ export function PublicSharedRouteSummary({
       ) : null}
       <ol className="relative space-y-1.5 before:absolute before:bottom-3 before:left-3.5 before:top-3 before:w-px before:bg-border">
         {stops.map((stop, index) => (
-          <li className="relative flex min-h-7 items-center gap-2 text-xs" key={stop.ref}>
+          <li
+            className="relative flex min-h-7 items-center gap-2 text-xs"
+            key={`${stop.ref}:${index}`}
+          >
             <span className="z-10 flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
               {index + 1}
             </span>
@@ -55,6 +59,9 @@ export function PublicSharedRouteSummary({
           </li>
         ))}
       </ol>
+      {route ? (
+        <PublicRouteLegDetails labels={route.stops.map(({ title }) => title)} legs={route.legs} />
+      ) : null}
       {omittedActivityCount ? (
         <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <MapPinOff aria-hidden="true" className="size-3.5 shrink-0" />

@@ -26,14 +26,40 @@ const itemLinkSchema = z.object({
   url: z.url().refine((url) => /^https?:\/\//i.test(url), "Use an HTTP(S) URL."),
 });
 
-export const placeSnapshotSchema = z.object({
-  displayName: z.string().trim().min(1).max(300),
-  formattedAddress: z.string().trim().max(500).optional(),
-  latitude: z.number().finite().min(-90).max(90),
-  longitude: z.number().finite().min(-180).max(180),
-  provider: z.literal("google"),
-  providerPlaceId: z.string().trim().min(1).max(300),
-});
+export const placeSnapshotSchema = z
+  .object({
+    administrativeAreaName: z.string().trim().min(1).max(300).optional(),
+    countryCode: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .optional(),
+    displayName: z.string().trim().min(1).max(300),
+    formattedAddress: z.string().trim().max(500).optional(),
+    latitude: z.number().finite().min(-90).max(90),
+    longitude: z.number().finite().min(-180).max(180),
+    localityKind: z
+      .enum([
+        "locality",
+        "postal_town",
+        "administrative_area_level_3",
+        "administrative_area_level_2",
+        "sublocality_level_1",
+        "sublocality",
+      ])
+      .optional(),
+    localityName: z.string().trim().min(1).max(300).optional(),
+    localitySource: z.literal("google_address_component").optional(),
+    provider: z.literal("google"),
+    providerPlaceId: z.string().trim().min(1).max(300),
+  })
+  .superRefine((value, context) => {
+    if (Boolean(value.localityName) !== Boolean(value.localityKind))
+      context.addIssue({
+        code: "custom",
+        message: "Place locality name and kind must be provided together.",
+        path: ["localityName"],
+      });
+  });
 
 export const carRentalDetailsSchema = z
   .object({
@@ -84,17 +110,21 @@ const itemBaseSchema = z.object({
   variantId: z.uuid(),
 });
 
+const createItemBaseSchema = itemBaseSchema.extend({
+  insertAfterItemId: z.uuid().nullable().optional(),
+});
+
 export const createItineraryItemSchema = z
   .discriminatedUnion("type", [
-    itemBaseSchema.extend({ type: z.literal("car_rental"), details: carRentalDetailsSchema }),
-    itemBaseSchema.extend({ type: z.literal("hotel"), details: addressDetailsSchema }),
-    itemBaseSchema.extend({ type: z.literal("meal"), details: mealDetailsSchema }),
-    itemBaseSchema.extend({ type: z.literal("transport"), details: transportDetailsSchema }),
-    itemBaseSchema.extend({ type: z.literal("activity"), details: activityDetailsSchema }),
+    createItemBaseSchema.extend({ type: z.literal("car_rental"), details: carRentalDetailsSchema }),
+    createItemBaseSchema.extend({ type: z.literal("hotel"), details: addressDetailsSchema }),
+    createItemBaseSchema.extend({ type: z.literal("meal"), details: mealDetailsSchema }),
+    createItemBaseSchema.extend({ type: z.literal("transport"), details: transportDetailsSchema }),
+    createItemBaseSchema.extend({ type: z.literal("activity"), details: activityDetailsSchema }),
     ...itineraryItemTypes
       .filter((type) => !["car_rental", "hotel", "meal", "transport", "activity"].includes(type))
       .map((type) =>
-        itemBaseSchema.extend({
+        createItemBaseSchema.extend({
           type: z.literal(type),
           details: genericDetailsSchema.optional().default({}),
         }),
@@ -209,6 +239,16 @@ export const removeTripDaySchema = z.object({
   tripId: z.uuid(),
   variantId: z.uuid(),
 });
+export const reorderVariantDaysSchema = z
+  .object({
+    orderedDayIds: z.array(z.uuid()).min(1).max(366),
+    tripId: z.uuid(),
+    variantId: z.uuid(),
+  })
+  .refine(
+    (value) => new Set(value.orderedDayIds).size === value.orderedDayIds.length,
+    "Days must be unique.",
+  );
 
 export const reorderItineraryItemsSchema = z
   .object({
@@ -241,5 +281,6 @@ export type DeleteItineraryItemInput = z.input<typeof deleteItineraryItemSchema>
 export type ClearItineraryItemsInput = z.input<typeof clearItineraryItemsSchema>;
 export type InsertTripDayInput = z.input<typeof insertTripDaySchema>;
 export type RemoveTripDayInput = z.input<typeof removeTripDaySchema>;
+export type ReorderVariantDaysInput = z.input<typeof reorderVariantDaysSchema>;
 export type ReorderItineraryItemsInput = z.input<typeof reorderItineraryItemsSchema>;
 export type CopyItineraryItemsInput = z.input<typeof copyItineraryItemsSchema>;

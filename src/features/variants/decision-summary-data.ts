@@ -40,7 +40,7 @@ export async function getVariantDecisionSummary(
     supabase
       .from("itinerary_items")
       .select(
-        "id, trip_id, variant_id, day_id, type, title, sort_order, place_id, details, place:places(id, google_place_id, latitude, longitude)",
+        "id, trip_id, variant_id, day_id, type, title, sort_order, place_id, details, place:places(id, google_place_id, latitude, longitude, locality_name, country_code)",
       )
       .eq("trip_id", tripId)
       .in("variant_id", variantIds)

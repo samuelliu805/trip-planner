@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LoaderCircle } from "lucide-react";
 
 import {
   AlertDialog,
@@ -53,6 +54,7 @@ type PlannerItemFormProps = {
   item?: ItineraryItem;
   onCancel: () => void;
   onError: (message: string) => void;
+  onDraftChange?: (item: ItineraryItem | null) => void;
   onSaved: (item: ItineraryItem) => void;
   tripId: string;
   type: ItineraryItemType;
@@ -65,6 +67,7 @@ export function PlannerItemForm({
   item,
   onCancel,
   onError,
+  onDraftChange,
   onSaved,
   tripId,
   type,
@@ -80,7 +83,6 @@ export function PlannerItemForm({
       : (item?.title ?? ""),
   );
   const [startTime, setStartTime] = useState(item?.start_time?.slice(0, 5) ?? "");
-  const [endTime, setEndTime] = useState(item?.end_time?.slice(0, 5) ?? "");
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [links, setLinks] = useState(() =>
     item?.links?.length
@@ -115,6 +117,48 @@ export function PlannerItemForm({
     const frame = requestAnimationFrame(() => titleRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [item, type]);
+
+  useEffect(() => {
+    if (!item || !onDraftChange) return;
+    const draftPlace = place
+      ? {
+          ...place,
+          id:
+            item.place?.provider === place.provider &&
+            item.place.providerPlaceId === place.providerPlaceId
+              ? item.place.id
+              : `draft-place-${place.providerPlaceId ?? item.id}`,
+        }
+      : null;
+    onDraftChange({
+      booking_url: links[0]?.url ?? null,
+      created_at: item.created_at,
+      day_id: dayId,
+      details: item.details,
+      end_time: null,
+      id: item.id,
+      links: item.links,
+      notes: notes || null,
+      place: draftPlace,
+      place_id: draftPlace?.id ?? null,
+      schedule_kind: startTime ? "exact" : "none",
+      schedule_text: item.schedule_text,
+      sort_order: item.sort_order,
+      start_time: startTime || null,
+      title: title.trim() || place?.displayName || itemCopy[type].label,
+      trip_id: tripId,
+      type,
+      updated_at: new Date().toISOString(),
+      variant_id: variantId,
+    });
+  }, [dayId, item, links, notes, onDraftChange, place, startTime, title, tripId, type, variantId]);
+
+  useEffect(
+    () => () => {
+      onDraftChange?.(null);
+    },
+    [onDraftChange],
+  );
 
   function save() {
     if (type === "location" && !place) {
@@ -151,8 +195,7 @@ export function PlannerItemForm({
               : type === "activity"
                 ? { location: placeText }
                 : {};
-    const supportsRange = ["location", "activity"].includes(type);
-    const supportsOneTime = ["car_rental", "meal"].includes(type);
+    const supportsTime = ["location", "activity", "car_rental", "meal"].includes(type);
     const supportsLink = !["location", "note"].includes(type);
     const supportsPlace = !["note", "transport", "flight", "train"].includes(type);
     const callbacks = {
@@ -161,15 +204,29 @@ export function PlannerItemForm({
     };
     const googlePlace =
       place?.provider === "google" && place.providerPlaceId
-        ? { ...place, provider: "google" as const, providerPlaceId: place.providerPlaceId }
+        ? {
+            administrativeAreaName: place.administrativeAreaName,
+            countryCode: place.countryCode,
+            displayName: place.displayName,
+            formattedAddress: place.formattedAddress,
+            latitude: place.latitude,
+            ...(place.localitySource === "google_address_component" &&
+              place.localityKind !== "legacy_city" && {
+                localityKind: place.localityKind,
+                localityName: place.localityName,
+                localitySource: "google_address_component" as const,
+              }),
+            longitude: place.longitude,
+            provider: "google" as const,
+            providerPlaceId: place.providerPlaceId,
+          }
         : undefined;
     const values = {
       bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
       links: supportsLink ? links : [],
       details: details as never,
-      endTime: supportsRange ? endTime : "",
       notes: type === "note" ? "" : notes,
-      startTime: supportsRange || supportsOneTime ? startTime : "",
+      startTime: supportsTime ? startTime : "",
       title: savedTitle,
       tripId,
       type,
@@ -258,18 +315,24 @@ export function PlannerItemForm({
         carAction={carAction}
         copyLabel={copy.label}
         dayId={dayId}
-        endTime={endTime}
         item={item}
         linkLabel={linkLabel}
         links={links}
         notes={notes}
-        setEndTime={setEndTime}
         setLinks={setLinks}
         setNotes={setNotes}
         setStartTime={setStartTime}
         startTime={startTime}
         type={type}
       />
+      {!item && type === "hotel" ? (
+        <div className="rounded-md border bg-muted/30 px-3 py-2.5">
+          <p className="text-sm font-medium">Position · End of day</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Hotel is always kept after the Day’s other Activities.
+          </p>
+        </div>
+      ) : null}
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error.message}
@@ -303,8 +366,15 @@ export function PlannerItemForm({
           <Button onClick={onCancel} size="sm" type="button" variant="ghost">
             Cancel
           </Button>
-          <Button disabled={pending || !canSave} size="sm" type="submit">
-            {pending ? "Saving…" : item ? "Save" : "Add item"}
+          <Button aria-busy={pending} disabled={pending || !canSave} size="sm" type="submit">
+            {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+            {pending
+              ? "Saving…"
+              : item
+                ? "Save"
+                : ["activity", "meal"].includes(type)
+                  ? "Next: place item"
+                  : "Add item"}
           </Button>
         </div>
       </div>

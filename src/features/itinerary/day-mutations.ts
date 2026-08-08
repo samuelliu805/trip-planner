@@ -7,18 +7,23 @@ import {
   insertTripDay,
   removeTripDay,
   reorderItineraryItems,
+  reorderVariantDays,
 } from "@/features/itinerary/day-actions";
 import {
   affectsDecisionSummary,
+  affectsLocalityProjection,
   plannerWorkspaceItems,
 } from "@/features/itinerary/mutation-impact";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { removeItem, replaceItem, requireData } from "@/features/itinerary/query-cache";
+import { reorderWorkspaceDays } from "@/features/itinerary/day-order";
+import { insertActivityAtPlacement } from "@/features/itinerary/activity-order";
 import type {
   CopyItineraryItemsInput,
   InsertTripDayInput,
   RemoveTripDayInput,
   ReorderItineraryItemsInput,
+  ReorderVariantDaysInput,
 } from "@/features/itinerary/schema";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 import {
@@ -53,6 +58,29 @@ export function useRemoveTripDay(tripId: string, variantId: string) {
   });
 }
 
+export function useReorderVariantDays(tripId: string, variantId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ReorderVariantDaysInput) =>
+      requireData(await reorderVariantDays(input)),
+    onMutate: async (input) => {
+      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      client.setQueryData(
+        plannerQueryKey(tripId, variantId),
+        reorderWorkspaceDays(previous, input.orderedDayIds),
+      );
+      return { previous };
+    },
+    onError: (_error, _input, context) =>
+      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
+    onSuccess: (workspace) => {
+      client.setQueryData(plannerQueryKey(tripId, variantId), workspace);
+      invalidateDayStructure(client, tripId);
+    },
+  });
+}
+
 export function useCopyItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
   return useMutation({
@@ -78,7 +106,22 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
         updated_at: new Date().toISOString(),
       }));
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
-        optimistic.reduce((workspace, item) => replaceItem(workspace, item), current),
+        current
+          ? {
+              ...current,
+              days: current.days.map((day) =>
+                day.id === input.targetDayId
+                  ? {
+                      ...day,
+                      items: optimistic.reduce(
+                        (items, item) => insertActivityAtPlacement(items, item),
+                        day.items,
+                      ),
+                    }
+                  : day,
+              ),
+            }
+          : current,
       );
       return { optimisticIds: optimistic.map(({ id }) => id), previous, sources };
     },
@@ -99,7 +142,7 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
           context?.optimisticIds.reduce((workspace, id) => removeItem(workspace, id), current),
         ),
       );
-      if (context?.sources.some(({ type }) => type === "location"))
+      if (context?.sources.some(({ type }) => affectsLocalityProjection(type)))
         void invalidateVariantComparison(client, tripId);
       if (context?.sources.some(({ type }) => affectsDecisionSummary(type)))
         void invalidateVariantDecisionSummary(client, tripId);
@@ -142,7 +185,7 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
       );
       return {
         previous,
-        reorderedCity: reorderedItems.some(({ type }) => type === "location"),
+        reorderedLocalitySource: reorderedItems.some(({ type }) => affectsLocalityProjection(type)),
         reorderedDecisionSummaryItem: reorderedItems.some(({ type }) =>
           affectsDecisionSummary(type),
         ),
@@ -156,7 +199,7 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
           replaceItem(current, item),
         ),
       );
-      if (context?.reorderedCity) void invalidateVariantComparison(client, tripId);
+      if (context?.reorderedLocalitySource) void invalidateVariantComparison(client, tripId);
       if (context?.reorderedDecisionSummaryItem)
         void invalidateVariantDecisionSummary(client, tripId);
     },

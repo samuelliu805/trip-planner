@@ -43,3 +43,10 @@ export function removeItems(workspace: PlannerWorkspace | undefined, itemIds: st
     })),
   };
 }
+
+export function projectWorkspaceDraft(
+  workspace: PlannerWorkspace,
+  draft: ItineraryItem | null,
+): PlannerWorkspace {
+  return draft ? (replaceItem(workspace, draft) ?? workspace) : workspace;
+}

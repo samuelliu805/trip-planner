@@ -8,6 +8,8 @@ import {
   ClipboardPaste,
   Copy,
   MoreHorizontal,
+  ListOrdered,
+  LoaderCircle,
   Plus,
   Settings2,
   Trash2,
@@ -45,11 +47,13 @@ export function PlannerToolbar({
   fillLabel,
   fillThroughDay,
   insertDay,
+  onArrangeActivities,
   interactionError,
   isEmpty,
   isFillDragging,
   mutating,
   pasteAvailableClipboard,
+  requestPending,
   requestClearSelection,
   removeDay,
   selectedCount,
@@ -77,11 +81,13 @@ export function PlannerToolbar({
   fillLabel: string;
   fillThroughDay?: number;
   insertDay: (position: number) => Promise<void>;
+  onArrangeActivities: (day: PlannerDay) => void;
   interactionError?: string;
   isEmpty: boolean;
   isFillDragging: boolean;
   mutating: boolean;
   pasteAvailableClipboard: () => Promise<void>;
+  requestPending: boolean;
   requestClearSelection: () => void;
   removeDay: (dayId: string) => Promise<void>;
   selectedCount: number;
@@ -150,6 +156,7 @@ export function PlannerToolbar({
                 day={selectedDay}
                 isOnlyDay={workspaceDayCount === 1}
                 location="mobilebar"
+                onArrange={onArrangeActivities}
                 onInsert={(position) => void insertDay(position)}
                 onRemove={(dayId) => void removeDay(dayId)}
                 pending={dayMutationPending}
@@ -169,11 +176,23 @@ export function PlannerToolbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="xl:hidden" onSelect={copySelectionToClipboard}>
-                <Copy className="size-4" />
+              <DropdownMenuItem
+                className="xl:hidden"
+                disabled={requestPending}
+                onSelect={copySelectionToClipboard}
+              >
+                {requestPending ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <Copy className="size-4" />
+                )}
                 Copy selected cells
               </DropdownMenuItem>
-              <DropdownMenuItem className="xl:hidden" onSelect={pasteAvailableClipboard}>
+              <DropdownMenuItem
+                className="xl:hidden"
+                disabled={requestPending}
+                onSelect={pasteAvailableClipboard}
+              >
                 <ClipboardPaste className="size-4" />
                 Paste
               </DropdownMenuItem>
@@ -185,10 +204,18 @@ export function PlannerToolbar({
                 <Trash2 className="size-4" />
                 Clear selected cells
               </DropdownMenuItem>
-              <DropdownMenuItem className="xl:hidden" onSelect={() => setCopyDaysOpen(true)}>
+              <DropdownMenuItem
+                className="xl:hidden"
+                disabled={requestPending}
+                onSelect={() => setCopyDaysOpen(true)}
+              >
                 Copy to days…
               </DropdownMenuItem>
-              <DropdownMenuItem className="xl:hidden" onSelect={copyPreviousDay}>
+              <DropdownMenuItem
+                className="xl:hidden"
+                disabled={requestPending}
+                onSelect={copyPreviousDay}
+              >
                 Copy previous day
               </DropdownMenuItem>
               <DropdownMenuSeparator className="xl:hidden" />
@@ -199,6 +226,12 @@ export function PlannerToolbar({
                 <Plus className="size-4" />
                 Add day at end
               </DropdownMenuItem>
+              {activeDay ? (
+                <DropdownMenuItem onSelect={() => onArrangeActivities(activeDay)}>
+                  <ListOrdered className="size-4" />
+                  Arrange Activities
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setSettingsOpen(true)}>
                 <Settings2 className="size-4" />
@@ -210,7 +243,7 @@ export function PlannerToolbar({
       </header>
       <div className="hidden h-10 shrink-0 items-center justify-between gap-3 border-b bg-muted/20 px-3 xl:flex">
         <div className="flex items-center gap-1 whitespace-nowrap">
-          {selectedCount === 1 && !activeCellAtCapacity ? (
+          {selectedCount === 1 && !activeCellAtCapacity && activeCategory?.id !== "city" ? (
             <Button
               className="h-7 px-2.5 text-xs"
               onClick={() => {
@@ -235,12 +268,28 @@ export function PlannerToolbar({
           </Button>
           <Button
             className="h-7 px-2 text-xs"
+            disabled={!activeDay}
+            onClick={() => activeDay && onArrangeActivities(activeDay)}
+            size="sm"
+            variant="ghost"
+          >
+            <ListOrdered className="size-3.5" />
+            Arrange Activities
+          </Button>
+          <Button
+            aria-busy={requestPending}
+            className="h-7 px-2 text-xs"
+            disabled={requestPending}
             onClick={copySelectionToClipboard}
             size="sm"
             variant="ghost"
           >
-            <Copy className="size-3.5" />
-            Copy
+            {requestPending ? (
+              <LoaderCircle className="size-3.5 animate-spin" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
+            {requestPending ? "Working…" : "Copy"}
           </Button>
           <Button
             className="h-7 px-2 text-xs"
@@ -264,11 +313,13 @@ export function PlannerToolbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onSelect={() => setCopyDaysOpen(true)}>
+              <DropdownMenuItem disabled={requestPending} onSelect={() => setCopyDaysOpen(true)}>
                 Copy to days…
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={copyPreviousDay}>Copy previous day</DropdownMenuItem>
-              <DropdownMenuItem onSelect={pasteAvailableClipboard}>
+              <DropdownMenuItem disabled={requestPending} onSelect={copyPreviousDay}>
+                Copy previous day
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={requestPending} onSelect={pasteAvailableClipboard}>
                 <ClipboardPaste className="size-4" />
                 Paste
               </DropdownMenuItem>
