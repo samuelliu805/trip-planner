@@ -31,7 +31,11 @@ export function PublicDayJourney({
         selectedItemRef={selectedItemRef}
       />
 
-      <PublicTransportRow items={transport} />
+      <PublicTransportRow
+        items={transport}
+        onSelectItem={onSelectItem}
+        selectedItemRef={selectedItemRef}
+      />
 
       {notes.length ? (
         <section aria-label="Notes" className="mt-1 border-t py-2">

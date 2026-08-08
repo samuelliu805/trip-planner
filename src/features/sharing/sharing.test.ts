@@ -188,13 +188,13 @@ test("read-only travel text separates transfers from concise rental actions", ()
     title: "Pickup",
     type: "car_rental" as const,
   } satisfies PublicItineraryItem;
-  assert.equal(publicRentalItemLabel(rental), "Pickup: 08:30 · Hertz · Kansai Airport");
+  assert.equal(publicRentalItemLabel(rental), "Rental car pickup: 08:30 · Hertz · Kansai Airport");
   assert.equal(
     publicRentalItemLabel({
       ...rental,
       carRental: { action: "pickup", company: "Kansai Airport" },
     }),
-    "Pickup: 08:30 · Kansai Airport",
+    "Rental car pickup: 08:30 · Kansai Airport",
   );
   assert.equal(
     publicTransferItemLabel({
@@ -738,6 +738,7 @@ test("route exploration is local-only and never exposes owner persistence contro
   );
   assert.doesNotMatch(actions, /saveDayRoute|upsert|\.insert\(|\.update\(/);
   assert.match(workspace, /calculatePublicOverviewRoute/);
+  assert.match(workspace, /selectedItemRef \? \[selectedItemRef\] : \[\]/);
   assert.match(workspace, /overviewCalculation/);
   assert.match(actions, /must start at the previous day Hotel/);
   assert.match(actions, /must end at the current day Hotel/);
@@ -789,9 +790,12 @@ test("public read-only modes share separate one-line transport and rental rows",
   assert.match(transport, /aria-label="Transport"/);
   assert.match(transport, /join\(", "\)/);
   assert.match(transport, /truncate whitespace-nowrap/);
+  assert.match(transport, /text-sm/);
   assert.match(transport, /<Route/);
   assert.match(transport, /<CarFront/);
-  assert.match(transport, /Rental car:/);
-  assert.doesNotMatch(transport, /<button|rounded-full|overflow-x-auto/);
+  assert.match(transport, /hasMapLocation/);
+  assert.match(transport, /data-public-item-ref/);
+  assert.match(transport, /Focus map on/);
+  assert.doesNotMatch(transport, /rounded-full|overflow-x-auto/);
   assert.doesNotMatch(itemLine, /compactTravel|publicTransferItemLabel|compactRental/);
 });

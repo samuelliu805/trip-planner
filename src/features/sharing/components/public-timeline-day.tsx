@@ -66,7 +66,11 @@ export function PublicTimelineDay({
           selectedItemRef={selectedItemRef}
         />
 
-        <PublicTransportRow items={travel} />
+        <PublicTransportRow
+          items={travel}
+          onSelectItem={(itemRef) => onSelectItem(itemRef, day.ref)}
+          selectedItemRef={selectedItemRef}
+        />
 
         {notes.length ? (
           <section aria-label="Shared notes" className="mt-2 border-t pt-3">

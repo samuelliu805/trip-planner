@@ -33,9 +33,9 @@ export function publicRentalItemLabel(item: PublicItineraryItem) {
   const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const rentalAction = item.carRental?.action
     ? item.carRental.action === "pickup"
-      ? "Pickup"
-      : "Return"
-    : "Rental";
+      ? "Rental car pickup"
+      : "Rental car return"
+    : "Rental car";
   const details = uniqueLabelParts([
     time,
     item.carRental?.company ?? item.title,

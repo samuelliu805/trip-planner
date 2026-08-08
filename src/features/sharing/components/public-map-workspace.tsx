@@ -120,6 +120,7 @@ function PublicMapWorkspaceContent({
   const dayMarkerRefs = new Set([
     ...candidates.map(({ ref }) => ref),
     ...(savedRoute?.stops.map(({ ref }) => ref) ?? []),
+    ...(selectedItemRef ? [selectedItemRef] : []),
   ]);
   const visibleMarkers =
     routeScope === "overview"
