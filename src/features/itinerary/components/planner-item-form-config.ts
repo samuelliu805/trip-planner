@@ -1,5 +1,43 @@
 import type { ItineraryItemType } from "@/features/itinerary/types";
 
+const semanticActionLabels = new Set([
+  "Ticket",
+  "Booking",
+  "Menu",
+  "Website",
+  "Check in",
+  "Open",
+  "Directions",
+]);
+
+export function normalizedActionLabel(label: string) {
+  return semanticActionLabels.has(label) ? label : "Open";
+}
+
+export function itemFormFieldLabels(type: ItineraryItemType) {
+  const placeLabel =
+    type === "location"
+      ? "City location"
+      : type === "hotel"
+        ? "Hotel location"
+        : type === "car_rental"
+          ? "Address"
+          : "Location";
+  const linkLabel =
+    type === "hotel"
+      ? "Hotel link"
+      : type === "meal"
+        ? "Restaurant link"
+        : type === "car_rental"
+          ? "Rental link"
+          : type === "activity"
+            ? "Activity link"
+            : type === "transport"
+              ? "Transport link"
+              : "Link";
+  return { linkLabel, placeLabel };
+}
+
 export const itemCopy: Record<ItineraryItemType, { label: string; placeholder: string }> = {
   activity: { label: "Activity", placeholder: "e.g. Louvre Museum" },
   car_rental: { label: "Car rental", placeholder: "" },

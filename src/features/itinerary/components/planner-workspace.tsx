@@ -1,308 +1,35 @@
 "use client";
 
-import { useIsMutating } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
 import { LoaderCircle } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
 
-import { PlannerClearCellsDialog } from "@/features/itinerary/components/planner-clear-cells-dialog";
-import { PlannerWorkspaceEventBoundary } from "@/features/itinerary/components/planner-workspace-event-boundary";
-import { PlannerMatrix } from "@/features/itinerary/components/planner-matrix";
-import {
-  categories,
-  isCategoryAtCapacity,
-  plannerSelectionSize,
-  type EditorState,
-} from "@/features/itinerary/components/planner-config";
-import { PlannerSheets } from "@/features/itinerary/components/planner-sheets";
-import { PlannerToolbar } from "@/features/itinerary/components/planner-toolbar";
-import { ArrangeActivitiesSheet } from "@/features/itinerary/components/arrange-activities-sheet";
-import {
-  initialPlannerSelection,
-  selectionBounds,
-  type GridCoordinate,
-} from "@/features/itinerary/grid-interactions";
-import { usePlannerWorkspace } from "@/features/itinerary/planner-query";
-import { usePlannerClipboard } from "@/features/itinerary/hooks/use-planner-clipboard";
-import { usePlannerInteractions } from "@/features/itinerary/hooks/use-planner-interactions";
-import { usePlannerMap } from "@/features/itinerary/hooks/use-planner-map";
-import { usePlannerMutations } from "@/features/itinerary/hooks/use-planner-mutations";
-import {
-  normalizeTransportMode,
-  type ItineraryItem,
-  type PlannerVariant,
-  type PlannerWorkspace as PlannerWorkspaceData,
-} from "@/features/itinerary/types";
-import { projectWorkspaceDraft } from "@/features/itinerary/query-cache";
-import type { Tables } from "@/types/database";
-import { useDayRoute } from "@/features/routes/use-day-route";
-import { RouteVariantControls } from "@/features/variants/components/route-variant-controls";
-import { useRouteVariants } from "@/features/variants/queries";
-
-type PlannerWorkspaceProps = {
-  deleteError: boolean;
-  initialVariants: PlannerVariant[];
-  initialWorkspace: PlannerWorkspaceData;
-  settings: React.ReactNode;
-  shareControls?: React.ReactNode;
-  trip: Tables<"trips">;
-};
+import { ArrangeActivitiesSheet } from "./arrange-activities-sheet";
+import { PlannerClearCellsDialog } from "./planner-clear-cells-dialog";
+import { PlannerMatrix } from "./planner-matrix";
+import { PlannerSheets } from "./planner-sheets";
+import { PlannerToolbar } from "./planner-toolbar";
+import { PlannerWorkspaceEventBoundary } from "./planner-workspace-event-boundary";
+import type { PlannerWorkspaceProps } from "./planner-workspace-types";
+import { usePlannerWorkspaceController } from "../hooks/use-planner-workspace-controller";
+import { RouteVariantControls } from "../../variants/components/route-variant-controls";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
   return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
 }
 
-function PlannerWorkspaceVariant({
-  deleteError,
-  initialVariants,
-  initialWorkspace,
-  settings,
-  shareControls,
-  trip,
-}: PlannerWorkspaceProps) {
-  const { data: workspace = initialWorkspace, error: workspaceError } = usePlannerWorkspace(
-    trip.id,
-    initialWorkspace.variant.id,
-    initialWorkspace,
-  );
-  const { data: variants = initialVariants } = useRouteVariants(trip.id, initialVariants);
-  const initialSelection = initialPlannerSelection(
-    initialWorkspace.days.length,
-    categories.findIndex(({ id }) => id === "city"),
-  );
-  const [split, setSplit] = useState(58);
-  const [selectionAnchor, setSelectionAnchor] = useState<GridCoordinate>(() => initialSelection);
-  const [selectionEnd, commitSelectionEnd] = useState<GridCoordinate>(() => initialSelection);
-  const [selectedDayRow, setSelectedDayRow] = useState<number | null>(null);
-  const [editor, setEditor] = useState<EditorState | null>(null);
-  const [draftItem, setDraftItem] = useState<ItineraryItem | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [arrangeActivitiesRequest, setArrangeActivitiesRequest] = useState<{
-    dayId: string;
-    initialMovingItemId?: string;
-  }>();
-  const [mapExpanded, setMapExpanded] = useState(false);
-  const [interactionError, setInteractionError] = useState<string>();
-  const [clearTargetItems, setClearTargetItems] = useState<
-    PlannerWorkspaceData["days"][number]["items"]
-  >([]);
-  const [isFillDragging, setIsFillDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const selectionEndRef = useRef(selectionEnd);
-  const fillDragging = useRef(false);
-  const fillFrame = useRef<number | null>(null);
-  const fillSourceRight = useRef(0);
-  const rangeJustSelected = useRef(false);
-  useEffect(() => {
-    selectionEndRef.current = selectionEnd;
-  }, [selectionEnd]);
-  const projectedWorkspace = useMemo(
-    () => projectWorkspaceDraft(workspace, draftItem),
-    [draftItem, workspace],
-  );
-  const mutating = useIsMutating() > 0;
-  const selectedCount = plannerSelectionSize(selectionAnchor, selectionEnd);
-  const selectedDay = selectedDayRow === null ? null : projectedWorkspace.days[selectedDayRow];
-  const activeDay = projectedWorkspace.days[selectionEnd.row];
-  const activeCategory = categories[selectionEnd.column];
-  const activeCellAtCapacity = isCategoryAtCapacity(activeDay, activeCategory);
-  const unavailableTransportModes = editor
-    ? (projectedWorkspace.days
-        .find((day) => day.id === editor.dayId)
-        ?.items.filter((item) => item.type === "transport" && item.id !== editor.item?.id)
-        .map((item) => normalizeTransportMode((item.details as Record<string, string>).mode)) ?? [])
-    : [];
-  const visibleSelectionBounds = selectionBounds(selectionAnchor, selectionEnd);
-  const selectedItems = useMemo(
-    () =>
-      projectedWorkspace.days
-        .slice(visibleSelectionBounds.top, visibleSelectionBounds.bottom + 1)
-        .flatMap((day) =>
-          categories
-            .slice(visibleSelectionBounds.left, visibleSelectionBounds.right + 1)
-            .flatMap((category) => day.items.filter((item) => category.types.includes(item.type))),
-        ),
-    [
-      visibleSelectionBounds.bottom,
-      visibleSelectionBounds.left,
-      visibleSelectionBounds.right,
-      visibleSelectionBounds.top,
-      projectedWorkspace.days,
-    ],
-  );
-  const itemCount = projectedWorkspace.days.reduce((count, day) => count + day.items.length, 0);
-  const dateRange =
-    trip.start_date && trip.end_date
-      ? `${format(parseISO(trip.start_date), "MMM d")} – ${format(parseISO(trip.end_date), "MMM d, yyyy")}`
-      : `${trip.day_count} planning ${trip.day_count === 1 ? "day" : "days"} · Dates not set`;
-  const gridTemplate = `minmax(520px, ${split}fr) 4px minmax(360px, ${100 - split}fr)`;
-  const routeDay = activeDay ?? selectedDay ?? projectedWorkspace.days[0];
-  const dayRoute = useDayRoute(projectedWorkspace, routeDay, trip.id);
-  const arrangeActivitiesDay = projectedWorkspace.days.find(
-    ({ id }) => id === arrangeActivitiesRequest?.dayId,
-  );
-
-  const {
-    clearItems,
-    clearPending,
-    dayMutationPending,
-    deleteItem,
-    insertDay,
-    itemOrderPending,
-    reorderItems,
-    removeDay,
-  } = usePlannerMutations(trip.id, workspace.variant.id, setInteractionError);
-
-  function requestClearSelection() {
-    if (!selectedItems.length) return;
-    setInteractionError(undefined);
-    setClearTargetItems(selectedItems);
-  }
-
-  async function confirmClearSelection() {
-    const cleared = await clearItems(clearTargetItems);
-    if (!cleared) return;
-    clearTargetItems.forEach(({ id }) => dayRoute.removeItem(id));
-    if (editor?.item && clearTargetItems.some(({ id }) => id === editor.item?.id)) setEditor(null);
-    setSelectedItemId(undefined);
-    setClearTargetItems([]);
-  }
-
-  function setSelectionEnd(coordinate: GridCoordinate) {
-    selectionEndRef.current = coordinate;
-    if (!fillDragging.current) {
-      commitSelectionEnd(coordinate);
-      return;
-    }
-    if (fillFrame.current !== null) return;
-    fillFrame.current = requestAnimationFrame(() => {
-      fillFrame.current = null;
-      commitSelectionEnd(selectionEndRef.current);
-    });
-  }
-
-  const {
-    compactMapEmptyState,
-    compactMapLines,
-    compactMapMarkers,
-    compactMapViewportKey,
-    comparison,
-    comparisonSheetOpen,
-    decisionSummary,
-    decisionSummaryPanelOpen,
-    decisionSummarySheetOpen,
-    dayCityLayerAvailable,
-    dayMapLayer,
-    enterComparison,
-    exitComparison,
-    mapEmptyState,
-    mapLines,
-    mapMode,
-    mapMarkers,
-    mapViewportKey,
-    overviewRoute,
-    selectedMapItem,
-    selectMarker,
-    setComparisonSheetOpen,
-    setDecisionSummaryPanelOpen,
-    setDecisionSummarySheetOpen,
-    setDayMapLayer,
-    setMapModeFromSelection,
-    setSelectedItemId,
-    setMapMode,
-  } = usePlannerMap(
-    projectedWorkspace,
-    selectionEnd,
-    setSelectionAnchor,
-    setSelectionEnd,
-    dayRoute,
-    variants,
-  );
-
-  function editMapItem(itemId: string) {
-    for (const day of projectedWorkspace.days) {
-      const item = day.items.find(({ id }) => id === itemId);
-      if (item) {
-        setEditor({ dayId: day.id, item, type: item.type });
-        return;
-      }
-    }
-  }
-
-  const {
-    clipboardPayload,
-    copyDaysOpen,
-    copyPreviousDay,
-    copySelectionToClipboard,
-    copyToSelectedDays,
-    fillDown,
-    internalClipboard,
-    pasteAvailableClipboard,
-    pastePayload,
-    requestPending,
-    setCopyDaysOpen,
-    setInternalClipboard,
-    setTargetDays,
-    targetDays,
-  } = usePlannerClipboard({
-    selectionAnchor,
-    selectionEnd,
-    setInteractionError,
-    tripId: trip.id,
-    workspace,
-  });
-
-  function changeMapModeAndSelection(mode: Parameters<typeof setMapMode>[0]) {
-    setMapMode(mode);
-    if (mode !== "overview") return;
-    setSelectedDayRow(null);
-    setSelectedItemId(undefined);
-    setSelectionAnchor({ column: -1, row: -1 });
-    setSelectionEnd({ column: -1, row: -1 });
-  }
-
-  const {
-    focusCell,
-    handleCellKey,
-    openEditorFromDoubleClick,
-    selectItem,
-    selectDay,
-    startFill,
-    startRangeSelection,
-    startResize,
-  } = usePlannerInteractions({
-    containerRef,
-    fillDown,
-    fillDragging,
-    fillFrame,
-    fillSourceRight,
-    rangeJustSelected,
-    selectionAnchor,
-    selectionEnd,
-    selectionEndRef,
-    setEditor,
-    setInteractionError,
-    setIsFillDragging,
-    setSelectedDayRow,
-    setSelectedItemId,
-    setMapMode: setMapModeFromSelection,
-    setSelectionAnchor,
-    setSelectionEnd,
-    setSplit,
-    workspace,
-  });
+function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
+  const c = usePlannerWorkspaceController(props);
 
   return (
     <PlannerWorkspaceEventBoundary
-      clipboardPayload={clipboardPayload}
-      internalClipboard={internalClipboard}
-      onClearRequest={requestClearSelection}
-      pastePayload={pastePayload}
-      selectedItemCount={selectedItems.length}
-      setInteractionError={setInteractionError}
-      setInternalClipboard={setInternalClipboard}
+      clipboardPayload={c.clipboard.clipboardPayload}
+      internalClipboard={c.clipboard.internalClipboard}
+      onClearRequest={c.requestClearSelection}
+      pastePayload={c.clipboard.pastePayload}
+      selectedItemCount={c.selectedItems.length}
+      setInteractionError={c.setInteractionError}
+      setInternalClipboard={c.clipboard.setInternalClipboard}
     >
-      {requestPending ? (
+      {c.clipboard.requestPending ? (
         <div
           aria-live="polite"
           className="fixed inset-0 z-[120] flex items-center justify-center bg-background/60 backdrop-blur-[1px]"
@@ -315,199 +42,202 @@ function PlannerWorkspaceVariant({
         </div>
       ) : null}
       <PlannerToolbar
-        activeCategory={activeCategory}
-        activeCellAtCapacity={activeCellAtCapacity}
-        activeDay={activeDay}
-        copyPreviousDay={copyPreviousDay}
-        copySelectionToClipboard={copySelectionToClipboard}
-        clearItemCount={selectedItems.length}
-        clearPending={clearPending}
-        dateRange={dateRange}
-        dayMutationPending={dayMutationPending}
-        deleteError={deleteError}
-        fillLabel={categories[selectionAnchor.column]?.label ?? "this column"}
-        fillThroughDay={workspace.days[selectionEnd.row]?.day_number}
-        insertDay={insertDay}
-        onArrangeActivities={(day) => setArrangeActivitiesRequest({ dayId: day.id })}
-        interactionError={interactionError}
-        isEmpty={itemCount === 0}
-        isFillDragging={isFillDragging}
-        mutating={mutating}
-        pasteAvailableClipboard={pasteAvailableClipboard}
-        requestPending={requestPending}
-        requestClearSelection={requestClearSelection}
-        removeDay={removeDay}
-        selectedCount={selectedCount}
-        selectedDay={selectedDay}
-        setCopyDaysOpen={setCopyDaysOpen}
-        setEditor={setEditor}
-        setInteractionError={setInteractionError}
-        setSettingsOpen={setSettingsOpen}
-        shareControls={shareControls}
-        trip={trip}
-        workspaceDayCount={projectedWorkspace.days.length}
-        workspaceError={Boolean(workspaceError)}
+        activeCategory={c.activeCategory}
+        activeCellAtCapacity={c.activeCellAtCapacity}
+        activeDay={c.activeDay}
+        clearItemCount={c.selectedItems.length}
+        clearPending={c.clearPending}
+        copyPreviousDay={c.clipboard.copyPreviousDay}
+        copySelectionToClipboard={c.clipboard.copySelectionToClipboard}
+        dateRange={c.dateRange}
+        dayMutationPending={c.dayMutationPending}
+        deleteError={props.deleteError}
+        fillLabel={c.fillLabel}
+        fillThroughDay={c.workspace.days[c.selectionEnd.row]?.day_number}
+        insertDay={c.insertDay}
+        interactionError={c.interactionError}
+        isEmpty={c.itemCount === 0}
+        isFillDragging={c.isFillDragging}
+        mutating={c.mutating}
+        onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
+        pasteAvailableClipboard={c.clipboard.pasteAvailableClipboard}
+        removeDay={c.removeDay}
+        requestClearSelection={c.requestClearSelection}
+        requestPending={c.clipboard.requestPending}
+        selectedCount={c.selectedCount}
+        selectedDay={c.selectedDay}
+        setCopyDaysOpen={c.clipboard.setCopyDaysOpen}
+        setEditor={c.setEditor}
+        setInteractionError={c.setInteractionError}
+        setSettingsOpen={c.setSettingsOpen}
+        shareControls={props.shareControls}
+        trip={props.trip}
+        workspaceDayCount={c.projectedWorkspace.days.length}
+        workspaceError={Boolean(c.workspaceError)}
         variantControls={
           <RouteVariantControls
-            activeVariantId={workspace.variant.id}
-            comparisonBlockingReason={comparison.blockingReason}
+            activeVariantId={c.workspace.variant.id}
+            comparisonBlockingReason={c.map.comparison.blockingReason}
             onCompare={() => {
-              enterComparison();
-              setMapExpanded(true);
+              c.map.enterComparison();
+              c.setMapExpanded(true);
             }}
-            tripId={trip.id}
-            variants={variants}
+            tripId={props.trip.id}
+            variants={c.variants}
           />
         }
       />
       <PlannerMatrix
-        compactMapEmptyState={compactMapEmptyState}
-        compactMapLines={compactMapLines}
-        compactMapMarkers={compactMapMarkers}
-        compactMapViewportKey={compactMapViewportKey}
-        comparison={comparison}
-        decisionSummary={decisionSummary}
-        decisionSummaryPanelOpen={decisionSummaryPanelOpen}
-        containerRef={containerRef}
-        dayCityLayerAvailable={dayCityLayerAvailable}
-        dayMapLayer={dayMapLayer}
-        dayMutationPending={dayMutationPending}
-        dayRoute={dayRoute}
-        deleteItem={deleteItem}
-        fillDragging={fillDragging}
-        fillSourceRight={fillSourceRight}
-        focusCell={focusCell}
-        gridTemplate={gridTemplate}
-        handleCellKey={handleCellKey}
-        insertDay={insertDay}
-        isFillDragging={isFillDragging}
-        mapEmptyState={mapEmptyState}
-        mapLines={mapLines}
-        mapMode={mapMode}
-        mapMarkers={mapMarkers}
-        mapViewportKey={mapViewportKey}
-        onArrangeActivities={(day) => setArrangeActivitiesRequest({ dayId: day.id })}
-        onMapExpand={() => setMapExpanded(true)}
-        onComparisonExit={exitComparison}
-        onComparisonSheetOpen={() => setComparisonSheetOpen(true)}
-        onDecisionSummaryOpen={() => setDecisionSummaryPanelOpen(true)}
-        onDecisionSummaryPanelClose={() => setDecisionSummaryPanelOpen(false)}
-        onDayMapLayerChange={setDayMapLayer}
-        onEditMapItem={editMapItem}
-        onMarkerClick={selectMarker}
-        onMapModeChange={changeMapModeAndSelection}
-        onMapSelectionClear={() => setSelectedItemId(undefined)}
-        overviewRoute={overviewRoute}
-        openEditorFromDoubleClick={openEditorFromDoubleClick}
-        removeDay={removeDay}
-        selectedCount={selectedCount}
-        selectDay={selectDay}
-        selectedDayRow={selectedDayRow}
-        selectedMapItem={selectedMapItem}
-        selectionAnchor={selectionAnchor}
-        selectionEnd={selectionEnd}
-        selectionEndRef={selectionEndRef}
-        setEditor={setEditor}
-        selectItem={selectItem}
-        setSelectionEnd={setSelectionEnd}
-        setSplit={setSplit}
-        split={split}
-        startFill={startFill}
-        startRangeSelection={startRangeSelection}
-        startResize={startResize}
-        tripTitle={trip.title}
-        visibleSelectionBounds={visibleSelectionBounds}
-        workspace={projectedWorkspace}
+        compactMapEmptyState={c.map.compactMapEmptyState}
+        compactMapLines={c.map.compactMapLines}
+        compactMapMarkers={c.map.compactMapMarkers}
+        compactMapViewportKey={c.map.compactMapViewportKey}
+        comparison={c.map.comparison}
+        containerRef={c.containerRef}
+        dayCityLayerAvailable={c.map.dayCityLayerAvailable}
+        dayMapLayer={c.map.dayMapLayer}
+        dayMutationPending={c.dayMutationPending}
+        dayRoute={c.dayRoute}
+        decisionSummary={c.map.decisionSummary}
+        decisionSummaryPanelOpen={c.map.decisionSummaryPanelOpen}
+        deleteItem={c.deleteItem}
+        fillDragging={c.fillDragging}
+        fillSourceRight={c.fillSourceRight}
+        focusCell={c.interactions.focusCell}
+        gridTemplate={c.gridTemplate}
+        handleCellKey={c.interactions.handleCellKey}
+        insertDay={c.insertDay}
+        isFillDragging={c.isFillDragging}
+        mapEmptyState={c.map.mapEmptyState}
+        mapLines={c.map.mapLines}
+        mapMarkers={c.map.mapMarkers}
+        mapMode={c.map.mapMode}
+        mapViewportKey={c.map.mapViewportKey}
+        onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
+        onComparisonExit={c.map.exitComparison}
+        onComparisonSheetOpen={() => c.map.setComparisonSheetOpen(true)}
+        onDayMapLayerChange={c.map.setDayMapLayer}
+        onDecisionSummaryOpen={() => c.map.setDecisionSummaryPanelOpen(true)}
+        onDecisionSummaryPanelClose={() => c.map.setDecisionSummaryPanelOpen(false)}
+        onEditMapItem={c.editMapItem}
+        onMapExpand={() => c.setMapExpanded(true)}
+        onMapModeChange={c.changeMapModeAndSelection}
+        onMapSelectionClear={() => c.map.setSelectedItemId(undefined)}
+        onMarkerClick={c.map.selectMarker}
+        openEditorFromDoubleClick={c.interactions.openEditorFromDoubleClick}
+        overviewRoute={c.map.overviewRoute}
+        removeDay={c.removeDay}
+        selectedCount={c.selectedCount}
+        selectedDayRow={c.selectedDayRow}
+        selectedMapItem={c.map.selectedMapItem}
+        selectionAnchor={c.selectionAnchor}
+        selectionEnd={c.selectionEnd}
+        selectionEndRef={c.selectionEndRef}
+        selectDay={c.interactions.selectDay}
+        selectItem={c.interactions.selectItem}
+        setEditor={c.setEditor}
+        setSelectionEnd={c.setSelectionEnd}
+        setSplit={c.setSplit}
+        split={c.split}
+        startFill={c.interactions.startFill}
+        startRangeSelection={c.interactions.startRangeSelection}
+        startResize={c.interactions.startResize}
+        tripTitle={props.trip.title}
+        visibleSelectionBounds={c.visibleSelectionBounds}
+        workspace={c.projectedWorkspace}
       />
       <PlannerSheets
-        compactMapEmptyState={compactMapEmptyState}
-        compactMapLines={compactMapLines}
-        compactMapMarkers={compactMapMarkers}
-        compactMapViewportKey={compactMapViewportKey}
-        comparison={comparison}
-        comparisonSheetOpen={comparisonSheetOpen}
-        decisionSummary={decisionSummary}
-        decisionSummarySheetOpen={decisionSummarySheetOpen}
-        copyDaysOpen={copyDaysOpen}
-        copyPending={requestPending}
-        dayCityLayerAvailable={dayCityLayerAvailable}
-        dayMapLayer={dayMapLayer}
-        dayRoute={dayRoute}
-        editor={editor}
-        mapExpanded={mapExpanded}
-        mapEmptyState={mapEmptyState}
-        mapLines={mapLines}
-        mapMode={mapMode}
-        mapMarkers={mapMarkers}
-        mapViewportKey={mapViewportKey}
-        onCopyDaysOpenChange={setCopyDaysOpen}
-        onComparisonExit={exitComparison}
+        compactMapEmptyState={c.map.compactMapEmptyState}
+        compactMapLines={c.map.compactMapLines}
+        compactMapMarkers={c.map.compactMapMarkers}
+        compactMapViewportKey={c.map.compactMapViewportKey}
+        comparison={c.map.comparison}
+        comparisonSheetOpen={c.map.comparisonSheetOpen}
+        copyDaysOpen={c.clipboard.copyDaysOpen}
+        copyPending={c.clipboard.requestPending}
+        dayCityLayerAvailable={c.map.dayCityLayerAvailable}
+        dayMapLayer={c.map.dayMapLayer}
+        dayRoute={c.dayRoute}
+        decisionSummary={c.map.decisionSummary}
+        decisionSummarySheetOpen={c.map.decisionSummarySheetOpen}
+        editor={c.editor}
+        mapEmptyState={c.map.mapEmptyState}
+        mapExpanded={c.mapExpanded}
+        mapLines={c.map.mapLines}
+        mapMarkers={c.map.mapMarkers}
+        mapMode={c.map.mapMode}
+        mapViewportKey={c.map.mapViewportKey}
+        onComparisonExit={c.map.exitComparison}
         onComparisonSheetOpenChange={(open) => {
-          setComparisonSheetOpen(open);
-          if (open) setDecisionSummarySheetOpen(false);
-          setMapExpanded(!open);
+          c.map.setComparisonSheetOpen(open);
+          if (open) c.map.setDecisionSummarySheetOpen(false);
+          c.setMapExpanded(!open);
         }}
+        onCopyDaysOpenChange={c.clipboard.setCopyDaysOpen}
+        onCopyToSelectedDays={() => void c.clipboard.copyToSelectedDays()}
+        onDayMapLayerChange={c.map.setDayMapLayer}
         onDecisionSummarySheetOpenChange={(open) => {
-          setDecisionSummarySheetOpen(open);
-          if (open) setComparisonSheetOpen(false);
-          setMapExpanded(!open);
+          c.map.setDecisionSummarySheetOpen(open);
+          if (open) c.map.setComparisonSheetOpen(false);
+          c.setMapExpanded(!open);
         }}
-        onCopyToSelectedDays={() => void copyToSelectedDays()}
-        onDayMapLayerChange={setDayMapLayer}
+        onEditMapItem={c.editMapItem}
         onEditorClose={() => {
-          setEditor(null);
-          setDraftItem(null);
+          c.setEditor(null);
+          c.setDraftItem(null);
         }}
-        onEditorDraftChange={setDraftItem}
-        onEditMapItem={editMapItem}
-        onInteractionError={setInteractionError}
+        onEditorDraftChange={c.setDraftItem}
+        onInteractionError={c.setInteractionError}
         onItemCreated={(item) => {
           if (["activity", "meal"].includes(item.type))
-            setArrangeActivitiesRequest({ dayId: item.day_id, initialMovingItemId: item.id });
+            c.setArrangeActivitiesRequest({
+              dayId: item.day_id,
+              initialMovingItemId: item.id,
+            });
         }}
         onMapExpandedChange={(open) => {
-          setMapExpanded(open);
+          c.setMapExpanded(open);
           if (
             !open &&
-            mapMode === "comparison" &&
-            !comparisonSheetOpen &&
-            !decisionSummarySheetOpen
+            c.map.mapMode === "comparison" &&
+            !c.map.comparisonSheetOpen &&
+            !c.map.decisionSummarySheetOpen
           )
-            exitComparison();
+            c.map.exitComparison();
         }}
-        onMarkerClick={selectMarker}
-        onMapModeChange={changeMapModeAndSelection}
-        onMapSelectionClear={() => setSelectedItemId(undefined)}
-        onSettingsOpenChange={setSettingsOpen}
-        onTargetDaysChange={setTargetDays}
-        selectedItem={selectedMapItem}
-        overviewRoute={overviewRoute}
-        selectionSourceDayId={workspace.days[visibleSelectionBounds.top]?.id}
-        settings={settings}
-        settingsOpen={settingsOpen}
-        targetDays={targetDays}
-        tripId={trip.id}
-        unavailableTransportModes={unavailableTransportModes}
-        workspace={workspace}
+        onMapModeChange={c.changeMapModeAndSelection}
+        onMapSelectionClear={() => c.map.setSelectedItemId(undefined)}
+        onMarkerClick={c.map.selectMarker}
+        onSettingsOpenChange={c.setSettingsOpen}
+        onTargetDaysChange={c.clipboard.setTargetDays}
+        overviewRoute={c.map.overviewRoute}
+        selectedItem={c.map.selectedMapItem}
+        selectionSourceDayId={c.workspace.days[c.visibleSelectionBounds.top]?.id}
+        settings={props.settings}
+        settingsOpen={c.settingsOpen}
+        targetDays={c.clipboard.targetDays}
+        tripId={props.trip.id}
+        unavailableTransportModes={c.unavailableTransportModes}
+        workspace={c.workspace}
       />
       <PlannerClearCellsDialog
-        error={interactionError}
-        itemCount={clearTargetItems.length}
-        onCancel={() => setClearTargetItems([])}
-        onConfirm={() => void confirmClearSelection()}
-        pending={clearPending}
+        error={c.interactionError}
+        itemCount={c.clearTargetItems.length}
+        onCancel={() => c.setClearTargetItems([])}
+        onConfirm={() => void c.confirmClearSelection()}
+        pending={c.clearPending}
       />
       <ArrangeActivitiesSheet
-        initialMovingItemId={arrangeActivitiesRequest?.initialMovingItemId}
-        key={`${arrangeActivitiesRequest?.dayId ?? "closed"}:${arrangeActivitiesRequest?.initialMovingItemId ?? "manual"}`}
-        day={arrangeActivitiesDay}
-        onCommit={reorderItems}
-        onInitialPlacementComplete={() => setArrangeActivitiesRequest(undefined)}
+        day={c.arrangeActivitiesDay}
+        initialMovingItemId={c.arrangeActivitiesRequest?.initialMovingItemId}
+        key={`${c.arrangeActivitiesRequest?.dayId ?? "closed"}:${c.arrangeActivitiesRequest?.initialMovingItemId ?? "manual"}`}
+        onCommit={c.reorderItems}
+        onInitialPlacementComplete={() => c.setArrangeActivitiesRequest(undefined)}
         onOpenChange={(open) => {
-          if (!open) setArrangeActivitiesRequest(undefined);
+          if (!open) c.setArrangeActivitiesRequest(undefined);
         }}
-        open={Boolean(arrangeActivitiesRequest)}
-        pending={itemOrderPending}
+        open={Boolean(c.arrangeActivitiesRequest)}
+        pending={c.itemOrderPending}
       />
     </PlannerWorkspaceEventBoundary>
   );

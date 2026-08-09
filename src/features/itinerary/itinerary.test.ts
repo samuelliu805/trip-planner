@@ -103,6 +103,28 @@ async function readItineraryQueryModules() {
   ).join("\n");
 }
 
+async function readItineraryItemActions() {
+  return (
+    await Promise.all(
+      ["./actions.ts", "./item-create-action.ts"].map((path) =>
+        readFile(new URL(path, import.meta.url), "utf8"),
+      ),
+    )
+  ).join("\n");
+}
+
+async function readAppStyles() {
+  return (
+    await Promise.all(
+      [
+        "../../app/globals.css",
+        "../../app/planner-workspace.css",
+        "../../app/public-workspace.css",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    )
+  ).join("\n");
+}
+
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
   item: "00000000-0000-4000-8000-000000000004",
@@ -361,7 +383,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     new URL("./components/planner-workspace-event-boundary.tsx", import.meta.url),
     "utf8",
   );
-  const itineraryActions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  const itineraryActions = await readItineraryItemActions();
   const tripsPage = await readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8");
   const tripsData = await readFile(new URL("../trips/data.ts", import.meta.url), "utf8");
 
@@ -1583,7 +1605,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
     new URL("../routes/overview-route-overlay.tsx", import.meta.url),
     "utf8",
   );
-  const itemActions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  const itemActions = await readItineraryItemActions();
   const itemValidation = await readFile(
     new URL("./item-action-validation.ts", import.meta.url),
     "utf8",
@@ -1863,14 +1885,14 @@ test("RLS remains the write authority and server actions do not use a service ro
     new URL("../../../supabase/migrations/20260729160000_initial_schema.sql", import.meta.url),
     "utf8",
   );
-  const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  const actions = await readItineraryItemActions();
   assert.match(migration, /itinerary_items_(insert|update|delete)_owners/);
   assert.match(migration, /public\.is_trip_owner\(trip_id\)/);
   assert.doesNotMatch(actions, /service[_-]?role/i);
 });
 
 test("schedule metadata follows nullable start and end times", async () => {
-  const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  const actions = await readItineraryItemActions();
   assert.equal(scheduleKind(null, null), "none");
   assert.equal(scheduleKind("09:00", null), "exact");
   assert.equal(scheduleKind(null, "10:00"), "exact");
@@ -1947,6 +1969,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
   workspace += await readFile(
+    new URL("./components/planner-save-status.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
     new URL("./components/arrange-activities-sheet.tsx", import.meta.url),
     "utf8",
   );
@@ -1957,9 +1983,18 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "./hooks/use-planner-clipboard.ts",
     "./hooks/use-planner-interactions.ts",
     "./hooks/use-planner-mutations.ts",
+    "./hooks/use-planner-workspace-controller.ts",
   ])
     workspace += await readFile(new URL(file, import.meta.url), "utf8");
   let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
+  form += await readFile(
+    new URL("./components/planner-item-form-actions.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(
+    new URL("./components/planner-item-form-config.ts", import.meta.url),
+    "utf8",
+  );
   form += await readFile(
     new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
     "utf8",
@@ -1972,7 +2007,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-map-shell.tsx", import.meta.url),
     "utf8",
   );
-  const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
+  const styles = await readAppStyles();
   const queries = await readItineraryQueryModules();
   assert.match(workspace, /Arrange Activities/);
   assert.doesNotMatch(workspace, /Arrange Days/);
@@ -2058,7 +2093,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(queries, /onError:[\s\S]*context\?\.previous/);
 });
 
-test("mobile workspace keeps the matrix editable and uses safe overlay sheets", async () => {
+test("mobile and tablet workspaces contain scrolling and keep frozen Matrix layers", async () => {
   let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
     "utf8",
@@ -2068,6 +2103,14 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
     "utf8",
   );
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
+  workspace += await readFile(
+    new URL("./components/planner-save-status.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
+    new URL("./hooks/use-planner-workspace-controller.ts", import.meta.url),
+    "utf8",
+  );
   workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
@@ -2075,7 +2118,7 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
   );
-  const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
+  const styles = await readAppStyles();
   const tripsLayout = await readFile(
     new URL("../../app/trips/layout.tsx", import.meta.url),
     "utf8",
@@ -2086,6 +2129,18 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
+  assert.match(styles, /html:has\(\.trip-planner-page\),[\s\S]*overflow: hidden/);
+  const tripShellRule = styles.match(/\.trips-shell:has\(\.trip-planner-page\) \{[^}]+\}/)?.[0];
+  assert.ok(tripShellRule);
+  assert.match(tripShellRule, /height: 100dvh/);
+  assert.match(tripShellRule, /overflow: hidden/);
+  assert.match(tripShellRule, /overscroll-behavior: none/);
+  assert.doesNotMatch(tripShellRule, /display: none/);
+  assert.match(styles, /\.trips-global-header,[\s\S]*\.planner-toolbar[\s\S]*touch-action: pan-x/);
+  assert.match(
+    styles,
+    /\.planner-matrix \.matrix-grid-header,[\s\S]*backface-visibility: hidden[\s\S]*translateZ\(0\)/,
+  );
   assert.match(styles, /planner-mobile-map-fab[\s\S]*display: inline-flex/);
   assert.match(
     styles,
@@ -2102,7 +2157,6 @@ test("mobile workspace keeps the matrix editable and uses safe overlay sheets", 
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);
   assert.match(tripsLayout, /h-14[\s\S]*sm:h-16/);
-  assert.doesNotMatch(styles, /trips-shell:has\(\.trip-planner-page\)[\s\S]*display: none/);
   assert.match(secondaryFields, /id=\{`item-time-\$\{item\?\.id \?\? dayId\}-\$\{type\}`\}/);
   assert.doesNotMatch(secondaryFields, /sm:grid-cols-2|item-end-/);
   assert.match(
@@ -2122,13 +2176,21 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
   );
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
   workspace += await readFile(
+    new URL("./components/planner-save-status.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
     new URL("./components/planner-workspace-event-boundary.tsx", import.meta.url),
     "utf8",
   );
   workspace += await readFile(new URL("./hooks/use-planner-clipboard.ts", import.meta.url), "utf8");
   workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
+  workspace += await readFile(
+    new URL("./hooks/use-planner-workspace-controller.ts", import.meta.url),
+    "utf8",
+  );
   const queries = await readItineraryQueryModules();
-  let actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
+  let actions = await readItineraryItemActions();
   actions += await readFile(new URL("./action-helpers.ts", import.meta.url), "utf8");
   assert.match(workspace, /This itinerary is empty/);
   assert.match(workspace, /planner could not refresh/);
@@ -2526,6 +2588,10 @@ test("hotel permits a displayed name without an exact place and transport has no
 test("address and location controls use normalized map places", async () => {
   let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
   form += await readFile(
+    new URL("./components/planner-item-form-config.ts", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(
     new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
     "utf8",
   );
@@ -2619,8 +2685,12 @@ test("cell whitespace deselects in sync with Whole trip without changing item cl
     new URL("./hooks/use-planner-interactions.ts", import.meta.url),
     "utf8",
   );
-  const workspace = await readFile(
+  let workspace = await readFile(
     new URL("./components/planner-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
+    new URL("./hooks/use-planner-workspace-controller.ts", import.meta.url),
     "utf8",
   );
   let matrix = await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");

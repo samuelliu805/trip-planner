@@ -8,11 +8,15 @@ import type {
   ComparisonVariantRow,
   VariantComparisonCity,
   VariantComparisonDay,
-  VariantComparisonIdentity,
   VariantComparisonProjection,
   VariantComparisonRouteStop,
 } from "./comparison-types";
 import { parseCalculatedRouteLegs } from "../routes/results.ts";
+
+export {
+  reconcileComparisonVisibility,
+  reconcileVariantComparisonProjections,
+} from "./comparison-reconciliation.ts";
 
 type PlaceLinkedComparisonCity = ComparisonCityRow & {
   place: ComparisonPlaceRow & { latitude: number; longitude: number };
@@ -279,40 +283,4 @@ export function attachVariantComparisonDayRoutes(
       };
     }),
   }));
-}
-
-export function reconcileVariantComparisonProjections(
-  variants: VariantComparisonIdentity[],
-  projections: VariantComparisonProjection[] | undefined,
-) {
-  const byId = new Map(projections?.map((projection) => [projection.variantId, projection]));
-  return variants.map((variant): VariantComparisonProjection => {
-    const projection = byId.get(variant.id);
-    return {
-      color: variant.color,
-      days: projection?.days ?? [],
-      isPrimary: variant.is_primary,
-      name: variant.name,
-      variantId: variant.id,
-    };
-  });
-}
-
-export function reconcileComparisonVisibility(
-  variantIds: string[],
-  activeVariantId: string,
-  visibleVariantIds: ReadonlySet<string>,
-  knownVariantIds: ReadonlySet<string>,
-) {
-  const visible = new Set<string>();
-  for (const variantId of variantIds) {
-    if (
-      variantId === activeVariantId ||
-      visibleVariantIds.has(variantId) ||
-      !knownVariantIds.has(variantId)
-    )
-      visible.add(variantId);
-  }
-  if (variantIds.includes(activeVariantId)) visible.add(activeVariantId);
-  return visible;
 }

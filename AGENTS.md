@@ -14,6 +14,16 @@ These rules apply to all future UI work in this repository.
 - Controls must shrink within their grid or flex container (`min-width: 0`) and retain 44px minimum touch targets.
 - Verify modal and Sheet behavior at both 390px and 430px widths. Opening an overlay must cover every frozen Matrix layer, and the page beneath it must not horizontally swipe.
 
+## Tablet workspace containment and Matrix freezing
+
+- Trip planner detail routes must occupy exactly one visual viewport. Keep the global header and planner toolbar pinned, prevent document-level vertical or horizontal scrolling, and let only the intended Matrix, panel, or overlay scroller move.
+- Apply scroll containment and Safari compositing safeguards to the Matrix at every breakpoint. At a scroll boundary, continued touch movement must not rubber-band the frozen header, date/day columns, workspace shell, or expose blank space beyond the workspace.
+- Verify owner planner behavior at 768px, 820px, and 1024px widths in both relevant orientations. The table/map content must reach the bottom of the screen, the top bars must remain fixed, and the Matrix header and frozen columns must remain visible while scrolling in either axis.
+
+## Production file size
+
+- Keep manually maintained production files focused and at or below 300 lines when practical. When a UI component or stylesheet grows past 300 lines, split it by responsibility instead of adding another section; generated types and comprehensive test suites are exempt.
+
 ## Public map synchronization
 
 - Change content-to-map selection only after an explicit click or Enter/Space activation. Hover and focus alone must never move or rescope the map.

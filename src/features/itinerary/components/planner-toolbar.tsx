@@ -3,7 +3,6 @@
 import {
   ArrowLeft,
   CalendarDays,
-  Check,
   ChevronDown,
   ClipboardPaste,
   Copy,
@@ -16,7 +15,6 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import Link from "next/link";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +27,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DayActions } from "@/features/itinerary/components/planner-grid-elements";
 import { PlannerStatus } from "@/features/itinerary/components/planner-layout-elements";
-import type { EditorState, PlannerCategory } from "@/features/itinerary/components/planner-config";
-import type { PlannerDay } from "@/features/itinerary/types";
-import type { Tables } from "@/types/database";
+import { PlannerSaveStatus } from "@/features/itinerary/components/planner-save-status";
+import type { PlannerToolbarProps } from "@/features/itinerary/components/planner-toolbar-types";
 
 export function PlannerToolbar({
   activeCategory,
@@ -67,41 +64,7 @@ export function PlannerToolbar({
   workspaceError,
   workspaceDayCount,
   variantControls,
-}: {
-  activeCategory?: PlannerCategory;
-  activeCellAtCapacity: boolean;
-  activeDay?: PlannerDay;
-  copyPreviousDay: () => Promise<void>;
-  copySelectionToClipboard: () => Promise<void>;
-  clearItemCount: number;
-  clearPending: boolean;
-  dateRange: string;
-  dayMutationPending: boolean;
-  deleteError: boolean;
-  fillLabel: string;
-  fillThroughDay?: number;
-  insertDay: (position: number) => Promise<void>;
-  onArrangeActivities: (day: PlannerDay) => void;
-  interactionError?: string;
-  isEmpty: boolean;
-  isFillDragging: boolean;
-  mutating: boolean;
-  pasteAvailableClipboard: () => Promise<void>;
-  requestPending: boolean;
-  requestClearSelection: () => void;
-  removeDay: (dayId: string) => Promise<void>;
-  selectedCount: number;
-  selectedDay: PlannerDay | null;
-  setCopyDaysOpen: Dispatch<SetStateAction<boolean>>;
-  setEditor: Dispatch<SetStateAction<EditorState | null>>;
-  setInteractionError: Dispatch<SetStateAction<string | undefined>>;
-  setSettingsOpen: Dispatch<SetStateAction<boolean>>;
-  shareControls?: ReactNode;
-  trip: Tables<"trips">;
-  workspaceError: boolean;
-  workspaceDayCount: number;
-  variantControls: ReactNode;
-}) {
+}: PlannerToolbarProps) {
   return (
     <>
       <header className="planner-toolbar sticky top-0 z-[70] flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background/95 px-2 backdrop-blur sm:px-4 xl:h-[72px] xl:gap-4 xl:px-5">
@@ -139,17 +102,7 @@ export function PlannerToolbar({
           {variantControls}
         </div>
         <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground sm:gap-2">
-          <span
-            className="hidden items-center gap-1.5 whitespace-nowrap sm:flex"
-            aria-live="polite"
-          >
-            {mutating ? (
-              <span className="size-2 animate-pulse rounded-full bg-amber-500" />
-            ) : (
-              <Check className="size-3.5 text-primary" />
-            )}
-            <span>{mutating ? "Saving…" : "Saved"}</span>
-          </span>
+          <PlannerSaveStatus mutating={mutating} />
           {selectedDay ? (
             <div className="sm:hidden">
               <DayActions

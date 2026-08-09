@@ -1,0 +1,135 @@
+.public-itinerary-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(520px, var(--public-content-split)) 4px
+    minmax(340px, var(--public-map-split));
+}
+
+.public-itinerary-grid.map-collapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.public-content-pane {
+  background: var(--muted);
+}
+
+.public-overview,
+.public-timeline {
+  background: var(--background);
+}
+
+.public-itinerary-shell {
+  height: 100dvh;
+  max-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+.public-itinerary-header {
+  position: sticky;
+  top: 0;
+  transform: translateZ(0);
+}
+
+.public-view-scroll {
+  overscroll-behavior-y: none;
+}
+
+.public-matrix {
+  max-width: 100%;
+  scrollbar-gutter: stable;
+}
+
+.public-matrix .matrix-date-column,
+.public-matrix .matrix-day-column {
+  box-shadow: 1px 0 0 var(--border);
+}
+
+.public-item-focus:focus {
+  background-color: color-mix(in oklab, var(--primary) 8%, transparent);
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .public-itinerary-grid {
+    grid-template-columns:
+      minmax(480px, var(--public-content-split)) 4px
+      minmax(340px, var(--public-map-split));
+  }
+}
+
+@media (max-width: 899px) {
+  .public-itinerary-grid,
+  .public-itinerary-grid.map-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-map-pane,
+  .public-split-divider,
+  .public-desktop-map-control {
+    display: none;
+  }
+
+  .public-mobile-map-control {
+    display: inline-flex;
+  }
+
+  .public-content-pane > section > .public-view-scroll {
+    scroll-padding-bottom: 0.75rem;
+  }
+
+  .public-matrix .matrix-day-column {
+    display: none;
+  }
+
+  .public-matrix .matrix-date-column {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    background-clip: padding-box;
+    left: 0;
+    transform: translateZ(0);
+    width: 6rem;
+    z-index: 60;
+  }
+
+  .public-matrix .matrix-grid-header .matrix-date-column {
+    background-color: var(--muted);
+    z-index: 80;
+  }
+
+  .public-overview-day {
+    contain: layout paint;
+  }
+}
+
+@media (max-width: 639px) {
+  .app-dialog-content {
+    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .public-share-settings-dialog {
+    height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    max-height: none !important;
+  }
+
+  .public-share-settings-dialog input,
+  .public-share-settings-dialog textarea,
+  .public-share-settings-dialog button {
+    font-size: max(0.875rem, 16px);
+  }
+
+  .public-map-sheet {
+    height: calc(100dvh - max(8px, env(safe-area-inset-top))) !important;
+    max-height: none !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+
+  .public-overview {
+    overflow-x: clip;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-item-focus {
+    scroll-behavior: auto;
+  }
+}

@@ -29,6 +29,18 @@ import {
 } from "./schema.ts";
 import type { PublicItinerary, PublicItineraryItem } from "./types.ts";
 
+async function readAppStyles() {
+  return (
+    await Promise.all(
+      [
+        "../../app/globals.css",
+        "../../app/planner-workspace.css",
+        "../../app/public-workspace.css",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    )
+  ).join("\n");
+}
+
 const ref = (character: string) => character.repeat(64);
 
 const itinerary: PublicItinerary = publicItinerarySchema.parse({
@@ -627,7 +639,7 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
     new URL("./components/public-share-dialog.tsx", import.meta.url),
     "utf8",
   );
-  const styles = await readFile(new URL("../../app/globals.css", import.meta.url), "utf8");
+  const styles = await readAppStyles();
   assert.match(shell, /useState<PublicView>\(itinerary\.settings\.defaultView\)/);
   assert.match(shell, /canonicalPublicViews\.map/);
   assert.doesNotMatch(overview, /right-aligned|time column|sort\(.+startTime/);
