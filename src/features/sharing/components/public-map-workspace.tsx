@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
@@ -15,31 +14,16 @@ import {
   publicOverviewDefaultModes,
   publicOverviewStops,
 } from "../public-map-model";
-import type { PublicItinerary, PublicRouteCalculation } from "../types";
+import type { PublicRouteCalculation } from "../types";
+import { focusPublicMapItem } from "../public-map-focus";
+import { publicDayRoutePresentation } from "../public-route-presentation";
 import { PublicDayRoutePanel } from "./public-day-route-panel";
 import { PublicOverviewRoutePanel } from "./public-overview-route-panel";
+import { PublicPlannerMapCanvas } from "./public-planner-map-canvas";
+import type { PublicMapWorkspaceProps } from "./public-map-workspace-types";
 import { RouteScopePicker } from "./public-route-summary";
 
-const PlannerMapCanvas = dynamic(
-  () => import("@/features/maps/planner-map-canvas").then((module) => module.PlannerMapCanvas),
-  { ssr: false },
-);
-
-export type PublicMapSelection = {
-  dayRef?: string;
-  itemRef?: string;
-  scope?: "day" | "overview";
-};
-
-type PublicMapWorkspaceProps = {
-  activeView: "overview" | "table" | "timeline";
-  itinerary: PublicItinerary;
-  onSelectionChange: (selection: PublicMapSelection) => void;
-  selectedDayRef?: string;
-  selectedItemRef?: string;
-  selectionScope?: "day" | "overview";
-  token: string;
-};
+export type { PublicMapSelection } from "./public-map-workspace-types";
 
 export function PublicMapWorkspace(props: PublicMapWorkspaceProps) {
   return (
@@ -93,24 +77,8 @@ function PublicMapWorkspaceContent({
   const day = dayPlan.day;
   const exploring = routeScope === "day" && exploringDayRef === day?.ref;
   const candidates = dayPlan.items;
-  const routeSetupItems = [...candidates, ...dayPlan.unmappedActivities].sort((left, right) => {
-    if (left.ref === dayPlan.startRef) return -1;
-    if (right.ref === dayPlan.startRef) return 1;
-    if (left.ref === dayPlan.endRef) return 1;
-    if (right.ref === dayPlan.endRef) return -1;
-    return left.sortOrder - right.sortOrder;
-  });
-  const savedRoute = itinerary.savedRoutes.find(({ dayRef: ref }) => ref === day?.ref);
-  const savedStopRefs = new Set(savedRoute?.stops.map(({ ref }) => ref) ?? []);
-  const omittedActivityCount = candidates.filter(
-    (item) => item.type === "activity" && savedRoute && !savedStopRefs.has(item.ref),
-  ).length;
-  const savedLines = savedRoute
-    ? buildPublicRouteLines(savedRoute.legs, itinerary.variant.color, `saved:${savedRoute.ref}`)
-    : [];
-  const temporaryDayLines = dayCalculation
-    ? buildPublicRouteLines(dayCalculation.legs, itinerary.variant.color, `temporary:${day?.ref}`)
-    : [];
+  const { omittedActivityCount, routeSetupItems, savedLines, savedRoute, temporaryDayLines } =
+    publicDayRoutePresentation(itinerary, dayPlan, dayCalculation);
   const calculatedOverviewLines = overviewCalculation
     ? buildPublicRouteLines(overviewCalculation.legs, itinerary.variant.color, "temporary:overview")
     : [];
@@ -221,32 +189,15 @@ function PublicMapWorkspaceContent({
   }
 
   function focusItem(itemRef?: string) {
-    if (!itemRef) {
-      onSelectionChange(
-        selectedDayRef ? { dayRef: selectedDayRef, scope: routeScope } : { scope: routeScope },
-      );
-      return;
-    }
-    const selectedDay = itinerary.days.find((candidate) =>
-      candidate.items.some(({ ref }) => ref === itemRef),
-    );
-    if (selectedDay) {
-      setDayRef(selectedDay.ref);
-      onSelectionChange({ dayRef: selectedDay.ref, itemRef, scope: routeScope });
-    }
-    const panel = document.querySelector<HTMLElement>(`#public-${activeView}-panel`);
-    const target =
-      panel?.querySelector<HTMLElement>(`[data-public-item-ref="${CSS.escape(itemRef)}"]`) ??
-      (selectedDay
-        ? panel?.querySelector<HTMLElement>(
-            `[data-public-day-ref="${CSS.escape(selectedDay.ref)}"]`,
-          )
-        : null);
-    target?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-      block: "center",
+    focusPublicMapItem({
+      activeView,
+      itinerary,
+      itemRef,
+      onSelectionChange,
+      routeScope,
+      selectedDayRef,
+      setDayRef,
     });
-    target?.focus({ preventScroll: true });
   }
 
   function selectDay(nextDayRef: string) {
@@ -265,7 +216,7 @@ function PublicMapWorkspaceContent({
   return (
     <section aria-label="Map and routes" className="relative h-full min-h-0 bg-muted/30">
       <div className="absolute inset-0 pb-[min(44%,22rem)]">
-        <PlannerMapCanvas
+        <PublicPlannerMapCanvas
           configurationState={{
             message: "The itinerary and shared stops remain available. Try the map again later.",
             title: "Map unavailable",

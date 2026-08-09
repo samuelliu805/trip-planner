@@ -2,7 +2,6 @@
 
 import { format, parseISO } from "date-fns";
 import { Map } from "lucide-react";
-import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AddItemButton, DayActions } from "@/features/itinerary/components/planner-grid-elements";
@@ -12,20 +11,9 @@ import {
   PlannerGridHeader,
   PlannerMapPane,
 } from "@/features/itinerary/components/planner-layout-elements";
-import {
-  categories,
-  type EditorState,
-  type PlannerCategory,
-} from "@/features/itinerary/components/planner-config";
-import { selectionContains, type GridCoordinate } from "@/features/itinerary/grid-interactions";
-import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
-import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
-import type { DayRouteUi } from "@/features/routes/use-day-route";
-import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
-import type { DayMapLayer } from "@/features/routes/day-city-map";
-import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
-import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
+import { categories } from "@/features/itinerary/components/planner-config";
+import type { PlannerMatrixProps } from "@/features/itinerary/components/planner-matrix-types";
+import { selectionContains } from "@/features/itinerary/grid-interactions";
 import { deriveDayLocality, formatDayLocalitySummary } from "@/features/itinerary/locality";
 
 export function PlannerMatrix({
@@ -86,71 +74,7 @@ export function PlannerMatrix({
   mapViewportKey,
   visibleSelectionBounds,
   workspace,
-}: {
-  compactMapEmptyState?: { message: string; title: string };
-  compactMapLines: PlannerMapLine[];
-  compactMapMarkers: PlannerMapMarker[];
-  compactMapViewportKey?: string;
-  comparison: VariantComparisonUi;
-  decisionSummary: VariantDecisionSummaryUi;
-  decisionSummaryPanelOpen: boolean;
-  containerRef: MutableRefObject<HTMLDivElement | null>;
-  dayCityLayerAvailable: boolean;
-  dayMapLayer: DayMapLayer;
-  dayMutationPending: boolean;
-  dayRoute: DayRouteUi;
-  deleteItem: (item: ItineraryItem) => Promise<void>;
-  fillDragging: MutableRefObject<boolean>;
-  fillSourceRight: MutableRefObject<number>;
-  focusCell: (coordinate: GridCoordinate, extend: boolean) => void;
-  gridTemplate: string;
-  handleCellKey: (
-    event: React.KeyboardEvent,
-    coordinate: GridCoordinate,
-    dayId: string,
-    category: PlannerCategory,
-    items: ItineraryItem[],
-  ) => void;
-  insertDay: (position: number) => Promise<void>;
-  isFillDragging: boolean;
-  mapEmptyState?: { message: string; title: string };
-  mapLines: PlannerMapLine[];
-  mapMode: PlannerMapMode;
-  mapMarkers: PlannerMapMarker[];
-  onArrangeActivities: (day: PlannerDay) => void;
-  onMapExpand: () => void;
-  onComparisonExit: () => void;
-  onComparisonSheetOpen: () => void;
-  onDecisionSummaryOpen: () => void;
-  onDecisionSummaryPanelClose: () => void;
-  onDayMapLayerChange: (layer: DayMapLayer) => void;
-  onEditMapItem: (itemId: string) => void;
-  onMarkerClick: (id?: string) => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
-  onMapSelectionClear: () => void;
-  openEditorFromDoubleClick: (event: React.MouseEvent<HTMLDivElement>) => void;
-  overviewRoute: OverviewRouteUi;
-  removeDay: (id: string) => Promise<void>;
-  selectedCount: number;
-  selectDay: (row: number) => void;
-  selectedDayRow: number | null;
-  selectedMapItem?: ItineraryItem;
-  selectionAnchor: GridCoordinate;
-  selectionEnd: GridCoordinate;
-  selectionEndRef: MutableRefObject<GridCoordinate>;
-  setEditor: Dispatch<SetStateAction<EditorState | null>>;
-  selectItem: (item: ItineraryItem, coordinate: GridCoordinate) => void;
-  setSelectionEnd: (coordinate: GridCoordinate) => void;
-  setSplit: Dispatch<SetStateAction<number>>;
-  split: number;
-  startFill: (event: React.PointerEvent) => void;
-  startRangeSelection: (event: React.PointerEvent<HTMLDivElement>) => void;
-  startResize: (event: React.PointerEvent<HTMLDivElement>) => void;
-  tripTitle: string;
-  mapViewportKey?: string;
-  visibleSelectionBounds: { top: number; bottom: number; left: number; right: number };
-  workspace: PlannerWorkspace;
-}) {
+}: PlannerMatrixProps) {
   return (
     <div
       className="planner-layout grid min-h-0 flex-1 overflow-hidden"

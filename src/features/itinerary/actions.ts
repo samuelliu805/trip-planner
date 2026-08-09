@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  createItineraryItemSchema,
   clearItineraryItemsSchema,
   deleteItineraryItemSchema,
   updateItineraryItemSchema,
@@ -13,14 +12,10 @@ import {
   type UpdateItineraryItemInput,
 } from "@/features/itinerary/schema";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
-import {
-  normalizedOptional,
-  normalizedTimes,
-  scheduleKind,
-} from "@/features/itinerary/mutation-helpers";
+import { normalizedOptional, scheduleKind } from "@/features/itinerary/mutation-helpers";
 import type { MutationResult } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";
-import type { Json, TablesInsert, TablesUpdate } from "@/types/database";
+import type { TablesUpdate } from "@/types/database";
 import {
   firstIssue,
   mutationError,
@@ -29,7 +24,7 @@ import {
   withPlace,
 } from "@/features/itinerary/action-helpers";
 import { validateVariantDay } from "@/features/itinerary/item-action-validation";
-import { insertedActivityOrderIds } from "@/features/itinerary/activity-order";
+import { createItineraryItemMutation } from "@/features/itinerary/item-create-action";
 
 export async function loadPlannerWorkspace(tripId: string, variantId: string) {
   return getPlannerWorkspace(tripId, variantId);
@@ -38,123 +33,7 @@ export async function loadPlannerWorkspace(tripId: string, variantId: string) {
 export async function createItineraryItem(
   input: CreateItineraryItemInput,
 ): Promise<MutationResult> {
-  const parsed = createItineraryItemSchema.safeParse(input);
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-  if (parsed.data.type === "location")
-    return { error: "City is now derived from Activity places and cannot be added separately." };
-
-  const dayError = await validateVariantDay(
-    parsed.data.tripId,
-    parsed.data.variantId,
-    parsed.data.dayId,
-  );
-  if (dayError) return { error: dayError };
-
-  const supabase = await createClient();
-  const { data: dayItems, error: orderError } = await supabase
-    .from("itinerary_items")
-    .select("id, sort_order, type")
-    .eq("day_id", parsed.data.dayId)
-    .order("sort_order")
-    .order("id");
-  if (orderError) return { error: mutationError(orderError.message) };
-  const existingDayItems = dayItems ?? [];
-  if (
-    parsed.data.insertAfterItemId &&
-    !existingDayItems.some(
-      ({ id, type }) => id === parsed.data.insertAfterItemId && type !== "hotel",
-    )
-  )
-    return { error: "The selected Activity position changed. Choose its position again." };
-
-  let persistedPlaceId: string | null = null;
-  try {
-    persistedPlaceId = await persistPlaceSnapshot(
-      supabase,
-      parsed.data.tripId,
-      parsed.data.placeSnapshot,
-    );
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "The map place could not be saved." };
-  }
-  if (parsed.data.type === "hotel") {
-    const { count, error: hotelError } = await supabase
-      .from("itinerary_items")
-      .select("id", { count: "exact", head: true })
-      .eq("day_id", parsed.data.dayId)
-      .eq("type", "hotel");
-    if (hotelError) return { error: mutationError(hotelError.message) };
-    if (count)
-      return { error: "Only one hotel is allowed per day. Edit the existing hotel instead." };
-  }
-  if (parsed.data.type === "transport") {
-    const mode = parsed.data.details.mode;
-    const { count, error: transportError } = await supabase
-      .from("itinerary_items")
-      .select("id", { count: "exact", head: true })
-      .eq("day_id", parsed.data.dayId)
-      .eq("type", "transport")
-      .contains("details", { mode });
-    if (transportError) return { error: mutationError(transportError.message) };
-    if (count)
-      return {
-        error: `This day already has ${parsed.data.title}. Choose a different transport type.`,
-      };
-  }
-  const times = normalizedTimes(parsed.data.startTime, parsed.data.endTime);
-  const values: TablesInsert<"itinerary_items"> = {
-    booking_url: parsed.data.links?.[0]?.url ?? normalizedOptional(parsed.data.bookingUrl),
-    day_id: parsed.data.dayId,
-    details: parsed.data.details as Json,
-    ...times,
-    notes: normalizedOptional(parsed.data.notes),
-    place_id: persistedPlaceId ?? parsed.data.placeId ?? null,
-    schedule_kind: scheduleKind(times.start_time, times.end_time),
-    sort_order: Math.max(-1, ...existingDayItems.map(({ sort_order }) => sort_order)) + 1,
-    title: parsed.data.title.trim(),
-    trip_id: parsed.data.tripId,
-    type: parsed.data.type,
-    variant_id: parsed.data.variantId,
-  };
-  const { data, error } = await supabase
-    .from("itinerary_items")
-    .insert(values)
-    .select("*")
-    .maybeSingle();
-  if (error || !data) return { error: mutationError(error?.message) };
-
-  let links;
-  try {
-    links = await replaceItemLinks(supabase, data.id, parsed.data.links ?? []);
-  } catch (linkError) {
-    await supabase.from("itinerary_items").delete().eq("id", data.id);
-    return {
-      error: linkError instanceof Error ? linkError.message : "The links could not be saved.",
-    };
-  }
-
-  const orderedItemIds = insertedActivityOrderIds(
-    existingDayItems,
-    { id: data.id, sort_order: data.sort_order, type: data.type },
-    parsed.data.insertAfterItemId,
-  );
-  const { error: reorderError } = await supabase.rpc("reorder_itinerary_items", {
-    ordered_item_ids: orderedItemIds,
-    target_day_id: parsed.data.dayId,
-  });
-  if (reorderError) {
-    await supabase.from("itinerary_items").delete().eq("id", data.id);
-    return { error: mutationError(reorderError.message) };
-  }
-
-  revalidatePath(`/trips/${data.trip_id}`);
-  return {
-    data: {
-      ...withPlace(data, parsed.data.placeSnapshot, persistedPlaceId),
-      links,
-      sort_order: orderedItemIds.indexOf(data.id),
-    },
-  };
+  return createItineraryItemMutation(input);
 }
 
 export async function updateItineraryItem(

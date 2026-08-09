@@ -1,0 +1,41 @@
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+
+import type { EditorState, PlannerCategory } from "./planner-config";
+import type { PlannerDay } from "../types";
+import type { Tables } from "../../../types/database";
+
+export type PlannerToolbarProps = {
+  activeCategory?: PlannerCategory;
+  activeCellAtCapacity: boolean;
+  activeDay?: PlannerDay;
+  clearItemCount: number;
+  clearPending: boolean;
+  copyPreviousDay: () => Promise<void>;
+  copySelectionToClipboard: () => Promise<void>;
+  dateRange: string;
+  dayMutationPending: boolean;
+  deleteError: boolean;
+  fillLabel: string;
+  fillThroughDay?: number;
+  insertDay: (position: number) => Promise<void>;
+  interactionError?: string;
+  isEmpty: boolean;
+  isFillDragging: boolean;
+  mutating: boolean;
+  onArrangeActivities: (day: PlannerDay) => void;
+  pasteAvailableClipboard: () => Promise<void>;
+  removeDay: (dayId: string) => Promise<void>;
+  requestClearSelection: () => void;
+  requestPending: boolean;
+  selectedCount: number;
+  selectedDay: PlannerDay | null;
+  setCopyDaysOpen: Dispatch<SetStateAction<boolean>>;
+  setEditor: Dispatch<SetStateAction<EditorState | null>>;
+  setInteractionError: Dispatch<SetStateAction<string | undefined>>;
+  setSettingsOpen: Dispatch<SetStateAction<boolean>>;
+  shareControls?: ReactNode;
+  trip: Tables<"trips">;
+  variantControls: ReactNode;
+  workspaceDayCount: number;
+  workspaceError: boolean;
+};
