@@ -2,6 +2,8 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import type { EditorState, PlannerCategory } from "./planner-config";
 import type { PlannerDay } from "../types";
+import type { PlanResearchItem } from "../../research/types";
+import type { PlanResearchContext } from "../../research/urls";
 import type { Tables } from "../../../types/database";
 
 export type PlannerToolbarProps = {
@@ -27,6 +29,8 @@ export type PlannerToolbarProps = {
   removeDay: (dayId: string) => Promise<void>;
   requestClearSelection: () => void;
   requestPending: boolean;
+  researchContext?: PlanResearchContext & { label: string };
+  researchItems: PlanResearchItem[];
   selectedCount: number;
   selectedDay: PlannerDay | null;
   setCopyDaysOpen: Dispatch<SetStateAction<boolean>>;

@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "./planner-workspace.css";
 @import "./public-workspace.css";
+@import "./trip-detail-workspace.css";
 
 @custom-variant dark (&:is(.dark *));
 

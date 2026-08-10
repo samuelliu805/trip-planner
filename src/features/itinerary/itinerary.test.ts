@@ -92,6 +92,7 @@ import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 import "../variants/comparison.test.ts";
 import "../variants/decision-summary.test.ts";
 import "../sharing/sharing.test.ts";
+import "../research/research.test.ts";
 
 async function readItineraryQueryModules() {
   return (
@@ -371,8 +372,12 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     variantIdentity,
   ].join("\n");
   const variantQueries = await readFile(new URL("../variants/queries.ts", import.meta.url), "utf8");
-  const toolbar = await readFile(
+  let toolbar = await readFile(
     new URL("./components/planner-toolbar.tsx", import.meta.url),
+    "utf8",
+  );
+  toolbar += await readFile(
+    new URL("./components/planner-editing-toolbar.tsx", import.meta.url),
     "utf8",
   );
   const clearDialog = await readFile(
@@ -1969,6 +1974,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
   workspace += await readFile(
+    new URL("./components/planner-editing-toolbar.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
     new URL("./components/planner-save-status.tsx", import.meta.url),
     "utf8",
   );
@@ -1978,6 +1987,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   );
   for (const file of [
     "./components/planner-matrix.tsx",
+    "./components/planner-editing-toolbar.tsx",
     "./components/planner-toolbar.tsx",
     "./components/planner-workspace-event-boundary.tsx",
     "./hooks/use-planner-clipboard.ts",

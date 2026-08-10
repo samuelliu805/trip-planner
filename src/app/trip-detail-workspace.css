@@ -1,0 +1,71 @@
+html:has(.trip-detail-page),
+body:has(.trip-detail-page) {
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.trips-shell:has(.trip-detail-page) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.trip-detail-page,
+.trip-detail-page > section,
+.trip-detail-scroller {
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overscroll-behavior: contain;
+}
+
+.trip-section-nav {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.trip-section-nav {
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+  touch-action: pan-x;
+}
+
+.trip-detail-scroller {
+  -webkit-overflow-scrolling: touch;
+  overflow-anchor: none;
+  scrollbar-gutter: stable;
+  touch-action: pan-y;
+}
+
+.research-safe-wrap {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.research-form-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 639px) {
+  .trip-detail-scroller input,
+  .trip-detail-scroller select,
+  .trip-detail-scroller textarea {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .trip-detail-scroller :where(button, input:not([type="hidden"]), select),
+  .app-dialog-content :where(button, input:not([type="hidden"]), select) {
+    min-height: 44px;
+  }
+
+  .app-dialog-content > button {
+    min-width: 44px;
+  }
+}

@@ -11,6 +11,7 @@ import { PlannerWorkspaceEventBoundary } from "./planner-workspace-event-boundar
 import type { PlannerWorkspaceProps } from "./planner-workspace-types";
 import { usePlannerWorkspaceController } from "../hooks/use-planner-workspace-controller";
 import { RouteVariantControls } from "../../variants/components/route-variant-controls";
+import { planResearchContext } from "../../research/planner-context";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
   return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
@@ -18,6 +19,18 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
 
 function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
   const c = usePlannerWorkspaceController(props);
+  const selectedResearchItem = c.map.selectedItemId
+    ? c.projectedWorkspace.days
+        .flatMap(({ items }) => items)
+        .find(({ id }) => id === c.map.selectedItemId)
+    : undefined;
+  const researchItem =
+    selectedResearchItem ??
+    (c.selectedCount === 1 && c.selectedItems.length === 1 ? c.selectedItems[0] : undefined);
+  const researchContext =
+    c.selectedCount === 1
+      ? planResearchContext(c.workspace.variant.id, c.activeDay, c.activeCategory, researchItem)
+      : undefined;
 
   return (
     <PlannerWorkspaceEventBoundary
@@ -64,6 +77,8 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         removeDay={c.removeDay}
         requestClearSelection={c.requestClearSelection}
         requestPending={c.clipboard.requestPending}
+        researchContext={researchContext}
+        researchItems={props.initialResearchItems}
         selectedCount={c.selectedCount}
         selectedDay={c.selectedDay}
         setCopyDaysOpen={c.clipboard.setCopyDaysOpen}
