@@ -492,6 +492,411 @@ export type Database = {
           },
         ]
       }
+      research_entries: {
+        Row: {
+          attachment_refs: Json
+          capture_type: string
+          category: string | null
+          created_at: string
+          day_id: string | null
+          end_day_id: string | null
+          extraction_status: string
+          id: string
+          itinerary_item_id: string | null
+          raw_text: string
+          scope_kind: string
+          scope_label: string | null
+          source_metadata: Json
+          source_url: string | null
+          topic_id: string | null
+          trip_id: string
+          updated_at: string
+          variant_id: string | null
+        }
+        Insert: {
+          attachment_refs?: Json
+          capture_type?: string
+          category?: string | null
+          created_at?: string
+          day_id?: string | null
+          end_day_id?: string | null
+          extraction_status?: string
+          id?: string
+          itinerary_item_id?: string | null
+          raw_text: string
+          scope_kind?: string
+          scope_label?: string | null
+          source_metadata?: Json
+          source_url?: string | null
+          topic_id?: string | null
+          trip_id: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Update: {
+          attachment_refs?: Json
+          capture_type?: string
+          category?: string | null
+          created_at?: string
+          day_id?: string | null
+          end_day_id?: string | null
+          extraction_status?: string
+          id?: string
+          itinerary_item_id?: string | null
+          raw_text?: string
+          scope_kind?: string
+          scope_label?: string | null
+          source_metadata?: Json
+          source_url?: string | null
+          topic_id?: string | null
+          trip_id?: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_entries_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_entries_end_day_id_fkey"
+            columns: ["end_day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_entries_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_entries_topic_trip_fkey"
+            columns: ["topic_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_topics"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "research_entries_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_entries_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_items: {
+        Row: {
+          category: string
+          created_at: string
+          currency: string | null
+          day_id: string | null
+          destination_text: string | null
+          end_date: string | null
+          id: string
+          itinerary_item_id: string | null
+          location_text: string | null
+          note: string | null
+          observed_at: string
+          origin_text: string | null
+          source_url: string | null
+          start_date: string | null
+          title: string | null
+          total_price_amount: number | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          currency?: string | null
+          day_id?: string | null
+          destination_text?: string | null
+          end_date?: string | null
+          id?: string
+          itinerary_item_id?: string | null
+          location_text?: string | null
+          note?: string | null
+          observed_at?: string
+          origin_text?: string | null
+          source_url?: string | null
+          start_date?: string | null
+          title?: string | null
+          total_price_amount?: number | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          currency?: string | null
+          day_id?: string | null
+          destination_text?: string | null
+          end_date?: string | null
+          id?: string
+          itinerary_item_id?: string | null
+          location_text?: string | null
+          note?: string | null
+          observed_at?: string
+          origin_text?: string | null
+          source_url?: string | null
+          start_date?: string | null
+          title?: string | null
+          total_price_amount?: number | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_items_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_items_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_items_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_option_entries: {
+        Row: {
+          created_at: string
+          entry_id: string
+          option_id: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_id: string
+          option_id: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_id?: string
+          option_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_option_entries_entry_trip_fkey"
+            columns: ["entry_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_entries"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "research_option_entries_option_trip_fkey"
+            columns: ["option_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_options"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "research_option_entries_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_options: {
+        Row: {
+          category: string
+          created_at: string
+          currency: string | null
+          id: string
+          notes: string | null
+          observed_at: string
+          price_basis: string
+          provider_label: string | null
+          relevant_end_date: string | null
+          relevant_start_date: string | null
+          search_context: string | null
+          source_url: string | null
+          structured_details: Json
+          taxes_included: boolean | null
+          title: string
+          topic_id: string
+          total_price: number | null
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          observed_at?: string
+          price_basis?: string
+          provider_label?: string | null
+          relevant_end_date?: string | null
+          relevant_start_date?: string | null
+          search_context?: string | null
+          source_url?: string | null
+          structured_details?: Json
+          taxes_included?: boolean | null
+          title: string
+          topic_id: string
+          total_price?: number | null
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          notes?: string | null
+          observed_at?: string
+          price_basis?: string
+          provider_label?: string | null
+          relevant_end_date?: string | null
+          relevant_start_date?: string | null
+          search_context?: string | null
+          source_url?: string | null
+          structured_details?: Json
+          taxes_included?: boolean | null
+          title?: string
+          topic_id?: string
+          total_price?: number | null
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_options_topic_trip_fkey"
+            columns: ["topic_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_topics"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "research_options_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_topics: {
+        Row: {
+          category: string
+          created_at: string
+          day_id: string | null
+          details: Json
+          end_day_id: string | null
+          id: string
+          itinerary_item_id: string | null
+          label: string
+          label_key: string | null
+          scope_kind: string
+          scope_label: string | null
+          scope_label_key: string | null
+          trip_id: string
+          updated_at: string
+          variant_id: string | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          day_id?: string | null
+          details?: Json
+          end_day_id?: string | null
+          id?: string
+          itinerary_item_id?: string | null
+          label: string
+          label_key?: string | null
+          scope_kind?: string
+          scope_label?: string | null
+          scope_label_key?: string | null
+          trip_id: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          day_id?: string | null
+          details?: Json
+          end_day_id?: string | null
+          id?: string
+          itinerary_item_id?: string | null
+          label?: string
+          label_key?: string | null
+          scope_kind?: string
+          scope_label?: string | null
+          scope_label_key?: string | null
+          trip_id?: string
+          updated_at?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_topics_day_id_fkey"
+            columns: ["day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_topics_end_day_id_fkey"
+            columns: ["end_day_id"]
+            isOneToOne: false
+            referencedRelation: "trip_days"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_topics_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_topics_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_topics_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       route_variants: {
         Row: {
           color: string
@@ -666,6 +1071,35 @@ export type Database = {
         }
         Returns: Json
       }
+      create_research_option: {
+        Args: {
+          option_category: string
+          option_currency: string
+          option_notes: string
+          option_observed_at: string
+          option_price_basis: string
+          option_provider_label: string
+          option_relevant_end_date: string
+          option_relevant_start_date: string
+          option_search_context: string
+          option_source_url: string
+          option_structured_details: Json
+          option_taxes_included: boolean
+          option_title: string
+          option_total_price: number
+          source_entry_ids: string[]
+          target_topic_id: string
+          target_trip_id: string
+          topic_category: string
+          topic_day_id: string
+          topic_itinerary_item_id: string
+          topic_label: string
+          topic_scope_kind: string
+          topic_scope_label: string
+          topic_variant_id: string
+        }
+        Returns: string
+      }
       create_route_variant: {
         Args: {
           source_variant_id: string
@@ -746,6 +1180,16 @@ export type Database = {
           target_variant_id: string
         }
         Returns: undefined
+      }
+      research_context_matches_trip: {
+        Args: {
+          target_day_id: string
+          target_end_day_id: string
+          target_itinerary_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: boolean
       }
       revoke_public_itinerary_link: {
         Args: { target_link_id: string }

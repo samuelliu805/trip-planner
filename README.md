@@ -11,9 +11,11 @@ Trip Planner is a responsive, spreadsheet-style workspace for building complex t
 - Phase 5B — read-only Route Variant comparison — is implemented without a schema migration or new cloud configuration. Focused comparison and repository checks pass; authenticated comparison and responsive acceptance remain pending.
 - Phase 5C — Route Variant Decision Summary — is implemented without a schema migration or new cloud configuration. The lightweight projection, current-signature aggregation, neutral Primary deltas, desktop panel, and mobile Summary Sheet are covered by automated checks; authenticated responsive acceptance remains pending.
 - Phase 6A — secure public sharing — is implemented and its forward-only migrations are applied to the linked project. It adds owner-managed live links, strict public projection, Overview/Table/Timeline, responsive public maps, temporary viewer route exploration, quick actions, Web Share/WeChat/QR fallback, and security metadata. Linked schema and rollback-only RPC checks pass; authenticated browser acceptance remains pending.
-- Phase 6A+ — Activity SSOT, Activity-derived public/variant projections, intermediate Overview locality clusters, and tap-to-place Activity order — is implemented. Its forward-only migrations and deterministic legacy/Hotel-order backfills are applied to the linked project. See [the Phase 6A+ architecture contract](docs/phase-6a-plus-activity-ssot-and-day-order.md).
+- Phase 6A.1 / 6A+ — DONE. Activity SSOT, Activity-derived public/variant projections, intermediate Overview locality clusters, and tap-to-place Activity order are implemented. Its forward-only migrations and deterministic legacy/Hotel-order backfills are applied to the linked project. See [the Phase 6A+ architecture contract](docs/phase-6a-plus-activity-ssot-and-day-order.md).
+- Phase 6B-A — price comparison workspace + ResearchItem foundation — DONE. Owners save partial Ideas and comparison-ready prices together at `/trips/[tripId]/compare`, organized first by Flight, Stay, Train, or Rental.
+- Phase 6B-B — minimal Stay/Flight price capture/comparison foundation — DONE. The same private ResearchItem matures as price and category context are added; no conversion or duplicate Option row is required.
 
-Phase 6B Print/PDF/CSV, Phase 6C Travel Book, and later travel research remain intentionally deferred.
+The Trip-level user architecture is now **Plan | Ideas & Options**, implemented with real App Router navigation. Full provider launch, final Hotel/Flight comparison, Apply to Plan, OCR, browser assistance, Print/PDF/CSV, and Phase 6C Travel Book remain intentionally deferred.
 
 ## Foundation stack
 
@@ -40,6 +42,7 @@ src/
     maps/                      Provider-neutral map canvas and marker behavior
     places/                    Place autocomplete and persisted snapshots
     routes/                    Overview stages, route drafts, signatures, status, actions, and UI
+    research/                  Unified price candidates, readiness helpers, and Plan bridges
     sharing/                   Owner link management, public projection contracts, views, maps, and sharing
     variants/                  Active resolution, lifecycle actions, query state, and responsive controls
   lib/
@@ -56,6 +59,16 @@ supabase/
 `planner-workspace.tsx` remains a small orchestrator. Map derivation, Day route state, editor UI, route calculation, provider calls, and database loading live in focused modules.
 
 The signed-in Supabase client is used for reads and mutations. Database authorization remains authoritative; client controls are not a security boundary.
+
+## Phase 6B Price Comparison / Ideas & Options
+
+Trip detail navigation uses real URLs: Plan at `/trips/[tripId]` and Ideas & Options at `/trips/[tripId]/compare`. A shared lightweight section nav preserves variant query context while the existing Plan toolbar remains specialized for Matrix controls. Compare uses a separate viewport-contained shell with one intentional content scroller; Matrix containment remains scoped to the Plan workspace.
+
+Private owner-only `research_items` are categorized as Flight, Stay, Train, or Rental. A name, source URL, or note is enough to save; price and comparison context remain optional. Readiness is derived from the same row, so adding total price, currency, route/location, and relevant dates turns an Idea into “Ready to compare” without creating an Option record.
+
+The MVP stores provider-neutral total price and currency, an optional source URL, category-specific route/location and dates, optional Plan Day/item references, and automatic freshness timestamps. Stay nights and per-night price are derived for display. Selected relevant Plan cells expose contextual Save idea and Compare prices actions; these writes never mutate itinerary records or route calculations. ResearchItems remain absent from public itinerary projections.
+
+Forward-only migration `20260810032700_unify_price_research_items.sql` adds the unified table, owner-only RLS, explicit authenticated grants, no anonymous access, trip-safe context checks, indexed foreign keys, and a compatibility backfill. Earlier applied Phase 6B tables remain as deprecated migration history and receive no new product reads or writes; they were not dropped or rewritten. Generated database types include the unified ResearchItem model.
 
 ## Itinerary matrix
 
@@ -265,6 +278,9 @@ The forward-only migrations are applied and present in the linked migration hist
 - `20260803183257_allow_previous_day_hotel_route_start.sql`
 - `20260806125928_phase_6a_secure_public_sharing.sql`
 - `20260806194850_expose_public_car_rental_summary.sql`
+- `20260809161845_phase_6b_research_foundations.sql`
+- `20260809164725_index_research_foreign_keys.sql`
+- `20260810032700_unify_price_research_items.sql`
 
 The Phase 5A migration adds the three-variant and exactly-one-primary invariants, case-insensitive names, atomic lifecycle/duplication/day RPCs, active-variant Day route support, and narrow execution/table grants. The follow-up migration narrowly permits an immediately previous-day Hotel as Day route position 1 and adds atomic owner-authorized clearing for selected Matrix items. Its dry run showed only `20260803183257_allow_previous_day_hotel_route_start.sql`; it applied successfully, and the final linked list shows local/remote alignment. No linked reset or remote seed was used.
 
@@ -315,6 +331,10 @@ The Phase 5C verification completed with `npm test` (75/75 tests), `npx tsc --no
 Phase 6A has 15 focused application contract tests in the 90-test repository suite. They cover canonical view/default decoding, sparse-time Overview/manual order/grouping, independent Car rental presentation, the Activity-only detailed Timeline, fail-closed projection schemas, click-only map synchronization, safe quick links, shared and visibly unmapped route candidates, previous/current Hotel endpoints, all-stop defaults, whole-trip defaults, route-specific mode allowlists, owner/public Matrix primitives and modal stacking, responsive shell/content-map synchronization, local-only route exploration, real QR/Web Share behavior, and response security. The rollback-wrapped linked database suite passes all 53 RLS/RPC/constraint/projection/lifecycle assertions, including car rental summary/address privacy, through direct SQL execution. The CLI `supabase test db --linked` wrapper remains unavailable because this environment has no Docker runner; the SQL suite itself ran against the linked project and rolled back. Both forward-only Phase 6A migrations are applied, and linked schema lint reports no errors.
 
 Phase 6A+ application coverage includes Activity/locality SSOT, transport exclusion from destination evidence, intermediate Overview clusters, explicit post-create placement, keyboard gap navigation, timed anchors, Hotel-last ordering, route candidates, opt-in Overview route geometry and tap-to-place gesture contracts. The rollback-wrapped linked database coverage includes deterministic locality and Hotel-last backfills, stable IDs/relationships/order, multiple variants, saved routes, row counts and atomic reorder validation. Migration `20260808022426` is applied; linked verification reports 131 items across 25 populated Days, 13 Hotels, zero non-final Hotels and zero duplicate positions.
+
+Phase 6B verification covers the single-row partial-to-ready lifecycle, all four category readiness rules, Stay per-night derivation, category/deep-link routing, contextual Plan capture, RLS, canonical-data isolation, and public-projection exclusion. The repository suite passes all 125 tests and the rollback-wrapped linked research suite passes all 32 assertions through direct SQL execution because this environment has no Docker runner for the `supabase test db --linked` wrapper. Migrations `20260809161845`, `20260809164725`, and corrective migration `20260810032700` are applied; generated database types match the linked schema.
+
+Authenticated Phase 6B browser acceptance passed at 390×844, 430×932, 768×1024, 820×1180, 1024×768, and 1440×900. Compare retained one intentional inner scroller with no body or horizontal document overflow, mobile forms remained visual-viewport contained with 16px inputs and 44px controls, the same ResearchItem moved from Idea to Ready to compare in place, and contextual Plan capture/deep links retained Day, item, category, and variant context. Plan containment was reconfirmed in tablet portrait and landscape: global header, Trip navigation, and planner toolbar stayed pinned while the Matrix remained the internal scroller and reached the viewport bottom.
 
 The latest responsive polish was checked in headless Chrome at 390×844 and 430×932. Overview and the Activity-only Timeline rendered without body overflow; the rental summary showed action, company, pickup place, optional time, and enabled exact address concisely. The Map Sheet measured exactly 430px, had no horizontal overflow, and stayed at z-index 110 above the frozen Matrix column at 80. Its map-unavailable state retained Day route controls, every Activity appeared in manual position (including `No map location`), and Reset/Shared route remained visible. Local map tiles/geometry could not be accepted because the existing browser key rejects the temporary `http://localhost:3100` referrer; production/preview origins must remain on the key allowlist.
 
@@ -488,10 +508,13 @@ This checklist remains pending until valid test-account access and the required 
    - ✅ Phase 5C: factual Route Variant decision summary (authenticated acceptance pending)
 6. Public itinerary delivery
    - ✅ Phase 6A: secure live public sharing implementation and migration (authenticated acceptance pending)
-   - ✅ Phase 6A+: Activity SSOT, Activity-derived Overview/Day routes, and canonical tap-to-place Day order (authenticated acceptance pending)
-   - Phase 6B: Print/PDF/CSV export — deferred
+   - ✅ Phase 6A.1 / 6A+: Activity SSOT, Activity-derived Overview/Day routes, and canonical tap-to-place Day order — DONE (authenticated acceptance pending)
    - Phase 6C: Travel Book — deferred
-7. Travel research and along-the-way city recommendations
-8. Offline, conflict, deployment, and operational polish
+7. Price Comparison / Ideas & Options — **Plan | Ideas & Options**
+   - ✅ Phase 6B-A: price comparison workspace + ResearchItem foundation — DONE
+   - ✅ Phase 6B-B: minimal Stay/Flight price capture/comparison foundation — DONE
+   - Provider launch, final comparison matrix, OptionImpact, Apply to Plan, OCR, and browser-assisted research — deferred
+8. Print/PDF/CSV export and along-the-way city recommendations — deferred
+9. Offline, conflict, deployment, and operational polish
 
 Each phase is independently scoped. Phase 6A adds secure live public viewing without Print/PDF/CSV, Travel Book, password/expiration/analytics/invitations/comments, public variant comparison, arbitrary route search, or viewer persistence.
