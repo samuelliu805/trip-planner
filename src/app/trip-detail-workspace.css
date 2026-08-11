@@ -13,6 +13,10 @@ body:has(.trip-detail-page) {
   overscroll-behavior: none;
 }
 
+.trips-shell:has(.trip-detail-page) > .trips-global-header {
+  display: none;
+}
+
 .trip-detail-page,
 .trip-detail-page > section,
 .trip-detail-scroller {
@@ -22,16 +26,25 @@ body:has(.trip-detail-page) {
   overscroll-behavior: contain;
 }
 
-.trip-section-nav {
+.trip-app-bar,
+.plan-context-bar,
+.research-context-bar,
+.trip-mobile-tab-bar {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transform: translateZ(0);
 }
 
-.trip-section-nav {
-  padding-left: max(0.5rem, env(safe-area-inset-left));
-  padding-right: max(0.5rem, env(safe-area-inset-right));
+.trip-app-bar,
+.plan-context-bar,
+.research-context-bar,
+.trip-mobile-tab-bar {
   touch-action: pan-x;
+}
+
+.trip-app-bar-inner {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 }
 
 .trip-detail-scroller {
@@ -56,6 +69,13 @@ body:has(.trip-detail-page) {
   .trip-detail-scroller select,
   .trip-detail-scroller textarea {
     font-size: 16px;
+  }
+}
+
+@media (min-width: 768px) {
+  .trip-app-bar-inner {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
   }
 }
 

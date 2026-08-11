@@ -12,7 +12,7 @@ import {
   type RemoveTripDayInput,
   type ReorderVariantDaysInput,
   type ReorderItineraryItemsInput,
-} from "@/features/itinerary/schema";
+} from "@/features/itinerary/day-schema";
 import { buildCopyRows } from "@/features/itinerary/mutation-helpers";
 import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";

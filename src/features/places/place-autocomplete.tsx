@@ -28,14 +28,18 @@ type PlaceSelectEvent = Event & {
 export function PlaceAutocomplete({
   autoFocus = false,
   disabled,
+  includedPrimaryTypes,
   onChange,
   onSelected,
+  placeholder = "Search Google Maps",
   value,
 }: {
   autoFocus?: boolean;
   disabled?: boolean;
+  includedPrimaryTypes?: string[];
   onChange: (place: PlaceSnapshot | null) => void;
   onSelected?: () => void;
+  placeholder?: string;
   value?: PlaceSnapshot | null;
 }) {
   const places = useMapsLibrary("places");
@@ -47,9 +51,10 @@ export function PlaceAutocomplete({
   useEffect(() => {
     if (!places || !host.current || selectedValue) return;
     const element = new places.PlaceAutocompleteElement();
-    element.placeholder = "Search Google Maps";
+    element.placeholder = placeholder;
     element.description = "Choose a suggestion to confirm the map location.";
     element.className = "planner-place-autocomplete";
+    if (includedPrimaryTypes?.length) element.includedPrimaryTypes = includedPrimaryTypes;
     const select = async (rawEvent: Event) => {
       setError(undefined);
       try {
@@ -78,7 +83,16 @@ export function PlaceAutocomplete({
     host.current.replaceChildren(element);
     if (autoFocus) requestAnimationFrame(() => element.focus());
     return () => element.removeEventListener("gmp-select", select);
-  }, [autoFocus, onChange, onSelected, places, selectedValue, session]);
+  }, [
+    autoFocus,
+    includedPrimaryTypes,
+    onChange,
+    onSelected,
+    places,
+    placeholder,
+    selectedValue,
+    session,
+  ]);
 
   if (selectedValue)
     return (

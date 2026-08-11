@@ -106,10 +106,7 @@ export function PublicTable({
                           <span className="font-medium">
                             {day.localities?.join(" · ") ||
                               day.primaryLocality ||
-                              "Locality unavailable"}
-                          </span>
-                          <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                            Derived from Activity places
+                              "City / town unavailable"}
                           </span>
                         </div>
                       ) : null}

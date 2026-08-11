@@ -58,7 +58,7 @@ export function normalizeLocalityLabel(label: string) {
 }
 
 export function formatDayLocalitySummary(projection: DayLocalityProjection, maximumVisible = 2) {
-  if (!projection.localities.length) return "Locality unavailable";
+  if (!projection.localities.length) return "City / town unavailable";
   const visible = projection.localities.slice(0, maximumVisible).map(({ label }) => label);
   const remaining = projection.localities.length - visible.length;
   return remaining > 0 ? `${visible.join(" · ")} · +${remaining}` : visible.join(" · ");

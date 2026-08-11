@@ -243,6 +243,8 @@ export type Database = {
           id: string
           notes: string | null
           place_id: string | null
+          price_amount: number | null
+          price_currency: string | null
           schedule_kind: Database["public"]["Enums"]["itinerary_schedule_kind"]
           schedule_text: string | null
           sort_order: number
@@ -262,6 +264,8 @@ export type Database = {
           id?: string
           notes?: string | null
           place_id?: string | null
+          price_amount?: number | null
+          price_currency?: string | null
           schedule_kind?: Database["public"]["Enums"]["itinerary_schedule_kind"]
           schedule_text?: string | null
           sort_order?: number
@@ -281,6 +285,8 @@ export type Database = {
           id?: string
           notes?: string | null
           place_id?: string | null
+          price_amount?: number | null
+          price_currency?: string | null
           schedule_kind?: Database["public"]["Enums"]["itinerary_schedule_kind"]
           schedule_text?: string | null
           sort_order?: number
@@ -604,16 +610,24 @@ export type Database = {
           created_at: string
           currency: string | null
           day_id: string | null
+          destination_place_id: string | null
           destination_text: string | null
           end_date: string | null
+          end_time: string | null
           id: string
           itinerary_item_id: string | null
+          journey_type: string | null
+          links: Json
+          location_place_id: string | null
           location_text: string | null
           note: string | null
           observed_at: string
+          origin_place_id: string | null
           origin_text: string | null
+          segments: Json
           source_url: string | null
           start_date: string | null
+          start_time: string | null
           title: string | null
           total_price_amount: number | null
           trip_id: string
@@ -624,16 +638,24 @@ export type Database = {
           created_at?: string
           currency?: string | null
           day_id?: string | null
+          destination_place_id?: string | null
           destination_text?: string | null
           end_date?: string | null
+          end_time?: string | null
           id?: string
           itinerary_item_id?: string | null
+          journey_type?: string | null
+          links?: Json
+          location_place_id?: string | null
           location_text?: string | null
           note?: string | null
           observed_at?: string
+          origin_place_id?: string | null
           origin_text?: string | null
+          segments?: Json
           source_url?: string | null
           start_date?: string | null
+          start_time?: string | null
           title?: string | null
           total_price_amount?: number | null
           trip_id: string
@@ -644,16 +666,24 @@ export type Database = {
           created_at?: string
           currency?: string | null
           day_id?: string | null
+          destination_place_id?: string | null
           destination_text?: string | null
           end_date?: string | null
+          end_time?: string | null
           id?: string
           itinerary_item_id?: string | null
+          journey_type?: string | null
+          links?: Json
+          location_place_id?: string | null
           location_text?: string | null
           note?: string | null
           observed_at?: string
+          origin_place_id?: string | null
           origin_text?: string | null
+          segments?: Json
           source_url?: string | null
           start_date?: string | null
+          start_time?: string | null
           title?: string | null
           total_price_amount?: number | null
           trip_id?: string
@@ -668,11 +698,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "research_items_destination_place_trip_fkey"
+            columns: ["destination_place_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
             foreignKeyName: "research_items_itinerary_item_id_fkey"
             columns: ["itinerary_item_id"]
             isOneToOne: false
             referencedRelation: "itinerary_items"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_items_location_place_trip_fkey"
+            columns: ["location_place_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "research_items_origin_place_trip_fkey"
+            columns: ["origin_place_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id", "trip_id"]
           },
           {
             foreignKeyName: "research_items_trip_id_fkey"
@@ -804,6 +855,95 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "trips"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_plan_applications: {
+        Row: {
+          affected_entity_ids: string[]
+          after_snapshot: Json
+          applied_at: string
+          applied_by: string | null
+          before_snapshot: Json
+          created_at: string
+          decision_slot_key: string
+          id: string
+          operation_type: string
+          operations: Json
+          reverted_at: string | null
+          route_variant_id: string
+          source_research_item_id: string | null
+          status: string
+          superseded_at: string | null
+          superseded_by: string | null
+          trip_id: string
+        }
+        Insert: {
+          affected_entity_ids: string[]
+          after_snapshot: Json
+          applied_at?: string
+          applied_by?: string | null
+          before_snapshot: Json
+          created_at?: string
+          decision_slot_key: string
+          id?: string
+          operation_type: string
+          operations: Json
+          reverted_at?: string | null
+          route_variant_id: string
+          source_research_item_id?: string | null
+          status?: string
+          superseded_at?: string | null
+          superseded_by?: string | null
+          trip_id: string
+        }
+        Update: {
+          affected_entity_ids?: string[]
+          after_snapshot?: Json
+          applied_at?: string
+          applied_by?: string | null
+          before_snapshot?: Json
+          created_at?: string
+          decision_slot_key?: string
+          id?: string
+          operation_type?: string
+          operations?: Json
+          reverted_at?: string | null
+          route_variant_id?: string
+          source_research_item_id?: string | null
+          status?: string
+          superseded_at?: string | null
+          superseded_by?: string | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_plan_applications_research_trip_fkey"
+            columns: ["source_research_item_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_items"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "research_plan_applications_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "research_plan_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_plan_applications_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_plan_applications_variant_trip_fkey"
+            columns: ["route_variant_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id", "trip_id"]
           },
         ]
       }
@@ -1035,14 +1175,171 @@ export type Database = {
         }
         Relationships: []
       }
+      variant_research_selections: {
+        Row: {
+          category: string
+          created_at: string
+          decision_slot_key: string
+          id: string
+          research_item_id: string
+          route_variant_id: string
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          decision_slot_key: string
+          id?: string
+          research_item_id: string
+          route_variant_id: string
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          decision_slot_key?: string
+          id?: string
+          research_item_id?: string
+          route_variant_id?: string
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variant_research_selections_research_trip_fkey"
+            columns: ["research_item_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_items"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "variant_research_selections_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variant_research_selections_variant_trip_fkey"
+            columns: ["route_variant_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "route_variants"
+            referencedColumns: ["id", "trip_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      apply_research_item_to_variant: {
+        Args: {
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_phase_6b_p0: {
+        Args: {
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2_phase_6b_canonical_price: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2_phase_6b_complete_fields: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2_phase_6b_legacy_journey: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2_phase_6b_nightly_costs: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2_phase_6b_p05: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2_phase_6b_schedule: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_selected_research_item: {
+        Args: {
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       clear_day_route_plan: {
         Args: { target_day_id: string; target_variant_id: string }
         Returns: undefined
+      }
+      clear_research_item_selection: {
+        Args: {
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: string
       }
       clear_route_variant_items: {
         Args: {
@@ -1120,6 +1417,10 @@ export type Database = {
         }
         Returns: string
       }
+      current_research_plan_application_ids: {
+        Args: { target_trip_id: string; target_variant_id: string }
+        Returns: string[]
+      }
       delete_route_variant: {
         Args: { target_trip_id: string; target_variant_id: string }
         Returns: string
@@ -1181,6 +1482,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      research_application_matches_current: {
+        Args: { target_application_id: string }
+        Returns: boolean
+      }
       research_context_matches_trip: {
         Args: {
           target_day_id: string
@@ -1190,6 +1495,93 @@ export type Database = {
           target_variant_id: string
         }
         Returns: boolean
+      }
+      research_created_item_snapshot: {
+        Args: {
+          target_item: Database["public"]["Tables"]["itinerary_items"]["Row"]
+        }
+        Returns: Json
+      }
+      research_decision_slot_key: {
+        Args: {
+          target_category: string
+          target_day_id: string
+          target_destination: string
+          target_end_date: string
+          target_itinerary_item_id: string
+          target_location: string
+          target_origin: string
+          target_start_date: string
+        }
+        Returns: string
+      }
+      research_decision_slot_key_v2: {
+        Args: {
+          target_category: string
+          target_day_id: string
+          target_destination: string
+          target_end_date: string
+          target_itinerary_item_id: string
+          target_location: string
+          target_origin: string
+          target_segments: Json
+          target_start_date: string
+        }
+        Returns: string
+      }
+      research_item_is_comparison_ready: {
+        Args: {
+          target_category: string
+          target_currency: string
+          target_destination: string
+          target_end_date: string
+          target_location: string
+          target_origin: string
+          target_start_date: string
+          target_total_price: number
+        }
+        Returns: boolean
+      }
+      research_item_is_comparison_ready_v2: {
+        Args: {
+          target_category: string
+          target_currency: string
+          target_destination: string
+          target_end_date: string
+          target_journey_type: string
+          target_location: string
+          target_origin: string
+          target_segments: Json
+          target_start_date: string
+          target_total_price: number
+        }
+        Returns: boolean
+      }
+      research_owned_item_snapshot: {
+        Args: {
+          target_item: Database["public"]["Tables"]["itinerary_items"]["Row"]
+        }
+        Returns: Json
+      }
+      revert_research_plan_application: {
+        Args: { target_application_id: string; target_trip_id: string }
+        Returns: Json
+      }
+      revert_research_plan_application_phase_6b_complete_price: {
+        Args: { target_application_id: string; target_trip_id: string }
+        Returns: Json
+      }
+      revert_research_plan_application_phase_6b_p0: {
+        Args: { target_application_id: string; target_trip_id: string }
+        Returns: Json
+      }
+      revert_research_plan_application_phase_6b_p05: {
+        Args: { target_application_id: string; target_trip_id: string }
+        Returns: Json
+      }
+      revert_research_plan_application_phase_6b_schedule: {
+        Args: { target_application_id: string; target_trip_id: string }
+        Returns: Json
       }
       revoke_public_itinerary_link: {
         Args: { target_link_id: string }
@@ -1219,9 +1611,29 @@ export type Database = {
         }
         Returns: string
       }
+      select_research_item_for_variant: {
+        Args: {
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      select_research_item_for_variant_phase_6b_p05: {
+        Args: {
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       set_primary_route_variant: {
         Args: { target_trip_id: string; target_variant_id: string }
         Returns: string
+      }
+      sync_trip_schedule_from_primary_days: {
+        Args: { target_trip_id: string }
+        Returns: undefined
       }
       update_public_itinerary_link: {
         Args: {

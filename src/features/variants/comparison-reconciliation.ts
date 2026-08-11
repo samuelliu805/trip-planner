@@ -11,6 +11,7 @@ export function reconcileVariantComparisonProjections(
       color: variant.color,
       days: projection?.days ?? [],
       isPrimary: variant.is_primary,
+      knownCost: projection?.knownCost ?? [],
       name: variant.name,
       variantId: variant.id,
     };

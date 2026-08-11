@@ -11,8 +11,8 @@ import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
 import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
-import { getPlanResearchItems } from "@/features/research/data";
-import { TripSectionNav } from "@/features/research/components/trip-section-nav";
+import { getPlanResearchItems, getResearchPlanState } from "@/features/research/data";
+import { getExchangeRateTable } from "@/features/research/exchange-rates.server";
 import { createClient } from "@/lib/supabase/server";
 
 type TripPageProps = {
@@ -24,24 +24,28 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const { tripId } = await params;
   if (!tripIdSchema.safeParse(tripId).success) notFound();
 
-  const [{ data: trip, error }, variantsResult, researchItems, query] = await Promise.all([
-    getTrip(tripId),
-    getPlannerVariants(tripId),
-    getPlanResearchItems(tripId),
-    searchParams,
-  ]);
+  const [{ data: trip, error }, variantsResult, researchItems, query, exchangeRates] =
+    await Promise.all([
+      getTrip(tripId),
+      getPlannerVariants(tripId),
+      getPlanResearchItems(tripId),
+      searchParams,
+      getExchangeRateTable(),
+    ]);
   if (error || !trip) notFound();
   if (variantsResult.error || !variantsResult.data)
     throw new Error(variantsResult.error ?? "The route variants could not be loaded.");
 
   const resolution = resolveActiveVariant(variantsResult.data, query.variant);
   if (!resolution.activeVariant) throw new Error(resolution.error);
-  const { data: workspace, error: workspaceError } = await getPlannerWorkspace(
-    tripId,
-    resolution.activeVariant.id,
-  );
+  const [workspaceResult, planState] = await Promise.all([
+    getPlannerWorkspace(tripId, resolution.activeVariant.id),
+    getResearchPlanState(tripId, resolution.activeVariant.id),
+  ]);
+  const { data: workspace, error: workspaceError } = workspaceResult;
   if (workspaceError || !workspace)
     throw new Error(workspaceError ?? "The selected route variant could not be loaded.");
+  if (planState.error) throw new Error(planState.error);
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
@@ -49,12 +53,14 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const shareLinks = owner ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
 
   return (
-    <main className="trip-detail-page trip-planner-page flex h-[calc(100dvh-3.5rem)] min-w-0 flex-col overflow-hidden sm:h-[calc(100dvh-4rem)]">
-      <TripSectionNav active="plan" tripId={trip.id} variantId={workspace.variant.id} />
+    <main className="trip-detail-page trip-planner-page flex h-dvh min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <PlannerMapProvider>
           <PlannerWorkspace
+            accountEmail={authData.user?.email ?? "Account"}
+            exchangeRates={exchangeRates}
             initialResearchItems={researchItems}
+            initialResearchSelections={planState.selections}
             initialVariants={variantsResult.data}
             initialWorkspace={workspace}
             trip={trip}

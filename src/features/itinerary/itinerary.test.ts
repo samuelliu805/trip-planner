@@ -57,21 +57,24 @@ import { resolveRouteCalculationConfig } from "../routes/plan-config.ts";
 import { dayRouteStatus } from "../routes/status.ts";
 import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
 import { routeLegExplanation } from "../routes/route-leg-presentation.ts";
+import { compactTransportEndpoint, compactTransportRoute } from "./transport-presentation.ts";
 import { overviewRouteModes, routeLegModes, type DayRouteDraft } from "../routes/types.ts";
 import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "../routes/types.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
-  carRentalDetailsSchema,
   clearItineraryItemsSchema,
   copyItineraryItemsSchema,
-  createItineraryItemSchema,
-  deleteItineraryItemSchema,
   insertTripDaySchema,
   removeTripDaySchema,
   reorderItineraryItemsSchema,
   reorderVariantDaysSchema,
+} from "./day-schema.ts";
+import {
+  carRentalDetailsSchema,
+  createItineraryItemSchema,
+  deleteItineraryItemSchema,
   updateItineraryItemSchema,
-} from "./schema.ts";
+} from "./item-schema.ts";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 import {
   deriveDayLocality,
@@ -93,6 +96,18 @@ import "../variants/comparison.test.ts";
 import "../variants/decision-summary.test.ts";
 import "../sharing/sharing.test.ts";
 import "../research/research.test.ts";
+
+test("Matrix transport routes prefer airport codes and compact terminal names", () => {
+  assert.equal(
+    compactTransportEndpoint("Shanghai Pudong International Airport"),
+    "Shanghai Pudong",
+  );
+  assert.equal(compactTransportEndpoint("Tokyo Narita Airport (NRT)"), "NRT");
+  assert.equal(
+    compactTransportRoute("Shanghai Pudong International Airport", "Tokyo Narita Airport"),
+    "Shanghai Pudong – Tokyo Narita",
+  );
+});
 
 async function readItineraryQueryModules() {
   return (
@@ -377,7 +392,11 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     "utf8",
   );
   toolbar += await readFile(
-    new URL("./components/planner-editing-toolbar.tsx", import.meta.url),
+    new URL("./components/planner-context-bar.tsx", import.meta.url),
+    "utf8",
+  );
+  toolbar += await readFile(
+    new URL("../trips/components/trip-app-bar.tsx", import.meta.url),
     "utf8",
   );
   const clearDialog = await readFile(
@@ -405,7 +424,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(dayRoute, /variantId: workspace\.variant\.id/);
   assert.match(mapHook, /overview:\$\{variantId\}/);
 
-  assert.match(controls, /router\.push\(variantHref/);
+  assert.match(controls, /router\.push\(tripSectionHref/);
   assert.match(variantUi, /<Sheet[\s\S]*side="bottom"/);
   assert.match(variantUi, /PrimaryBadge/);
   assert.match(variantUi, />\s*Primary\s*</);
@@ -413,8 +432,8 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(variantUi, /<AlertDialog/);
   assert.doesNotMatch(variantUi, /window\.confirm/);
   assert.match(variantUi, /min-h-11|h-11/);
-  assert.match(variantUi, /z-\[90\]/);
-  assert.match(variantUi, /is now the primary route/);
+  assert.doesNotMatch(variantUi, /z-\[90\]/);
+  assert.match(variantUi, /is now the primary Plan/);
   assert.match(variantUi, /router\.refresh\(\)/);
   assert.match(variantQueries, /is_primary: variant\.id === input\.variantId/);
   assert.match(variantQueries, /onError:[\s\S]*context\?\.previous/);
@@ -422,8 +441,8 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(clearDialog, /<AlertDialog/);
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
   assert.match(toolbar, />\s*Clear\s*</);
-  assert.match(toolbar, /<div className="min-w-0">[\s\S]*\{trip\.title\}/);
-  assert.match(toolbar, /Tap a date to select a day/);
+  assert.match(toolbar, /Trip Planner \/|Back to Trips/);
+  assert.match(toolbar, /Table · \$\{props\.dateRange\}/);
   assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
   assert.match(
     variantUi,
@@ -1655,7 +1674,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(overview, /deriveDayOverviewClusters/);
   assert.match(mapHook, /day-route:\$\{variantId\}:\$\{dayRoute\.activeDay\?\.id/);
   assert.doesNotMatch(mapHook, /firstCity|type === "location"/);
-  assert.match(mapHook, /Activity locality stage/);
+  assert.match(mapHook, /Activity city\/town stage/);
   assert.match(interactions, /\["activities", "hotel", "meals"\][\s\S]*setMapMode\("day_route"\)/);
   assert.match(
     interactions,
@@ -1793,6 +1812,50 @@ test("car rental details restrict action while address and provider remain optio
   );
 });
 
+test("canonical booking fields share route details and one currency-paired Plan price", () => {
+  const flight = {
+    ...base,
+    details: {
+      arrivalTime: "17:40",
+      destination: "NRT",
+      mode: "flight" as const,
+      origin: "SFO",
+      serviceNumber: "NH7",
+    },
+    priceAmount: 842.15,
+    priceCurrency: "USD",
+    title: "ANA NH7",
+    type: "transport" as const,
+  };
+  assert.equal(createItineraryItemSchema.safeParse(flight).success, true);
+  assert.equal(
+    createItineraryItemSchema.safeParse({ ...flight, priceCurrency: null }).success,
+    false,
+  );
+  assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...base,
+      details: { action: "pickup" },
+      priceAmount: 320,
+      priceCurrency: "USD",
+      title: "Rental pickup",
+      type: "car_rental",
+    }).success,
+    true,
+  );
+  assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...base,
+      details: { action: "return" },
+      priceAmount: 320,
+      priceCurrency: "USD",
+      title: "Rental return",
+      type: "car_rental",
+    }).success,
+    false,
+  );
+});
+
 test("reorder payload persists explicit unique sort orders", () => {
   const parsed = reorderItineraryItemsSchema.parse({
     dayId: ids.day,
@@ -1852,6 +1915,8 @@ test("copies get new IDs, destination ordering, and independent values", () => {
     id: ids.item,
     notes: "Original",
     place_id: null,
+    price_amount: null,
+    price_currency: null,
     schedule_kind: "none",
     schedule_text: null,
     sort_order: 2,
@@ -1974,7 +2039,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
   workspace += await readFile(
-    new URL("./components/planner-editing-toolbar.tsx", import.meta.url),
+    new URL("./components/planner-context-bar.tsx", import.meta.url),
     "utf8",
   );
   workspace += await readFile(
@@ -1987,7 +2052,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   );
   for (const file of [
     "./components/planner-matrix.tsx",
-    "./components/planner-editing-toolbar.tsx",
+    "./components/planner-context-bar.tsx",
     "./components/planner-toolbar.tsx",
     "./components/planner-workspace-event-boundary.tsx",
     "./hooks/use-planner-clipboard.ts",
@@ -2049,8 +2114,11 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /insertIcon\("up"\)/);
   assert.match(workspace, /insertIcon\("down"\)/);
   assert.match(workspace, /min-w-max select-none/);
-  assert.match(workspace, /location="mobilebar"/);
-  assert.match(workspace, /selectedCount === 1 && !activeCellAtCapacity/);
+  assert.match(workspace, /More context actions/);
+  assert.match(
+    workspace,
+    /oneCell &&[\s\S]*!props\.selectedItem &&[\s\S]*!props\.activeCellAtCapacity/,
+  );
   assert.doesNotMatch(form, /Place in day|After \$\{|insertAfterItemId/);
   assert.match(form, /Next: place item/);
   assert.match(workspace, /Click to place/);
@@ -2080,7 +2148,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(styles, /planner-editor-sheet[\s\S]*max-height: 92dvh/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
-  assert.match(workspace, /h-14[\s\S]*xl:h-\[72px\]/);
+  assert.match(workspace, /PlannerContextBar/);
   assert.match(workspace, /planner-mobile-map-fab/);
   assert.match(workspace, /open=\{mapExpanded\}/);
   assert.match(mapShell, /PlannerMapCanvas/);
@@ -2114,6 +2182,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   );
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
   workspace += await readFile(
+    new URL("./components/planner-context-bar.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(
     new URL("./components/planner-save-status.tsx", import.meta.url),
     "utf8",
   );
@@ -2146,7 +2218,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(tripShellRule, /overflow: hidden/);
   assert.match(tripShellRule, /overscroll-behavior: none/);
   assert.doesNotMatch(tripShellRule, /display: none/);
-  assert.match(styles, /\.trips-global-header,[\s\S]*\.planner-toolbar[\s\S]*touch-action: pan-x/);
+  assert.match(
+    styles,
+    /\.trips-global-header,[\s\S]*\.trip-app-bar,[\s\S]*\.plan-context-bar[\s\S]*touch-action: pan-x/,
+  );
   assert.match(
     styles,
     /\.planner-matrix \.matrix-grid-header,[\s\S]*backface-visibility: hidden[\s\S]*translateZ\(0\)/,
@@ -2159,11 +2234,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(workspace, /selectedMapItem/);
   assert.match(workspace, /selectedId=\{selectedMapItem\?\.id\}/);
   assert.match(workspace, /planner-map-sheet/);
-  assert.match(workspace, /Tap a date to select a day/);
-  assert.match(workspace, /format\(parseISO\(selectedDay\.date\), "MMM d"\)/);
+  assert.match(workspace, /Table · \$\{props\.dateRange\}/);
   assert.doesNotMatch(workspace, /mobile-selected-day-bar/);
   assert.match(tripsLayout, /trips-global-header sticky top-0 z-\[80\]/);
-  assert.match(workspace, /planner-toolbar sticky top-0 z-\[70\]/);
+  assert.match(workspace, /TripAppBar/);
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);
   assert.match(tripsLayout, /h-14[\s\S]*sm:h-16/);
@@ -2614,10 +2688,13 @@ test("address and location controls use normalized map places", async () => {
 });
 
 test("new items stay out of the Matrix and map until creation succeeds", async () => {
-  const form = await readFile(
-    new URL("./components/planner-item-form.tsx", import.meta.url),
-    "utf8",
-  );
+  const form = (
+    await Promise.all(
+      ["./components/planner-item-form.tsx", "./components/use-planner-item-draft.ts"].map((path) =>
+        readFile(new URL(path, import.meta.url), "utf8"),
+      ),
+    )
+  ).join("\n");
   const sheets = await readFile(
     new URL("./components/planner-sheets.tsx", import.meta.url),
     "utf8",
@@ -2675,6 +2752,13 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(mapShell, /aria-label="Map scope"/);
   assert.match(mapShell, /mergeMarkerDateRanges\(marker\.entries\)/);
   assert.match(map, /itemIds\.includes\(selectedId\)/);
+  assert.match(mapShell, /lines=\{selectedId \? \[\] : lines\}/);
+  assert.match(mapShell, /!selectedId && mapMode === "overview"/);
+  assert.match(mapShell, /panelDismissed=\{panelDismissed && !selectedId\}/);
+  assert.match(mapShell, /label="Close place details"/);
+  assert.match(mapShell, /onClose=\{closeSelectedPlace\}/);
+  assert.match(mapShell, /item\?\.notes/);
+  assert.match(mapShell, /item\?\.price_amount/);
 });
 
 test("replace-copy clears constrained destination rows before inserting preserved places", async () => {
@@ -2732,6 +2816,7 @@ test("copy and route requests retain visible, accessible progress feedback", asy
   assert.match(sheets, /aria-busy=\{copyPending\}/);
   assert.match(sheets, /LoaderCircle[\s\S]*Copying…/);
   assert.match(routeDetails, /aria-label="Route leg details"/);
+  assert.match(routeDetails, /defaultOpen = false/);
   assert.match(routeDetails, /Time unavailable/);
   assert.match(routeDetails, /motion-reduce:transition-none/);
 });

@@ -18,6 +18,11 @@ export function decisionSummaryItemChanged(
   next: ItineraryItem,
 ) {
   if (!previous) return affectsDecisionSummary(next.type);
+  if (
+    previous.price_amount !== next.price_amount ||
+    previous.price_currency !== next.price_currency
+  )
+    return true;
   if (!affectsDecisionSummary(previous.type) && !affectsDecisionSummary(next.type)) return false;
   if (
     previous.type !== next.type ||

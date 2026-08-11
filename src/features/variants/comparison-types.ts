@@ -2,6 +2,7 @@ import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-m
 import type { OverviewStage } from "@/features/routes/overview";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { Json } from "@/types/database";
+import type { KnownCostAmount } from "@/features/research/types";
 
 export type VariantComparisonCity = {
   formattedAddress?: string;
@@ -43,6 +44,7 @@ export type VariantComparisonProjection = {
   color: string;
   days: VariantComparisonDay[];
   isPrimary: boolean;
+  knownCost: KnownCostAmount[];
   name: string;
   variantId: string;
 };
@@ -113,6 +115,7 @@ export type VariantComparisonPresentation = {
   color: string;
   isActive: boolean;
   isPrimary: boolean;
+  knownCost: KnownCostAmount[];
   lines: PlannerMapLine[];
   markers: PlannerMapMarker[];
   name: string;

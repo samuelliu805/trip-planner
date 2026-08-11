@@ -56,12 +56,10 @@ export function ManageRouteVariantsDialog({
     setNotice(undefined);
     try {
       await primaryMutation.mutateAsync({ tripId, variantId: variant.id });
-      setNotice(`${variant.name} is now the primary route.`);
+      setNotice(`${variant.name} is now the primary Plan.`);
       router.refresh();
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "The primary route could not be changed.",
-      );
+      setError(caught instanceof Error ? caught.message : "The primary Plan could not be changed.");
     }
   }
 
@@ -77,9 +75,7 @@ export function ManageRouteVariantsDialog({
         if (primary) router.push(variantHref(tripId, primary.id));
       }
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "The route variant could not be deleted.",
-      );
+      setError(caught instanceof Error ? caught.message : "The Plan could not be deleted.");
     }
   }
 
@@ -88,9 +84,9 @@ export function ManageRouteVariantsDialog({
       <Dialog onOpenChange={onOpenChange} open={open}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Manage route variants</DialogTitle>
+            <DialogTitle>Manage Plans</DialogTitle>
             <DialogDescription>
-              Rename routes, change identity colors, or choose the primary fallback route.
+              Rename Plans, change identity colors, or choose the primary Plan.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 px-5 py-5 sm:px-6">
@@ -180,7 +176,7 @@ export function ManageRouteVariantsDialog({
             <AlertDialogTitle>Delete “{deleteVariant?.name}”?</AlertDialogTitle>
             <AlertDialogDescription>
               This permanently deletes this variant’s days, itinerary items, and saved routes.
-              Shared trip places remain available to other variants.
+              Shared trip places remain available to other Plans.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error ? (
@@ -195,7 +191,7 @@ export function ManageRouteVariantsDialog({
               onClick={() => void removeVariant()}
               variant="destructive"
             >
-              {deleteMutation.isPending ? "Deleting…" : "Delete route"}
+              {deleteMutation.isPending ? "Deleting…" : "Delete Plan"}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

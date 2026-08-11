@@ -10,7 +10,7 @@ import {
 } from "./action-helpers";
 import { validateVariantDay } from "./item-action-validation";
 import { normalizedOptional, normalizedTimes, scheduleKind } from "./mutation-helpers";
-import { createItineraryItemSchema, type CreateItineraryItemInput } from "./schema";
+import { createItineraryItemSchema, type CreateItineraryItemInput } from "./item-schema";
 import type { MutationResult } from "./types";
 import { createClient } from "../../lib/supabase/server";
 import type { Json, TablesInsert } from "../../types/database";
@@ -89,6 +89,11 @@ export async function createItineraryItemMutation(
     ...times,
     notes: normalizedOptional(parsed.data.notes),
     place_id: persistedPlaceId ?? parsed.data.placeId ?? null,
+    price_amount: parsed.data.priceAmount ?? null,
+    price_currency:
+      parsed.data.priceAmount === null || parsed.data.priceAmount === undefined
+        ? null
+        : parsed.data.priceCurrency,
     schedule_kind: scheduleKind(times.start_time, times.end_time),
     sort_order: Math.max(-1, ...existingDayItems.map(({ sort_order }) => sort_order)) + 1,
     title: parsed.data.title.trim(),

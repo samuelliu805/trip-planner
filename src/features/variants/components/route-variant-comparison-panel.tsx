@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, ChevronDown, ChevronUp, X } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
 import { VariantComparisonRows } from "@/features/variants/components/variant-comparison-rows";
@@ -8,16 +8,15 @@ import type { VariantComparisonUi } from "@/features/variants/use-variant-compar
 
 export function RouteVariantComparisonPanel({
   comparison,
-  onExit,
   onSummaryOpen,
   summaryOpen,
 }: {
   comparison: VariantComparisonUi;
-  onExit: () => void;
   onSummaryOpen: () => void;
   summaryOpen: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [manuallyCollapsed, setManuallyCollapsed] = useState(false);
+  const collapsed = manuallyCollapsed || summaryOpen;
   if (comparison.isLoading || comparison.error) return null;
   return (
     <aside
@@ -35,35 +34,30 @@ export function RouteVariantComparisonPanel({
             <p className="text-[11px] text-muted-foreground">
               {comparison.dayNumber
                 ? "Solid lines are saved routes; dashed lines preview stop order."
-                : "Dashed lines show locality order—not driving directions."}
+                : "Dashed lines show city/town order—not driving directions."}
             </p>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Show comparison legend" : "Hide comparison legend"}
-            className="flex min-h-9 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={() => setCollapsed((current) => !current)}
-            title={collapsed ? "Show legend" : "Hide legend"}
-            type="button"
-          >
-            {collapsed ? (
-              <ChevronDown aria-hidden="true" className="size-4" />
-            ) : (
-              <ChevronUp aria-hidden="true" className="size-4" />
-            )}
-            {collapsed ? "Show" : "Hide"}
-          </button>
-          <button
-            aria-label="Exit route comparison"
-            className="flex min-h-9 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={onExit}
-            title="Exit comparison"
-            type="button"
-          >
-            <X aria-hidden="true" className="size-4" /> Exit
-          </button>
+          {summaryOpen ? (
+            <span className="px-2 text-xs font-medium text-muted-foreground">Summary open</span>
+          ) : (
+            <button
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? "Show comparison legend" : "Hide comparison legend"}
+              className="flex min-h-9 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setManuallyCollapsed((current) => !current)}
+              title={collapsed ? "Show legend" : "Hide legend"}
+              type="button"
+            >
+              {collapsed ? (
+                <ChevronDown aria-hidden="true" className="size-4" />
+              ) : (
+                <ChevronUp aria-hidden="true" className="size-4" />
+              )}
+              {collapsed ? "Show" : "Hide"}
+            </button>
+          )}
         </div>
       </div>
       {!collapsed ? (

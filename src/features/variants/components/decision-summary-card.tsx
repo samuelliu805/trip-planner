@@ -1,15 +1,15 @@
 "use client";
 
-import { CircleDot } from "lucide-react";
+import { ChevronDown, CircleDot, Route } from "lucide-react";
 
 import { DecisionSummaryMetric } from "@/features/variants/components/decision-summary-card-elements";
+import { PlanCostDisclosure } from "@/features/research/components/plan-cost-breakdown";
 import { DecisionSummaryHotelDetails } from "@/features/variants/components/decision-summary-hotel-details";
 import {
   DecisionSummaryCoverageDetails,
   DecisionSummaryRouteDistanceByMode,
   DecisionSummaryTripTransportItems,
 } from "@/features/variants/components/decision-summary-route-details";
-import { formatSummaryDistance } from "@/features/variants/decision-summary-presentation";
 import type { DecisionSummaryMetricVisibility } from "@/features/variants/decision-summary-presentation";
 import type { VariantDecisionSummary } from "@/features/variants/decision-summary-types";
 
@@ -23,10 +23,6 @@ export function DecisionSummaryCard({
   visibility: DecisionSummaryMetricVisibility;
 }) {
   const isActive = activeVariantId === summary.variantId;
-  const citySpanValue =
-    summary.citySpanMeters === null
-      ? "Not available"
-      : formatSummaryDistance(summary.citySpanMeters);
   return (
     <article
       aria-label={
@@ -62,14 +58,12 @@ export function DecisionSummaryCard({
         ) : null}
       </header>
 
-      <div className="rounded-md bg-muted/40 p-2">
-        <p className="text-[11px] font-medium text-muted-foreground">Locality sequence</p>
-        <p className="mt-0.5 text-xs font-medium">
-          {summary.citySequence.length ? summary.citySequence.join(" → ") : "No locality stages"}
-        </p>
-      </div>
-
       <dl className="mt-1">
+        <DecisionSummaryMetric
+          label="Cities / towns"
+          value={summary.citySequence.length ? summary.citySequence.join(" → ") : "No places yet"}
+        />
+        <PlanCostDisclosure lines={summary.costBreakdown} summary={summary.cost} />
         <DecisionSummaryMetric
           delta={summary.deltas?.days}
           deltaKind="planning day"
@@ -89,50 +83,44 @@ export function DecisionSummaryCard({
             }
           />
         ) : null}
-        <DecisionSummaryMetric
-          delta={summary.deltas?.cityStages}
-          deltaKind="locality stage"
-          label="Locality stages"
-          value={summary.cityStageCount.toLocaleString()}
-        />
-        <DecisionSummaryMetric
-          delta={summary.deltas?.uniqueCityPlaces}
-          deltaKind="unique locality"
-          label="Unique localities"
-          value={summary.uniqueCityPlaceCount.toLocaleString()}
-        />
-        <DecisionSummaryMetric
-          delta={summary.deltas?.uniquePlannedPlaces}
-          deltaKind="unique planned place"
-          detail={summary.plannedPlaceOccurrenceCount + " place-linked item occurrences"}
-          label="Unique planned places"
-          value={summary.uniquePlannedPlaces.toLocaleString()}
-        />
-        {visibility.citySpan ? (
-          <DecisionSummaryMetric
-            delta={summary.deltas?.citySpanMeters}
-            deltaKind="locality span"
-            detail="Straight-line Overview stage connections; never combined with routed distance"
-            label="Locality span · straight-line"
-            value={citySpanValue}
-          />
-        ) : null}
       </dl>
-
-      {visibility.routeDistanceModes.length ? (
-        <DecisionSummaryRouteDistanceByMode
-          modes={visibility.routeDistanceModes}
-          summary={summary}
-        />
-      ) : null}
-      {visibility.tripTransportModes ? (
-        <DecisionSummaryTripTransportItems summary={summary} />
-      ) : null}
-      {visibility.routeCoverage ? (
-        <DecisionSummaryCoverageDetails
-          showSavedModes={visibility.savedDayRouteModes}
-          summary={summary}
-        />
+      {visibility.routeDistanceModes.length ||
+      visibility.tripTransportModes ||
+      visibility.routeCoverage ? (
+        <details className="group border-t">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="flex items-center gap-2">
+              <Route aria-hidden="true" className="size-4 text-muted-foreground" />
+              Route details
+            </span>
+            <span className="flex items-center gap-2 text-[10px] font-normal text-muted-foreground">
+              {summary.routeCoverage.totalSavedPlans
+                ? `${summary.routeCoverage.totalSavedPlans} saved`
+                : "No saved Day routes"}
+              <ChevronDown
+                aria-hidden="true"
+                className="size-4 transition-transform group-open:rotate-180"
+              />
+            </span>
+          </summary>
+          <div className="border-t">
+            {visibility.routeDistanceModes.length ? (
+              <DecisionSummaryRouteDistanceByMode
+                modes={visibility.routeDistanceModes}
+                summary={summary}
+              />
+            ) : null}
+            {visibility.tripTransportModes ? (
+              <DecisionSummaryTripTransportItems summary={summary} />
+            ) : null}
+            {visibility.routeCoverage ? (
+              <DecisionSummaryCoverageDetails
+                showSavedModes={visibility.savedDayRouteModes}
+                summary={summary}
+              />
+            ) : null}
+          </div>
+        </details>
       ) : null}
       <DecisionSummaryHotelDetails summary={summary} />
     </article>

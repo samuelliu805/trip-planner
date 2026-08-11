@@ -106,6 +106,7 @@ function comparisonProjection(
     color: "#166534",
     days,
     isPrimary: true,
+    knownCost: [],
     name: "Route A",
     variantId: "route-a",
     ...overrides,
@@ -248,7 +249,7 @@ test("variant comparison collapses adjacent locality stages but preserves later 
   assert.equal(stages[1].entries.length, 2);
   assert.equal(presentation.lines.length, 2);
   assert.equal(formatCitySequence(stages), "Tokyo → Kyoto → Tokyo");
-  assert.equal(formatCitySequence([]), "No locality stages");
+  assert.equal(formatCitySequence([]), "No city/town stages");
   assert.ok(stages.every(({ id }) => id.startsWith("comparison:route-a:stage:")));
   assert.ok(presentation.lines.every(({ id }) => id.startsWith("comparison:route-a:leg:")));
 });
@@ -561,14 +562,16 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
   assert.match(comparisonUi, /min-\[900px\]:block/);
   assert.match(comparisonUi, /Show comparison legend/);
   assert.match(comparisonUi, /Hide comparison legend/);
+  assert.doesNotMatch(comparisonUi, />\s*Exit\s*</);
   assert.match(comparisonUi, /aria-expanded=\{!collapsed\}/);
+  assert.match(comparisonUi, /manuallyCollapsed \|\| summaryOpen/);
   assert.doesNotMatch(comparisonHook, /previewVariantId|panelOpen/);
   assert.match(mapHook, /mapMode === "comparison"\s*\? comparisonMarkers/);
   assert.match(mapHook, /mapMode === "comparison"\s*\? comparisonLines/);
   assert.match(mapHook, /if \(mapMode === "comparison"\) return/);
   assert.match(mapHook, /current === "comparison" \? current : mode/);
   assert.match(mapHook, /returnMode === "day_route" \? dayRoute\.activeDay\?\.day_number/);
-  assert.match(variantControls, /router\.push\(variantHref/);
+  assert.match(variantControls, /router\.push\(tripSectionHref/);
   assert.doesNotMatch(comparisonUi, /router\.push|variantHref/);
   assert.match(queries, /invalidateVariantComparison/);
   assert.doesNotMatch(

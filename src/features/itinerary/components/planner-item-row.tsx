@@ -15,6 +15,8 @@ import {
   type ItineraryItem,
 } from "@/features/itinerary/types";
 import { MatrixItemSummary } from "@/features/itinerary/components/matrix-presentation";
+import { formatMoney } from "@/features/research/money";
+import { compactTransportRoute } from "@/features/itinerary/transport-presentation";
 
 export function PlannerItemRow({
   interactive,
@@ -43,6 +45,20 @@ export function PlannerItemRow({
           : null;
   const car = item.type === "car_rental" ? (details as CarRentalDetails) : null;
   const carSummary = car ? [car.provider, car.address].filter(Boolean).join(" · ") : "";
+  const placeSummary = car
+    ? ""
+    : (item.place?.formattedAddress ?? details.address ?? details.location ?? "");
+  const routeSummary = compactTransportRoute(details.origin, details.destination);
+  const priceSummary =
+    item.price_amount !== null && item.price_currency
+      ? formatMoney(item.price_amount, item.price_currency)
+      : "";
+  const subtitle =
+    item.type === "activity"
+      ? ""
+      : [routeSummary, details.serviceNumber, carSummary, placeSummary, priceSummary]
+          .filter(Boolean)
+          .join(" · ");
   const title = item.title;
   return (
     <div
@@ -67,7 +83,7 @@ export function PlannerItemRow({
       >
         <MatrixItemSummary
           startTime={start}
-          subtitle={carSummary}
+          subtitle={subtitle}
           title={title}
           transportMode={mode}
           type={item.type}

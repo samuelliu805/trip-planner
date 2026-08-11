@@ -4,13 +4,15 @@ import { revalidatePath } from "next/cache";
 
 import {
   clearItineraryItemsSchema,
+  type ClearItineraryItemsInput,
+} from "@/features/itinerary/day-schema";
+import {
   deleteItineraryItemSchema,
   updateItineraryItemSchema,
   type CreateItineraryItemInput,
-  type ClearItineraryItemsInput,
   type DeleteItineraryItemInput,
   type UpdateItineraryItemInput,
-} from "@/features/itinerary/schema";
+} from "@/features/itinerary/item-schema";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { normalizedOptional, scheduleKind } from "@/features/itinerary/mutation-helpers";
 import type { MutationResult } from "@/features/itinerary/types";
@@ -58,7 +60,7 @@ export async function updateItineraryItem(
   const supabase = await createClient();
   const { data: existingItem, error: existingItemError } = await supabase
     .from("itinerary_items")
-    .select("type, day_id, start_time, end_time")
+    .select("type, day_id, start_time, end_time, price_amount, price_currency")
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
@@ -108,6 +110,12 @@ export async function updateItineraryItem(
   if (parsed.data.notes !== undefined) values.notes = normalizedOptional(parsed.data.notes);
   if (persistedPlaceId !== undefined) values.place_id = persistedPlaceId;
   else if (parsed.data.placeId !== undefined) values.place_id = parsed.data.placeId;
+  if (parsed.data.priceAmount !== undefined) values.price_amount = parsed.data.priceAmount;
+  if (parsed.data.priceAmount !== undefined || parsed.data.priceCurrency !== undefined)
+    values.price_currency =
+      parsed.data.priceAmount === null
+        ? null
+        : (parsed.data.priceCurrency ?? existingItem.price_currency);
   if (parsed.data.startTime !== undefined)
     values.start_time = normalizedOptional(parsed.data.startTime);
   if (parsed.data.title !== undefined) values.title = parsed.data.title.trim();

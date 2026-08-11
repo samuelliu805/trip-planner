@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { itineraryItemTypes } from "../itinerary/schema.ts";
+import { itineraryItemTypes } from "../itinerary/item-schema.ts";
 import { overviewRouteModes, routeLegModes } from "../routes/types.ts";
 
 export const canonicalPublicViews = ["overview", "table", "timeline"] as const;

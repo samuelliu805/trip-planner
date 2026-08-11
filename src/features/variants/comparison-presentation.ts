@@ -57,7 +57,7 @@ export function formatCitySequence(stages: OverviewStage[]) {
         .filter((stage, index) => index === 0 || stages[index - 1].placeKey !== stage.placeKey)
         .map(({ entries }) => entries[0].title)
         .join(" → ")
-    : "No locality stages";
+    : "No city/town stages";
 }
 
 export function deriveVariantComparisonPresentation(
@@ -120,6 +120,7 @@ export function deriveVariantComparisonPresentation(
     color: projection.color,
     isActive: active,
     isPrimary: projection.isPrimary,
+    knownCost: projection.knownCost,
     lines,
     markers,
     name: projection.name,
@@ -266,6 +267,7 @@ function deriveDayRouteComparisonPresentation(
     color: projection.color,
     isActive: active,
     isPrimary: projection.isPrimary,
+    knownCost: projection.knownCost,
     lines: calculatedLines.length
       ? calculatedLines
       : previewDayRouteComparisonLines(projection, active, dayNumber, route),

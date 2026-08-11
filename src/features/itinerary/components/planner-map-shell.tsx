@@ -6,6 +6,7 @@ import { useState } from "react";
 import { PlannerMapControls } from "@/features/itinerary/components/planner-map-controls";
 import { PlannerMapSelectedPlace } from "@/features/itinerary/components/planner-map-selected-place";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type { ItineraryItem } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
@@ -36,7 +37,6 @@ export function PlannerMapShell({
   lines = [],
   mapMode,
   markers,
-  onComparisonExit,
   onComparisonSheetOpen,
   onDecisionSummaryOpen,
   onDecisionSummaryPanelClose,
@@ -48,6 +48,7 @@ export function PlannerMapShell({
   onMarkerClick,
   overviewRoute,
   selectedId,
+  selectedItem,
   viewportKey,
 }: {
   compact?: boolean;
@@ -61,7 +62,6 @@ export function PlannerMapShell({
   lines?: PlannerMapLine[];
   mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
-  onComparisonExit: () => void;
   onComparisonSheetOpen: () => void;
   onDecisionSummaryOpen: () => void;
   onDecisionSummaryPanelClose: () => void;
@@ -73,6 +73,7 @@ export function PlannerMapShell({
   onMarkerClick: (id?: string) => void;
   overviewRoute: OverviewRouteUi;
   selectedId?: string;
+  selectedItem?: ItineraryItem;
   viewportKey?: string;
 }) {
   const activeDayId = dayRoute.activeDay?.id ?? "no-day";
@@ -82,8 +83,8 @@ export function PlannerMapShell({
     open: boolean;
   } | null>(null);
   const storedDayPanelOpen = dayPanelState?.dayId === activeDayId ? dayPanelState.open : true;
-  const overviewPanelVisible = Boolean(selectedId || overviewRoute.editing || overviewPanelOpen);
-  const dayPanelOpen = Boolean(selectedId || dayRoute.editing || storedDayPanelOpen);
+  const overviewPanelVisible = Boolean(overviewRoute.editing || overviewPanelOpen);
+  const dayPanelOpen = Boolean(dayRoute.editing || storedDayPanelOpen);
   const panelDismissed =
     mapMode === "overview"
       ? !overviewPanelVisible
@@ -93,8 +94,8 @@ export function PlannerMapShell({
   const setDayPanelOpen = (open: boolean) => setDayPanelState({ dayId: activeDayId, open });
   const handleMarkerClick = (id?: string) => {
     if (id) {
-      if (mapMode === "day_route") setDayPanelOpen(true);
-      else setOverviewPanelOpen(true);
+      if (mapMode === "day_route") setDayPanelOpen(false);
+      else setOverviewPanelOpen(false);
     }
     onMarkerClick(id);
   };
@@ -107,6 +108,11 @@ export function PlannerMapShell({
     setDayPanelOpen(false);
     onMapSelectionClear();
   };
+  const closeSelectedPlace = () => {
+    if (mapMode === "day_route") setDayPanelOpen(false);
+    else setOverviewPanelOpen(false);
+    onMapSelectionClear();
+  };
   const visibleMarkers = markers;
   const selectedMarker = selectedId
     ? visibleMarkers.find(({ itemIds }) => itemIds.includes(selectedId))
@@ -115,8 +121,10 @@ export function PlannerMapShell({
     selectedId && selectedMarker && mapMode !== "comparison" ? (
       <PlannerMapSelectedPlace
         dayRoute={dayRoute}
+        item={selectedItem}
         mapMode={mapMode}
         marker={selectedMarker}
+        onClose={closeSelectedPlace}
         onEditMapItem={onEditMapItem}
         onMarkerClick={handleMarkerClick}
         selectedId={selectedId}
@@ -130,7 +138,7 @@ export function PlannerMapShell({
       <PlannerMapCanvas
         compact={compact}
         emptyState={emptyState}
-        lines={lines}
+        lines={selectedId ? [] : lines}
         markers={visibleMarkers}
         onMarkerClick={handleMarkerClick}
         selectedId={selectedId}
@@ -153,17 +161,18 @@ export function PlannerMapShell({
           if (mapMode === "overview") setOverviewPanelOpen(true);
           else if (mapMode === "day_route") setDayPanelOpen(true);
         }}
-        panelDismissed={panelDismissed}
+        panelDismissed={panelDismissed && !selectedId}
       />
-      {!compact && mapMode === "overview" && overviewPanelVisible ? (
-        <OverviewRouteOverlay
-          onClose={closeOverviewPanel}
-          route={overviewRoute}
-          selectedPlace={selectedPlace}
-        />
+      {!compact && selectedPlace ? (
+        <section className="map-place-panel absolute bottom-3 left-3 right-3 z-20 max-h-[min(28rem,calc(100%-4.5rem))] overflow-y-auto rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
+          {selectedPlace}
+        </section>
       ) : null}
-      {!compact && mapMode === "day_route" && dayPanelOpen ? (
-        <DayRouteOverlay onClose={closeDayPanel} route={dayRoute} selectedPlace={selectedPlace} />
+      {!compact && !selectedId && mapMode === "overview" && overviewPanelVisible ? (
+        <OverviewRouteOverlay onClose={closeOverviewPanel} route={overviewRoute} />
+      ) : null}
+      {!compact && !selectedId && mapMode === "day_route" && dayPanelOpen ? (
+        <DayRouteOverlay onClose={closeDayPanel} route={dayRoute} />
       ) : null}
       {mapMode === "comparison" ? (
         <>
@@ -172,7 +181,6 @@ export function PlannerMapShell({
             <>
               <RouteVariantComparisonPanel
                 comparison={comparison}
-                onExit={onComparisonExit}
                 onSummaryOpen={onDecisionSummaryOpen}
                 summaryOpen={decisionSummaryPanelOpen}
               />

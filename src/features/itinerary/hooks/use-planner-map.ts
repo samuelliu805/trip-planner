@@ -79,7 +79,7 @@ export function usePlannerMap(
         label: stage.firstDayLabel,
         latitude: stage.latitude,
         longitude: stage.longitude,
-        summary: `${stage.dayRangeLabel} · Locality stage ${stage.position}`,
+        summary: `${stage.dayRangeLabel} · City/town stage ${stage.position}`,
       })),
     [overviewStages],
   );
@@ -187,17 +187,17 @@ export function usePlannerMap(
           ? {
               message: comparison.dayNumber
                 ? `Visible route variants do not contain mappable Activity, Meal, or Hotel stops for Day ${comparison.dayNumber}.`
-                : "Visible route variants do not contain a mappable Activity locality stage.",
+                : "Visible route variants do not contain a mappable Activity city/town stage.",
               title: comparison.dayNumber
                 ? `No Day ${comparison.dayNumber} routes to compare`
-                : "No locality stages to compare",
+                : "No city/town stages to compare",
             }
           : undefined
         : mapMode === "overview"
           ? {
               message:
-                "Add a saved place with locality data to an Activity to map the trip overview.",
-              title: "No mappable locality stages yet",
+                "Add a saved place with city/town data to an Activity to map the trip overview.",
+              title: "No mappable city/town stages yet",
             }
           : !mapMarkers.length
             ? {
@@ -215,10 +215,10 @@ export function usePlannerMap(
         ? {
             message: comparison.dayNumber
               ? `Visible route variants do not contain mappable Activity, Meal, or Hotel stops for Day ${comparison.dayNumber}.`
-              : "Visible route variants do not contain a mappable Activity locality stage.",
+              : "Visible route variants do not contain a mappable Activity city/town stage.",
             title: comparison.dayNumber
               ? `No Day ${comparison.dayNumber} routes to compare`
-              : "No locality stages to compare",
+              : "No city/town stages to compare",
           }
         : undefined,
     compactMapLines,

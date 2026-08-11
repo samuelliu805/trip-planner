@@ -1,23 +1,41 @@
 "use client";
 
-import { ChevronDown, Minus, Pencil, Plus } from "lucide-react";
+import { ChevronDown, ExternalLink, Minus, Pencil, Plus, X } from "lucide-react";
 
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
 import type { PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { RouteIconButton } from "@/features/routes/route-icon-button";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
+import type { ItineraryItem } from "@/features/itinerary/types";
+import { formatMoney } from "@/features/research/money";
+
+function itemDetails(item?: ItineraryItem) {
+  return item?.details && typeof item.details === "object" && !Array.isArray(item.details)
+    ? (item.details as Record<string, string | undefined>)
+    : {};
+}
+
+function timeLabel(item?: ItineraryItem) {
+  if (!item?.start_time) return null;
+  const start = item.start_time.slice(0, 5);
+  return item.end_time ? `${start}–${item.end_time.slice(0, 5)}` : start;
+}
 
 export function PlannerMapSelectedPlace({
   dayRoute,
+  item,
   mapMode,
   marker,
+  onClose,
   onEditMapItem,
   onMarkerClick,
   selectedId,
 }: {
   dayRoute: DayRouteUi;
+  item?: ItineraryItem;
   mapMode: "overview" | "day_route";
   marker: PlannerMapMarker;
+  onClose: () => void;
   onEditMapItem: (itemId: string) => void;
   onMarkerClick: (id?: string) => void;
   selectedId: string;
@@ -39,6 +57,29 @@ export function PlannerMapSelectedPlace({
         ? `${marker.entries.length} ${marker.entries.length === 1 ? "meal" : "meals"} here`
         : `${marker.entries.length} car rental ${marker.entries.length === 1 ? "event" : "events"} here`;
   const eligibleDayStop = ["activity", "hotel", "meal"].includes(entry.kind);
+  const details = itemDetails(item);
+  const time = timeLabel(item);
+  const price =
+    item?.price_amount !== null && item?.price_amount !== undefined && item.price_currency
+      ? `${item.price_currency} ${formatMoney(item.price_amount, item.price_currency)}`
+      : null;
+  const bookingLinks = item?.links?.length
+    ? item.links.map(({ id, label, url }) => ({ id, label, url }))
+    : item?.booking_url
+      ? [{ id: item.id, label: "Booking", url: item.booking_url }]
+      : [];
+  const facts = [
+    time && { label: "Time", value: time },
+    price && { label: "Price", value: price },
+    details.serviceNumber && { label: "Service", value: details.serviceNumber },
+    details.action && {
+      label: "Rental",
+      value: details.action === "pickup" ? "Pick-up" : "Return",
+    },
+    details.provider && { label: "Provider", value: details.provider },
+    details.checkInDate && { label: "Check-in", value: details.checkInDate },
+    details.checkOutDate && { label: "Check-out", value: details.checkOutDate },
+  ].filter((fact): fact is { label: string; value: string } => Boolean(fact));
 
   return (
     <div aria-live="polite">
@@ -55,6 +96,9 @@ export function PlannerMapSelectedPlace({
           title="Edit item"
         >
           <Pencil className="size-4" />
+        </RouteIconButton>
+        <RouteIconButton label="Close place details" onClick={onClose} title="Close place details">
+          <X className="size-4" />
         </RouteIconButton>
         {mapMode === "day_route" && eligibleDayStop && dayRoute.editing ? (
           dayRoute.draft?.itemIds.includes(entry.itemId) ? (
@@ -109,6 +153,47 @@ export function PlannerMapSelectedPlace({
           </div>
         </details>
       )}
+      {facts.length || item?.notes || bookingLinks.length ? (
+        <div className="mt-3 space-y-3 border-t pt-3">
+          {facts.length ? (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
+              {facts.map((fact) => (
+                <div className="min-w-0" key={fact.label}>
+                  <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    {fact.label}
+                  </dt>
+                  <dd className="truncate font-medium" title={fact.value}>
+                    {fact.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          {item?.notes ? (
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Notes
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-xs leading-5">{item.notes}</p>
+            </div>
+          ) : null}
+          {bookingLinks.length ? (
+            <div className="flex flex-wrap gap-2">
+              {bookingLinks.map((link) => (
+                <a
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-xs font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  href={link.url}
+                  key={link.id}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {link.label} <ExternalLink aria-hidden="true" className="size-3.5" />
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

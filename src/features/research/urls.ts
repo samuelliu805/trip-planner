@@ -2,10 +2,39 @@ import { researchCategories, type PlanResearchItem, type ResearchCategory } from
 
 export type TripSection = "plan" | "compare";
 
-export function tripSectionHref(tripId: string, section: TripSection, variantId?: string) {
-  const suffix = section === "compare" ? "/compare" : "";
+export const researchCategoryRouteSegments: Record<ResearchCategory, string> = {
+  flight: "flights",
+  rental: "rentals",
+  stay: "stays",
+  train: "trains",
+};
+
+export function parseResearchCategoryRouteSegment(value?: string): ResearchCategory | undefined {
+  return researchCategories.find((category) => researchCategoryRouteSegments[category] === value);
+}
+
+export function researchCategoryHref(
+  tripId: string,
+  category: ResearchCategory,
+  options: { dayId?: string; itemId?: string; variantId?: string } = {},
+) {
+  const params = new URLSearchParams();
+  if (options.variantId) params.set("variant", options.variantId);
+  if (options.dayId) params.set("dayId", options.dayId);
+  if (options.itemId) params.set("itemId", options.itemId);
+  const query = params.size ? `?${params.toString()}` : "";
+  return `/trips/${tripId}/compare/${researchCategoryRouteSegments[category]}${query}`;
+}
+
+export function tripSectionHref(
+  tripId: string,
+  section: TripSection,
+  variantId?: string,
+  researchCategory: ResearchCategory = "flight",
+) {
+  if (section === "compare") return researchCategoryHref(tripId, researchCategory, { variantId });
   const query = variantId ? `?variant=${encodeURIComponent(variantId)}` : "";
-  return `/trips/${tripId}${suffix}${query}`;
+  return `/trips/${tripId}${query}`;
 }
 
 export type PlanResearchContext = {
@@ -22,26 +51,20 @@ export function parseResearchCategory(value?: string): ResearchCategory | undefi
 }
 
 export function matchingPlanResearchItems(items: PlanResearchItem[], context: PlanResearchContext) {
-  const exactItems = context.itemId
-    ? items.filter(
-        (item) => item.itinerary_item_id === context.itemId && item.category === context.category,
-      )
-    : [];
-  if (exactItems.length) return exactItems;
-  return items.filter(
+  const categoryItems = items.filter((item) => item.category === context.category);
+  const contextual = categoryItems.filter(
     (item) =>
-      item.category === context.category &&
-      item.day_id === context.dayId &&
-      !item.itinerary_item_id,
+      (context.itemId && item.itinerary_item_id === context.itemId) ||
+      (item.day_id === context.dayId && !item.itinerary_item_id) ||
+      (!item.day_id && !item.itinerary_item_id),
   );
+  return contextual.length ? contextual : categoryItems;
 }
 
 export function compareHrefForPlanContext(tripId: string, context: PlanResearchContext) {
-  const params = new URLSearchParams({
-    category: context.category,
+  return researchCategoryHref(tripId, context.category, {
     dayId: context.dayId,
-    variant: context.variantId,
+    itemId: context.itemId,
+    variantId: context.variantId,
   });
-  if (context.itemId) params.set("itemId", context.itemId);
-  return `/trips/${tripId}/compare?${params.toString()}`;
 }

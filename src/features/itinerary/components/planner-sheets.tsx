@@ -23,6 +23,7 @@ import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import { RouteVariantComparisonSheet } from "@/features/variants/components/route-variant-comparison-sheet";
 import { RouteVariantDecisionSummarySheet } from "@/features/variants/components/route-variant-decision-summary-sheet";
+import { TripSettingsSheet } from "@/features/trips/components/trip-settings-sheet";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
@@ -35,6 +36,7 @@ type PlannerSheetsProps = {
   comparisonSheetOpen: boolean;
   decisionSummary: VariantDecisionSummaryUi;
   decisionSummarySheetOpen: boolean;
+  defaultCurrency: string;
   copyDaysOpen: boolean;
   copyPending: boolean;
   dayCityLayerAvailable: boolean;
@@ -47,7 +49,6 @@ type PlannerSheetsProps = {
   mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
   onCopyDaysOpenChange: (open: boolean) => void;
-  onComparisonExit: () => void;
   onComparisonSheetOpenChange: (open: boolean) => void;
   onDecisionSummarySheetOpenChange: (open: boolean) => void;
   onCopyToSelectedDays: () => void;
@@ -84,6 +85,7 @@ export function PlannerSheets({
   comparisonSheetOpen,
   decisionSummary,
   decisionSummarySheetOpen,
+  defaultCurrency,
   copyDaysOpen,
   copyPending,
   dayCityLayerAvailable,
@@ -96,7 +98,6 @@ export function PlannerSheets({
   mapMode,
   mapMarkers,
   onCopyDaysOpenChange,
-  onComparisonExit,
   onComparisonSheetOpenChange,
   onDecisionSummarySheetOpenChange,
   onCopyToSelectedDays,
@@ -151,6 +152,7 @@ export function PlannerSheets({
             {editor ? (
               <PlannerItemForm
                 dayId={editor.dayId}
+                defaultCurrency={defaultCurrency}
                 item={editor.item}
                 onCancel={onEditorClose}
                 onError={onInteractionError}
@@ -189,7 +191,6 @@ export function PlannerSheets({
               lines={mapMode === "comparison" ? compactMapLines : mapLines}
               mapMode={mapMode}
               markers={mapMode === "comparison" ? compactMapMarkers : mapMarkers}
-              onComparisonExit={onComparisonExit}
               onComparisonSheetOpen={() => onComparisonSheetOpenChange(true)}
               onDecisionSummaryOpen={() => onDecisionSummarySheetOpenChange(true)}
               onDecisionSummaryPanelClose={() => undefined}
@@ -200,22 +201,15 @@ export function PlannerSheets({
               onMapSelectionClear={onMapSelectionClear}
               overviewRoute={overviewRoute}
               selectedId={selectedItem?.id}
+              selectedItem={selectedItem}
               viewportKey={mapMode === "comparison" ? compactMapViewportKey : mapViewportKey}
             />
           </div>
         </SheetContent>
       </Sheet>
-      <Sheet onOpenChange={onSettingsOpenChange} open={settingsOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Trip settings</SheetTitle>
-            <SheetDescription>
-              Update trip details without changing the generated date structure.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-5">{settings}</div>
-        </SheetContent>
-      </Sheet>
+      <TripSettingsSheet onOpenChange={onSettingsOpenChange} open={settingsOpen}>
+        {settings}
+      </TripSettingsSheet>
       <Sheet onOpenChange={onCopyDaysOpenChange} open={copyDaysOpen}>
         <SheetContent>
           <SheetHeader>

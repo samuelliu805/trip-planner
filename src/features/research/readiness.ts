@@ -21,9 +21,27 @@ const fieldLabels: Partial<Record<keyof ResearchItem, string>> = {
 
 export function missingComparisonFields(item: ResearchItem) {
   const fields = [...commonRequired, ...categoryRequired[item.category as ResearchCategory]];
-  return [
+  const missing = [
     ...new Set(fields.filter((field) => item[field] === null).map((field) => fieldLabels[field])),
   ].filter((label): label is string => Boolean(label));
+  if (["flight", "train"].includes(item.category) && item.journey_type) {
+    const segments = Array.isArray(item.segments) ? item.segments : [];
+    const expected = item.journey_type === "one_way" ? 1 : 2;
+    if (
+      segments.length < expected ||
+      segments.some((segment) => {
+        if (!segment || typeof segment !== "object" || Array.isArray(segment)) return true;
+        const values = segment as Record<string, unknown>;
+        return (
+          !String(values.origin ?? "").trim() ||
+          !String(values.destination ?? "").trim() ||
+          !String(values.departureDate ?? "").trim()
+        );
+      })
+    )
+      missing.push(item.category === "flight" ? "flight segments" : "train details");
+  }
+  return [...new Set(missing)];
 }
 
 export function isReadyToCompare(item: ResearchItem) {

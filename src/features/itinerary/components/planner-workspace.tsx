@@ -1,6 +1,7 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
+import { useMemo } from "react";
 
 import { ArrangeActivitiesSheet } from "./arrange-activities-sheet";
 import { PlannerClearCellsDialog } from "./planner-clear-cells-dialog";
@@ -12,6 +13,8 @@ import type { PlannerWorkspaceProps } from "./planner-workspace-types";
 import { usePlannerWorkspaceController } from "../hooks/use-planner-workspace-controller";
 import { RouteVariantControls } from "../../variants/components/route-variant-controls";
 import { planResearchContext } from "../../research/planner-context";
+import { TripMobileTabBar } from "../../trips/components/trip-app-bar";
+import { convertPlanCostBreakdown, planCostBreakdown, planCostSummary } from "../../research/money";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
   return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
@@ -31,6 +34,23 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
     c.selectedCount === 1
       ? planResearchContext(c.workspace.variant.id, c.activeDay, c.activeCategory, researchItem)
       : undefined;
+  const rawCostLines = useMemo(
+    () =>
+      planCostBreakdown(
+        c.projectedWorkspace.days.flatMap((day) =>
+          day.items.map((item) => ({ ...item, dayNumber: day.day_number })),
+        ),
+      ),
+    [c.projectedWorkspace.days],
+  );
+  const planCostLines = useMemo(
+    () => convertPlanCostBreakdown(rawCostLines, props.trip.currency, props.exchangeRates),
+    [props.exchangeRates, props.trip.currency, rawCostLines],
+  );
+  const costSummary = useMemo(
+    () => planCostSummary(planCostLines, props.trip.currency, props.exchangeRates),
+    [planCostLines, props.exchangeRates, props.trip.currency],
+  );
 
   return (
     <PlannerWorkspaceEventBoundary
@@ -74,18 +94,24 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         mutating={c.mutating}
         onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
         pasteAvailableClipboard={c.clipboard.pasteAvailableClipboard}
+        planCostLines={planCostLines}
+        planCostSummary={costSummary}
+        planDays={c.projectedWorkspace.days}
         removeDay={c.removeDay}
         requestClearSelection={c.requestClearSelection}
         requestPending={c.clipboard.requestPending}
         researchContext={researchContext}
         researchItems={props.initialResearchItems}
+        researchSelections={props.initialResearchSelections}
         selectedCount={c.selectedCount}
         selectedDay={c.selectedDay}
+        selectedItem={c.selectedItems.length === 1 ? c.selectedItems[0] : undefined}
         setCopyDaysOpen={c.clipboard.setCopyDaysOpen}
         setEditor={c.setEditor}
         setInteractionError={c.setInteractionError}
         setSettingsOpen={c.setSettingsOpen}
         shareControls={props.shareControls}
+        accountEmail={props.accountEmail}
         trip={props.trip}
         workspaceDayCount={c.projectedWorkspace.days.length}
         workspaceError={Boolean(c.workspaceError)}
@@ -101,6 +127,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
             variants={c.variants}
           />
         }
+        variantId={c.workspace.variant.id}
       />
       <PlannerMatrix
         compactMapEmptyState={c.map.compactMapEmptyState}
@@ -129,7 +156,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         mapMode={c.map.mapMode}
         mapViewportKey={c.map.mapViewportKey}
         onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
-        onComparisonExit={c.map.exitComparison}
         onComparisonSheetOpen={() => c.map.setComparisonSheetOpen(true)}
         onDayMapLayerChange={c.map.setDayMapLayer}
         onDecisionSummaryOpen={() => c.map.setDecisionSummaryPanelOpen(true)}
@@ -161,6 +187,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         visibleSelectionBounds={c.visibleSelectionBounds}
         workspace={c.projectedWorkspace}
       />
+      <TripMobileTabBar active="plan" tripId={props.trip.id} variantId={c.workspace.variant.id} />
       <PlannerSheets
         compactMapEmptyState={c.map.compactMapEmptyState}
         compactMapLines={c.map.compactMapLines}
@@ -175,6 +202,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         dayRoute={c.dayRoute}
         decisionSummary={c.map.decisionSummary}
         decisionSummarySheetOpen={c.map.decisionSummarySheetOpen}
+        defaultCurrency={props.trip.currency}
         editor={c.editor}
         mapEmptyState={c.map.mapEmptyState}
         mapExpanded={c.mapExpanded}
@@ -182,7 +210,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         mapMarkers={c.map.mapMarkers}
         mapMode={c.map.mapMode}
         mapViewportKey={c.map.mapViewportKey}
-        onComparisonExit={c.map.exitComparison}
         onComparisonSheetOpenChange={(open) => {
           c.map.setComparisonSheetOpen(open);
           if (open) c.map.setDecisionSummarySheetOpen(false);

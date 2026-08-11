@@ -31,7 +31,7 @@ export type VariantEditorMode = "blank" | "duplicate" | "metadata";
 
 function ColorPalette({ color, onChange }: { color: string; onChange: (color: string) => void }) {
   return (
-    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Route color">
+    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Plan color">
       {variantColorPalette.map((option) => (
         <button
           aria-label={`${option.label}${color === option.value ? ", selected" : ""}`}
@@ -124,16 +124,16 @@ export function RouteVariantEditorDialog({
       onOpenChange(false);
       onSaved?.(result.variantId);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "The route variant could not be saved.");
+      setError(caught instanceof Error ? caught.message : "The Plan could not be saved.");
     }
   }
 
   const title =
     mode === "blank"
-      ? "Create route variant"
+      ? "Create an empty Plan"
       : mode === "duplicate"
-        ? "Duplicate route variant"
-        : "Edit route variant";
+        ? "Duplicate a Plan"
+        : "Edit Plan";
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -145,7 +145,7 @@ export function RouteVariantEditorDialog({
               ? "Creates the same planning days with no itinerary items or saved routes."
               : mode === "duplicate"
                 ? "Copies days, items, links, saved stops, and leg modes. Route calculations are not copied."
-                : "The route name and color identify this variant everywhere in the planner."}
+                : "The Plan name and color identify this version throughout the planner."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5 px-5 py-5 sm:px-6">
@@ -168,7 +168,7 @@ export function RouteVariantEditorDialog({
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor={nameId}>Route name</Label>
+            <Label htmlFor={nameId}>Plan name</Label>
             <Input
               autoComplete="off"
               id={nameId}
@@ -178,10 +178,10 @@ export function RouteVariantEditorDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Route color</Label>
+            <Label>Plan color</Label>
             <ColorPalette color={color} onChange={setColor} />
             <p className="text-xs text-muted-foreground">
-              Color is paired with the route name and never used alone.
+              Color is paired with the Plan name and never used alone.
             </p>
           </div>
           {error ? (
@@ -209,9 +209,9 @@ export function RouteVariantEditorDialog({
             {pending
               ? "Saving…"
               : mode === "blank"
-                ? "Create route"
+                ? "Create Plan"
                 : mode === "duplicate"
-                  ? "Duplicate route"
+                  ? "Duplicate Plan"
                   : "Save changes"}
           </Button>
         </DialogFooter>

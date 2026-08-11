@@ -131,9 +131,9 @@ export function PublicShareDialog({
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger asChild>
-        <Button className="h-11 px-3 xl:h-9" variant="outline">
+        <Button aria-label="Share trip" className="h-11 min-w-11 px-3 xl:h-9" variant="outline">
           <Share2 aria-hidden="true" className="size-4" />
-          <span className="hidden sm:inline">Share</span>
+          <span className="hidden lg:inline">Share</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="public-share-settings-dialog flex max-h-[calc(100dvh-max(8px,env(safe-area-inset-top)))] flex-col overflow-hidden sm:max-h-[min(90dvh,860px)] sm:max-w-4xl">

@@ -40,7 +40,7 @@ export function RouteVariantSwitcher({
   comparisonBlockingReason?: string;
   limitReached: boolean;
   onAction: (action: RouteVariantAction) => void;
-  onCompare: () => void;
+  onCompare?: () => void;
   onSheetOpenChange: (open: boolean) => void;
   onSwitch: (variantId: string) => void;
   sheetOpen: boolean;
@@ -48,7 +48,7 @@ export function RouteVariantSwitcher({
 }) {
   return (
     <>
-      <div className="hidden items-center gap-1 md:flex">
+      <div className="hidden items-center gap-1 min-[960px]:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button className="h-9 max-w-56 gap-2 px-2.5" variant="outline">
@@ -56,45 +56,47 @@ export function RouteVariantSwitcher({
               <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="z-[90] w-64">
-            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
-              Route variants
-            </div>
+          <DropdownMenuContent align="start" className="w-64">
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">Plans</div>
             {variants.map((variant) => (
               <DropdownMenuItem key={variant.id} onSelect={() => onSwitch(variant.id)}>
                 <VariantIdentity variant={variant} />
                 {variant.id === activeVariantId ? <Check className="ml-auto size-4" /> : null}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator className="min-[900px]:hidden" />
-            <DropdownMenuItem
-              className="min-[900px]:hidden"
-              disabled={Boolean(comparisonBlockingReason)}
-              onSelect={onCompare}
-              title={comparisonBlockingReason}
-            >
-              <GitCompareArrows className="size-4" /> Compare routes
-              {comparisonBlockingReason ? (
-                <span className="sr-only">{comparisonBlockingReason}</span>
-              ) : null}
-            </DropdownMenuItem>
+            {onCompare ? (
+              <>
+                <DropdownMenuSeparator className="min-[900px]:hidden" />
+                <DropdownMenuItem
+                  className="min-[900px]:hidden"
+                  disabled={Boolean(comparisonBlockingReason)}
+                  onSelect={onCompare}
+                  title={comparisonBlockingReason}
+                >
+                  <GitCompareArrows className="size-4" /> Compare routes
+                  {comparisonBlockingReason ? (
+                    <span className="sr-only">{comparisonBlockingReason}</span>
+                  ) : null}
+                </DropdownMenuItem>
+              </>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={limitReached} onSelect={() => onAction("create")}>
-              <Plus className="size-4" /> New route
+              <Plus className="size-4" /> New empty Plan
             </DropdownMenuItem>
             <DropdownMenuItem disabled={limitReached} onSelect={() => onAction("duplicate")}>
-              <Copy className="size-4" /> Duplicate route
+              <Copy className="size-4" /> Duplicate Plan
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onAction("manage")}>
-              <MoreHorizontal className="size-4" /> Manage variants
+              <MoreHorizontal className="size-4" /> Manage Plans
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       <Button
-        aria-label={`Route variant: ${activeVariant.name}${activeVariant.is_primary ? ", Primary" : ""}`}
-        className="h-11 min-w-0 gap-1.5 px-2 md:hidden"
+        aria-label={`Plan: ${activeVariant.name}${activeVariant.is_primary ? ", Primary" : ""}`}
+        className="h-11 min-w-0 gap-1.5 px-2 min-[960px]:hidden"
         onClick={() => onSheetOpenChange(true)}
         variant="outline"
       >
@@ -110,10 +112,8 @@ export function RouteVariantSwitcher({
       <Sheet onOpenChange={onSheetOpenChange} open={sheetOpen}>
         <SheetContent side="bottom">
           <SheetHeader>
-            <SheetTitle>Route variants</SheetTitle>
-            <SheetDescription>
-              Switch the one active route shown in the Matrix and map.
-            </SheetDescription>
+            <SheetTitle>Plans</SheetTitle>
+            <SheetDescription>Switch the Plan shown in the Matrix and map.</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto px-4 py-4">
             <div className="space-y-1">
@@ -130,21 +130,25 @@ export function RouteVariantSwitcher({
               ))}
             </div>
             <div className="mt-4 grid gap-2 border-t pt-4">
-              <Button
-                aria-describedby={
-                  comparisonBlockingReason ? "mobile-comparison-disabled" : undefined
-                }
-                className="h-11 justify-start"
-                disabled={Boolean(comparisonBlockingReason)}
-                onClick={onCompare}
-                variant="outline"
-              >
-                <GitCompareArrows className="size-4" /> Compare routes
-              </Button>
-              {comparisonBlockingReason ? (
-                <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
-                  {comparisonBlockingReason}
-                </p>
+              {onCompare ? (
+                <>
+                  <Button
+                    aria-describedby={
+                      comparisonBlockingReason ? "mobile-comparison-disabled" : undefined
+                    }
+                    className="h-11 justify-start"
+                    disabled={Boolean(comparisonBlockingReason)}
+                    onClick={onCompare}
+                    variant="outline"
+                  >
+                    <GitCompareArrows className="size-4" /> Compare routes
+                  </Button>
+                  {comparisonBlockingReason ? (
+                    <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
+                      {comparisonBlockingReason}
+                    </p>
+                  ) : null}
+                </>
               ) : null}
               <Button
                 className="h-11 justify-start"
@@ -152,7 +156,7 @@ export function RouteVariantSwitcher({
                 onClick={() => onAction("create")}
                 variant="outline"
               >
-                <Plus className="size-4" /> New route
+                <Plus className="size-4" /> New empty Plan
               </Button>
               <Button
                 className="h-11 justify-start"
@@ -160,14 +164,14 @@ export function RouteVariantSwitcher({
                 onClick={() => onAction("duplicate")}
                 variant="outline"
               >
-                <Copy className="size-4" /> Duplicate route
+                <Copy className="size-4" /> Duplicate Plan
               </Button>
               <Button
                 className="h-11 justify-start"
                 onClick={() => onAction("manage")}
                 variant="ghost"
               >
-                <MoreHorizontal className="size-4" /> Manage variants
+                <MoreHorizontal className="size-4" /> Manage Plans
               </Button>
             </div>
           </div>
