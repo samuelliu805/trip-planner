@@ -53,7 +53,6 @@ export type PlannerMatrixProps = {
   mapMarkers: PlannerMapMarker[];
   mapViewportKey?: string;
   onArrangeActivities: (day: PlannerDay) => void;
-  onComparisonExit: () => void;
   onComparisonSheetOpen: () => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onDecisionSummaryOpen: () => void;

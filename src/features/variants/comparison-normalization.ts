@@ -216,6 +216,7 @@ export function normalizeVariantComparisonProjection(
         (a, b) => a.dayNumber - b.dayNumber || a.id.localeCompare(b.id),
       ),
       isPrimary: variant.is_primary,
+      knownCost: [],
       name: variant.name,
       variantId: variant.id,
     }));

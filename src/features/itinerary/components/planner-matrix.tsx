@@ -42,7 +42,6 @@ export function PlannerMatrix({
   mapMarkers,
   onArrangeActivities,
   onMapExpand,
-  onComparisonExit,
   onComparisonSheetOpen,
   onDecisionSummaryOpen,
   onDecisionSummaryPanelClose,
@@ -191,9 +190,6 @@ export function PlannerMatrix({
                             <p className="text-xs font-medium leading-4">
                               {formatDayLocalitySummary(deriveDayLocality(day))}
                             </p>
-                            <p className="mt-0.5 text-[10px] leading-3 text-muted-foreground">
-                              Derived from Activity places
-                            </p>
                           </div>
                         ) : null}
                         {items.map((item) => (
@@ -258,7 +254,6 @@ export function PlannerMatrix({
         mapMode={mapMode}
         markers={mapMarkers}
         onExpand={() => onMapExpand()}
-        onComparisonExit={onComparisonExit}
         onComparisonSheetOpen={onComparisonSheetOpen}
         onDecisionSummaryOpen={onDecisionSummaryOpen}
         onDecisionSummaryPanelClose={onDecisionSummaryPanelClose}
@@ -269,6 +264,7 @@ export function PlannerMatrix({
         onMapSelectionClear={onMapSelectionClear}
         overviewRoute={overviewRoute}
         selectedId={selectedMapItem?.id}
+        selectedItem={selectedMapItem}
         viewportKey={mapViewportKey}
       />
       <Button

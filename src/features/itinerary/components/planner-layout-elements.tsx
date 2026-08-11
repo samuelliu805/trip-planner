@@ -5,6 +5,7 @@ import type { PlannerMapMode } from "@/features/itinerary/components/planner-map
 import { categories } from "@/features/itinerary/components/planner-config";
 import { MatrixGridHeader } from "@/features/itinerary/components/matrix-presentation";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
+import type { ItineraryItem } from "@/features/itinerary/types";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
@@ -87,7 +88,6 @@ export function PlannerMapPane({
   mapMode,
   markers,
   onExpand,
-  onComparisonExit,
   onComparisonSheetOpen,
   onDecisionSummaryOpen,
   onDecisionSummaryPanelClose,
@@ -98,6 +98,7 @@ export function PlannerMapPane({
   onMapSelectionClear,
   overviewRoute,
   selectedId,
+  selectedItem,
   viewportKey,
 }: {
   compactEmptyState?: { message: string; title: string };
@@ -115,7 +116,6 @@ export function PlannerMapPane({
   mapMode: PlannerMapMode;
   markers: PlannerMapMarker[];
   onExpand: () => void;
-  onComparisonExit: () => void;
   onComparisonSheetOpen: () => void;
   onDecisionSummaryOpen: () => void;
   onDecisionSummaryPanelClose: () => void;
@@ -126,6 +126,7 @@ export function PlannerMapPane({
   onMapSelectionClear: () => void;
   overviewRoute: OverviewRouteUi;
   selectedId?: string;
+  selectedItem?: ItineraryItem;
   viewportKey?: string;
 }) {
   const map = (compact = false) => (
@@ -141,7 +142,6 @@ export function PlannerMapPane({
       lines={compact ? compactLines : lines}
       mapMode={mapMode}
       markers={compact ? compactMarkers : markers}
-      onComparisonExit={onComparisonExit}
       onComparisonSheetOpen={onComparisonSheetOpen}
       onDecisionSummaryOpen={onDecisionSummaryOpen}
       onDecisionSummaryPanelClose={onDecisionSummaryPanelClose}
@@ -153,6 +153,7 @@ export function PlannerMapPane({
       onMapSelectionClear={onMapSelectionClear}
       overviewRoute={overviewRoute}
       selectedId={selectedId}
+      selectedItem={selectedItem}
       viewportKey={compact ? (compactViewportKey ?? viewportKey) : viewportKey}
     />
   );

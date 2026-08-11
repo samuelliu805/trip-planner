@@ -1,29 +1,41 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { PlannerVariant } from "@/features/itinerary/types";
+import type { ResearchCategory } from "@/features/research/types";
+import {
+  parseResearchCategoryRouteSegment,
+  tripSectionHref,
+  type TripSection,
+} from "@/features/research/urls";
 
-import { variantHref } from "../active";
 import { ManageRouteVariantsDialog } from "./manage-route-variants-dialog";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { RouteVariantSwitcher, type RouteVariantAction } from "./route-variant-switcher";
 
 export function RouteVariantControls({
   activeVariantId,
+  activeSection = "plan",
   comparisonBlockingReason,
   onCompare,
+  researchCategory,
   tripId,
   variants,
 }: {
   activeVariantId: string;
+  activeSection?: TripSection;
   comparisonBlockingReason?: string;
-  onCompare: () => void;
+  onCompare?: () => void;
+  researchCategory?: ResearchCategory;
   tripId: string;
   variants: PlannerVariant[];
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const currentResearchCategory =
+    parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? researchCategory;
   const activeVariant = variants.find(({ id }) => id === activeVariantId) ?? variants[0];
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -34,7 +46,8 @@ export function RouteVariantControls({
 
   function switchVariant(variantId: string) {
     setSheetOpen(false);
-    if (variantId !== activeVariantId) router.push(variantHref(tripId, variantId));
+    if (variantId !== activeVariantId)
+      router.push(tripSectionHref(tripId, activeSection, variantId, currentResearchCategory));
   }
 
   function openAction(action: RouteVariantAction) {
@@ -44,7 +57,8 @@ export function RouteVariantControls({
     if (action === "manage") setManageOpen(true);
   }
 
-  const navigateToVariant = (variantId: string) => router.push(variantHref(tripId, variantId));
+  const navigateToVariant = (variantId: string) =>
+    router.push(tripSectionHref(tripId, activeSection, variantId, currentResearchCategory));
 
   return (
     <>
@@ -58,10 +72,14 @@ export function RouteVariantControls({
         sheetOpen={sheetOpen}
         variants={variants}
         comparisonBlockingReason={comparisonBlockingReason}
-        onCompare={() => {
-          setSheetOpen(false);
-          onCompare();
-        }}
+        onCompare={
+          onCompare
+            ? () => {
+                setSheetOpen(false);
+                onCompare();
+              }
+            : undefined
+        }
       />
 
       <RouteVariantEditorDialog

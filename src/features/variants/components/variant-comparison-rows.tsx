@@ -2,6 +2,7 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
+import { formatMoney } from "@/features/research/money";
 
 function VariantBadges({ isActive, isPrimary }: { isActive: boolean; isPrimary: boolean }) {
   return (
@@ -51,11 +52,19 @@ export function VariantComparisonRows({ comparison }: { comparison: VariantCompa
             <VariantBadges isActive={variant.isActive} isPrimary={variant.isPrimary} />
           </span>
           <span
-            aria-label={`${comparison.dayNumber ? `Day ${comparison.dayNumber} route` : "Locality"} sequence: ${variant.citySequence}`}
+            aria-label={`${comparison.dayNumber ? `Day ${comparison.dayNumber} route` : "City/town"} sequence: ${variant.citySequence}`}
             className="mt-1 block truncate text-[11px] text-muted-foreground"
             title={variant.citySequence}
           >
             {variant.citySequence}
+          </span>
+          <span className="mt-0.5 block truncate text-[10px] font-semibold text-foreground">
+            Known Cost ·{" "}
+            {variant.knownCost.length
+              ? variant.knownCost
+                  .map(({ amount, currency }) => `${currency} ${formatMoney(amount, currency)}`)
+                  .join(" · ")
+              : "No priced items"}
           </span>
           <span
             className="mt-0.5 block text-[10px] font-medium text-muted-foreground"

@@ -1,29 +1,41 @@
 import { ResearchItemRow } from "./research-item-row";
 import { isReadyToCompare, researchContextLabel } from "../readiness";
-import type { ResearchItem, ResearchSort } from "../types";
-
-function sorted(items: ResearchItem[], sort: ResearchSort) {
-  return [...items].sort((left, right) => {
-    if (sort === "recent") return Date.parse(right.observed_at) - Date.parse(left.observed_at);
-    return (
-      (left.total_price_amount ?? Number.POSITIVE_INFINITY) -
-      (right.total_price_amount ?? Number.POSITIVE_INFINITY)
-    );
-  });
-}
+import { sortResearchItems } from "../money";
+import type {
+  ResearchItem,
+  ResearchPlanApplication,
+  ResearchPlanSnapshot,
+  ResearchSort,
+  RevertRpcResult,
+  VariantResearchSelection,
+} from "../types";
 
 export function ResearchItemList({
   defaultCurrency,
   items,
+  onApplied,
   onDeleted,
+  onReverted,
   onSaved,
+  onSelected,
+  applicationsByItem,
+  plan,
+  selectionsByItem,
   sort,
+  variantName,
 }: {
+  applicationsByItem: ReadonlyMap<string, ResearchPlanApplication>;
   defaultCurrency: string;
   items: ResearchItem[];
+  onApplied: (application: ResearchPlanApplication) => void;
   onDeleted: (id: string) => void;
+  onReverted: (applicationId: string, result: RevertRpcResult) => void;
   onSaved: (item: ResearchItem) => void;
+  onSelected: (selection: VariantResearchSelection) => void;
+  plan: ResearchPlanSnapshot;
+  selectionsByItem: ReadonlyMap<string, VariantResearchSelection>;
   sort: ResearchSort;
+  variantName: string;
 }) {
   const ready = items.filter(isReadyToCompare);
   const ideas = items.filter((item) => !isReadyToCompare(item));
@@ -53,13 +65,20 @@ export function ResearchItemList({
               {group.length} {group.length === 1 ? "price" : "prices"}
             </p>
           </header>
-          {sorted(group, sort).map((item) => (
+          {sortResearchItems(group, sort, defaultCurrency).map((item) => (
             <ResearchItemRow
+              application={applicationsByItem.get(item.id)}
               defaultCurrency={defaultCurrency}
               item={item}
               key={item.id}
+              onApplied={onApplied}
               onDeleted={onDeleted}
+              onReverted={onReverted}
               onSaved={onSaved}
+              onSelected={onSelected}
+              plan={plan}
+              selection={selectionsByItem.get(item.id)}
+              variantName={variantName}
             />
           ))}
         </section>
@@ -72,13 +91,20 @@ export function ResearchItemList({
               Add price or context when you have it. These stay in the same category.
             </p>
           </header>
-          {sorted(ideas, "recent").map((item) => (
+          {sortResearchItems(ideas, "recent", defaultCurrency).map((item) => (
             <ResearchItemRow
+              application={applicationsByItem.get(item.id)}
               defaultCurrency={defaultCurrency}
               item={item}
               key={item.id}
+              onApplied={onApplied}
               onDeleted={onDeleted}
+              onReverted={onReverted}
               onSaved={onSaved}
+              onSelected={onSelected}
+              plan={plan}
+              selection={selectionsByItem.get(item.id)}
+              variantName={variantName}
             />
           ))}
         </section>

@@ -66,7 +66,10 @@ export function MatrixItemSummary({
         </span>
       </span>
       {subtitle ? (
-        <span className="block truncate text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal">
+        <span
+          className="block truncate text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal"
+          title={subtitle}
+        >
           {subtitle}
         </span>
       ) : null}

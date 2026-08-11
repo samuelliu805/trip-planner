@@ -34,9 +34,11 @@ const categoryDetails: Record<ResearchCategory, { description: string; Icon: Luc
 export function MobileCategoryPicker({
   active,
   hrefs,
+  onNavigate,
 }: {
   active: ResearchCategory;
   hrefs: Record<ResearchCategory, string>;
+  onNavigate: (category: ResearchCategory) => void;
 }) {
   return (
     <Sheet>
@@ -71,6 +73,19 @@ export function MobileCategoryPicker({
                       selected ? "border-primary bg-primary/10" : "bg-background hover:bg-muted"
                     }`}
                     href={hrefs[category]}
+                    onClick={(event) => {
+                      if (
+                        event.button ||
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey
+                      )
+                        return;
+                      event.preventDefault();
+                      onNavigate(category);
+                    }}
+                    prefetch={false}
                   >
                     <span
                       className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${

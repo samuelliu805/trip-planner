@@ -557,7 +557,7 @@ test("public route exploration accepts only the modes exposed by each route UI",
 test("public and owner Matrix use the same canonical category columns", async () => {
   assert.deepEqual(
     matrixCategoryColumns.map(({ label }) => label),
-    ["Locality", "Activities", "Transport", "Hotel", "Car rental", "Meals", "Notes"],
+    ["City / town", "Activities", "Transport", "Hotel", "Car rental", "Meals", "Notes"],
   );
   const publicTable = await readFile(
     new URL("./components/public-table.tsx", import.meta.url),

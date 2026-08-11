@@ -24,16 +24,21 @@ import type {
   RemoveTripDayInput,
   ReorderItineraryItemsInput,
   ReorderVariantDaysInput,
-} from "@/features/itinerary/schema";
+} from "@/features/itinerary/day-schema";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 import {
   invalidateVariantComparison,
   invalidateVariantDecisionSummary,
 } from "@/features/variants/queries";
+import { refreshResearchWorkspace } from "@/features/research/research-query";
 
 function invalidateDayStructure(client: QueryClient, tripId: string) {
   void invalidateVariantComparison(client, tripId);
   void invalidateVariantDecisionSummary(client, tripId);
+}
+
+function refreshResearch(client: QueryClient, tripId: string, variantId: string) {
+  void refreshResearchWorkspace(client, tripId, variantId);
 }
 
 export function useInsertTripDay(tripId: string, variantId: string) {
@@ -43,6 +48,7 @@ export function useInsertTripDay(tripId: string, variantId: string) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       invalidateDayStructure(client, tripId);
+      refreshResearch(client, tripId, variantId);
     },
   });
 }
@@ -54,6 +60,7 @@ export function useRemoveTripDay(tripId: string, variantId: string) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       invalidateDayStructure(client, tripId);
+      refreshResearch(client, tripId, variantId);
     },
   });
 }
@@ -77,6 +84,7 @@ export function useReorderVariantDays(tripId: string, variantId: string) {
     onSuccess: (workspace) => {
       client.setQueryData(plannerQueryKey(tripId, variantId), workspace);
       invalidateDayStructure(client, tripId);
+      refreshResearch(client, tripId, variantId);
     },
   });
 }
@@ -146,6 +154,7 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
         void invalidateVariantComparison(client, tripId);
       if (context?.sources.some(({ type }) => affectsDecisionSummary(type)))
         void invalidateVariantDecisionSummary(client, tripId);
+      refreshResearch(client, tripId, variantId);
     },
   });
 }
@@ -202,6 +211,7 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
       if (context?.reorderedLocalitySource) void invalidateVariantComparison(client, tripId);
       if (context?.reorderedDecisionSummaryItem)
         void invalidateVariantDecisionSummary(client, tripId);
+      refreshResearch(client, tripId, variantId);
     },
   });
 }

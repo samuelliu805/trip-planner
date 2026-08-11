@@ -73,22 +73,30 @@ export function UpdateTripForm({ trip }: { trip: Tables<"trips"> }) {
         />
       </div>
       <div className="space-y-2 sm:col-span-2">
-        <Label htmlFor="day_count">Planning days</Label>
-        <Input
-          id="day_count"
-          max={366}
-          min={1}
-          name="day_count"
-          onChange={(event) => setDayCount(Number(event.target.value))}
-          readOnly={Boolean(startDate && endDate)}
-          required
-          type="number"
-          value={dayCount}
-        />
+        <Label htmlFor="day_count">Plan length</Label>
+        {startDate && endDate ? (
+          <>
+            <input name="day_count" type="hidden" value={dayCount} />
+            <div className="flex min-h-11 items-center rounded-md border bg-muted/30 px-3 text-sm font-medium">
+              {dayCount} {dayCount === 1 ? "day" : "days"}
+            </div>
+          </>
+        ) : (
+          <Input
+            id="day_count"
+            max={366}
+            min={1}
+            name="day_count"
+            onChange={(event) => setDayCount(Number(event.target.value))}
+            required
+            type="number"
+            value={dayCount}
+          />
+        )}
         <p className="text-xs text-muted-foreground">
           {startDate && endDate
-            ? "Calculated from your date range."
-            : "Adding days keeps the plan you already made. To remove days, clear their itinerary items first."}
+            ? "Derived from the Primary Plan’s dated Days; it cannot drift independently."
+            : "For flexible dates, choose only a length. Applying a dated option can date the Plan later."}
         </p>
       </div>
       <div className="space-y-2">

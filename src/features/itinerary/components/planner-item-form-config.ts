@@ -1,4 +1,28 @@
-import type { ItineraryItemType } from "@/features/itinerary/types";
+import {
+  transportModeLabels,
+  type CarRentalDetails,
+  type ItineraryItemType,
+  type TransportMode,
+} from "@/features/itinerary/types";
+
+export function plannerItemTitle({
+  carAction,
+  placeName,
+  title,
+  transportMode,
+  type,
+}: {
+  carAction: CarRentalDetails["action"];
+  placeName?: string;
+  title: string;
+  transportMode: TransportMode;
+  type: ItineraryItemType;
+}) {
+  if (type === "car_rental") return carAction === "pickup" ? "Pickup" : "Return";
+  if (type === "transport") return transportModeLabels[transportMode];
+  if (["location", "hotel"].includes(type)) return title.trim() || placeName || "";
+  return title.trim();
+}
 
 const semanticActionLabels = new Set([
   "Ticket",
@@ -36,6 +60,27 @@ export function itemFormFieldLabels(type: ItineraryItemType) {
               ? "Transport link"
               : "Link";
   return { linkLabel, placeLabel };
+}
+
+export function itemFormCapabilities(
+  type: ItineraryItemType,
+  carAction: CarRentalDetails["action"],
+) {
+  return {
+    supportsLink: !["location", "note"].includes(type),
+    supportsPlace: !["note", "transport", "flight", "train"].includes(type),
+    supportsPrice:
+      !["location", "note"].includes(type) && !(type === "car_rental" && carAction === "return"),
+    supportsTime: [
+      "location",
+      "activity",
+      "car_rental",
+      "meal",
+      "transport",
+      "flight",
+      "train",
+    ].includes(type),
+  };
 }
 
 export const itemCopy: Record<ItineraryItemType, { label: string; placeholder: string }> = {

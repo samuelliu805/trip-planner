@@ -1,8 +1,13 @@
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 
 import type { EditorState, PlannerCategory } from "./planner-config";
-import type { PlannerDay } from "../types";
-import type { PlanResearchItem } from "../../research/types";
+import type { ItineraryItem, PlannerDay } from "../types";
+import type {
+  ConvertedPlanCostLine,
+  PlanCostSummary,
+  PlanResearchItem,
+  VariantResearchSelection,
+} from "../../research/types";
 import type { PlanResearchContext } from "../../research/urls";
 import type { Tables } from "../../../types/database";
 
@@ -24,6 +29,9 @@ export type PlannerToolbarProps = {
   isEmpty: boolean;
   isFillDragging: boolean;
   mutating: boolean;
+  planCostLines: ConvertedPlanCostLine[];
+  planCostSummary: PlanCostSummary;
+  planDays: PlannerDay[];
   onArrangeActivities: (day: PlannerDay) => void;
   pasteAvailableClipboard: () => Promise<void>;
   removeDay: (dayId: string) => Promise<void>;
@@ -31,15 +39,19 @@ export type PlannerToolbarProps = {
   requestPending: boolean;
   researchContext?: PlanResearchContext & { label: string };
   researchItems: PlanResearchItem[];
+  researchSelections: VariantResearchSelection[];
   selectedCount: number;
   selectedDay: PlannerDay | null;
+  selectedItem?: ItineraryItem;
   setCopyDaysOpen: Dispatch<SetStateAction<boolean>>;
   setEditor: Dispatch<SetStateAction<EditorState | null>>;
   setInteractionError: Dispatch<SetStateAction<string | undefined>>;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   shareControls?: ReactNode;
+  accountEmail: string;
   trip: Tables<"trips">;
   variantControls: ReactNode;
+  variantId: string;
   workspaceDayCount: number;
   workspaceError: boolean;
 };

@@ -1,46 +1,46 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { createClient } from "@/lib/supabase/server";
 
 import {
+  firstIssue,
+  persistResearchPlaces,
+  researchItemValues,
+  revalidateResearch,
+} from "./action-helpers";
+import {
   createResearchItemSchema,
   deleteResearchItemSchema,
+  researchWorkspaceSchema,
   updateResearchItemSchema,
   type CreateResearchItemInput,
   type UpdateResearchItemInput,
 } from "./schema";
-import type { ResearchItem, ResearchMutationResult } from "./types";
+import { getCompareItems, getResearchPlanSnapshot, getResearchPlanState } from "./data";
+import type { ResearchItem, ResearchMutationResult, ResearchWorkspaceSnapshot } from "./types";
 
-function firstIssue(error: { issues: Array<{ message: string }> }) {
-  return error.issues[0]?.message ?? "Check the price candidate details.";
-}
-
-function researchItemValues(data: ReturnType<typeof createResearchItemSchema.parse>) {
-  const hasPrice = data.totalPriceAmount !== null && data.totalPriceAmount !== undefined;
+export async function loadResearchWorkspace(input: {
+  tripId: string;
+  variantId: string;
+}): Promise<ResearchMutationResult<ResearchWorkspaceSnapshot>> {
+  const parsed = researchWorkspaceSchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const [items, plan, state] = await Promise.all([
+    getCompareItems(parsed.data.tripId),
+    getResearchPlanSnapshot(parsed.data.tripId, parsed.data.variantId),
+    getResearchPlanState(parsed.data.tripId, parsed.data.variantId),
+  ]);
+  const error = items.error ?? plan.error ?? state.error;
+  if (error || !plan.data) return { error: error ?? "Ideas & Options could not be refreshed." };
   return {
-    category: data.category,
-    currency: hasPrice ? data.currency : null,
-    day_id: data.dayId,
-    destination_text: data.destinationText,
-    end_date: data.endDate,
-    itinerary_item_id: data.itemId,
-    location_text: data.locationText,
-    note: data.note,
-    observed_at: new Date().toISOString(),
-    origin_text: data.originText,
-    source_url: data.sourceUrl,
-    start_date: data.startDate,
-    title: data.title,
-    total_price_amount: hasPrice ? data.totalPriceAmount : null,
-    trip_id: data.tripId,
+    data: {
+      applications: state.applications,
+      currentApplicationIds: state.currentApplicationIds,
+      items: items.data,
+      plan: plan.data,
+      selections: state.selections,
+    },
   };
-}
-
-function revalidateResearch(tripId: string) {
-  revalidatePath(`/trips/${tripId}/compare`);
-  revalidatePath(`/trips/${tripId}`);
 }
 
 export async function createResearchItem(
@@ -49,9 +49,17 @@ export async function createResearchItem(
   const parsed = createResearchItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const supabase = await createClient();
+  let places;
+  try {
+    places = await persistResearchPlaces(supabase, parsed.data);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "The map location could not be saved.",
+    };
+  }
   const { data, error } = await supabase
     .from("research_items")
-    .insert(researchItemValues(parsed.data))
+    .insert(researchItemValues(parsed.data, places))
     .select("*")
     .maybeSingle();
   if (error || !data) return { error: error?.message ?? "The candidate could not be saved." };
@@ -66,9 +74,17 @@ export async function updateResearchItem(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const { id, ...values } = parsed.data;
   const supabase = await createClient();
+  let places;
+  try {
+    places = await persistResearchPlaces(supabase, values);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "The map location could not be saved.",
+    };
+  }
   const { data, error } = await supabase
     .from("research_items")
-    .update(researchItemValues(values))
+    .update(researchItemValues(values, places))
     .eq("id", id)
     .eq("trip_id", values.tripId)
     .select("*")
@@ -92,7 +108,8 @@ export async function deleteResearchItem(input: {
     .eq("trip_id", parsed.data.tripId)
     .select("id")
     .maybeSingle();
-  if (error || !data) return { error: error?.message ?? "The candidate could not be deleted." };
+  if (error || !data)
+    return { error: "This saved option could not be deleted. Refresh and try again." };
   revalidateResearch(parsed.data.tripId);
   return { data };
 }

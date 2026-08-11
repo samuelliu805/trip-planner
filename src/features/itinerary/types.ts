@@ -35,6 +35,19 @@ export type CarRentalDetails = {
   action: "pickup" | "return";
   address?: string;
   provider?: string;
+  researchSourceId?: string;
+};
+
+export type TransportDetails = {
+  arrivalDate?: string;
+  arrivalTime?: string;
+  departureDate?: string;
+  destination?: string;
+  mode: TransportMode;
+  origin?: string;
+  researchSourceId?: string;
+  segmentIndex?: number;
+  serviceNumber?: string;
 };
 
 export const transportModes = [

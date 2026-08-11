@@ -37,12 +37,12 @@ where variant_id = (select id from activity_order_state where key = 'variant');
 
 with inserted as (
   insert into public.itinerary_items (
-    trip_id, variant_id, day_id, type, title, start_time, details, sort_order
+    trip_id, variant_id, day_id, type, title, start_time, schedule_kind, details, sort_order
   ) values (
     (select id from activity_order_state where key = 'trip'),
     (select id from activity_order_state where key = 'variant'),
     (select id from activity_order_state where key = 'day'),
-    'activity', 'Timed museum', '10:00', '{}'::jsonb, 20
+    'activity', 'Timed museum', '10:00', 'exact', '{}'::jsonb, 20
   ) returning id
 )
 insert into activity_order_state select 'timed', id from inserted;

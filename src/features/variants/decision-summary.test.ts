@@ -112,6 +112,8 @@ function baseInput(overrides: Partial<DecisionSummaryInput> = {}): DecisionSumma
     calculations: [],
     days: [],
     items: [],
+    knownCostBreakdowns: {},
+    knownCosts: {},
     legs: [],
     plans: [],
     stops: [],
@@ -131,10 +133,22 @@ function projectionForHotel(
     citySpanMeters: null,
     cityStageCount: 0,
     color: isPrimary ? "#166534" : "#2563eb",
+    cost: {
+      amount: null,
+      complete: true,
+      converted: false,
+      currency: "USD",
+      itemCount: 0,
+      rateDate: null,
+      unavailableCurrencies: [],
+    },
+    costBreakdown: [],
     dayCount: dayDates.length,
     dayDates,
     hotelOccurrences,
     isPrimary,
+    knownCost: [],
+    knownCostBreakdown: [],
     knownDayRouteDistanceMeters: null,
     knownDurationSeconds: null,
     name: isPrimary ? "Route A" : "Route B",
@@ -914,7 +928,11 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
   assert.match(ui, /Decision summary/);
   assert.match(ui, /Primary · baseline/);
   assert.match(ui, /\{isActive \? "Editing" : "Read only"\}/);
-  assert.match(ui, /Locality span · straight-line/);
+  assert.doesNotMatch(ui, /Price breakdown/);
+  assert.match(ui, /label="Cities \/ towns"/);
+  assert.match(ui, /PlanCostDisclosure/);
+  assert.doesNotMatch(ui, /Known Cost/);
+  assert.match(ui, /Route details/);
   assert.match(ui, /Current saved route distance by mode/);
   assert.match(ui, /Walk distance|\{label\} distance/);
   assert.doesNotMatch(ui, /Known day-route distance|Known duration|Nights unknown/);

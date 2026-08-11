@@ -1,32 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   useCreateItineraryItem,
   useDeleteItineraryItem,
   useUpdateItineraryItem,
 } from "@/features/itinerary/item-mutations";
-import {
-  normalizeTransportMode,
-  transportModeLabels,
-  transportModes,
-  type CarRentalDetails,
-  type TransportMode,
-} from "@/features/itinerary/types";
 import type { Json } from "@/types/database";
-import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import { PlannerItemPrimaryFields } from "@/features/itinerary/components/planner-item-primary-fields";
+import { PlannerBookingFields } from "@/features/itinerary/components/planner-booking-fields";
 import { PlannerItemSecondaryFields } from "@/features/itinerary/components/planner-item-secondary-fields";
 import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import {
   itemCopy,
+  itemFormCapabilities,
   itemFormFieldLabels,
-  normalizedActionLabel,
+  plannerItemTitle,
 } from "@/features/itinerary/components/planner-item-form-config";
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
+import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
+import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 
 export function PlannerItemForm({
   dayId,
+  defaultCurrency,
   item,
   onCancel,
   onError,
@@ -37,37 +34,43 @@ export function PlannerItemForm({
   unavailableTransportModes = [],
   variantId,
 }: PlannerItemFormProps) {
-  const existingCar =
-    item?.type === "car_rental" ? (item.details as Partial<CarRentalDetails>) : {};
-  const existingDetails = (item?.details as Record<string, string> | undefined) ?? {};
-  const [title, setTitle] = useState(
-    item && ["location", "hotel"].includes(item.type) && item.place?.displayName === item.title
-      ? ""
-      : (item?.title ?? ""),
-  );
-  const [startTime, setStartTime] = useState(item?.start_time?.slice(0, 5) ?? "");
-  const [notes, setNotes] = useState(item?.notes ?? "");
-  const [links, setLinks] = useState(() =>
-    item?.links?.length
-      ? item.links.map(({ label, url }) => ({ label: normalizedActionLabel(label), url }))
-      : item?.booking_url
-        ? [{ label: "Booking", url: item.booking_url }]
-        : [],
-  );
-  const [carAction, setCarAction] = useState<CarRentalDetails["action"]>(
-    existingCar.action ?? "pickup",
-  );
-  const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
-  const [place, setPlace] = useState<PlaceSnapshot | null>(item?.place ?? null);
-  const existingTransportMode = normalizeTransportMode(existingDetails.mode);
-  const availableTransportModes = transportModes.filter(
-    (mode) =>
-      (item?.type === "transport" && mode === existingTransportMode) ||
-      !unavailableTransportModes.includes(mode),
-  );
-  const [transportMode, setTransportMode] = useState<TransportMode>(
-    item?.type === "transport" ? existingTransportMode : (availableTransportModes[0] ?? "train"),
-  );
+  const state = usePlannerItemFormState({
+    defaultCurrency,
+    item,
+    unavailableTransportModes,
+  });
+  const {
+    arrivalTime,
+    availableTransportModes,
+    carAction,
+    carProvider,
+    destination,
+    existingDetails,
+    links,
+    notes,
+    origin,
+    place,
+    priceAmount,
+    priceCurrency,
+    serviceNumber,
+    setArrivalTime,
+    setCarAction,
+    setCarProvider,
+    setDestination,
+    setLinks,
+    setNotes,
+    setOrigin,
+    setPlace,
+    setPriceAmount,
+    setPriceCurrency,
+    setServiceNumber,
+    setStartTime,
+    setTitle,
+    setTransportMode,
+    startTime,
+    title,
+    transportMode,
+  } = state;
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const deleteMutation = useDeleteItineraryItem(tripId, variantId);
@@ -81,47 +84,20 @@ export function PlannerItemForm({
     return () => cancelAnimationFrame(frame);
   }, [item, type]);
 
-  useEffect(() => {
-    if (!item || !onDraftChange) return;
-    const draftPlace = place
-      ? {
-          ...place,
-          id:
-            item.place?.provider === place.provider &&
-            item.place.providerPlaceId === place.providerPlaceId
-              ? item.place.id
-              : `draft-place-${place.providerPlaceId ?? item.id}`,
-        }
-      : null;
-    onDraftChange({
-      booking_url: links[0]?.url ?? null,
-      created_at: item.created_at,
-      day_id: dayId,
-      details: item.details,
-      end_time: null,
-      id: item.id,
-      links: item.links,
-      notes: notes || null,
-      place: draftPlace,
-      place_id: draftPlace?.id ?? null,
-      schedule_kind: startTime ? "exact" : "none",
-      schedule_text: item.schedule_text,
-      sort_order: item.sort_order,
-      start_time: startTime || null,
-      title: title.trim() || place?.displayName || itemCopy[type].label,
-      trip_id: tripId,
-      type,
-      updated_at: new Date().toISOString(),
-      variant_id: variantId,
-    });
-  }, [dayId, item, links, notes, onDraftChange, place, startTime, title, tripId, type, variantId]);
-
-  useEffect(
-    () => () => {
-      onDraftChange?.(null);
-    },
-    [onDraftChange],
-  );
+  usePlannerItemDraft({
+    arrivalTime,
+    dayId,
+    item,
+    links,
+    notes,
+    onDraftChange,
+    place,
+    priceAmount,
+    priceCurrency,
+    startTime,
+    title,
+    type,
+  });
 
   function save() {
     if (type === "location" && !place) {
@@ -132,35 +108,43 @@ export function PlannerItemForm({
       onError("Choose a hotel location or enter a displayed hotel name.");
       return;
     }
-    const savedTitle =
-      type === "car_rental"
-        ? carAction === "pickup"
-          ? "Pickup"
-          : "Return"
-        : type === "transport"
-          ? transportModeLabels[transportMode]
-          : type === "location"
-            ? title.trim() || place?.displayName || ""
-            : type === "hotel"
-              ? title.trim() || place?.displayName || ""
-              : title.trim();
+    const savedTitle = plannerItemTitle({
+      carAction,
+      placeName: place?.displayName,
+      title,
+      transportMode,
+      type,
+    });
     if (pending || !savedTitle) return;
     const placeText = place?.formattedAddress ?? place?.displayName ?? null;
     const details: Record<string, Json> =
       type === "car_rental"
-        ? { action: carAction, address: placeText, provider: carProvider || null }
+        ? {
+            ...existingDetails,
+            action: carAction,
+            address: placeText,
+            provider: carProvider || null,
+          }
         : type === "hotel"
-          ? { address: placeText }
+          ? { ...existingDetails, address: placeText }
           : type === "meal"
-            ? { location: placeText }
-            : type === "transport"
-              ? { mode: transportMode }
+            ? { ...existingDetails, location: placeText }
+            : ["transport", "flight", "train"].includes(type)
+              ? {
+                  ...existingDetails,
+                  arrivalTime: arrivalTime || null,
+                  destination: destination || null,
+                  mode: type === "transport" ? transportMode : type,
+                  origin: origin || null,
+                  serviceNumber: serviceNumber || null,
+                }
               : type === "activity"
-                ? { location: placeText }
+                ? { ...existingDetails, location: placeText }
                 : {};
-    const supportsTime = ["location", "activity", "car_rental", "meal"].includes(type);
-    const supportsLink = !["location", "note"].includes(type);
-    const supportsPlace = !["note", "transport", "flight", "train"].includes(type);
+    const { supportsLink, supportsPlace, supportsPrice, supportsTime } = itemFormCapabilities(
+      type,
+      carAction,
+    );
     const callbacks = {
       onError: (mutationError: Error) => onError(mutationError.message),
       onSuccess: onSaved,
@@ -188,7 +172,10 @@ export function PlannerItemForm({
       bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
       links: supportsLink ? links : [],
       details: details as never,
+      endTime: ["transport", "flight", "train"].includes(type) ? arrivalTime : "",
       notes: type === "note" ? "" : notes,
+      priceAmount: supportsPrice && priceAmount ? Number(priceAmount) : null,
+      priceCurrency: supportsPrice && priceAmount ? priceCurrency : null,
       startTime: supportsTime ? startTime : "",
       title: savedTitle,
       tripId,
@@ -253,6 +240,27 @@ export function PlannerItemForm({
         title={title}
         titleRef={titleRef}
         transportMode={transportMode}
+        type={type}
+      />
+      <PlannerBookingFields
+        arrivalTime={arrivalTime}
+        carAction={carAction}
+        dayId={dayId}
+        defaultCurrency={defaultCurrency}
+        destination={destination}
+        itemId={item?.id}
+        origin={origin}
+        priceAmount={priceAmount}
+        priceCurrency={priceCurrency}
+        serviceNumber={serviceNumber}
+        setArrivalTime={setArrivalTime}
+        setDestination={setDestination}
+        setOrigin={setOrigin}
+        setPriceAmount={setPriceAmount}
+        setPriceCurrency={setPriceCurrency}
+        setServiceNumber={setServiceNumber}
+        setStartTime={setStartTime}
+        startTime={startTime}
         type={type}
       />
       <PlannerItemSecondaryFields

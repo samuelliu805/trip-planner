@@ -3,6 +3,12 @@ import type { DayRouteStatus } from "@/features/routes/status";
 import type { RouteLegMode } from "@/features/routes/types";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { Json } from "@/types/database";
+import type {
+  ConvertedPlanCostLine,
+  KnownCostAmount,
+  PlanCostBreakdownLine,
+  PlanCostSummary,
+} from "@/features/research/types";
 
 export const decisionSummaryItemTypes = [
   "location",
@@ -84,9 +90,13 @@ export type DecisionSummaryCalculationRow = {
 
 export type DecisionSummaryInput = {
   calculations: DecisionSummaryCalculationRow[];
+  costBreakdowns?: Record<string, ConvertedPlanCostLine[]>;
+  costs?: Record<string, PlanCostSummary>;
   days: DecisionSummaryDayRow[];
   items: DecisionSummaryItemRow[];
   legs: DecisionSummaryLegRow[];
+  knownCosts: Record<string, KnownCostAmount[]>;
+  knownCostBreakdowns: Record<string, PlanCostBreakdownLine[]>;
   plans: DecisionSummaryPlanRow[];
   stops: DecisionSummaryStopRow[];
   variants: DecisionSummaryVariantRow[];
@@ -126,10 +136,14 @@ export type VariantDecisionSummaryProjection = {
   citySpanMeters: number | null;
   cityStageCount: number;
   color: string;
+  cost: PlanCostSummary;
+  costBreakdown: ConvertedPlanCostLine[];
   dayCount: number;
   dayDates: Array<{ date: string | null; dayNumber: number }>;
   hotelOccurrences: HotelOccurrence[];
   isPrimary: boolean;
+  knownCost: KnownCostAmount[];
+  knownCostBreakdown: PlanCostBreakdownLine[];
   knownDayRouteDistanceMeters: number | null;
   knownDurationSeconds: number | null;
   name: string;

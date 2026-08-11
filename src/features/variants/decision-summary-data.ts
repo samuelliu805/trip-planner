@@ -1,4 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  convertPlanCostBreakdown,
+  knownCostFromBreakdown,
+  planCostBreakdown,
+  planCostSummary,
+} from "@/features/research/money";
+import { getExchangeRateTable } from "@/features/research/exchange-rates.server";
 
 import { deriveVariantDecisionSummaryProjections } from "./decision-summary-projection";
 import {
@@ -17,19 +24,32 @@ export async function getVariantDecisionSummary(
   tripId: string,
 ): Promise<{ data: VariantDecisionSummaryProjection[] | null; error: string | null }> {
   const supabase = await createClient();
-  const { data: variants, error: variantsError } = await supabase
-    .from("route_variants")
-    .select("id, name, color, is_primary, created_at")
-    .eq("trip_id", tripId)
-    .order("is_primary", { ascending: false })
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true });
+  const [variantsResult, tripResult, exchangeRates] = await Promise.all([
+    supabase
+      .from("route_variants")
+      .select("id, name, color, is_primary, created_at")
+      .eq("trip_id", tripId)
+      .order("is_primary", { ascending: false })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true }),
+    supabase.from("trips").select("currency").eq("id", tripId).maybeSingle(),
+    getExchangeRateTable(),
+  ]);
+  const { data: variants, error: variantsError } = variantsResult;
 
-  if (variantsError) return { data: null, error: variantsError.message };
+  if (variantsError || tripResult.error || !tripResult.data)
+    return {
+      data: null,
+      error:
+        variantsError?.message ??
+        tripResult.error?.message ??
+        "The Trip currency could not be loaded.",
+    };
   if (!variants?.length) return { data: [], error: null };
+  const tripCurrency = tripResult.data.currency;
 
   const variantIds = variants.map(({ id }) => id);
-  const [daysResult, itemsResult, plansResult] = await Promise.all([
+  const [daysResult, itemsResult, plansResult, pricesResult] = await Promise.all([
     supabase
       .from("trip_days")
       .select("id, variant_id, day_number, date")
@@ -57,15 +77,22 @@ export async function getVariantDecisionSummary(
       .order("variant_id", { ascending: true })
       .order("day_id", { ascending: true })
       .order("id", { ascending: true }),
+    supabase
+      .from("itinerary_items")
+      .select("id, variant_id, day_id, type, title, price_amount, price_currency")
+      .eq("trip_id", tripId)
+      .in("variant_id", variantIds)
+      .not("price_amount", "is", null),
   ]);
 
-  if (daysResult.error || itemsResult.error || plansResult.error)
+  if (daysResult.error || itemsResult.error || plansResult.error || pricesResult.error)
     return {
       data: null,
       error:
         daysResult.error?.message ??
         itemsResult.error?.message ??
         plansResult.error?.message ??
+        pricesResult.error?.message ??
         "The decision summary could not be loaded.",
     };
 
@@ -108,12 +135,46 @@ export async function getVariantDecisionSummary(
     calculations = (calculationsResult.data ?? []) as DecisionSummaryCalculationRow[];
   }
 
+  const dayNumbers = new Map((daysResult.data ?? []).map(({ day_number, id }) => [id, day_number]));
+  const knownCostBreakdowns = Object.fromEntries(
+    variantIds.map((variantId) => [
+      variantId,
+      planCostBreakdown(
+        (pricesResult.data ?? [])
+          .filter((price) => price.variant_id === variantId)
+          .flatMap((price) => {
+            const dayNumber = dayNumbers.get(price.day_id);
+            return dayNumber === undefined ? [] : [{ ...price, dayNumber }];
+          }),
+      ),
+    ]),
+  );
+  const costBreakdowns = Object.fromEntries(
+    variantIds.map((variantId) => [
+      variantId,
+      convertPlanCostBreakdown(knownCostBreakdowns[variantId] ?? [], tripCurrency, exchangeRates),
+    ]),
+  );
   return {
     data: deriveVariantDecisionSummaryProjections({
       calculations,
+      costBreakdowns,
+      costs: Object.fromEntries(
+        variantIds.map((variantId) => [
+          variantId,
+          planCostSummary(costBreakdowns[variantId] ?? [], tripCurrency, exchangeRates),
+        ]),
+      ),
       days: (daysResult.data ?? []) as DecisionSummaryDayRow[],
       items: (itemsResult.data ?? []) as DecisionSummaryItemRow[],
       legs,
+      knownCosts: Object.fromEntries(
+        variantIds.map((variantId) => [
+          variantId,
+          knownCostFromBreakdown(knownCostBreakdowns[variantId] ?? []),
+        ]),
+      ),
+      knownCostBreakdowns,
       plans: (plansResult.data ?? []) as DecisionSummaryPlanRow[],
       stops,
       variants: variants as DecisionSummaryVariantRow[],

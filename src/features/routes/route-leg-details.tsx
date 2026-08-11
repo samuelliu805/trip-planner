@@ -55,7 +55,7 @@ function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
 }
 
 export function RouteLegDetails({
-  defaultOpen = true,
+  defaultOpen = false,
   legs,
 }: {
   defaultOpen?: boolean;
@@ -73,7 +73,7 @@ export function RouteLegDetails({
     <section className="border-t">
       <button
         aria-expanded={open}
-        className="flex min-h-10 w-full items-center gap-2 px-3 text-left text-xs font-semibold hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-xs font-semibold hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         onClick={() => setOpen((current) => !current)}
         type="button"
       >

@@ -2,8 +2,10 @@
 
 import { LoaderCircle, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
+import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { placeSnapshotSchema } from "@/features/itinerary/item-schema";
 import {
   Dialog,
   DialogContent,
@@ -16,10 +18,23 @@ import {
 
 import { ResearchItemFields } from "./research-item-fields";
 import { createResearchItem, updateResearchItem } from "../actions";
+import { parseResearchLinks } from "../links";
 import { researchCategorySingularLabels, type ResearchCategory, type ResearchItem } from "../types";
+
+type GooglePlaceSnapshot = z.input<typeof placeSnapshotSchema>;
 
 function optional(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim() || null;
+}
+
+function optionalJson<Value>(form: FormData, key: string) {
+  const value = optional(form, key);
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as Value;
+  } catch {
+    return null;
+  }
 }
 
 export function ResearchItemDialog({
@@ -46,20 +61,71 @@ export function ResearchItemDialog({
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const price = optional(form, "totalPriceAmount");
+    const hasPrice = price !== null;
+    const rawSegments =
+      (
+        optionalJson(form, "segments") as Array<{
+          arrivalDate?: string;
+          arrivalTime?: string;
+          departureDate: string;
+          departureTime?: string;
+          destination: string;
+          origin: string;
+          serviceNumber?: string;
+        }> | null
+      )?.map((segment) => ({
+        ...segment,
+        arrivalDate: segment.arrivalDate || null,
+        arrivalTime: segment.arrivalTime || null,
+        departureTime: segment.departureTime || null,
+        serviceNumber: segment.serviceNumber || null,
+      })) ?? [];
+    const segments = rawSegments.filter(
+      (segment) => segment.origin && segment.destination && segment.departureDate,
+    );
+    const firstSegment = rawSegments[0];
+    const lastSegment = rawSegments.at(-1);
+    const journeyType = optional(form, "journeyType") as
+      "one_way" | "round_trip" | "multi_city" | null;
+    const originText = firstSegment?.origin ?? optional(form, "originText");
+    const destinationText = firstSegment?.destination ?? optional(form, "destinationText");
+    const locationText = optional(form, "locationText");
+    const automaticTitle =
+      category === "stay"
+        ? locationText
+        : originText
+          ? destinationText
+            ? `${originText} → ${destinationText}`
+            : originText
+          : null;
     const input = {
       category,
-      currency: price ? optional(form, "currency") : null,
+      currency: hasPrice ? optional(form, "currency") : null,
       dayId: item?.day_id ?? context?.dayId,
-      destinationText: optional(form, "destinationText"),
-      endDate: optional(form, "endDate"),
+      destinationPlaceId: optional(form, "destinationPlaceId"),
+      destinationPlaceSnapshot: optionalJson<GooglePlaceSnapshot>(form, "destinationPlaceSnapshot"),
+      destinationText,
+      endDate:
+        journeyType && journeyType !== "one_way" && rawSegments.length >= 2
+          ? (lastSegment?.arrivalDate ?? lastSegment?.departureDate ?? null)
+          : optional(form, "endDate"),
+      endTime: firstSegment?.arrivalTime ?? optional(form, "endTime"),
       itemId: item?.itinerary_item_id ?? context?.itemId,
-      locationText: optional(form, "locationText"),
+      journeyType,
+      links: parseResearchLinks(item?.links),
+      locationPlaceId: optional(form, "locationPlaceId"),
+      locationPlaceSnapshot: optionalJson<GooglePlaceSnapshot>(form, "locationPlaceSnapshot"),
+      locationText,
       note: optional(form, "note"),
-      originText: optional(form, "originText"),
+      originPlaceId: optional(form, "originPlaceId"),
+      originPlaceSnapshot: optionalJson<GooglePlaceSnapshot>(form, "originPlaceSnapshot"),
+      originText,
+      segments,
       sourceUrl: optional(form, "sourceUrl"),
-      startDate: optional(form, "startDate"),
-      title: optional(form, "title"),
-      totalPriceAmount: price ? Number(price) : null,
+      startDate: firstSegment?.departureDate ?? optional(form, "startDate"),
+      startTime: firstSegment?.departureTime ?? optional(form, "startTime"),
+      title: optional(form, "title") ?? automaticTitle,
+      totalPriceAmount: hasPrice ? Number(price) : null,
       tripId,
     };
     setPending(true);
@@ -104,8 +170,8 @@ export function ResearchItemDialog({
               {item ? `Edit ${label.toLowerCase()}` : `Add ${label.toLowerCase()}`}
             </DialogTitle>
             <DialogDescription>
-              Save what you know now. Missing price or dates can be added later; Plan stays
-              unchanged.
+              Add the route or place and dates first. Price and optional details can be completed
+              whenever you have them; Plan stays unchanged.
             </DialogDescription>
           </DialogHeader>
           <ResearchItemFields category={category} defaultCurrency={defaultCurrency} item={item} />

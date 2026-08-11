@@ -31,7 +31,7 @@ export function RouteVariantComparisonSheet({
           <SheetDescription>
             {comparison.dayNumber
               ? "Solid lines are saved routes; dashed lines preview Activity stop order."
-              : "Dashed lines show locality order—not driving directions."}{" "}
+              : "Dashed lines show city/town order—not driving directions."}{" "}
             The Matrix stays on {active?.name ?? "the route being edited"}.
           </SheetDescription>
         </SheetHeader>

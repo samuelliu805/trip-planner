@@ -14,7 +14,8 @@ body:has(.trip-planner-page) {
 }
 
 .trips-global-header,
-.planner-toolbar {
+.trip-app-bar,
+.plan-context-bar {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   touch-action: pan-x;

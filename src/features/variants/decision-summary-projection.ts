@@ -67,9 +67,33 @@ export function deriveVariantDecisionSummaryProjections(
         ...derivePlanningHorizon(days),
         ...deriveRouteMetrics(input, variant.id, days, items),
         color: variant.color,
+        cost: input.costs?.[variant.id] ?? {
+          amount:
+            input.knownCosts[variant.id]?.length === 1
+              ? input.knownCosts[variant.id][0].amount
+              : null,
+          complete: (input.knownCosts[variant.id]?.length ?? 0) <= 1,
+          converted: false,
+          currency: input.knownCosts[variant.id]?.[0]?.currency ?? "USD",
+          itemCount: input.knownCostBreakdowns[variant.id]?.length ?? 0,
+          rateDate: null,
+          unavailableCurrencies:
+            (input.knownCosts[variant.id]?.length ?? 0) > 1
+              ? input.knownCosts[variant.id].map(({ currency }) => currency)
+              : [],
+        },
+        costBreakdown:
+          input.costBreakdowns?.[variant.id] ??
+          (input.knownCostBreakdowns[variant.id] ?? []).map((line) => ({
+            ...line,
+            convertedAmount: line.amount,
+            convertedCurrency: line.currency,
+          })),
         dayDates: days.map(({ date, day_number }) => ({ date, dayNumber: day_number })),
         hotelOccurrences: deriveHotelOccurrences(items, days),
         isPrimary: variant.is_primary,
+        knownCost: input.knownCosts[variant.id] ?? [],
+        knownCostBreakdown: input.knownCostBreakdowns[variant.id] ?? [],
         name: variant.name,
         plannedPlaceOccurrenceCount: placeLinked.length,
         tripTransportModes: countedDecisionSummaryModes(

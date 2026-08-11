@@ -3,6 +3,18 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { plannerResearchCategory } from "./planner-context.ts";
+import { initialResearchSegments } from "./journey.ts";
+import { researchDecisionSlotKey } from "./decision-slot.ts";
+import {
+  convertPlanCostBreakdown,
+  knownCostFromBreakdown,
+  planCostBreakdown,
+  planCostSummary,
+  sortResearchItems,
+} from "./money.ts";
+import { parseEcbReferenceRates } from "./exchange-rate-parser.ts";
+import { addIsoDateDays } from "./date-range.ts";
+import { deriveOptionImpact } from "./option-impact.ts";
 import {
   isReadyToCompare,
   missingComparisonFields,
@@ -11,11 +23,13 @@ import {
   stayPerNightPrice,
 } from "./readiness.ts";
 import { createResearchItemSchema } from "./schema.ts";
-import type { ResearchItem } from "./types.ts";
+import type { ResearchItem, ResearchPlanSnapshot } from "./types.ts";
 import {
   compareHrefForPlanContext,
   matchingPlanResearchItems,
   parseResearchCategory,
+  parseResearchCategoryRouteSegment,
+  researchCategoryHref,
   tripSectionHref,
 } from "./urls.ts";
 
@@ -32,21 +46,56 @@ function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
     created_at: "2026-08-09T12:00:00.000Z",
     currency: null,
     day_id: null,
+    destination_place_id: null,
     destination_text: null,
     end_date: null,
+    end_time: null,
     id: "00000000-0000-4000-8000-000000000010",
     itinerary_item_id: null,
+    journey_type: null,
+    links: [],
+    location_place_id: null,
     location_text: null,
     note: null,
     observed_at: "2026-08-09T12:00:00.000Z",
     origin_text: null,
+    origin_place_id: null,
+    segments: [],
     source_url: null,
     start_date: null,
+    start_time: null,
     title: "Hilton Tokyo",
     total_price_amount: null,
     trip_id: ids.trip,
     updated_at: "2026-08-09T12:00:00.000Z",
     ...overrides,
+  };
+}
+
+function plan(): ResearchPlanSnapshot {
+  return {
+    days: [
+      {
+        date: "2026-09-03",
+        dayNumber: 1,
+        id: ids.day,
+        items: [
+          {
+            details: { mode: "flight" },
+            id: ids.item,
+            place_id: null,
+            price_amount: null,
+            price_currency: null,
+            title: "United UA837",
+            type: "transport",
+          },
+        ],
+      },
+      { date: "2026-09-04", dayNumber: 2, id: "day-2", items: [] },
+      { date: "2026-09-05", dayNumber: 3, id: "day-3", items: [] },
+      { date: "2026-09-12", dayNumber: 4, id: "day-4", items: [] },
+    ],
+    variantId: ids.variant,
   };
 }
 
@@ -63,6 +112,14 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
       tripId: ids.trip,
     }).sourceUrl,
     "https://example.com/fare",
+  );
+  assert.deepEqual(
+    createResearchItemSchema.parse({
+      category: "flight",
+      title: "ANA idea",
+      tripId: ids.trip,
+    }).segments,
+    [],
   );
 });
 
@@ -107,6 +164,43 @@ test("Flight readiness requires price, currency, route, and depart date", () => 
   );
 });
 
+test("journey-based Flight readiness requires every expected segment", () => {
+  const flight = item({
+    category: "flight",
+    currency: "USD",
+    destination_text: "NRT",
+    end_date: "2026-10-12",
+    journey_type: "round_trip",
+    origin_text: "SFO",
+    start_date: "2026-10-04",
+    total_price_amount: 620,
+  });
+  assert.equal(
+    isReadyToCompare({
+      ...flight,
+      segments: [{ departureDate: "2026-10-04", destination: "NRT", origin: "SFO" }],
+    }),
+    false,
+  );
+  assert.match(
+    missingComparisonFields({
+      ...flight,
+      segments: [{ departureDate: "2026-10-04", destination: "NRT", origin: "SFO" }],
+    }).join(","),
+    /flight segments/,
+  );
+  assert.equal(
+    isReadyToCompare({
+      ...flight,
+      segments: [
+        { departureDate: "2026-10-04", destination: "NRT", origin: "SFO" },
+        { departureDate: "2026-10-12", destination: "SFO", origin: "NRT" },
+      ],
+    }),
+    true,
+  );
+});
+
 test("Stay readiness and per-night price are derived", () => {
   const stay = item({
     currency: "USD",
@@ -119,6 +213,22 @@ test("Stay readiness and per-night price are derived", () => {
   assert.equal(stayNightCount(stay), 4);
   assert.equal(stayPerNightPrice(stay), 160.5);
   assert.equal(researchContextLabel(stay), "Tokyo · Oct 4–Oct 8");
+});
+
+test("zero is a real comparison-ready price and Stay checkout defaults to the next day", () => {
+  assert.equal(
+    isReadyToCompare(
+      item({
+        currency: "USD",
+        end_date: "2026-10-05",
+        location_text: "Tokyo",
+        start_date: "2026-10-04",
+        total_price_amount: 0,
+      }),
+    ),
+    true,
+  );
+  assert.equal(addIsoDateDays("2026-10-04", 1), "2026-10-05");
 });
 
 test("Train and Rental readiness use their minimal category context", () => {
@@ -137,14 +247,242 @@ test("Train and Rental readiness use their minimal category context", () => {
   );
 });
 
-test("Trip navigation uses Plan and one Ideas & Options route", () => {
+test("Known Cost sums canonical Plan prices and keeps currencies separate", () => {
+  const values = knownCostFromBreakdown(
+    planCostBreakdown(
+      [
+        ["flight", 842.25, "USD"],
+        ["stay", 610, "USD"],
+        ["train", 76000, "JPY"],
+        ["unpriced", null, null],
+      ].map(([id, price_amount, price_currency], index) => ({
+        dayNumber: index + 1,
+        id: String(id),
+        price_amount: price_amount as number | null,
+        price_currency: price_currency as string | null,
+        title: String(id),
+        type: "transport" as const,
+      })),
+    ),
+  );
+  assert.deepEqual(values, [
+    { amount: 76000, currency: "JPY" },
+    { amount: 1452.25, currency: "USD" },
+  ]);
+});
+
+test("Known Cost breakdown exposes every canonical priced Plan item exactly once", () => {
+  const lines = planCostBreakdown([
+    {
+      dayNumber: 1,
+      id: "flight",
+      price_amount: 842.15,
+      price_currency: "USD",
+      title: "ANA",
+      type: "transport",
+    },
+    {
+      dayNumber: 2,
+      id: "activity",
+      price_amount: 25,
+      price_currency: "USD",
+      title: "Museum",
+      type: "activity",
+    },
+    {
+      dayNumber: 3,
+      id: "unpriced",
+      price_amount: null,
+      price_currency: null,
+      title: "Walk",
+      type: "activity",
+    },
+  ]);
+  assert.deepEqual(
+    lines.map(({ itemId }) => itemId),
+    ["flight", "activity"],
+  );
+  assert.deepEqual(knownCostFromBreakdown(lines), [{ amount: 867.15, currency: "USD" }]);
+});
+
+test("Plan Cost converts every canonical line to the Trip currency with one dated rate table", () => {
+  const rates = parseEcbReferenceRates(`
+    <Cube><Cube time="2026-08-11">
+      <Cube currency="USD" rate="2.0"/>
+      <Cube currency="JPY" rate="200.0"/>
+    </Cube></Cube>
+  `);
+  assert.ok(rates);
+  const lines = convertPlanCostBreakdown(
+    planCostBreakdown([
+      {
+        dayNumber: 1,
+        id: "usd",
+        price_amount: 5,
+        price_currency: "USD",
+        title: "Flight",
+        type: "transport",
+      },
+      {
+        dayNumber: 2,
+        id: "jpy",
+        price_amount: 1000,
+        price_currency: "JPY",
+        title: "Stay",
+        type: "hotel",
+      },
+    ]),
+    "USD",
+    rates,
+  );
+  assert.deepEqual(
+    lines.map(({ convertedAmount, itemId }) => ({ convertedAmount, itemId })),
+    [
+      { convertedAmount: 10, itemId: "jpy" },
+      { convertedAmount: 5, itemId: "usd" },
+    ],
+  );
+  assert.deepEqual(planCostSummary(lines, "USD", rates), {
+    amount: 15,
+    complete: true,
+    converted: true,
+    currency: "USD",
+    itemCount: 2,
+    rateDate: "2026-08-11",
+    unavailableCurrencies: [],
+  });
+});
+
+test("price sorting partitions currencies and sorts numerically only within one currency", () => {
+  const rows = [
+    item({
+      currency: "JPY",
+      id: "jpy-low",
+      location_text: "Tokyo",
+      start_date: "2026-10-04",
+      end_date: "2026-10-05",
+      total_price_amount: 5000,
+    }),
+    item({
+      currency: "USD",
+      id: "usd-high",
+      location_text: "Tokyo",
+      start_date: "2026-10-04",
+      end_date: "2026-10-05",
+      total_price_amount: 900,
+    }),
+    item({
+      currency: "USD",
+      id: "usd-low",
+      location_text: "Tokyo",
+      start_date: "2026-10-04",
+      end_date: "2026-10-05",
+      total_price_amount: 610,
+    }),
+    item({ id: "idea" }),
+  ];
+  assert.deepEqual(
+    sortResearchItems(rows, "price", "USD").map(({ id }) => id),
+    ["usd-low", "usd-high", "jpy-low", "idea"],
+  );
+});
+
+test("legacy round trips infer exactly one reverse leg from the same two cities", () => {
+  assert.deepEqual(
+    initialResearchSegments({
+      destination: "Tokyo",
+      endDate: "2026-09-12",
+      origin: "San Francisco",
+      startDate: "2026-09-03",
+    }).map(({ departureDate, destination, origin }) => ({
+      departureDate,
+      destination,
+      origin,
+    })),
+    [
+      { departureDate: "2026-09-03", destination: "Tokyo", origin: "San Francisco" },
+      { departureDate: "2026-09-12", destination: "San Francisco", origin: "Tokyo" },
+    ],
+  );
+});
+
+test("decision slots prefer canonical item, then Day context, then normalized comparison context", () => {
+  assert.equal(researchDecisionSlotKey(item({ itinerary_item_id: ids.item })), `item:${ids.item}`);
+  assert.equal(researchDecisionSlotKey(item({ day_id: ids.day })), `day:${ids.day}:stay`);
+  assert.equal(
+    researchDecisionSlotKey(
+      item({
+        category: "flight",
+        destination_text: " Tokyo ",
+        origin_text: "SFO",
+        start_date: "2026-09-03",
+      }),
+    ),
+    "context:flight:sfo:tokyo:-:2026-09-03:-",
+  );
+});
+
+test("OptionImpact names exact, shifted, longer, and shorter Plan outcomes", () => {
+  const flight = item({
+    category: "flight",
+    currency: "USD",
+    destination_text: "NRT",
+    end_date: "2026-09-12",
+    itinerary_item_id: ids.item,
+    origin_text: "SFO",
+    start_date: "2026-09-03",
+    total_price_amount: 842,
+  });
+  assert.equal(deriveOptionImpact(flight, plan()).code, "exact_fit");
+  assert.equal(
+    deriveOptionImpact({ ...flight, itinerary_item_id: null }, plan()).currentTitle,
+    undefined,
+  );
+  assert.equal(
+    deriveOptionImpact({ ...flight, start_date: "2026-09-05", end_date: "2026-09-14" }, plan())
+      .code,
+    "date_shift_same_duration",
+  );
+  const longer = deriveOptionImpact({ ...flight, end_date: "2026-09-15" }, plan());
+  assert.equal(longer.code, "structural_change");
+  assert.equal(longer.planAction, "extend_plan");
+  assert.equal(longer.dayDelta, 3);
+  const shorter = deriveOptionImpact({ ...flight, end_date: "2026-09-10" }, plan());
+  assert.equal(shorter.planAction, "remove_days_first");
+  assert.equal(shorter.dayDelta, -2);
+  assert.equal(
+    deriveOptionImpact({ ...flight, itinerary_item_id: "missing" }, plan()).code,
+    "manual_review",
+  );
+});
+
+test("OptionImpact makes a Rental pickup/return pair applicable on matching Plan Days", () => {
+  const rental = item({
+    category: "rental",
+    currency: "USD",
+    destination_text: "NRT",
+    end_date: "2026-09-12",
+    origin_text: "Tokyo",
+    start_date: "2026-09-03",
+    total_price_amount: 340,
+  });
+  const impact = deriveOptionImpact(rental, plan());
+  assert.equal(impact.planAction, "apply");
+  assert.equal(impact.affectedDayCount, 2);
+});
+
+test("Trip navigation uses Plan and one Research route", () => {
   assert.equal(
     tripSectionHref(ids.trip, "plan", ids.variant),
     `/trips/${ids.trip}?variant=${ids.variant}`,
   );
   assert.equal(
     tripSectionHref(ids.trip, "compare", ids.variant),
-    `/trips/${ids.trip}/compare?variant=${ids.variant}`,
+    `/trips/${ids.trip}/compare/flights?variant=${ids.variant}`,
+  );
+  assert.equal(
+    researchCategoryHref(ids.trip, "rental", { variantId: ids.variant }),
+    `/trips/${ids.trip}/compare/rentals?variant=${ids.variant}`,
   );
 });
 
@@ -157,8 +495,8 @@ test("Plan comparison URLs carry stable category, day, item, and variant context
   };
   const href = compareHrefForPlanContext(ids.trip, context);
   const url = new URL(href, "https://trip-planner.invalid");
-  assert.equal(url.pathname, `/trips/${ids.trip}/compare`);
-  assert.equal(url.searchParams.get("category"), "stay");
+  assert.equal(url.pathname, `/trips/${ids.trip}/compare/stays`);
+  assert.equal(url.searchParams.get("category"), null);
   assert.equal(url.searchParams.get("dayId"), ids.day);
   assert.equal(url.searchParams.get("itemId"), ids.item);
   assert.equal(url.searchParams.get("variant"), ids.variant);
@@ -167,9 +505,11 @@ test("Plan comparison URLs carry stable category, day, item, and variant context
 test("category query parsing accepts only the four price categories", () => {
   assert.equal(parseResearchCategory("flight"), "flight");
   assert.equal(parseResearchCategory("activity"), undefined);
+  assert.equal(parseResearchCategoryRouteSegment("trains"), "train");
+  assert.equal(parseResearchCategoryRouteSegment("activities"), undefined);
 });
 
-test("contextual counts prefer exact item references", () => {
+test("contextual comparisons include exact and same-Day alternatives", () => {
   const rows = [
     item({ category: "stay", day_id: ids.day, itinerary_item_id: ids.item }),
     item({ day_id: ids.day, id: "00000000-0000-4000-8000-000000000011" }),
@@ -181,7 +521,7 @@ test("contextual counts prefer exact item references", () => {
       itemId: ids.item,
       variantId: ids.variant,
     }).length,
-    1,
+    2,
   );
 });
 
@@ -201,16 +541,133 @@ test("Plan context maps only relevant price-comparison categories", () => {
   assert.equal(plannerResearchCategory({ id: "activities" } as never), undefined);
 });
 
-test("compare is a real direct-load App Router page without local tab routing", async () => {
-  const page = await readFile(
-    new URL("../../app/trips/[tripId]/compare/page.tsx", import.meta.url),
+test("Ideas & Options has direct category routes and instant in-workspace switching", async () => {
+  const [legacyPage, categoryPage, route, workspace] = await Promise.all(
+    [
+      "../../app/trips/[tripId]/compare/page.tsx",
+      "../../app/trips/[tripId]/compare/[category]/page.tsx",
+      "./compare-route.tsx",
+      "./components/compare-workspace.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  const nav = await readFile(
+    new URL("../trips/components/trip-app-bar.tsx", import.meta.url),
     "utf8",
   );
-  const nav = await readFile(new URL("./components/trip-section-nav.tsx", import.meta.url), "utf8");
-  assert.match(page, /export default async function ComparePage/);
-  assert.match(nav, /Ideas & Options/);
+  assert.match(legacyPage, /redirect\(/);
+  assert.match(categoryPage, /parseResearchCategoryRouteSegment/);
+  assert.match(categoryPage, /ResearchCompareRoute/);
+  assert.match(route, /getResearchPlanSnapshot/);
+  assert.match(workspace, /window\.history\.pushState/);
+  assert.match(nav, /label: "Ideas & Options"/);
   assert.match(nav, /next\/link/);
-  assert.doesNotMatch(`${page}\n${nav}`, /activeTab|setActiveTab|\/ideas|\/options/);
+  assert.doesNotMatch(
+    `${legacyPage}\n${categoryPage}\n${nav}`,
+    /activeTab|setActiveTab|\/ideas|\/options/,
+  );
+});
+
+test("Trip detail keeps context controls at top and uses one mobile destination tab bar", async () => {
+  const [planPage, comparePage, appBar, planToolbar, contextBar, compareWorkspace, account] =
+    await Promise.all(
+      [
+        "../../app/trips/[tripId]/page.tsx",
+        "../../app/trips/[tripId]/compare/page.tsx",
+        "../trips/components/trip-app-bar.tsx",
+        "../itinerary/components/planner-toolbar.tsx",
+        "../itinerary/components/planner-context-bar.tsx",
+        "./components/compare-workspace.tsx",
+        "../trips/components/trip-account-menu.tsx",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    );
+  assert.match(appBar, /aria-label="Trip sections"/);
+  assert.match(appBar, /aria-current/);
+  assert.match(appBar, /label: "Plan"/);
+  assert.match(appBar, /label: "Ideas & Options"/);
+  assert.match(planToolbar, /<TripAppBar[\s\S]*<PlannerContextBar/);
+  assert.match(contextBar, /aria-label="Plan context"/);
+  assert.match(compareWorkspace, /aria-label="Research context"/);
+  assert.match(compareWorkspace, /<TripMobileTabBar/);
+  assert.doesNotMatch(contextBar, /TripSectionNav|TripMobileTabBar/);
+  assert.doesNotMatch(`${planPage}\n${comparePage}`, /TripSectionNav/);
+  assert.doesNotMatch(planToolbar, /PlannerEditingToolbar/);
+  assert.doesNotMatch(compareWorkspace, /<h1|trip\.title/);
+  assert.match(account, /\{email\}/);
+  assert.match(account, /Log out/);
+});
+
+test("selection, Apply, and Revert use owner-authorized RPC boundaries with durable history", async () => {
+  const serverActions = (
+    await Promise.all(
+      ["./actions.ts", "./plan-actions.ts"].map((path) =>
+        readFile(new URL(path, import.meta.url), "utf8"),
+      ),
+    )
+  ).join("\n");
+  const planActions = (
+    await Promise.all(
+      ["./components/research-plan-actions.tsx", "./components/research-apply-dialogs.tsx"].map(
+        (path) => readFile(new URL(path, import.meta.url), "utf8"),
+      ),
+    )
+  ).join("\n");
+  const foundationMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260810154805_phase_6b_plan_selection_apply_revert.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const applyMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260811080457_research_apply_v2_schedule_and_details.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const readinessMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260811084649_harden_research_journey_readiness.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const migration = `${foundationMigration}\n${applyMigration}\n${readinessMigration}`;
+  assert.doesNotMatch(serverActions, /export async function (select|clear)Research/);
+  assert.match(serverActions, /rpc\("apply_research_item_to_variant_v2"/);
+  assert.match(serverActions, /rpc\("revert_research_plan_application"/);
+  assert.doesNotMatch(planActions, /Select for Plan/);
+  assert.match(planActions, /Apply to Plan/);
+  assert.match(planActions, /We’ll update the Plan for you/);
+  assert.match(planActions, /keep_extra_days/);
+  assert.match(planActions, /Revert/);
+  assert.match(migration, /create table public\.variant_research_selections/);
+  assert.match(migration, /create table public\.research_plan_applications/);
+  assert.match(migration, /security definer/);
+  assert.match(migration, /auth\.uid\(\)/);
+  assert.match(migration, /for update/);
+  assert.match(migration, /status = 'reverted'/);
+  assert.match(migration, /select_research_item_for_variant/);
+  assert.match(readinessMigration, /research_item_is_comparison_ready_v2/);
+  assert.match(readinessMigration, /jsonb_array_length\(target_segments\) < 2/);
+  assert.match(readinessMigration, /to authenticated/);
+  assert.doesNotMatch(migration, /grant execute[^;]+to anon/);
+});
+
+test("Apply review offers large explicit target choices only when matching Plan items are ambiguous", async () => {
+  const actions = await readFile(
+    new URL("./components/research-plan-actions.tsx", import.meta.url),
+    "utf8",
+  );
+  const dialog = await readFile(
+    new URL("./components/research-apply-dialogs.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(actions, /targetItemId/);
+  assert.match(actions, /day\.date === item\.start_date/);
+  assert.match(dialog, /Which Plan item should be replaced\?/);
+  assert.match(dialog, /type="radio"/);
+  assert.match(dialog, /min-h-14/);
 });
 
 test("the same-row update path never creates a separate Option", async () => {
@@ -247,7 +704,7 @@ test("Trip detail shell contains document scrolling separately from Matrix rules
   assert.match(plannerStyles, /planner-matrix[\s\S]*overscroll-behavior: none/);
 });
 
-test("Compare uses one responsive command row below the Trip navigation", async () => {
+test("Compare uses one responsive Context Bar below the Trip App Bar", async () => {
   const categorySelector = await readFile(
     new URL("./components/category-selector.tsx", import.meta.url),
     "utf8",
@@ -274,17 +731,99 @@ test("Compare uses one responsive command row below the Trip navigation", async 
   );
   assert.match(categorySelector, /aria-label="Price category"/);
   assert.match(categorySelector, /hidden w-28 min-w-0 sm:block lg:hidden/);
-  assert.match(categorySelector, /hidden grid-cols-4 gap-1\.5 lg:grid/);
+  assert.match(categorySelector, /hidden grid-cols-4 gap-1 rounded-xl bg-muted\/70 p-1 lg:grid/);
   assert.doesNotMatch(categorySelector, /grid-cols-2/);
   assert.match(mobileCategoryPicker, /SheetContent[\s\S]*side="bottom"/);
   assert.match(mobileCategoryPicker, /min-h-16/);
   assert.match(mobileCategoryPicker, /Mobile price categories/);
   assert.match(mobileCategoryPicker, /safe-area-inset-bottom/);
-  assert.match(workspace, /aria-label="Compare controls"/);
-  assert.match(workspace, /saved · Plan unchanged/);
+  assert.match(workspace, /aria-label="Research context"/);
+  assert.match(workspace, /saved in Ideas &amp; Options/);
+  assert.match(workspace, /TripMobileTabBar/);
   assert.match(workspace, /CategorySelector[\s\S]*ResearchSortMenu[\s\S]*ResearchItemDialog/);
-  assert.doesNotMatch(route, /trip-detail-header/);
+  assert.match(route, /\{appBar\}/);
   assert.match(sortMenu, /className="min-h-11"/);
   assert.match(dialog, /size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-4/);
   assert.match(dialog, /hidden sm:inline[\s\S]*Add price or idea/);
+});
+
+test("mobile Research chrome stays on one row and add forms progressively disclose details", async () => {
+  const [workspace, planContext, fields, journey, dateRange, actions, migration] =
+    await Promise.all([
+      readFile(new URL("./components/compare-workspace.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../itinerary/components/planner-context-bar.tsx", import.meta.url), "utf8"),
+      readFile(new URL("./components/research-item-fields.tsx", import.meta.url), "utf8"),
+      readFile(new URL("./components/research-journey-fields.tsx", import.meta.url), "utf8"),
+      readFile(new URL("./components/date-range-fields.tsx", import.meta.url), "utf8"),
+      readFile(new URL("./components/research-plan-actions.tsx", import.meta.url), "utf8"),
+      readFile(
+        new URL(
+          "../../../supabase/migrations/20260811121345_detach_deleted_research_history.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+  assert.match(workspace, /items-center justify-between gap-3/);
+  assert.doesNotMatch(workspace, /KnownCost|PlanCostBreakdown/);
+  assert.doesNotMatch(planContext, /Known Cost ·/);
+  assert.match(planContext, /PlanCostMenu/);
+  assert.match(planContext, /ml-auto flex min-w-0 shrink-0 items-center/);
+  assert.match(fields, /label="Hotel or area"/);
+  assert.match(fields, /<DateRangeFields[\s\S]*endLabel="Check-out"/);
+  assert.match(fields, /minimumNights=\{1\}/);
+  assert.match(fields, /startLabel="Check-in"/);
+  assert.match(journey, /Times &amp;[\s\S]*number/);
+  assert.match(journey, /label="From"[\s\S]*label="To"/);
+  assert.doesNotMatch(journey, /Flight \{index \+ 1\}/);
+  assert.match(dateRange, /showPicker/);
+  assert.match(dateRange, /openDatePicker\(endRef\.current\)/);
+  assert.doesNotMatch(actions, /clearResearchSelection|Remove selection|<X/);
+  assert.match(planContext, /sourceItem=\{researchSourceItem\}/);
+  assert.match(migration, /alter column source_research_item_id drop not null/);
+  assert.match(migration, /on delete set null \(source_research_item_id\)/);
+});
+
+test("contextual Save captures canonical booking fields, places, prices, and every link", async () => {
+  const [actions, capture, migration] = await Promise.all([
+    readFile(new URL("./components/planner-research-actions.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./capture-plan-item.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../../../supabase/migrations/20260811181150_distribute_stay_costs_and_capture_links.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+  assert.match(actions, /capturePlanItemAsResearch/);
+  assert.match(actions, /Saved all Plan details/);
+  assert.match(capture, /item\.links/);
+  assert.match(capture, /locationPlaceId: item\.place_id/);
+  assert.match(capture, /arrivalTime|serviceNumber|checkOutDate|rentalReturn/);
+  assert.match(capture, /addIsoDateDays\(checkInDate, 1\)/);
+  assert.match(migration, /add column links jsonb not null default '\[\]'/);
+  assert.match(migration, /jsonb_typeof\(links\) = 'array'/);
+});
+
+test("Applied is a one-time Plan snapshot refreshed after canonical mutations", async () => {
+  const [migration, itemMutations, dayMutations, query] = await Promise.all([
+    readFile(
+      new URL(
+        "../../../supabase/migrations/20260811185219_expire_research_apply_after_plan_change.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(new URL("../itinerary/item-mutations.ts", import.meta.url), "utf8"),
+    readFile(new URL("../itinerary/day-mutations.ts", import.meta.url), "utf8"),
+    readFile(new URL("./research-query.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /generate_series\(required_start, required_end/);
+  assert.match(migration, /one-time snapshot/);
+  assert.match(migration, /item\.details ->> 'researchSourceId'/);
+  assert.match(itemMutations, /refreshResearchWorkspace/);
+  assert.match(dayMutations, /refreshResearchWorkspace/);
+  assert.match(query, /refetchOnMount: "always"/);
+  assert.match(query, /refetchType: "all"/);
 });

@@ -55,7 +55,7 @@ export function PlannerMapControls({
                     comparisonBlockingReason ??
                     (mapMode === "day_route"
                       ? "Compare this Day route across variants"
-                      : "Compare route variants by Activity locality stages"),
+                      : "Compare route variants by Activity city/town stages"),
                   disabled: Boolean(comparisonBlockingReason),
                   label: "Compare",
                   value: "comparison",
@@ -136,7 +136,7 @@ export function PlannerMapControls({
           type="button"
         >
           <PanelBottomOpen className="size-4 text-primary" />
-          <span>{mapMode === "overview" ? "Overview details" : "Route details"}</span>
+          <span>Route details</span>
         </button>
       ) : null}
     </>

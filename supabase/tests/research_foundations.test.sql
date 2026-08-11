@@ -302,8 +302,8 @@ select is(
     select count(*)::integer from pg_constraint
     where conrelid = 'public.research_items'::regclass and contype = 'f'
   ),
-  3,
-  'ResearchItems have Trip, Day, and itinerary item foreign keys'
+  6,
+  'ResearchItems have Trip, Day, itinerary item, and three provider-neutral Place foreign keys'
 );
 select ok(
   exists (

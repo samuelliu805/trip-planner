@@ -23,18 +23,19 @@ import {
   replaceItem,
   requireData,
 } from "@/features/itinerary/query-cache";
+import type { ClearItineraryItemsInput } from "@/features/itinerary/day-schema";
 import type {
-  ClearItineraryItemsInput,
   CreateItineraryItemInput,
   DeleteItineraryItemInput,
   UpdateItineraryItemInput,
-} from "@/features/itinerary/schema";
+} from "@/features/itinerary/item-schema";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 import {
   invalidateVariantComparison,
   invalidateVariantDecisionSummary,
 } from "@/features/variants/queries";
 import { insertActivityAtPlacement } from "@/features/itinerary/activity-order";
+import { refreshResearchWorkspace } from "@/features/research/research-query";
 
 export function useCreateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
@@ -63,6 +64,11 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
         place: input.placeSnapshot
           ? { ...input.placeSnapshot, id: `optimistic-place-${crypto.randomUUID()}` }
           : null,
+        price_amount: input.priceAmount ?? null,
+        price_currency:
+          input.priceAmount === null || input.priceAmount === undefined
+            ? null
+            : (input.priceCurrency ?? null),
         sort_order: Math.max(-1, ...(day?.items.map(({ sort_order }) => sort_order) ?? [])) + 1,
         schedule_kind: scheduleKind(input.startTime, input.endTime),
         schedule_text: null,
@@ -98,6 +104,7 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
       );
       if (affectsLocalityProjection(item.type)) void invalidateVariantComparison(client, tripId);
       if (affectsDecisionSummary(item.type)) void invalidateVariantDecisionSummary(client, tripId);
+      void refreshResearchWorkspace(client, tripId, variantId);
     },
   });
 }
@@ -141,6 +148,13 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
                 : null,
             }),
             ...(input.placeSnapshot === undefined && input.placeId === null && { place: null }),
+            ...(input.priceAmount !== undefined && { price_amount: input.priceAmount }),
+            ...((input.priceAmount !== undefined || input.priceCurrency !== undefined) && {
+              price_currency:
+                input.priceAmount === null
+                  ? null
+                  : (input.priceCurrency ?? existing.price_currency),
+            }),
             ...(input.startTime !== undefined && { start_time: input.startTime || null }),
             ...((input.startTime !== undefined || input.endTime !== undefined) && {
               schedule_kind: scheduleKind(
@@ -164,6 +178,7 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
         void invalidateVariantComparison(client, tripId);
       if (decisionSummaryItemChanged(context?.existing, item))
         void invalidateVariantDecisionSummary(client, tripId);
+      void refreshResearchWorkspace(client, tripId, variantId);
     },
   });
 }
@@ -190,6 +205,7 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
       if (context?.deletedLocalitySource) void invalidateVariantComparison(client, tripId);
       if (context?.deletedDecisionSummaryItem)
         void invalidateVariantDecisionSummary(client, tripId);
+      void refreshResearchWorkspace(client, tripId, variantId);
     },
   });
 }
@@ -219,6 +235,7 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
       if (context?.clearedLocalitySource) void invalidateVariantComparison(client, tripId);
       if (context?.clearedDecisionSummaryItem)
         void invalidateVariantDecisionSummary(client, tripId);
+      void refreshResearchWorkspace(client, tripId, variantId);
     },
   });
 }

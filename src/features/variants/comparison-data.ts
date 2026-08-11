@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { knownCostFromPrices } from "@/features/research/money";
 
 import {
   attachVariantComparisonDayRoutes,
@@ -31,7 +32,7 @@ export async function getVariantComparison(
   if (!variants?.length) return { data: [], error: null };
 
   const variantIds = variants.map(({ id }) => id);
-  const [daysResult, activitiesResult] = await Promise.all([
+  const [daysResult, activitiesResult, pricesResult] = await Promise.all([
     supabase
       .from("trip_days")
       .select("id, variant_id, day_number, date")
@@ -49,14 +50,21 @@ export async function getVariantComparison(
       .order("day_id", { ascending: true })
       .order("sort_order", { ascending: true })
       .order("id", { ascending: true }),
+    supabase
+      .from("itinerary_items")
+      .select("variant_id, price_amount, price_currency")
+      .eq("trip_id", tripId)
+      .in("variant_id", variantIds)
+      .not("price_amount", "is", null),
   ]);
 
-  if (daysResult.error || activitiesResult.error)
+  if (daysResult.error || activitiesResult.error || pricesResult.error)
     return {
       data: null,
       error:
         daysResult.error?.message ??
         activitiesResult.error?.message ??
+        pricesResult.error?.message ??
         "The route comparison could not be loaded.",
     };
 
@@ -66,7 +74,17 @@ export async function getVariantComparison(
     variants as ComparisonVariantRow[],
     days,
     activities,
-  );
+  ).map((projection) => ({
+    ...projection,
+    knownCost: knownCostFromPrices(
+      (pricesResult.data ?? [])
+        .filter(({ variant_id }) => variant_id === projection.variantId)
+        .map((price) => ({
+          currency: price.price_currency,
+          total_price_amount: price.price_amount,
+        })),
+    ),
+  }));
   if (dayNumber === undefined) return { data: projections, error: null };
 
   const dayIds = days.filter(({ day_number }) => day_number === dayNumber).map(({ id }) => id);

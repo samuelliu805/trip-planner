@@ -66,6 +66,7 @@ export const carRentalDetailsSchema = z
     action: z.enum(["pickup", "return"]),
     address: optionalText(300),
     provider: optionalText(120),
+    researchSourceId: z.uuid().optional(),
   })
   .strict();
 
@@ -73,6 +74,10 @@ const addressDetailsSchema = z.object({ address: optionalText(300) }).strict();
 const mealDetailsSchema = z.object({ location: optionalText(300) }).strict();
 const transportDetailsSchema = z
   .object({
+    arrivalDate: optionalText(10),
+    arrivalTime: optionalTime,
+    departureDate: optionalText(10),
+    destination: optionalText(200),
     mode: z.enum([
       "flight",
       "train",
@@ -90,10 +95,13 @@ const transportDetailsSchema = z
       "motorcycle",
       "other",
     ]),
+    origin: optionalText(200),
+    researchSourceId: z.uuid().optional(),
+    segmentIndex: z.number().int().min(0).max(11).optional(),
+    serviceNumber: optionalText(80),
   })
   .strict();
 const activityDetailsSchema = z.object({ location: optionalText(300) }).strict();
-
 const genericDetailsSchema = z.record(z.string(), z.json());
 
 const itemBaseSchema = z.object({
@@ -104,6 +112,14 @@ const itemBaseSchema = z.object({
   notes: optionalText(5000),
   placeId: z.uuid().optional().nullable(),
   placeSnapshot: placeSnapshotSchema.optional().nullable(),
+  priceAmount: z.number().min(0).max(9_999_999_999.99).optional().nullable(),
+  priceCurrency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/)
+    .optional()
+    .nullable(),
   startTime: optionalTime,
   title: z.string().trim().min(1, "Enter an item title.").max(200),
   tripId: z.uuid(),
@@ -113,6 +129,54 @@ const itemBaseSchema = z.object({
 const createItemBaseSchema = itemBaseSchema.extend({
   insertAfterItemId: z.uuid().nullable().optional(),
 });
+
+function validateCommonItem(
+  value: Partial<z.infer<typeof itemBaseSchema>> & {
+    type: (typeof itineraryItemTypes)[number];
+  },
+  context: z.RefinementCtx,
+) {
+  if (value.priceAmount !== null && value.priceAmount !== undefined && !value.priceCurrency)
+    context.addIssue({
+      code: "custom",
+      message: "Choose a currency.",
+      path: ["priceCurrency"],
+    });
+  if (
+    ["location", "note"].includes(value.type) &&
+    value.priceAmount !== null &&
+    value.priceAmount !== undefined
+  )
+    context.addIssue({
+      code: "custom",
+      message: "This item type does not contribute a Plan price.",
+      path: ["priceAmount"],
+    });
+  if (value.type === "location" && !value.placeId && !value.placeSnapshot)
+    context.addIssue({
+      code: "custom",
+      message: "Choose a city from Google Maps.",
+      path: ["placeSnapshot"],
+    });
+  if (["hotel", "note"].includes(value.type) && (value.startTime || value.endTime))
+    context.addIssue({
+      code: "custom",
+      message: "This item type does not support times.",
+      path: ["startTime"],
+    });
+  if (["car_rental", "meal"].includes(value.type) && value.endTime)
+    context.addIssue({
+      code: "custom",
+      message: "This item type supports one time only.",
+      path: ["endTime"],
+    });
+  if (["location", "note"].includes(value.type) && (value.bookingUrl || value.links?.length))
+    context.addIssue({
+      code: "custom",
+      message: "This item type does not support links.",
+      path: ["links"],
+    });
+}
 
 export const createItineraryItemSchema = z
   .discriminatedUnion("type", [
@@ -135,32 +199,17 @@ export const createItineraryItemSchema = z
     path: ["endTime"],
   })
   .superRefine((value, context) => {
-    if (value.type === "location" && !value.placeId && !value.placeSnapshot)
-      context.addIssue({
-        code: "custom",
-        message: "Choose a city from Google Maps.",
-        path: ["placeSnapshot"],
-      });
+    validateCommonItem(value, context);
     if (
-      ["transport", "flight", "train", "hotel", "note"].includes(value.type) &&
-      (value.startTime || value.endTime)
+      value.type === "car_rental" &&
+      value.details.action === "return" &&
+      value.priceAmount !== null &&
+      value.priceAmount !== undefined
     )
       context.addIssue({
         code: "custom",
-        message: "This item type does not support times.",
-        path: ["startTime"],
-      });
-    if (["car_rental", "meal"].includes(value.type) && value.endTime)
-      context.addIssue({
-        code: "custom",
-        message: "This item type supports one time only.",
-        path: ["endTime"],
-      });
-    if (["location", "note"].includes(value.type) && (value.bookingUrl || value.links?.length))
-      context.addIssue({
-        code: "custom",
-        message: "This item type does not support links.",
-        path: ["links"],
+        message: "Store the rental total on the pick-up item.",
+        path: ["priceAmount"],
       });
   });
 
@@ -178,39 +227,23 @@ export const updateItineraryItemSchema = z
     path: ["endTime"],
   })
   .superRefine((value, context) => {
-    if (value.type === "location" && !value.placeId && !value.placeSnapshot)
-      context.addIssue({
-        code: "custom",
-        message: "Choose a city from Google Maps.",
-        path: ["placeSnapshot"],
-      });
-    if (value.type === "car_rental") {
-      const parsed = carRentalDetailsSchema.safeParse(value.details);
-      if (!parsed.success)
-        parsed.error.issues.forEach((issue) =>
-          context.addIssue({ ...issue, path: ["details", ...issue.path] }),
-        );
-    }
+    validateCommonItem(value, context);
+    if (value.type !== "car_rental") return;
+    const parsed = carRentalDetailsSchema.safeParse(value.details);
+    if (!parsed.success)
+      parsed.error.issues.forEach((issue) =>
+        context.addIssue({ ...issue, path: ["details", ...issue.path] }),
+      );
     if (
-      ["transport", "flight", "train", "hotel", "note"].includes(value.type) &&
-      (value.startTime || value.endTime)
+      parsed.success &&
+      parsed.data.action === "return" &&
+      value.priceAmount !== null &&
+      value.priceAmount !== undefined
     )
       context.addIssue({
         code: "custom",
-        message: "This item type does not support times.",
-        path: ["startTime"],
-      });
-    if (["car_rental", "meal"].includes(value.type) && value.endTime)
-      context.addIssue({
-        code: "custom",
-        message: "This item type supports one time only.",
-        path: ["endTime"],
-      });
-    if (["location", "note"].includes(value.type) && (value.bookingUrl || value.links?.length))
-      context.addIssue({
-        code: "custom",
-        message: "This item type does not support links.",
-        path: ["links"],
+        message: "Store the rental total on the pick-up item.",
+        path: ["priceAmount"],
       });
   });
 
@@ -219,68 +252,7 @@ export const deleteItineraryItemSchema = z.object({
   tripId: z.uuid(),
   variantId: z.uuid(),
 });
-export const clearItineraryItemsSchema = z
-  .object({
-    itemIds: z.array(z.uuid()).min(1).max(2000),
-    tripId: z.uuid(),
-    variantId: z.uuid(),
-  })
-  .refine(
-    (value) => new Set(value.itemIds).size === value.itemIds.length,
-    "Selected items must be unique.",
-  );
-export const insertTripDaySchema = z.object({
-  beforeDayNumber: z.number().int().min(1).max(366),
-  tripId: z.uuid(),
-  variantId: z.uuid(),
-});
-export const removeTripDaySchema = z.object({
-  dayId: z.uuid(),
-  tripId: z.uuid(),
-  variantId: z.uuid(),
-});
-export const reorderVariantDaysSchema = z
-  .object({
-    orderedDayIds: z.array(z.uuid()).min(1).max(366),
-    tripId: z.uuid(),
-    variantId: z.uuid(),
-  })
-  .refine(
-    (value) => new Set(value.orderedDayIds).size === value.orderedDayIds.length,
-    "Days must be unique.",
-  );
-
-export const reorderItineraryItemsSchema = z
-  .object({
-    dayId: z.uuid(),
-    items: z.array(z.object({ id: z.uuid(), sortOrder: z.number().int().min(0) })).min(1),
-    tripId: z.uuid(),
-    variantId: z.uuid(),
-  })
-  .refine(
-    (value) => new Set(value.items.map(({ id }) => id)).size === value.items.length,
-    "Items must be unique.",
-  );
-
-export const copyItineraryItemsSchema = z
-  .object({
-    preservePlace: z.boolean().optional().default(true),
-    sourceItemIds: z.array(z.uuid()).min(1),
-    targetDayId: z.uuid(),
-    tripId: z.uuid(),
-    variantId: z.uuid(),
-  })
-  .refine(
-    (value) => new Set(value.sourceItemIds).size === value.sourceItemIds.length,
-    "Items must be unique.",
-  );
 
 export type CreateItineraryItemInput = z.input<typeof createItineraryItemSchema>;
 export type UpdateItineraryItemInput = z.input<typeof updateItineraryItemSchema>;
 export type DeleteItineraryItemInput = z.input<typeof deleteItineraryItemSchema>;
-export type ClearItineraryItemsInput = z.input<typeof clearItineraryItemsSchema>;
-export type InsertTripDayInput = z.input<typeof insertTripDaySchema>;
-export type RemoveTripDayInput = z.input<typeof removeTripDaySchema>;
-export type ReorderVariantDaysInput = z.input<typeof reorderVariantDaysSchema>;
-export type ReorderItineraryItemsInput = z.input<typeof reorderItineraryItemsSchema>;
-export type CopyItineraryItemsInput = z.input<typeof copyItineraryItemsSchema>;

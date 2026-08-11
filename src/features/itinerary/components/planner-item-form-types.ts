@@ -2,6 +2,7 @@ import type { ItineraryItem, ItineraryItemType, TransportMode } from "../types";
 
 export type PlannerItemFormProps = {
   dayId: string;
+  defaultCurrency: string;
   item?: ItineraryItem;
   onCancel: () => void;
   onDraftChange?: (item: ItineraryItem | null) => void;
