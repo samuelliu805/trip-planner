@@ -14,6 +14,7 @@ import {
 } from "./money.ts";
 import { parseEcbReferenceRates } from "./exchange-rate-parser.ts";
 import { addIsoDateDays } from "./date-range.ts";
+import { rentalReturnsToPickup } from "./rental-return.ts";
 import { deriveOptionImpact } from "./option-impact.ts";
 import {
   isReadyToCompare,
@@ -213,6 +214,27 @@ test("Stay readiness and per-night price are derived", () => {
   assert.equal(stayNightCount(stay), 4);
   assert.equal(stayPerNightPrice(stay), 160.5);
   assert.equal(researchContextLabel(stay), "Tokyo · Oct 4–Oct 8");
+});
+
+test("Rental same-place return is inferred from persisted place identity", () => {
+  assert.equal(
+    rentalReturnsToPickup(
+      item({
+        category: "rental",
+        destination_place_id: "00000000-0000-4000-8000-000000000020",
+        destination_text: "SFO",
+        origin_place_id: "00000000-0000-4000-8000-000000000020",
+        origin_text: "SFO",
+      }),
+    ),
+    true,
+  );
+  assert.equal(
+    rentalReturnsToPickup(
+      item({ category: "rental", destination_text: "LAX", origin_text: "SFO" }),
+    ),
+    false,
+  );
 });
 
 test("zero is a real comparison-ready price and Stay checkout defaults to the next day", () => {
@@ -748,11 +770,12 @@ test("Compare uses one responsive Context Bar below the Trip App Bar", async () 
 });
 
 test("mobile Research chrome stays on one row and add forms progressively disclose details", async () => {
-  const [workspace, planContext, fields, journey, dateRange, actions, migration] =
+  const [workspace, planContext, fields, dialog, journey, dateRange, actions, migration] =
     await Promise.all([
       readFile(new URL("./components/compare-workspace.tsx", import.meta.url), "utf8"),
       readFile(new URL("../itinerary/components/planner-context-bar.tsx", import.meta.url), "utf8"),
       readFile(new URL("./components/research-item-fields.tsx", import.meta.url), "utf8"),
+      readFile(new URL("./components/research-item-dialog.tsx", import.meta.url), "utf8"),
       readFile(new URL("./components/research-journey-fields.tsx", import.meta.url), "utf8"),
       readFile(new URL("./components/date-range-fields.tsx", import.meta.url), "utf8"),
       readFile(new URL("./components/research-plan-actions.tsx", import.meta.url), "utf8"),
@@ -773,6 +796,9 @@ test("mobile Research chrome stays on one row and add forms progressively disclo
   assert.match(fields, /<DateRangeFields[\s\S]*endLabel="Check-out"/);
   assert.match(fields, /minimumNights=\{1\}/);
   assert.match(fields, /startLabel="Check-in"/);
+  assert.match(fields, /Return to the pick-up location/);
+  assert.match(fields, /name="returnToPickup"/);
+  assert.match(dialog, /returnToPickup[\s\S]*originPlaceId[\s\S]*destinationPlaceId/);
   assert.match(journey, /Times &amp;[\s\S]*number/);
   assert.match(journey, /label="From"[\s\S]*label="To"/);
   assert.doesNotMatch(journey, /Flight \{index \+ 1\}/);

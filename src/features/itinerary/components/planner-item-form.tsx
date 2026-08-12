@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useRef } from "react";
 import {
   useCreateItineraryItem,
@@ -17,10 +16,10 @@ import {
   itemFormFieldLabels,
   plannerItemTitle,
 } from "@/features/itinerary/components/planner-item-form-config";
+import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-form-fields";
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
-
 export function PlannerItemForm({
   dayId,
   defaultCurrency,
@@ -116,6 +115,7 @@ export function PlannerItemForm({
       type,
     });
     if (pending || !savedTitle) return;
+    const journey = plannerJourneyFieldCapabilities(type, transportMode);
     const placeText = place?.formattedAddress ?? place?.displayName ?? null;
     const details: Record<string, Json> =
       type === "car_rental"
@@ -132,11 +132,11 @@ export function PlannerItemForm({
             : ["transport", "flight", "train"].includes(type)
               ? {
                   ...existingDetails,
-                  arrivalTime: arrivalTime || null,
-                  destination: destination || null,
+                  arrivalTime: journey.arrivalTime ? arrivalTime || null : null,
+                  destination: journey.endpoints ? destination || null : null,
                   mode: type === "transport" ? transportMode : type,
-                  origin: origin || null,
-                  serviceNumber: serviceNumber || null,
+                  origin: journey.endpoints ? origin || null : null,
+                  serviceNumber: journey.serviceNumber ? serviceNumber || null : null,
                 }
               : type === "activity"
                 ? { ...existingDetails, location: placeText }
@@ -172,11 +172,11 @@ export function PlannerItemForm({
       bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
       links: supportsLink ? links : [],
       details: details as never,
-      endTime: ["transport", "flight", "train"].includes(type) ? arrivalTime : "",
+      endTime: journey.arrivalTime ? arrivalTime : "",
       notes: type === "note" ? "" : notes,
       priceAmount: supportsPrice && priceAmount ? Number(priceAmount) : null,
       priceCurrency: supportsPrice && priceAmount ? priceCurrency : null,
-      startTime: supportsTime ? startTime : "",
+      startTime: supportsTime && (type !== "transport" || journey.departureTime) ? startTime : "",
       title: savedTitle,
       tripId,
       type,
@@ -261,6 +261,7 @@ export function PlannerItemForm({
         setServiceNumber={setServiceNumber}
         setStartTime={setStartTime}
         startTime={startTime}
+        transportMode={transportMode}
         type={type}
       />
       <PlannerItemSecondaryFields

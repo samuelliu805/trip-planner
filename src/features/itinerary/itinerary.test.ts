@@ -28,6 +28,8 @@ import {
   selectionBounds,
   selectionContains,
 } from "./grid-interactions.ts";
+import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
+import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import {
   buildOverviewRouteLines,
@@ -1986,7 +1988,62 @@ test("selection extension and fill targets use normalized bounds", () => {
   assert.deepEqual(selectionBounds(anchor, end), { top: 1, bottom: 3, left: 2, right: 4 });
   assert.equal(selectionContains(anchor, end, { row: 2, column: 3 }), true);
   assert.equal(selectionContains(anchor, end, { row: 0, column: 3 }), false);
-  assert.deepEqual(fillTargetRows(anchor, end), [2, 3]);
+  assert.deepEqual(fillTargetRows(anchor, end), [1, 2]);
+  assert.deepEqual(fillTargetRows(end, anchor), [2, 3]);
+});
+
+test("Hotel panel aggregation counts table occurrences and preserves split booking ranges", () => {
+  const hotel = (id: string, checkInDate: string, checkOutDate: string) =>
+    ({
+      details: { checkInDate, checkOutDate },
+      id,
+      place_id: "hotel-place",
+      type: "hotel",
+    }) as unknown as ItineraryItem;
+  const rows = [
+    ["2026-07-20", "2026-07-20", "2026-07-22"],
+    ["2026-07-21", "2026-07-20", "2026-07-22"],
+    ["2026-07-25", "2026-07-25", "2026-07-28"],
+    ["2026-07-26", "2026-07-25", "2026-07-28"],
+    ["2026-07-27", "2026-07-25", "2026-07-28"],
+  ];
+  const days = rows.map(([date, checkInDate, checkOutDate], index) => ({
+    date,
+    day_number: index + 1,
+    id: `day-${index + 1}`,
+    items: [hotel(`hotel-${index + 1}`, checkInDate, checkOutDate)],
+  })) as unknown as PlannerDay[];
+  const summary = deriveHotelStaySummary(days, days[0].items[0]);
+  assert.equal(summary?.totalDays, 5);
+  assert.deepEqual(
+    summary?.ranges.map(({ checkInDate, checkOutDate, dayCount }) => ({
+      checkInDate,
+      checkOutDate,
+      dayCount,
+    })),
+    [
+      { checkInDate: "2026-07-20", checkOutDate: "2026-07-22", dayCount: 2 },
+      { checkInDate: "2026-07-25", checkOutDate: "2026-07-28", dayCount: 3 },
+    ],
+  );
+});
+
+test("transport editor hides irrelevant journey fields for self-directed modes", () => {
+  assert.deepEqual(plannerJourneyFieldCapabilities("transport", "self_driving"), {
+    arrivalTime: false,
+    departureTime: false,
+    endpoints: false,
+    serviceNumber: false,
+  });
+  assert.deepEqual(plannerJourneyFieldCapabilities("transport", "walk"), {
+    arrivalTime: false,
+    departureTime: false,
+    endpoints: false,
+    serviceNumber: false,
+  });
+  assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").endpoints, true);
+  assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").arrivalTime, false);
+  assert.equal(plannerJourneyFieldCapabilities("flight", "self_driving").serviceNumber, true);
 });
 
 test("planner clipboard copy and paste preserves typed item IDs", () => {
@@ -2094,6 +2151,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /requestAnimationFrame/);
   assert.match(workspace, /replacedItems/);
   assert.match(workspace, /replaceCategoryItems/);
+  assert.match(workspace, /const sourceDay = workspace\.days\[anchor\.row\]/);
   assert.match(workspace, /sourceItemIds:\s*sourceDay\.items\s*\.filter/);
   assert.match(workspace, /startRangeSelection/);
   assert.match(workspace, /if \(!moved\) setSelectionAnchor\(\{ column, row \}\)/);

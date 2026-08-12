@@ -202,8 +202,8 @@ export function usePlannerClipboard({
 
   async function fillDown(anchor = selectionAnchor, end = selectionEndRef.current) {
     const bounds = selectionBounds(anchor, end);
-    const sourceDay = workspace.days[bounds.top];
-    if (!sourceDay || bounds.bottom === bounds.top) {
+    const sourceDay = workspace.days[anchor.row];
+    if (!sourceDay || anchor.row === end.row) {
       setInteractionError("Select at least two day rows to fill down.");
       return;
     }

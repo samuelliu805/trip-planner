@@ -4,6 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { DateRangeFields } from "./date-range-fields";
 import { ResearchField } from "./form-controls";
@@ -17,6 +18,7 @@ import type {
   ResearchSegment,
 } from "../types";
 import { initialResearchSegments } from "../journey";
+import { rentalReturnsToPickup } from "../rental-return";
 
 function StayFields({ item }: { item?: ResearchItem }) {
   const [startDate, setStartDate] = useState(item?.start_date ?? "");
@@ -50,9 +52,11 @@ function StayFields({ item }: { item?: ResearchItem }) {
 function RentalFields({ item }: { item?: ResearchItem }) {
   const [startDate, setStartDate] = useState(item?.start_date ?? "");
   const [endDate, setEndDate] = useState(item?.end_date ?? "");
+  const [returnToPickup, setReturnToPickup] = useState(item ? rentalReturnsToPickup(item) : true);
   return (
     <section className="min-w-0 space-y-4" aria-label="Rental details">
-      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+      <input name="returnToPickup" type="hidden" value={returnToPickup ? "true" : ""} />
+      <div className={`grid min-w-0 gap-4 ${returnToPickup ? "" : "sm:grid-cols-2"}`}>
         <ResearchPlaceField
           initialPlace={item?.origin_place}
           initialPlaceId={item?.origin_place_id}
@@ -62,16 +66,25 @@ function RentalFields({ item }: { item?: ResearchItem }) {
           snapshotName="originPlaceSnapshot"
           textName="originText"
         />
-        <ResearchPlaceField
-          initialPlace={item?.destination_place}
-          initialPlaceId={item?.destination_place_id}
-          initialText={item?.destination_text}
-          label="Return location"
-          placeIdName="destinationPlaceId"
-          snapshotName="destinationPlaceSnapshot"
-          textName="destinationText"
-        />
+        {!returnToPickup ? (
+          <ResearchPlaceField
+            initialPlace={item?.destination_place}
+            initialPlaceId={item?.destination_place_id}
+            initialText={item?.destination_text}
+            label="Return location"
+            placeIdName="destinationPlaceId"
+            snapshotName="destinationPlaceSnapshot"
+            textName="destinationText"
+          />
+        ) : null}
       </div>
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm">
+        <Checkbox
+          checked={returnToPickup}
+          onCheckedChange={(checked) => setReturnToPickup(checked === true)}
+        />
+        Return to the pick-up location
+      </label>
       <DateRangeFields
         endLabel="Return date"
         endName="endDate"
