@@ -1,12 +1,14 @@
 "use client";
 
+import { format, parseISO } from "date-fns";
 import { ChevronDown, ExternalLink, Minus, Pencil, Plus, X } from "lucide-react";
 
+import { deriveHotelStaySummary } from "@/features/itinerary/hotel-stay-summary";
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
 import type { PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { RouteIconButton } from "@/features/routes/route-icon-button";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
-import type { ItineraryItem } from "@/features/itinerary/types";
+import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import { formatMoney } from "@/features/research/money";
 
 function itemDetails(item?: ItineraryItem) {
@@ -21,8 +23,16 @@ function timeLabel(item?: ItineraryItem) {
   return item.end_time ? `${start}–${item.end_time.slice(0, 5)}` : start;
 }
 
+function stayRangeLabel(checkInDate: string, checkOutDate: string) {
+  const checkIn = parseISO(checkInDate);
+  const checkOut = parseISO(checkOutDate);
+  const sameYear = checkIn.getFullYear() === checkOut.getFullYear();
+  return `${format(checkIn, sameYear ? "MMM d" : "MMM d, yyyy")} → ${format(checkOut, "MMM d, yyyy")}`;
+}
+
 export function PlannerMapSelectedPlace({
   dayRoute,
+  days,
   item,
   mapMode,
   marker,
@@ -32,6 +42,7 @@ export function PlannerMapSelectedPlace({
   selectedId,
 }: {
   dayRoute: DayRouteUi;
+  days: PlannerDay[];
   item?: ItineraryItem;
   mapMode: "overview" | "day_route";
   marker: PlannerMapMarker;
@@ -44,9 +55,10 @@ export function PlannerMapSelectedPlace({
   if (!entry) return null;
   const dayCount = new Set(marker.entries.map(({ dayNumber }) => dayNumber)).size;
   const dateRanges = mergeMarkerDateRanges(marker.entries);
+  const hotelStay = deriveHotelStaySummary(days, item);
   const staySummary =
     entry.kind === "hotel"
-      ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} at this hotel`
+      ? `Total ${hotelStay?.totalDays ?? dayCount} ${(hotelStay?.totalDays ?? dayCount) === 1 ? "day" : "days"} at this hotel`
       : entry.kind === "city"
         ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} in this city`
         : null;
@@ -77,8 +89,10 @@ export function PlannerMapSelectedPlace({
       value: details.action === "pickup" ? "Pick-up" : "Return",
     },
     details.provider && { label: "Provider", value: details.provider },
-    details.checkInDate && { label: "Check-in", value: details.checkInDate },
-    details.checkOutDate && { label: "Check-out", value: details.checkOutDate },
+    entry.kind !== "hotel" &&
+      details.checkInDate && { label: "Check-in", value: details.checkInDate },
+    entry.kind !== "hotel" &&
+      details.checkOutDate && { label: "Check-out", value: details.checkOutDate },
   ].filter((fact): fact is { label: string; value: string } => Boolean(fact));
 
   return (
@@ -127,7 +141,9 @@ export function PlannerMapSelectedPlace({
       ) : staySummary ? (
         <p className="mt-1 text-xs">
           <span className="font-medium">{staySummary}</span>
-          <span className="text-muted-foreground"> · {dateRanges}</span>
+          {entry.kind === "city" ? (
+            <span className="text-muted-foreground"> · {dateRanges}</span>
+          ) : null}
         </p>
       ) : marker.entries.length === 1 ? (
         <p className="mt-1 text-xs text-muted-foreground">{entry.dayLabel}</p>
@@ -153,6 +169,28 @@ export function PlannerMapSelectedPlace({
           </div>
         </details>
       )}
+      {entry.kind === "hotel" && hotelStay?.ranges.length ? (
+        <div className="mt-2 space-y-1.5 border-t pt-2" aria-label="Hotel booking dates">
+          {hotelStay.ranges.map((range, index) => (
+            <div
+              className="flex items-center justify-between gap-3 text-xs"
+              key={`${range.checkInDate ?? range.firstDayNumber}-${range.checkOutDate ?? range.lastDayNumber}`}
+            >
+              <span className="text-muted-foreground">
+                {range.checkInDate && range.checkOutDate
+                  ? stayRangeLabel(range.checkInDate, range.checkOutDate)
+                  : range.firstDayNumber === range.lastDayNumber
+                    ? `Day ${range.firstDayNumber}`
+                    : `Day ${range.firstDayNumber} → Day ${range.lastDayNumber + 1}`}
+              </span>
+              <span className="shrink-0 font-medium">
+                {range.dayCount} {range.dayCount === 1 ? "day" : "days"}
+              </span>
+              <span className="sr-only">Stay {index + 1}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {facts.length || item?.notes || bookingLinks.length ? (
         <div className="mt-3 space-y-3 border-t pt-3">
           {facts.length ? (

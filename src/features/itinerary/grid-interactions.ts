@@ -102,7 +102,7 @@ export function parsePlannerClipboard(value: string) {
 export function fillTargetRows(anchor: GridCoordinate, end: GridCoordinate) {
   const bounds = selectionBounds(anchor, end);
   return Array.from(
-    { length: Math.max(0, bounds.bottom - bounds.top) },
-    (_, index) => bounds.top + index + 1,
-  );
+    { length: bounds.bottom - bounds.top + 1 },
+    (_, index) => bounds.top + index,
+  ).filter((row) => row !== anchor.row);
 }

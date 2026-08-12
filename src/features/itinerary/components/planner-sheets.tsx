@@ -185,6 +185,7 @@ export function PlannerSheets({
               dayCityLayerAvailable={dayCityLayerAvailable}
               dayMapLayer={dayMapLayer}
               dayRoute={dayRoute}
+              days={workspace.days}
               emptyState={
                 mapMode === "comparison" ? (compactMapEmptyState ?? mapEmptyState) : mapEmptyState
               }

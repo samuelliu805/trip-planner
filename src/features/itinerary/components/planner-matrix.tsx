@@ -249,6 +249,7 @@ export function PlannerMatrix({
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
         dayRoute={dayRoute}
+        days={workspace.days}
         emptyState={mapEmptyState}
         lines={mapLines}
         mapMode={mapMode}

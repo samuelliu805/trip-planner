@@ -5,7 +5,7 @@ import type { PlannerMapMode } from "@/features/itinerary/components/planner-map
 import { categories } from "@/features/itinerary/components/planner-config";
 import { MatrixGridHeader } from "@/features/itinerary/components/matrix-presentation";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
-import type { ItineraryItem } from "@/features/itinerary/types";
+import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
@@ -64,7 +64,7 @@ export function PlannerStatus({
           className="pointer-events-none fixed left-1/2 top-28 z-50 -translate-x-1/2 rounded-full border bg-background/95 px-4 py-2 text-xs font-medium shadow-lg backdrop-blur"
           role="status"
         >
-          Release to copy {fillLabel} down through Day {fillThroughDay ?? ""}. Only this column will
+          Release to copy {fillLabel} through Day {fillThroughDay ?? ""}. Only this column will
           change.
         </div>
       ) : null}
@@ -83,6 +83,7 @@ export function PlannerMapPane({
   dayCityLayerAvailable,
   dayMapLayer,
   dayRoute,
+  days,
   emptyState,
   lines,
   mapMode,
@@ -111,6 +112,7 @@ export function PlannerMapPane({
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
+  days: PlannerDay[];
   emptyState?: { message: string; title: string };
   lines: PlannerMapLine[];
   mapMode: PlannerMapMode;
@@ -138,6 +140,7 @@ export function PlannerMapPane({
       dayCityLayerAvailable={dayCityLayerAvailable}
       dayMapLayer={dayMapLayer}
       dayRoute={dayRoute}
+      days={days}
       emptyState={compact ? (compactEmptyState ?? emptyState) : emptyState}
       lines={compact ? compactLines : lines}
       mapMode={mapMode}

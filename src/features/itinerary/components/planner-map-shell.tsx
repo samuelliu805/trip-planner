@@ -6,7 +6,7 @@ import { useState } from "react";
 import { PlannerMapControls } from "@/features/itinerary/components/planner-map-controls";
 import { PlannerMapSelectedPlace } from "@/features/itinerary/components/planner-map-selected-place";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
-import type { ItineraryItem } from "@/features/itinerary/types";
+import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
@@ -33,6 +33,7 @@ export function PlannerMapShell({
   dayCityLayerAvailable,
   dayMapLayer,
   dayRoute,
+  days,
   emptyState,
   lines = [],
   mapMode,
@@ -58,6 +59,7 @@ export function PlannerMapShell({
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
   dayRoute: DayRouteUi;
+  days: PlannerDay[];
   emptyState?: { message: string; title: string };
   lines?: PlannerMapLine[];
   mapMode: PlannerMapMode;
@@ -121,6 +123,7 @@ export function PlannerMapShell({
     selectedId && selectedMarker && mapMode !== "comparison" ? (
       <PlannerMapSelectedPlace
         dayRoute={dayRoute}
+        days={days}
         item={selectedItem}
         mapMode={mapMode}
         marker={selectedMarker}

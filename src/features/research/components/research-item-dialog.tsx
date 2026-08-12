@@ -88,13 +88,24 @@ export function ResearchItemDialog({
     const journeyType = optional(form, "journeyType") as
       "one_way" | "round_trip" | "multi_city" | null;
     const originText = firstSegment?.origin ?? optional(form, "originText");
-    const destinationText = firstSegment?.destination ?? optional(form, "destinationText");
+    const returnToPickup = category === "rental" && optional(form, "returnToPickup") === "true";
+    const originPlaceId = optional(form, "originPlaceId");
+    const originPlaceSnapshot = optionalJson<GooglePlaceSnapshot>(form, "originPlaceSnapshot");
+    const destinationText = returnToPickup
+      ? originText
+      : (firstSegment?.destination ?? optional(form, "destinationText"));
+    const destinationPlaceId = returnToPickup
+      ? originPlaceId
+      : optional(form, "destinationPlaceId");
+    const destinationPlaceSnapshot = returnToPickup
+      ? originPlaceSnapshot
+      : optionalJson<GooglePlaceSnapshot>(form, "destinationPlaceSnapshot");
     const locationText = optional(form, "locationText");
     const automaticTitle =
       category === "stay"
         ? locationText
         : originText
-          ? destinationText
+          ? destinationText && destinationText !== originText
             ? `${originText} → ${destinationText}`
             : originText
           : null;
@@ -102,8 +113,8 @@ export function ResearchItemDialog({
       category,
       currency: hasPrice ? optional(form, "currency") : null,
       dayId: item?.day_id ?? context?.dayId,
-      destinationPlaceId: optional(form, "destinationPlaceId"),
-      destinationPlaceSnapshot: optionalJson<GooglePlaceSnapshot>(form, "destinationPlaceSnapshot"),
+      destinationPlaceId,
+      destinationPlaceSnapshot,
       destinationText,
       endDate:
         journeyType && journeyType !== "one_way" && rawSegments.length >= 2
@@ -117,8 +128,8 @@ export function ResearchItemDialog({
       locationPlaceSnapshot: optionalJson<GooglePlaceSnapshot>(form, "locationPlaceSnapshot"),
       locationText,
       note: optional(form, "note"),
-      originPlaceId: optional(form, "originPlaceId"),
-      originPlaceSnapshot: optionalJson<GooglePlaceSnapshot>(form, "originPlaceSnapshot"),
+      originPlaceId,
+      originPlaceSnapshot,
       originText,
       segments,
       sourceUrl: optional(form, "sourceUrl"),

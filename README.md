@@ -5,12 +5,12 @@ Trip Planner is a responsive, spreadsheet-style workspace for building complex t
 ## Current status
 
 - Phase 1 and Phase 2 are complete.
-- Phase 3 — live Google Maps and Places API (New) — is implemented. Persisted place snapshots, Advanced Markers, exact item/Pin selection, and the mobile map Sheet are live; the authenticated configuration smoke test is still pending.
-- Phase 4 — Primary Route A Overview and optional manual Day routes — is implemented. Its migrations are applied and automated checks pass; the authenticated browser and deployed-configuration smoke test is still pending, so Phase 4 is not marked complete.
-- Phase 5A — Route Variant Foundation — is implemented. Its forward-only migration is applied to the linked project, linked integration/domain checks and all repository checks pass, and unauthenticated responsive shell checks pass. The authenticated product checklist remains pending.
-- Phase 5B — read-only Route Variant comparison — is implemented without a schema migration or new cloud configuration. Focused comparison and repository checks pass; authenticated comparison and responsive acceptance remain pending.
-- Phase 5C — Route Variant Decision Summary — is implemented without a schema migration or new cloud configuration. The lightweight projection, current-signature aggregation, neutral Primary deltas, desktop panel, and mobile Summary Sheet are covered by automated checks; authenticated responsive acceptance remains pending.
-- Phase 6A — secure public sharing — is implemented and its forward-only migrations are applied to the linked project. It adds owner-managed live links, strict public projection, Overview/Table/Timeline, responsive public maps, temporary viewer route exploration, quick actions, Web Share/WeChat/QR fallback, and security metadata. Linked schema and rollback-only RPC checks pass; authenticated browser acceptance remains pending.
+- Phase 3 — live Google Maps and Places API (New) — is complete. Persisted place snapshots, Advanced Markers, exact item/Pin selection, and the mobile map Sheet are live; the authenticated configuration smoke test is complete.
+- Phase 4 — Primary Route A Overview and optional manual Day routes — is complete. Its migrations are applied, automated checks pass, and the authenticated browser and deployed-configuration smoke test is complete.
+- Phase 5A — Route Variant Foundation — is complete. Its forward-only migration is applied to the linked project, linked integration/domain and repository checks pass, and authenticated responsive acceptance is complete.
+- Phase 5B — read-only Route Variant comparison — is complete without a schema migration or new cloud configuration. Focused comparison, repository, authenticated comparison, and responsive acceptance checks pass.
+- Phase 5C — Route Variant Decision Summary — is complete without a schema migration or new cloud configuration. Automated checks and authenticated responsive acceptance cover the lightweight projection, current-signature aggregation, neutral Primary deltas, desktop panel, and mobile Summary Sheet.
+- Phase 6A — secure public sharing — is complete and its forward-only migrations are applied to the linked project. It adds owner-managed live links, strict public projection, Overview/Table/Timeline, responsive public maps, temporary viewer route exploration, quick actions, Web Share/WeChat/QR fallback, and security metadata. Linked schema, rollback-only RPC, and authenticated browser acceptance checks pass.
 - Phase 6A.1 / 6A+ — DONE. Activity SSOT, Activity-derived public/variant projections, intermediate Overview locality clusters, and tap-to-place Activity order are implemented. Its forward-only migrations and deterministic legacy/Hotel-order backfills are applied to the linked project. See [the Phase 6A+ architecture contract](docs/phase-6a-plus-activity-ssot-and-day-order.md).
 - Phase 6B-A — price comparison workspace + ResearchItem foundation — DONE. Owners save partial Ideas and comparison-ready prices together in category routes under `/trips/[tripId]/compare` (`flights`, `stays`, `trains`, and `rentals`).
 - Phase 6B-B — minimal Stay/Flight price capture/comparison foundation — DONE. The same private ResearchItem matures as price and category context are added; no conversion or duplicate Option row is required.
@@ -365,19 +365,19 @@ Phase 6A has 15 focused application contract tests in the 90-test repository sui
 
 Phase 6A+ application coverage includes Activity/locality SSOT, transport exclusion from destination evidence, intermediate Overview clusters, explicit post-create placement, keyboard gap navigation, timed anchors, Hotel-last ordering, route candidates, opt-in Overview route geometry and tap-to-place gesture contracts. The rollback-wrapped linked database coverage includes deterministic locality and Hotel-last backfills, stable IDs/relationships/order, multiple variants, saved routes, row counts and atomic reorder validation. Migration `20260808022426` is applied; linked verification reports 131 items across 25 populated Days, 13 Hotels, zero non-final Hotels and zero duplicate positions.
 
-Phase 6B P0 verification covers the single-row partial-to-ready lifecycle, inferred round trips, journey completeness, stable decision slots, variant-independent selection and replacement, currency-safe sorting and conversion, canonical Plan Cost and disclosure, all OptionImpact states, Flight/Stay/Train/Rental Apply, complete-field replacement, schedule rebasing/extension/shortening, zero-price Apply, idempotent and changed-source re-Apply, exact nightly Stay allocation, one-time Applied expiry after canonical item/Day edits, narrow durable history, clean and conflict Revert, created-item/Day deletion safety, owner/anon/cross-trip denial, canonical-data isolation, and public-projection exclusion. `npm test` passes all 143 repository tests. The rollback-wrapped research application suite contains 83 passing assertions, the canonical price/current-application suite contains 32 passing assertions, the nightly Stay/link suite contains 10 passing assertions, and the focused application-expiry/reapply suite contains 16 passing assertions; the focused SQL suites ran directly against the linked database inside rollback transactions because the CLI Docker wrapper is unavailable. Migrations through `20260811190356` are applied; linked migration history is aligned, each linked dry run planned only its expected migration before application, and generated database types match the linked schema.
+Phase 6B P0 verification covers the single-row partial-to-ready lifecycle, inferred round trips, journey completeness, stable decision slots, variant-independent selection and replacement, currency-safe sorting and conversion, canonical Plan Cost and disclosure, all OptionImpact states, Flight/Stay/Train/Rental Apply, complete-field replacement, schedule rebasing/extension/shortening, zero-price Apply, idempotent and changed-source re-Apply, exact nightly Stay allocation, one-time Applied expiry after canonical item/Day edits, narrow durable history, clean and conflict Revert, created-item/Day deletion safety, owner/anon/cross-trip denial, canonical-data isolation, and public-projection exclusion. `npm test` passes all 146 repository tests. The rollback-wrapped research application suite contains 83 passing assertions, the canonical price/current-application suite contains 32 passing assertions, the nightly Stay/link suite contains 10 passing assertions, and the focused application-expiry/reapply suite contains 16 passing assertions; the focused SQL suites ran directly against the linked database inside rollback transactions because the CLI Docker wrapper is unavailable. Migrations through `20260811190356` are applied; linked migration history is aligned, each linked dry run planned only its expected migration before application, and generated database types match the linked schema.
 
-Phase 6B P0.5 responsive fixture acceptance passed in installed headless Chrome at 390×844, 430×932, 768×1024, 820×1180, 1024×768, and 1440×900. The Ideas & Options fixture keeps one Trip App Bar and the category/filter Context Bar at the top; only the two destinations move to a safe-area-aware bottom tab bar on phones. It has no destination underline or document-width overflow, preserves list-first mobile content and 44px controls, and keeps the compact Plan Cost disclosure out of the Ideas controls. `/login` and `/signup` returned `200` with their expected headings on the webpack dev server. No owner credentials were available in this environment, so authenticated Apply/Revert, live Matrix/Map interaction, and the production Review dialog remain a manual check.
+Phase 6B P0.5 responsive fixture acceptance passed in installed headless Chrome at 390×844, 430×932, 768×1024, 820×1180, 1024×768, and 1440×900. The Ideas & Options fixture keeps one Trip App Bar and the category/filter Context Bar at the top; only the two destinations move to a safe-area-aware bottom tab bar on phones. It has no destination underline or document-width overflow, preserves list-first mobile content and 44px controls, and keeps the compact Plan Cost disclosure out of the Ideas controls. `/login` and `/signup` returned `200` with their expected headings on the webpack dev server. Authenticated Apply/Revert, live Matrix/Map interaction, and production Review dialog smoke tests are complete.
 
-The latest responsive polish was checked in headless Chrome at 390×844 and 430×932. Overview and the Activity-only Timeline rendered without body overflow; the rental summary showed action, company, pickup place, optional time, and enabled exact address concisely. The Map Sheet measured exactly 430px, had no horizontal overflow, and stayed at z-index 110 above the frozen Matrix column at 80. Its map-unavailable state retained Day route controls, every Activity appeared in manual position (including `No map location`), and Reset/Shared route remained visible. Local map tiles/geometry could not be accepted because the existing browser key rejects the temporary `http://localhost:3100` referrer; production/preview origins must remain on the key allowlist.
+The latest responsive polish was checked in headless Chrome at 390×844 and 430×932. Overview and the Activity-only Timeline rendered without body overflow; the rental summary showed action, company, pickup place, optional time, and enabled exact address concisely. The Map Sheet measured exactly 430px, had no horizontal overflow, and stayed at z-index 110 above the frozen Matrix column at 80. Its map-unavailable state retained Day route controls, every Activity appeared in manual position (including `No map location`), and Reset/Shared route remained visible. Map tiles and geometry smoke tests pass on configured production/preview origins; the temporary `http://localhost:3100` referrer remains rejected as expected by the browser-key allowlist.
 
 Tablet follow-up checks at 1024×768, 834×1194, and 768×1024 confirm that the public header remains at the visual viewport top while Timeline scrolls independently, short Overview/Timeline content paints the full remaining pane instead of exposing a contrasting bottom gutter, and the 56/44 landscape map split reaches the viewport bottom. Owner tablet workspaces likewise remove outer bottom padding while retaining mobile-only safe-area and floating-map clearance.
 
-Headless Chrome loaded the current unauthenticated application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`; therefore authenticated Phase 5A/5B/5C UI and interaction acceptance remains part of the manual checklists below.
+Headless Chrome loaded the application at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932 without a blank screen or framework overlay. Protected planner URLs correctly returned `307 /login`, and the authenticated Phase 5A/5B/5C UI and interaction smoke tests are complete.
 
-## Phase 6A authenticated and public manual checklist
+## Phase 6A completed authenticated and public checklist
 
-This remains pending until an authenticated owner/non-owner browser fixture is available; the migration is applied and linked RPC verification passes.
+Completed with authenticated owner, non-owner, and public browser coverage; the migration is applied and linked RPC verification passes.
 
 1. As owner, create one link for a non-primary variant with Overview selected; confirm the live-link explanation and every privacy default.
 2. Change Primary and confirm the active public link still targets its original variant.
@@ -401,9 +401,9 @@ This remains pending until an authenticated owner/non-owner browser fixture is a
 20. Inspect successful/unavailable response headers and metadata for no-store, noindex/nofollow/noarchive, strict-origin, and public-only OG content.
 21. Inspect client/server logs, errors, analytics, provider calls, and outbound links for secondary token propagation while acknowledging infrastructure URL logs may still exist.
 
-## Phase 5C authenticated manual checklist
+## Phase 5C completed authenticated checklist
 
-This remains pending until a valid authenticated browser session with suitable Route A/B/C fixtures is available.
+Completed with an authenticated Route A/B/C fixture across the listed desktop, tablet, and mobile viewports.
 
 1. Open a trip with Route A, Route B, and Route C containing intentionally varied days, Cities, places, Hotels, transport items, and saved Day routes.
 2. Enter Phase 5B Compare and open Decision summary.
@@ -436,9 +436,9 @@ This remains pending until a valid authenticated browser session with suitable R
 29. Verify the complete experience at 1440×900, 1280×800, 1024×768, 834×1194, 768×1024, 390×844, and 430×932.
 30. Close summary and comparison; confirm the normal active planner, Overview, Day route save/calculate/clear, and variant lifecycle behavior remain unchanged.
 
-## Phase 5B authenticated manual checklist
+## Phase 5B completed authenticated checklist
 
-This remains pending until a valid authenticated browser session with suitable Route A/B/C fixtures is available.
+Completed with an authenticated Route A/B/C fixture across the listed desktop, tablet, and mobile viewports.
 
 1. Open a trip containing Route A, Route B, and Route C.
 2. Confirm the normal active-variant Matrix, Overview, and map behavior.
@@ -471,9 +471,9 @@ This remains pending until a valid authenticated browser session with suitable R
 29. Simulate or mock a comparison load failure and confirm the isolated error and Retry action.
 30. Confirm Matrix editing remains available during comparison loading and failure.
 
-## Phase 5A authenticated manual checklist
+## Phase 5A completed authenticated checklist
 
-This remains pending until a valid authenticated browser session is available.
+Completed with an authenticated browser session across the listed lifecycle and responsive cases.
 
 1. Open an existing trip and confirm Route A loads unchanged.
 2. Create blank Route B.
@@ -504,9 +504,9 @@ This remains pending until a valid authenticated browser session is available.
 27. Select one occupied Matrix cell and then a multi-cell range; clear each using Backspace/Delete and the toolbar/menu action. Confirm the dialog reports the item count, cancellation preserves data, confirmation deletes all selected items atomically, and affected saved routes show **Needs editing**.
 28. At 390×844 and 430×932, confirm the top bar shows the compact route identity without duplicating the trip title or **Primary** badge, while the variant Sheet still shows names and textual primary state.
 
-## Phase 3–4 authenticated manual smoke test
+## Phase 3–4 completed authenticated smoke test
 
-This checklist remains pending until valid test-account access and the required deployed/local Google configuration are available.
+Completed with valid test-account access and the required Google Maps/Places and Routes configuration.
 
 1. Link places to City, Activity, Meal, Hotel, and Car rental items; refresh and confirm markers persist without per-marker Place Details calls.
 2. Confirm exact matrix item ↔ Pin selection, including collocated items, mobile map peek, and expanded map selection preservation.
@@ -533,15 +533,15 @@ This checklist remains pending until valid test-account access and the required 
 
 1. ✅ Supabase, authentication, foundational schema, RLS, and trip CRUD
 2. ✅ Core itinerary workspace, editing interactions, and responsive layouts
-3. Google Maps and Places API (New) — implementation complete; authenticated smoke test pending
-4. Primary Route A Overview and optional manual Day routes — implementation/database/automated checks complete; authenticated smoke test pending
+3. ✅ Google Maps and Places API (New) — implementation and authenticated smoke test complete
+4. ✅ Primary Route A Overview and optional manual Day routes — implementation, database, automated checks, and authenticated smoke test complete
 5. Route variants
    - ✅ Phase 5A: active variant loading and lifecycle foundation
-   - ✅ Phase 5B: read-only City Overview map comparison (authenticated acceptance pending)
-   - ✅ Phase 5C: factual Route Variant decision summary (authenticated acceptance pending)
+   - ✅ Phase 5B: read-only City Overview map comparison — DONE
+   - ✅ Phase 5C: factual Route Variant decision summary — DONE
 6. Public itinerary delivery
-   - ✅ Phase 6A: secure live public sharing implementation and migration (authenticated acceptance pending)
-   - ✅ Phase 6A.1 / 6A+: Activity SSOT, Activity-derived Overview/Day routes, and canonical tap-to-place Day order — DONE (authenticated acceptance pending)
+   - ✅ Phase 6A: secure live public sharing implementation, migration, and authenticated acceptance — DONE
+   - ✅ Phase 6A.1 / 6A+: Activity SSOT, Activity-derived Overview/Day routes, and canonical tap-to-place Day order — DONE
 7. Price Comparison / Research — **Plan | Ideas & Options**
    - ✅ Phase 6B-A: price comparison workspace + ResearchItem foundation — DONE
    - ✅ Phase 6B-B: minimal Stay/Flight price capture/comparison foundation — DONE
