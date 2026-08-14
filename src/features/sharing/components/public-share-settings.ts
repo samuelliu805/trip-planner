@@ -14,6 +14,8 @@ export const defaultShareSettings: ShareSettings = {
   showPlacePhotos: false,
   showQuickActionLinks: true,
   showTimes: true,
+  templateId: "bento",
+  templateVersion: 1,
 };
 
 export const publicViewLabels: Record<PublicView, string> = {
@@ -35,5 +37,7 @@ export function settingsFromLink(link?: PublicItineraryLink): ShareSettings {
     showPlacePhotos: link.showPlacePhotos,
     showQuickActionLinks: link.showQuickActionLinks,
     showTimes: link.showTimes,
+    templateId: link.templateId,
+    templateVersion: link.templateVersion,
   };
 }

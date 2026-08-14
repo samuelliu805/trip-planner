@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-import type { PublicTemplate } from "../public-url-state";
+import type { CompiledPublicTemplateV1 } from "../templates/schema";
 import type { PublicItinerary } from "../types";
 import { ShareLinkActions, ShareQrCode } from "./share-tools";
 
@@ -20,7 +20,7 @@ export function PublicViewerShareDialog({
   url,
 }: {
   itinerary: PublicItinerary;
-  template: PublicTemplate;
+  template: CompiledPublicTemplateV1;
   url: string;
 }) {
   return (
@@ -35,7 +35,8 @@ export function PublicViewerShareDialog({
         </Button>
       </DialogTrigger>
       <DialogContent
-        className={`public-viewer-share-dialog public-template-${template} flex max-h-[calc(100dvh-max(8px,env(safe-area-inset-top)))] flex-col overflow-hidden sm:max-h-[min(90dvh,720px)]`}
+        className={`public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(100dvh-max(8px,env(safe-area-inset-top)))] flex-col overflow-hidden sm:max-h-[min(90dvh,720px)]`}
+        data-public-template-key={template.key}
       >
         <DialogHeader className="shrink-0">
           <DialogTitle>Share this itinerary</DialogTitle>

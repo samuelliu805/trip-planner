@@ -1,9 +1,10 @@
 import { format, parseISO } from "date-fns";
 
 import { publicDayCityLabel } from "../presentation";
-import { publicOverviewDayLayout } from "../public-overview-presentation";
+import { publicOverviewDaySections } from "../public-overview-presentation";
 import type { PublicItinerary } from "../types";
 import { PublicOverviewCard } from "./public-overview-card";
+import { PublicOverviewTransportList } from "./public-overview-transport-list";
 
 export function PublicOverview({
   itinerary,
@@ -32,8 +33,9 @@ export function PublicOverview({
       <div className="overview-days-v4">
         {itinerary.days.map((day, dayIndex) => {
           const date = day.date ? parseISO(day.date) : null;
-          const layout = publicOverviewDayLayout(day);
-          const firstMediaItemRef = layout.find(({ media }) => media.length)?.item.ref;
+          const sections = publicOverviewDaySections(day);
+          const itemCount = sections.transport.length + sections.cards.length;
+          const firstMediaItemRef = sections.cards.find(({ media }) => media.length)?.item.ref;
           const locality = publicDayCityLabel(day);
           return (
             <article
@@ -57,24 +59,33 @@ export function PublicOverview({
                   {locality ? <span>{locality}</span> : null}
                 </div>
                 <span className="overview-day-items-v4">
-                  {layout.length} {layout.length === 1 ? "item" : "items"}
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
                 </span>
               </header>
-              {layout.length ? (
-                <div className="public-overview-board overview-board-v4">
-                  {layout.map((presentation, index) => (
-                    <PublicOverviewCard
-                      key={presentation.item.ref}
-                      onSelect={() => onSelectItem(presentation.item.ref, day.ref)}
-                      order={index + 1}
-                      presentation={presentation}
-                      prioritizeMedia={
-                        dayIndex === 0 && presentation.item.ref === firstMediaItemRef
-                      }
-                      selected={selectedItemRef === presentation.item.ref}
-                    />
-                  ))}
-                </div>
+              {itemCount ? (
+                <>
+                  <PublicOverviewTransportList
+                    items={sections.transport}
+                    onSelect={(itemRef) => onSelectItem(itemRef, day.ref)}
+                    selectedItemRef={selectedItemRef}
+                  />
+                  {sections.cards.length ? (
+                    <div className="public-overview-board overview-board-v4">
+                      {sections.cards.map((presentation) => (
+                        <PublicOverviewCard
+                          key={presentation.item.ref}
+                          onSelect={() => onSelectItem(presentation.item.ref, day.ref)}
+                          order={presentation.order}
+                          presentation={presentation}
+                          prioritizeMedia={
+                            dayIndex === 0 && presentation.item.ref === firstMediaItemRef
+                          }
+                          selected={selectedItemRef === presentation.item.ref}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <p className="public-overview-empty">No shared plans for this day.</p>
               )}

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import "./templates/templates.test.ts";
 
 import { matrixCategoryColumns } from "../itinerary/components/matrix-columns.ts";
 import {
@@ -21,21 +22,21 @@ import {
   publicRouteCandidates,
 } from "./public-map-model.ts";
 import {
-  orderedPublicItemMedia,
   publicOverviewDayLayout,
+  publicOverviewDaySections,
   publicOverviewItemPresentation,
 } from "./public-overview-presentation.ts";
-import { publicDayItemMedia, publicGoogleCoverItem } from "./public-media-presentation.ts";
+import {
+  orderedPublicItemMedia,
+  publicDayItemMedia,
+  publicGoogleCoverItem,
+} from "./public-media-presentation.ts";
 import {
   publicTimelineDayPresentation,
   publicTimelineNodeLabel,
   publicTimelineTransportMeta,
 } from "./public-timeline-presentation.ts";
-import {
-  canonicalPublicTemplates,
-  defaultPublicTemplate,
-  publicShareUrlState,
-} from "./public-url-state.ts";
+import { canonicalPublicTemplates, publicShareUrlState } from "./public-url-state.ts";
 import {
   canonicalPublicViews,
   publicItinerarySchema,
@@ -56,7 +57,9 @@ async function readAppStyles() {
         "../../app/public-workspace.css",
         "../../app/public-sharing-theme.css",
         "../../app/public-sharing-overview.css",
+        "../../app/public-sharing-overview-transport.css",
         "../../app/public-sharing-bento-overview.css",
+        "../../app/public-sharing-table.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-bento-timeline.css",
         "../../app/public-sharing-bento-timeline-mobile.css",
@@ -141,17 +144,16 @@ test("public views keep the canonical three, prefer Timeline for new links, and 
 
 test("public template and view query state is strict, addressable, and backward compatible", () => {
   assert.deepEqual(canonicalPublicTemplates, ["standard", "bento"]);
-  assert.equal(defaultPublicTemplate, "standard");
   assert.deepEqual(publicShareUrlState({}, "overview"), {
-    template: "standard",
+    legacyTemplate: undefined,
     view: "overview",
   });
   assert.deepEqual(publicShareUrlState({ template: "bento", view: "timeline" }, "overview"), {
-    template: "bento",
+    legacyTemplate: "bento",
     view: "timeline",
   });
   assert.deepEqual(publicShareUrlState({ template: "unsafe", view: "unknown" }, "table"), {
-    template: "standard",
+    legacyTemplate: undefined,
     view: "table",
   });
 });
@@ -237,6 +239,7 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
     ],
   };
   const layout = publicOverviewDayLayout(day);
+  const sections = publicOverviewDaySections(day);
   assert.deepEqual(
     layout.map(({ item }) => item.title),
     ["Train", "Temple", "Lunch", "Rental pickup", "Hotel", "Note"],
@@ -247,6 +250,20 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
     1,
   );
   assert.equal(layout.find(({ item }) => item.title === "Train")?.size, "compact");
+  assert.deepEqual(
+    sections.transport.map(({ item, order }) => [item.title, order]),
+    [["Train", 1]],
+  );
+  assert.deepEqual(
+    sections.cards.map(({ item, order }) => [item.title, order]),
+    [
+      ["Temple", 2],
+      ["Lunch", 3],
+      ["Rental pickup", 4],
+      ["Hotel", 5],
+      ["Note", 6],
+    ],
+  );
 });
 
 test("each Day presents one deterministic cover image while retaining PDF documents", () => {
@@ -889,6 +906,10 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     new URL("./components/public-overview-card.tsx", import.meta.url),
     "utf8",
   );
+  const overviewTransport = await readFile(
+    new URL("./components/public-overview-transport-list.tsx", import.meta.url),
+    "utf8",
+  );
   const timeline = await readFile(
     new URL("./components/public-timeline.tsx", import.meta.url),
     "utf8",
@@ -907,6 +928,18 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   );
   const shell = await readFile(
     new URL("./components/public-itinerary-shell.tsx", import.meta.url),
+    "utf8",
+  );
+  const controller = await readFile(
+    new URL("./templates/runtime/controller.tsx", import.meta.url),
+    "utf8",
+  );
+  const renderer = await readFile(
+    new URL("./templates/runtime/renderer.tsx", import.meta.url),
+    "utf8",
+  );
+  const platformParts = await readFile(
+    new URL("./templates/parts/platform-parts.tsx", import.meta.url),
     "utf8",
   );
   const views = await readFile(
@@ -942,11 +975,13 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     "utf8",
   );
   const styles = await readAppStyles();
-  assert.match(shell, /useState<PublicView>\(initialView\)/);
-  assert.match(shell, /nextParams\.set\("template", initialTemplate\)/);
-  assert.match(shell, /nextParams\.set\("view", nextView\)/);
-  assert.match(shell, /<PublicViewSwitcher/);
-  assert.doesNotMatch(shell, /role="tablist"|canonicalPublicViews\.map/);
+  assert.match(controller, /useState<PublicView>\(initialView\)/);
+  assert.match(controller, /nextParams\.set\("view", nextView\)/);
+  assert.match(controller, /params\.delete\("templateVersion"\)/);
+  assert.match(controller, /if \(legacyTemplateOverride\) params\.set\("template"/);
+  assert.match(controller, /else params\.delete\("template"\)/);
+  assert.match(platformParts, /<PublicViewSwitcher/);
+  assert.doesNotMatch(shell + renderer, /role="tablist"|canonicalPublicViews\.map/);
   assert.match(switcher, /canonicalPublicViews\.map/);
   assert.match(switcher, /AppBottomNavigation/);
   assert.match(tripAppBar, /TripMobileTabBar[\s\S]*AppBottomNavigation/);
@@ -957,9 +992,13 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(bottomNavigation, /ArrowRight/);
   assert.match(bottomNavigation, /event\.key === "Home"/);
   assert.match(bottomNavigation, /event\.key === "End"/);
-  assert.match(overview, /publicOverviewDayLayout/);
+  assert.match(overview, /publicOverviewDaySections/);
   assert.match(overview, /PublicOverviewCard/);
+  assert.match(overview, /PublicOverviewTransportList[\s\S]*public-overview-board/);
+  assert.match(overviewTransport, /data-public-item-ref/);
+  assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
+  assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
   assert.doesNotMatch(overview + overviewCard, /PublicTimelineNode|PublicDayJourney/);
   const timelineSources = timeline + timelineDay + timelineNode + timelineTransport;
   assert.match(timelineSources, /publicTimelineDayPresentation/);
@@ -977,6 +1016,28 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-view-switcher \{[\s\S]*border-bottom: 0/);
   assert.match(styles, /env\(safe-area-inset-bottom\)/);
   assert.match(styles, /\.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 6rem/);
+  assert.match(styles, /\.public-matrix \{[\s\S]*overflow: auto/);
+  assert.match(styles, /\.public-matrix \{[\s\S]*overscroll-behavior: contain/);
+  assert.match(styles, /\.public-matrix \.matrix-grid-header \{[\s\S]*z-index: 70/);
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-grid-header \.matrix-date-column \{[\s\S]*z-index: 80/,
+  );
+  assert.match(
+    styles,
+    /\.public-matrix \[role="row"\]:not\(\.matrix-grid-header\) \.matrix-date-column \{[\s\S]*z-index: 60/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-bento \.public-matrix > \[role="grid"\] \{[\s\S]*overflow: visible/,
+  );
+  assert.match(styles, /\.public-template-bento \.overview-transport-item-v4 \{[\s\S]*border: 0/);
+  assert.match(
+    styles,
+    /\.public-template-bento \.overview-transport-item-v4 \{[\s\S]*background: transparent/,
+  );
+  assert.match(styles, /@media \(min-width: 900px\) and \(max-width: 1199px\)/);
+  assert.match(styles, /\.span-featured, \.span-activity, \.span-compact/);
   assert.match(styles, /\.public-template-bento/);
   assert.match(styles, /grid-template-columns: repeat\(12, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
@@ -986,25 +1047,38 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-matrix \.matrix-day-column/);
   assert.match(styles, /width: 6rem/);
   assert.match(styles, /\.public-mobile-map-control/);
-  assert.match(shell, /setSelection/);
-  assert.match(shell, /onSelectionChange=\{setSelection\}/);
-  assert.match(shell, /public-itinerary-shell public-template-\$\{initialTemplate\} isolate/);
-  assert.match(shell, /className="public-itinerary-header"/);
-  assert.match(shell, /public-content-pane min-h-0 min-w-0 overflow-hidden/);
+  assert.match(controller, /setSelection/);
+  assert.match(platformParts, /onSelectionChange=\{onSelectionChange\}/);
+  assert.match(renderer, /public-itinerary-shell public-template-\$\{template\.id\} isolate/);
+  assert.match(renderer, /className="public-itinerary-header"/);
+  assert.match(renderer, /public-content-pane min-h-0 min-w-0 overflow-hidden/);
+  assert.match(shell, /getPublicTemplate\(templateKey\)/);
+  assert.match(shell, /<PublicTemplateRenderer template=\{template\}/);
+  assert.doesNotMatch(shell + controller + renderer, /fetch\(|dangerouslySetInnerHTML|eval\(/);
   assert.match(views, /public-view-scroll h-full min-w-0/);
-  assert.doesNotMatch(overviewCard + timelineSources + publicTable, /onMouseEnter|onFocus=/);
-  assert.match(overviewCard + timelineSources + publicTable, /event\.key === "Enter"/);
+  assert.doesNotMatch(
+    overviewCard + overviewTransport + timelineSources + publicTable,
+    /onMouseEnter|onFocus=/,
+  );
+  assert.match(
+    overviewCard + overviewTransport + timelineSources + publicTable,
+    /event\.key === "Enter"/,
+  );
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
   assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
   assert.match(shareTools, /className=\{`block size-36 max-w-full/);
   assert.match(shareTools, /width: 144/);
-  assert.doesNotMatch(shell, /Compact/);
+  assert.doesNotMatch(shell + controller + renderer + platformParts, /Compact/);
 });
 
 test("route exploration is local-only and never exposes owner persistence controls", async () => {
   const workspace = await readFile(
     new URL("./components/public-map-workspace.tsx", import.meta.url),
+    "utf8",
+  );
+  const workspaceController = await readFile(
+    new URL("./components/use-public-map-workspace-controller.ts", import.meta.url),
     "utf8",
   );
   const dayPanel = await readFile(
@@ -1029,7 +1103,13 @@ test("route exploration is local-only and never exposes owner persistence contro
   );
   const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
   const routeSources =
-    workspace + dayPanel + overviewPanel + routeSummary + sharedRoute + temporaryStops;
+    workspace +
+    workspaceController +
+    dayPanel +
+    overviewPanel +
+    routeSummary +
+    sharedRoute +
+    temporaryStops;
   assert.match(routeSources, /Temporary route/);
   assert.match(routeSources, /Only you/);
   assert.match(routeSources, /Shared route/);
@@ -1058,9 +1138,10 @@ test("route exploration is local-only and never exposes owner persistence contro
     /Save route|Publish route|place search|localStorage|sessionStorage/,
   );
   assert.doesNotMatch(actions, /saveDayRoute|upsert|\.insert\(|\.update\(/);
-  assert.match(workspace, /calculatePublicOverviewRoute/);
-  assert.match(workspace, /selectedItemRef \? \[selectedItemRef\] : \[\]/);
-  assert.match(workspace, /overviewCalculation/);
+  assert.match(workspace, /usePublicMapWorkspaceController/);
+  assert.match(workspaceController, /calculatePublicOverviewRoute/);
+  assert.match(workspaceController, /selectedItemRef \? \[selectedItemRef\] : \[\]/);
+  assert.match(workspaceController, /overviewCalculation/);
   assert.match(actions, /must start at the previous day Hotel/);
   assert.match(actions, /must end at the current day Hotel/);
   const providerCall = actions.slice(
@@ -1068,6 +1149,58 @@ test("route exploration is local-only and never exposes owner persistence contro
     actions.indexOf("});", actions.indexOf("calculateGoogleRouteLeg({")),
   );
   assert.doesNotMatch(providerCall, /token|address/);
+});
+
+test("public template route, hydration, persistence, and rollback contracts stay versioned", async () => {
+  const [page, shell, controller, data, actions, migration, databaseTypes] = await Promise.all(
+    [
+      "../../app/share/[token]/page.tsx",
+      "./components/public-itinerary-shell.tsx",
+      "./templates/runtime/controller.tsx",
+      "./data.ts",
+      "./actions.ts",
+      "../../../supabase/migrations/20260814133837_public_template_architecture_v1.sql",
+      "../../types/database.ts",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  assert.match(page, /resolvePublicTemplate/);
+  assert.match(page, /legacyTemplate: urlState\.legacyTemplate/);
+  assert.match(page, /persistedTemplateId: itinerary\.settings\.templateId/);
+  assert.match(page, /templateKey=\{resolvedTemplate\.key\}/);
+  assert.match(shell, /getPublicTemplate\(templateKey\)/);
+  assert.match(shell, /PublicTemplateControllerProvider[\s\S]*PublicTemplateRenderer/);
+  assert.match(controller, /router\.replace\(`\$\{pathname\}\?\$\{nextParams\.toString\(\)\}`/);
+  assert.match(controller, /\{ scroll: false \}/);
+  assert.match(controller, /new URLSearchParams\(searchParams\.toString\(\)\)/);
+  assert.match(controller, /if \(legacyTemplateOverride\) url\.searchParams\.set\("template"/);
+  assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);
+  assert.match(data, /get_public_itinerary_v4/);
+  assert.match(data, /list_public_itinerary_links_v3/);
+  assert.match(actions, /create_public_itinerary_link_v3/);
+  assert.match(actions, /update_public_itinerary_link_v3/);
+  assert.match(actions, /rotate_public_itinerary_link_v3/);
+  assert.match(migration, /set template_id = 'standard', template_version = 1/);
+  assert.ok(
+    migration.indexOf("set template_id = 'standard'") <
+      migration.indexOf("alter column template_id set default 'bento'"),
+  );
+  assert.match(migration, /create function public\.get_public_itinerary_v4/);
+  assert.match(migration, /raise exception 'PUBLIC_TEMPLATE_UNAVAILABLE'/);
+  assert.match(migration, /security definer[\s\S]*set search_path = ''/);
+  assert.match(migration, /revoke all on function public\.get_public_itinerary_v4/);
+  assert.match(
+    migration,
+    /grant execute on function public\.get_public_itinerary_v4\(uuid\) to anon, authenticated/,
+  );
+  assert.doesNotMatch(
+    migration.match(
+      /grant execute on function public\.create_public_itinerary_link_v3[\s\S]*?;/,
+    )?.[0] ?? "",
+    /\bto anon\b/,
+  );
+  assert.match(databaseTypes, /template_id: string/);
+  assert.match(databaseTypes, /create_public_itinerary_link_v3/);
+  assert.match(databaseTypes, /get_public_itinerary_v4/);
 });
 
 test("sharing and public route security use real QR, safe new tabs, and no-store headers", async () => {

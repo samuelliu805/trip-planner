@@ -20,13 +20,11 @@ export function PublicOverviewCard({
   const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const place = item.place?.localityName ?? item.place?.displayName;
 
-  const spanClass = ["transport", "flight", "train"].includes(item.type)
-    ? "span-wide"
-    : media.length
-      ? "span-featured"
-      : item.type === "activity"
-        ? "span-activity"
-        : "span-compact";
+  const spanClass = media.length
+    ? "span-featured"
+    : item.type === "activity"
+      ? "span-activity"
+      : "span-compact";
   const typeClass = item.type === "car_rental" ? "rental" : item.type;
 
   return (
@@ -52,9 +50,7 @@ export function PublicOverviewCard({
             </span>
           ) : null}
         </span>
-        {spanClass !== "span-wide" ? (
-          <span className="overview-order-v4">{String(order).padStart(2, "0")}</span>
-        ) : null}
+        <span className="overview-order-v4">{String(order).padStart(2, "0")}</span>
       </button>
 
       <PublicItemMediaGallery media={media} prioritizeFirst={prioritizeMedia} variant="overview" />

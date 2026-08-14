@@ -2,9 +2,7 @@ import { orderedPublicItems } from "./presentation.ts";
 import { orderedPublicItemMedia, publicDayItemMedia } from "./public-media-presentation.ts";
 import type { PublicItemMedia, PublicItineraryDay, PublicItineraryItem } from "./types";
 
-export { orderedPublicItemMedia } from "./public-media-presentation.ts";
-
-export type PublicOverviewItemSize = "compact" | "media" | "rich";
+type PublicOverviewItemSize = "compact" | "media" | "rich";
 
 export type PublicOverviewItemPresentation = {
   featured: boolean;
@@ -13,6 +11,12 @@ export type PublicOverviewItemPresentation = {
   remainingMediaCount: number;
   size: PublicOverviewItemSize;
 };
+
+export type PositionedPublicOverviewItemPresentation = PublicOverviewItemPresentation & {
+  order: number;
+};
+
+const publicOverviewTransportTypes = new Set(["flight", "train", "transport"]);
 
 export function publicOverviewItemPresentation(
   item: PublicItineraryItem,
@@ -37,4 +41,16 @@ export function publicOverviewDayLayout(day: PublicItineraryDay) {
       if (useFeature) featured = true;
       return { ...presentation, featured: useFeature };
     });
+}
+
+export function publicOverviewDaySections(day: PublicItineraryDay) {
+  const positioned = publicOverviewDayLayout(day).map((presentation, index) => ({
+    ...presentation,
+    order: index + 1,
+  }));
+
+  return {
+    cards: positioned.filter(({ item }) => !publicOverviewTransportTypes.has(item.type)),
+    transport: positioned.filter(({ item }) => publicOverviewTransportTypes.has(item.type)),
+  };
 }

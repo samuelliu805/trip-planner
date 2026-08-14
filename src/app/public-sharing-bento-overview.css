@@ -65,13 +65,6 @@
   padding: 0.5625rem 0.625rem;
 }
 
-.public-template-bento .overview-item-card-v4.span-wide {
-  grid-column: span 12;
-  border-color: #2a3b31;
-  background: #0a1710;
-  padding: 0.5rem 0.625rem;
-}
-
 .public-template-bento .overview-item-card-v4.span-featured,
 .public-template-bento .overview-item-card-v4.span-activity {
   grid-column: span 6;
@@ -83,12 +76,6 @@
 
 .public-template-bento .overview-item-card-v4.activity.has-media {
   background: #0e1d14;
-}
-
-.public-template-bento .overview-item-card-v4.transport,
-.public-template-bento .overview-item-card-v4.flight,
-.public-template-bento .overview-item-card-v4.train {
-  border-style: dashed;
 }
 
 .public-template-bento .overview-item-top-v4 {
@@ -104,11 +91,6 @@
   color: #58f58b;
 }
 
-.public-template-bento :is(.transport, .flight, .train) .overview-item-icon-v4 {
-  background: rgb(159 201 255 / 8%);
-  color: #9fc9ff;
-}
-
 .public-template-bento .overview-item-card-v4.meal .overview-item-icon-v4 {
   color: #ffd4bb;
 }
@@ -122,10 +104,6 @@
   font-size: 0.71875rem;
   font-weight: 400;
   line-height: 1.38;
-}
-
-.public-template-bento .span-wide .overview-item-title-v4 {
-  font-size: 0.675rem;
 }
 
 .public-template-bento .overview-item-meta-v4 {
@@ -189,12 +167,15 @@
 
 @container public-content (max-width: 40rem) {
   .public-template-bento .overview-item-card-v4.span-featured,
-  .public-template-bento .overview-item-card-v4.span-activity {
-    grid-column: span 7;
-  }
-
+  .public-template-bento .overview-item-card-v4.span-activity,
   .public-template-bento .overview-item-card-v4.span-compact {
-    grid-column: span 5;
+    grid-column: span 6;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .public-template-bento .overview-item-card-v4:is(.span-featured, .span-activity, .span-compact) {
+    grid-column: span 6;
   }
 }
 
@@ -240,7 +221,7 @@
     gap: 0.375rem;
   }
 
-  .public-template-bento .overview-item-card-v4:is(.span-wide, .span-featured, .span-activity) {
+  .public-template-bento .overview-item-card-v4:is(.span-featured, .span-activity) {
     grid-column: span 2;
   }
 
@@ -251,10 +232,6 @@
   .public-template-bento .overview-item-card-v4 {
     border-radius: 0.625rem;
     padding: 0.5rem;
-  }
-
-  .public-template-bento .overview-item-card-v4.span-wide {
-    padding: 0.4375rem 0.5rem;
   }
 
   .public-template-bento .overview-item-top-v4 {
@@ -270,10 +247,6 @@
 
   .public-template-bento .overview-item-title-v4 {
     font-size: 0.625rem;
-  }
-
-  .public-template-bento .span-wide .overview-item-title-v4 {
-    font-size: 0.59375rem;
   }
 
   .public-template-bento .overview-item-meta-v4 {
@@ -293,5 +266,11 @@
   .public-template-bento .media-thumb-v4,
   .public-template-bento .public-media-entry {
     min-height: 4.25rem;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .public-template-bento .overview-item-card-v4:is(.span-featured, .span-activity, .span-compact) {
+    grid-column: span 1;
   }
 }

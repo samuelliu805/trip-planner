@@ -1,6 +1,8 @@
 @import "./public-sharing-theme.css";
 @import "./public-sharing-overview.css";
+@import "./public-sharing-overview-transport.css";
 @import "./public-sharing-bento-overview.css";
+@import "./public-sharing-table.css";
 @import "./public-sharing-timeline.css";
 @import "./public-sharing-bento-timeline.css";
 @import "./public-sharing-bento-timeline-mobile.css";
@@ -9,6 +11,37 @@
   height: 100dvh;
   max-height: 100dvh;
   overscroll-behavior: none;
+}
+
+.public-template-region-header-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.public-template-region-mobile-overlays,
+.public-template-part-host[data-tp-part="desktop-map-toggle"],
+.public-template-part-host[data-tp-part="map-workspace"],
+.public-template-part-host[data-tp-part="mobile-map-sheet"],
+.public-template-part-host[data-tp-part="mobile-map-trigger"],
+.public-template-part-host[data-tp-part="view-switcher"],
+.public-template-part-host[data-tp-part="viewer-share-dialog"] {
+  display: contents;
+}
+
+.public-template-part-host[data-tp-part="trip-header"] {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.public-template-part-host[data-tp-part="active-view"],
+.public-template-part-host[data-tp-part="overview"],
+.public-template-part-host[data-tp-part="table"],
+.public-template-part-host[data-tp-part="timeline"] {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
 }
 
 .public-itinerary-header {
@@ -142,20 +175,6 @@
   transform: none;
 }
 
-.public-matrix {
-  max-width: 100%;
-  scrollbar-gutter: stable;
-}
-
-.public-matrix > [role="grid"] {
-  padding-bottom: 6rem;
-}
-
-.public-matrix .matrix-date-column,
-.public-matrix .matrix-day-column {
-  box-shadow: 1px 0 0 var(--border);
-}
-
 .public-item-focus:focus {
   background-color: color-mix(in srgb, var(--primary) 8%, transparent);
 }
@@ -216,24 +235,6 @@
     bottom: 0;
     left: 0;
     width: 100%;
-  }
-
-  .public-matrix .matrix-day-column {
-    display: none;
-  }
-
-  .public-matrix .matrix-date-column {
-    left: 0;
-    z-index: 60;
-    width: 6rem;
-    background-clip: padding-box;
-    backface-visibility: hidden;
-    transform: translateZ(0);
-  }
-
-  .public-matrix .matrix-grid-header .matrix-date-column {
-    z-index: 80;
-    background-color: var(--muted);
   }
 }
 
