@@ -15,17 +15,29 @@ export function PublicTimeline({
   selectedItemRef?: string;
 }) {
   return (
-    <section aria-label="Itinerary timeline" className="public-timeline divide-y bg-muted/20">
-      {itinerary.days.map((day) => (
-        <PublicTimelineDay
-          day={day}
-          key={day.ref}
-          onSelectDay={onSelectDay}
-          onSelectItem={onSelectItem}
-          selected={selectedDayRef === day.ref}
-          selectedItemRef={selectedItemRef}
-        />
-      ))}
+    <section aria-label="Itinerary timeline" className="public-timeline timeline-v4">
+      <div className="timeline-intro-v4">
+        <div>
+          <div className="public-section-label">Journey timeline</div>
+          <p className="timeline-intro-copy-v4">
+            Manual order, actual times, and major travel context.
+          </p>
+        </div>
+      </div>
+      <div className="timeline-sections-v4">
+        {itinerary.days.map((day) => {
+          return (
+            <PublicTimelineDay
+              day={day}
+              key={day.ref}
+              onSelectDay={onSelectDay}
+              onSelectItem={onSelectItem}
+              selected={selectedDayRef === day.ref}
+              selectedItemRef={selectedItemRef}
+            />
+          );
+        })}
+      </div>
     </section>
   );
 }

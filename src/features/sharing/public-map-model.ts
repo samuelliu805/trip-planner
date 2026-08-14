@@ -24,7 +24,10 @@ function markerKind(type: string): "activity" | "carRental" | "city" | "hotel" |
   return "activity";
 }
 
-export function buildPublicMarkers(itinerary: PublicItinerary): PlannerMapMarker[] {
+export function buildPublicMarkers(
+  itinerary: PublicItinerary,
+  theme?: { color: string; glyphColor: string },
+): PlannerMapMarker[] {
   const activityMarkers = itinerary.days.flatMap((day) =>
     day.items.flatMap((item) => {
       if (item.type === "location") return [];
@@ -45,6 +48,7 @@ export function buildPublicMarkers(itinerary: PublicItinerary): PlannerMapMarker
               title: item.title,
             },
           ],
+          ...(theme && { glyphColor: theme.glyphColor }),
           id: `public:${item.ref}`,
           itemIds: [item.ref],
           label: kind === "city" ? `D${day.dayNumber}` : undefined,
@@ -53,7 +57,7 @@ export function buildPublicMarkers(itinerary: PublicItinerary): PlannerMapMarker
           readOnly: true,
           selectable: true,
           summary: item.place.displayName,
-          variantColor: itinerary.variant.color,
+          variantColor: theme?.color ?? itinerary.variant.color,
         },
       ];
     }),
@@ -73,6 +77,7 @@ export function buildPublicMarkers(itinerary: PublicItinerary): PlannerMapMarker
             title: stage.title,
           },
         ],
+        ...(theme && { glyphColor: theme.glyphColor }),
         id: `public-stage:${stage.ref}`,
         itemIds: [stage.anchor.ref],
         label: String(index + 1),
@@ -81,7 +86,7 @@ export function buildPublicMarkers(itinerary: PublicItinerary): PlannerMapMarker
         readOnly: true,
         selectable: stage.anchor.activity,
         summary: stage.title,
-        variantColor: itinerary.variant.color,
+        variantColor: theme?.color ?? itinerary.variant.color,
       },
     ];
   });

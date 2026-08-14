@@ -13,12 +13,29 @@ import {
   safeExternalUrl,
 } from "./presentation.ts";
 import {
+  buildPublicMarkers,
   buildPublicOverviewLines,
   buildPublicRouteLines,
   publicDayRoutePlan,
   publicOverviewStops,
   publicRouteCandidates,
 } from "./public-map-model.ts";
+import {
+  orderedPublicItemMedia,
+  publicOverviewDayLayout,
+  publicOverviewItemPresentation,
+} from "./public-overview-presentation.ts";
+import { publicDayItemMedia, publicGoogleCoverItem } from "./public-media-presentation.ts";
+import {
+  publicTimelineDayPresentation,
+  publicTimelineNodeLabel,
+  publicTimelineTransportMeta,
+} from "./public-timeline-presentation.ts";
+import {
+  canonicalPublicTemplates,
+  defaultPublicTemplate,
+  publicShareUrlState,
+} from "./public-url-state.ts";
 import {
   canonicalPublicViews,
   publicItinerarySchema,
@@ -28,6 +45,7 @@ import {
   publicViewSchema,
 } from "./schema.ts";
 import type { PublicItinerary, PublicItineraryItem } from "./types.ts";
+import { defaultShareSettings } from "./components/public-share-settings.ts";
 
 async function readAppStyles() {
   return (
@@ -36,6 +54,12 @@ async function readAppStyles() {
         "../../app/globals.css",
         "../../app/planner-workspace.css",
         "../../app/public-workspace.css",
+        "../../app/public-sharing-theme.css",
+        "../../app/public-sharing-overview.css",
+        "../../app/public-sharing-bento-overview.css",
+        "../../app/public-sharing-timeline.css",
+        "../../app/public-sharing-bento-timeline.css",
+        "../../app/public-sharing-bento-timeline-mobile.css",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
   ).join("\n");
@@ -87,8 +111,14 @@ const itinerary: PublicItinerary = publicItinerarySchema.parse({
   variant: { color: "#166b4f", name: "Route A" },
 });
 
-test("public views use Overview as the stable canonical default and decode only legacy Compact", () => {
+test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
+  assert.equal(defaultShareSettings.defaultView, "timeline");
+  assert.equal(
+    itinerary.settings.defaultView,
+    "overview",
+    "an existing saved default remains valid",
+  );
   assert.equal(publicViewSchema.parse("compact"), "overview");
   assert.equal(publicViewSchema.parse("table"), "table");
   assert.equal(
@@ -100,12 +130,259 @@ test("public views use Overview as the stable canonical default and decode only 
       showAddresses: false,
       showMapRoutes: true,
       showNotes: false,
+      showPlacePhotos: false,
       showQuickActionLinks: true,
       showTimes: true,
       variantId: "00000000-0000-4000-8000-000000000001",
     }).success,
     false,
   );
+});
+
+test("public template and view query state is strict, addressable, and backward compatible", () => {
+  assert.deepEqual(canonicalPublicTemplates, ["standard", "bento"]);
+  assert.equal(defaultPublicTemplate, "standard");
+  assert.deepEqual(publicShareUrlState({}, "overview"), {
+    template: "standard",
+    view: "overview",
+  });
+  assert.deepEqual(publicShareUrlState({ template: "bento", view: "timeline" }, "overview"), {
+    template: "bento",
+    view: "timeline",
+  });
+  assert.deepEqual(publicShareUrlState({ template: "unsafe", view: "unknown" }, "table"), {
+    template: "standard",
+    view: "table",
+  });
+});
+
+test("Overview media presentation handles zero, one, and multiple item media", () => {
+  const base = {
+    ref: ref("m"),
+    sortOrder: 1,
+    title: "Museum",
+    type: "activity",
+  } satisfies PublicItineraryItem;
+  const googleImage = {
+    alt: "Museum place photo",
+    id: "google-photo",
+    kind: "image" as const,
+    source: "google_place" as const,
+    url: `/api/public-place-photo/00000000-0000-4000-8000-000000000001/${ref("m")}?photo=places%2Fone%2Fphotos%2Ftwo&signature=${"a".repeat(64)}`,
+  };
+  const attachmentImage = {
+    id: "attachment-image",
+    kind: "image" as const,
+    source: "attachment" as const,
+    url: "https://assets.example.com/museum.jpg",
+  };
+  const attachmentPdf = {
+    id: "attachment-pdf",
+    kind: "pdf" as const,
+    label: "Museum tickets.pdf",
+    source: "attachment" as const,
+    url: "https://assets.example.com/tickets.pdf",
+  };
+
+  assert.equal(publicOverviewItemPresentation(base).size, "compact");
+  assert.equal(publicOverviewItemPresentation({ ...base, media: [googleImage] }).size, "media");
+  const rich = publicOverviewItemPresentation({
+    ...base,
+    media: [googleImage, attachmentImage, attachmentPdf, { ...attachmentImage, id: "extra" }],
+  });
+  assert.equal(rich.size, "rich");
+  assert.equal(rich.remainingMediaCount, 1);
+  assert.deepEqual(
+    orderedPublicItemMedia({ ...base, media: [googleImage, attachmentPdf] }).map(
+      ({ source }) => source,
+    ),
+    ["attachment", "google_place"],
+  );
+});
+
+test("Overview lays out a six-item mixed day in stable manual order with one feature cap", () => {
+  const image = (id: string) => ({
+    id,
+    kind: "image" as const,
+    source: "attachment" as const,
+    url: `https://assets.example.com/${id}.jpg`,
+  });
+  const day = {
+    ...itinerary.days[0],
+    items: [
+      { ref: ref("1"), sortOrder: 60, title: "Note", type: "note" as const },
+      {
+        media: [image("meal")],
+        ref: ref("2"),
+        sortOrder: 30,
+        title: "Lunch",
+        type: "meal" as const,
+      },
+      {
+        media: [image("a"), image("b")],
+        ref: ref("3"),
+        sortOrder: 20,
+        title: "Temple",
+        type: "activity" as const,
+      },
+      {
+        media: [image("c"), image("d"), image("e")],
+        ref: ref("4"),
+        sortOrder: 50,
+        title: "Hotel",
+        type: "hotel" as const,
+      },
+      { ref: ref("5"), sortOrder: 10, title: "Train", type: "train" as const },
+      { ref: ref("6"), sortOrder: 40, title: "Rental pickup", type: "car_rental" as const },
+    ],
+  };
+  const layout = publicOverviewDayLayout(day);
+  assert.deepEqual(
+    layout.map(({ item }) => item.title),
+    ["Train", "Temple", "Lunch", "Rental pickup", "Hotel", "Note"],
+  );
+  assert.equal(layout.filter(({ featured }) => featured).length, 1);
+  assert.equal(
+    layout.flatMap(({ media }) => media).filter(({ kind }) => kind === "image").length,
+    1,
+  );
+  assert.equal(layout.find(({ item }) => item.title === "Train")?.size, "compact");
+});
+
+test("each Day presents one deterministic cover image while retaining PDF documents", () => {
+  const image = (id: string, source: "attachment" | "google_place" = "google_place") => ({
+    id,
+    kind: "image" as const,
+    source,
+    url: `https://assets.example.com/${id}.jpg`,
+  });
+  const pdf = {
+    id: "ticket",
+    kind: "pdf" as const,
+    label: "Ticket.pdf",
+    source: "attachment" as const,
+    url: "https://assets.example.com/ticket.pdf",
+  };
+  const day = {
+    ...itinerary.days[0],
+    items: [
+      {
+        media: [image("timed")],
+        place: { displayName: "Arrival", googlePlaceId: "arrival" },
+        ref: ref("h"),
+        sortOrder: 10,
+        startTime: "09:00:00",
+        title: "Timed arrival",
+        type: "activity" as const,
+      },
+      {
+        media: [image("cover")],
+        place: { displayName: "Temple", googlePlaceId: "temple" },
+        ref: ref("i"),
+        sortOrder: 20,
+        title: "Temple",
+        type: "activity" as const,
+      },
+      {
+        media: [image("attachment", "attachment"), pdf],
+        ref: ref("j"),
+        sortOrder: 30,
+        title: "Hotel",
+        type: "hotel" as const,
+      },
+      {
+        media: [image("second-attachment", "attachment")],
+        ref: ref("k"),
+        sortOrder: 40,
+        title: "Dinner",
+        type: "meal" as const,
+      },
+    ],
+  };
+
+  assert.equal(publicGoogleCoverItem(day)?.title, "Temple");
+  const mediaByItem = publicDayItemMedia(day);
+  assert.deepEqual(
+    mediaByItem.get(ref("j"))?.map(({ id }) => id),
+    ["attachment", "ticket"],
+  );
+  assert.equal([...mediaByItem.values()].flat().filter(({ kind }) => kind === "image").length, 1);
+});
+
+test("Timeline projects manual order and keeps transport out of the node rail", () => {
+  const day = {
+    ...itinerary.days[0],
+    items: [
+      { ref: ref("a"), sortOrder: 50, title: "Hotel", type: "hotel" as const },
+      {
+        ref: ref("b"),
+        sortOrder: 10,
+        startTime: "08:30:00",
+        title: "Museum",
+        type: "activity" as const,
+      },
+      { ref: ref("c"), sortOrder: 20, title: "Flight in", type: "flight" as const },
+      { ref: ref("d"), sortOrder: 40, title: "Dinner", type: "meal" as const },
+      { ref: ref("e"), sortOrder: 30, title: "Airport train", type: "train" as const },
+    ],
+  };
+  const presentation = publicTimelineDayPresentation(day);
+  assert.deepEqual(
+    presentation.nodes.map(({ item }) => item.title),
+    ["Museum", "Dinner", "Hotel"],
+  );
+  assert.deepEqual(
+    presentation.transfers.map(({ item }) => item.title),
+    ["Flight in", "Airport train"],
+  );
+  assert.equal(presentation.nodes[0].gutterLabel, "08:30");
+  assert.equal(presentation.nodes[1].gutterLabel, "02");
+  assert.equal(presentation.nodes.at(-1)?.kind, "hotel_endpoint");
+  assert.equal(
+    presentation.nodes.flatMap(({ media }) => media).filter(({ kind }) => kind === "image").length,
+    0,
+  );
+  assert.equal("routeLegAfter" in presentation.nodes[0], false);
+  assert.equal(publicTimelineNodeLabel(day.items[3], 4), "04");
+  assert.equal(
+    publicTimelineTransportMeta({
+      ...day.items[2],
+      endTime: "10:15:00",
+      place: { displayName: "Haneda Airport" },
+      startTime: "09:00:00",
+    }),
+    "09:00–10:15 · Haneda Airport",
+  );
+});
+
+test("public schema keeps old payloads valid and accepts only safe optional media URLs", () => {
+  assert.equal(publicItinerarySchema.safeParse(itinerary).success, true);
+  const withMedia = {
+    ...itinerary,
+    days: [
+      {
+        ...itinerary.days[0],
+        items: [
+          {
+            ...itinerary.days[0].items[0],
+            media: [
+              {
+                id: "ticket",
+                kind: "pdf",
+                label: "Ticket.pdf",
+                source: "attachment",
+                url: "https://assets.example.com/ticket.pdf",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+  assert.equal(publicItinerarySchema.safeParse(withMedia).success, true);
+  const unsafe = structuredClone(withMedia);
+  unsafe.days[0].items[0].media[0].url = "javascript:alert(1)";
+  assert.equal(publicItinerarySchema.safeParse(unsafe).success, false);
 });
 
 test("Overview preserves manual order and separates activities, transport, meals, and stays", () => {
@@ -351,6 +628,15 @@ test("public Overview clusters alternating localities and retains the final Hote
   );
   assert.equal(stops.at(-1)?.ref, ref("t"));
   assert.equal(buildPublicOverviewLines(day).length, 2);
+  assert.equal(buildPublicOverviewLines(day, "#58f58b")[0]?.color, "#58f58b");
+  assert.equal(
+    buildPublicMarkers(day, { color: "#58f58b", glyphColor: "#06100a" })[0]?.variantColor,
+    "#58f58b",
+  );
+  assert.equal(
+    buildPublicMarkers(day, { color: "#58f58b", glyphColor: "#06100a" })[0]?.glyphColor,
+    "#06100a",
+  );
 });
 
 test("public projection parsing rejects raw planner and owner fields", () => {
@@ -594,9 +880,13 @@ test("owner share controls keep a stable key across the server/client toolbar bo
   assert.match(tripPage, /<PublicShareDialog[\s\S]*key="trip-share-controls"/);
 });
 
-test("public UI contracts keep Overview time-agnostic, Table scrollable, and the map responsive", async () => {
+test("public UI contracts keep distinct views, a bottom switcher, and the existing map shell", async () => {
   const overview = await readFile(
     new URL("./components/public-overview.tsx", import.meta.url),
+    "utf8",
+  );
+  const overviewCard = await readFile(
+    new URL("./components/public-overview-card.tsx", import.meta.url),
     "utf8",
   );
   const timeline = await readFile(
@@ -607,24 +897,12 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
     new URL("./components/public-timeline-day.tsx", import.meta.url),
     "utf8",
   );
-  const journey = await readFile(
-    new URL("./components/public-day-journey.tsx", import.meta.url),
+  const timelineNode = await readFile(
+    new URL("./components/public-timeline-node.tsx", import.meta.url),
     "utf8",
   );
-  const journeyGroups = await readFile(
-    new URL("./components/public-journey-groups.tsx", import.meta.url),
-    "utf8",
-  );
-  const timelineDestinations = await readFile(
-    new URL("./components/public-timeline-destinations.tsx", import.meta.url),
-    "utf8",
-  );
-  const transportRow = await readFile(
-    new URL("./components/public-transport-row.tsx", import.meta.url),
-    "utf8",
-  );
-  const overviewIcon = await readFile(
-    new URL("./components/public-overview-icon.tsx", import.meta.url),
+  const timelineTransport = await readFile(
+    new URL("./components/public-timeline-transport.tsx", import.meta.url),
     "utf8",
   );
   const shell = await readFile(
@@ -635,74 +913,92 @@ test("public UI contracts keep Overview time-agnostic, Table scrollable, and the
     new URL("./components/public-itinerary-views.tsx", import.meta.url),
     "utf8",
   );
+  const switcher = await readFile(
+    new URL("./components/public-view-switcher.tsx", import.meta.url),
+    "utf8",
+  );
+  const bottomNavigation = await readFile(
+    new URL("../../components/navigation/app-bottom-navigation.tsx", import.meta.url),
+    "utf8",
+  );
+  const tripAppBar = await readFile(
+    new URL("../trips/components/trip-app-bar.tsx", import.meta.url),
+    "utf8",
+  );
   const shareSettings = await readFile(
     new URL("./components/public-share-dialog.tsx", import.meta.url),
     "utf8",
   );
-  const styles = await readAppStyles();
-  assert.match(shell, /useState<PublicView>\(itinerary\.settings\.defaultView\)/);
-  assert.match(shell, /canonicalPublicViews\.map/);
-  assert.doesNotMatch(overview, /right-aligned|time column|sort\(.+startTime/);
-  assert.match(overview, /PublicDayJourney/);
-  const timelineSources = timeline + timelineDay + timelineDestinations + transportRow;
-  const journeySources = journey + journeyGroups + transportRow;
-  assert.doesNotMatch(timelineSources, /PublicDayJourney/);
-  assert.match(timelineSources, /orderedPublicItems/);
-  assert.match(timelineSources, /public-timeline-item/);
-  assert.match(timelineSources, /type !== "location"/);
-  assert.doesNotMatch(timelineSources, /TimelineStay|DayDetailGroup|Stay · End of day/);
-  assert.doesNotMatch(overview + timelineSources, /publicDayStages|stage\.label|stages\.map/);
-  assert.match(journey, /publicDayJourney\(day\)/);
-  assert.match(journey, /PublicJourneyGroups/);
-  assert.match(journeyGroups, /showIcon=\{false\}/);
-  assert.doesNotMatch(journeySources, /categoryLabel/);
-  assert.match(transportRow, /aria-label="Transport"/);
-  assert.match(journey, /items=\{transport\}/);
-  assert.match(transportRow, /join\(", "\)/);
-  assert.match(transportRow, /truncate whitespace-nowrap/);
-  assert.doesNotMatch(transportRow, /rounded-full|overflow-x-auto/);
-  const overviewRowSources = overview + journey + journeyGroups + transportRow;
-  assert.match(overviewIcon, /flex size-5 shrink-0 items-center justify-center/);
-  assert.match(overviewIcon, /className="size-3\.5"/);
-  assert.equal(
-    overviewRowSources.match(/grid-cols-\[1\.25rem_minmax\(0,1fr\)\]/g)?.length,
-    6,
-    "every Overview icon row shares one fixed icon column and gap",
+  const viewerShare = await readFile(
+    new URL("./components/public-viewer-share-dialog.tsx", import.meta.url),
+    "utf8",
   );
-  assert.doesNotMatch(overviewRowSources, /gap-1\.5|<Icon className="size-4"/);
-  assert.match(journeyGroups, /key=\{`\$\{group\.kind\}:\$\{group\.items\[0\]\.ref\}`\}/);
-  assert.doesNotMatch(journeyGroups, /key=\{group\.kind\}/);
-  assert.match(timelineSources, /destinations\.length/);
-  assert.match(timelineSources, /isPublicTravel/);
-  assert.doesNotMatch(overview, /useState|aria-expanded|ChevronDown|hiddenCount/);
-  assert.match(styles, /public-itinerary-grid/);
-  assert.match(styles, /var\(--public-content-split\)/);
-  assert.match(styles, /\.public-content-pane \{[\s\S]*background: var\(--muted\)/);
-  assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
-  assert.match(styles, /\.public-itinerary-header[\s\S]*position: sticky/);
-  assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
-  assert.doesNotMatch(styles, /public-overview,[\s\S]*public-timeline[\s\S]*min-height: 100%/);
-  assert.match(styles, /max-width: 899px/);
-  assert.match(styles, /\.public-matrix \.matrix-day-column/);
-  assert.match(styles, /width: 6rem/);
-  assert.match(styles, /\.public-mobile-map-control/);
-  assert.match(shell, /setSelection/);
-  assert.match(shell, /onSelectionChange=\{setSelection\}/);
-  assert.match(shell, /public-itinerary-shell isolate/);
-  assert.match(shell, /public-itinerary-header sticky top-0 z-\[80\]/);
-  assert.match(shell, /public-content-pane min-h-0 min-w-0 overflow-hidden/);
-  assert.match(views, /public-view-scroll h-full min-w-0/);
-  const itemLine = await readFile(
-    new URL("./components/public-item-line.tsx", import.meta.url),
+  const shareTools = await readFile(
+    new URL("./components/share-tools.tsx", import.meta.url),
     "utf8",
   );
   const publicTable = await readFile(
     new URL("./components/public-table.tsx", import.meta.url),
     "utf8",
   );
-  assert.doesNotMatch(itemLine + publicTable, /onMouseEnter|onFocus=/);
-  assert.match(itemLine + publicTable, /event\.key === "Enter"/);
+  const styles = await readAppStyles();
+  assert.match(shell, /useState<PublicView>\(initialView\)/);
+  assert.match(shell, /nextParams\.set\("template", initialTemplate\)/);
+  assert.match(shell, /nextParams\.set\("view", nextView\)/);
+  assert.match(shell, /<PublicViewSwitcher/);
+  assert.doesNotMatch(shell, /role="tablist"|canonicalPublicViews\.map/);
+  assert.match(switcher, /canonicalPublicViews\.map/);
+  assert.match(switcher, /AppBottomNavigation/);
+  assert.match(tripAppBar, /TripMobileTabBar[\s\S]*AppBottomNavigation/);
+  assert.match(bottomNavigation, /role="tablist"/);
+  assert.match(bottomNavigation, /role="tab"/);
+  assert.match(bottomNavigation, /aria-selected/);
+  assert.match(bottomNavigation, /ArrowLeft/);
+  assert.match(bottomNavigation, /ArrowRight/);
+  assert.match(bottomNavigation, /event\.key === "Home"/);
+  assert.match(bottomNavigation, /event\.key === "End"/);
+  assert.match(overview, /publicOverviewDayLayout/);
+  assert.match(overview, /PublicOverviewCard/);
+  assert.match(overviewCard, /PublicItemMediaGallery/);
+  assert.doesNotMatch(overview + overviewCard, /PublicTimelineNode|PublicDayJourney/);
+  const timelineSources = timeline + timelineDay + timelineNode + timelineTransport;
+  assert.match(timelineSources, /publicTimelineDayPresentation/);
+  assert.match(timelineSources, /PublicTimelineTransport/);
+  assert.match(timelineSources, /PublicTimelineNode/);
+  assert.doesNotMatch(timelineNode, /public-timeline-route-leg|routeLegAfter/);
+  assert.doesNotMatch(timelineSources, /PublicOverviewCard/);
+  assert.match(timelineNode, /variant="timeline"/);
+  assert.match(styles, /public-itinerary-grid/);
+  assert.match(styles, /var\(--public-content-split\)/);
+  assert.match(styles, /\.public-content-pane \{[\s\S]*background: var\(--muted\)/);
+  assert.match(styles, /container-name: public-content/);
+  assert.match(styles, /\.public-view-switcher \{[\s\S]*position: absolute/);
+  assert.match(styles, /\.public-view-switcher \{[\s\S]*width: 100%/);
+  assert.match(styles, /\.public-view-switcher \{[\s\S]*border-bottom: 0/);
+  assert.match(styles, /env\(safe-area-inset-bottom\)/);
+  assert.match(styles, /\.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 6rem/);
+  assert.match(styles, /\.public-template-bento/);
+  assert.match(styles, /grid-template-columns: repeat\(12, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
+  assert.match(styles, /\.public-itinerary-header[\s\S]*position: sticky/);
+  assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
+  assert.match(styles, /max-width: 899px/);
+  assert.match(styles, /\.public-matrix \.matrix-day-column/);
+  assert.match(styles, /width: 6rem/);
+  assert.match(styles, /\.public-mobile-map-control/);
+  assert.match(shell, /setSelection/);
+  assert.match(shell, /onSelectionChange=\{setSelection\}/);
+  assert.match(shell, /public-itinerary-shell public-template-\$\{initialTemplate\} isolate/);
+  assert.match(shell, /className="public-itinerary-header"/);
+  assert.match(shell, /public-content-pane min-h-0 min-w-0 overflow-hidden/);
+  assert.match(views, /public-view-scroll h-full min-w-0/);
+  assert.doesNotMatch(overviewCard + timelineSources + publicTable, /onMouseEnter|onFocus=/);
+  assert.match(overviewCard + timelineSources + publicTable, /event\.key === "Enter"/);
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
+  assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
+  assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
+  assert.match(shareTools, /className=\{`block size-36 max-w-full/);
+  assert.match(shareTools, /width: 144/);
   assert.doesNotMatch(shell, /Compact/);
 });
 
@@ -797,30 +1093,68 @@ test("sharing and public route security use real QR, safe new tabs, and no-store
   assert.doesNotMatch(sharingSources, /dangerouslySetInnerHTML/);
 });
 
-test("public read-only modes share separate one-line transport and rental rows", async () => {
+test("Google place photos stay server-only, attributed, no-store, and public-token scoped", async () => {
+  const photoServer = await readFile(
+    new URL("./google-place-photo.server.ts", import.meta.url),
+    "utf8",
+  );
+  const photoRoute = await readFile(
+    new URL("../../app/api/public-place-photo/[token]/[itemRef]/route.ts", import.meta.url),
+    "utf8",
+  );
+  const media = await readFile(
+    new URL("./components/public-item-media.tsx", import.meta.url),
+    "utf8",
+  );
+  const migration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260812183629_public_share_themes_and_place_photos.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const clientMediaSources =
+    media + (await readFile(new URL("./types.ts", import.meta.url), "utf8"));
+
+  assert.match(photoServer, /import "server-only"/);
+  assert.match(photoServer, /process\.env\.GOOGLE_PLACES_API_KEY/);
+  assert.match(photoServer, /X-Goog-FieldMask.*photos/);
+  assert.match(photoServer, /cache: "no-store"/);
+  assert.match(photoServer, /mapWithConcurrency/);
+  assert.doesNotMatch(clientMediaSources, /GOOGLE_PLACES_API_KEY|X-Goog-Api-Key/);
+  assert.match(photoRoute, /verifyGooglePhotoSignature/);
+  assert.match(photoRoute, /private, no-store, max-age=0/);
+  assert.match(media, /Photo by/);
+  assert.match(media, /Google Maps/);
+  assert.match(migration, /security definer/);
+  assert.match(migration, /link\.public_token = shared_token/);
+  assert.match(migration, /link\.revoked_at is null/);
+  assert.match(migration, /if shared\.show_place_photos is false/);
+  assert.match(migration, /grant execute[\s\S]*to anon, authenticated/);
+});
+
+test("Timeline keeps transfers quiet and car rentals as ordered journey events", async () => {
   const timeline = await readFile(
     new URL("./components/public-timeline-day.tsx", import.meta.url),
     "utf8",
   );
-  const itemLine = await readFile(
-    new URL("./components/public-item-line.tsx", import.meta.url),
+  const timelineTransport = await readFile(
+    new URL("./components/public-timeline-transport.tsx", import.meta.url),
     "utf8",
   );
-  const transport = await readFile(
-    new URL("./components/public-transport-row.tsx", import.meta.url),
+  const presentation = await readFile(
+    new URL("./public-timeline-presentation.ts", import.meta.url),
     "utf8",
   );
-  assert.doesNotMatch(timeline, /contextLabel|Item \$\{index/);
-  assert.match(timeline, /PublicTransportRow/);
-  assert.match(transport, /aria-label="Transport"/);
-  assert.match(transport, /join\(", "\)/);
-  assert.match(transport, /truncate whitespace-nowrap/);
-  assert.match(transport, /text-sm/);
-  assert.match(transport, /PublicOverviewIcon icon=\{Route\}/);
-  assert.match(transport, /PublicOverviewIcon icon=\{CarFront\}/);
-  assert.match(transport, /hasMapLocation/);
-  assert.match(transport, /data-public-item-ref/);
-  assert.match(transport, /Focus map on/);
-  assert.doesNotMatch(transport, /rounded-full|overflow-x-auto/);
-  assert.doesNotMatch(itemLine, /compactTravel|publicTransferItemLabel|compactRental/);
+  assert.match(timeline, /aria-label="Major transport"/);
+  assert.match(timeline, /PublicTimelineTransport/);
+  assert.match(timelineTransport, /data-public-item-ref/);
+  assert.match(timelineTransport, /PublicQuickActions compact item=\{item\} quiet/);
+  assert.match(presentation, /timelineNodeTypes/);
+  assert.match(presentation, /"car_rental"/);
+  assert.match(presentation, /\.filter\(isPublicTransfer\)/);
+  assert.doesNotMatch(timelineTransport, /border bg-|rounded-xl|shadow/);
+  const styles = await readAppStyles();
+  assert.match(styles, /\.timeline-transport-list-v4 \{[\s\S]*align-items: center/);
+  assert.doesNotMatch(styles, /\.timeline-transport-list-v4 \{[^}]*flex-direction: column/);
 });

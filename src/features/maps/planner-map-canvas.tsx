@@ -95,6 +95,7 @@ function State({
 }
 
 export function PlannerMapCanvas({
+  colorScheme,
   compact = false,
   configurationState,
   emptyState,
@@ -106,6 +107,7 @@ export function PlannerMapCanvas({
   selectedId,
   viewportKey,
 }: {
+  colorScheme?: "DARK" | "FOLLOW_SYSTEM" | "LIGHT";
   compact?: boolean;
   configurationState?: { message: string; title: string };
   emptyState?: { message: string; title: string };
@@ -150,6 +152,7 @@ export function PlannerMapCanvas({
     <div className="relative h-full">
       <Map
         clickableIcons={false}
+        colorScheme={colorScheme}
         defaultCenter={{ lat: 20, lng: 0 }}
         defaultZoom={2}
         disableDefaultUI={compact}

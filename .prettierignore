@@ -3,3 +3,4 @@ node_modules
 package-lock.json
 src/types/database.ts
 supabase/.temp
+docs/trip-planner-bento-sharing-prototype-v4.html

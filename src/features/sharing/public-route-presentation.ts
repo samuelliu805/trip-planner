@@ -5,6 +5,7 @@ export function publicDayRoutePresentation(
   itinerary: PublicItinerary,
   dayPlan: ReturnType<typeof publicDayRoutePlan>,
   dayCalculation?: PublicRouteCalculation,
+  color = itinerary.variant.color,
 ) {
   const { day, items: candidates } = dayPlan;
   const routeSetupItems = [...candidates, ...dayPlan.unmappedActivities].sort((left, right) => {
@@ -20,10 +21,10 @@ export function publicDayRoutePresentation(
     (item) => item.type === "activity" && savedRoute && !savedStopRefs.has(item.ref),
   ).length;
   const savedLines = savedRoute
-    ? buildPublicRouteLines(savedRoute.legs, itinerary.variant.color, `saved:${savedRoute.ref}`)
+    ? buildPublicRouteLines(savedRoute.legs, color, `saved:${savedRoute.ref}`)
     : [];
   const temporaryDayLines = dayCalculation
-    ? buildPublicRouteLines(dayCalculation.legs, itinerary.variant.color, `temporary:${day?.ref}`)
+    ? buildPublicRouteLines(dayCalculation.legs, color, `temporary:${day?.ref}`)
     : [];
   return { omittedActivityCount, routeSetupItems, savedLines, savedRoute, temporaryDayLines };
 }

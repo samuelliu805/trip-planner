@@ -437,6 +437,7 @@ export type Database = {
           show_addresses: boolean
           show_map_routes: boolean
           show_notes: boolean
+          show_place_photos: boolean
           show_quick_action_links: boolean
           show_times: boolean
           trip_id: string
@@ -456,6 +457,7 @@ export type Database = {
           show_addresses?: boolean
           show_map_routes?: boolean
           show_notes?: boolean
+          show_place_photos?: boolean
           show_quick_action_links?: boolean
           show_times?: boolean
           trip_id: string
@@ -475,6 +477,7 @@ export type Database = {
           show_addresses?: boolean
           show_map_routes?: boolean
           show_notes?: boolean
+          show_place_photos?: boolean
           show_quick_action_links?: boolean
           show_times?: boolean
           trip_id?: string
@@ -1368,6 +1371,22 @@ export type Database = {
         }
         Returns: Json
       }
+      create_public_itinerary_link_v2: {
+        Args: {
+          requested_allow_route_explore?: boolean
+          requested_default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_share_description?: string
+          requested_share_title?: string
+          requested_show_addresses?: boolean
+          requested_show_map_routes?: boolean
+          requested_show_notes?: boolean
+          requested_show_place_photos?: boolean
+          requested_show_quick_action_links?: boolean
+          requested_show_times?: boolean
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       create_research_option: {
         Args: {
           option_category: string
@@ -1436,6 +1455,7 @@ export type Database = {
       }
       get_public_itinerary: { Args: { shared_token: string }; Returns: Json }
       get_public_itinerary_v2: { Args: { shared_token: string }; Returns: Json }
+      get_public_itinerary_v3: { Args: { shared_token: string }; Returns: Json }
       insert_trip_day: {
         Args: { before_day_number: number; target_trip_id: string }
         Returns: string
@@ -1455,6 +1475,10 @@ export type Database = {
         Returns: string
       }
       list_public_itinerary_links: {
+        Args: { target_trip_id: string }
+        Returns: Json
+      }
+      list_public_itinerary_links_v2: {
         Args: { target_trip_id: string }
         Returns: Json
       }
@@ -1591,6 +1615,10 @@ export type Database = {
         Args: { target_link_id: string }
         Returns: Json
       }
+      rotate_public_itinerary_link_v2: {
+        Args: { target_link_id: string }
+        Returns: Json
+      }
       save_day_route_calculation: {
         Args: {
           calculated_config_signature: string
@@ -1644,6 +1672,22 @@ export type Database = {
           requested_show_addresses: boolean
           requested_show_map_routes: boolean
           requested_show_notes: boolean
+          requested_show_quick_action_links: boolean
+          requested_show_times: boolean
+          target_link_id: string
+        }
+        Returns: Json
+      }
+      update_public_itinerary_link_v2: {
+        Args: {
+          requested_allow_route_explore: boolean
+          requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_share_description: string
+          requested_share_title: string
+          requested_show_addresses: boolean
+          requested_show_map_routes: boolean
+          requested_show_notes: boolean
+          requested_show_place_photos: boolean
           requested_show_quick_action_links: boolean
           requested_show_times: boolean
           target_link_id: string

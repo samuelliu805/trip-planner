@@ -1,5 +1,6 @@
 "use client";
 
+import { Map, Route } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
@@ -25,6 +26,8 @@ import { RouteScopePicker } from "./public-route-summary";
 
 export type { PublicMapSelection } from "./public-map-workspace-types";
 
+const bentoPublicMapTheme = { color: "#58f58b", glyphColor: "#06100a" } as const;
+
 export function PublicMapWorkspace(props: PublicMapWorkspaceProps) {
   return (
     <PlannerMapProvider>
@@ -40,6 +43,7 @@ function PublicMapWorkspaceContent({
   selectedDayRef,
   selectedItemRef,
   selectionScope,
+  template,
   token,
 }: PublicMapWorkspaceProps) {
   const defaultDayRef =
@@ -61,9 +65,14 @@ function PublicMapWorkspaceContent({
   const [overviewError, setOverviewError] = useState<string>();
   const [pending, startTransition] = useTransition();
 
-  const markers = useMemo(() => buildPublicMarkers(itinerary), [itinerary]);
+  const mapTheme = template === "bento" ? bentoPublicMapTheme : undefined;
+  const routeColor = mapTheme?.color ?? itinerary.variant.color;
+  const markers = useMemo(() => buildPublicMarkers(itinerary, mapTheme), [itinerary, mapTheme]);
   const overviewStops = useMemo(() => publicOverviewStops(itinerary), [itinerary]);
-  const straightOverviewLines = useMemo(() => buildPublicOverviewLines(itinerary), [itinerary]);
+  const straightOverviewLines = useMemo(
+    () => buildPublicOverviewLines(itinerary, routeColor),
+    [itinerary, routeColor],
+  );
   const routeScope =
     selectionScope ??
     (selectedDayRef
@@ -78,9 +87,9 @@ function PublicMapWorkspaceContent({
   const exploring = routeScope === "day" && exploringDayRef === day?.ref;
   const candidates = dayPlan.items;
   const { omittedActivityCount, routeSetupItems, savedLines, savedRoute, temporaryDayLines } =
-    publicDayRoutePresentation(itinerary, dayPlan, dayCalculation);
+    publicDayRoutePresentation(itinerary, dayPlan, dayCalculation, routeColor);
   const calculatedOverviewLines = overviewCalculation
-    ? buildPublicRouteLines(overviewCalculation.legs, itinerary.variant.color, "temporary:overview")
+    ? buildPublicRouteLines(overviewCalculation.legs, routeColor, "temporary:overview")
     : [];
   const overviewLines = overviewCalculation ? calculatedOverviewLines : straightOverviewLines;
   const dayLines = exploring && dayCalculation ? temporaryDayLines : savedLines;
@@ -214,9 +223,18 @@ function PublicMapWorkspaceContent({
   }
 
   return (
-    <section aria-label="Map and routes" className="relative h-full min-h-0 bg-muted/30">
-      <div className="absolute inset-0 pb-[min(44%,22rem)]">
+    <section aria-label="Map and routes" className="public-map-workspace relative h-full min-h-0">
+      <div className="public-map-toolbar" aria-hidden="true">
+        <span>
+          <Map className="size-4" /> Map & routes
+        </span>
+        <span>
+          <Route className="size-4" /> Shared route
+        </span>
+      </div>
+      <div className="public-map-canvas absolute inset-0 pb-[min(44%,22rem)]">
         <PublicPlannerMapCanvas
+          colorScheme={template === "bento" ? "DARK" : undefined}
           configurationState={{
             message: "The itinerary and shared stops remain available. Try the map again later.",
             title: "Map unavailable",
@@ -238,7 +256,7 @@ function PublicMapWorkspaceContent({
         />
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 max-h-[48%] overflow-y-auto border-t bg-background/97 p-3 backdrop-blur">
+      <div className="public-map-panel absolute inset-x-0 bottom-0 max-h-[48%] overflow-y-auto border-t bg-background/97 p-3 backdrop-blur">
         <RouteScopePicker onSelect={selectScope} scope={routeScope} />
         {routeScope === "overview" ? (
           <PublicOverviewRoutePanel

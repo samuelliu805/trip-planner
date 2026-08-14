@@ -209,14 +209,17 @@ export function publicOverviewDefaultModes(itinerary: PublicItinerary): Overview
   });
 }
 
-export function buildPublicOverviewLines(itinerary: PublicItinerary): PlannerMapLine[] {
+export function buildPublicOverviewLines(
+  itinerary: PublicItinerary,
+  color = itinerary.variant.color,
+): PlannerMapLine[] {
   const stops = publicOverviewStops(itinerary);
   return stops.slice(0, -1).flatMap((stop, index) => {
     const next = stops[index + 1];
     if (stop.latitude === next.latitude && stop.longitude === next.longitude) return [];
     return [
       {
-        color: itinerary.variant.color,
+        color,
         dashed: true,
         geodesic: true,
         id: `public-overview:${stop.ref}:${next.ref}`,

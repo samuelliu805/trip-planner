@@ -141,6 +141,13 @@ export function PublicShareSettingsFields({
           onCheckedChange={(value) => onSettingChange("showNotes", value)}
         />
         <SettingsToggle
+          checked={settings.showPlacePhotos}
+          description="Use optional Google Place imagery when a shared place has a photo."
+          id="share-show-place-photos"
+          label="Google Place photos"
+          onCheckedChange={(value) => onSettingChange("showPlacePhotos", value)}
+        />
+        <SettingsToggle
           checked={settings.showQuickActionLinks}
           description="Share only valid HTTP(S) actions saved on itinerary items."
           id="share-show-links"

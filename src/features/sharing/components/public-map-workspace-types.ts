@@ -1,4 +1,5 @@
 import type { PublicItinerary } from "../types";
+import type { PublicTemplate } from "../public-url-state";
 
 export type PublicMapSelection = {
   dayRef?: string;
@@ -13,5 +14,6 @@ export type PublicMapWorkspaceProps = {
   selectedDayRef?: string;
   selectedItemRef?: string;
   selectionScope?: "day" | "overview";
+  template: PublicTemplate;
   token: string;
 };

@@ -18,6 +18,7 @@ export type PlannerMapMarker = {
     kind: MarkerKind;
     title: string;
   }[];
+  glyphColor?: string;
   id: string;
   itemIds: string[];
   latitude: number;

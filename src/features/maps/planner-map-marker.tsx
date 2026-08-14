@@ -41,6 +41,8 @@ export function PlannerMapMarkerOverlay({
   const activeComparison = marker.appearance === "comparison-active";
   const cityRouteMarker = overview || dayCity;
   const glyph = marker.label ?? (overview ? "" : routeMarker && !planned ? "" : style.glyph);
+  const themedBackground = marker.variantColor ?? style.background;
+  const themedGlyph = marker.glyphColor ?? "#ffffff";
 
   return (
     <AdvancedMarker
@@ -82,7 +84,8 @@ export function PlannerMapMarkerOverlay({
         <div
           className="whitespace-nowrap rounded-full border-2 border-white px-2 py-1 text-[10px] font-semibold text-white shadow-md"
           style={{
-            backgroundColor: dayCity ? "#2563eb" : "#166534",
+            backgroundColor: marker.variantColor ?? (dayCity ? "#2563eb" : "#166534"),
+            color: marker.glyphColor ?? "#ffffff",
             filter: selected
               ? "drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 5px #ffffff)"
               : undefined,
@@ -104,10 +107,10 @@ export function PlannerMapMarkerOverlay({
           }}
         >
           <Pin
-            background={planned ? "#166534" : routeMarker ? "#64748b" : style.background}
+            background={planned ? "#166534" : routeMarker ? "#64748b" : themedBackground}
             borderColor={selected ? "#ffffff" : routeMarker ? "#f8fafc" : "#ffffff"}
             glyph={glyph}
-            glyphColor="#ffffff"
+            glyphColor={themedGlyph}
             scale={selected ? 1.3 : 1}
           />
         </div>

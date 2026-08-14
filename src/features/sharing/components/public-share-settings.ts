@@ -5,12 +5,13 @@ export type ShareSettings = Omit<PublicItinerarySettingsInput, "variantId">;
 
 export const defaultShareSettings: ShareSettings = {
   allowRouteExplore: true,
-  defaultView: "overview",
+  defaultView: "timeline",
   shareDescription: "",
   shareTitle: "",
   showAddresses: false,
   showMapRoutes: true,
   showNotes: false,
+  showPlacePhotos: false,
   showQuickActionLinks: true,
   showTimes: true,
 };
@@ -31,6 +32,7 @@ export function settingsFromLink(link?: PublicItineraryLink): ShareSettings {
     showAddresses: link.showAddresses,
     showMapRoutes: link.showMapRoutes,
     showNotes: link.showNotes,
+    showPlacePhotos: link.showPlacePhotos,
     showQuickActionLinks: link.showQuickActionLinks,
     showTimes: link.showTimes,
   };

@@ -22,6 +22,43 @@ const publicUrlSchema = z.url().refine((value) => {
 const publicLinkSchema = z
   .object({ label: z.string().trim().min(1).max(80), url: publicUrlSchema })
   .strict();
+const publicMediaUrlSchema = z
+  .string()
+  .max(2_000)
+  .refine((value) => {
+    if (value.startsWith("/api/public-place-photo/")) return true;
+    return publicUrlSchema.safeParse(value).success;
+  }, "Only safe public media URLs can be shared.");
+const publicMediaAttributionSchema = z
+  .object({
+    label: z.string().trim().min(1).max(200),
+    url: publicUrlSchema.optional(),
+  })
+  .strict();
+export const publicItemMediaSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      alt: z.string().trim().max(300).optional(),
+      attribution: publicMediaAttributionSchema.optional(),
+      id: z.string().trim().min(1).max(500),
+      kind: z.literal("image"),
+      source: z.enum(["google_place", "attachment"]),
+      sourceUrl: publicUrlSchema.optional(),
+      thumbnailUrl: publicMediaUrlSchema.optional(),
+      url: publicMediaUrlSchema,
+    })
+    .strict(),
+  z
+    .object({
+      id: z.string().trim().min(1).max(500),
+      kind: z.literal("pdf"),
+      label: z.string().trim().min(1).max(240),
+      source: z.literal("attachment"),
+      thumbnailUrl: publicMediaUrlSchema.optional(),
+      url: publicMediaUrlSchema,
+    })
+    .strict(),
+]);
 const publicPlaceSchema = z
   .object({
     address: z.string().max(500).optional(),
@@ -30,6 +67,7 @@ const publicPlaceSchema = z
       .regex(/^[A-Z]{2}$/)
       .optional(),
     displayName: z.string().min(1).max(300),
+    googlePlaceId: z.string().trim().min(1).max(300).optional(),
     latitude: z.number().min(-90).max(90).nullable().optional(),
     longitude: z.number().min(-180).max(180).nullable().optional(),
     localityName: z.string().min(1).max(300).optional(),
@@ -47,6 +85,7 @@ const publicItemSchema = z
     carRental: publicCarRentalSchema.optional(),
     endTime: z.string().optional(),
     links: z.array(publicLinkSchema).max(20).optional(),
+    media: z.array(publicItemMediaSchema).max(12).optional(),
     notes: z.string().max(5000).optional(),
     place: publicPlaceSchema.optional(),
     ref: z.string().length(64),
@@ -145,6 +184,7 @@ export const publicItinerarySchema = z
         showAddresses: z.boolean(),
         showMapRoutes: z.boolean(),
         showNotes: z.boolean(),
+        showPlacePhotos: z.boolean().optional(),
         showQuickActionLinks: z.boolean(),
         showTimes: z.boolean(),
       })
@@ -178,6 +218,7 @@ export const publicItineraryLinkSchema = z
     showAddresses: z.boolean(),
     showMapRoutes: z.boolean(),
     showNotes: z.boolean(),
+    showPlacePhotos: z.boolean(),
     showQuickActionLinks: z.boolean(),
     showTimes: z.boolean(),
     tripId: z.uuid(),
@@ -195,6 +236,7 @@ export const publicItinerarySettingsSchema = z
     showAddresses: z.boolean(),
     showMapRoutes: z.boolean(),
     showNotes: z.boolean(),
+    showPlacePhotos: z.boolean(),
     showQuickActionLinks: z.boolean(),
     showTimes: z.boolean(),
     variantId: z.uuid(),
