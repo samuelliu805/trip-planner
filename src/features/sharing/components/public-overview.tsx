@@ -1,10 +1,9 @@
 import { format, parseISO } from "date-fns";
-import { MapPin } from "lucide-react";
 
-import { publicDayCitySequence } from "../presentation";
+import { publicDayCityLabel } from "../presentation";
+import { publicOverviewDayLayout } from "../public-overview-presentation";
 import type { PublicItinerary } from "../types";
-import { PublicDayJourney } from "./public-day-journey";
-import { PublicOverviewIcon } from "./public-overview-icon";
+import { PublicOverviewCard } from "./public-overview-card";
 
 export function PublicOverview({
   itinerary,
@@ -20,50 +19,69 @@ export function PublicOverview({
   selectedItemRef?: string;
 }) {
   return (
-    <section aria-label="Whole trip overview" className="public-overview divide-y border-y">
-      {itinerary.days.map((day) => {
-        const citySequence = publicDayCitySequence(day);
-        const date = day.date ? parseISO(day.date) : null;
-        return (
-          <article
-            aria-current={selectedDayRef === day.ref ? "true" : undefined}
-            className={`public-overview-day grid grid-cols-[5.75rem_minmax(0,1fr)] bg-background sm:grid-cols-[6.5rem_minmax(0,1fr)] ${selectedDayRef === day.ref ? "bg-primary/[0.035]" : ""}`}
-            data-public-day-ref={day.ref}
-            key={day.ref}
-            onClick={(event) => {
-              if (!(event.target as Element).closest("[data-public-item-ref]"))
-                onSelectDay(day.ref);
-            }}
-            tabIndex={-1}
-          >
-            <div className="border-r px-2 py-3">
-              <div className="text-xs font-semibold">D{day.dayNumber}</div>
-              <div className="mt-1 font-mono text-[10px] uppercase text-muted-foreground">
-                {date ? format(date, "MMM d") : "Date TBD"}
-              </div>
-              <div className="mt-0.5 text-[10px] font-medium text-primary">
-                {citySequence.length
-                  ? `${citySequence.length} ${citySequence.length === 1 ? "stop" : "stops"}`
-                  : "Plans"}
-              </div>
-            </div>
-            <div className="min-w-0 px-3 py-3">
-              {citySequence.length ? (
-                <div className="mb-3 grid min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-2 text-xs font-semibold leading-5">
-                  <PublicOverviewIcon icon={MapPin} />
-                  <span className="truncate">{citySequence.join(" · ")}</span>
+    <section aria-label="Whole trip overview" className="public-overview overview-v4">
+      <div className="overview-title-row-v4">
+        <div>
+          <div className="public-section-label">Whole trip overview</div>
+          <p className="overview-subtitle-v4">
+            Media-aware board. Shared place imagery and attachments receive visual weight while
+            manual itinerary order stays intact.
+          </p>
+        </div>
+      </div>
+      <div className="overview-days-v4">
+        {itinerary.days.map((day, dayIndex) => {
+          const date = day.date ? parseISO(day.date) : null;
+          const layout = publicOverviewDayLayout(day);
+          const firstMediaItemRef = layout.find(({ media }) => media.length)?.item.ref;
+          const locality = publicDayCityLabel(day);
+          return (
+            <article
+              aria-current={selectedDayRef === day.ref ? "true" : undefined}
+              className="public-overview-day overview-day-v4"
+              data-public-day-ref={day.ref}
+              key={day.ref}
+              onClick={(event) => {
+                if (
+                  !(event.target as Element).closest("[data-public-item-ref], a, button, summary")
+                )
+                  onSelectDay(day.ref);
+              }}
+              tabIndex={-1}
+            >
+              <header className="overview-day-heading-v4">
+                <div className="overview-day-title-v4">
+                  <strong>
+                    D{day.dayNumber} · {date ? format(date, "MMM d") : "Date TBD"}
+                  </strong>
+                  {locality ? <span>{locality}</span> : null}
                 </div>
-              ) : null}
-
-              <PublicDayJourney
-                day={day}
-                onSelectItem={(itemRef) => onSelectItem(itemRef, day.ref)}
-                selectedItemRef={selectedItemRef}
-              />
-            </div>
-          </article>
-        );
-      })}
+                <span className="overview-day-items-v4">
+                  {layout.length} {layout.length === 1 ? "item" : "items"}
+                </span>
+              </header>
+              {layout.length ? (
+                <div className="public-overview-board overview-board-v4">
+                  {layout.map((presentation, index) => (
+                    <PublicOverviewCard
+                      key={presentation.item.ref}
+                      onSelect={() => onSelectItem(presentation.item.ref, day.ref)}
+                      order={index + 1}
+                      presentation={presentation}
+                      prioritizeMedia={
+                        dayIndex === 0 && presentation.item.ref === firstMediaItemRef
+                      }
+                      selected={selectedItemRef === presentation.item.ref}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="public-overview-empty">No shared plans for this day.</p>
+              )}
+            </article>
+          );
+        })}
+      </div>
     </section>
   );
 }

@@ -44,6 +44,7 @@ const rpcSettings = (input: PublicItinerarySettingsInput) => ({
   requested_show_addresses: input.showAddresses,
   requested_show_map_routes: input.showMapRoutes,
   requested_show_notes: input.showNotes,
+  requested_show_place_photos: input.showPlacePhotos,
   requested_show_quick_action_links: input.showQuickActionLinks,
   requested_show_times: input.showTimes,
 });
@@ -54,7 +55,7 @@ export async function createPublicItineraryLink(
   const parsed = publicItinerarySettingsSchema.safeParse(rawInput);
   if (!parsed.success) return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_public_itinerary_link", {
+  const { data, error } = await supabase.rpc("create_public_itinerary_link_v2", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
@@ -72,7 +73,7 @@ export async function updatePublicItineraryLink(
   const settings = publicItinerarySettingsSchema.safeParse(rawInput);
   if (!settings.success) return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_public_itinerary_link", {
+  const { data, error } = await supabase.rpc("update_public_itinerary_link_v2", {
     target_link_id: linkId,
     ...rpcSettings(settings.data),
   });
@@ -90,7 +91,7 @@ export async function rotatePublicItineraryLink(rawInput: {
   const input = linkMutationSchema.safeParse(rawInput);
   if (!input.success) return { error: "The public link request is invalid." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("rotate_public_itinerary_link", {
+  const { data, error } = await supabase.rpc("rotate_public_itinerary_link_v2", {
     target_link_id: input.data.linkId,
   });
   if (error) return { error: managementError(error.message) };

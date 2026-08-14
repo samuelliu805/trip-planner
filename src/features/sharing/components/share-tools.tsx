@@ -24,7 +24,7 @@ export function ShareQrCode({ label, url }: { label: string; url: string }) {
         QRCode.toCanvas(canvas, url, {
           errorCorrectionLevel: "M",
           margin: 1,
-          scale: 5,
+          width: 144,
           color: { dark: "#173b2d", light: "#ffffff" },
         }),
       )
@@ -36,11 +36,14 @@ export function ShareQrCode({ label, url }: { label: string; url: string }) {
     return <p className="text-xs text-destructive">QR code unavailable. Copy the link instead.</p>;
 
   return (
-    <figure aria-busy={pending} className="space-y-2 text-center">
-      <div className="relative mx-auto size-36">
+    <figure
+      aria-busy={pending}
+      className="flex w-full shrink-0 flex-col items-center justify-center gap-2 text-center"
+    >
+      <div className="relative size-36 shrink-0">
         <canvas
           aria-label={`${label} QR code`}
-          className={`size-36 border bg-white p-1 ${pending ? "opacity-20" : ""}`}
+          className={`block size-36 max-w-full border bg-white p-1 ${pending ? "opacity-20" : ""}`}
           ref={canvasRef}
           role="img"
         />

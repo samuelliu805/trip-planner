@@ -2,6 +2,7 @@
 
 import { CalendarDays, Map, PanelRightClose, PanelRightOpen, Route } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,11 +14,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-import { canonicalPublicViews } from "../schema";
+import type { PublicTemplate } from "../public-url-state";
 import type { PublicItinerary, PublicView } from "../types";
 import { PublicItineraryViews } from "./public-itinerary-views";
 import { PublicMapWorkspace, type PublicMapSelection } from "./public-map-workspace";
-import { publicViewLabels } from "./public-share-settings";
+import { PublicViewSwitcher } from "./public-view-switcher";
 import { PublicViewerShareDialog } from "./public-viewer-share-dialog";
 
 function publicDateSummary(itinerary: PublicItinerary) {
@@ -30,21 +31,28 @@ function publicDateSummary(itinerary: PublicItinerary) {
 }
 
 export function PublicItineraryShell({
+  initialTemplate,
+  initialView,
   itinerary,
   publicUrl,
   token,
 }: {
+  initialTemplate: PublicTemplate;
+  initialView: PublicView;
   itinerary: PublicItinerary;
   publicUrl: string;
   token: string;
 }) {
-  const [view, setView] = useState<PublicView>(itinerary.settings.defaultView);
+  const [view, setView] = useState<PublicView>(initialView);
   const [mapVisible, setMapVisible] = useState(itinerary.settings.showMapRoutes);
   const [mapSheetOpen, setMapSheetOpen] = useState(false);
   const [desktopMap, setDesktopMap] = useState(false);
   const [split, setSplit] = useState(64);
   const [selection, setSelection] = useState<PublicMapSelection>({});
   const shellRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const showMap = itinerary.settings.showMapRoutes;
 
   useEffect(() => {
@@ -56,6 +64,18 @@ export function PublicItineraryShell({
   }, []);
 
   useEffect(() => {
+    if (
+      searchParams.get("template") === initialTemplate &&
+      searchParams.get("view") === initialView
+    )
+      return;
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("template", initialTemplate);
+    nextParams.set("view", initialView);
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+  }, [initialTemplate, initialView, pathname, router, searchParams]);
+
+  useEffect(() => {
     const media = window.matchMedia("(min-width: 900px)");
     const setDesktop = () => setDesktopMap(media.matches);
     setDesktop();
@@ -64,9 +84,14 @@ export function PublicItineraryShell({
   }, []);
 
   function switchView(nextView: PublicView) {
-    if (nextView === view) return;
-    setSelection({});
-    setView(nextView);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("template", initialTemplate);
+    nextParams.set("view", nextView);
+    if (nextView !== view) {
+      setSelection({});
+      setView(nextView);
+    }
+    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
   }
 
   function selectDay(dayRef: string) {
@@ -84,25 +109,6 @@ export function PublicItineraryShell({
     }));
   }
 
-  function handleTabKey(event: React.KeyboardEvent<HTMLButtonElement>, current: PublicView) {
-    const currentIndex = canonicalPublicViews.indexOf(current);
-    const nextIndex =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? canonicalPublicViews.length - 1
-          : event.key === "ArrowRight"
-            ? (currentIndex + 1) % canonicalPublicViews.length
-            : event.key === "ArrowLeft"
-              ? (currentIndex - 1 + canonicalPublicViews.length) % canonicalPublicViews.length
-              : -1;
-    if (nextIndex < 0) return;
-    event.preventDefault();
-    const nextView = canonicalPublicViews[nextIndex];
-    switchView(nextView);
-    requestAnimationFrame(() => document.getElementById(`public-${nextView}-tab`)?.focus());
-  }
-
   function resize(event: React.PointerEvent<HTMLDivElement>) {
     if (!shellRef.current || event.buttons !== 1) return;
     const bounds = shellRef.current.getBoundingClientRect();
@@ -110,39 +116,32 @@ export function PublicItineraryShell({
     setSplit(Math.min(75, Math.max(52, Math.round(next))));
   }
 
+  const shareUrl = new URL(publicUrl);
+  shareUrl.searchParams.set("template", initialTemplate);
+  shareUrl.searchParams.set("view", view);
+
   return (
-    <main className="public-itinerary-shell isolate flex h-dvh min-w-0 flex-col overflow-hidden bg-background">
-      <header className="public-itinerary-header sticky top-0 z-[80] shrink-0 border-b bg-background/95 backdrop-blur">
-        <div className="flex min-h-16 items-center justify-between gap-3 px-3 py-2 sm:px-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+    <main
+      className={`public-itinerary-shell public-template-${initialTemplate} isolate flex h-dvh min-w-0 flex-col overflow-hidden bg-background`}
+      data-public-template={initialTemplate}
+    >
+      <header className="public-itinerary-header">
+        <div className="public-header-row">
+          <div className="public-brand-area">
+            <div className="public-brand-kicker">
               <Route aria-hidden="true" className="size-3.5" /> Trip Planner
             </div>
-            <h1 className="mt-1 truncate text-base font-semibold sm:text-lg">
-              {itinerary.trip.title}
-            </h1>
-            <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+            <h1 className="public-trip-title">{itinerary.trip.title}</h1>
+            <p className="public-trip-meta">
               <CalendarDays aria-hidden="true" className="size-3.5 shrink-0" />
               {publicDateSummary(itinerary)} · {itinerary.variant.name}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {showMap ? (
-              <Button
-                aria-label="Open map and routes"
-                className="public-mobile-map-control hidden size-11 p-0"
-                onClick={() => setMapSheetOpen(true)}
-                type="button"
-                variant="outline"
-              >
-                <Map aria-hidden="true" className="size-4" />
-                <span className="sr-only">Map & routes</span>
-              </Button>
-            ) : null}
+          <div className="public-header-actions">
             {showMap ? (
               <Button
                 aria-label={mapVisible ? "Collapse map and routes" : "Restore map and routes"}
-                className="public-desktop-map-control min-h-11"
+                className="public-desktop-map-control public-header-button"
                 onClick={() => setMapVisible((visible) => !visible)}
                 type="button"
                 variant="outline"
@@ -157,27 +156,11 @@ export function PublicItineraryShell({
                 </span>
               </Button>
             ) : null}
-            <PublicViewerShareDialog itinerary={itinerary} url={publicUrl} />
-          </div>
-        </div>
-        <div className="flex items-end justify-between gap-3 px-3 sm:px-5">
-          <div aria-label="Itinerary views" className="flex" role="tablist">
-            {canonicalPublicViews.map((option) => (
-              <button
-                aria-controls={`public-${option}-panel`}
-                aria-selected={view === option}
-                className="relative min-h-11 px-3 text-sm font-medium text-muted-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-transparent hover:text-foreground aria-selected:text-foreground aria-selected:after:bg-primary sm:px-5"
-                id={`public-${option}-tab`}
-                key={option}
-                onClick={() => switchView(option)}
-                onKeyDown={(event) => handleTabKey(event, option)}
-                role="tab"
-                tabIndex={view === option ? 0 : -1}
-                type="button"
-              >
-                {publicViewLabels[option]}
-              </button>
-            ))}
+            <PublicViewerShareDialog
+              itinerary={itinerary}
+              template={initialTemplate}
+              url={shareUrl.toString()}
+            />
           </div>
         </div>
       </header>
@@ -201,6 +184,7 @@ export function PublicItineraryShell({
             selectedItemRef={selection.itemRef}
             view={view}
           />
+          <PublicViewSwitcher onChange={switchView} value={view} />
         </div>
         {mapVisible && showMap && desktopMap ? (
           <>
@@ -235,6 +219,7 @@ export function PublicItineraryShell({
                 selectedDayRef={selection.dayRef}
                 selectedItemRef={selection.itemRef}
                 selectionScope={selection.scope}
+                template={initialTemplate}
                 token={token}
               />
             </aside>
@@ -243,8 +228,23 @@ export function PublicItineraryShell({
       </div>
 
       {showMap ? (
+        <Button
+          aria-label="Open map and routes"
+          className="public-mobile-map-control"
+          onClick={() => setMapSheetOpen(true)}
+          type="button"
+        >
+          <Map aria-hidden="true" className="size-4" />
+          <span>Map & routes</span>
+        </Button>
+      ) : null}
+
+      {showMap ? (
         <Sheet onOpenChange={setMapSheetOpen} open={mapSheetOpen}>
-          <SheetContent className="public-map-sheet h-[92dvh] max-h-[92dvh] p-0" side="bottom">
+          <SheetContent
+            className={`public-map-sheet public-share-surface public-template-${initialTemplate} h-[92dvh] max-h-[92dvh] p-0`}
+            side="bottom"
+          >
             <SheetHeader className="shrink-0">
               <SheetTitle>Map & routes</SheetTitle>
               <SheetDescription className="sr-only">
@@ -259,6 +259,7 @@ export function PublicItineraryShell({
                 selectedDayRef={selection.dayRef}
                 selectedItemRef={selection.itemRef}
                 selectionScope={selection.scope}
+                template={initialTemplate}
                 token={token}
               />
             </div>

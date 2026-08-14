@@ -10,6 +10,7 @@ import type {
 export type PublicItinerary = z.infer<typeof publicItinerarySchema>;
 export type PublicItineraryDay = PublicItinerary["days"][number];
 export type PublicItineraryItem = PublicItineraryDay["items"][number];
+export type PublicItemMedia = NonNullable<PublicItineraryItem["media"]>[number];
 export type PublicSavedRoute = PublicItinerary["savedRoutes"][number];
 export type PublicView = z.infer<typeof publicViewSchema>;
 export type PublicItineraryLink = z.infer<typeof publicItineraryLinkSchema>;

@@ -1,0 +1,228 @@
+.public-template-bento .timeline-v4 {
+  padding: 0.875rem 1rem 7.5rem;
+}
+
+.public-template-bento .timeline-intro-v4 {
+  gap: 0.75rem;
+  margin-bottom: 0.625rem;
+}
+
+.public-template-bento .timeline-intro-copy-v4 {
+  margin-top: -0.1875rem;
+  color: #a7b5aa;
+  font-size: 0.59375rem;
+}
+
+.public-template-bento .timeline-sections-v4 {
+  gap: 0.6875rem;
+}
+
+.public-template-bento .timeline-section-v4 {
+  border-color: #2d4135;
+  border-radius: 0.9375rem;
+  background: #09140d;
+}
+
+.public-template-bento .timeline-section-v4.is-selected {
+  border-color: rgb(88 245 139 / 55%);
+}
+
+.public-template-bento .timeline-section-header-v4 {
+  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+  gap: 0.625rem;
+  row-gap: 0.3125rem;
+  border-color: rgb(43 61 49 / 68%);
+  background: #0b1710;
+  padding: 0.625rem 0.6875rem 0.5625rem;
+}
+
+.public-template-bento .timeline-day-index-v4 {
+  width: 2.375rem;
+  height: 2.375rem;
+  border-radius: 0.6875rem;
+  background: #102017;
+  color: #c3d1c6;
+  font-size: 0.5625rem;
+}
+
+.public-template-bento .timeline-section-v4.is-selected .timeline-day-index-v4 {
+  color: #58f58b;
+  box-shadow: inset 0 0 0 1px rgb(88 245 139 / 30%);
+}
+
+.public-template-bento .timeline-day-copy-v4 strong {
+  font-size: 0.9375rem;
+  line-height: 1.1;
+}
+
+.public-template-bento .timeline-day-copy-v4 span {
+  margin-top: 0.25rem;
+  color: #a7b5aa;
+  font-size: 0.59375rem;
+}
+
+.public-template-bento .timeline-day-count-v4 {
+  color: #7f9184;
+  font-size: 0.46875rem;
+}
+
+.public-template-bento .timeline-transport-list-v4 {
+  gap: 0.375rem;
+  margin-top: -0.0625rem;
+}
+
+.public-template-bento .timeline-transport-inline-v4 + .timeline-transport-inline-v4 {
+  border-left-color: #355043;
+  padding-left: 0.375rem;
+}
+
+.public-template-bento .timeline-transport-inline-v4 {
+  min-height: 1.25rem;
+  grid-template-columns: 1.125rem minmax(0, 1fr) auto;
+  gap: 0.3125rem;
+  color: #b9c9d8;
+}
+
+.public-template-bento .timeline-transport-icon-v4 {
+  color: #9fc9ff;
+}
+
+.public-template-bento .timeline-transport-icon-v4 svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.public-template-bento .timeline-transport-copy-v4 {
+  gap: 0.3125rem;
+}
+
+.public-template-bento .timeline-transport-title-v4 {
+  color: #b9c9d8;
+  font-size: 0.5875rem;
+  line-height: 1.25;
+}
+
+.public-template-bento .timeline-transport-meta-v4 {
+  color: #7f95a8;
+  font-size: 0.4625rem;
+}
+
+.public-template-bento .timeline-node-list-v4 {
+  padding: 0.375rem 0.6875rem 0.5rem;
+}
+
+.public-template-bento .timeline-node-list-v4::before {
+  top: 1.375rem;
+  bottom: 1.375rem;
+  left: 4.875rem;
+  background: #355043;
+}
+
+.public-template-bento .timeline-node-v4 {
+  min-height: 3.375rem;
+  grid-template-columns: 3.25rem 1.875rem minmax(0, 1fr);
+}
+
+.public-template-bento .timeline-node-key-v4 {
+  padding: 0.6875rem 0.4375rem 0 0;
+  color: #9aac9f;
+  font-size: 0.5625rem;
+}
+
+.public-template-bento .timeline-node-key-v4.is-time {
+  color: #d8e3da;
+  font-size: 0.59375rem;
+}
+
+.public-template-bento .timeline-node-axis-v4 {
+  padding-top: 0.4375rem;
+}
+
+.public-template-bento .timeline-node-dot-v4 {
+  width: 1.6875rem;
+  height: 1.6875rem;
+  border-radius: 0.5625rem;
+  background: #112319;
+  box-shadow: 0 0 0 4px #09140d;
+  color: #58f58b;
+}
+
+.public-template-bento .timeline-node-v4.meal .timeline-node-dot-v4 {
+  color: #ffd4bb;
+}
+
+.public-template-bento .timeline-node-v4.rental .timeline-node-dot-v4 {
+  color: #ffe3a3;
+}
+
+.public-template-bento .timeline-node-v4.hotel .timeline-node-dot-v4 {
+  background: #58f58b;
+  color: #07110b;
+}
+
+.public-template-bento .timeline-node-content-v4 {
+  margin: 0.125rem 0 0.25rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.375rem 0.4375rem;
+}
+
+.public-template-bento .timeline-node-content-v4:hover,
+.public-template-bento .timeline-node-content-v4.is-selected {
+  background: #0d1a12;
+}
+
+.public-template-bento .timeline-node-title-v4 {
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.38;
+}
+
+.public-template-bento .timeline-node-type-v4 {
+  color: #6e7d73;
+  font-size: 0.4375rem;
+}
+
+.public-template-bento .timeline-node-meta-v4 {
+  margin-top: 0.1875rem;
+  color: #a7b5aa;
+  font-size: 0.5rem;
+  line-height: 1.35;
+}
+
+.public-template-bento .timeline-node-content-v4 .media-grid-v4 {
+  max-width: 18.125rem;
+  margin-top: 0.375rem;
+}
+
+.public-template-bento .timeline-node-content-v4 .public-media-entry,
+.public-template-bento .timeline-node-content-v4 .media-thumb-v4 {
+  min-height: 3.75rem;
+  max-height: 6.875rem;
+}
+
+.public-template-bento .public-timeline-note,
+.public-template-bento .public-timeline-day-notes {
+  color: #a7b5aa;
+}
+
+.public-template-bento .timeline-node-content-v4 .public-quick-actions a,
+.public-template-bento .timeline-node-content-v4 .public-quick-actions summary,
+.public-template-bento .timeline-transport-inline-v4 .public-quick-actions a,
+.public-template-bento .timeline-transport-inline-v4 .public-quick-actions summary {
+  min-height: 1.75rem;
+  padding: 0 0.375rem;
+  font-size: 0.5rem;
+}
+
+.public-template-bento .timeline-transport-inline-v4 .public-quick-actions a,
+.public-template-bento .timeline-transport-inline-v4 .public-quick-actions summary {
+  min-height: 1.25rem;
+  padding: 0 0.25rem;
+}
+
+@container public-content (max-width: 40rem) {
+  .public-template-bento .timeline-transport-copy-v4 {
+    gap: 0.25rem;
+  }
+}

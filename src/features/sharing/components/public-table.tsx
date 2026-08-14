@@ -113,7 +113,7 @@ export function PublicTable({
                       {items.map((item) => (
                         <div
                           aria-current={selectedItemRef === item.ref ? "true" : undefined}
-                          className={`public-item-focus cursor-default px-1.5 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
+                          className={`public-item-focus min-h-11 cursor-default px-1.5 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
                           data-public-item-ref={item.ref}
                           key={item.ref}
                           onClick={(event) => {

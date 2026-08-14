@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AppBottomNavigation } from "@/components/navigation/app-bottom-navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -76,32 +77,19 @@ export function TripMobileTabBar({
   variantId: string;
   researchCategory?: ResearchCategory;
 }) {
+  const items = sections.map((section) => ({
+    href: tripSectionHref(tripId, section.id, variantId, researchCategory),
+    Icon: section.id === "plan" ? Table2 : Lightbulb,
+    ...section,
+  }));
   return (
-    <nav
-      aria-label="Trip sections"
-      className="trip-mobile-tab-bar z-[70] grid shrink-0 grid-cols-2 border-t bg-background/95 pb-[max(0.35rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-1 backdrop-blur-xl min-[960px]:hidden"
-    >
-      {sections.map((section) => {
-        const Icon = section.id === "plan" ? Table2 : Lightbulb;
-        const current = section.id === active;
-        return (
-          <Link
-            aria-current={current ? "page" : undefined}
-            className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[11px] font-semibold leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
-              current
-                ? "text-primary"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-            }`}
-            href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
-            key={section.id}
-            prefetch
-          >
-            <Icon aria-hidden="true" className="size-5 shrink-0" strokeWidth={current ? 2.5 : 2} />
-            <span className="truncate">{section.label}</span>
-          </Link>
-        );
-      })}
-    </nav>
+    <AppBottomNavigation
+      activeId={active}
+      ariaLabel="Trip sections"
+      className="trip-mobile-tab-bar z-[70] grid-cols-2 shrink-0 rounded-none border-x-0 border-b-0 pb-[max(0.35rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-1 shadow-none min-[960px]:hidden"
+      itemClassName="min-h-14 flex-col gap-0.5 px-2 text-[11px] leading-none"
+      items={items}
+    />
   );
 }
 
