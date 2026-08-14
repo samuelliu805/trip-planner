@@ -43,7 +43,7 @@ export function PublicTable({
   return (
     <section
       aria-label="Read-only itinerary matrix"
-      className="public-matrix h-full min-w-0 overflow-x-auto overscroll-x-contain border-y bg-background outline-none"
+      className="public-matrix h-full min-w-0 overflow-auto border-y bg-background outline-none"
       role="region"
       tabIndex={0}
     >

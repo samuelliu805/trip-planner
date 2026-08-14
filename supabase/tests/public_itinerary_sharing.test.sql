@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(53);
+select plan(70);
 
 select ok(
   (select relrowsecurity from pg_catalog.pg_class where oid = 'public.public_itinerary_links'::regclass),
@@ -54,6 +54,45 @@ select is(
   '''overview''::public_itinerary_view',
   'new links default to Overview'
 );
+select is(
+  (
+    select pg_get_expr(default_value.adbin, default_value.adrelid)
+    from pg_catalog.pg_attrdef default_value
+    join pg_catalog.pg_attribute attribute
+      on attribute.attrelid = default_value.adrelid
+     and attribute.attnum = default_value.adnum
+    where default_value.adrelid = 'public.public_itinerary_links'::regclass
+      and attribute.attname = 'template_id'
+  ),
+  '''bento''::text',
+  'new links default to Bento'
+);
+select is(
+  (
+    select pg_get_expr(default_value.adbin, default_value.adrelid)
+    from pg_catalog.pg_attrdef default_value
+    join pg_catalog.pg_attribute attribute
+      on attribute.attrelid = default_value.adrelid
+     and attribute.attnum = default_value.adnum
+    where default_value.adrelid = 'public.public_itinerary_links'::regclass
+      and attribute.attname = 'template_version'
+  ),
+  '1',
+  'new links default to immutable template version 1'
+);
+select is(
+  (
+    select count(*)::integer
+    from pg_catalog.pg_constraint
+    where conrelid = 'public.public_itinerary_links'::regclass
+      and conname in (
+        'public_itinerary_links_template_id_format',
+        'public_itinerary_links_template_version_range'
+      )
+  ),
+  2,
+  'template id and version have database format constraints'
+);
 select ok(
   exists (
     select 1
@@ -81,6 +120,43 @@ select ok(
       and not ('search_path=""' = any(function.proconfig))
   ),
   'every Phase 6A security-definer RPC has an empty search path'
+);
+select ok(
+  not exists (
+    select 1
+    from pg_catalog.pg_proc function
+    join pg_catalog.pg_namespace namespace on namespace.oid = function.pronamespace
+    where namespace.nspname = 'public'
+      and function.proname in (
+        'create_public_itinerary_link_v3',
+        'update_public_itinerary_link_v3',
+        'rotate_public_itinerary_link_v3',
+        'list_public_itinerary_links_v3',
+        'get_public_itinerary_v4'
+      )
+      and not ('search_path=""' = any(function.proconfig))
+  ),
+  'template RPCs use an empty search path'
+);
+select ok(
+  has_function_privilege('anon', 'public.get_public_itinerary_v4(uuid)', 'EXECUTE'),
+  'anon may execute only the versioned public template projection'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.create_public_itinerary_link_v3(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)',
+    'EXECUTE'
+  ),
+  'authenticated owners may call template-aware link creation'
+);
+select ok(
+  not has_function_privilege(
+    'anon',
+    'public.create_public_itinerary_link_v3(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)',
+    'EXECUTE'
+  ),
+  'anon cannot call template-aware link creation'
 );
 
 insert into auth.users (
@@ -270,6 +346,57 @@ select ok(
   'new links use the required privacy and interactivity defaults'
 );
 select is(
+  public.get_public_itinerary_v4(
+    ((select payload ->> 'publicToken' from phase_6a_state where key = 'link_a'))::uuid
+  ) #>> '{settings,templateId}',
+  'bento',
+  'new links created through a legacy RPC still receive the Bento database default'
+);
+update phase_6a_state
+set payload = public.update_public_itinerary_link_v3(
+  (payload ->> 'id')::uuid,
+  'overview', true, true, true, false, false, true, false,
+  null, null, 'standard', 1
+)
+where key = 'link_a';
+select is(
+  (select payload ->> 'templateId' from phase_6a_state where key = 'link_a'),
+  'standard',
+  'owner update returns the saved template id'
+);
+select is(
+  public.list_public_itinerary_links_v3(
+    (select id from phase_6a_state where key = 'trip')
+  ) #>> '{0,templateId}',
+  'standard',
+  'owner management list returns the saved template'
+);
+select is(
+  public.get_public_itinerary_v4(
+    ((select payload ->> 'publicToken' from phase_6a_state where key = 'link_a'))::uuid
+  ) #>> '{settings,templateVersion}',
+  '1',
+  'public projection returns the saved immutable template version'
+);
+update phase_6a_state
+set payload = public.rotate_public_itinerary_link_v3((payload ->> 'id')::uuid)
+where key = 'link_a';
+select is(
+  (select payload ->> 'templateId' from phase_6a_state where key = 'link_a'),
+  'standard',
+  'token rotation preserves and returns the saved template'
+);
+select throws_ok(
+  format(
+    'select public.create_public_itinerary_link_v3(%L::uuid, requested_template_id => %L, requested_template_version => 1)',
+    (select id from phase_6a_state where key = 'route_b'),
+    'ethereal'
+  ),
+  '22023',
+  'PUBLIC_TEMPLATE_UNAVAILABLE',
+  'management RPC accepts only templates in the built-in registry contract'
+);
+select is(
   jsonb_array_length(public.list_public_itinerary_links((select id from phase_6a_state where key = 'trip'))),
   1,
   'owner management read returns the active link'
@@ -402,6 +529,24 @@ select throws_ok(
   'TRIP_OWNER_REQUIRED',
   'non-owner members cannot read tokens'
 );
+select throws_ok(
+  format(
+    'select public.create_public_itinerary_link_v3(%L::uuid)',
+    (select id from phase_6a_state where key = 'route_b')
+  ),
+  '42501',
+  'TRIP_OWNER_REQUIRED',
+  'non-owner members cannot create a template-aware link'
+);
+select throws_ok(
+  format(
+    'select public.list_public_itinerary_links_v3(%L::uuid)',
+    (select id from phase_6a_state where key = 'trip')
+  ),
+  '42501',
+  'TRIP_OWNER_REQUIRED',
+  'non-owner members cannot read template-aware link settings'
+);
 
 select set_config(
   'request.jwt.claims',
@@ -520,6 +665,29 @@ select throws_ok(
 );
 
 reset role;
+select throws_ok(
+  format(
+    'insert into public.public_itinerary_links (trip_id, variant_id, created_by, template_id) values (%L::uuid, %L::uuid, %L::uuid, %L)',
+    (select id from phase_6a_state where key = 'trip'),
+    (select id from phase_6a_state where key = 'route_b'),
+    '61000000-0000-4000-8000-000000000001',
+    'Unsafe Template'
+  ),
+  '23514',
+  'new row for relation "public_itinerary_links" violates check constraint "public_itinerary_links_template_id_format"',
+  'template ids reject unsafe database values'
+);
+select throws_ok(
+  format(
+    'insert into public.public_itinerary_links (trip_id, variant_id, created_by, template_version) values (%L::uuid, %L::uuid, %L::uuid, 0)',
+    (select id from phase_6a_state where key = 'trip'),
+    (select id from phase_6a_state where key = 'route_b'),
+    '61000000-0000-4000-8000-000000000001'
+  ),
+  '23514',
+  'new row for relation "public_itinerary_links" violates check constraint "public_itinerary_links_template_version_range"',
+  'template versions reject non-positive values'
+);
 select throws_ok(
   format(
     'insert into public.public_itinerary_links (trip_id, variant_id, created_by) values (%L::uuid, %L::uuid, %L::uuid)',

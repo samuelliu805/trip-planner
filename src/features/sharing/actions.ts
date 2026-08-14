@@ -21,6 +21,7 @@ import {
   type PublicItinerarySettingsInput,
 } from "./schema";
 import type { PublicRouteCalculation, ShareActionResult } from "./types";
+import { registeredPublicTemplateKey } from "./templates/registry";
 
 type PublicCalculationStop = {
   latitude: number;
@@ -31,6 +32,8 @@ type PublicCalculationStop = {
 function managementError(error?: string) {
   if (error?.includes("PUBLIC_LINK_ACTIVE_EXISTS"))
     return "This route already has an active public link.";
+  if (error?.includes("PUBLIC_TEMPLATE_UNAVAILABLE"))
+    return "Choose an available built-in public template.";
   if (error?.match(/OWNER|permission|row-level security/i))
     return "Only the trip owner can manage public links.";
   return "The public link could not be changed. Try again.";
@@ -47,15 +50,21 @@ const rpcSettings = (input: PublicItinerarySettingsInput) => ({
   requested_show_place_photos: input.showPlacePhotos,
   requested_show_quick_action_links: input.showQuickActionLinks,
   requested_show_times: input.showTimes,
+  requested_template_id: input.templateId,
+  requested_template_version: input.templateVersion,
 });
 
 export async function createPublicItineraryLink(
   rawInput: PublicItinerarySettingsInput,
 ): Promise<ShareActionResult> {
   const parsed = publicItinerarySettingsSchema.safeParse(rawInput);
-  if (!parsed.success) return { error: "Review the public link settings." };
+  if (
+    !parsed.success ||
+    !registeredPublicTemplateKey(parsed.data.templateId, parsed.data.templateVersion)
+  )
+    return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_public_itinerary_link_v2", {
+  const { data, error } = await supabase.rpc("create_public_itinerary_link_v3", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
@@ -71,9 +80,13 @@ export async function updatePublicItineraryLink(
   rawInput: PublicItinerarySettingsInput,
 ): Promise<ShareActionResult> {
   const settings = publicItinerarySettingsSchema.safeParse(rawInput);
-  if (!settings.success) return { error: "Review the public link settings." };
+  if (
+    !settings.success ||
+    !registeredPublicTemplateKey(settings.data.templateId, settings.data.templateVersion)
+  )
+    return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_public_itinerary_link_v2", {
+  const { data, error } = await supabase.rpc("update_public_itinerary_link_v3", {
     target_link_id: linkId,
     ...rpcSettings(settings.data),
   });
@@ -91,7 +104,7 @@ export async function rotatePublicItineraryLink(rawInput: {
   const input = linkMutationSchema.safeParse(rawInput);
   if (!input.success) return { error: "The public link request is invalid." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("rotate_public_itinerary_link_v2", {
+  const { data, error } = await supabase.rpc("rotate_public_itinerary_link_v3", {
     target_link_id: input.data.linkId,
   });
   if (error) return { error: managementError(error.message) };

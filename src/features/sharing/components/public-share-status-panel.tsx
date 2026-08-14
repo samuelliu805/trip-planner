@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import type { PublicItineraryLink } from "../types";
 import { ShareLinkActions, ShareQrCode } from "./share-tools";
 import { publicViewLabels, type ShareSettings } from "./public-share-settings";
+import { publicTemplateOptions } from "../templates/registry";
 
 export function PublicShareStatusPanel({
   activeLink,
@@ -38,6 +39,10 @@ export function PublicShareStatusPanel({
   title: string;
   variantName?: string;
 }) {
+  const templateLabel =
+    publicTemplateOptions().find(
+      ({ id, version }) => id === settings.templateId && version === settings.templateVersion,
+    )?.label ?? `${settings.templateId}@${settings.templateVersion}`;
   return (
     <aside className="min-w-0 space-y-4">
       <div className="border bg-muted/20 p-4">
@@ -48,7 +53,7 @@ export function PublicShareStatusPanel({
           <h3 className="text-lg font-semibold">{title}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
           <p className="mt-3 text-xs font-medium">
-            {publicViewLabels[settings.defaultView]} · {variantName}
+            {publicViewLabels[settings.defaultView]} · {templateLabel} · {variantName}
           </p>
         </div>
       </div>

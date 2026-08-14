@@ -7,6 +7,8 @@ import { PublicUnavailable } from "@/features/sharing/components/public-unavaila
 import { getPublicItinerary } from "@/features/sharing/data";
 import { publicShareUrlState } from "@/features/sharing/public-url-state";
 import { getSiteUrl } from "@/features/sharing/site-url";
+import { resolvePublicTemplate } from "@/features/sharing/templates/resolver";
+import { publicTemplateRuntimeConfig } from "@/features/sharing/templates/runtime/config.server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -54,13 +56,26 @@ export default async function PublicSharePage({ params, searchParams }: PublicSh
   const itinerary = await loadItinerary(token);
   if (!itinerary) return <PublicUnavailable />;
   const urlState = publicShareUrlState(search, itinerary.settings.defaultView);
+  const resolvedTemplate = resolvePublicTemplate({
+    ...publicTemplateRuntimeConfig(),
+    legacyTemplate: urlState.legacyTemplate,
+    persistedTemplateId: itinerary.settings.templateId,
+    persistedTemplateVersion: itinerary.settings.templateVersion,
+  });
+  if (resolvedTemplate.diagnostics.some(({ code }) => code !== "USED_FALLBACK"))
+    console.warn("public_template_resolution", {
+      diagnostics: resolvedTemplate.diagnostics,
+      persistedTemplateId: itinerary.settings.templateId,
+      persistedTemplateVersion: itinerary.settings.templateVersion,
+    });
   return (
     <PublicItineraryShell
-      initialTemplate={urlState.template}
       initialView={urlState.view}
       itinerary={itinerary}
-      key={`${urlState.template}:${urlState.view}`}
+      key={`${resolvedTemplate.key}:${urlState.view}`}
+      legacyTemplateOverride={urlState.legacyTemplate}
       publicUrl={`${getSiteUrl()}/share/${token}`}
+      templateKey={resolvedTemplate.key}
       token={token}
     />
   );

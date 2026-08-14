@@ -19,21 +19,44 @@ export function PublicItineraryViews({
   selectedItemRef?: string;
   view: PublicView;
 }) {
-  const viewProps = {
-    itinerary,
-    onSelectDay,
-    onSelectItem,
-    selectedDayRef,
-    selectedItemRef,
-  };
-
   return canonicalPublicViews.map((option) => (
+    <PublicItineraryViewPanel
+      itinerary={itinerary}
+      key={option}
+      onSelectDay={onSelectDay}
+      onSelectItem={onSelectItem}
+      option={option}
+      selectedDayRef={selectedDayRef}
+      selectedItemRef={selectedItemRef}
+      view={view}
+    />
+  ));
+}
+
+export function PublicItineraryViewPanel({
+  itinerary,
+  onSelectDay,
+  onSelectItem,
+  option,
+  selectedDayRef,
+  selectedItemRef,
+  view,
+}: {
+  itinerary: PublicItinerary;
+  onSelectDay: (dayRef: string) => void;
+  onSelectItem: (itemRef: string, dayRef: string) => void;
+  option: PublicView;
+  selectedDayRef?: string;
+  selectedItemRef?: string;
+  view: PublicView;
+}) {
+  const viewProps = { itinerary, onSelectDay, onSelectItem, selectedDayRef, selectedItemRef };
+  return (
     <section
       aria-labelledby={`public-${option}-tab`}
       className="h-full min-h-0 min-w-0"
       hidden={view !== option}
       id={`public-${option}-panel`}
-      key={option}
       role="tabpanel"
     >
       <div
@@ -48,5 +71,5 @@ export function PublicItineraryViews({
         )}
       </div>
     </section>
-  ));
+  );
 }

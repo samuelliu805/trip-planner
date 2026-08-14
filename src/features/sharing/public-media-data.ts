@@ -23,7 +23,7 @@ export function publicPlaceMediaSources(itinerary: PublicItinerary): PublicPlace
 
 export async function getPublicPlaceMediaSources(token: string): Promise<PublicPlaceMediaSource[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_itinerary_v3", {
+  const { data, error } = await supabase.rpc("get_public_itinerary_v4", {
     shared_token: token,
   });
   if (error) return [];

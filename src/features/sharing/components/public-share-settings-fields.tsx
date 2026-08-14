@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PlannerVariant } from "@/features/itinerary/types";
 
 import { canonicalPublicViews } from "../schema";
+import { publicTemplateOptions } from "../templates/registry";
 import { publicViewLabels, type ShareSettings } from "./public-share-settings";
 
 function SettingsToggle({
@@ -65,6 +66,7 @@ export function PublicShareSettingsFields({
   variantId: string;
   variants: PlannerVariant[];
 }) {
+  const templates = publicTemplateOptions();
   return (
     <div className="min-w-0 space-y-5">
       <div className="space-y-1.5">
@@ -84,6 +86,33 @@ export function PublicShareSettingsFields({
         <p className="text-xs text-muted-foreground">
           Changing your Primary route later does not retarget this link.{" "}
           {activeCount ? `${activeCount} active ${activeCount === 1 ? "link" : "links"}.` : ""}
+        </p>
+      </div>
+
+      <div className="min-w-0 space-y-1.5">
+        <Label htmlFor="public-share-template">Public template</Label>
+        <Select
+          onValueChange={(key) => {
+            const template = templates.find((option) => option.key === key);
+            if (!template) return;
+            onSettingChange("templateId", template.id);
+            onSettingChange("templateVersion", template.version);
+          }}
+          value={`${settings.templateId}@${settings.templateVersion}`}
+        >
+          <SelectTrigger className="min-h-11 min-w-0" id="public-share-template">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {templates.map((template) => (
+              <SelectItem key={template.key} value={template.key}>
+                {template.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Template versions are fixed so a published link keeps the same presentation.
         </p>
       </div>
 

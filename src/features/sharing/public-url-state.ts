@@ -4,8 +4,6 @@ import { canonicalPublicViews } from "./schema.ts";
 import type { PublicView } from "./types.ts";
 
 export const canonicalPublicTemplates = ["standard", "bento"] as const;
-export type PublicTemplate = (typeof canonicalPublicTemplates)[number];
-export const defaultPublicTemplate: PublicTemplate = "standard";
 
 const publicTemplateSchema = z.enum(canonicalPublicTemplates);
 const publicQueryViewSchema = z.enum(canonicalPublicViews);
@@ -21,7 +19,7 @@ export function publicShareUrlState(
   const template = publicTemplateSchema.safeParse(first(search.template));
   const view = publicQueryViewSchema.safeParse(first(search.view));
   return {
-    template: template.success ? template.data : defaultPublicTemplate,
+    legacyTemplate: template.success ? template.data : undefined,
     view: view.success ? view.data : savedDefaultView,
   };
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { itineraryItemTypes } from "../itinerary/item-schema.ts";
 import { overviewRouteModes, routeLegModes } from "../routes/types.ts";
+import { publicTemplateIdSchema, publicTemplateVersionSchema } from "./templates/schema.ts";
 
 export const canonicalPublicViews = ["overview", "table", "timeline"] as const;
 
@@ -187,6 +188,8 @@ export const publicItinerarySchema = z
         showPlacePhotos: z.boolean().optional(),
         showQuickActionLinks: z.boolean(),
         showTimes: z.boolean(),
+        templateId: publicTemplateIdSchema.optional(),
+        templateVersion: publicTemplateVersionSchema.optional(),
       })
       .strict(),
     trip: z
@@ -221,6 +224,8 @@ export const publicItineraryLinkSchema = z
     showPlacePhotos: z.boolean(),
     showQuickActionLinks: z.boolean(),
     showTimes: z.boolean(),
+    templateId: publicTemplateIdSchema,
+    templateVersion: publicTemplateVersionSchema,
     tripId: z.uuid(),
     updatedAt: z.string(),
     variantId: z.uuid(),
@@ -239,6 +244,8 @@ export const publicItinerarySettingsSchema = z
     showPlacePhotos: z.boolean(),
     showQuickActionLinks: z.boolean(),
     showTimes: z.boolean(),
+    templateId: publicTemplateIdSchema,
+    templateVersion: publicTemplateVersionSchema,
     variantId: z.uuid(),
   })
   .strict();

@@ -1,0 +1,124 @@
+.public-matrix {
+  position: relative;
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  isolation: isolate;
+  -webkit-overflow-scrolling: touch;
+}
+
+.public-matrix > [role="grid"] {
+  position: relative;
+  overflow: visible;
+  padding-bottom: 6rem;
+}
+
+.public-matrix .matrix-grid-header {
+  top: 0;
+  z-index: 70;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.public-matrix .matrix-date-column,
+.public-matrix .matrix-day-column {
+  background-clip: padding-box;
+  backface-visibility: hidden;
+  box-shadow: 1px 0 0 var(--border);
+  transform: translateZ(0);
+}
+
+.public-matrix [role="row"]:not(.matrix-grid-header) .matrix-date-column {
+  left: 0;
+  z-index: 60;
+}
+
+.public-matrix [role="row"]:not(.matrix-grid-header) .matrix-day-column {
+  left: 6rem;
+  z-index: 50;
+}
+
+.public-matrix .matrix-grid-header .matrix-date-column {
+  top: 0;
+  left: 0;
+  z-index: 80;
+}
+
+.public-matrix .matrix-grid-header .matrix-day-column {
+  top: 0;
+  left: 6rem;
+  z-index: 75;
+}
+
+.public-template-bento .public-matrix {
+  border-color: #2b3d31;
+  background: #0b1710;
+  color: #f2f8f3;
+}
+
+.public-template-bento .public-matrix > [role="grid"] {
+  overflow: visible;
+  border-right: 1px solid #2b3d31;
+  border-bottom: 1px solid #2b3d31;
+  border-left: 1px solid #2b3d31;
+  border-radius: 0 0 0.8125rem 0.8125rem;
+  background: #0b1710;
+}
+
+.public-template-bento .public-matrix [role="row"] {
+  border-color: #26372d;
+  background: #0b1710;
+}
+
+.public-template-bento .public-matrix [role="columnheader"] {
+  border-color: #26372d;
+  background: #102017;
+  color: #b8c8bb;
+}
+
+.public-template-bento .public-matrix [role="gridcell"],
+.public-template-bento .public-matrix [role="rowheader"] {
+  border-color: #26372d;
+}
+
+.public-template-bento .public-matrix .matrix-date-column,
+.public-template-bento .public-matrix .matrix-day-column {
+  background: #0d1b12;
+  box-shadow: 1px 0 #34483b;
+}
+
+.public-template-bento .public-matrix .matrix-grid-header .matrix-date-column,
+.public-template-bento .public-matrix .matrix-grid-header .matrix-day-column {
+  background: #13251a;
+}
+
+.public-template-bento .public-matrix .public-item-focus {
+  margin-bottom: 0.3125rem;
+  border: 1px solid #24362b;
+  border-radius: 0.5rem;
+  background: #101f16;
+}
+
+@media (max-width: 899px) {
+  .public-matrix .matrix-day-column {
+    display: none;
+  }
+
+  .public-matrix .matrix-date-column {
+    left: 0;
+    z-index: 60;
+    width: 6rem;
+  }
+
+  .public-matrix .matrix-grid-header .matrix-date-column {
+    z-index: 80;
+    background-color: var(--muted);
+  }
+
+  .public-template-bento .public-matrix > [role="grid"] {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}

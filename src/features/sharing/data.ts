@@ -13,7 +13,7 @@ import type { PublicItinerary, PublicItineraryLink } from "./types";
 
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_itinerary_v3", { shared_token: token });
+  const { data, error } = await supabase.rpc("get_public_itinerary_v4", { shared_token: token });
   if (error) return null;
   if (unavailablePublicItinerarySchema.safeParse(data).success) return null;
   const parsed = publicItinerarySchema.safeParse(data);
@@ -41,7 +41,7 @@ export async function listPublicItineraryLinks(
   tripId: string,
 ): Promise<{ data: PublicItineraryLink[]; error: string | null }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_public_itinerary_links_v2", {
+  const { data, error } = await supabase.rpc("list_public_itinerary_links_v3", {
     target_trip_id: tripId,
   });
   if (error) return { data: [], error: error.message };
