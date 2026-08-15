@@ -1,3 +1,5 @@
+"use client";
+
 import { format, parseISO } from "date-fns";
 
 import {
@@ -8,6 +10,7 @@ import { matrixCategoryColumns } from "@/features/itinerary/components/matrix-co
 import { transportModeLabels, type TransportMode } from "@/features/itinerary/types";
 
 import { PublicQuickActions } from "./public-quick-actions";
+import { useContainedPublicMatrix } from "./use-contained-public-matrix";
 import type { PublicItinerary, PublicItineraryItem } from "../types";
 
 function publicTransportMode(item: PublicItineraryItem): TransportMode | null {
@@ -36,6 +39,7 @@ export function PublicTable({
   selectedDayRef?: string;
   selectedItemRef?: string;
 }) {
+  const matrixRef = useContainedPublicMatrix();
   const columns = itinerary.settings.showNotes
     ? matrixCategoryColumns
     : matrixCategoryColumns.filter(({ id }) => id !== "notes");
@@ -44,6 +48,7 @@ export function PublicTable({
     <section
       aria-label="Read-only itinerary matrix"
       className="public-matrix h-full min-w-0 overflow-auto border-y bg-background outline-none"
+      ref={matrixRef}
       role="region"
       tabIndex={0}
     >
