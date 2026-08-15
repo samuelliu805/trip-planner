@@ -1566,6 +1566,10 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   );
   assert.match(
     styles,
+    /\.public-template-bento\[data-public-template-key="bento@2"\] \.timeline-transport-copy-v4 \{[^}]*gap: 0\.5rem/,
+  );
+  assert.match(
+    styles,
     /\.public-template-bento\[data-public-template-key="bento@2"\] \.timeline-transport-meta-v4 \{[^}]*flex: 1 1 auto;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
   );
 });
