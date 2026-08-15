@@ -72,10 +72,7 @@ export function PublicShareDialog({
   const publicUrl = activeLink ? `${siteUrl}/share/${activeLink.publicToken}` : "";
 
   function chooseVariant(nextVariantId: string) {
-    const nextLink = links.find((link) => link.variantId === nextVariantId);
     setVariantId(nextVariantId);
-    setSelectedPageId(nextLink?.id ?? "new");
-    setSettings(settingsFromLink(nextLink));
     setError(undefined);
     setNotice(undefined);
   }
@@ -93,7 +90,7 @@ export function PublicShareDialog({
     setSelectedPageId("new");
     setSettings(defaultShareSettings);
     setError(undefined);
-    setNotice("Configure a new independent Share Page. Existing URLs will not change.");
+    setNotice("Set up a new shareable page. Existing links will not change.");
   }
 
   function setSetting<Key extends keyof ShareSettings>(key: Key, value: ShareSettings[Key]) {
@@ -116,7 +113,7 @@ export function PublicShareDialog({
       setLinks((current) => [...current.filter(({ id }) => id !== savedLink.id), savedLink]);
       setSelectedPageId(savedLink.id);
       setSettings(settingsFromLink(savedLink));
-      setNotice(activeLink ? "Share Page snapshot updated." : "Independent Share Page created.");
+      setNotice(activeLink ? "Shareable page updated." : "Shareable page created.");
     });
   }
 
@@ -133,7 +130,7 @@ export function PublicShareDialog({
       setLinks((current) => current.filter(({ id }) => id !== activeLink.id));
       setSelectedPageId("new");
       setSettings(defaultShareSettings);
-      setNotice("Public access revoked. Other Share Pages and permanent images are unchanged.");
+      setNotice("Public access revoked. Other shareable pages and permanent images are unchanged.");
     });
   }
 
@@ -145,12 +142,12 @@ export function PublicShareDialog({
           <span className="hidden lg:inline">Share</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="public-share-settings-dialog flex max-h-[calc(100dvh-max(8px,env(safe-area-inset-top)))] flex-col overflow-hidden sm:max-h-[min(90dvh,860px)] sm:max-w-4xl">
+      <DialogContent className="public-share-settings-dialog flex max-h-[calc(100dvh-max(8px,env(safe-area-inset-top)))] flex-col overflow-hidden sm:max-h-[min(90dvh,860px)] sm:max-w-5xl">
         <DialogHeader className="shrink-0">
-          <DialogTitle>Share this itinerary</DialogTitle>
+          <DialogTitle>Share trip</DialogTitle>
           <DialogDescription>
-            Configure independent, durable Share Pages. Saving publishes a snapshot; later trip
-            edits do not silently change an existing page.
+            Create a shareable page, choose what it includes, and publish it when you are ready.
+            Each shareable page has its own link and settings.
           </DialogDescription>
         </DialogHeader>
 
@@ -167,7 +164,7 @@ export function PublicShareDialog({
           <div className="min-w-0 space-y-4 px-4 py-4 sm:px-6 sm:py-5">
             <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div className="min-w-0 space-y-1.5">
-                <Label htmlFor="share-page-picker">Share Page</Label>
+                <Label htmlFor="share-page-picker">Shareable page</Label>
                 <Select onValueChange={choosePage} value={selectedPageId}>
                   <SelectTrigger className="min-h-11 min-w-0" id="share-page-picker">
                     <SelectValue />
@@ -175,10 +172,11 @@ export function PublicShareDialog({
                   <SelectContent>
                     {links.map((page, index) => (
                       <SelectItem key={page.id} value={page.id}>
-                        Page {index + 1} · {page.shareTitle || page.templateId}
+                        {page.shareTitle || `Shareable page ${index + 1}`} ·{" "}
+                        {variants.find(({ id }) => id === page.variantId)?.name ?? "Saved route"}
                       </SelectItem>
                     ))}
-                    <SelectItem value="new">New Share Page</SelectItem>
+                    <SelectItem value="new">New shareable page</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -188,16 +186,18 @@ export function PublicShareDialog({
                 type="button"
                 variant="outline"
               >
-                <Plus className="size-4" /> New page
+                <Plus className="size-4" /> New shareable page
               </Button>
             </div>
-            <div className="grid min-w-0 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,.85fr)]">
+            <div className="grid min-w-0 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,.72fr)]">
               <PublicShareSettingsFields
-                activeCount={links.length}
+                dayCount={trip.day_count}
+                existingPage={Boolean(activeLink)}
                 onChooseVariant={chooseVariant}
                 onSettingChange={setSetting}
                 settings={settings}
                 sharePages={links.filter(({ id }) => id !== activeLink?.id)}
+                startDate={trip.start_date}
                 suggestedDescription={suggestedDescription}
                 suggestedTitle={suggestedTitle}
                 variantId={variantId}
@@ -226,11 +226,7 @@ export function PublicShareDialog({
           </Button>
           <Button aria-busy={pending} disabled={pending} onClick={save} type="button">
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            {pending
-              ? "Publishing…"
-              : activeLink
-                ? "Update published snapshot"
-                : "Create Share Page"}
+            {pending ? "Publishing…" : activeLink ? "Publish changes" : "Create and publish"}
           </Button>
         </DialogFooter>
       </DialogContent>

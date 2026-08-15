@@ -91,6 +91,7 @@ export function useLongImageExport({
           exportId: prepared.data.exportId,
           partCount: finalized.data.partCount,
           permanentSlug: finalized.data.permanentSlug,
+          renderConfig: prepared.data.renderConfig,
           sourceSnapshotHash: prepared.data.sourceSnapshotHash,
           updatedAt: now,
           versionNumber: prepared.data.versionNumber,

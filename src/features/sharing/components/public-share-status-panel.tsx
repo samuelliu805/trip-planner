@@ -39,16 +39,14 @@ export function PublicShareStatusPanel({
   title: string;
 }) {
   return (
-    <aside className="min-w-0 space-y-4">
+    <aside className="min-w-0 space-y-4 lg:sticky lg:top-0 lg:self-start">
       {activeLink ? (
         <div className="space-y-4 border p-4">
           <div className="flex items-start gap-2">
             <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 text-primary" />
             <div>
-              <h3 className="font-semibold">Public link active</h3>
-              <p className="text-xs text-muted-foreground">
-                No sign-in required · Published snapshot
-              </p>
+              <h3 className="font-semibold">Published shareable page</h3>
+              <p className="text-xs text-muted-foreground">Public snapshot · No sign-in required</p>
             </div>
           </div>
           <div className="flex items-center gap-2 border bg-muted/30 p-2 text-xs">
@@ -99,9 +97,10 @@ export function PublicShareStatusPanel({
       ) : (
         <div className="border p-4">
           <ShieldCheck aria-hidden="true" className="size-6 text-primary" />
-          <h3 className="mt-3 font-semibold">Ready to create</h3>
+          <h3 className="mt-3 font-semibold">Ready to publish</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Only the selected route and enabled public fields will be exposed.
+            Review the settings, then create the shareable link. Image generation becomes available
+            after publishing.
           </p>
         </div>
       )}

@@ -5,10 +5,15 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 import { getPublicItinerary } from "../data";
-import { publicItineraryLinkSchema } from "../schema";
+import { publicItineraryLinkSchema, publicItinerarySchema } from "../schema";
 import { getSiteUrl } from "../site-url";
 import type { PreparedShareImage, ShareActionResult, ShareImagePartInput } from "../types";
-import { prepareShareImageSchema, shareImagePartInputSchema } from "./schema";
+import {
+  longImageRenderConfigSchema,
+  prepareShareImageSchema,
+  shareImagePartInputSchema,
+} from "./schema";
+import { longImageScopeFromPage, scopePublicItinerary } from "./scope";
 
 const prepareImageInputSchema = z
   .object({
@@ -57,20 +62,40 @@ export async function prepareShareImageVersion(
     qrDestinationType === "homepage"
       ? `${siteUrl}/?utm_source=shared_image&utm_medium=qr`
       : `${siteUrl}/share/${destinationPage.publicToken}`;
-  const { data, error } = await supabase.rpc("prepare_share_image_version_v1", {
+  const renderConfig = {
+    renderer: "timeline" as const,
+    scope: longImageScopeFromPage(page.data),
+    version: 1 as const,
+    width: 1080 as const,
+  };
+  const { data, error } = await supabase.rpc("prepare_share_image_version_v2", {
     requested_mode: input.data.mode,
     requested_qr_destination_type: qrDestinationType,
     requested_qr_destination_url: qrDestinationUrl,
-    requested_render_config: { renderer: "timeline", version: 1, width: 1080 },
+    requested_render_config: renderConfig,
     target_export_id: input.data.exportId,
     target_share_page_id: page.data.id,
   });
   if (error || !data) return { error: imageError(error?.message) };
   const rpcData = data as Record<string, unknown>;
   const enrichedSnapshot = await getPublicItinerary(page.data.publicToken);
+  const parsedRenderConfig = longImageRenderConfigSchema.safeParse(rpcData.renderConfig);
+  if (!parsedRenderConfig.success) return { error: "The image settings could not be read." };
+  const parsedSnapshot = publicItinerarySchema.safeParse(
+    enrichedSnapshot ?? rpcData.sourceSnapshot,
+  );
+  if (!parsedSnapshot.success) return { error: "The image snapshot could not be read." };
+  let sourceSnapshot;
+  try {
+    sourceSnapshot = scopePublicItinerary(parsedSnapshot.data, parsedRenderConfig.data.scope);
+  } catch (caught) {
+    return {
+      error: caught instanceof Error ? caught.message : "The image date range is unavailable.",
+    };
+  }
   const prepared = prepareShareImageSchema.safeParse({
     ...rpcData,
-    sourceSnapshot: enrichedSnapshot ?? rpcData.sourceSnapshot,
+    sourceSnapshot,
     uploadPathPrefix: `${userData.user.id}/${rpcData.exportId}/${rpcData.versionId}`,
   });
   return prepared.success

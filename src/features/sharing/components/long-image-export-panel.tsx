@@ -4,6 +4,11 @@ import { Copy, Download, ImageDown, LoaderCircle, Share2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+import {
+  longImageScopeFromPage,
+  longImageScopeLabel,
+  sameLongImageScope,
+} from "../long-image/scope";
 import type { OwnerShareImageState, PublicItineraryLink } from "../types";
 import { LongImageRegenerateDialog, LongImageRevokeDialog } from "./long-image-export-dialogs";
 import { useLongImageExport } from "./use-long-image-export";
@@ -20,21 +25,27 @@ export function LongImageExportPanel({
   siteUrl: string;
 }) {
   const controller = useLongImageExport({ imageState, onImageStateChange, sharePage, siteUrl });
+  const configuredScope = longImageScopeFromPage(sharePage);
+  const generatedScope = imageState?.renderConfig.scope ?? configuredScope;
+  const settingsChanged = imageState
+    ? sharePage.snapshotHash !== imageState.sourceSnapshotHash ||
+      !sameLongImageScope(configuredScope, generatedScope)
+    : false;
 
   return (
     <section className="space-y-3 border-t pt-4">
       <div>
-        <h4 className="text-sm font-semibold">Timeline export v1</h4>
+        <h4 className="text-sm font-semibold">Long image</h4>
         <p className="mt-1 text-xs text-muted-foreground">
-          A 1080 px long image with a fixed QR destination.
+          1080 px · {longImageScopeLabel(generatedScope)}
         </p>
       </div>
       {imageState ? (
         <div className="grid grid-cols-2 gap-2">
-          {sharePage.snapshotHash !== imageState.sourceSnapshotHash ? (
+          {settingsChanged ? (
             <p className="col-span-2 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs">
-              This Share Page has changed since the image was generated. The existing image remains
-              available.
+              This shareable page has changed since the image was generated, or its image range is
+              different. The existing image remains available.
             </p>
           ) : null}
           <Button asChild className="min-h-11" size="sm" variant="outline">

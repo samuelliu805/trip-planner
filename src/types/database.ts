@@ -431,8 +431,10 @@ export type Database = {
           created_by: string
           default_view: Database["public"]["Enums"]["public_itinerary_view"]
           id: string
+          long_image_end_day_number: number | null
           long_image_qr_destination: string
           long_image_qr_share_page_id: string | null
+          long_image_start_day_number: number | null
           published_at: string | null
           published_snapshot: Json | null
           public_token: string
@@ -459,8 +461,10 @@ export type Database = {
           created_by: string
           default_view?: Database["public"]["Enums"]["public_itinerary_view"]
           id?: string
+          long_image_end_day_number?: number | null
           long_image_qr_destination?: string
           long_image_qr_share_page_id?: string | null
+          long_image_start_day_number?: number | null
           published_at?: string | null
           published_snapshot?: Json | null
           public_token?: string
@@ -487,8 +491,10 @@ export type Database = {
           created_by?: string
           default_view?: Database["public"]["Enums"]["public_itinerary_view"]
           id?: string
+          long_image_end_day_number?: number | null
           long_image_qr_destination?: string
           long_image_qr_share_page_id?: string | null
+          long_image_start_day_number?: number | null
           published_at?: string | null
           published_snapshot?: Json | null
           public_token?: string
@@ -1428,6 +1434,29 @@ export type Database = {
         }
         Returns: Json
       }
+      create_share_page_v2: {
+        Args: {
+          requested_allow_long_image_download?: boolean
+          requested_allow_route_explore?: boolean
+          requested_default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_end_day_number?: number | null
+          requested_long_image_qr_destination?: string
+          requested_long_image_qr_share_page_id?: string | null
+          requested_long_image_start_day_number?: number | null
+          requested_share_description?: string
+          requested_share_title?: string
+          requested_show_addresses?: boolean
+          requested_show_map_routes?: boolean
+          requested_show_notes?: boolean
+          requested_show_place_photos?: boolean
+          requested_show_quick_action_links?: boolean
+          requested_show_times?: boolean
+          requested_template_id?: string
+          requested_template_version?: number
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       fail_share_image_version_v1: {
         Args: { requested_error_message: string; target_version_id: string }
         Returns: undefined
@@ -1471,6 +1500,17 @@ export type Database = {
         }
         Returns: Json
       }
+      prepare_share_image_version_v2: {
+        Args: {
+          requested_mode: string
+          requested_qr_destination_type: string
+          requested_qr_destination_url: string
+          requested_render_config: Json
+          target_export_id: string | null
+          target_share_page_id: string
+        }
+        Returns: Json
+      }
       public_share_image_manifest_v1: {
         Args: { requested_slug: string }
         Returns: Json
@@ -1494,6 +1534,29 @@ export type Database = {
           requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
           requested_long_image_qr_destination: string
           requested_long_image_qr_share_page_id?: string | null
+          requested_share_description: string
+          requested_share_title: string
+          requested_show_addresses: boolean
+          requested_show_map_routes: boolean
+          requested_show_notes: boolean
+          requested_show_place_photos: boolean
+          requested_show_quick_action_links: boolean
+          requested_show_times: boolean
+          requested_template_id: string
+          requested_template_version: number
+          target_share_page_id: string
+        }
+        Returns: Json
+      }
+      update_share_page_v2: {
+        Args: {
+          requested_allow_long_image_download: boolean
+          requested_allow_route_explore: boolean
+          requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_end_day_number?: number | null
+          requested_long_image_qr_destination: string
+          requested_long_image_qr_share_page_id?: string | null
+          requested_long_image_start_day_number?: number | null
           requested_share_description: string
           requested_share_title: string
           requested_show_addresses: boolean
