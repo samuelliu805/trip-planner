@@ -19,7 +19,7 @@ export function RouteTotals({ calculation }: { calculation: PublicRouteCalculati
 }
 
 export function PublicRouteLegDetails({
-  defaultOpen = true,
+  defaultOpen = false,
   labels,
   legs,
 }: {

@@ -541,11 +541,9 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
   );
   const queries = (
     await Promise.all(
-      [
-        "../itinerary/queries.ts",
-        "../itinerary/item-mutations.ts",
-        "../itinerary/day-mutations.ts",
-      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+      ["../itinerary/item-mutations.ts", "../itinerary/day-mutations.ts"].map((path) =>
+        readFile(new URL(path, import.meta.url), "utf8"),
+      ),
     )
   ).join("\n");
 

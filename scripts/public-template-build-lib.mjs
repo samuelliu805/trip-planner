@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import { format, resolveConfig } from "prettier";
 
 import { bentoPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/bento/source.ts";
+import { bentoPublicTemplateSourceV2 } from "../src/features/sharing/templates/builtins/bento/v2.ts";
+import { etherealPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/ethereal/source.ts";
+import { journalPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/journal/source.ts";
 import { standardPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/standard/source.ts";
 import {
   compilePublicTemplate,
@@ -14,7 +17,13 @@ const scriptsDirectory = dirname(fileURLToPath(import.meta.url));
 const projectDirectory = resolve(scriptsDirectory, "..");
 const prettierConfig = (await resolveConfig(resolve(projectDirectory, "package.json"))) ?? {};
 
-const publicTemplateSources = [standardPublicTemplateSourceV1, bentoPublicTemplateSourceV1];
+const publicTemplateSources = [
+  standardPublicTemplateSourceV1,
+  bentoPublicTemplateSourceV1,
+  bentoPublicTemplateSourceV2,
+  etherealPublicTemplateSourceV1,
+  journalPublicTemplateSourceV1,
+];
 
 function generatedName(template) {
   return `${template.id}PublicTemplateV${template.version}`;

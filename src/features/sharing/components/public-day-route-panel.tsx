@@ -12,7 +12,7 @@ import type {
   PublicRouteCalculation,
   PublicSavedRoute,
 } from "../types";
-import { PublicRouteLegDetails, RouteTotals } from "./public-route-summary";
+import { PublicRouteLegDetails } from "./public-route-summary";
 import { PublicSharedRouteSummary } from "./public-shared-route-summary";
 import { PublicTemporaryRouteStops } from "./public-temporary-route-stops";
 
@@ -34,6 +34,7 @@ export function PublicDayRoutePanel({
   localStops,
   onBackToShared,
   onCalculate,
+  onEdit,
   onExplore,
   onModeChange,
   onMoveStop,
@@ -56,6 +57,7 @@ export function PublicDayRoutePanel({
   localStops: string[];
   onBackToShared: () => void;
   onCalculate: () => void;
+  onEdit: () => void;
   onExplore: () => void;
   onModeChange: (mode: RouteLegMode) => void;
   onMoveStop: (index: number, direction: -1 | 1) => void;
@@ -92,81 +94,101 @@ export function PublicDayRoutePanel({
       ) : null}
 
       {exploring ? (
-        <>
-          <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-            <span>Temporary</span>
-            <span aria-hidden="true" className="text-border">
-              ·
-            </span>
-            <span className="text-muted-foreground">Only you</span>
-          </div>
-          <div
-            aria-label="Temporary route travel mode"
-            className="grid grid-cols-4 border"
-            role="radiogroup"
-          >
-            {dayRouteModes.map(({ Icon, label, value }) => (
-              <button
-                aria-checked={dayMode === value}
-                aria-label={label}
-                className="flex min-h-12 flex-col items-center justify-center gap-0.5 border-r text-muted-foreground last:border-r-0 hover:bg-muted aria-checked:bg-primary aria-checked:text-primary-foreground"
-                key={value}
-                onClick={() => onModeChange(value)}
-                role="radio"
+        calculation ? (
+          <>
+            <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              <span>Temporary route</span>
+              <span aria-hidden="true" className="text-border">
+                ·
+              </span>
+              <span className="text-muted-foreground">Only you</span>
+            </div>
+            <PublicRouteLegDetails
+              labels={localStops.map(
+                (ref) => routeSetupItems.find((item) => item.ref === ref)?.title ?? "Stop",
+              )}
+              legs={calculation.legs}
+            />
+            {error ? (
+              <p aria-live="polite" className="text-xs text-destructive">
+                {error}
+              </p>
+            ) : null}
+            <div className="grid grid-cols-2 gap-2 border-t pt-2">
+              <Button className="min-h-11" onClick={onEdit} type="button" variant="outline">
+                Edit route
+              </Button>
+              <Button className="min-h-11" onClick={onBackToShared} type="button" variant="ghost">
+                Shared route
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+              <span>Temporary</span>
+              <span aria-hidden="true" className="text-border">
+                ·
+              </span>
+              <span className="text-muted-foreground">Only you</span>
+            </div>
+            <div
+              aria-label="Temporary route travel mode"
+              className="grid grid-cols-4 border"
+              role="radiogroup"
+            >
+              {dayRouteModes.map(({ Icon, label, value }) => (
+                <button
+                  aria-checked={dayMode === value}
+                  aria-label={label}
+                  className="flex min-h-12 flex-col items-center justify-center gap-0.5 border-r text-muted-foreground last:border-r-0 hover:bg-muted aria-checked:bg-primary aria-checked:text-primary-foreground"
+                  key={value}
+                  onClick={() => onModeChange(value)}
+                  role="radio"
+                  type="button"
+                >
+                  <Icon aria-hidden="true" className="size-4" />
+                  <span className="text-[9px] font-semibold">{label}</span>
+                </button>
+              ))}
+            </div>
+            <PublicTemporaryRouteStops
+              candidates={candidates}
+              items={routeSetupItems}
+              localStops={localStops}
+              onMoveStop={onMoveStop}
+              onToggleStop={onToggleStop}
+              plan={plan}
+            />
+            {error ? (
+              <p aria-live="polite" className="text-xs text-destructive">
+                {error}
+              </p>
+            ) : null}
+            <div className="sticky bottom-0 grid grid-cols-[1fr_auto_auto] gap-2 border-t bg-background pt-2">
+              <Button
+                aria-busy={pending}
+                className="min-h-11"
+                disabled={pending || localStops.length < 2}
+                onClick={onCalculate}
                 type="button"
               >
-                <Icon aria-hidden="true" className="size-4" />
-                <span className="text-[9px] font-semibold">{label}</span>
-              </button>
-            ))}
-          </div>
-          <PublicTemporaryRouteStops
-            candidates={candidates}
-            items={routeSetupItems}
-            localStops={localStops}
-            onMoveStop={onMoveStop}
-            onToggleStop={onToggleStop}
-            plan={plan}
-          />
-          {calculation ? (
-            <>
-              <RouteTotals calculation={calculation} />
-              <PublicRouteLegDetails
-                labels={localStops.map(
-                  (ref) => routeSetupItems.find((item) => item.ref === ref)?.title ?? "Stop",
+                {pending ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <Calculator className="size-4" />
                 )}
-                legs={calculation.legs}
-              />
-            </>
-          ) : null}
-          {error ? (
-            <p aria-live="polite" className="text-xs text-destructive">
-              {error}
-            </p>
-          ) : null}
-          <div className="sticky bottom-0 grid grid-cols-[1fr_auto_auto] gap-2 border-t bg-background pt-2">
-            <Button
-              aria-busy={pending}
-              className="min-h-11"
-              disabled={pending || localStops.length < 2}
-              onClick={onCalculate}
-              type="button"
-            >
-              {pending ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <Calculator className="size-4" />
-              )}
-              {pending ? "Calculating…" : "Calculate"}
-            </Button>
-            <Button onClick={onReset} type="button" variant="outline">
-              Reset
-            </Button>
-            <Button onClick={onBackToShared} type="button" variant="ghost">
-              Shared route
-            </Button>
-          </div>
-        </>
+                {pending ? "Calculating…" : "Calculate"}
+              </Button>
+              <Button onClick={onReset} type="button" variant="outline">
+                Reset
+              </Button>
+              <Button onClick={onBackToShared} type="button" variant="ghost">
+                Shared route
+              </Button>
+            </div>
+          </>
+        )
       ) : (
         <PublicSharedRouteSummary
           canExplore={allowExplore && candidates.length >= 2}

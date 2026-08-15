@@ -1,3 +1,5 @@
+import { ChevronDown } from "lucide-react";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,18 +32,19 @@ function SettingsToggle({
 }) {
   return (
     <label
-      className="flex min-h-11 min-w-0 cursor-pointer items-start gap-3 border-b py-2.5 last:border-b-0"
+      className="flex min-h-11 min-w-0 cursor-pointer items-center gap-2.5 border px-3 py-2"
       htmlFor={id}
+      title={description}
     >
       <Checkbox
         checked={checked}
-        className="mt-0.5 size-5"
+        className="size-5"
         id={id}
         onCheckedChange={(value) => onCheckedChange(value === true)}
       />
       <span className="min-w-0">
         <span className="block text-sm font-medium">{label}</span>
-        <span className="block text-xs text-muted-foreground">{description}</span>
+        <span className="sr-only">{description}</span>
       </span>
     </label>
   );
@@ -133,57 +136,77 @@ export function PublicShareSettingsFields({
         </div>
       </fieldset>
 
-      <div className="border px-3">
-        <SettingsToggle
-          checked={settings.showTimes}
-          description="Show only times you entered; no time is invented."
-          id="share-show-times"
-          label="Times"
-          onCheckedChange={(value) => onSettingChange("showTimes", value)}
-        />
-        <SettingsToggle
-          checked={settings.showMapRoutes}
-          description="Show shared places, maps and safe saved-route details."
-          id="share-show-routes"
-          label="Map and saved routes"
-          onCheckedChange={(value) => onSettingChange("showMapRoutes", value)}
-        />
-        <SettingsToggle
-          checked={settings.allowRouteExplore}
-          description="Visitors may calculate a temporary route from shared stops only."
-          id="share-allow-explore"
-          label="Allow viewers to explore routes"
-          onCheckedChange={(value) => onSettingChange("allowRouteExplore", value)}
-        />
-        <SettingsToggle
-          checked={settings.showAddresses}
-          description="Off keeps exact address text out of the public payload."
-          id="share-show-addresses"
-          label="Exact addresses"
-          onCheckedChange={(value) => onSettingChange("showAddresses", value)}
-        />
-        <SettingsToggle
-          checked={settings.showNotes}
-          description="Off removes item, day and note entries from the public payload."
-          id="share-show-notes"
-          label="Notes"
-          onCheckedChange={(value) => onSettingChange("showNotes", value)}
-        />
-        <SettingsToggle
-          checked={settings.showPlacePhotos}
-          description="Use optional Google Place imagery when a shared place has a photo."
-          id="share-show-place-photos"
-          label="Google Place photos"
-          onCheckedChange={(value) => onSettingChange("showPlacePhotos", value)}
-        />
-        <SettingsToggle
-          checked={settings.showQuickActionLinks}
-          description="Share only valid HTTP(S) actions saved on itinerary items."
-          id="share-show-links"
-          label="Quick action links"
-          onCheckedChange={(value) => onSettingChange("showQuickActionLinks", value)}
-        />
-      </div>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Shared content</legend>
+        <p className="text-xs text-muted-foreground">
+          Everything is included by default. Turn off anything you want to keep private.
+        </p>
+        <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+          <SettingsToggle
+            checked={settings.showMapRoutes}
+            description="Show shared places, maps and safe saved-route details."
+            id="share-show-routes"
+            label="Map and saved routes"
+            onCheckedChange={(value) => onSettingChange("showMapRoutes", value)}
+          />
+          <SettingsToggle
+            checked={settings.showNotes}
+            description="Off removes item, day and note entries from the public payload."
+            id="share-show-notes"
+            label="Notes"
+            onCheckedChange={(value) => onSettingChange("showNotes", value)}
+          />
+          <SettingsToggle
+            checked={settings.showPlacePhotos}
+            description="Use optional Google Place imagery when a shared place has a photo."
+            id="share-show-place-photos"
+            label="Google Place photos"
+            onCheckedChange={(value) => onSettingChange("showPlacePhotos", value)}
+          />
+          <SettingsToggle
+            checked={settings.showQuickActionLinks}
+            description="Share only valid HTTP(S) actions saved on itinerary items."
+            id="share-show-links"
+            label="Quick action links"
+            onCheckedChange={(value) => onSettingChange("showQuickActionLinks", value)}
+          />
+        </div>
+        <details className="group min-w-0">
+          <summary className="flex min-h-11 min-w-0 cursor-pointer list-none items-center gap-2 px-1 text-sm font-medium marker:hidden">
+            <span className="shrink-0">More privacy controls</span>
+            <span className="ml-auto min-w-0 truncate text-xs font-normal text-muted-foreground">
+              Times, exploration, addresses
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
+            />
+          </summary>
+          <div className="grid min-w-0 gap-2 pt-2 sm:grid-cols-2">
+            <SettingsToggle
+              checked={settings.showTimes}
+              description="Show only times you entered; no time is invented."
+              id="share-show-times"
+              label="Times"
+              onCheckedChange={(value) => onSettingChange("showTimes", value)}
+            />
+            <SettingsToggle
+              checked={settings.allowRouteExplore}
+              description="Visitors may calculate a temporary route from shared stops only."
+              id="share-allow-explore"
+              label="Route exploration"
+              onCheckedChange={(value) => onSettingChange("allowRouteExplore", value)}
+            />
+            <SettingsToggle
+              checked={settings.showAddresses}
+              description="Off keeps exact address text out of the public payload."
+              id="share-show-addresses"
+              label="Exact addresses"
+              onCheckedChange={(value) => onSettingChange("showAddresses", value)}
+            />
+          </div>
+        </details>
+      </fieldset>
 
       <div className="space-y-3">
         <div className="space-y-1.5">

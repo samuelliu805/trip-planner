@@ -54,10 +54,7 @@ export function PublicTimelineNode({
                 </span>
               ) : null}
             </span>
-            <span className="timeline-node-type-v4">
-              {publicItemTypeLabels[item.type]}
-              {node.kind === "hotel_endpoint" ? " · End" : ""}
-            </span>
+            <span className="timeline-node-type-v4">{publicItemTypeLabels[item.type]}</span>
           </button>
           <PublicItemMediaGallery media={node.media} variant="timeline" />
           <PublicQuickActions compact item={item} quiet />

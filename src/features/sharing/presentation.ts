@@ -10,11 +10,11 @@ export function isPublicTransfer(item: PublicItineraryItem) {
   return transferTypes.has(item.type);
 }
 
-export function isPublicDestination(item: PublicItineraryItem) {
+function isPublicDestination(item: PublicItineraryItem) {
   return ["activity", "meal", "hotel"].includes(item.type);
 }
 
-export function isPublicTravel(item: PublicItineraryItem) {
+function isPublicTravel(item: PublicItineraryItem) {
   return isPublicTransfer(item) || item.type === "car_rental";
 }
 
@@ -26,7 +26,22 @@ function uniqueLabelParts(values: Array<string | undefined>) {
 
 export function publicTransferItemLabel(item: PublicItineraryItem) {
   const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
-  return uniqueLabelParts([time, item.title, item.place?.displayName]).join(" · ");
+  return uniqueLabelParts([
+    time,
+    item.title,
+    publicTransportRouteLabel(item),
+    item.transport?.serviceNumber,
+    item.place?.displayName,
+  ]).join(" · ");
+}
+
+export function publicTransportRouteLabel(item: PublicItineraryItem) {
+  const origin = item.transport?.origin;
+  const destination = item.transport?.destination;
+  if (origin && destination) return `${origin} → ${destination}`;
+  if (origin) return `From ${origin}`;
+  if (destination) return `To ${destination}`;
+  return "";
 }
 
 export function publicRentalItemLabel(item: PublicItineraryItem) {
@@ -45,7 +60,7 @@ export function publicRentalItemLabel(item: PublicItineraryItem) {
 }
 
 type PublicJourneyGroupKind = "activity" | "meal";
-export type PublicJourneyGroup = {
+type PublicJourneyGroup = {
   items: PublicItineraryItem[];
   kind: PublicJourneyGroupKind;
 };
@@ -83,7 +98,7 @@ function normalizedCityName(value?: string) {
   return value?.trim().toLocaleLowerCase().replace(/\s+/g, " ") ?? "";
 }
 
-export function samePublicCity(left: PublicItineraryItem, right: PublicItineraryItem) {
+function samePublicCity(left: PublicItineraryItem, right: PublicItineraryItem) {
   const leftNames = new Set(
     [left.title, left.place?.displayName].map(normalizedCityName).filter(Boolean),
   );

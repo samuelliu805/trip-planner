@@ -21,7 +21,7 @@ export function PublicQuickActions({
 
   return (
     <div
-      className={`public-quick-actions flex flex-wrap items-center gap-1.5 ${compact ? "shrink-0" : "mt-2"}`}
+      className={`public-quick-actions flex flex-wrap items-center gap-1.5 ${quiet ? "is-quiet" : ""} ${compact ? "shrink-0" : "mt-2"}`}
     >
       <a
         className={`inline-flex min-h-11 touch-manipulation items-center gap-1 rounded px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:px-2.5 sm:text-xs ${quiet ? "text-muted-foreground hover:bg-muted hover:text-foreground" : "border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"}`}

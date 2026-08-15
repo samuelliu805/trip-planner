@@ -64,7 +64,7 @@ export async function createPublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_public_itinerary_link_v3", {
+  const { data, error } = await supabase.rpc("create_public_itinerary_link_v4", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
@@ -86,7 +86,7 @@ export async function updatePublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_public_itinerary_link_v3", {
+  const { data, error } = await supabase.rpc("update_public_itinerary_link_v4", {
     target_link_id: linkId,
     ...rpcSettings(settings.data),
   });

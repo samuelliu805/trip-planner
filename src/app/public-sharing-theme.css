@@ -95,38 +95,6 @@
   background: #08130e;
 }
 
-.public-map-toolbar {
-  pointer-events: none;
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  left: 0.75rem;
-  z-index: 5;
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.public-map-toolbar span {
-  display: flex;
-  min-height: 2.125rem;
-  align-items: center;
-  gap: 0.4375rem;
-  border: 1px solid var(--border);
-  border-radius: 0.625rem;
-  background: color-mix(in srgb, var(--background) 90%, transparent);
-  padding: 0 0.625rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 25%);
-  color: var(--foreground);
-  font-size: 0.6875rem;
-}
-
-.public-template-bento .public-map-toolbar span {
-  border-color: #385145;
-  background: rgb(8 20 14 / 90%);
-  color: #d6e4da;
-}
-
 .public-template-bento .public-map-panel {
   border-color: #2b3d31;
   background: rgb(7 17 11 / 97%);

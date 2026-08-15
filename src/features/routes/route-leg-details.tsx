@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, Clock3, Route } from "lucide-react";
+import { ChevronDown, Clock3, MapPinned, Route } from "lucide-react";
 import { useState } from "react";
 
 import { formatRouteDistance, formatRouteDuration } from "./day-route-panel-ui";
@@ -68,6 +68,11 @@ export function RouteLegDetails({
   )
     ? legs.reduce((total, leg) => total + (leg.durationSeconds ?? 0), 0)
     : null;
+  const knownDistance = legs.every(
+    ({ distanceMeters }) => distanceMeters !== null && distanceMeters !== undefined,
+  )
+    ? legs.reduce((total, leg) => total + (leg.distanceMeters ?? 0), 0)
+    : null;
 
   return (
     <section className="border-t">
@@ -85,6 +90,12 @@ export function RouteLegDetails({
           <span className="flex items-center gap-1 font-normal text-muted-foreground">
             <Clock3 aria-hidden="true" className="size-3" />
             {formatRouteDuration(knownDuration)}
+          </span>
+        ) : null}
+        {knownDistance !== null ? (
+          <span className="flex items-center gap-1 font-normal text-muted-foreground">
+            <MapPinned aria-hidden="true" className="size-3" />
+            {formatRouteDistance(knownDistance)}
           </span>
         ) : null}
         <ChevronDown

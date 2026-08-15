@@ -1411,6 +1411,24 @@ export type Database = {
         }
         Returns: Json
       }
+      create_public_itinerary_link_v4: {
+        Args: {
+          requested_allow_route_explore?: boolean
+          requested_default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_share_description?: string
+          requested_share_title?: string
+          requested_show_addresses?: boolean
+          requested_show_map_routes?: boolean
+          requested_show_notes?: boolean
+          requested_show_place_photos?: boolean
+          requested_show_quick_action_links?: boolean
+          requested_show_times?: boolean
+          requested_template_id?: string
+          requested_template_version?: number
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       create_research_option: {
         Args: {
           option_category: string
@@ -1728,6 +1746,24 @@ export type Database = {
         Returns: Json
       }
       update_public_itinerary_link_v3: {
+        Args: {
+          requested_allow_route_explore: boolean
+          requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_share_description: string
+          requested_share_title: string
+          requested_show_addresses: boolean
+          requested_show_map_routes: boolean
+          requested_show_notes: boolean
+          requested_show_place_photos: boolean
+          requested_show_quick_action_links: boolean
+          requested_show_times: boolean
+          requested_template_id: string
+          requested_template_version: number
+          target_link_id: string
+        }
+        Returns: Json
+      }
+      update_public_itinerary_link_v4: {
         Args: {
           requested_allow_route_explore: boolean
           requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]

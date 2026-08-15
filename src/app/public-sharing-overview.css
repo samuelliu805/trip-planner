@@ -50,6 +50,10 @@
   line-height: 1.2;
 }
 
+.overview-day-date-v4::before {
+  content: " · ";
+}
+
 .overview-day-title-v4 span {
   display: block;
   overflow: hidden;

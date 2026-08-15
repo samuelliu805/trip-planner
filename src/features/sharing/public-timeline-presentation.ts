@@ -1,4 +1,9 @@
-import { isPublicTransfer, orderedPublicItems, publicTransferItemLabel } from "./presentation.ts";
+import {
+  isPublicTransfer,
+  orderedPublicItems,
+  publicTransferItemLabel,
+  publicTransportRouteLabel,
+} from "./presentation.ts";
 import { publicDayItemMedia } from "./public-media-presentation.ts";
 import type { PublicItemMedia, PublicItineraryDay, PublicItineraryItem } from "./types";
 
@@ -22,7 +27,12 @@ export function publicTimelineTransportMeta(item: PublicItineraryItem) {
   const start = item.startTime?.slice(0, 5);
   const end = item.endTime?.slice(0, 5);
   const schedule = start ? (end && end !== start ? `${start}–${end}` : start) : item.scheduleLabel;
-  return [schedule, item.place?.displayName]
+  return [
+    publicTransportRouteLabel(item),
+    item.transport?.serviceNumber,
+    schedule,
+    item.place?.displayName,
+  ]
     .filter((value, index, values): value is string =>
       Boolean(value && values.findIndex((entry) => entry === value) === index),
     )

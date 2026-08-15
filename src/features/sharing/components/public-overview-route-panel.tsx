@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/u
 import { overviewRouteModes, type OverviewRouteMode } from "@/features/routes/types";
 import { publicOverviewStops } from "../public-map-model";
 import type { PublicRouteCalculation } from "../types";
-import { PublicRouteLegDetails, RouteTotals } from "./public-route-summary";
+import { PublicRouteLegDetails } from "./public-route-summary";
 
 const overviewModeLabels: Record<OverviewRouteMode, string> = {
   bike: "Bike",
@@ -61,7 +61,9 @@ export function PublicOverviewRoutePanel({
         <Route aria-hidden="true" className="size-4 text-primary" />
         Overview connections
       </div>
-      {stops.length > 1 ? (
+      {calculation ? (
+        <PublicRouteLegDetails labels={stops.map(({ title }) => title)} legs={calculation.legs} />
+      ) : stops.length > 1 ? (
         <ol aria-label="Whole-trip stage connections" className="divide-y border">
           {stops.slice(0, -1).map((stop, index) => {
             const next = stops[index + 1];
@@ -110,12 +112,6 @@ export function PublicOverviewRoutePanel({
           Add usable Activity places in at least two stages to show a route.
         </p>
       )}
-      {calculation ? (
-        <>
-          <RouteTotals calculation={calculation} />
-          <PublicRouteLegDetails labels={stops.map(({ title }) => title)} legs={calculation.legs} />
-        </>
-      ) : null}
       {error ? (
         <p aria-live="polite" className="text-xs text-destructive">
           {error}
@@ -124,24 +120,25 @@ export function PublicOverviewRoutePanel({
       {allowExplore ? (
         <div className="flex gap-2">
           {calculation ? (
-            <Button onClick={onReset} type="button" variant="outline">
-              Reset
+            <Button className="min-h-11 flex-1" onClick={onReset} type="button" variant="outline">
+              Edit route
             </Button>
-          ) : null}
-          <Button
-            aria-busy={pending}
-            className="min-h-11 flex-1"
-            disabled={pending || stops.length < 2 || stops.length > 20}
-            onClick={onCalculate}
-            type="button"
-          >
-            {pending ? (
-              <LoaderCircle className="size-4 animate-spin" />
-            ) : (
-              <Calculator className="size-4" />
-            )}
-            {pending ? "Calculating…" : "Calculate whole trip"}
-          </Button>
+          ) : (
+            <Button
+              aria-busy={pending}
+              className="min-h-11 flex-1"
+              disabled={pending || stops.length < 2 || stops.length > 20}
+              onClick={onCalculate}
+              type="button"
+            >
+              {pending ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Calculator className="size-4" />
+              )}
+              {pending ? "Calculating…" : "Calculate whole trip"}
+            </Button>
+          )}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">Route calculation is disabled by the owner.</p>

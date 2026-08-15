@@ -1,6 +1,7 @@
 "use client";
 
-import { Map, Route } from "lucide-react";
+import { ChevronUp, Route, X } from "lucide-react";
+import { useState } from "react";
 
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicDayRoutePanel } from "./public-day-route-panel";
@@ -35,17 +36,12 @@ export function PublicMapWorkspace(props: PublicMapWorkspaceProps) {
 
 function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
   const controller = usePublicMapWorkspaceController(props);
+  const [panelOpen, setPanelOpen] = useState(false);
   return (
     <section aria-label="Map and routes" className="public-map-workspace relative h-full min-h-0">
-      <div className="public-map-toolbar" aria-hidden="true">
-        <span>
-          <Map className="size-4" /> Map & routes
-        </span>
-        <span>
-          <Route className="size-4" /> Shared route
-        </span>
-      </div>
-      <div className="public-map-canvas absolute inset-0 pb-[min(44%,22rem)]">
+      <div
+        className={`public-map-canvas absolute inset-0 ${panelOpen ? "pb-[min(44%,22rem)]" : "pb-11"}`}
+      >
         <PublicPlannerMapCanvas
           configurationState={mapConfigurationState}
           emptyState={mapEmptyState}
@@ -55,13 +51,34 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
         />
       </div>
 
-      <div className="public-map-panel absolute inset-x-0 bottom-0 max-h-[48%] overflow-y-auto border-t bg-background/97 p-3 backdrop-blur">
-        <RouteScopePicker onSelect={controller.selectScope} scope={controller.routeScope} />
-        {controller.routeScope === "overview" ? (
-          <PublicOverviewRoutePanel {...controller.overviewPanel} />
-        ) : (
-          <PublicDayRoutePanel {...controller.dayPanel} />
-        )}
+      <div
+        className={`public-map-panel absolute inset-x-0 bottom-0 overflow-y-auto border-t bg-background/97 backdrop-blur ${panelOpen ? "max-h-[52%]" : "max-h-11 overflow-hidden"}`}
+      >
+        <button
+          aria-label={panelOpen ? "Close route panel" : "Open route panel"}
+          aria-expanded={panelOpen}
+          className="public-map-panel-toggle sticky top-0 z-10 flex min-h-11 w-full items-center gap-2 border-b bg-background/97 px-3 text-left text-xs font-semibold backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          onClick={() => setPanelOpen((current) => !current)}
+          type="button"
+        >
+          <Route aria-hidden="true" className="size-4 text-primary" />
+          <span>{controller.routeScope === "overview" ? "Whole trip routes" : "Day route"}</span>
+          {panelOpen ? (
+            <X aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
+          ) : (
+            <ChevronUp aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
+          )}
+        </button>
+        {panelOpen ? (
+          <div className="p-3">
+            <RouteScopePicker onSelect={controller.selectScope} scope={controller.routeScope} />
+            {controller.routeScope === "overview" ? (
+              <PublicOverviewRoutePanel {...controller.overviewPanel} />
+            ) : (
+              <PublicDayRoutePanel {...controller.dayPanel} />
+            )}
+          </div>
+        ) : null}
       </div>
     </section>
   );

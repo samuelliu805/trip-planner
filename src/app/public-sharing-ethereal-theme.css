@@ -1,0 +1,286 @@
+.public-template-ethereal,
+.public-template-ethereal.public-share-surface {
+  --ethereal-champagne: #a68d62;
+  --ethereal-faint: #a9a69e;
+  --ethereal-paper: #f8f7f3;
+  --ethereal-sage: #667169;
+  --ethereal-serif:
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  --accent: #e4e8e3;
+  --accent-foreground: #303531;
+  --background: #f8f7f3;
+  --border: rgb(50 51 47 / 13%);
+  --card: #fffefa;
+  --card-foreground: #191a18;
+  --foreground: #191a18;
+  --muted: #efede7;
+  --muted-foreground: #77766f;
+  --primary: #667169;
+  --primary-foreground: #fffefa;
+  --ring: #a68d62;
+  color: #191a18;
+  color-scheme: light;
+}
+
+.public-template-ethereal .public-itinerary-header {
+  border: 0;
+  background: rgb(248 247 243 / 91%);
+  backdrop-filter: blur(20px);
+}
+
+.public-template-ethereal .public-header-row {
+  display: block;
+  min-height: 0;
+  padding: 0;
+}
+
+.public-template-ethereal .public-template-region-brand-row {
+  display: flex;
+  min-height: 6.375rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.25rem 1.625rem 1.125rem;
+}
+
+.public-template-ethereal .public-brand-kicker {
+  gap: 0.5rem;
+  color: var(--ethereal-sage);
+  font-size: 0.5625rem;
+  letter-spacing: 0.2em;
+}
+
+.public-template-ethereal .public-brand-monogram {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  border: 1px solid rgb(50 51 47 / 23%);
+  border-radius: 50%;
+  font: 0.5rem var(--ethereal-serif);
+  letter-spacing: 0;
+}
+
+.public-template-ethereal .public-trip-title {
+  margin-top: 0.5625rem;
+  font: 400 1.9375rem/1 var(--ethereal-serif);
+  letter-spacing: -0.025em;
+}
+
+.public-template-ethereal .public-trip-meta {
+  margin-top: 0.4375rem;
+  color: #77766f;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+}
+
+.public-template-ethereal .public-header-button {
+  height: 2.75rem;
+  min-height: 2.75rem;
+  border-color: rgb(50 51 47 / 13%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 54%);
+  color: #4f534f;
+  box-shadow: none;
+}
+
+.public-template-ethereal .public-share-button {
+  border-radius: 50%;
+}
+
+.public-template-ethereal .public-template-region-view-navigation {
+  position: relative;
+  z-index: 80;
+  flex: none;
+  height: 2.6875rem;
+  background: rgb(248 247 243 / 91%);
+  padding: 0 1.625rem;
+  transform: translateZ(0);
+}
+
+.public-template-ethereal .public-view-switcher {
+  position: static;
+  display: grid;
+  width: max-content;
+  height: 2.6875rem;
+  grid-template-columns: repeat(3, max-content);
+  gap: 1.625rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.public-template-ethereal .public-view-switcher .app-bottom-navigation-item {
+  position: relative;
+  height: 2.6875rem;
+  min-height: 2.6875rem;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ethereal-faint);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  box-shadow: none;
+}
+
+.public-template-ethereal .public-view-switcher .app-bottom-navigation-item svg {
+  display: none;
+}
+
+.public-template-ethereal .public-view-switcher .app-bottom-navigation-item.is-active {
+  background: transparent;
+  color: #191a18;
+}
+
+.public-template-ethereal .public-view-switcher .app-bottom-navigation-item.is-active::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: #191a18;
+  content: "";
+}
+
+.public-template-ethereal .public-content-pane {
+  background: var(--ethereal-paper);
+  scrollbar-color: #c6c2b8 transparent;
+}
+
+.public-template-ethereal .public-overview,
+.public-template-ethereal .public-timeline {
+  background: var(--ethereal-paper);
+}
+
+.public-template-ethereal .public-map-pane,
+.public-template-ethereal .public-map-workspace,
+.public-template-ethereal.public-share-surface {
+  background: #e8e8e2;
+}
+
+.public-template-ethereal .public-map-pane {
+  border-left-color: rgb(50 51 47 / 13%);
+}
+
+.public-template-ethereal .public-map-panel {
+  border-color: rgb(50 51 47 / 13%);
+  background: rgb(250 249 245 / 88%);
+  color: #4f534f;
+  box-shadow: 0 8px 24px rgb(62 61 56 / 10%);
+}
+
+.public-template-ethereal .public-mobile-map-control {
+  border: 1px solid rgb(50 51 47 / 14%);
+  background: rgb(250 249 245 / 94%);
+  color: #30322f;
+  box-shadow: 0 10px 28px rgb(48 45 40 / 16%);
+}
+
+.public-template-ethereal .public-quick-actions > a,
+.public-template-ethereal .public-quick-actions > details > summary {
+  min-height: 2rem;
+  border: 1px solid rgb(102 113 105 / 38%);
+  border-radius: 999px;
+  background: rgb(255 254 250 / 62%);
+  padding-right: 0.625rem;
+  padding-left: 0.625rem;
+  color: #556159;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 38%);
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.public-template-ethereal .public-quick-actions > a:hover,
+.public-template-ethereal .public-quick-actions > details > summary:hover {
+  border-color: rgb(102 113 105 / 62%);
+  background: #fffefa;
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .public-template-ethereal .public-template-region-brand-row {
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+  }
+
+  .public-template-ethereal .public-template-region-view-navigation {
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+  }
+}
+
+@media (max-width: 899px) {
+  .public-template-ethereal .public-template-region-brand-row {
+    min-height: 6rem;
+    align-items: flex-start;
+    padding: 0.875rem 0.875rem 0.75rem;
+  }
+
+  .public-template-ethereal .public-brand-kicker {
+    font-size: 0.5625rem;
+    letter-spacing: 0.15em;
+  }
+
+  .public-template-ethereal .public-trip-title {
+    margin-top: 0.5625rem;
+    font-size: 1.5625rem;
+  }
+
+  .public-template-ethereal .public-trip-meta {
+    margin-top: 0.4375rem;
+    font-size: 0.65625rem;
+    letter-spacing: 0.035em;
+  }
+
+  .public-template-ethereal .public-template-region-view-navigation {
+    display: contents;
+  }
+
+  .public-template-ethereal .public-view-switcher {
+    position: fixed;
+    right: 0.75rem;
+    bottom: max(0.625rem, env(safe-area-inset-bottom));
+    left: 0.75rem;
+    z-index: 70;
+    width: auto;
+    height: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem;
+    border: 1px solid rgb(51 52 48 / 12%);
+    border-radius: 999px;
+    background: rgb(250 249 245 / 92%);
+    padding: 0.25rem;
+    box-shadow: 0 14px 38px rgb(48 45 40 / 18%);
+    backdrop-filter: blur(16px);
+  }
+
+  .public-template-ethereal .public-view-switcher .app-bottom-navigation-item {
+    height: 3rem;
+    min-height: 3rem;
+    flex-direction: column;
+    gap: 0.1875rem;
+    border-radius: 999px;
+    font-size: 0.625rem;
+    letter-spacing: 0;
+  }
+
+  .public-template-ethereal .public-view-switcher .app-bottom-navigation-item svg {
+    display: block;
+  }
+
+  .public-template-ethereal .public-view-switcher .app-bottom-navigation-item.is-active {
+    background: #222320;
+    color: #faf8f2;
+  }
+
+  .public-template-ethereal .public-view-switcher .app-bottom-navigation-item.is-active::after {
+    display: none;
+  }
+
+  .public-template-ethereal .public-mobile-map-control {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
+    min-height: 3rem;
+  }
+}

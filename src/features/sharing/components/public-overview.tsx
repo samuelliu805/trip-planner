@@ -34,18 +34,22 @@ export function PublicOverview({
         {itinerary.days.map((day, dayIndex) => {
           const date = day.date ? parseISO(day.date) : null;
           const sections = publicOverviewDaySections(day);
-          const itemCount = sections.transport.length + sections.cards.length;
+          const planCount = sections.cards.length;
+          const itemCount = sections.transport.length + planCount;
           const firstMediaItemRef = sections.cards.find(({ media }) => media.length)?.item.ref;
           const locality = publicDayCityLabel(day);
           return (
             <article
               aria-current={selectedDayRef === day.ref ? "true" : undefined}
               className="public-overview-day overview-day-v4"
+              data-day-number={String(day.dayNumber).padStart(2, "0")}
               data-public-day-ref={day.ref}
               key={day.ref}
               onClick={(event) => {
                 if (
-                  !(event.target as Element).closest("[data-public-item-ref], a, button, summary")
+                  !(event.target as Element).closest(
+                    "[data-public-item-ref], [data-public-transport], a, button, summary",
+                  )
                 )
                   onSelectDay(day.ref);
               }}
@@ -54,21 +58,20 @@ export function PublicOverview({
               <header className="overview-day-heading-v4">
                 <div className="overview-day-title-v4">
                   <strong>
-                    D{day.dayNumber} · {date ? format(date, "MMM d") : "Date TBD"}
+                    <span className="overview-day-number-v4">D{day.dayNumber}</span>
+                    <span className="overview-day-date-v4">
+                      {date ? format(date, "MMM d") : "Date TBD"}
+                    </span>
                   </strong>
                   {locality ? <span>{locality}</span> : null}
                 </div>
                 <span className="overview-day-items-v4">
-                  {itemCount} {itemCount === 1 ? "item" : "items"}
+                  {planCount} {planCount === 1 ? "plan" : "plans"}
                 </span>
               </header>
               {itemCount ? (
                 <>
-                  <PublicOverviewTransportList
-                    items={sections.transport}
-                    onSelect={(itemRef) => onSelectItem(itemRef, day.ref)}
-                    selectedItemRef={selectedItemRef}
-                  />
+                  <PublicOverviewTransportList items={sections.transport} />
                   {sections.cards.length ? (
                     <div className="public-overview-board overview-board-v4">
                       {sections.cards.map((presentation) => (

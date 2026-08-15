@@ -100,7 +100,9 @@ export function PublicTable({
                     key={column.id}
                     role="gridcell"
                   >
-                    <div className="space-y-1">
+                    <div
+                      className={`public-table-cell-items ${column.id === "transport" ? "is-transport" : ""}`}
+                    >
                       {column.id === "city" ? (
                         <div className="px-1.5 py-1.5 text-xs">
                           <span className="font-medium">

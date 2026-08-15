@@ -1,0 +1,21 @@
+.public-template-bento .public-quick-actions.is-quiet > a,
+.public-template-bento .public-quick-actions.is-quiet > details > summary {
+  border: 1px solid #405a48;
+  background: #101f16;
+  box-shadow: none;
+}
+
+.public-template-journal .public-quick-actions.is-quiet > a,
+.public-template-journal .public-quick-actions.is-quiet > details > summary {
+  border: 1px solid rgb(119 101 73 / 32%);
+  background: rgb(255 253 247 / 56%);
+  box-shadow: none;
+}
+
+.public-template-ethereal .public-quick-actions.is-quiet > a,
+.public-template-ethereal .public-quick-actions.is-quiet > details > summary {
+  border: 1px solid rgb(102 113 105 / 38%);
+  border-radius: 0;
+  background: rgb(255 254 250 / 62%);
+  box-shadow: none;
+}

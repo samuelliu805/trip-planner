@@ -1,0 +1,133 @@
+@media (max-width: 899px) {
+  .public-template-ethereal .timeline-v4 {
+    padding: 1.25rem 0.875rem 7rem;
+  }
+
+  .public-template-ethereal .timeline-sections-v4 {
+    gap: 2.625rem;
+  }
+
+  .public-template-ethereal .timeline-section-v4 {
+    border: 0;
+    padding: 0;
+  }
+
+  .public-template-ethereal .timeline-section-header-v4 {
+    grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0 0.875rem;
+  }
+
+  .public-template-ethereal .timeline-day-index-v4 {
+    font-size: 2rem;
+  }
+
+  .public-template-ethereal .timeline-day-copy-v4 strong {
+    font-size: 1.09375rem;
+  }
+
+  .public-template-ethereal .timeline-day-copy-v4 span {
+    font-size: 0.625rem;
+    white-space: normal;
+  }
+
+  .public-template-ethereal .timeline-day-count-v4 {
+    display: none;
+  }
+
+  .public-template-ethereal .timeline-transport-list-v4 {
+    grid-column: 1 / -1;
+  }
+
+  .public-template-ethereal .timeline-node-list-v4 {
+    display: block;
+    min-height: 0;
+    overflow: visible;
+    padding: 1.375rem 0 0 3.625rem;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .public-template-ethereal .timeline-node-list-v4::before {
+    display: block;
+    top: 1.75rem;
+    bottom: 0;
+    left: 1.375rem;
+    width: 1px;
+    height: auto;
+    background: linear-gradient(180deg, #667169, rgb(102 113 105 / 12%));
+  }
+
+  .public-template-ethereal .timeline-node-v4,
+  .public-template-ethereal .timeline-node-v4:has(.public-item-media) {
+    display: grid;
+    min-height: 5.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 1.75rem;
+  }
+
+  .public-template-ethereal .timeline-node-v4::after {
+    display: none;
+  }
+
+  .public-template-ethereal .timeline-node-key-v4 {
+    position: static;
+    padding-bottom: 0.4375rem;
+    font-size: 0.625rem;
+  }
+
+  .public-template-ethereal .timeline-node-axis-v4 {
+    top: 0.125rem;
+    left: -2.625rem;
+  }
+
+  .public-template-ethereal .timeline-node-column-v4,
+  .public-template-ethereal .timeline-node-v4:nth-child(odd) .timeline-node-column-v4,
+  .public-template-ethereal .timeline-node-v4:nth-child(even) .timeline-node-column-v4 {
+    position: static;
+  }
+
+  .public-template-ethereal .timeline-node-content-v4 {
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .public-template-ethereal .timeline-node-type-v4 {
+    margin-top: 0.4375rem;
+    margin-bottom: 0;
+    font-size: 0.5625rem;
+  }
+
+  .public-template-ethereal .timeline-node-title-v4 {
+    font-size: 1.0625rem;
+  }
+
+  .public-template-ethereal .timeline-node-meta-v4 {
+    font-size: 0.6875rem;
+  }
+
+  .public-template-ethereal .timeline-node-content-v4 .media-grid-v4 {
+    max-width: min(100%, 34rem);
+    margin-top: 0.5625rem;
+  }
+
+  .public-template-ethereal .public-timeline-notes,
+  .public-template-ethereal .public-timeline-day-notes {
+    margin-left: 3.625rem;
+  }
+
+  .public-template-ethereal .public-quick-actions a,
+  .public-template-ethereal .public-quick-actions summary {
+    min-height: 2.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+  }
+
+  .public-template-ethereal .public-matrix [role="row"]:not(.matrix-grid-header) {
+    min-height: 7.25rem;
+  }
+
+  .public-template-ethereal .public-matrix [role="gridcell"],
+  .public-template-ethereal .public-matrix [role="rowheader"] {
+    padding: 1rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}

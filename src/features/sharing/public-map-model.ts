@@ -11,7 +11,6 @@ import { derivePublicOverviewStages } from "./public-overview-map-model.ts";
 
 export {
   buildPublicOverviewLines,
-  derivePublicOverviewStages,
   publicOverviewDefaultModes,
   publicOverviewStops,
 } from "./public-overview-map-model.ts";

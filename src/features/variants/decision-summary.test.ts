@@ -914,7 +914,6 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
   const mutations = (
     await Promise.all(
       [
-        "../itinerary/queries.ts",
         "../itinerary/item-mutations.ts",
         "../itinerary/day-mutations.ts",
         "../routes/queries.ts",

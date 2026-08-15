@@ -114,8 +114,8 @@ test("Matrix transport routes prefer airport codes and compact terminal names", 
 async function readItineraryQueryModules() {
   return (
     await Promise.all(
-      ["./queries.ts", "./planner-query.ts", "./item-mutations.ts", "./day-mutations.ts"].map(
-        (path) => readFile(new URL(path, import.meta.url), "utf8"),
+      ["./planner-query.ts", "./item-mutations.ts", "./day-mutations.ts"].map((path) =>
+        readFile(new URL(path, import.meta.url), "utf8"),
       ),
     )
   ).join("\n");
