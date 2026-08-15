@@ -73,6 +73,7 @@ async function readAppStyles() {
         "../../app/public-sharing-ethereal-timeline-table.css",
         "../../app/public-sharing-ethereal-timeline-tablet.css",
         "../../app/public-sharing-ethereal-minimal.css",
+        "../../app/public-sharing-ethereal-transport.css",
         "../../app/public-sharing-journal-theme.css",
         "../../app/public-sharing-journal-overview.css",
         "../../app/public-sharing-journal-overview-vibrant.css",
@@ -902,6 +903,10 @@ test("public and owner Matrix use the same canonical category columns", async ()
     new URL("./components/public-table.tsx", import.meta.url),
     "utf8",
   );
+  const publicTableContainment = await readFile(
+    new URL("./components/use-contained-public-matrix.ts", import.meta.url),
+    "utf8",
+  );
   const ownerHeader = await readFile(
     new URL("../itinerary/components/planner-layout-elements.tsx", import.meta.url),
     "utf8",
@@ -919,6 +924,13 @@ test("public and owner Matrix use the same canonical category columns", async ()
   assert.doesNotMatch(publicTable, /useState|expandedDays|aria-expanded/);
   assert.match(publicTable, /public-table-cell-items/);
   assert.match(publicTable, /column\.id === "transport" \? "is-transport"/);
+  assert.match(publicTable, /useContainedPublicMatrix\(\)/);
+  assert.match(publicTable, /ref=\{matrixRef\}/);
+  assert.match(
+    publicTableContainment,
+    /addEventListener\("touchmove", handleTouchMove, \{ passive: false \}\)/,
+  );
+  assert.match(publicTableContainment, /boundaryBlocked && event\.cancelable/);
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
   assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-40/);
   assert.doesNotMatch(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
@@ -1080,7 +1092,9 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /env\(safe-area-inset-bottom\)/);
   assert.match(styles, /\.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 6rem/);
   assert.match(styles, /\.public-matrix \{[\s\S]*overflow: auto/);
-  assert.match(styles, /\.public-matrix \{[\s\S]*overscroll-behavior: contain/);
+  assert.match(styles, /\.public-matrix \{[\s\S]*overscroll-behavior: none/);
+  assert.match(styles, /\.public-matrix \{[\s\S]*overflow-anchor: none/);
+  assert.match(styles, /\.public-matrix \{[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /\.public-matrix \.matrix-grid-header \{[\s\S]*z-index: 70/);
   assert.match(
     styles,
@@ -1426,5 +1440,21 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(
     styles,
     /\.public-template-ethereal \.overview-transport-list-v4 \{[^}]*grid-auto-flow: column;[^}]*grid-auto-columns: minmax\(0, 1fr\);[^}]*grid-template-columns: none;[^}]*overflow: visible/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-transport-route-v4 \{[^}]*-webkit-line-clamp: 2/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.timeline-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.timeline-transport-meta-v4 \{[^}]*-webkit-line-clamp: 2/,
   );
 });

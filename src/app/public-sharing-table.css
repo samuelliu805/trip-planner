@@ -2,9 +2,11 @@
   position: relative;
   max-width: 100%;
   overflow: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
+  overflow-anchor: none;
   scrollbar-gutter: stable;
   isolation: isolate;
+  touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -17,15 +19,19 @@
 .public-matrix .matrix-grid-header {
   top: 0;
   z-index: 70;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
 
 .public-matrix .matrix-date-column,
 .public-matrix .matrix-day-column {
   background-clip: padding-box;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   box-shadow: 1px 0 0 var(--border);
+  -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
 
