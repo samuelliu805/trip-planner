@@ -26,6 +26,8 @@
 @import "./public-sharing-journal-table.css";
 @import "./public-sharing-mobile-readability.css";
 @import "./public-sharing-quick-actions.css";
+@import "./public-sharing-timeline-export.css";
+@import "./public-sharing-timeline-export-templates.css";
 
 .public-itinerary-shell {
   height: 100dvh;

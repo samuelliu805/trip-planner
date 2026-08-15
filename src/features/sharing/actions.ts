@@ -40,8 +40,11 @@ function managementError(error?: string) {
 }
 
 const rpcSettings = (input: PublicItinerarySettingsInput) => ({
+  requested_allow_long_image_download: input.allowLongImageDownload,
   requested_allow_route_explore: input.allowRouteExplore,
   requested_default_view: input.defaultView,
+  requested_long_image_qr_destination: input.longImageQrDestination,
+  requested_long_image_qr_share_page_id: input.longImageQrSharePageId,
   requested_share_description: input.shareDescription,
   requested_share_title: input.shareTitle,
   requested_show_addresses: input.showAddresses,
@@ -64,14 +67,14 @@ export async function createPublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_public_itinerary_link_v4", {
+  const { data, error } = await supabase.rpc("create_share_page_v1", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
   if (error) return { error: managementError(error.message) };
   const link = publicItineraryLinkSchema.safeParse(data);
   if (!link.success) return { error: "The new public link could not be read." };
-  revalidatePath(`/trips/${link.data.tripId}`);
+  if (link.data.tripId) revalidatePath(`/trips/${link.data.tripId}`);
   return { data: link.data };
 }
 
@@ -86,31 +89,14 @@ export async function updatePublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_public_itinerary_link_v4", {
-    target_link_id: linkId,
+  const { data, error } = await supabase.rpc("update_share_page_v1", {
+    target_share_page_id: linkId,
     ...rpcSettings(settings.data),
   });
   if (error) return { error: managementError(error.message) };
   const link = publicItineraryLinkSchema.safeParse(data);
   if (!link.success) return { error: "The saved public link could not be read." };
-  revalidatePath(`/trips/${link.data.tripId}`);
-  return { data: link.data };
-}
-
-export async function rotatePublicItineraryLink(rawInput: {
-  linkId: string;
-  tripId: string;
-}): Promise<ShareActionResult> {
-  const input = linkMutationSchema.safeParse(rawInput);
-  if (!input.success) return { error: "The public link request is invalid." };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("rotate_public_itinerary_link_v3", {
-    target_link_id: input.data.linkId,
-  });
-  if (error) return { error: managementError(error.message) };
-  const link = publicItineraryLinkSchema.safeParse(data);
-  if (!link.success) return { error: "The regenerated public link could not be read." };
-  revalidatePath(`/trips/${input.data.tripId}`);
+  if (link.data.tripId) revalidatePath(`/trips/${link.data.tripId}`);
   return { data: link.data };
 }
 
@@ -121,8 +107,8 @@ export async function revokePublicItineraryLink(rawInput: {
   const input = linkMutationSchema.safeParse(rawInput);
   if (!input.success) return { error: "The public link request is invalid." };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("revoke_public_itinerary_link", {
-    target_link_id: input.data.linkId,
+  const { error } = await supabase.rpc("revoke_share_page_v1", {
+    target_share_page_id: input.data.linkId,
   });
   if (error) return { error: managementError(error.message) };
   revalidatePath(`/trips/${input.data.tripId}`);

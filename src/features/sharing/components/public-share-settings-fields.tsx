@@ -15,6 +15,7 @@ import type { PlannerVariant } from "@/features/itinerary/types";
 
 import { canonicalPublicViews } from "../schema";
 import { publicTemplateOptions } from "../templates/registry";
+import type { PublicItineraryLink } from "../types";
 import { publicViewLabels, type ShareSettings } from "./public-share-settings";
 
 function SettingsToggle({
@@ -55,6 +56,7 @@ export function PublicShareSettingsFields({
   onChooseVariant,
   onSettingChange,
   settings,
+  sharePages,
   suggestedDescription,
   suggestedTitle,
   variantId,
@@ -64,6 +66,7 @@ export function PublicShareSettingsFields({
   onChooseVariant: (variantId: string) => void;
   onSettingChange: <Key extends keyof ShareSettings>(key: Key, value: ShareSettings[Key]) => void;
   settings: ShareSettings;
+  sharePages: PublicItineraryLink[];
   suggestedDescription: string;
   suggestedTitle: string;
   variantId: string;
@@ -134,6 +137,52 @@ export function PublicShareSettingsFields({
             </button>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Long image</legend>
+        <div className="space-y-1.5">
+          <Label htmlFor="long-image-qr-destination">QR destination</Label>
+          <Select
+            onValueChange={(value) => {
+              if (value === "homepage" || value === "current_share_page") {
+                onSettingChange("longImageQrDestination", value);
+                onSettingChange("longImageQrSharePageId", null);
+                return;
+              }
+              onSettingChange("longImageQrDestination", "share_page");
+              onSettingChange("longImageQrSharePageId", value.replace("share_page:", ""));
+            }}
+            value={
+              settings.longImageQrDestination === "share_page"
+                ? `share_page:${settings.longImageQrSharePageId}`
+                : settings.longImageQrDestination
+            }
+          >
+            <SelectTrigger className="min-h-11 min-w-0" id="long-image-qr-destination">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current_share_page">This Share Page</SelectItem>
+              <SelectItem value="homepage">Trip Planner homepage</SelectItem>
+              {sharePages.map((page, index) => (
+                <SelectItem key={page.id} value={`share_page:${page.id}`}>
+                  Share Page {index + 1}: {page.shareTitle || page.templateId}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            The destination is fixed when an image link is created.
+          </p>
+        </div>
+        <SettingsToggle
+          checked={settings.allowLongImageDownload}
+          description="Visitors may download the latest owner-generated Timeline export."
+          id="share-allow-long-image-download"
+          label="Allow visitor downloads"
+          onCheckedChange={(value) => onSettingChange("allowLongImageDownload", value)}
+        />
       </fieldset>
 
       <fieldset className="space-y-2">

@@ -32,7 +32,15 @@ function DeleteAction() {
   );
 }
 
-export function DeleteTripDialog({ title, tripId }: { title: string; tripId: string }) {
+export function DeleteTripDialog({
+  activeSharePageCount,
+  title,
+  tripId,
+}: {
+  activeSharePageCount: number;
+  title: string;
+  tripId: string;
+}) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
@@ -48,8 +56,16 @@ export function DeleteTripDialog({ title, tripId }: { title: string; tripId: str
         <AlertDialogHeader>
           <AlertDialogTitle className="text-xl font-semibold">Delete “{title}”?</AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
-            This permanently removes the trip, its Route A plan, and all generated trip days. This
-            action cannot be undone.
+            This permanently removes the trip, its routes, and generated trip days. This action
+            cannot be undone.
+            {activeSharePageCount ? (
+              <span className="mt-3 block border-l-2 border-primary bg-primary/5 px-3 py-2 text-foreground">
+                {activeSharePageCount} published{" "}
+                {activeSharePageCount === 1 ? "Share Page" : "Share Pages"} and their permanent
+                images will remain online as independent snapshots. They will no longer be
+                updateable from this trip. Revoke them before deleting if they should stop working.
+              </span>
+            ) : null}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <form action={deleteTrip}>

@@ -94,14 +94,14 @@ select is(
   'template id and version have database format constraints'
 );
 select ok(
-  exists (
+  not exists (
     select 1
     from pg_catalog.pg_indexes
     where schemaname = 'public'
       and indexname = 'public_itinerary_links_one_active_variant_idx'
       and indexdef like '%WHERE (revoked_at IS NULL)%'
   ),
-  'one-active-link-per-variant is a partial unique index'
+  'Share Pages no longer enforce one active link per variant'
 );
 select ok(
   not exists (

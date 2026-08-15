@@ -4,8 +4,11 @@ import type { PublicItineraryLink, PublicView } from "../types";
 export type ShareSettings = Omit<PublicItinerarySettingsInput, "variantId">;
 
 export const defaultShareSettings: ShareSettings = {
+  allowLongImageDownload: true,
   allowRouteExplore: true,
   defaultView: "timeline",
+  longImageQrDestination: "current_share_page",
+  longImageQrSharePageId: null,
   shareDescription: "",
   shareTitle: "",
   showAddresses: true,
@@ -26,9 +29,18 @@ export const publicViewLabels: Record<PublicView, string> = {
 
 export function settingsFromLink(link?: PublicItineraryLink): ShareSettings {
   if (!link) return defaultShareSettings;
+  const hasExplicitSharePageTarget =
+    link.longImageQrDestination === "share_page" && Boolean(link.longImageQrSharePageId);
   return {
+    allowLongImageDownload: link.allowLongImageDownload,
     allowRouteExplore: link.allowRouteExplore,
     defaultView: link.defaultView,
+    longImageQrDestination: hasExplicitSharePageTarget
+      ? link.longImageQrDestination
+      : link.longImageQrDestination === "share_page"
+        ? "current_share_page"
+        : link.longImageQrDestination,
+    longImageQrSharePageId: hasExplicitSharePageTarget ? link.longImageQrSharePageId : null,
     shareDescription: link.shareDescription ?? "",
     shareTitle: link.shareTitle ?? "",
     showAddresses: link.showAddresses,

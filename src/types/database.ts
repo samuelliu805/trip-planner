@@ -425,11 +425,16 @@ export type Database = {
       }
       public_itinerary_links: {
         Row: {
+          allow_long_image_download: boolean
           allow_route_explore: boolean
           created_at: string
           created_by: string
           default_view: Database["public"]["Enums"]["public_itinerary_view"]
           id: string
+          long_image_qr_destination: string
+          long_image_qr_share_page_id: string | null
+          published_at: string | null
+          published_snapshot: Json | null
           public_token: string
           revoked_at: string | null
           share_description: string | null
@@ -440,18 +445,24 @@ export type Database = {
           show_place_photos: boolean
           show_quick_action_links: boolean
           show_times: boolean
+          snapshot_hash: string | null
           template_id: string
           template_version: number
-          trip_id: string
+          trip_id: string | null
           updated_at: string
-          variant_id: string
+          variant_id: string | null
         }
         Insert: {
+          allow_long_image_download?: boolean
           allow_route_explore?: boolean
           created_at?: string
           created_by: string
           default_view?: Database["public"]["Enums"]["public_itinerary_view"]
           id?: string
+          long_image_qr_destination?: string
+          long_image_qr_share_page_id?: string | null
+          published_at?: string | null
+          published_snapshot?: Json | null
           public_token?: string
           revoked_at?: string | null
           share_description?: string | null
@@ -462,18 +473,24 @@ export type Database = {
           show_place_photos?: boolean
           show_quick_action_links?: boolean
           show_times?: boolean
+          snapshot_hash?: string | null
           template_id?: string
           template_version?: number
-          trip_id: string
+          trip_id?: string | null
           updated_at?: string
-          variant_id: string
+          variant_id?: string | null
         }
         Update: {
+          allow_long_image_download?: boolean
           allow_route_explore?: boolean
           created_at?: string
           created_by?: string
           default_view?: Database["public"]["Enums"]["public_itinerary_view"]
           id?: string
+          long_image_qr_destination?: string
+          long_image_qr_share_page_id?: string | null
+          published_at?: string | null
+          published_snapshot?: Json | null
           public_token?: string
           revoked_at?: string | null
           share_description?: string | null
@@ -484,18 +501,19 @@ export type Database = {
           show_place_photos?: boolean
           show_quick_action_links?: boolean
           show_times?: boolean
+          snapshot_hash?: string | null
           template_id?: string
           template_version?: number
-          trip_id?: string
+          trip_id?: string | null
           updated_at?: string
-          variant_id?: string
+          variant_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "public_itinerary_links_trip_id_fkey"
-            columns: ["trip_id"]
+            foreignKeyName: "public_itinerary_links_long_image_qr_share_page_fkey"
+            columns: ["long_image_qr_share_page_id"]
             isOneToOne: false
-            referencedRelation: "trips"
+            referencedRelation: "public_itinerary_links"
             referencedColumns: ["id"]
           },
           {
@@ -504,6 +522,151 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "route_variants"
             referencedColumns: ["id", "trip_id"]
+          },
+        ]
+      }
+      share_image_exports: {
+        Row: {
+          created_at: string
+          current_version_id: string | null
+          id: string
+          owner_id: string
+          permanent_slug: string
+          qr_destination_type: string
+          qr_destination_url: string
+          render_config: Json
+          revoked_at: string | null
+          share_page_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_version_id?: string | null
+          id?: string
+          owner_id: string
+          permanent_slug?: string
+          qr_destination_type: string
+          qr_destination_url: string
+          render_config: Json
+          revoked_at?: string | null
+          share_page_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_version_id?: string | null
+          id?: string
+          owner_id?: string
+          permanent_slug?: string
+          qr_destination_type?: string
+          qr_destination_url?: string
+          render_config?: Json
+          revoked_at?: string | null
+          share_page_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_image_exports_current_version_fkey"
+            columns: ["current_version_id"]
+            isOneToOne: false
+            referencedRelation: "share_image_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_image_exports_share_page_id_fkey"
+            columns: ["share_page_id"]
+            isOneToOne: false
+            referencedRelation: "public_itinerary_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_image_parts: {
+        Row: {
+          byte_size: number
+          checksum: string
+          content_type: string
+          height: number
+          part_number: number
+          storage_path: string
+          version_id: string
+          width: number
+        }
+        Insert: {
+          byte_size: number
+          checksum: string
+          content_type?: string
+          height: number
+          part_number: number
+          storage_path: string
+          version_id: string
+          width: number
+        }
+        Update: {
+          byte_size?: number
+          checksum?: string
+          content_type?: string
+          height?: number
+          part_number?: number
+          storage_path?: string
+          version_id?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_image_parts_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "share_image_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_image_versions: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          export_id: string
+          id: string
+          ready_at: string | null
+          render_config: Json
+          source_snapshot: Json
+          source_snapshot_hash: string
+          status: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          export_id: string
+          id?: string
+          ready_at?: string | null
+          render_config: Json
+          source_snapshot: Json
+          source_snapshot_hash: string
+          status?: string
+          version_number: number
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          export_id?: string
+          id?: string
+          ready_at?: string | null
+          render_config?: Json
+          source_snapshot?: Json
+          source_snapshot_hash?: string
+          status?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_image_versions_export_id_fkey"
+            columns: ["export_id"]
+            isOneToOne: false
+            referencedRelation: "share_image_exports"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1244,6 +1407,107 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_share_page_v1: {
+        Args: {
+          requested_allow_long_image_download?: boolean
+          requested_allow_route_explore?: boolean
+          requested_default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_qr_destination?: string
+          requested_long_image_qr_share_page_id?: string | null
+          requested_share_description?: string
+          requested_share_title?: string
+          requested_show_addresses?: boolean
+          requested_show_map_routes?: boolean
+          requested_show_notes?: boolean
+          requested_show_place_photos?: boolean
+          requested_show_quick_action_links?: boolean
+          requested_show_times?: boolean
+          requested_template_id?: string
+          requested_template_version?: number
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      fail_share_image_version_v1: {
+        Args: { requested_error_message: string; target_version_id: string }
+        Returns: undefined
+      }
+      finalize_share_image_version_v1: {
+        Args: { requested_parts: Json; target_version_id: string }
+        Returns: Json
+      }
+      get_public_share_page_v1: {
+        Args: { shared_token: string }
+        Returns: Json
+      }
+      list_share_pages_v1: {
+        Args: { target_trip_id: string }
+        Returns: Json
+      }
+      owner_share_page_image_state_v1: {
+        Args: { target_share_page_id: string }
+        Returns: Json
+      }
+      owner_share_page_by_token_v1: {
+        Args: { shared_token: string }
+        Returns: Json
+      }
+      owner_share_page_v1: {
+        Args: { target_share_page_id: string }
+        Returns: Json
+      }
+      owns_pending_share_image_object_v1: {
+        Args: { requested_name: string }
+        Returns: boolean
+      }
+      prepare_share_image_version_v1: {
+        Args: {
+          requested_mode: string
+          requested_qr_destination_type: string
+          requested_qr_destination_url: string
+          requested_render_config: Json
+          target_export_id: string | null
+          target_share_page_id: string
+        }
+        Returns: Json
+      }
+      public_share_image_manifest_v1: {
+        Args: { requested_slug: string }
+        Returns: Json
+      }
+      public_share_page_image_v1: {
+        Args: { shared_token: string }
+        Returns: Json
+      }
+      revoke_share_page_v1: {
+        Args: { target_share_page_id: string }
+        Returns: undefined
+      }
+      revoke_share_image_export_v1: {
+        Args: { target_export_id: string }
+        Returns: undefined
+      }
+      update_share_page_v1: {
+        Args: {
+          requested_allow_long_image_download: boolean
+          requested_allow_route_explore: boolean
+          requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_qr_destination: string
+          requested_long_image_qr_share_page_id?: string | null
+          requested_share_description: string
+          requested_share_title: string
+          requested_show_addresses: boolean
+          requested_show_map_routes: boolean
+          requested_show_notes: boolean
+          requested_show_place_photos: boolean
+          requested_show_quick_action_links: boolean
+          requested_show_times: boolean
+          requested_template_id: string
+          requested_template_version: number
+          target_share_page_id: string
+        }
+        Returns: Json
+      }
       apply_research_item_to_variant: {
         Args: {
           target_research_item_id: string

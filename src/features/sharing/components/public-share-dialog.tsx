@@ -1,9 +1,17 @@
 "use client";
 
-import { LoaderCircle, Share2 } from "lucide-react";
+import { LoaderCircle, Plus, Share2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -19,10 +27,9 @@ import type { Tables } from "@/types/database";
 import {
   createPublicItineraryLink,
   revokePublicItineraryLink,
-  rotatePublicItineraryLink,
   updatePublicItineraryLink,
 } from "../actions";
-import type { PublicItineraryLink } from "../types";
+import type { OwnerShareImageState, PublicItineraryLink } from "../types";
 import { PublicShareSettingsFields } from "./public-share-settings-fields";
 import {
   defaultShareSettings,
@@ -33,12 +40,14 @@ import { PublicShareStatusPanel } from "./public-share-status-panel";
 
 export function PublicShareDialog({
   activeVariantId,
+  initialImageStates,
   initialLinks,
   siteUrl,
   trip,
   variants,
 }: {
   activeVariantId: string;
+  initialImageStates: Record<string, OwnerShareImageState | null>;
   initialLinks: PublicItineraryLink[];
   siteUrl: string;
   trip: Tables<"trips">;
@@ -46,14 +55,16 @@ export function PublicShareDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [links, setLinks] = useState(initialLinks);
+  const [imageStates, setImageStates] = useState(initialImageStates);
   const [variantId, setVariantId] = useState(activeVariantId);
   const initialLink = initialLinks.find((link) => link.variantId === activeVariantId);
+  const [selectedPageId, setSelectedPageId] = useState(initialLink?.id ?? "new");
   const [settings, setSettings] = useState<ShareSettings>(() => settingsFromLink(initialLink));
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [pending, startTransition] = useTransition();
   const variant = variants.find(({ id }) => id === variantId) ?? variants[0];
-  const activeLink = links.find((link) => link.variantId === variantId);
+  const activeLink = links.find((link) => link.id === selectedPageId);
   const suggestedTitle = `${trip.title} · ${variant?.name ?? "Route"}`;
   const suggestedDescription = `${trip.day_count}-day itinerary · View plans, tickets and routes`;
   const publicTitle = settings.shareTitle.trim() || suggestedTitle;
@@ -61,10 +72,28 @@ export function PublicShareDialog({
   const publicUrl = activeLink ? `${siteUrl}/share/${activeLink.publicToken}` : "";
 
   function chooseVariant(nextVariantId: string) {
+    const nextLink = links.find((link) => link.variantId === nextVariantId);
     setVariantId(nextVariantId);
-    setSettings(settingsFromLink(links.find((link) => link.variantId === nextVariantId)));
+    setSelectedPageId(nextLink?.id ?? "new");
+    setSettings(settingsFromLink(nextLink));
     setError(undefined);
     setNotice(undefined);
+  }
+
+  function choosePage(nextPageId: string) {
+    const page = links.find(({ id }) => id === nextPageId);
+    setSelectedPageId(nextPageId);
+    if (page?.variantId) setVariantId(page.variantId);
+    setSettings(settingsFromLink(page));
+    setError(undefined);
+    setNotice(undefined);
+  }
+
+  function createAnotherPage() {
+    setSelectedPageId("new");
+    setSettings(defaultShareSettings);
+    setError(undefined);
+    setNotice("Configure a new independent Share Page. Existing URLs will not change.");
   }
 
   function setSetting<Key extends keyof ShareSettings>(key: Key, value: ShareSettings[Key]) {
@@ -84,31 +113,10 @@ export function PublicShareDialog({
         return;
       }
       const savedLink = result.data;
-      setLinks((current) => [
-        ...current.filter(({ variantId: id }) => id !== savedLink.variantId),
-        savedLink,
-      ]);
+      setLinks((current) => [...current.filter(({ id }) => id !== savedLink.id), savedLink]);
+      setSelectedPageId(savedLink.id);
       setSettings(settingsFromLink(savedLink));
-      setNotice(activeLink ? "Public link settings saved." : "Public link created.");
-    });
-  }
-
-  function rotate() {
-    if (!activeLink) return;
-    setError(undefined);
-    setNotice(undefined);
-    startTransition(async () => {
-      const result = await rotatePublicItineraryLink({ linkId: activeLink.id, tripId: trip.id });
-      if ("error" in result) {
-        setError(result.error);
-        return;
-      }
-      const rotatedLink = result.data;
-      setLinks((current) => [
-        ...current.filter(({ variantId: id }) => id !== rotatedLink.variantId),
-        rotatedLink,
-      ]);
-      setNotice("A new URL is active. The previous URL is unavailable now.");
+      setNotice(activeLink ? "Share Page snapshot updated." : "Independent Share Page created.");
     });
   }
 
@@ -123,8 +131,9 @@ export function PublicShareDialog({
         return;
       }
       setLinks((current) => current.filter(({ id }) => id !== activeLink.id));
+      setSelectedPageId("new");
       setSettings(defaultShareSettings);
-      setNotice("Public access revoked. You can create a new link for this route.");
+      setNotice("Public access revoked. Other Share Pages and permanent images are unchanged.");
     });
   }
 
@@ -140,8 +149,8 @@ export function PublicShareDialog({
         <DialogHeader className="shrink-0">
           <DialogTitle>Share this itinerary</DialogTitle>
           <DialogDescription>
-            Create one live, read-only public link for a selected route. This link updates when you
-            edit this route.
+            Configure independent, durable Share Pages. Saving publishes a snapshot; later trip
+            edits do not silently change an existing page.
           </DialogDescription>
         </DialogHeader>
 
@@ -155,26 +164,60 @@ export function PublicShareDialog({
         ) : null}
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain">
-          <div className="grid min-w-0 gap-5 px-4 py-4 sm:gap-6 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,.85fr)]">
-            <PublicShareSettingsFields
-              activeCount={links.length}
-              onChooseVariant={chooseVariant}
-              onSettingChange={setSetting}
-              settings={settings}
-              suggestedDescription={suggestedDescription}
-              suggestedTitle={suggestedTitle}
-              variantId={variantId}
-              variants={variants}
-            />
-            <PublicShareStatusPanel
-              activeLink={activeLink}
-              description={publicDescription}
-              onRevoke={revoke}
-              onRotate={rotate}
-              pending={pending}
-              publicUrl={publicUrl}
-              title={publicTitle}
-            />
+          <div className="min-w-0 space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div className="min-w-0 space-y-1.5">
+                <Label htmlFor="share-page-picker">Share Page</Label>
+                <Select onValueChange={choosePage} value={selectedPageId}>
+                  <SelectTrigger className="min-h-11 min-w-0" id="share-page-picker">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {links.map((page, index) => (
+                      <SelectItem key={page.id} value={page.id}>
+                        Page {index + 1} · {page.shareTitle || page.templateId}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="new">New Share Page</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="min-h-11"
+                onClick={createAnotherPage}
+                type="button"
+                variant="outline"
+              >
+                <Plus className="size-4" /> New page
+              </Button>
+            </div>
+            <div className="grid min-w-0 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,.85fr)]">
+              <PublicShareSettingsFields
+                activeCount={links.length}
+                onChooseVariant={chooseVariant}
+                onSettingChange={setSetting}
+                settings={settings}
+                sharePages={links.filter(({ id }) => id !== activeLink?.id)}
+                suggestedDescription={suggestedDescription}
+                suggestedTitle={suggestedTitle}
+                variantId={variantId}
+                variants={variants}
+              />
+              <PublicShareStatusPanel
+                activeLink={activeLink}
+                description={publicDescription}
+                imageState={activeLink ? (imageStates[activeLink.id] ?? null) : null}
+                onImageStateChange={(state) => {
+                  if (!activeLink) return;
+                  setImageStates((current) => ({ ...current, [activeLink.id]: state }));
+                }}
+                onRevoke={revoke}
+                pending={pending}
+                publicUrl={publicUrl}
+                siteUrl={siteUrl}
+                title={publicTitle}
+              />
+            </div>
           </div>
         </div>
         <DialogFooter className="shrink-0 [&>button]:w-full sm:[&>button]:w-auto">
@@ -183,7 +226,11 @@ export function PublicShareDialog({
           </Button>
           <Button aria-busy={pending} disabled={pending} onClick={save} type="button">
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            {pending ? "Saving…" : activeLink ? "Save shared content" : "Create public link"}
+            {pending
+              ? "Publishing…"
+              : activeLink
+                ? "Update published snapshot"
+                : "Create Share Page"}
           </Button>
         </DialogFooter>
       </DialogContent>

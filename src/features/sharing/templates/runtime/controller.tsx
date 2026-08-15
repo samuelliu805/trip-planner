@@ -16,7 +16,13 @@ import {
 } from "react";
 
 import type { PublicMapSelection } from "../../components/public-map-workspace";
-import type { PublicItinerary, PublicView } from "../../types";
+import type {
+  OwnerShareImageState,
+  PublicItinerary,
+  PublicItineraryLink,
+  PublicView,
+  ShareImageManifest,
+} from "../../types";
 import type { CompiledPublicTemplateV1 } from "../schema";
 
 type PublicTemplateController = {
@@ -24,6 +30,9 @@ type PublicTemplateController = {
   itinerary: PublicItinerary;
   mapSheetOpen: boolean;
   mapVisible: boolean;
+  ownerImageState: OwnerShareImageState | null;
+  ownerSharePage: PublicItineraryLink | null;
+  shareImage: ShareImageManifest | null;
   onSelectionChange: Dispatch<SetStateAction<PublicMapSelection>>;
   resize: (event: PointerEvent<HTMLDivElement>) => void;
   selectDay: (dayRef: string) => void;
@@ -58,7 +67,10 @@ export function PublicTemplateControllerProvider({
   initialView,
   itinerary,
   legacyTemplateOverride,
+  ownerImageState,
+  ownerSharePage,
   publicUrl,
+  shareImage,
   template,
   token,
 }: {
@@ -66,7 +78,10 @@ export function PublicTemplateControllerProvider({
   initialView: PublicView;
   itinerary: PublicItinerary;
   legacyTemplateOverride?: "bento" | "standard";
+  ownerImageState: OwnerShareImageState | null;
+  ownerSharePage: PublicItineraryLink | null;
   publicUrl: string;
+  shareImage: ShareImageManifest | null;
   template: CompiledPublicTemplateV1;
   token: string;
 }) {
@@ -153,6 +168,9 @@ export function PublicTemplateControllerProvider({
         itinerary,
         mapSheetOpen,
         mapVisible,
+        ownerImageState,
+        ownerSharePage,
+        shareImage,
         onSelectionChange: setSelection,
         resize,
         selectDay,

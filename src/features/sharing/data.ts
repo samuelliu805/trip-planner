@@ -2,6 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 
+import { ownerShareImageStateSchema, shareImageManifestSchema } from "./long-image/schema";
 import {
   publicItineraryLinkSchema,
   publicItinerarySchema,
@@ -9,11 +10,18 @@ import {
 } from "./schema";
 import { resolveGooglePlaceMedia } from "./google-place-photo.server";
 import { publicPlaceMediaSources } from "./public-media-data";
-import type { PublicItinerary, PublicItineraryLink } from "./types";
+import type {
+  OwnerShareImageState,
+  PublicItinerary,
+  PublicItineraryLink,
+  ShareImageManifest,
+} from "./types";
 
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_itinerary_v4", { shared_token: token });
+  const { data, error } = await supabase.rpc("get_public_share_page_v1", {
+    shared_token: token,
+  });
   if (error) return null;
   if (unavailablePublicItinerarySchema.safeParse(data).success) return null;
   const parsed = publicItinerarySchema.safeParse(data);
@@ -41,7 +49,7 @@ export async function listPublicItineraryLinks(
   tripId: string,
 ): Promise<{ data: PublicItineraryLink[]; error: string | null }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_public_itinerary_links_v3", {
+  const { data, error } = await supabase.rpc("list_share_pages_v1", {
     target_trip_id: tripId,
   });
   if (error) return { data: [], error: error.message };
@@ -49,4 +57,48 @@ export async function listPublicItineraryLinks(
   return parsed.success
     ? { data: parsed.data, error: null }
     : { data: [], error: "Public link settings could not be read." };
+}
+
+export async function getPublicShareImage(token: string): Promise<ShareImageManifest | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("public_share_page_image_v1", {
+    shared_token: token,
+  });
+  if (error) return null;
+  const parsed = shareImageManifestSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
+}
+
+export async function getShareImageManifest(
+  permanentSlug: string,
+): Promise<ShareImageManifest | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("public_share_image_manifest_v1", {
+    requested_slug: permanentSlug,
+  });
+  if (error) return null;
+  const parsed = shareImageManifestSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
+}
+
+export async function getOwnerShareImageState(
+  sharePageId: string,
+): Promise<OwnerShareImageState | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("owner_share_page_image_state_v1", {
+    target_share_page_id: sharePageId,
+  });
+  if (error || data === null) return null;
+  const parsed = ownerShareImageStateSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
+}
+
+export async function getOwnerSharePageByToken(token: string): Promise<PublicItineraryLink | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("owner_share_page_by_token_v1", {
+    shared_token: token,
+  });
+  if (error || data === null) return null;
+  const parsed = publicItineraryLinkSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
 }

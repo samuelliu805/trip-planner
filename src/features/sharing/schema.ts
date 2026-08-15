@@ -181,10 +181,14 @@ export const unavailablePublicItinerarySchema = z.object({ available: z.literal(
 
 export const publicItineraryLinkSchema = z
   .object({
+    allowLongImageDownload: z.boolean(),
     allowRouteExplore: z.boolean(),
     createdAt: z.string(),
     defaultView: publicViewSchema,
     id: z.uuid(),
+    longImageQrDestination: z.enum(["current_share_page", "share_page", "homepage"]),
+    longImageQrSharePageId: z.uuid().nullable(),
+    publishedAt: z.string().nullable(),
     publicToken: z.uuid(),
     shareDescription: z.string().nullable(),
     shareTitle: z.string().nullable(),
@@ -194,18 +198,26 @@ export const publicItineraryLinkSchema = z
     showPlacePhotos: z.boolean(),
     showQuickActionLinks: z.boolean(),
     showTimes: z.boolean(),
+    snapshotHash: z
+      .string()
+      .regex(/^[0-9a-f]{64}$/)
+      .nullable(),
+    sourceAvailable: z.boolean(),
     templateId: publicTemplateIdSchema,
     templateVersion: publicTemplateVersionSchema,
-    tripId: z.uuid(),
+    tripId: z.uuid().nullable(),
     updatedAt: z.string(),
-    variantId: z.uuid(),
+    variantId: z.uuid().nullable(),
   })
   .strict();
 
 export const publicItinerarySettingsSchema = z
   .object({
+    allowLongImageDownload: z.boolean(),
     allowRouteExplore: z.boolean(),
     defaultView: z.enum(canonicalPublicViews),
+    longImageQrDestination: z.enum(["current_share_page", "share_page", "homepage"]),
+    longImageQrSharePageId: z.uuid().nullable(),
     shareDescription: z.string().trim().max(500),
     shareTitle: z.string().trim().max(160),
     showAddresses: z.boolean(),
