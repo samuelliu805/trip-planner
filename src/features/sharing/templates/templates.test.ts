@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { bentoPublicTemplateSourceV1 } from "./builtins/bento/source.ts";
+import { bentoPublicTemplateSourceV2 } from "./builtins/bento/v2.ts";
+import { etherealPublicTemplateSourceV1 } from "./builtins/ethereal/source.ts";
+import { journalPublicTemplateSourceV1 } from "./builtins/journal/source.ts";
 import { standardPublicTemplateSourceV1 } from "./builtins/standard/source.ts";
 import {
   PublicTemplateCompileError,
@@ -40,36 +43,59 @@ function expectCompileCode(
   );
 }
 
-test("Standard and Bento compile to one deterministic immutable artifact contract", () => {
-  const standard = compilePublicTemplate(standardPublicTemplateSourceV1);
-  const bento = compilePublicTemplate(bentoPublicTemplateSourceV1);
-  assert.equal(compiledPublicTemplateSchemaV1.safeParse(standard).success, true);
-  assert.equal(compiledPublicTemplateSchemaV1.safeParse(bento).success, true);
+test("built-ins compile to deterministic immutable artifact contracts", () => {
+  const sources = [
+    standardPublicTemplateSourceV1,
+    bentoPublicTemplateSourceV1,
+    bentoPublicTemplateSourceV2,
+    etherealPublicTemplateSourceV1,
+    journalPublicTemplateSourceV1,
+  ];
+  const [standard, bentoV1, bentoV2, ethereal, journal] = sources.map(compilePublicTemplate);
+  for (const template of [standard, bentoV1, bentoV2, ethereal, journal])
+    assert.equal(compiledPublicTemplateSchemaV1.safeParse(template).success, true);
   assert.equal(standard.sourceMode, "theme");
   assert.equal(standard.layout.id, "default-layout-v1");
-  assert.equal(bento.sourceMode, "layout");
+  assert.equal(bentoV1.sourceMode, "layout");
+  assert.equal(bentoV2.sourceMode, "theme");
+  assert.equal(ethereal.sourceMode, "layout");
+  assert.equal(journal.sourceMode, "layout");
   assert.equal(
     standard.digest,
     "sha256-423220052fc7a3c6bc4836b6ee475a13e95ffecef074efd1574d2900a4d69317",
   );
   assert.equal(
-    bento.digest,
+    bentoV1.digest,
     "sha256-77f1df05abc0fdf9822e6a03f15c15a347c59537ca9607fd77a1bce9a5828d6d",
   );
   assert.equal(
-    stablePublicTemplateJson(compilePublicTemplate(bentoPublicTemplateSourceV1)),
-    stablePublicTemplateJson(compilePublicTemplate(bentoPublicTemplateSourceV1)),
+    bentoV2.digest,
+    "sha256-2fe05ab56e72a2cbd0ebfc5bcd52b063d8cbc6b360a37d3ceae9508f38a0474b",
   );
+  assert.equal(
+    ethereal.digest,
+    "sha256-a3ee316d97fe7e18172d1a8a93aa3938ac31d4242ad25159ce73dc84756edb18",
+  );
+  assert.equal(
+    journal.digest,
+    "sha256-1ff987919ebc3db0d2007d2ec9e56093337a8e16db10a4d6422d76f4be0d28ba",
+  );
+  for (const source of sources)
+    assert.equal(
+      stablePublicTemplateJson(compilePublicTemplate(source)),
+      stablePublicTemplateJson(compilePublicTemplate(source)),
+    );
   assert.deepEqual(
     Object.values(publicTemplateRegistry)
       .map(({ template }) => template.key)
       .sort(),
-    ["bento@1", "standard@1"],
+    ["bento@1", "bento@2", "ethereal@1", "journal@1", "standard@1"],
   );
   assert.deepEqual(
     publicTemplateOptions().map(({ key }) => key),
-    ["bento@1", "standard@1"],
+    ["bento@2", "ethereal@1", "journal@1"],
   );
+  assert.equal(publicTemplateRegistry["standard@1"].selectable, false);
 });
 
 test("template resolver honors legacy query, persistence, disable, fallback, and rollback", () => {
@@ -87,12 +113,20 @@ test("template resolver honors legacy query, persistence, disable, fallback, and
   );
   assert.equal(resolvePublicTemplate({}).key, DEFAULT_PUBLIC_TEMPLATE_KEY);
   assert.equal(
+    resolvePublicTemplate({ persistedTemplateId: "ethereal", persistedTemplateVersion: 1 }).key,
+    "ethereal@1",
+  );
+  assert.equal(
+    resolvePublicTemplate({ persistedTemplateId: "journal", persistedTemplateVersion: 1 }).key,
+    "journal@1",
+  );
+  assert.equal(
     resolvePublicTemplate({
       disabledKeys: new Set(["bento@1"]),
       persistedTemplateId: "bento",
       persistedTemplateVersion: 1,
     }).key,
-    "standard@1",
+    "bento@2",
   );
   assert.equal(
     resolvePublicTemplate({

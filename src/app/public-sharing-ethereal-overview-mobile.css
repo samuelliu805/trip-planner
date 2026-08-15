@@ -1,0 +1,111 @@
+@media (max-width: 899px) {
+  .public-template-ethereal .overview-v4 {
+    padding: 0.625rem 0.875rem 7rem;
+  }
+
+  .public-template-ethereal .overview-day-v4,
+  .public-template-ethereal .overview-day-v4 + .overview-day-v4 {
+    border: 0;
+    padding: 1.75rem 0 2rem;
+  }
+
+  .public-template-ethereal .overview-day-heading-v4 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0 0.875rem;
+    margin-bottom: 1.375rem;
+  }
+
+  .public-template-ethereal .overview-day-title-v4 {
+    grid-column: 1;
+    grid-template-columns: max-content max-content minmax(0, 1fr);
+    gap: 0 0.5rem;
+  }
+
+  .public-template-ethereal .overview-day-number-v4 {
+    font-size: 0.6875rem;
+  }
+
+  .public-template-ethereal .overview-day-date-v4 {
+    margin-top: 0;
+    font-size: 0.6875rem;
+  }
+
+  .public-template-ethereal .overview-day-title-v4 > span:last-child {
+    grid-column: 1 / -1;
+    font-size: 1.125rem;
+  }
+
+  .public-template-ethereal .overview-day-items-v4 {
+    display: none;
+  }
+
+  .public-template-ethereal .overview-transport-list-v4,
+  .public-template-ethereal .overview-board-v4 {
+    border-top: 0;
+  }
+
+  .public-template-ethereal .overview-transport-list-v4 {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: none;
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .public-template-ethereal .overview-transport-item-v4 {
+    min-width: 0;
+  }
+
+  .public-template-ethereal .overview-item-top-v4,
+  .public-template-ethereal .overview-transport-button-v4 {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.625rem;
+  }
+
+  .public-template-ethereal .overview-order-v4 {
+    grid-column: 3;
+    font-size: 0.625rem;
+  }
+
+  .public-template-ethereal .overview-item-icon-v4,
+  .public-template-ethereal .overview-transport-icon-v4 {
+    grid-column: 1;
+    margin-top: 0;
+  }
+
+  .public-template-ethereal .overview-item-copy-v4,
+  .public-template-ethereal .overview-transport-copy-v4 {
+    grid-column: 2;
+  }
+
+  .public-template-ethereal .overview-item-title-v4,
+  .public-template-ethereal .overview-transport-title-v4 {
+    font-size: 1.0625rem;
+  }
+
+  .public-template-ethereal .overview-item-meta-v4,
+  .public-template-ethereal .overview-transport-meta-v4,
+  .public-template-ethereal .overview-transport-notes-v4 {
+    font-size: 0.6875rem;
+  }
+
+  .public-template-ethereal .overview-item-footer-v4,
+  .public-template-ethereal .overview-item-notes-v4 {
+    margin-left: 2.625rem;
+    font-size: 0.5625rem;
+  }
+
+  .public-template-ethereal .overview-item-card-v4.has-media {
+    display: block;
+  }
+
+  .public-template-ethereal .overview-item-card-v4.has-media > .public-item-media {
+    margin: 0.9375rem 0 0 2.625rem;
+  }
+
+  .public-template-ethereal .media-thumb-v4,
+  .public-template-ethereal .public-media-entry {
+    min-height: 11rem;
+    max-height: none;
+  }
+}

@@ -1,8 +1,14 @@
 import { z } from "zod";
 
 import { itineraryItemTypes } from "../itinerary/item-schema.ts";
-import { overviewRouteModes, routeLegModes } from "../routes/types.ts";
+import { publicSavedRouteSchema } from "./public-route-schema.ts";
 import { publicTemplateIdSchema, publicTemplateVersionSchema } from "./templates/schema.ts";
+
+export {
+  publicOverviewRouteCalculationInputSchema,
+  publicRouteCalculationInputSchema,
+  publicRouteCalculationSchema,
+} from "./public-route-schema.ts";
 
 export const canonicalPublicViews = ["overview", "table", "timeline"] as const;
 
@@ -36,7 +42,7 @@ const publicMediaAttributionSchema = z
     url: publicUrlSchema.optional(),
   })
   .strict();
-export const publicItemMediaSchema = z.discriminatedUnion("kind", [
+const publicItemMediaSchema = z.discriminatedUnion("kind", [
   z
     .object({
       alt: z.string().trim().max(300).optional(),
@@ -81,6 +87,13 @@ const publicCarRentalSchema = z
     company: z.string().max(120).optional(),
   })
   .strict();
+const publicTransportSchema = z
+  .object({
+    destination: z.string().trim().min(1).max(200).optional(),
+    origin: z.string().trim().min(1).max(200).optional(),
+    serviceNumber: z.string().trim().min(1).max(80).optional(),
+  })
+  .strict();
 const publicItemSchema = z
   .object({
     carRental: publicCarRentalSchema.optional(),
@@ -94,6 +107,7 @@ const publicItemSchema = z
     sortOrder: z.number().int(),
     startTime: z.string().optional(),
     title: z.string().min(1).max(200),
+    transport: publicTransportSchema.optional(),
     type: z.enum(itineraryItemTypes),
   })
   .strict();
@@ -110,50 +124,6 @@ const publicDaySchema = z
     title: z.string().max(200).nullable().optional(),
   })
   .strict();
-const coordinatesSchema = z.object({ latitude: z.number(), longitude: z.number() }).strict();
-const routeGeometrySchema = z.discriminatedUnion("source", [
-  z.object({ encodedPolyline: z.string(), source: z.literal("google") }).strict(),
-  z
-    .object({
-      destination: coordinatesSchema,
-      origin: coordinatesSchema,
-      source: z.literal("straight"),
-    })
-    .strict(),
-]);
-const publicRouteLegSchema = z
-  .object({
-    distanceMeters: z.number().nonnegative().optional(),
-    durationSeconds: z.number().nonnegative().nullable().optional(),
-    geometry: routeGeometrySchema.optional(),
-    mode: z.enum(routeLegModes),
-    position: z.number().int().positive(),
-  })
-  .strict();
-const publicRouteStopSchema = z
-  .object({
-    displayName: z.string().min(1).max(300),
-    latitude: z.number().min(-90).max(90),
-    longitude: z.number().min(-180).max(180),
-    position: z.number().int().positive(),
-    ref: z.string().length(64),
-    title: z.string().min(1).max(200),
-    type: z.enum(itineraryItemTypes),
-  })
-  .strict();
-const publicSavedRouteSchema = z
-  .object({
-    dayNumber: z.number().int().positive(),
-    dayRef: z.string().length(64),
-    legs: z.array(publicRouteLegSchema),
-    ref: z.string().length(64),
-    status: z.enum(["saved", "calculated"]),
-    stops: z.array(publicRouteStopSchema),
-    totalDistanceMeters: z.number().nonnegative().nullable().optional(),
-    totalDurationSeconds: z.number().nonnegative().nullable().optional(),
-  })
-  .strict();
-
 export const publicItinerarySchema = z
   .object({
     available: z.literal(true),
@@ -251,45 +221,5 @@ export const publicItinerarySettingsSchema = z
   .strict();
 
 export const linkMutationSchema = z.object({ linkId: z.uuid(), tripId: z.uuid() }).strict();
-
-export const publicRouteCalculationInputSchema = z
-  .object({
-    dayRef: z.string().length(64),
-    legModes: z
-      .array(z.enum(["self_driving", "subway", "bike", "walk"]))
-      .min(1)
-      .max(19),
-    stopRefs: z.array(z.string().length(64)).min(2).max(20),
-    token: z.uuid(),
-  })
-  .strict()
-  .refine((value) => value.legModes.length === value.stopRefs.length - 1, {
-    message: "Choose one travel mode for each route leg.",
-  })
-  .refine((value) => new Set(value.stopRefs).size === value.stopRefs.length, {
-    message: "Temporary route stops must be unique.",
-  });
-
-export const publicOverviewRouteCalculationInputSchema = z
-  .object({
-    legModes: z.array(z.enum(overviewRouteModes)).min(1).max(19),
-    stopRefs: z.array(z.string().length(64)).min(2).max(20),
-    token: z.uuid(),
-  })
-  .strict()
-  .refine((value) => value.legModes.length === value.stopRefs.length - 1, {
-    message: "Choose one travel mode for each city connection.",
-  })
-  .refine((value) => new Set(value.stopRefs).size === value.stopRefs.length, {
-    message: "Whole-trip route stops must be unique.",
-  });
-
-export const publicRouteCalculationSchema = z
-  .object({
-    legs: z.array(publicRouteLegSchema),
-    totalDistanceMeters: z.number().nonnegative(),
-    totalDurationSeconds: z.number().nonnegative().nullable(),
-  })
-  .strict();
 
 export type PublicItinerarySettingsInput = z.infer<typeof publicItinerarySettingsSchema>;

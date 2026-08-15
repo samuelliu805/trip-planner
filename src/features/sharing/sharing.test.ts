@@ -11,6 +11,7 @@ import {
   publicDayJourney,
   publicRentalItemLabel,
   publicTransferItemLabel,
+  publicTransportRouteLabel,
   safeExternalUrl,
 } from "./presentation.ts";
 import {
@@ -61,8 +62,23 @@ async function readAppStyles() {
         "../../app/public-sharing-bento-overview.css",
         "../../app/public-sharing-table.css",
         "../../app/public-sharing-timeline.css",
+        "../../app/public-sharing-timeline-transport.css",
         "../../app/public-sharing-bento-timeline.css",
         "../../app/public-sharing-bento-timeline-mobile.css",
+        "../../app/public-sharing-bento-readable.css",
+        "../../app/public-sharing-bento-readability-v2.css",
+        "../../app/public-sharing-ethereal-theme.css",
+        "../../app/public-sharing-ethereal-overview.css",
+        "../../app/public-sharing-ethereal-overview-mobile.css",
+        "../../app/public-sharing-ethereal-timeline-table.css",
+        "../../app/public-sharing-ethereal-timeline-tablet.css",
+        "../../app/public-sharing-ethereal-minimal.css",
+        "../../app/public-sharing-journal-theme.css",
+        "../../app/public-sharing-journal-overview.css",
+        "../../app/public-sharing-journal-overview-vibrant.css",
+        "../../app/public-sharing-journal-timeline.css",
+        "../../app/public-sharing-journal-table.css",
+        "../../app/public-sharing-mobile-readability.css",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
   ).join("\n");
@@ -117,6 +133,17 @@ const itinerary: PublicItinerary = publicItinerarySchema.parse({
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
   assert.equal(defaultShareSettings.defaultView, "timeline");
+  assert.equal(defaultShareSettings.templateVersion, 2);
+  for (const setting of [
+    "allowRouteExplore",
+    "showAddresses",
+    "showMapRoutes",
+    "showNotes",
+    "showPlacePhotos",
+    "showQuickActionLinks",
+    "showTimes",
+  ] as const)
+    assert.equal(defaultShareSettings[setting], true, `${setting} defaults on`);
   assert.equal(
     itinerary.settings.defaultView,
     "overview",
@@ -251,17 +278,17 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
   );
   assert.equal(layout.find(({ item }) => item.title === "Train")?.size, "compact");
   assert.deepEqual(
-    sections.transport.map(({ item, order }) => [item.title, order]),
-    [["Train", 1]],
+    sections.transport.map(({ item }) => item.title),
+    ["Train"],
   );
   assert.deepEqual(
     sections.cards.map(({ item, order }) => [item.title, order]),
     [
-      ["Temple", 2],
-      ["Lunch", 3],
-      ["Rental pickup", 4],
-      ["Hotel", 5],
-      ["Note", 6],
+      ["Temple", 1],
+      ["Lunch", 2],
+      ["Rental pickup", 3],
+      ["Hotel", 4],
+      ["Note", 5],
     ],
   );
 });
@@ -512,6 +539,15 @@ test("read-only travel text separates transfers from concise rental actions", ()
     }),
     "09:15 · Drive",
   );
+  const flight = {
+    ref: ref("flight-route"),
+    sortOrder: 3,
+    title: "NH 7",
+    transport: { destination: "Tokyo HND", origin: "San Francisco SFO", serviceNumber: "NH7" },
+    type: "flight" as const,
+  } satisfies PublicItineraryItem;
+  assert.equal(publicTransportRouteLabel(flight), "San Francisco SFO → Tokyo HND");
+  assert.equal(publicTransferItemLabel(flight), "NH 7 · San Francisco SFO → Tokyo HND · NH7");
 });
 
 test("public Days and Overview retain intermediate locality clusters", () => {
@@ -881,7 +917,8 @@ test("public and owner Matrix use the same canonical category columns", async ()
   assert.match(publicTable, /role="grid"/);
   assert.doesNotMatch(publicTable, /usePlannerMutations|drag|drop|<Input|PlannerWorkspace/);
   assert.doesNotMatch(publicTable, /useState|expandedDays|aria-expanded/);
-  assert.match(publicTable, /className="space-y-1"/);
+  assert.match(publicTable, /public-table-cell-items/);
+  assert.match(publicTable, /column\.id === "transport" \? "is-transport"/);
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
   assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-40/);
   assert.doesNotMatch(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
@@ -962,6 +999,14 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     new URL("./components/public-share-dialog.tsx", import.meta.url),
     "utf8",
   );
+  const shareSettingsFields = await readFile(
+    new URL("./components/public-share-settings-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  const shareStatus = await readFile(
+    new URL("./components/public-share-status-panel.tsx", import.meta.url),
+    "utf8",
+  );
   const viewerShare = await readFile(
     new URL("./components/public-viewer-share-dialog.tsx", import.meta.url),
     "utf8",
@@ -995,18 +1040,36 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(overview, /publicOverviewDaySections/);
   assert.match(overview, /PublicOverviewCard/);
   assert.match(overview, /PublicOverviewTransportList[\s\S]*public-overview-board/);
-  assert.match(overviewTransport, /data-public-item-ref/);
+  assert.match(overview, /\[data-public-transport\]/);
+  assert.doesNotMatch(overviewTransport, /data-public-item-ref|onClick|aria-current/);
+  assert.match(overviewTransport, /data-public-transport/);
+  assert.match(overviewTransport, /publicItemTypeLabels/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
+  assert.doesNotMatch(overviewCard, /\{media\.length\} media/);
   assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
   assert.doesNotMatch(overview + overviewCard, /PublicTimelineNode|PublicDayJourney/);
   const timelineSources = timeline + timelineDay + timelineNode + timelineTransport;
   assert.match(timelineSources, /publicTimelineDayPresentation/);
   assert.match(timelineSources, /PublicTimelineTransport/);
   assert.match(timelineSources, /PublicTimelineNode/);
+  assert.match(timelineDay, /\[data-public-transport\]/);
+  assert.match(timelineTransport, /data-public-transport/);
+  assert.match(
+    timelineDay,
+    /addEventListener\("wheel", handleWheel, \{ capture: true, passive: false \}\)/,
+  );
+  assert.match(timelineDay, /timelineSection\.closest<HTMLElement>\("\.public-view-scroll"\)/);
+  assert.match(timelineDay, /event\.stopPropagation\(\)/);
+  assert.match(timelineDay, /const edgeTolerance = 6/);
   assert.doesNotMatch(timelineNode, /public-timeline-route-leg|routeLegAfter/);
   assert.doesNotMatch(timelineSources, /PublicOverviewCard/);
   assert.match(timelineNode, /variant="timeline"/);
+  assert.ok(
+    timelineNode.indexOf("timeline-node-topline-v4") <
+      timelineNode.indexOf("<PublicItemMediaGallery"),
+    "timeline media remains inside its item after the item copy",
+  );
   assert.match(styles, /public-itinerary-grid/);
   assert.match(styles, /var\(--public-content-split\)/);
   assert.match(styles, /\.public-content-pane \{[\s\S]*background: var\(--muted\)/);
@@ -1037,6 +1100,23 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     /\.public-template-bento \.overview-transport-item-v4 \{[\s\S]*background: transparent/,
   );
   assert.match(styles, /@media \(min-width: 900px\) and \(max-width: 1199px\)/);
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.timeline-node-meta-v4\.line-clamp-2 \{[\s\S]*-webkit-line-clamp: unset/,
+  );
+  assert.match(styles, /\.public-template-ethereal \.timeline-sections-v4 \{[\s\S]*gap: 0\.75rem/);
+  assert.match(
+    styles,
+    /\.public-template-ethereal[\s\S]*\.timeline-node-v4:has\(\.public-item-media\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 8\.5rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-day-v4 \+ \.overview-day-v4 \{[\s\S]*margin-top: 0;[\s\S]*padding-top: 1\.75rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.timeline-node-list-v4 \{[\s\S]*scroll-snap-type: none/,
+  );
   assert.match(styles, /\.span-featured, \.span-activity, \.span-compact/);
   assert.match(styles, /\.public-template-bento/);
   assert.match(styles, /grid-template-columns: repeat\(12, minmax\(0, 1fr\)\)/);
@@ -1065,6 +1145,13 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     /event\.key === "Enter"/,
   );
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
+  assert.ok(
+    shareSettings.indexOf('aria-live="polite"') <
+      shareSettings.indexOf("min-h-0 flex-1 touch-pan-y"),
+    "save status stays outside the settings scroller",
+  );
+  assert.match(shareSettingsFields, /Everything is included by default/);
+  assert.doesNotMatch(shareStatus, /Public preview/);
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
   assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
   assert.match(shareTools, /className=\{`block size-36 max-w-full/);
@@ -1139,9 +1226,18 @@ test("route exploration is local-only and never exposes owner persistence contro
   );
   assert.doesNotMatch(actions, /saveDayRoute|upsert|\.insert\(|\.update\(/);
   assert.match(workspace, /usePublicMapWorkspaceController/);
+  assert.match(workspace, /public-map-panel-toggle/);
+  assert.match(workspace, /aria-expanded=\{panelOpen\}/);
+  assert.match(workspace, /useState\(false\)/);
+  assert.match(workspace, /Close route panel/);
+  assert.match(workspace, /Open route panel/);
+  assert.doesNotMatch(workspace, /public-map-toolbar|>Collapse<|>Expand</);
   assert.match(workspaceController, /calculatePublicOverviewRoute/);
   assert.match(workspaceController, /selectedItemRef \? \[selectedItemRef\] : \[\]/);
   assert.match(workspaceController, /overviewCalculation/);
+  assert.match(routeSummary, /defaultOpen = false/);
+  assert.match(dayPanel, /calculation \? \([\s\S]*Edit route/);
+  assert.match(overviewPanel, /calculation \? \([\s\S]*Edit route/);
   assert.match(actions, /must start at the previous day Hotel/);
   assert.match(actions, /must end at the current day Hotel/);
   const providerCall = actions.slice(
@@ -1152,7 +1248,17 @@ test("route exploration is local-only and never exposes owner persistence contro
 });
 
 test("public template route, hydration, persistence, and rollback contracts stay versioned", async () => {
-  const [page, shell, controller, data, actions, migration, databaseTypes] = await Promise.all(
+  const [
+    page,
+    shell,
+    controller,
+    data,
+    actions,
+    baseMigration,
+    templateMigration,
+    transportMigration,
+    databaseTypes,
+  ] = await Promise.all(
     [
       "../../app/share/[token]/page.tsx",
       "./components/public-itinerary-shell.tsx",
@@ -1160,6 +1266,8 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "./data.ts",
       "./actions.ts",
       "../../../supabase/migrations/20260814133837_public_template_architecture_v1.sql",
+      "../../../supabase/migrations/20260814175111_add_ethereal_and_journal_public_templates.sql",
+      "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
       "../../types/database.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
@@ -1176,30 +1284,39 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);
   assert.match(data, /get_public_itinerary_v4/);
   assert.match(data, /list_public_itinerary_links_v3/);
-  assert.match(actions, /create_public_itinerary_link_v3/);
-  assert.match(actions, /update_public_itinerary_link_v3/);
+  assert.match(actions, /create_public_itinerary_link_v4/);
+  assert.match(actions, /update_public_itinerary_link_v4/);
   assert.match(actions, /rotate_public_itinerary_link_v3/);
-  assert.match(migration, /set template_id = 'standard', template_version = 1/);
+  assert.match(baseMigration, /set template_id = 'standard', template_version = 1/);
   assert.ok(
-    migration.indexOf("set template_id = 'standard'") <
-      migration.indexOf("alter column template_id set default 'bento'"),
+    baseMigration.indexOf("set template_id = 'standard'") <
+      baseMigration.indexOf("alter column template_id set default 'bento'"),
   );
-  assert.match(migration, /create function public\.get_public_itinerary_v4/);
-  assert.match(migration, /raise exception 'PUBLIC_TEMPLATE_UNAVAILABLE'/);
-  assert.match(migration, /security definer[\s\S]*set search_path = ''/);
-  assert.match(migration, /revoke all on function public\.get_public_itinerary_v4/);
+  assert.match(baseMigration, /create function public\.get_public_itinerary_v4/);
+  assert.match(templateMigration, /requested_template_version integer default 2/);
+  assert.match(templateMigration, /requested_template_id = 'ethereal'/);
+  assert.match(templateMigration, /requested_template_id = 'journal'/);
+  assert.match(templateMigration, /raise exception 'PUBLIC_TEMPLATE_UNAVAILABLE'/);
+  assert.match(templateMigration, /security definer[\s\S]*set search_path = ''/);
+  assert.match(transportMigration, /create or replace function public\.get_public_itinerary_v4/);
+  assert.match(transportMigration, /'origin'[\s\S]*'destination'[\s\S]*'serviceNumber'/);
+  assert.match(transportMigration, /source\.type in \('flight', 'train', 'transport'\)/);
+  assert.doesNotMatch(transportMigration, /researchSourceId|booking|price|created_by/);
+  assert.match(transportMigration, /revoke all[\s\S]*from public, anon, authenticated/);
+  assert.match(transportMigration, /grant execute[\s\S]*to anon, authenticated/);
+  assert.match(baseMigration, /revoke all on function public\.get_public_itinerary_v4/);
   assert.match(
-    migration,
+    baseMigration,
     /grant execute on function public\.get_public_itinerary_v4\(uuid\) to anon, authenticated/,
   );
   assert.doesNotMatch(
-    migration.match(
-      /grant execute on function public\.create_public_itinerary_link_v3[\s\S]*?;/,
+    templateMigration.match(
+      /grant execute on function public\.create_public_itinerary_link_v4[\s\S]*?;/,
     )?.[0] ?? "",
     /\bto anon\b/,
   );
   assert.match(databaseTypes, /template_id: string/);
-  assert.match(databaseTypes, /create_public_itinerary_link_v3/);
+  assert.match(databaseTypes, /create_public_itinerary_link_v4/);
   assert.match(databaseTypes, /get_public_itinerary_v4/);
 });
 
@@ -1280,8 +1397,16 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
     "utf8",
   );
   assert.match(timeline, /aria-label="Major transport"/);
+  assert.match(timeline, /timeline-transport-label-v4/);
   assert.match(timeline, /PublicTimelineTransport/);
-  assert.match(timelineTransport, /data-public-item-ref/);
+  assert.match(
+    timeline,
+    /addEventListener\("wheel", handleWheel, \{ capture: true, passive: false \}\)/,
+  );
+  assert.match(timeline, /removeEventListener\("wheel", handleWheel, \{ capture: true \}\)/);
+  assert.match(timeline, /ref=\{timelineSectionRef\}/);
+  assert.match(timeline, /viewScroller\.scrollTop \+= delta/);
+  assert.doesNotMatch(timelineTransport, /data-public-item-ref|onClick|aria-current/);
   assert.match(timelineTransport, /PublicQuickActions compact item=\{item\} quiet/);
   assert.match(presentation, /timelineNodeTypes/);
   assert.match(presentation, /"car_rental"/);
@@ -1290,4 +1415,16 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   const styles = await readAppStyles();
   assert.match(styles, /\.timeline-transport-list-v4 \{[\s\S]*align-items: center/);
   assert.doesNotMatch(styles, /\.timeline-transport-list-v4 \{[^}]*flex-direction: column/);
+  assert.match(
+    styles,
+    /\.timeline-transport-title-v4 \{[\s\S]*text-overflow: clip;[\s\S]*white-space: normal/,
+  );
+  assert.match(
+    styles,
+    /\.overview-transport-title-v4 \{[\s\S]*text-overflow: clip;[\s\S]*white-space: normal/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-transport-list-v4 \{[^}]*grid-auto-flow: column;[^}]*grid-auto-columns: minmax\(0, 1fr\);[^}]*grid-template-columns: none;[^}]*overflow: visible/,
+  );
 });

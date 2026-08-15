@@ -1,11 +1,68 @@
+"use client";
+
 import { format, parseISO } from "date-fns";
 import { NotebookText } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { publicDayCityLabel } from "../presentation";
 import { publicTimelineDayPresentation } from "../public-timeline-presentation";
 import type { PublicItineraryDay } from "../types";
 import { PublicTimelineNode } from "./public-timeline-node";
 import { PublicTimelineTransport } from "./public-timeline-transport";
+
+function useTimelineRailWheel() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const railRef = useRef<HTMLOListElement>(null);
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const timelineSection: HTMLElement = section;
+
+    function handleWheel(event: WheelEvent) {
+      if (window.innerWidth < 900 || event.ctrlKey || event.deltaY === 0) return;
+
+      const deltaScale =
+        event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? timelineSection.clientHeight : 1;
+      const delta = event.deltaY * deltaScale;
+      const timelineRail = railRef.current;
+      const maxRailScroll = timelineRail
+        ? Math.max(0, timelineRail.scrollWidth - timelineRail.clientWidth)
+        : 0;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (timelineRail) {
+        const edgeTolerance = 6;
+        const atStart = timelineRail.scrollLeft <= edgeTolerance;
+        const atEnd = maxRailScroll - timelineRail.scrollLeft <= edgeTolerance;
+        const handOffToDays = (delta < 0 && atStart) || (delta > 0 && atEnd);
+
+        if (handOffToDays) {
+          timelineRail.scrollLeft = delta < 0 ? 0 : maxRailScroll;
+        } else {
+          const nextRailScroll = Math.max(
+            0,
+            Math.min(maxRailScroll, timelineRail.scrollLeft + delta),
+          );
+          if (Math.abs(nextRailScroll - timelineRail.scrollLeft) > 0.5) {
+            timelineRail.scrollLeft = nextRailScroll;
+            return;
+          }
+        }
+      }
+
+      const viewScroller = timelineSection.closest<HTMLElement>(".public-view-scroll");
+      if (viewScroller) viewScroller.scrollTop += delta;
+    }
+
+    timelineSection.addEventListener("wheel", handleWheel, { capture: true, passive: false });
+    return () => timelineSection.removeEventListener("wheel", handleWheel, { capture: true });
+  }, []);
+
+  return { railRef, sectionRef };
+}
 
 export function PublicTimelineDay({
   day,
@@ -22,18 +79,25 @@ export function PublicTimelineDay({
 }) {
   const locality = publicDayCityLabel(day);
   const { nodes, notes, transfers } = publicTimelineDayPresentation(day);
-  const itemCount = nodes.length + notes.length + transfers.length;
+  const planCount = nodes.length + notes.length;
+  const { railRef: timelineRailRef, sectionRef: timelineSectionRef } = useTimelineRailWheel();
 
   return (
     <article
       aria-current={selected ? "true" : undefined}
       className={`timeline-section-v4 ${selected ? "is-selected" : ""}`}
+      data-day-number={String(day.dayNumber).padStart(2, "0")}
       data-public-day-ref={day.ref}
       id={`day-${day.dayNumber}`}
       onClick={(event) => {
-        if (!(event.target as Element).closest("[data-public-item-ref], a, button, summary"))
+        if (
+          !(event.target as Element).closest(
+            "[data-public-item-ref], [data-public-transport], a, button, summary",
+          )
+        )
           onSelectDay(day.ref);
       }}
+      ref={timelineSectionRef}
       tabIndex={-1}
     >
       <header className="timeline-section-header-v4">
@@ -43,26 +107,25 @@ export function PublicTimelineDay({
           {locality ? <span>{locality}</span> : null}
         </div>
         <span className="timeline-day-count-v4">
-          {itemCount} {itemCount === 1 ? "item" : "items"}
+          {planCount} {planCount === 1 ? "plan" : "plans"}
         </span>
 
         {transfers.length ? (
           <section aria-label="Major transport" className="timeline-transport-list-v4">
-            {transfers.map(({ item, label }) => (
-              <PublicTimelineTransport
-                item={item}
-                key={item.ref}
-                label={label}
-                onSelect={() => onSelectItem(item.ref, day.ref)}
-                selected={selectedItemRef === item.ref}
-              />
-            ))}
+            <span aria-hidden="true" className="timeline-transport-label-v4">
+              Transport
+            </span>
+            <div className="timeline-transport-items-v4">
+              {transfers.map(({ item, label }) => (
+                <PublicTimelineTransport item={item} key={item.ref} label={label} />
+              ))}
+            </div>
           </section>
         ) : null}
       </header>
 
       {nodes.length ? (
-        <ol className="public-timeline-rail timeline-node-list-v4">
+        <ol className="public-timeline-rail timeline-node-list-v4" ref={timelineRailRef}>
           {nodes.map((node) => (
             <PublicTimelineNode
               key={node.item.ref}

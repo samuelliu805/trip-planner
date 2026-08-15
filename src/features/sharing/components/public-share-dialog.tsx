@@ -145,6 +145,15 @@ export function PublicShareDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {error || notice ? (
+          <p
+            aria-live="polite"
+            className={`mx-4 shrink-0 border-l-2 px-3 py-2 text-sm sm:mx-6 ${error ? "border-destructive bg-destructive/5 text-destructive" : "border-primary bg-primary/5"}`}
+          >
+            {error ?? notice}
+          </p>
+        ) : null}
+
         <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="grid min-w-0 gap-5 px-4 py-4 sm:gap-6 sm:px-6 sm:py-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,.85fr)]">
             <PublicShareSettingsFields
@@ -164,20 +173,9 @@ export function PublicShareDialog({
               onRotate={rotate}
               pending={pending}
               publicUrl={publicUrl}
-              settings={settings}
               title={publicTitle}
-              variantName={variant?.name}
             />
           </div>
-
-          {error || notice ? (
-            <p
-              aria-live="polite"
-              className={`mx-4 mb-4 border-l-2 px-3 py-2 text-sm sm:mx-6 ${error ? "border-destructive bg-destructive/5 text-destructive" : "border-primary bg-primary/5"}`}
-            >
-              {error ?? notice}
-            </p>
-          ) : null}
         </div>
         <DialogFooter className="shrink-0 [&>button]:w-full sm:[&>button]:w-auto">
           <Button onClick={() => setOpen(false)} type="button" variant="outline">

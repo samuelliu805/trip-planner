@@ -29,6 +29,7 @@
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "server-only": "^0.0.1",
     "tailwind-merge": "latest",
     "zod": "latest"
   },
@@ -41,7 +42,6 @@
     "eslint": "latest",
     "eslint-config-next": "16.2.12",
     "prettier": "3.9.6",
-    "shadcn": "latest",
     "tailwindcss": "4.3.3",
     "tw-animate-css": "latest",
     "typescript": "latest"

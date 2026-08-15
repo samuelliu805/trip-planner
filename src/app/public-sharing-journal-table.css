@@ -1,0 +1,103 @@
+.public-template-journal .public-matrix {
+  margin: 1.5rem 1.125rem 0;
+  max-width: calc(100% - 2.25rem);
+  height: calc(100% - 1.5rem);
+  border: 1px solid rgb(119 101 73 / 16%);
+  background: #fbf7ec;
+  box-shadow: 6px 7px 0 rgb(111 159 187 / 8%);
+  color: #2d352f;
+  scrollbar-width: none;
+}
+
+.public-template-journal .public-matrix::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.public-template-journal .public-matrix [role="row"]:not(.matrix-grid-header) {
+  min-height: 6.75rem;
+  border-color: #d7ccba;
+  border-bottom-style: dashed;
+  background: rgb(255 253 247 / 62%);
+}
+
+.public-template-journal .public-matrix [role="row"]:not(.matrix-grid-header):nth-child(odd) {
+  background: rgb(244 237 221 / 54%);
+}
+
+.public-template-journal .public-matrix [role="columnheader"] {
+  height: 2.75rem;
+  border-color: #d7ccba;
+  border-right-style: dashed;
+  background: #dfe8de;
+  color: #3f6048;
+  font-size: 0.71875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.public-template-journal .public-matrix [role="gridcell"],
+.public-template-journal .public-matrix [role="rowheader"] {
+  border-color: #d7ccba;
+  border-right-style: dashed;
+  background: transparent;
+  padding: 0.875rem 0.8125rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.public-template-journal .public-matrix .matrix-date-column,
+.public-template-journal .public-matrix .matrix-day-column {
+  background: #f4eddd;
+  box-shadow: 1px 0 #d7ccba;
+}
+
+.public-template-journal .public-matrix .matrix-grid-header .matrix-date-column,
+.public-template-journal .public-matrix .matrix-grid-header .matrix-day-column {
+  background: #dfe8de;
+}
+
+.public-template-journal .public-matrix .public-item-focus {
+  min-height: 2.75rem;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.5625rem;
+  box-shadow: none;
+  font-size: 0.875rem;
+}
+
+.public-template-journal .public-matrix .public-table-cell-items.is-transport {
+  border: 0;
+  border-radius: 0;
+}
+
+.public-template-journal
+  .public-matrix
+  .public-table-cell-items.is-transport
+  > .public-item-focus
+  + .public-item-focus {
+  box-shadow: none;
+}
+
+@media (max-width: 899px) {
+  .public-template-journal .public-matrix {
+    margin: 0;
+    max-width: 100%;
+    height: 100%;
+    border-right: 0;
+    border-left: 0;
+    box-shadow: none;
+  }
+
+  .public-template-journal .public-matrix [role="row"]:not(.matrix-grid-header) {
+    min-height: 7.25rem;
+  }
+
+  .public-template-journal .public-matrix [role="gridcell"],
+  .public-template-journal .public-matrix [role="rowheader"] {
+    padding: 1rem 0.875rem;
+    font-size: 0.84375rem;
+  }
+}

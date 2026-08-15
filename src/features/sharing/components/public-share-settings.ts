@@ -8,14 +8,14 @@ export const defaultShareSettings: ShareSettings = {
   defaultView: "timeline",
   shareDescription: "",
   shareTitle: "",
-  showAddresses: false,
+  showAddresses: true,
   showMapRoutes: true,
-  showNotes: false,
-  showPlacePhotos: false,
+  showNotes: true,
+  showPlacePhotos: true,
   showQuickActionLinks: true,
   showTimes: true,
   templateId: "bento",
-  templateVersion: 1,
+  templateVersion: 2,
 };
 
 export const publicViewLabels: Record<PublicView, string> = {

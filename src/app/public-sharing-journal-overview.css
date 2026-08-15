@@ -1,0 +1,231 @@
+.public-template-journal .overview-v4 {
+  padding: 1.5rem 1.75rem 6.875rem;
+}
+
+.public-template-journal .overview-title-row-v4 {
+  display: none;
+}
+
+.public-template-journal .overview-days-v4 {
+  gap: 0;
+}
+
+.public-template-journal .overview-day-v4 {
+  position: relative;
+  margin: 0 -0.375rem;
+  border-bottom: 1px dashed #d7ccba;
+  padding: 1.875rem 0.5rem 2.375rem;
+}
+
+.public-template-journal .overview-day-v4:first-child {
+  padding-top: 0.375rem;
+}
+
+.public-template-journal .overview-day-v4 + .overview-day-v4 {
+  border-top: 0;
+  padding-top: 1.875rem;
+}
+
+.public-template-journal .overview-day-v4::before {
+  display: none;
+}
+
+.public-template-journal .overview-day-heading-v4 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1rem;
+  margin: 0 0 1.5rem 0.3125rem;
+}
+
+.public-template-journal .overview-day-title-v4 {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 4.125rem minmax(0, 1fr);
+  gap: 0 1rem;
+}
+
+.public-template-journal .overview-day-title-v4 strong {
+  display: contents;
+}
+
+.public-template-journal .overview-day-number-v4 {
+  display: grid;
+  width: 3.625rem;
+  height: 3.625rem;
+  grid-row: 1 / span 2;
+  place-items: center;
+  border: 2px solid var(--journal-coral);
+  border-radius: 46% 54% 51% 49%;
+  color: var(--journal-coral);
+  font: 700 0.9375rem/1 var(--journal-hand);
+  transform: rotate(-5deg);
+}
+
+.public-template-journal .overview-day-date-v4 {
+  grid-column: 2;
+  margin-top: 0.1875rem;
+  color: #2d352f;
+  font: 400 1.5625rem/1.1 var(--journal-hand);
+}
+
+.public-template-journal .overview-day-date-v4::before {
+  content: "";
+}
+
+.public-template-journal .overview-day-title-v4 > span:last-child {
+  grid-column: 2;
+  margin-top: 0.4375rem;
+  color: #6f756e;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.public-template-journal .overview-day-items-v4 {
+  padding-top: 0.5rem;
+  color: var(--journal-sage-dark);
+  font: 700 0.6875rem/1 var(--journal-hand);
+  letter-spacing: 0;
+  text-transform: none;
+  transform: rotate(2deg);
+}
+
+.public-template-journal .overview-board-v4 {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  align-items: start;
+  gap: 0.875rem;
+  padding: 0.25rem 0.375rem 0.5rem;
+}
+
+.public-template-journal .overview-board-v4::before {
+  display: none;
+}
+
+.public-template-journal .overview-item-card-v4 {
+  position: relative;
+  grid-column: auto;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgb(119 101 73 / 12%);
+  border-radius: 0.625rem;
+  background: rgb(255 253 247 / 88%);
+  padding: 1rem;
+  box-shadow: 2px 3px 0 rgb(111 159 187 / 8%);
+}
+
+.public-template-journal .overview-item-card-v4.activity {
+  grid-column: auto;
+  border-left: 4px solid rgb(111 159 187 / 52%);
+}
+
+.public-template-journal .overview-item-card-v4.activity::before {
+  display: none;
+}
+
+.public-template-journal .overview-item-card-v4.hotel {
+  grid-column: auto;
+  margin: 0;
+  background: #f1eaf2;
+  box-shadow: 2px 3px 0 rgb(119 91 116 / 8%);
+}
+
+.public-template-journal .overview-item-card-v4.rental {
+  grid-column: auto;
+  border: 1px solid rgb(155 116 39 / 18%);
+  background: #fbf1d6;
+}
+
+.public-template-journal .overview-item-card-v4.meal {
+  grid-column: auto;
+  margin: 0;
+  border-color: rgb(183 95 79 / 14%);
+  background: #fae8e0;
+}
+
+.public-template-journal .overview-item-card-v4.has-media {
+  grid-column: 1 / -1;
+  background: #e6ece5;
+  box-shadow: 5px 6px 0 rgb(73 99 79 / 11%);
+}
+
+.public-template-journal .overview-item-top-v4 {
+  position: relative;
+  z-index: 2;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.6875rem;
+}
+
+.public-template-journal .overview-item-icon-v4 {
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 47% 53% 45% 55%;
+  background: #dfe9df;
+  color: var(--journal-sage-dark);
+  transform: rotate(-4deg);
+}
+
+.public-template-journal .overview-item-card-v4.meal .overview-item-icon-v4 {
+  background: #f7e2d8;
+  color: #b75f4f;
+}
+
+.public-template-journal .overview-item-card-v4.rental .overview-item-icon-v4 {
+  border: 1px solid rgb(155 116 39 / 28%);
+  background: #fffaf0;
+  color: #805c16;
+}
+
+.public-template-journal .overview-item-card-v4.hotel .overview-item-icon-v4 {
+  background: #e8e0ea;
+  color: #775b74;
+}
+
+.public-template-journal .overview-item-title-v4 {
+  color: #303a33;
+  font-size: 0.96875rem;
+  font-weight: 680;
+  line-height: 1.44;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.public-template-journal .overview-item-meta-v4,
+.public-template-journal .overview-item-notes-v4 {
+  margin-top: 0.3125rem;
+  color: #6f756e;
+  font: 0.75rem/1.5 var(--journal-sans);
+}
+
+.public-template-journal .overview-order-v4 {
+  color: #a69a87;
+  font: 780 0.65625rem var(--journal-sans);
+  letter-spacing: 0.08em;
+}
+
+.public-template-journal .overview-item-footer-v4 {
+  position: relative;
+  z-index: 2;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  color: #6f756e;
+  font-size: 0.65625rem;
+}
+
+.public-template-journal .media-grid-v4 {
+  margin-top: 1rem;
+  border: 0.375rem solid white;
+  border-radius: 0;
+  background: white;
+  box-shadow: 0 8px 20px rgb(66 54 37 / 13%);
+  transform: rotate(-1deg);
+}
+
+.public-template-journal .media-thumb-v4,
+.public-template-journal .public-media-entry {
+  min-height: 11rem;
+  max-height: 14rem;
+}

@@ -16,7 +16,11 @@ import { publicDayRoutePresentation } from "../public-route-presentation";
 import type { PublicRouteCalculation } from "../types";
 import type { PublicMapWorkspaceProps } from "./public-map-workspace-types";
 
-const bentoPublicMapTheme = { color: "#58f58b", glyphColor: "#06100a" } as const;
+const publicMapThemes = {
+  bento: { color: "#58f58b", glyphColor: "#06100a" },
+  ethereal: { color: "#667169", glyphColor: "#fffefa" },
+  journal: { color: "#df8068", glyphColor: "#fffdf7" },
+} as const;
 
 export function usePublicMapWorkspaceController({
   activeView,
@@ -47,7 +51,7 @@ export function usePublicMapWorkspaceController({
   const [overviewError, setOverviewError] = useState<string>();
   const [pending, startTransition] = useTransition();
 
-  const mapTheme = templateId === "bento" ? bentoPublicMapTheme : undefined;
+  const mapTheme = publicMapThemes[templateId as keyof typeof publicMapThemes];
   const routeColor = mapTheme?.color ?? itinerary.variant.color;
   const markers = useMemo(() => buildPublicMarkers(itinerary, mapTheme), [itinerary, mapTheme]);
   const overviewStops = useMemo(() => publicOverviewStops(itinerary), [itinerary]);
@@ -204,6 +208,10 @@ export function usePublicMapWorkspaceController({
         setDayError(undefined);
       },
       onCalculate: calculateDay,
+      onEdit: () => {
+        setDayCalculation(undefined);
+        setDayError(undefined);
+      },
       onExplore: () => {
         resetDay(day?.ref);
         setExploringDayRef(day?.ref);

@@ -15,8 +15,6 @@ import { Button } from "@/components/ui/button";
 
 import type { PublicItineraryLink } from "../types";
 import { ShareLinkActions, ShareQrCode } from "./share-tools";
-import { publicViewLabels, type ShareSettings } from "./public-share-settings";
-import { publicTemplateOptions } from "../templates/registry";
 
 export function PublicShareStatusPanel({
   activeLink,
@@ -25,9 +23,7 @@ export function PublicShareStatusPanel({
   onRotate,
   pending,
   publicUrl,
-  settings,
   title,
-  variantName,
 }: {
   activeLink?: PublicItineraryLink;
   description: string;
@@ -35,29 +31,10 @@ export function PublicShareStatusPanel({
   onRotate: () => void;
   pending: boolean;
   publicUrl: string;
-  settings: ShareSettings;
   title: string;
-  variantName?: string;
 }) {
-  const templateLabel =
-    publicTemplateOptions().find(
-      ({ id, version }) => id === settings.templateId && version === settings.templateVersion,
-    )?.label ?? `${settings.templateId}@${settings.templateVersion}`;
   return (
     <aside className="min-w-0 space-y-4">
-      <div className="border bg-muted/20 p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
-          Public preview
-        </p>
-        <div className="mt-4 border-l-4 border-primary pl-4">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          <p className="mt-3 text-xs font-medium">
-            {publicViewLabels[settings.defaultView]} · {templateLabel} · {variantName}
-          </p>
-        </div>
-      </div>
-
       {activeLink ? (
         <div className="space-y-4 border p-4">
           <div className="flex items-start gap-2">

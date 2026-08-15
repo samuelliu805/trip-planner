@@ -12,10 +12,6 @@ export type PublicOverviewItemPresentation = {
   size: PublicOverviewItemSize;
 };
 
-export type PositionedPublicOverviewItemPresentation = PublicOverviewItemPresentation & {
-  order: number;
-};
-
 const publicOverviewTransportTypes = new Set(["flight", "train", "transport"]);
 
 export function publicOverviewItemPresentation(
@@ -44,13 +40,13 @@ export function publicOverviewDayLayout(day: PublicItineraryDay) {
 }
 
 export function publicOverviewDaySections(day: PublicItineraryDay) {
-  const positioned = publicOverviewDayLayout(day).map((presentation, index) => ({
-    ...presentation,
-    order: index + 1,
-  }));
+  const layout = publicOverviewDayLayout(day);
+  const cards = layout
+    .filter(({ item }) => !publicOverviewTransportTypes.has(item.type))
+    .map((presentation, index) => ({ ...presentation, order: index + 1 }));
 
   return {
-    cards: positioned.filter(({ item }) => !publicOverviewTransportTypes.has(item.type)),
-    transport: positioned.filter(({ item }) => publicOverviewTransportTypes.has(item.type)),
+    cards,
+    transport: layout.filter(({ item }) => publicOverviewTransportTypes.has(item.type)),
   };
 }

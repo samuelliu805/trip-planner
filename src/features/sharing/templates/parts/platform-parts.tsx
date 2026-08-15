@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Map, PanelRightClose, PanelRightOpen, Route } from "lucide-react";
+import { CalendarDays, Map, PanelRightClose, PanelRightOpen, Route, Send } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -33,11 +33,19 @@ function publicDateSummary(itinerary: PublicItinerary) {
 }
 
 function TripHeaderPart() {
-  const { itinerary } = usePublicTemplateController();
+  const { itinerary, template } = usePublicTemplateController();
+  const BrandIcon = template.id === "journal" ? Send : Route;
   return (
     <div className="public-brand-area">
       <div className="public-brand-kicker">
-        <Route aria-hidden="true" className="size-3.5" /> Trip Planner
+        {template.id === "ethereal" ? (
+          <span aria-hidden="true" className="public-brand-monogram">
+            TP
+          </span>
+        ) : (
+          <BrandIcon aria-hidden="true" className="size-3.5" />
+        )}
+        Trip Planner
       </div>
       <h1 className="public-trip-title">{itinerary.trip.title}</h1>
       <p className="public-trip-meta">
