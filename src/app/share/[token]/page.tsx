@@ -4,7 +4,12 @@ import { z } from "zod";
 
 import { PublicItineraryShell } from "@/features/sharing/components/public-itinerary-shell";
 import { PublicUnavailable } from "@/features/sharing/components/public-unavailable";
-import { getPublicItinerary } from "@/features/sharing/data";
+import {
+  getOwnerShareImageState,
+  getOwnerSharePageByToken,
+  getPublicItinerary,
+  getPublicShareImage,
+} from "@/features/sharing/data";
 import { publicShareUrlState } from "@/features/sharing/public-url-state";
 import { getSiteUrl } from "@/features/sharing/site-url";
 import { resolvePublicTemplate } from "@/features/sharing/templates/resolver";
@@ -16,6 +21,12 @@ export const revalidate = 0;
 const tokenSchema = z.uuid();
 const loadItinerary = cache(async (token: string) =>
   tokenSchema.safeParse(token).success ? getPublicItinerary(token) : null,
+);
+const loadShareImage = cache(async (token: string) =>
+  tokenSchema.safeParse(token).success ? getPublicShareImage(token) : null,
+);
+const loadOwnerPage = cache(async (token: string) =>
+  tokenSchema.safeParse(token).success ? getOwnerSharePageByToken(token) : null,
 );
 
 type PublicSharePageProps = {
@@ -53,8 +64,13 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
 
 export default async function PublicSharePage({ params, searchParams }: PublicSharePageProps) {
   const [{ token }, search] = await Promise.all([params, searchParams]);
-  const itinerary = await loadItinerary(token);
+  const [itinerary, shareImage, ownerPage] = await Promise.all([
+    loadItinerary(token),
+    loadShareImage(token),
+    loadOwnerPage(token),
+  ]);
   if (!itinerary) return <PublicUnavailable />;
+  const ownerImageState = ownerPage ? await getOwnerShareImageState(ownerPage.id) : null;
   const urlState = publicShareUrlState(search, itinerary.settings.defaultView);
   const resolvedTemplate = resolvePublicTemplate({
     ...publicTemplateRuntimeConfig(),
@@ -74,7 +90,10 @@ export default async function PublicSharePage({ params, searchParams }: PublicSh
       itinerary={itinerary}
       key={`${resolvedTemplate.key}:${urlState.view}`}
       legacyTemplateOverride={urlState.legacyTemplate}
+      ownerImageState={ownerImageState}
+      ownerSharePage={ownerPage}
       publicUrl={`${getSiteUrl()}/share/${token}`}
+      shareImage={shareImage}
       templateKey={resolvedTemplate.key}
       token={token}
     />

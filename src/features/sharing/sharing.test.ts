@@ -48,6 +48,12 @@ import {
 } from "./schema.ts";
 import type { PublicItinerary, PublicItineraryItem } from "./types.ts";
 import { defaultShareSettings } from "./components/public-share-settings.ts";
+import {
+  paginateTimelineDayHeights,
+  splitTimelineExportDays,
+  TIMELINE_EXPORT_MAX_HEIGHT,
+  TIMELINE_EXPORT_WIDTH,
+} from "./long-image/layout.ts";
 
 async function readAppStyles() {
   return (
@@ -80,6 +86,8 @@ async function readAppStyles() {
         "../../app/public-sharing-journal-timeline.css",
         "../../app/public-sharing-journal-table.css",
         "../../app/public-sharing-mobile-readability.css",
+        "../../app/public-sharing-timeline-export.css",
+        "../../app/public-sharing-timeline-export-templates.css",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
   ).join("\n");
@@ -129,6 +137,36 @@ const itinerary: PublicItinerary = publicItinerarySchema.parse({
     title: "Kyoto",
   },
   variant: { color: "#166b4f", name: "Route A" },
+});
+
+test("Timeline export v1 keeps 1080 px parts and paginates measured DOM day groups", () => {
+  const repeatedItems = Array.from({ length: 120 }, (_, index) => ({
+    ...itinerary.days[0].items[index % itinerary.days[0].items.length],
+    ref: index.toString(16).padStart(64, "0"),
+    sortOrder: index,
+    title: `Timeline item ${index + 1}`,
+  }));
+  const sections = splitTimelineExportDays([{ ...itinerary.days[0], items: repeatedItems }]);
+  const exportedItems = sections.flatMap(({ items }) => items);
+  const pages = paginateTimelineDayHeights({
+    continuationChromeHeight: 300,
+    dayGap: 50,
+    dayHeights: [2_000, 2_000, 1_500],
+    firstPageChromeHeight: 500,
+  });
+
+  assert.equal(TIMELINE_EXPORT_WIDTH, 1080);
+  assert.equal(TIMELINE_EXPORT_MAX_HEIGHT, 9_600);
+  assert.equal(sections.length, 10);
+  assert.ok(sections.every(({ items }) => items.length <= 12));
+  assert.deepEqual(pages, [
+    { end: 2, start: 0 },
+    { end: 3, start: 2 },
+  ]);
+  assert.deepEqual(
+    exportedItems.map(({ ref: itemRef }) => itemRef),
+    repeatedItems.map(({ ref: itemRef }) => itemRef),
+  );
 });
 
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
@@ -946,6 +984,55 @@ test("owner share controls keep a stable key across the server/client toolbar bo
   assert.match(tripPage, /<PublicShareDialog[\s\S]*key="trip-share-controls"/);
 });
 
+test("long-image regeneration is explicit and nested overlays stay above the share dialog", async () => {
+  const dialog = await readFile(new URL("../../components/ui/dialog.tsx", import.meta.url), "utf8");
+  const alertDialog = await readFile(
+    new URL("../../components/ui/alert-dialog.tsx", import.meta.url),
+    "utf8",
+  );
+  const exportPanel = await readFile(
+    new URL("./components/long-image-export-panel.tsx", import.meta.url),
+    "utf8",
+  );
+  const exportDialogs = await readFile(
+    new URL("./components/long-image-export-dialogs.tsx", import.meta.url),
+    "utf8",
+  );
+  const exportController = await readFile(
+    new URL("./components/use-long-image-export.ts", import.meta.url),
+    "utf8",
+  );
+  const exportDocument = await readFile(
+    new URL("./long-image/timeline-export-document.tsx", import.meta.url),
+    "utf8",
+  );
+  const exportRenderer = await readFile(
+    new URL("./long-image/dom-renderer.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dialog, /z-\[100\]/);
+  assert.match(dialog, /z-\[110\]/);
+  assert.match(dialog, /max-h-\[92dvh\]/);
+  assert.match(dialog, /max-w-full/);
+  assert.match(dialog, /overflow-x-hidden overflow-y-auto/);
+  assert.match(alertDialog, /z-\[130\]/);
+  assert.match(alertDialog, /z-\[140\]/);
+  assert.match(alertDialog, /w-\[calc\(100%-2rem\)\]/);
+  assert.match(alertDialog, /overflow-x-hidden/);
+  assert.match(exportDialogs, /Create new link \(recommended\)/);
+  assert.match(exportDialogs, /Replace existing version/);
+  assert.match(exportDialogs, /QR destination\s+remains unchanged/);
+  assert.match(exportDialogs, /Revoke image link/);
+  assert.match(exportPanel, /This Share Page has changed since the image was generated/);
+  assert.match(exportController, /navigator\.share/);
+  assert.match(exportDocument, /<PublicTimeline/);
+  assert.match(exportDocument, /<PublicTripHeader/);
+  assert.doesNotMatch(exportDocument, /Timeline export/);
+  assert.match(exportRenderer, /getFontEmbedCSS/);
+  assert.match(exportRenderer, /documentHeight\(node\)/);
+  assert.doesNotMatch(exportRenderer, /fillText|timelineItemHeight/);
+});
+
 test("public UI contracts keep distinct views, a bottom switcher, and the existing map shell", async () => {
   const overview = await readFile(
     new URL("./components/public-overview.tsx", import.meta.url),
@@ -1271,6 +1358,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
     baseMigration,
     templateMigration,
     transportMigration,
+    sharePageMigration,
     databaseTypes,
   ] = await Promise.all(
     [
@@ -1282,6 +1370,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260814133837_public_template_architecture_v1.sql",
       "../../../supabase/migrations/20260814175111_add_ethereal_and_journal_public_templates.sql",
       "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
+      "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
       "../../types/database.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
@@ -1296,11 +1385,11 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(controller, /new URLSearchParams\(searchParams\.toString\(\)\)/);
   assert.match(controller, /if \(legacyTemplateOverride\) url\.searchParams\.set\("template"/);
   assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);
-  assert.match(data, /get_public_itinerary_v4/);
-  assert.match(data, /list_public_itinerary_links_v3/);
-  assert.match(actions, /create_public_itinerary_link_v4/);
-  assert.match(actions, /update_public_itinerary_link_v4/);
-  assert.match(actions, /rotate_public_itinerary_link_v3/);
+  assert.match(data, /get_public_share_page_v1/);
+  assert.match(data, /list_share_pages_v1/);
+  assert.match(actions, /create_share_page_v1/);
+  assert.match(actions, /update_share_page_v1/);
+  assert.doesNotMatch(actions, /rotate_public_itinerary_link/);
   assert.match(baseMigration, /set template_id = 'standard', template_version = 1/);
   assert.ok(
     baseMigration.indexOf("set template_id = 'standard'") <
@@ -1332,6 +1421,12 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(databaseTypes, /template_id: string/);
   assert.match(databaseTypes, /create_public_itinerary_link_v4/);
   assert.match(databaseTypes, /get_public_itinerary_v4/);
+  assert.match(sharePageMigration, /published_snapshot jsonb/);
+  assert.match(sharePageMigration, /create function public\.get_public_share_page_v1/);
+  assert.match(
+    sharePageMigration,
+    /drop index if exists public\.public_itinerary_links_one_active_variant_idx/,
+  );
 });
 
 test("sharing and public route security use real QR, safe new tabs, and no-store headers", async () => {

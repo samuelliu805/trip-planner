@@ -1,6 +1,12 @@
 "use client";
 
-import type { PublicItinerary, PublicView } from "../types";
+import type {
+  OwnerShareImageState,
+  PublicItinerary,
+  PublicItineraryLink,
+  PublicView,
+  ShareImageManifest,
+} from "../types";
 import {
   LEGACY_PUBLIC_TEMPLATE_KEY,
   getPublicTemplate,
@@ -13,14 +19,20 @@ export function PublicItineraryShell({
   initialView,
   itinerary,
   legacyTemplateOverride,
+  ownerImageState,
+  ownerSharePage,
   publicUrl,
+  shareImage,
   templateKey,
   token,
 }: {
   initialView: PublicView;
   itinerary: PublicItinerary;
   legacyTemplateOverride?: "bento" | "standard";
+  ownerImageState: OwnerShareImageState | null;
+  ownerSharePage: PublicItineraryLink | null;
   publicUrl: string;
+  shareImage: ShareImageManifest | null;
   templateKey: PublicTemplateKey;
   token: string;
 }) {
@@ -36,7 +48,10 @@ export function PublicItineraryShell({
       initialView={initialView}
       itinerary={itinerary}
       legacyTemplateOverride={legacyTemplateOverride}
+      ownerImageState={ownerImageState}
+      ownerSharePage={ownerSharePage}
       publicUrl={publicUrl}
+      shareImage={shareImage}
       template={template}
       token={token}
     >

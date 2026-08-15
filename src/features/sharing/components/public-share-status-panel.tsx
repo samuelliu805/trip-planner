@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink, Link2, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Link2, ShieldCheck, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -13,24 +13,29 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
-import type { PublicItineraryLink } from "../types";
+import type { OwnerShareImageState, PublicItineraryLink } from "../types";
+import { LongImageExportPanel } from "./long-image-export-panel";
 import { ShareLinkActions, ShareQrCode } from "./share-tools";
 
 export function PublicShareStatusPanel({
   activeLink,
   description,
+  imageState,
+  onImageStateChange,
   onRevoke,
-  onRotate,
   pending,
   publicUrl,
+  siteUrl,
   title,
 }: {
   activeLink?: PublicItineraryLink;
   description: string;
+  imageState: OwnerShareImageState | null;
+  onImageStateChange: (state: OwnerShareImageState | null) => void;
   onRevoke: () => void;
-  onRotate: () => void;
   pending: boolean;
   publicUrl: string;
+  siteUrl: string;
   title: string;
 }) {
   return (
@@ -42,7 +47,7 @@ export function PublicShareStatusPanel({
             <div>
               <h3 className="font-semibold">Public link active</h3>
               <p className="text-xs text-muted-foreground">
-                No sign-in required · Updates automatically
+                No sign-in required · Published snapshot
               </p>
             </div>
           </div>
@@ -62,27 +67,13 @@ export function PublicShareStatusPanel({
           </div>
           <ShareLinkActions description={description} title={title} url={publicUrl} />
           <ShareQrCode label="Scan in WeChat" url={publicUrl} />
+          <LongImageExportPanel
+            imageState={imageState}
+            onImageStateChange={onImageStateChange}
+            sharePage={activeLink}
+            siteUrl={siteUrl}
+          />
           <div className="flex flex-wrap gap-2 border-t pt-4">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button disabled={pending} size="sm" variant="outline">
-                  <RefreshCw className="size-4" /> Regenerate
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Regenerate this public link?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    The current URL will stop working immediately. Settings and shared route stay
-                    the same.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onRotate}>Regenerate link</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button disabled={pending} size="sm" variant="outline">

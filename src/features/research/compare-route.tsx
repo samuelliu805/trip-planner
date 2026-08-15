@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicShareDialog } from "@/features/sharing/components/public-share-dialog";
-import { listPublicItineraryLinks } from "@/features/sharing/data";
+import { getOwnerShareImageState, listPublicItineraryLinks } from "@/features/sharing/data";
 import { getSiteUrl } from "@/features/sharing/site-url";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripSettingsAppBar } from "@/features/trips/components/trip-settings-app-bar";
@@ -58,6 +58,11 @@ export async function ResearchCompareRoute({
   if (planResult.error || !planResult.data)
     throw new Error(planResult.error ?? "The selected Plan could not be loaded.");
   if (planState.error) throw new Error(planState.error);
+  const shareImageStates = Object.fromEntries(
+    await Promise.all(
+      shareLinks.data.map(async (page) => [page.id, await getOwnerShareImageState(page.id)]),
+    ),
+  );
 
   const context = {
     ...(tripIdSchema.safeParse(query.dayId).success && { dayId: query.dayId }),
@@ -83,6 +88,7 @@ export async function ResearchCompareRoute({
           shareControls={
             <PublicShareDialog
               activeVariantId={resolution.activeVariant.id}
+              initialImageStates={shareImageStates}
               initialLinks={shareLinks.data}
               siteUrl={getSiteUrl()}
               trip={trip}
@@ -105,7 +111,11 @@ export async function ResearchCompareRoute({
             <div className="space-y-6">
               <UpdateTripForm trip={trip} />
               <div className="border-t pt-5">
-                <DeleteTripDialog title={trip.title} tripId={trip.id} />
+                <DeleteTripDialog
+                  activeSharePageCount={shareLinks.data.length}
+                  title={trip.title}
+                  tripId={trip.id}
+                />
               </div>
             </div>
           }

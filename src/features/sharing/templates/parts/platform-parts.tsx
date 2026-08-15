@@ -1,7 +1,6 @@
 "use client";
 
-import { CalendarDays, Map, PanelRightClose, PanelRightOpen, Route, Send } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { Map, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,43 +16,15 @@ import {
   PublicItineraryViews,
 } from "../../components/public-itinerary-views";
 import { PublicMapWorkspace } from "../../components/public-map-workspace";
+import { PublicTripHeader } from "../../components/public-trip-header";
 import { PublicViewSwitcher } from "../../components/public-view-switcher";
 import { PublicViewerShareDialog } from "../../components/public-viewer-share-dialog";
-import type { PublicItinerary } from "../../types";
 import type { PublicTemplatePartId } from "../schema";
 import { usePublicTemplateController } from "../runtime/controller";
 
-function publicDateSummary(itinerary: PublicItinerary) {
-  if (itinerary.trip.startDate && itinerary.trip.endDate) {
-    const start = parseISO(itinerary.trip.startDate);
-    const end = parseISO(itinerary.trip.endDate);
-    return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")} · ${itinerary.trip.dayCount} days`;
-  }
-  return `${itinerary.trip.dayCount} ${itinerary.trip.dayCount === 1 ? "day" : "days"} · Dates not set`;
-}
-
 function TripHeaderPart() {
   const { itinerary, template } = usePublicTemplateController();
-  const BrandIcon = template.id === "journal" ? Send : Route;
-  return (
-    <div className="public-brand-area">
-      <div className="public-brand-kicker">
-        {template.id === "ethereal" ? (
-          <span aria-hidden="true" className="public-brand-monogram">
-            TP
-          </span>
-        ) : (
-          <BrandIcon aria-hidden="true" className="size-3.5" />
-        )}
-        Trip Planner
-      </div>
-      <h1 className="public-trip-title">{itinerary.trip.title}</h1>
-      <p className="public-trip-meta">
-        <CalendarDays aria-hidden="true" className="size-3.5 shrink-0" />
-        {publicDateSummary(itinerary)} · {itinerary.variant.name}
-      </p>
-    </div>
-  );
+  return <PublicTripHeader itinerary={itinerary} template={template} />;
 }
 
 function DesktopMapTogglePart() {
@@ -74,8 +45,18 @@ function DesktopMapTogglePart() {
 }
 
 function ViewerShareDialogPart() {
-  const { itinerary, shareUrl, template } = usePublicTemplateController();
-  return <PublicViewerShareDialog itinerary={itinerary} template={template} url={shareUrl} />;
+  const { itinerary, ownerImageState, ownerSharePage, shareImage, shareUrl, template } =
+    usePublicTemplateController();
+  return (
+    <PublicViewerShareDialog
+      itinerary={itinerary}
+      ownerImageState={ownerImageState}
+      ownerSharePage={ownerSharePage}
+      shareImage={shareImage}
+      template={template}
+      url={shareUrl}
+    />
+  );
 }
 
 function ActiveViewPart() {

@@ -7,23 +7,27 @@ export function PublicTimeline({
   onSelectItem,
   selectedDayRef,
   selectedItemRef,
+  showIntro = true,
 }: {
   itinerary: PublicItinerary;
   onSelectDay: (dayRef: string) => void;
   onSelectItem: (itemRef: string, dayRef: string) => void;
   selectedDayRef?: string;
   selectedItemRef?: string;
+  showIntro?: boolean;
 }) {
   return (
     <section aria-label="Itinerary timeline" className="public-timeline timeline-v4">
-      <div className="timeline-intro-v4">
-        <div>
-          <div className="public-section-label">Journey timeline</div>
-          <p className="timeline-intro-copy-v4">
-            Manual order, actual times, and major travel context.
-          </p>
+      {showIntro ? (
+        <div className="timeline-intro-v4">
+          <div>
+            <div className="public-section-label">Journey timeline</div>
+            <p className="timeline-intro-copy-v4">
+              Manual order, actual times, and major travel context.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
       <div className="timeline-sections-v4">
         {itinerary.days.map((day) => {
           return (
