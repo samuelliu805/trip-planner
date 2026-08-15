@@ -4,7 +4,7 @@ import { PlannerWorkspace } from "@/features/itinerary/components/planner-worksp
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicShareDialog } from "@/features/sharing/components/public-share-dialog";
 import { getOwnerShareImageState, listPublicItineraryLinks } from "@/features/sharing/data";
-import { getSiteUrl } from "@/features/sharing/site-url";
+import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { getPlannerVariants, getPlannerWorkspace } from "@/features/itinerary/data";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
@@ -24,13 +24,14 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const { tripId } = await params;
   if (!tripIdSchema.safeParse(tripId).success) notFound();
 
-  const [{ data: trip, error }, variantsResult, researchItems, query, exchangeRates] =
+  const [{ data: trip, error }, variantsResult, researchItems, query, exchangeRates, siteUrl] =
     await Promise.all([
       getTrip(tripId),
       getPlannerVariants(tripId),
       getPlanResearchItems(tripId),
       searchParams,
       getExchangeRateTable(),
+      getRequestSiteUrl(),
     ]);
   if (error || !trip) notFound();
   if (variantsResult.error || !variantsResult.data)
@@ -79,7 +80,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                   initialImageStates={shareImageStates}
                   initialLinks={shareLinks.data}
                   key="trip-share-controls"
-                  siteUrl={getSiteUrl()}
+                  siteUrl={siteUrl}
                   trip={trip}
                   variants={variantsResult.data}
                 />

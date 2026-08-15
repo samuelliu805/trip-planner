@@ -69,7 +69,8 @@ export function PublicShareDialog({
   const suggestedDescription = `${trip.day_count}-day itinerary · View plans, tickets and routes`;
   const publicTitle = settings.shareTitle.trim() || suggestedTitle;
   const publicDescription = settings.shareDescription.trim() || suggestedDescription;
-  const publicUrl = activeLink ? `${siteUrl}/share/${activeLink.publicToken}` : "";
+  const activeSiteUrl = open && typeof window !== "undefined" ? window.location.origin : siteUrl;
+  const publicUrl = activeLink ? `${activeSiteUrl}/share/${activeLink.publicToken}` : "";
 
   function chooseVariant(nextVariantId: string) {
     setVariantId(nextVariantId);
@@ -214,7 +215,7 @@ export function PublicShareDialog({
                 onRevoke={revoke}
                 pending={pending}
                 publicUrl={publicUrl}
-                siteUrl={siteUrl}
+                siteUrl={activeSiteUrl}
                 title={publicTitle}
               />
             </div>

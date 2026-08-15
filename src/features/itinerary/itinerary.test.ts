@@ -2270,6 +2270,16 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
   assert.match(styles, /html:has\(\.trip-planner-page\),[\s\S]*overflow: hidden/);
+  assert.match(styles, /body:has\(\.trip-planner-page\)[\s\S]*position: fixed;[\s\S]*inset: 0;/);
+  assert.match(
+    styles,
+    /\.trip-planner-page \{[\s\S]*position: fixed;[\s\S]*inset: 0;[\s\S]*height: auto;/,
+  );
+  assert.match(
+    styles,
+    /\.planner-layout,[\s\S]*\.planner-map-pane,[\s\S]*\.planner-map-landscape \{\s*min-height: 0;/,
+  );
+  assert.match(styles, /\.planner-map-pane,[\s\S]*\.planner-map-landscape \{\s*overflow: hidden;/);
   const tripShellRule = styles.match(/\.trips-shell:has\(\.trip-planner-page\) \{[^}]+\}/)?.[0];
   assert.ok(tripShellRule);
   assert.match(tripShellRule, /height: 100dvh/);

@@ -5,8 +5,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 import { getPublicItinerary } from "../data";
+import { getRequestSiteUrl } from "../request-site-url";
 import { publicItineraryLinkSchema, publicItinerarySchema } from "../schema";
-import { getSiteUrl } from "../site-url";
 import type { PreparedShareImage, ShareActionResult, ShareImagePartInput } from "../types";
 import {
   longImageRenderConfigSchema,
@@ -55,7 +55,7 @@ export async function prepareShareImageVersion(
     if (!destination.success) return { error: "Choose an active Share Page for the QR code." };
     destinationPage = destination.data;
   }
-  const siteUrl = getSiteUrl();
+  const siteUrl = await getRequestSiteUrl();
   const qrDestinationType =
     page.data.longImageQrDestination === "homepage" ? "homepage" : "share_page";
   const qrDestinationUrl =

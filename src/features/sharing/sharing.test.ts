@@ -38,6 +38,7 @@ import {
   publicTimelineTransportMeta,
 } from "./public-timeline-presentation.ts";
 import { canonicalPublicTemplates, publicShareUrlState } from "./public-url-state.ts";
+import { siteUrlFromHeaders } from "./site-url.ts";
 import {
   canonicalPublicViews,
   publicItinerarySchema,
@@ -96,6 +97,30 @@ async function readAppStyles() {
 }
 
 const ref = (character: string) => character.repeat(64);
+
+test("share URLs follow the current request host across local and preview environments", () => {
+  assert.equal(
+    siteUrlFromHeaders(
+      new Headers({ origin: "http://localhost:3001" }),
+      "https://trip-planner.example.com",
+    ),
+    "http://localhost:3001",
+  );
+  assert.equal(
+    siteUrlFromHeaders(
+      new Headers({
+        "x-forwarded-host": "trip-planner-git-range.example.vercel.app",
+        "x-forwarded-proto": "https",
+      }),
+      "https://trip-planner.example.com",
+    ),
+    "https://trip-planner-git-range.example.vercel.app",
+  );
+  assert.equal(
+    siteUrlFromHeaders(new Headers({ origin: "null" }), "https://trip-planner.example.com"),
+    "https://trip-planner.example.com",
+  );
+});
 
 const itinerary: PublicItinerary = publicItinerarySchema.parse({
   available: true,
@@ -1067,6 +1092,14 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     new URL("./long-image/dom-renderer.tsx", import.meta.url),
     "utf8",
   );
+  const exportStyles = await readFile(
+    new URL("../../app/public-sharing-timeline-export.css", import.meta.url),
+    "utf8",
+  );
+  const tripHeader = await readFile(
+    new URL("./components/public-trip-header.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(dialog, /z-\[100\]/);
   assert.match(dialog, /z-\[110\]/);
   assert.match(dialog, /max-h-\[92dvh\]/);
@@ -1085,6 +1118,12 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(exportDocument, /<PublicTimeline/);
   assert.match(exportDocument, /<PublicTripHeader/);
   assert.doesNotMatch(exportDocument, /Timeline export/);
+  assert.match(tripHeader, /public-trip-meta-copy/);
+  assert.match(
+    exportStyles,
+    /\.timeline-export-document \.public-trip-title,[\s\S]*\.public-trip-meta \{[\s\S]*white-space: nowrap/,
+  );
+  assert.doesNotMatch(exportStyles, /public-trip-meta \{[\s\S]*white-space: normal/);
   assert.match(exportRenderer, /getFontEmbedCSS/);
   assert.match(exportRenderer, /documentHeight\(node\)/);
   assert.doesNotMatch(exportRenderer, /fillText|timelineItemHeight/);

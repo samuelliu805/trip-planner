@@ -124,6 +124,13 @@
   white-space: nowrap;
 }
 
+.public-trip-meta-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .public-header-actions {
   display: flex;
   flex: none;

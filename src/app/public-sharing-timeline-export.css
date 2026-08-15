@@ -24,9 +24,9 @@
 
 .timeline-export-document .public-trip-title,
 .timeline-export-document .public-trip-meta {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timeline-export-document .public-timeline,

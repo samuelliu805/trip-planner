@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicShareDialog } from "@/features/sharing/components/public-share-dialog";
 import { getOwnerShareImageState, listPublicItineraryLinks } from "@/features/sharing/data";
-import { getSiteUrl } from "@/features/sharing/site-url";
+import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripSettingsAppBar } from "@/features/trips/components/trip-settings-app-bar";
 import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
@@ -35,12 +35,15 @@ export async function ResearchCompareRoute({
   query: ResearchCompareQuery;
   tripId: string;
 }) {
-  const [{ data: trip, error }, variantsResult, itemsResult, supabase] = await Promise.all([
-    getTrip(tripId),
-    getPlannerVariants(tripId),
-    getCompareItems(tripId),
-    createClient(),
-  ]);
+  const [{ data: trip, error }, variantsResult, itemsResult, supabase, siteUrl] = await Promise.all(
+    [
+      getTrip(tripId),
+      getPlannerVariants(tripId),
+      getCompareItems(tripId),
+      createClient(),
+      getRequestSiteUrl(),
+    ],
+  );
   if (error || !trip) notFound();
   const { data: authData } = await supabase.auth.getUser();
   if (authData.user?.id !== trip.owner_id) notFound();
@@ -90,7 +93,7 @@ export async function ResearchCompareRoute({
               activeVariantId={resolution.activeVariant.id}
               initialImageStates={shareImageStates}
               initialLinks={shareLinks.data}
-              siteUrl={getSiteUrl()}
+              siteUrl={siteUrl}
               trip={trip}
               variants={variantsResult.data}
             />

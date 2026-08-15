@@ -72,7 +72,7 @@ export function ShareSettingOption({
       aria-pressed={checked}
       className={`min-h-11 min-w-0 border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
         checked
-          ? "border-primary bg-primary text-primary-foreground sm:bg-primary/10 sm:text-foreground"
+          ? "border-primary bg-primary text-primary-foreground"
           : "bg-background hover:bg-muted/50"
       }`}
       onClick={() => onCheckedChange(!checked)}
@@ -81,7 +81,7 @@ export function ShareSettingOption({
       <span className="block text-sm font-medium">{label}</span>
       <span
         className={`mt-0.5 block text-xs leading-relaxed ${
-          checked ? "text-primary-foreground/80 sm:text-muted-foreground" : "text-muted-foreground"
+          checked ? "text-primary-foreground/80" : "text-muted-foreground"
         }`}
       >
         {description}
