@@ -20,14 +20,41 @@
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .timeline-transport-title-v4 {
+    flex: 0 0 auto;
+    overflow: visible;
     font-size: 0.9375rem;
     line-height: 1.35;
+    overflow-wrap: normal;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .public-template-bento[data-public-template-key="bento@2"] .overview-transport-item-v4 {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+  }
+
+  .public-template-bento[data-public-template-key="bento@2"] .overview-transport-title-v4 {
+    overflow: visible;
+    overflow-wrap: normal;
+    text-overflow: clip;
+    white-space: nowrap;
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .overview-transport-meta-v4,
   .public-template-bento[data-public-template-key="bento@2"] .timeline-transport-meta-v4 {
     font-size: 0.75rem;
     line-height: 1.4;
+  }
+
+  .public-template-bento[data-public-template-key="bento@2"] .timeline-transport-meta-v4 {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .timeline-day-copy-v4 strong {
