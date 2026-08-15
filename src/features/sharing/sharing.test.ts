@@ -968,10 +968,19 @@ test("public and owner Matrix use the same canonical category columns", async ()
     publicTableContainment,
     /addEventListener\("touchmove", handleTouchMove, \{ passive: false \}\)/,
   );
+  assert.match(publicTableContainment, /draggingFrozenLayer/);
+  assert.match(publicTableContainment, /isFrozenLayer\(event\.target\)/);
+  assert.match(publicTableContainment, /scrollContainer\.scrollLeft = clampedScrollPosition/);
+  assert.match(publicTableContainment, /scrollContainer\.scrollTop = clampedScrollPosition/);
   assert.match(publicTableContainment, /boundaryBlocked && event\.cancelable/);
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
   assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-40/);
   assert.doesNotMatch(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
+  const styles = await readAppStyles();
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-grid-header,[\s\S]*\.matrix-date-column,[\s\S]*\.matrix-day-column \{[\s\S]*touch-action: none/,
+  );
   assert.match(dialog, /fixed inset-0 z-\[100\]/);
   assert.match(dialog, /z-\[110\]/);
 });

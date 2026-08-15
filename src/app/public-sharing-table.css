@@ -144,6 +144,12 @@
 }
 
 @media (max-width: 899px) {
+  .public-matrix .matrix-grid-header,
+  .public-matrix .matrix-date-column,
+  .public-matrix .matrix-day-column {
+    touch-action: none;
+  }
+
   .public-matrix .matrix-day-column {
     display: none;
   }
