@@ -44,6 +44,18 @@
     border-top: 0;
   }
 
+  .public-template-ethereal .overview-transport-list-v4 {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-template-columns: none;
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .public-template-ethereal .overview-transport-item-v4 {
+    min-width: 0;
+  }
+
   .public-template-ethereal .overview-item-top-v4,
   .public-template-ethereal .overview-transport-button-v4 {
     grid-template-columns: 2rem minmax(0, 1fr);

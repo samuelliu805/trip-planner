@@ -69,6 +69,7 @@ async function readAppStyles() {
         "../../app/public-sharing-bento-readability-v2.css",
         "../../app/public-sharing-ethereal-theme.css",
         "../../app/public-sharing-ethereal-overview.css",
+        "../../app/public-sharing-ethereal-overview-mobile.css",
         "../../app/public-sharing-ethereal-timeline-table.css",
         "../../app/public-sharing-ethereal-timeline-tablet.css",
         "../../app/public-sharing-ethereal-minimal.css",
@@ -1421,5 +1422,9 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(
     styles,
     /\.overview-transport-title-v4 \{[\s\S]*text-overflow: clip;[\s\S]*white-space: normal/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-transport-list-v4 \{[^}]*grid-auto-flow: column;[^}]*grid-auto-columns: minmax\(0, 1fr\);[^}]*grid-template-columns: none;[^}]*overflow: visible/,
   );
 });
