@@ -1,0 +1,97 @@
+.timeline-export-document.public-template-journal .public-header-row {
+  display: block;
+  padding: 0;
+}
+
+.timeline-export-document.public-template-journal .public-template-region-brand-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.875rem 0.875rem 0.75rem;
+}
+
+.timeline-export-document.public-template-journal .timeline-v4 {
+  padding: 1.0625rem 0.9375rem 1.5rem;
+}
+
+.timeline-export-document.public-template-journal .timeline-sections-v4 {
+  gap: 2.5rem;
+}
+
+.timeline-export-document.public-template-journal .timeline-section-header-v4 {
+  grid-template-columns: 3.375rem minmax(0, 1fr);
+  gap: 0 0.8125rem;
+}
+
+.timeline-export-document.public-template-journal .timeline-day-count-v4 {
+  display: none;
+}
+
+.timeline-export-document.public-template-journal .timeline-transport-list-v4 {
+  grid-column: 1 / -1;
+  margin-top: 0.375rem;
+}
+
+.timeline-export-document.public-template-journal .timeline-node-list-v4 {
+  display: block;
+  min-height: 0;
+  overflow: visible;
+  padding: 1.0625rem 0 0 2.8125rem;
+  touch-action: pan-y pinch-zoom;
+}
+
+.timeline-export-document.public-template-journal .timeline-node-list-v4::before {
+  display: block;
+  top: 2.6875rem;
+  bottom: 0.125rem;
+  left: 1.21875rem;
+  width: 3px;
+  height: auto;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--journal-sage) 0 13px,
+    transparent 13px 18px
+  );
+}
+
+.timeline-export-document.public-template-journal .timeline-node-v4,
+.timeline-export-document.public-template-journal .timeline-node-v4:has(.public-item-media) {
+  display: grid;
+  width: auto;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 1.0625rem;
+  padding: 0;
+}
+
+.timeline-export-document.public-template-journal .timeline-node-v4::after {
+  display: none;
+}
+
+.timeline-export-document.public-template-journal .timeline-node-key-v4 {
+  position: static;
+  padding: 0 0 0.4375rem;
+  font-size: 0.75rem;
+}
+
+.timeline-export-document.public-template-journal .timeline-node-axis-v4 {
+  top: 0.875rem;
+  left: -2.25rem;
+}
+
+.timeline-export-document.public-template-journal .timeline-node-content-v4,
+.timeline-export-document.public-template-journal
+  .timeline-node-v4:nth-child(2n)
+  .timeline-node-content-v4,
+.timeline-export-document.public-template-journal
+  .timeline-node-v4:nth-child(3n)
+  .timeline-node-content-v4 {
+  min-height: 0;
+  margin: 0;
+  padding: 1rem;
+  transform: none;
+}
+
+.timeline-export-document.public-template-journal .public-timeline-notes,
+.timeline-export-document.public-template-journal .public-timeline-day-notes {
+  margin-left: 2.8125rem;
+}

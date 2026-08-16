@@ -6,7 +6,8 @@ templates; `registry.ts` imports generated artifacts directly.
 ## Add a template
 
 1. Add `builtins/<id>/source.ts`. Use `sourceMode: "theme"` for `default-layout-v1`, or provide one
-   declarative layout containing only `tp-layout`, `tp-region`, and `tp-part`.
+   declarative layout containing only `tp-layout`, `tp-region`, and `tp-part`. Keep the template's
+   presentation CSS beside its source and expose it through `builtins/<id>/index.css`.
 2. Add the source to `scripts/public-template-build-lib.mjs` and the generated artifact to
    `registry.ts`. If owners can select it, add its immutable id/version pair to the next forward
    management-RPC migration. Do not expand the Standard/Bento-only legacy query allow-list.
@@ -22,5 +23,5 @@ existing parts.
 
 - `PUBLIC_TEMPLATE_DISABLED_KEYS=bento@1,journal@1` disables registry keys at resolution time.
 - `PUBLIC_TEMPLATE_RUNTIME_V1=0` forces the legacy `standard@1` fallback and retained CSS branch.
-- Unknown, disabled, or invalid artifacts resolve to Bento, then Standard, with structured server
+- Unknown, disabled, or invalid artifacts resolve to Ethereal, then Standard, with structured server
   diagnostics instead of a blank page.

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import "./templates/templates.test.ts";
 
@@ -59,41 +59,37 @@ import { longImageScopeSchema } from "./long-image/schema.ts";
 import { scopePublicItinerary } from "./long-image/scope.ts";
 
 async function readAppStyles() {
+  const templateStyleDirectories = ["bento", "ethereal", "journal", "traverse"].map(
+    (template) => new URL(`./templates/builtins/${template}/`, import.meta.url),
+  );
+  const templateStyles = (
+    await Promise.all(
+      templateStyleDirectories.map(async (directory) =>
+        Promise.all(
+          (await readdir(directory))
+            .filter((name) => name.endsWith(".css"))
+            .map((name) => readFile(new URL(name, directory), "utf8")),
+        ),
+      ),
+    )
+  ).flat();
   return (
     await Promise.all(
       [
         "../../app/globals.css",
         "../../app/planner-workspace.css",
         "../../app/public-workspace.css",
-        "../../app/public-sharing-theme.css",
         "../../app/public-sharing-overview.css",
         "../../app/public-sharing-overview-transport.css",
-        "../../app/public-sharing-bento-overview.css",
         "../../app/public-sharing-table.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
-        "../../app/public-sharing-bento-timeline.css",
-        "../../app/public-sharing-bento-timeline-mobile.css",
-        "../../app/public-sharing-bento-readable.css",
-        "../../app/public-sharing-bento-readability-v2.css",
-        "../../app/public-sharing-ethereal-theme.css",
-        "../../app/public-sharing-ethereal-overview.css",
-        "../../app/public-sharing-ethereal-overview-mobile.css",
-        "../../app/public-sharing-ethereal-timeline-table.css",
-        "../../app/public-sharing-ethereal-timeline-tablet.css",
-        "../../app/public-sharing-ethereal-minimal.css",
-        "../../app/public-sharing-ethereal-transport.css",
-        "../../app/public-sharing-journal-theme.css",
-        "../../app/public-sharing-journal-overview.css",
-        "../../app/public-sharing-journal-overview-vibrant.css",
-        "../../app/public-sharing-journal-timeline.css",
-        "../../app/public-sharing-journal-table.css",
-        "../../app/public-sharing-mobile-readability.css",
         "../../app/public-sharing-timeline-export.css",
-        "../../app/public-sharing-timeline-export-templates.css",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
-  ).join("\n");
+  )
+    .concat(templateStyles)
+    .join("\n");
 }
 
 const ref = (character: string) => character.repeat(64);
@@ -254,7 +250,8 @@ test("long-image date ranges are inclusive and update the exported trip summary"
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
   assert.equal(defaultShareSettings.defaultView, "timeline");
-  assert.equal(defaultShareSettings.templateVersion, 2);
+  assert.equal(defaultShareSettings.templateId, "ethereal");
+  assert.equal(defaultShareSettings.templateVersion, 1);
   for (const setting of [
     "allowRouteExplore",
     "showAddresses",
@@ -1386,6 +1383,11 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(
     styles,
     /\.public-template-journal \.timeline-node-list-v4 \{[\s\S]*scroll-snap-type: none/,
+  );
+  assert.match(styles, /\.public-template-traverse \.public-itinerary-header/);
+  assert.doesNotMatch(
+    styles,
+    /\.public-template-traverse \.overview-transport-list-v4,[\s\S]{0,120}\.public-template-traverse \.overview-board-v4 \{[^}]*grid-row:/,
   );
   assert.match(styles, /\.span-featured, \.span-activity, \.span-compact/);
   assert.match(styles, /\.public-template-bento/);

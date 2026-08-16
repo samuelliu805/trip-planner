@@ -8,6 +8,7 @@ import { bentoPublicTemplateSourceV2 } from "../src/features/sharing/templates/b
 import { etherealPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/ethereal/source.ts";
 import { journalPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/journal/source.ts";
 import { standardPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/standard/source.ts";
+import { traversePublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/traverse/source.ts";
 import {
   compilePublicTemplate,
   stablePublicTemplateJson,
@@ -23,6 +24,7 @@ const publicTemplateSources = [
   bentoPublicTemplateSourceV2,
   etherealPublicTemplateSourceV1,
   journalPublicTemplateSourceV1,
+  traversePublicTemplateSourceV1,
 ];
 
 function generatedName(template) {

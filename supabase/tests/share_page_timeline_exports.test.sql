@@ -93,7 +93,7 @@ select 'page_1', public.create_share_page_v1(
 insert into share_page_state (key, payload)
 select 'page_2', public.create_share_page_v1(
   (select id from share_page_state where key = 'variant'),
-  requested_template_id => 'journal', requested_template_version => 1
+  requested_template_id => 'traverse', requested_template_version => 1
 );
 
 select is(

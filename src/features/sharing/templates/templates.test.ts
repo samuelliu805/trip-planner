@@ -6,6 +6,7 @@ import { bentoPublicTemplateSourceV2 } from "./builtins/bento/v2.ts";
 import { etherealPublicTemplateSourceV1 } from "./builtins/ethereal/source.ts";
 import { journalPublicTemplateSourceV1 } from "./builtins/journal/source.ts";
 import { standardPublicTemplateSourceV1 } from "./builtins/standard/source.ts";
+import { traversePublicTemplateSourceV1 } from "./builtins/traverse/source.ts";
 import {
   PublicTemplateCompileError,
   compilePublicTemplate,
@@ -50,9 +51,11 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
     bentoPublicTemplateSourceV2,
     etherealPublicTemplateSourceV1,
     journalPublicTemplateSourceV1,
+    traversePublicTemplateSourceV1,
   ];
-  const [standard, bentoV1, bentoV2, ethereal, journal] = sources.map(compilePublicTemplate);
-  for (const template of [standard, bentoV1, bentoV2, ethereal, journal])
+  const [standard, bentoV1, bentoV2, ethereal, journal, traverse] =
+    sources.map(compilePublicTemplate);
+  for (const template of [standard, bentoV1, bentoV2, ethereal, journal, traverse])
     assert.equal(compiledPublicTemplateSchemaV1.safeParse(template).success, true);
   assert.equal(standard.sourceMode, "theme");
   assert.equal(standard.layout.id, "default-layout-v1");
@@ -60,6 +63,7 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
   assert.equal(bentoV2.sourceMode, "theme");
   assert.equal(ethereal.sourceMode, "layout");
   assert.equal(journal.sourceMode, "layout");
+  assert.equal(traverse.sourceMode, "layout");
   assert.equal(
     standard.digest,
     "sha256-423220052fc7a3c6bc4836b6ee475a13e95ffecef074efd1574d2900a4d69317",
@@ -80,6 +84,10 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
     journal.digest,
     "sha256-1ff987919ebc3db0d2007d2ec9e56093337a8e16db10a4d6422d76f4be0d28ba",
   );
+  assert.equal(
+    traverse.digest,
+    "sha256-b7402fbfaeb70280adfd34a8785697342ea8ebb782ce036a81b4cd16fb5a79cd",
+  );
   for (const source of sources)
     assert.equal(
       stablePublicTemplateJson(compilePublicTemplate(source)),
@@ -89,11 +97,15 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
     Object.values(publicTemplateRegistry)
       .map(({ template }) => template.key)
       .sort(),
-    ["bento@1", "bento@2", "ethereal@1", "journal@1", "standard@1"],
+    ["bento@1", "bento@2", "ethereal@1", "journal@1", "standard@1", "traverse@1"],
   );
   assert.deepEqual(
     publicTemplateOptions().map(({ key }) => key),
-    ["bento@2", "ethereal@1", "journal@1"],
+    ["ethereal@1", "bento@2", "journal@1", "traverse@1"],
+  );
+  assert.deepEqual(
+    publicTemplateOptions().map(({ label }) => label),
+    ["Ethereal", "Midnight Grid", "Trail Journal", "Traverse Atlas"],
   );
   assert.equal(publicTemplateRegistry["standard@1"].selectable, false);
 });
@@ -121,12 +133,16 @@ test("template resolver honors legacy query, persistence, disable, fallback, and
     "journal@1",
   );
   assert.equal(
+    resolvePublicTemplate({ persistedTemplateId: "traverse", persistedTemplateVersion: 1 }).key,
+    "traverse@1",
+  );
+  assert.equal(
     resolvePublicTemplate({
       disabledKeys: new Set(["bento@1"]),
       persistedTemplateId: "bento",
       persistedTemplateVersion: 1,
     }).key,
-    "bento@2",
+    "ethereal@1",
   );
   assert.equal(
     resolvePublicTemplate({

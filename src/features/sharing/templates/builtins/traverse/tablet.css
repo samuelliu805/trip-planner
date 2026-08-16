@@ -1,0 +1,57 @@
+@media (min-width: 900px) and (max-width: 1199px) {
+  .public-template-traverse .public-template-region-brand-row {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .public-template-traverse .public-view-switcher {
+    left: 1rem;
+  }
+
+  .public-template-traverse .overview-v4,
+  .public-template-traverse .timeline-v4 {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .public-template-traverse .overview-day-v4,
+  .public-template-traverse .overview-day-v4 + .overview-day-v4 {
+    padding-left: 3.875rem;
+  }
+
+  .public-template-traverse .overview-day-v4::before {
+    width: 3.25rem;
+    height: 3.25rem;
+    font-size: 0.9375rem;
+  }
+
+  .public-template-traverse .overview-day-v4::after {
+    top: 3.375rem;
+    left: 1.5625rem;
+  }
+
+  .public-template-traverse .overview-transport-button-v4,
+  .public-template-traverse .overview-item-top-v4 {
+    grid-template-columns: 4.875rem minmax(0, 1fr) auto;
+    gap: 0.625rem;
+  }
+
+  .public-template-traverse .overview-item-footer-v4,
+  .public-template-traverse .overview-item-notes-v4,
+  .public-template-traverse .overview-item-card-v4 > .public-item-media {
+    margin-left: 5.5rem;
+  }
+
+  .public-template-traverse .timeline-node-v4:nth-child(2) {
+    --traverse-step: 1.375rem;
+  }
+
+  .public-template-traverse .timeline-node-v4:nth-child(3),
+  .public-template-traverse .timeline-node-v4:nth-child(n + 5) {
+    --traverse-step: 2.75rem;
+  }
+
+  .public-template-traverse .timeline-node-v4:nth-child(4) {
+    --traverse-step: 4.125rem;
+  }
+}

@@ -1,0 +1,81 @@
+.public-template-traverse .public-matrix {
+  height: 100%;
+  border-top: 3px solid var(--traverse-graphite);
+  border-bottom: 3px solid var(--traverse-graphite);
+  background: var(--traverse-paper);
+  color: #172024;
+  scrollbar-color: var(--traverse-orange) var(--traverse-ice);
+}
+
+.public-template-traverse .public-matrix > [role="grid"] {
+  border-right: 1px solid rgb(20 36 41 / 22%);
+  border-left: 1px solid rgb(20 36 41 / 22%);
+  background: var(--traverse-paper);
+}
+
+.public-template-traverse .public-matrix [role="row"] {
+  min-height: 6.5rem;
+  border-color: rgb(20 36 41 / 22%);
+  background: rgb(248 250 247 / 78%);
+}
+
+.public-template-traverse .public-matrix [role="row"]:not(.matrix-grid-header):nth-child(odd) {
+  background: rgb(215 227 228 / 50%);
+}
+
+.public-template-traverse .public-matrix [role="columnheader"] {
+  height: 3.25rem;
+  border-color: rgb(216 228 227 / 18%);
+  background: var(--traverse-graphite);
+  color: #dae4e3;
+  font: 800 0.625rem var(--font-mono);
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  box-shadow: inset 0 -3px var(--traverse-orange);
+}
+
+.public-template-traverse .public-matrix [role="gridcell"],
+.public-template-traverse .public-matrix [role="rowheader"] {
+  border-color: rgb(20 36 41 / 22%);
+  background: transparent;
+  padding: 0.875rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.48;
+}
+
+.public-template-traverse .public-matrix .matrix-date-column,
+.public-template-traverse .public-matrix .matrix-day-column {
+  background: #0a222c;
+  box-shadow: 4px 0 0 rgb(240 90 40 / 82%);
+  color: var(--traverse-paper);
+}
+
+.public-template-traverse .public-matrix .matrix-grid-header .matrix-date-column,
+.public-template-traverse .public-matrix .matrix-grid-header .matrix-day-column {
+  background: #0a222c;
+}
+
+.public-template-traverse .public-matrix .public-item-focus {
+  border-left: 3px solid transparent;
+  border-radius: 0;
+}
+
+.public-template-traverse .public-matrix .public-item-focus:hover,
+.public-template-traverse .public-matrix .public-item-focus[aria-current="true"] {
+  border-left-color: var(--traverse-orange);
+  background: rgb(240 90 40 / 8%);
+}
+
+.public-template-traverse .public-matrix .public-table-cell-items.is-transport {
+  border-color: rgb(17 38 45 / 28%);
+  border-radius: 0;
+  background: rgb(215 227 228 / 34%);
+}
+
+.public-template-traverse
+  .public-matrix
+  .public-table-cell-items.is-transport
+  > .public-item-focus {
+  border: 0;
+  border-radius: 0;
+}

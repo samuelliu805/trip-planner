@@ -1,0 +1,49 @@
+.timeline-export-document.public-template-traverse .public-header-row {
+  display: block;
+  padding: 0;
+}
+
+.timeline-export-document.public-template-traverse .public-template-region-brand-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.875rem 0.875rem 0.75rem;
+}
+
+.timeline-export-document.public-template-traverse .timeline-v4 {
+  padding: 1rem 0.875rem 1.5rem;
+}
+
+.timeline-export-document.public-template-traverse .timeline-section-header-v4 {
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+}
+
+.timeline-export-document.public-template-traverse .timeline-day-count-v4 {
+  grid-column: 2;
+}
+
+.timeline-export-document.public-template-traverse .timeline-transport-list-v4 {
+  grid-column: 1 / -1;
+}
+
+.timeline-export-document.public-template-traverse .timeline-node-list-v4 {
+  display: block;
+  min-height: 0;
+  overflow: visible;
+}
+
+.timeline-export-document.public-template-traverse .timeline-node-v4,
+.timeline-export-document.public-template-traverse .timeline-node-v4:nth-child(n) {
+  --traverse-step: 0rem;
+  width: 100%;
+  grid-template-columns: 2.625rem minmax(0, 1fr);
+  margin-left: 0;
+}
+
+.timeline-export-document.public-template-traverse .timeline-node-axis-v4::before {
+  display: none;
+}
+
+.timeline-export-document.public-template-traverse .public-timeline-notes,
+.timeline-export-document.public-template-traverse .public-timeline-day-notes {
+  margin-left: 2.625rem;
+}
