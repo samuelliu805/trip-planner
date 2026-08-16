@@ -24,13 +24,13 @@ export type PublicTemplateRegistryEntry = {
 export const publicTemplateRegistry = {
   "bento@1": {
     enabled: true,
-    label: "Midnight Grid (legacy)",
+    label: "Midnight",
     selectable: false,
     template: bentoPublicTemplateV1,
   },
   "bento@2": {
     enabled: true,
-    label: "Midnight Grid",
+    label: "Midnight",
     selectable: true,
     template: bentoPublicTemplateV2,
   },
@@ -42,19 +42,19 @@ export const publicTemplateRegistry = {
   },
   "journal@1": {
     enabled: true,
-    label: "Trail Journal",
+    label: "Journal",
     selectable: true,
     template: journalPublicTemplateV1,
   },
   "standard@1": {
     enabled: true,
-    label: "Classic (legacy)",
+    label: "Classic",
     selectable: false,
     template: standardPublicTemplateV1,
   },
   "traverse@1": {
     enabled: true,
-    label: "Traverse Atlas",
+    label: "Traverse",
     selectable: true,
     template: traversePublicTemplateV1,
   },

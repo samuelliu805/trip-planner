@@ -101,11 +101,11 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
   );
   assert.deepEqual(
     publicTemplateOptions().map(({ key }) => key),
-    ["ethereal@1", "bento@2", "journal@1", "traverse@1"],
+    ["ethereal@1", "journal@1", "bento@2", "traverse@1"],
   );
   assert.deepEqual(
     publicTemplateOptions().map(({ label }) => label),
-    ["Ethereal", "Midnight Grid", "Trail Journal", "Traverse Atlas"],
+    ["Ethereal", "Journal", "Midnight", "Traverse"],
   );
   assert.equal(publicTemplateRegistry["standard@1"].selectable, false);
 });

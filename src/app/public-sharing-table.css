@@ -13,7 +13,12 @@
 .public-matrix > [role="grid"] {
   position: relative;
   overflow: visible;
-  padding-bottom: 6rem;
+  padding-bottom: 0;
+}
+
+.public-template-standard .public-matrix > [role="grid"],
+.public-template-bento .public-matrix > [role="grid"] {
+  padding-bottom: 5rem;
 }
 
 .public-matrix .matrix-grid-header {
@@ -27,12 +32,23 @@
 
 .public-matrix .matrix-date-column,
 .public-matrix .matrix-day-column {
+  box-sizing: border-box;
   background-clip: padding-box;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   box-shadow: 1px 0 0 var(--border);
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+}
+
+.public-matrix .matrix-date-column {
+  width: 6rem;
+  flex: 0 0 6rem;
+}
+
+.public-matrix .matrix-day-column {
+  width: 4rem;
+  flex: 0 0 4rem;
 }
 
 .public-matrix [role="row"]:not(.matrix-grid-header) .matrix-date-column {
@@ -84,6 +100,28 @@
   box-shadow: inset 1px 0 var(--border);
 }
 
+@media (min-width: 640px) and (max-width: 1199px) {
+  .public-matrix > [role="grid"] {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+  }
+
+  .public-matrix .matrix-grid-header {
+    flex: 0 0 auto;
+  }
+
+  .public-matrix [role="row"]:not(.matrix-grid-header) {
+    flex: 1 0 auto;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .public-itinerary-shell .public-matrix > [role="grid"] {
+    padding-bottom: 0;
+  }
+}
+
 @media (max-width: 899px) {
   .public-matrix .matrix-day-column {
     display: none;
@@ -98,5 +136,11 @@
   .public-matrix .matrix-grid-header .matrix-date-column {
     z-index: 80;
     background-color: var(--muted);
+  }
+}
+
+@media (max-width: 639px) {
+  .public-itinerary-shell .public-matrix > [role="grid"] {
+    padding-bottom: 6rem;
   }
 }

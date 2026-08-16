@@ -90,6 +90,22 @@ body:has(.trip-planner-page) {
   bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
 }
 
+@media (min-width: 640px) and (max-width: 1199px) {
+  .planner-matrix > [role="grid"] {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+  }
+
+  .planner-matrix .matrix-grid-header {
+    flex: 0 0 auto;
+  }
+
+  .planner-matrix [role="row"]:not(.matrix-grid-header) {
+    flex: 1 0 auto;
+  }
+}
+
 @media (min-width: 900px) and (max-width: 1199px) {
   .planner-workspace {
     box-sizing: border-box;
@@ -113,6 +129,18 @@ body:has(.trip-planner-page) {
   .planner-matrix [aria-label="Fill selected cells down"] {
     display: none;
   }
+
+  .planner-matrix [role="row"] > :first-child {
+    box-sizing: border-box;
+    width: 6rem;
+    flex: 0 0 6rem;
+  }
+
+  .planner-matrix [role="row"] > :nth-child(2) {
+    box-sizing: border-box;
+    width: 4rem;
+    flex: 0 0 4rem;
+  }
 }
 
 @media (max-width: 899px) {
@@ -130,8 +158,8 @@ body:has(.trip-planner-page) {
   .planner-matrix {
     grid-column: 1;
     grid-row: 1;
-    padding-bottom: 4.75rem;
-    scroll-padding-bottom: 4.75rem;
+    padding-bottom: 0;
+    scroll-padding-bottom: 0;
   }
 
   .planner-divider,
@@ -199,9 +227,11 @@ body:has(.trip-planner-page) {
 
   .planner-matrix [role="row"] > [role="columnheader"]:first-child,
   .planner-matrix [role="row"] > [role="rowheader"]:first-child {
+    box-sizing: border-box;
     background-color: var(--background);
     left: 0;
     width: 5.5rem;
+    flex: 0 0 5.5rem;
     z-index: 50;
   }
 

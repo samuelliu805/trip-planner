@@ -79,6 +79,7 @@ async function readAppStyles() {
         "../../app/globals.css",
         "../../app/planner-workspace.css",
         "../../app/public-workspace.css",
+        "../../app/public-workspace-tablet.css",
         "../../app/public-sharing-overview.css",
         "../../app/public-sharing-overview-transport.css",
         "../../app/public-sharing-table.css",
@@ -1343,7 +1344,19 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-view-switcher \{[\s\S]*width: 100%/);
   assert.match(styles, /\.public-view-switcher \{[\s\S]*border-bottom: 0/);
   assert.match(styles, /env\(safe-area-inset-bottom\)/);
-  assert.match(styles, /\.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 6rem/);
+  assert.match(styles, /\.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 0/);
+  assert.match(
+    styles,
+    /\.public-template-standard \.public-matrix > \[role="grid"\],[\s\S]*\.public-template-bento \.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 5rem/,
+  );
+  assert.match(
+    styles,
+    /max-width: 639px[\s\S]*\.public-itinerary-shell \.public-matrix > \[role="grid"\] \{[\s\S]*padding-bottom: 6rem/,
+  );
+  assert.match(
+    styles,
+    /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-matrix > \[role="grid"\] \{[\s\S]*min-height: 100%[\s\S]*flex-direction: column[\s\S]*\[role="row"\]:not\(\.matrix-grid-header\) \{[\s\S]*flex: 1 0 auto/,
+  );
   assert.match(styles, /\.public-matrix \{[\s\S]*overflow: auto/);
   assert.match(styles, /\.public-matrix \{[\s\S]*overscroll-behavior: none/);
   assert.match(styles, /\.public-matrix \{[\s\S]*overflow-anchor: none/);
@@ -1393,8 +1406,40 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-template-bento/);
   assert.match(styles, /grid-template-columns: repeat\(12, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
-  assert.match(styles, /\.public-itinerary-header[\s\S]*position: sticky/);
+  assert.match(
+    styles,
+    /html:has\(\.public-itinerary-shell\),[\s\S]*body:has\(\.public-itinerary-shell\)[\s\S]*position: fixed/,
+  );
+  assert.match(styles, /\.public-itinerary-header[\s\S]*position: relative/);
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-date-column \{[\s\S]*width: 6rem;[\s\S]*flex: 0 0 6rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-matrix \[role="row"\]:not\(\.matrix-grid-header\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-matrix \.matrix-grid-header \{\s*height: 3\.25rem;/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.public-matrix \.matrix-grid-header \{\s*height: 2\.75rem;/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.public-matrix \.matrix-grid-header \{\s*height: 2\.75rem;/,
+  );
   assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
+  assert.match(
+    styles,
+    /min-width: 640px[\s\S]*max-width: 899px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*flex: 0 0 auto[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: 100%/,
+  );
+  assert.match(
+    styles,
+    /\.public-content-pane[\s\S]*display: flex[\s\S]*flex-direction: column[\s\S]*data-tp-part="active-view"[\s\S]*flex: 1 1 0[\s\S]*data-tp-part="view-switcher"[\s\S]*flex: 0 0 auto/,
+  );
   assert.match(styles, /max-width: 899px/);
   assert.match(styles, /\.public-matrix \.matrix-day-column/);
   assert.match(styles, /width: 6rem/);

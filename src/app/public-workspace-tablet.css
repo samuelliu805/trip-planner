@@ -1,0 +1,59 @@
+@media (min-width: 900px) and (max-width: 1199px) {
+  .public-itinerary-shell .public-itinerary-grid {
+    grid-template-columns:
+      minmax(480px, var(--public-content-split)) 4px
+      minmax(340px, var(--public-map-split));
+  }
+}
+
+@media (min-width: 640px) and (max-width: 899px) {
+  .public-itinerary-shell .public-content-pane {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .public-itinerary-shell
+    .public-content-pane
+    > .public-template-part-host[data-tp-part="active-view"] {
+    height: auto;
+    min-height: 0;
+    flex: 1 1 0;
+  }
+
+  .public-itinerary-shell
+    .public-content-pane
+    > .public-template-part-host[data-tp-part="view-switcher"] {
+    display: block;
+    flex: 0 0 auto;
+  }
+
+  .public-itinerary-shell .public-itinerary-grid {
+    order: 2;
+  }
+
+  .public-itinerary-shell .public-template-region-view-navigation {
+    position: relative;
+    order: 3;
+    display: block;
+    height: auto;
+    flex: 0 0 auto;
+  }
+
+  .public-itinerary-shell .public-view-switcher {
+    position: static;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .public-itinerary-shell .public-view-scroll {
+    scroll-padding-bottom: 0;
+  }
+
+  .public-itinerary-shell .overview-v4,
+  .public-itinerary-shell .timeline-v4 {
+    padding-bottom: 0.75rem;
+  }
+}

@@ -9,10 +9,25 @@
 @import "../features/sharing/templates/builtins/ethereal/index.css";
 @import "../features/sharing/templates/builtins/journal/index.css";
 @import "../features/sharing/templates/builtins/traverse/index.css";
+@import "./public-workspace-tablet.css";
+
+html:has(.public-itinerary-shell),
+body:has(.public-itinerary-shell) {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 
 .public-itinerary-shell {
+  position: relative;
+  width: 100%;
   height: 100dvh;
   max-height: 100dvh;
+  overflow: hidden;
   overscroll-behavior: none;
 }
 
@@ -48,8 +63,7 @@
 }
 
 .public-itinerary-header {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 80;
   flex: none;
   border-bottom: 1px solid var(--border);
@@ -191,14 +205,6 @@
 
 .public-mobile-map-control {
   display: none;
-}
-
-@media (min-width: 900px) and (max-width: 1199px) {
-  .public-itinerary-grid {
-    grid-template-columns:
-      minmax(480px, var(--public-content-split)) 4px
-      minmax(340px, var(--public-map-split));
-  }
 }
 
 @media (max-width: 899px) {

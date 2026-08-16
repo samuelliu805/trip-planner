@@ -13,7 +13,11 @@
   background: var(--traverse-paper);
 }
 
-.public-template-traverse .public-matrix [role="row"] {
+.public-template-traverse .public-matrix .matrix-grid-header {
+  height: 3.25rem;
+}
+
+.public-template-traverse .public-matrix [role="row"]:not(.matrix-grid-header) {
   min-height: 6.5rem;
   border-color: rgb(20 36 41 / 22%);
   background: rgb(248 250 247 / 78%);
