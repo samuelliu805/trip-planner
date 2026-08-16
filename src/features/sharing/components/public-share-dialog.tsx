@@ -29,7 +29,7 @@ import {
   revokePublicItineraryLink,
   updatePublicItineraryLink,
 } from "../actions";
-import type { OwnerShareImageState, PublicItineraryLink } from "../types";
+import type { PublicItineraryLink } from "../types";
 import { PublicShareSettingsFields } from "./public-share-settings-fields";
 import {
   defaultShareSettings,
@@ -40,14 +40,12 @@ import { PublicShareStatusPanel } from "./public-share-status-panel";
 
 export function PublicShareDialog({
   activeVariantId,
-  initialImageStates,
   initialLinks,
   siteUrl,
   trip,
   variants,
 }: {
   activeVariantId: string;
-  initialImageStates: Record<string, OwnerShareImageState | null>;
   initialLinks: PublicItineraryLink[];
   siteUrl: string;
   trip: Tables<"trips">;
@@ -55,7 +53,6 @@ export function PublicShareDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [links, setLinks] = useState(initialLinks);
-  const [imageStates, setImageStates] = useState(initialImageStates);
   const [variantId, setVariantId] = useState(activeVariantId);
   const initialLink = initialLinks.find((link) => link.variantId === activeVariantId);
   const [selectedPageId, setSelectedPageId] = useState(initialLink?.id ?? "new");
@@ -67,8 +64,6 @@ export function PublicShareDialog({
   const activeLink = links.find((link) => link.id === selectedPageId);
   const suggestedTitle = `${trip.title} · ${variant?.name ?? "Route"}`;
   const suggestedDescription = `${trip.day_count}-day itinerary · View plans, tickets and routes`;
-  const publicTitle = settings.shareTitle.trim() || suggestedTitle;
-  const publicDescription = settings.shareDescription.trim() || suggestedDescription;
   const activeSiteUrl = open && typeof window !== "undefined" ? window.location.origin : siteUrl;
   const publicUrl = activeLink ? `${activeSiteUrl}/share/${activeLink.publicToken}` : "";
 
@@ -192,13 +187,11 @@ export function PublicShareDialog({
             </div>
             <div className="grid min-w-0 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,.72fr)]">
               <PublicShareSettingsFields
-                dayCount={trip.day_count}
                 existingPage={Boolean(activeLink)}
                 onChooseVariant={chooseVariant}
                 onSettingChange={setSetting}
                 settings={settings}
                 sharePages={links.filter(({ id }) => id !== activeLink?.id)}
-                startDate={trip.start_date}
                 suggestedDescription={suggestedDescription}
                 suggestedTitle={suggestedTitle}
                 variantId={variantId}
@@ -206,17 +199,9 @@ export function PublicShareDialog({
               />
               <PublicShareStatusPanel
                 activeLink={activeLink}
-                description={publicDescription}
-                imageState={activeLink ? (imageStates[activeLink.id] ?? null) : null}
-                onImageStateChange={(state) => {
-                  if (!activeLink) return;
-                  setImageStates((current) => ({ ...current, [activeLink.id]: state }));
-                }}
                 onRevoke={revoke}
                 pending={pending}
                 publicUrl={publicUrl}
-                siteUrl={activeSiteUrl}
-                title={publicTitle}
               />
             </div>
           </div>

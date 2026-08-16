@@ -1477,6 +1477,10 @@ export type Database = {
         Args: { target_share_page_id: string }
         Returns: Json
       }
+      owner_share_image_export_paths_v1: {
+        Args: { target_export_id: string }
+        Returns: Json
+      }
       owner_share_page_by_token_v1: {
         Args: { shared_token: string }
         Returns: Json

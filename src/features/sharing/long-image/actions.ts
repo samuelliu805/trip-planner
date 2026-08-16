@@ -10,6 +10,7 @@ import { publicItineraryLinkSchema, publicItinerarySchema } from "../schema";
 import type { PreparedShareImage, ShareActionResult, ShareImagePartInput } from "../types";
 import {
   longImageRenderConfigSchema,
+  longImageScopeSchema,
   prepareShareImageSchema,
   shareImagePartInputSchema,
 } from "./schema";
@@ -20,6 +21,7 @@ const prepareImageInputSchema = z
     exportId: z.uuid().nullable(),
     mode: z.enum(["new_export", "replace_existing"]),
     sharePageId: z.uuid(),
+    scope: longImageScopeSchema.optional(),
   })
   .strict();
 
@@ -64,7 +66,7 @@ export async function prepareShareImageVersion(
       : `${siteUrl}/share/${destinationPage.publicToken}`;
   const renderConfig = {
     renderer: "timeline" as const,
-    scope: longImageScopeFromPage(page.data),
+    scope: input.data.scope ?? longImageScopeFromPage(page.data),
     version: 1 as const,
     width: 1080 as const,
   };
@@ -140,6 +142,17 @@ export async function revokeShareImageExport(
 ): Promise<ShareActionResult<{ revoked: true }>> {
   if (!z.uuid().safeParse(exportId).success) return { error: "The image link is invalid." };
   const supabase = await createClient();
+  const pathsResult = await supabase.rpc("owner_share_image_export_paths_v1", {
+    target_export_id: exportId,
+  });
+  const paths = z.array(z.string().min(1).max(1_000)).max(5_000).safeParse(pathsResult.data);
+  if (pathsResult.error || !paths.success) return { error: imageError(pathsResult.error?.message) };
+  for (let index = 0; index < paths.data.length; index += 100) {
+    const { error } = await supabase.storage
+      .from("share-images")
+      .remove(paths.data.slice(index, index + 100));
+    if (error) return { error: "The stored image could not be deleted. Try again." };
+  }
   const { error } = await supabase.rpc("revoke_share_image_export_v1", {
     target_export_id: exportId,
   });

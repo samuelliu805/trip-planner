@@ -21,6 +21,7 @@ import type {
   ShareImageManifest,
 } from "../types";
 import { LongImageExportPanel } from "./long-image-export-panel";
+import { downloadShareImageParts } from "./share-image-download";
 import { ShareLinkActions, ShareQrCode } from "./share-tools";
 
 export function PublicViewerShareDialog({
@@ -62,19 +63,11 @@ export function PublicViewerShareDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 touch-pan-y space-y-5 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
-          <ShareLinkActions
-            description={itinerary.metadata.description}
-            title={itinerary.metadata.title}
-            url={url}
-          />
-          <ShareQrCode label="Scan in WeChat" url={url} />
           {ownerSharePage ? (
             <div className="border border-primary/30 bg-primary/5 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">
-                Owner controls
-              </p>
               <LongImageExportPanel
                 imageState={currentImageState}
+                itinerary={itinerary}
                 onImageStateChange={setCurrentImageState}
                 sharePage={ownerSharePage}
                 siteUrl={siteUrl}
@@ -82,18 +75,23 @@ export function PublicViewerShareDialog({
             </div>
           ) : null}
           {!ownerSharePage && shareImage ? (
-            <div className="border-t pt-5">
-              <Button asChild className="min-h-11 w-full" variant="outline">
-                <a href={`/share/image/${shareImage.permanentSlug}`}>
-                  <ImageDown className="size-4" /> Download long image
-                  {shareImage.parts.length > 1 ? ` (${shareImage.parts.length} parts)` : ""}
-                </a>
+            <div className="border p-4">
+              <Button
+                className="min-h-11 w-full"
+                onClick={() =>
+                  downloadShareImageParts(shareImage.permanentSlug, shareImage.parts.length)
+                }
+              >
+                <ImageDown className="size-4" /> Download trip image
               </Button>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Owner-generated Timeline export v1. Visitors cannot regenerate it.
-              </p>
             </div>
           ) : null}
+          <ShareLinkActions
+            description={itinerary.metadata.description}
+            title={itinerary.metadata.title}
+            url={url}
+          />
+          <ShareQrCode label="Scan in WeChat" url={url} />
         </div>
       </DialogContent>
     </Dialog>

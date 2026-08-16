@@ -1096,6 +1096,13 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     new URL("../../app/public-sharing-timeline-export.css", import.meta.url),
     "utf8",
   );
+  const imageCleanupMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260816011414_hard_delete_revoked_share_images.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   const tripHeader = await readFile(
     new URL("./components/public-trip-header.tsx", import.meta.url),
     "utf8",
@@ -1113,8 +1120,11 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(exportDialogs, /Replace existing version/);
   assert.match(exportDialogs, /QR destination\s+remains unchanged/);
   assert.match(exportDialogs, /Revoke image link/);
-  assert.match(exportPanel, /This shareable page has changed since the image was generated/);
+  assert.match(exportPanel, /The trip changed after the current image was created/);
+  assert.match(exportPanel, /Create image & download/);
+  assert.match(exportPanel, /Image link options/);
   assert.match(exportController, /navigator\.share/);
+  assert.match(exportController, /downloadShareImageParts/);
   assert.match(exportDocument, /<PublicTimeline/);
   assert.match(exportDocument, /<PublicTripHeader/);
   assert.doesNotMatch(exportDocument, /Timeline export/);
@@ -1124,6 +1134,13 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     /\.timeline-export-document \.public-trip-title,[\s\S]*\.public-trip-meta \{[\s\S]*white-space: nowrap/,
   );
   assert.doesNotMatch(exportStyles, /public-trip-meta \{[\s\S]*white-space: normal/);
+  assert.match(
+    exportStyles,
+    /\.timeline-export-document \.public-template-region-brand-row \{[\s\S]*width: 100%;[\s\S]*flex: 1 1 100%/,
+  );
+  assert.match(imageCleanupMigration, /owner_share_image_export_paths_v1/);
+  assert.match(imageCleanupMigration, /owners remove their share images/);
+  assert.match(imageCleanupMigration, /grant execute[\s\S]*to authenticated/);
   assert.match(exportRenderer, /getFontEmbedCSS/);
   assert.match(exportRenderer, /documentHeight\(node\)/);
   assert.doesNotMatch(exportRenderer, /fillText|timelineItemHeight/);
@@ -1204,6 +1221,10 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   );
   const longImageFields = await readFile(
     new URL("./components/long-image-settings-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  const longImageScopePicker = await readFile(
+    new URL("./components/long-image-scope-picker.tsx", import.meta.url),
     "utf8",
   );
   const shareStatus = await readFile(
@@ -1360,11 +1381,17 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
   assert.match(shareSettingsFields, /LongImageSettingsFields/);
-  assert.match(longImageFields, /Entire trip/);
-  assert.match(longImageFields, /Date range/);
+  assert.doesNotMatch(longImageFields, /Entire trip|Date range/);
+  assert.match(longImageScopePicker, /Entire trip/);
+  assert.match(longImageScopePicker, /Date range/);
   assert.match(longImageFields, /QR code opens/);
-  assert.doesNotMatch(shareStatus, /Public preview/);
+  assert.doesNotMatch(
+    shareStatus,
+    /Public preview|LongImageExportPanel|ShareLinkActions|ShareQrCode/,
+  );
+  assert.match(shareStatus, /Open shareable page/);
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
+  assert.match(viewerShare, /downloadShareImageParts/);
   assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
   assert.match(shareTools, /className=\{`block size-36 max-w-full/);
   assert.match(shareTools, /width: 144/);

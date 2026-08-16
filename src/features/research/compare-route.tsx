@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicShareDialog } from "@/features/sharing/components/public-share-dialog";
-import { getOwnerShareImageState, listPublicItineraryLinks } from "@/features/sharing/data";
+import { listPublicItineraryLinks } from "@/features/sharing/data";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripSettingsAppBar } from "@/features/trips/components/trip-settings-app-bar";
@@ -61,12 +61,6 @@ export async function ResearchCompareRoute({
   if (planResult.error || !planResult.data)
     throw new Error(planResult.error ?? "The selected Plan could not be loaded.");
   if (planState.error) throw new Error(planState.error);
-  const shareImageStates = Object.fromEntries(
-    await Promise.all(
-      shareLinks.data.map(async (page) => [page.id, await getOwnerShareImageState(page.id)]),
-    ),
-  );
-
   const context = {
     ...(tripIdSchema.safeParse(query.dayId).success && { dayId: query.dayId }),
     ...(tripIdSchema.safeParse(query.itemId).success && { itemId: query.itemId }),
@@ -91,7 +85,6 @@ export async function ResearchCompareRoute({
           shareControls={
             <PublicShareDialog
               activeVariantId={resolution.activeVariant.id}
-              initialImageStates={shareImageStates}
               initialLinks={shareLinks.data}
               siteUrl={siteUrl}
               trip={trip}
