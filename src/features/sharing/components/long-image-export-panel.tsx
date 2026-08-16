@@ -1,6 +1,16 @@
 "use client";
 
-import { Download, ExternalLink, ImageDown, LoaderCircle, Settings2, Share2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Download,
+  ExternalLink,
+  ImageDown,
+  LoaderCircle,
+  Settings2,
+  Share2,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -80,17 +90,40 @@ export function LongImageExportPanel({
       {imageState ? (
         <details className="group border-t pt-3">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-            <Settings2 className="size-4" /> Manage image link
+            <Settings2 aria-hidden="true" className="size-4" />
+            <span className="min-w-0 flex-1">Manage image link</span>
+            <ChevronDown
+              aria-hidden="true"
+              className="size-4 shrink-0 transition-transform group-open:rotate-180"
+            />
           </summary>
           <div className="grid grid-cols-2 gap-2 pt-2">
             <p className="col-span-2 text-xs text-muted-foreground">
               {longImageScopeLabel(generatedScope)} · Available until{" "}
               {formatShareImageExpiry(imageState.expiresAt)}
             </p>
-            <Button asChild className="col-span-2 min-h-11" size="sm" variant="outline">
-              <a href={controller.permanentUrl} rel="noopener noreferrer" target="_blank">
-                <ExternalLink className="size-4" /> Open image page
+            <Button asChild className="min-h-11 min-w-0" size="sm" variant="outline">
+              <a
+                aria-label="Open image page"
+                href={controller.permanentUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <ExternalLink aria-hidden="true" className="size-4" /> Open page
               </a>
+            </Button>
+            <Button
+              className="min-h-11 min-w-0"
+              onClick={() => void controller.copyPermanentLink()}
+              size="sm"
+              variant="outline"
+            >
+              {controller.copied ? (
+                <Check aria-hidden="true" className="size-4" />
+              ) : (
+                <Copy aria-hidden="true" className="size-4" />
+              )}
+              {controller.copied ? "Copied" : "Copy link"}
             </Button>
             <Button
               className="col-span-2 min-h-11"

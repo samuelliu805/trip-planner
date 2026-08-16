@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
+import { copyTextToClipboard } from "./copy-to-clipboard";
+
 const subscribeToStaticBrowserState = () => () => {};
 const isWechatBrowser = () => /MicroMessenger/i.test(window.navigator.userAgent);
 const isWechatServer = () => false;
@@ -107,7 +109,7 @@ export function ShareLinkActions({
     if (copying) return;
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(url);
+      await copyTextToClipboard(url);
       setStatus("Link copied.");
     } catch {
       setStatus("Copy was unavailable. Select the URL and copy it manually.");

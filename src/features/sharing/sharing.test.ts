@@ -1084,6 +1084,10 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     new URL("./components/use-long-image-export.ts", import.meta.url),
     "utf8",
   );
+  const clipboardHelper = await readFile(
+    new URL("./components/copy-to-clipboard.ts", import.meta.url),
+    "utf8",
+  );
   const exportDocument = await readFile(
     new URL("./long-image/timeline-export-document.tsx", import.meta.url),
     "utf8",
@@ -1142,14 +1146,17 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(exportPanel, /Trip updated/);
   assert.match(exportPanel, /Create image & download/);
   assert.match(exportPanel, /Manage image link/);
-  assert.match(exportPanel, /Open image page/);
+  assert.match(exportPanel, /Open page/);
+  assert.match(exportPanel, /Copy link/);
+  assert.match(exportPanel, /group-open:rotate-180/);
   assert.match(exportPanel, /target="_blank"/);
   assert.match(exportPanel, /rel="noopener noreferrer"/);
   assert.match(exportPanel, /Available until/);
   assert.match(exportController, /navigator\.share/);
   assert.match(exportController, /window\.open\(permanentUrl/);
-  assert.doesNotMatch(exportPanel, /Copy image link/);
-  assert.doesNotMatch(exportController, /navigator\.clipboard/);
+  assert.match(exportController, /copyTextToClipboard\(permanentUrl\)/);
+  assert.match(clipboardHelper, /navigator\.clipboard/);
+  assert.match(clipboardHelper, /document\.execCommand\("copy"\)/);
   assert.match(exportController, /downloadShareImageParts/);
   assert.match(exportDocument, /<PublicTimeline/);
   assert.match(exportDocument, /<PublicTripHeader/);

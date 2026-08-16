@@ -16,6 +16,7 @@ import type {
   PublicItineraryLink,
   ShareImagePartInput,
 } from "../types";
+import { copyTextToClipboard } from "./copy-to-clipboard";
 import { downloadShareImageParts } from "./share-image-download";
 
 type GenerateMode = "new_export" | "replace_existing";
@@ -33,11 +34,13 @@ export function useLongImageExport({
 }) {
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<string>();
+  const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
   const permanentUrl = imageState ? `${siteUrl}/share/image/${imageState.permanentSlug}` : "";
 
   function generate(mode: GenerateMode, scope?: LongImageScope) {
     setError(undefined);
+    setCopied(false);
     setProgress("Preparing snapshot…");
     startTransition(async () => {
       const uploadedPaths: string[] = [];
@@ -133,6 +136,16 @@ export function useLongImageExport({
     );
   }
 
+  async function copyPermanentLink() {
+    setError(undefined);
+    try {
+      await copyTextToClipboard(permanentUrl);
+      setCopied(true);
+    } catch {
+      setError("Copy was unavailable. Open the image page and copy its URL.");
+    }
+  }
+
   async function sharePermanentLink() {
     if (!imageState) return;
     setError(undefined);
@@ -166,6 +179,8 @@ export function useLongImageExport({
   }
 
   return {
+    copied,
+    copyPermanentLink,
     downloadCurrent,
     error,
     generate,
