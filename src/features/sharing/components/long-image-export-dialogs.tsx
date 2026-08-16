@@ -29,11 +29,11 @@ export function LongImageRegenerateDialog({
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Regenerate this permanent image?</AlertDialogTitle>
+          <AlertDialogTitle>Regenerate this image?</AlertDialogTitle>
           <AlertDialogDescription>
-            Creating a new link keeps this image unchanged. Replacing it changes what the existing
-            permanent URL shows; downloaded or reposted copies cannot be updated. The QR destination
-            remains unchanged.
+            A new link leaves the current image unchanged until it expires. Replacing updates the
+            existing link and renews it for 30 days. Downloaded copies cannot be updated. The QR
+            destination remains unchanged.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="sm:flex-col sm:items-stretch">
@@ -69,9 +69,10 @@ export function LongImageRevokeDialog({
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Revoke this permanent image link?</AlertDialogTitle>
+          <AlertDialogTitle>Revoke this image link?</AlertDialogTitle>
           <AlertDialogDescription>
-            The URL will stop working immediately. Downloaded or reposted copies cannot be removed.
+            The URL will stop working and its stored image files will be deleted. Downloaded or
+            reposted copies cannot be removed.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

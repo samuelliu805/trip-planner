@@ -5,6 +5,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 
+import { copyTextToClipboard } from "./copy-to-clipboard";
+
 const subscribeToStaticBrowserState = () => () => {};
 const isWechatBrowser = () => /MicroMessenger/i.test(window.navigator.userAgent);
 const isWechatServer = () => false;
@@ -61,10 +63,14 @@ export function ShareQrCode({ label, url }: { label: string; url: string }) {
 
 export function ShareLinkActions({
   description,
+  onWechatToggle,
+  qrExpanded,
   title,
   url,
 }: {
   description: string;
+  onWechatToggle: () => void;
+  qrExpanded: boolean;
   title: string;
   url: string;
 }) {
@@ -103,7 +109,7 @@ export function ShareLinkActions({
     if (copying) return;
     setCopying(true);
     try {
-      await navigator.clipboard.writeText(url);
+      await copyTextToClipboard(url);
       setStatus("Link copied.");
     } catch {
       setStatus("Copy was unavailable. Select the URL and copy it manually.");
@@ -146,19 +152,18 @@ export function ShareLinkActions({
           {copying ? "Copying…" : "Copy link"}
         </Button>
         <Button
+          aria-expanded={qrExpanded}
           className="col-span-2 min-h-11 w-full sm:col-auto sm:w-auto"
-          onClick={() => setStatus("Tap •••, then choose Send to Chat or Moments.")}
+          onClick={() => {
+            onWechatToggle();
+            setStatus(wechat ? "Tap •••, then choose Send to Chat or Moments." : undefined);
+          }}
           type="button"
           variant="outline"
         >
-          <MessageCircle aria-hidden="true" className="size-4" /> Share to WeChat
+          <MessageCircle aria-hidden="true" className="size-4" /> WeChat
         </Button>
       </div>
-      {wechat ? (
-        <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-sm">
-          Tap •••, then choose Send to Chat or Moments.
-        </p>
-      ) : null}
       {status ? (
         <p aria-live="polite" className="text-xs text-muted-foreground">
           {status}

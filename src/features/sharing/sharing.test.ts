@@ -38,6 +38,7 @@ import {
   publicTimelineTransportMeta,
 } from "./public-timeline-presentation.ts";
 import { canonicalPublicTemplates, publicShareUrlState } from "./public-url-state.ts";
+import { siteUrlFromHeaders } from "./site-url.ts";
 import {
   canonicalPublicViews,
   publicItinerarySchema,
@@ -54,6 +55,8 @@ import {
   TIMELINE_EXPORT_MAX_HEIGHT,
   TIMELINE_EXPORT_WIDTH,
 } from "./long-image/layout.ts";
+import { longImageScopeSchema } from "./long-image/schema.ts";
+import { scopePublicItinerary } from "./long-image/scope.ts";
 
 async function readAppStyles() {
   return (
@@ -94,6 +97,30 @@ async function readAppStyles() {
 }
 
 const ref = (character: string) => character.repeat(64);
+
+test("share URLs follow the current request host across local and preview environments", () => {
+  assert.equal(
+    siteUrlFromHeaders(
+      new Headers({ origin: "http://localhost:3001" }),
+      "https://trip-planner.example.com",
+    ),
+    "http://localhost:3001",
+  );
+  assert.equal(
+    siteUrlFromHeaders(
+      new Headers({
+        "x-forwarded-host": "trip-planner-git-range.example.vercel.app",
+        "x-forwarded-proto": "https",
+      }),
+      "https://trip-planner.example.com",
+    ),
+    "https://trip-planner-git-range.example.vercel.app",
+  );
+  assert.equal(
+    siteUrlFromHeaders(new Headers({ origin: "null" }), "https://trip-planner.example.com"),
+    "https://trip-planner.example.com",
+  );
+});
 
 const itinerary: PublicItinerary = publicItinerarySchema.parse({
   available: true,
@@ -167,6 +194,61 @@ test("Timeline export v1 keeps 1080 px parts and paginates measured DOM day grou
     exportedItems.map(({ ref: itemRef }) => itemRef),
     repeatedItems.map(({ ref: itemRef }) => itemRef),
   );
+});
+
+test("long-image date ranges are inclusive and update the exported trip summary", () => {
+  const rangedItinerary = publicItinerarySchema.parse({
+    ...itinerary,
+    citySequence: [1, 2, 3, 4].map((dayNumber) => ({
+      date: `2026-10-${String(9 + dayNumber).padStart(2, "0")}`,
+      dayNumber,
+      name: `City ${dayNumber}`,
+      ref: ref(String(dayNumber)),
+    })),
+    days: [1, 2, 3, 4].map((dayNumber) => ({
+      ...itinerary.days[0],
+      city: `City ${dayNumber}`,
+      date: `2026-10-${String(9 + dayNumber).padStart(2, "0")}`,
+      dayNumber,
+      ref: ref(String(dayNumber + 4)),
+    })),
+    trip: {
+      ...itinerary.trip,
+      dayCount: 4,
+      endDate: "2026-10-13",
+      startDate: "2026-10-10",
+    },
+  });
+  const scoped = scopePublicItinerary(rangedItinerary, {
+    endDayNumber: 3,
+    mode: "date_range",
+    startDayNumber: 2,
+  });
+
+  assert.deepEqual(
+    scoped.days.map(({ dayNumber }) => dayNumber),
+    [2, 3],
+  );
+  assert.deepEqual(
+    scoped.citySequence.map(({ dayNumber }) => dayNumber),
+    [2, 3],
+  );
+  assert.deepEqual(scoped.trip, {
+    ...itinerary.trip,
+    dayCount: 2,
+    endDate: "2026-10-12",
+    startDate: "2026-10-11",
+  });
+  assert.equal(
+    longImageScopeSchema.safeParse({
+      endDayNumber: 2,
+      mode: "date_range",
+      startDayNumber: 3,
+    }).success,
+    false,
+  );
+  assert.equal(defaultShareSettings.longImageStartDayNumber, null);
+  assert.equal(defaultShareSettings.longImageEndDayNumber, null);
 });
 
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
@@ -1002,6 +1084,10 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     new URL("./components/use-long-image-export.ts", import.meta.url),
     "utf8",
   );
+  const clipboardHelper = await readFile(
+    new URL("./components/copy-to-clipboard.ts", import.meta.url),
+    "utf8",
+  );
   const exportDocument = await readFile(
     new URL("./long-image/timeline-export-document.tsx", import.meta.url),
     "utf8",
@@ -1010,9 +1096,42 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     new URL("./long-image/dom-renderer.tsx", import.meta.url),
     "utf8",
   );
+  const exportStyles = await readFile(
+    new URL("../../app/public-sharing-timeline-export.css", import.meta.url),
+    "utf8",
+  );
+  const imageCleanupMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260816011414_hard_delete_revoked_share_images.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const imageExpiryMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260816015443_expire_share_images_after_thirty_days.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const cronCleanup = await readFile(
+    new URL("../../app/api/cron/share-image-cleanup/route.ts", import.meta.url),
+    "utf8",
+  );
+  const privateImagePart = await readFile(
+    new URL("../../app/share/image/[slug]/part/[part]/route.ts", import.meta.url),
+    "utf8",
+  );
+  const tripHeader = await readFile(
+    new URL("./components/public-trip-header.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(dialog, /z-\[100\]/);
   assert.match(dialog, /z-\[110\]/);
-  assert.match(dialog, /max-h-\[92dvh\]/);
+  assert.match(dialog, /window\.visualViewport/);
+  assert.match(dialog, /--dialog-viewport-center/);
+  assert.match(dialog, /--dialog-viewport-height/);
+  assert.match(dialog, /100svh/);
   assert.match(dialog, /max-w-full/);
   assert.match(dialog, /overflow-x-hidden overflow-y-auto/);
   assert.match(alertDialog, /z-\[130\]/);
@@ -1021,13 +1140,51 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(alertDialog, /overflow-x-hidden/);
   assert.match(exportDialogs, /Create new link \(recommended\)/);
   assert.match(exportDialogs, /Replace existing version/);
-  assert.match(exportDialogs, /QR destination\s+remains unchanged/);
+  assert.match(exportDialogs, /QR\s+destination remains unchanged/);
   assert.match(exportDialogs, /Revoke image link/);
-  assert.match(exportPanel, /This Share Page has changed since the image was generated/);
+  assert.match(exportDialogs, /renews it for 30 days/);
+  assert.match(exportPanel, /Trip updated/);
+  assert.match(exportPanel, /Create image & download/);
+  assert.match(exportPanel, /Manage image link/);
+  assert.match(exportPanel, /Open page/);
+  assert.match(exportPanel, /Copy link/);
+  assert.match(exportPanel, /group-open:rotate-180/);
+  assert.match(exportPanel, /target="_blank"/);
+  assert.match(exportPanel, /rel="noopener noreferrer"/);
+  assert.match(exportPanel, /Available until/);
   assert.match(exportController, /navigator\.share/);
+  assert.match(exportController, /window\.open\(permanentUrl/);
+  assert.match(exportController, /copyTextToClipboard\(permanentUrl\)/);
+  assert.match(clipboardHelper, /navigator\.clipboard/);
+  assert.match(clipboardHelper, /document\.execCommand\("copy"\)/);
+  assert.match(exportController, /downloadShareImageParts/);
   assert.match(exportDocument, /<PublicTimeline/);
   assert.match(exportDocument, /<PublicTripHeader/);
   assert.doesNotMatch(exportDocument, /Timeline export/);
+  assert.match(tripHeader, /public-trip-meta-copy/);
+  assert.match(
+    exportStyles,
+    /\.timeline-export-document \.public-trip-title,[\s\S]*\.public-trip-meta \{[\s\S]*white-space: nowrap/,
+  );
+  assert.doesNotMatch(exportStyles, /public-trip-meta \{[\s\S]*white-space: normal/);
+  assert.match(
+    exportStyles,
+    /\.timeline-export-document \.public-template-region-brand-row \{[\s\S]*width: 100%;[\s\S]*flex: 1 1 100%/,
+  );
+  assert.match(imageCleanupMigration, /owner_share_image_export_paths_v1/);
+  assert.match(imageCleanupMigration, /owners remove their share images/);
+  assert.match(imageCleanupMigration, /grant execute[\s\S]*to authenticated/);
+  assert.match(imageExpiryMigration, /interval '30 days'/);
+  assert.match(imageExpiryMigration, /update storage\.buckets[\s\S]*public = false/);
+  assert.match(imageExpiryMigration, /storage\.allow_any_operation/);
+  assert.match(imageExpiryMigration, /private\.can_read_share_image_object_v1/);
+  assert.match(imageExpiryMigration, /export\.expires_at > now\(\)/);
+  assert.match(imageExpiryMigration, /expired_share_image_cleanup_batch_v1/);
+  assert.match(imageExpiryMigration, /to service_role/);
+  assert.match(cronCleanup, /Bearer \$\{cronSecret\}/);
+  assert.match(cronCleanup, /\.from\("share-images"\)[\s\S]*\.remove/);
+  assert.match(privateImagePart, /\.from\("share-images"\)\.download/);
+  assert.doesNotMatch(privateImagePart, /object\/public/);
   assert.match(exportRenderer, /getFontEmbedCSS/);
   assert.match(exportRenderer, /documentHeight\(node\)/);
   assert.doesNotMatch(exportRenderer, /fillText|timelineItemHeight/);
@@ -1100,6 +1257,18 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   );
   const shareSettingsFields = await readFile(
     new URL("./components/public-share-settings-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  const shareVisibilityFields = await readFile(
+    new URL("./components/public-share-visibility-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  const longImageFields = await readFile(
+    new URL("./components/long-image-settings-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  const longImageScopePicker = await readFile(
+    new URL("./components/long-image-scope-picker.tsx", import.meta.url),
     "utf8",
   );
   const shareStatus = await readFile(
@@ -1246,14 +1415,35 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     /event\.key === "Enter"/,
   );
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
+  assert.match(shareSettings, /--dialog-viewport-height/);
   assert.ok(
     shareSettings.indexOf('aria-live="polite"') <
       shareSettings.indexOf("min-h-0 flex-1 touch-pan-y"),
     "save status stays outside the settings scroller",
   );
-  assert.match(shareSettingsFields, /Everything is included by default/);
-  assert.doesNotMatch(shareStatus, /Public preview/);
+  assert.match(shareVisibilityFields, /Select everything you want people with the link to see/);
+  assert.match(shareVisibilityFields, /ShareSettingOption/);
+  assert.match(shareSettingsFields, /PublicSharePageFields/);
+  assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
+  assert.match(shareSettingsFields, /LongImageSettingsFields/);
+  assert.doesNotMatch(longImageFields, /Entire trip|Date range/);
+  assert.match(longImageScopePicker, /Entire trip/);
+  assert.match(longImageScopePicker, /Date range/);
+  assert.match(longImageFields, /QR code opens/);
+  assert.doesNotMatch(
+    shareStatus,
+    /Public preview|LongImageExportPanel|ShareLinkActions|ShareQrCode/,
+  );
+  assert.match(shareStatus, /Open shareable page/);
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
+  assert.match(viewerShare, /--dialog-viewport-height/);
+  assert.match(viewerShare, /downloadShareImageParts/);
+  assert.ok(
+    viewerShare.indexOf("<ShareLinkActions") < viewerShare.indexOf("<LongImageExportPanel"),
+    "share link actions stay above image generation",
+  );
+  assert.match(viewerShare, /showWechatQr \? \(/);
+  assert.match(shareTools, /aria-expanded=\{qrExpanded\}/);
   assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
   assert.match(shareTools, /className=\{`block size-36 max-w-full/);
   assert.match(shareTools, /width: 144/);
@@ -1359,6 +1549,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
     templateMigration,
     transportMigration,
     sharePageMigration,
+    imageRangeMigration,
     databaseTypes,
   ] = await Promise.all(
     [
@@ -1371,6 +1562,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260814175111_add_ethereal_and_journal_public_templates.sql",
       "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
       "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
+      "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
       "../../types/database.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
@@ -1387,8 +1579,8 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);
   assert.match(data, /get_public_share_page_v1/);
   assert.match(data, /list_share_pages_v1/);
-  assert.match(actions, /create_share_page_v1/);
-  assert.match(actions, /update_share_page_v1/);
+  assert.match(actions, /create_share_page_v2/);
+  assert.match(actions, /update_share_page_v2/);
   assert.doesNotMatch(actions, /rotate_public_itinerary_link/);
   assert.match(baseMigration, /set template_id = 'standard', template_version = 1/);
   assert.ok(
@@ -1427,6 +1619,11 @@ test("public template route, hydration, persistence, and rollback contracts stay
     sharePageMigration,
     /drop index if exists public\.public_itinerary_links_one_active_variant_idx/,
   );
+  assert.match(imageRangeMigration, /long_image_start_day_number integer/);
+  assert.match(imageRangeMigration, /create function public\.create_share_page_v2/);
+  assert.match(imageRangeMigration, /create function public\.update_share_page_v2/);
+  assert.match(imageRangeMigration, /create function public\.prepare_share_image_version_v2/);
+  assert.match(imageRangeMigration, /security definer[\s\S]*set search_path = ''/);
 });
 
 test("sharing and public route security use real QR, safe new tabs, and no-store headers", async () => {

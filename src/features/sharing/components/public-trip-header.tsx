@@ -36,7 +36,9 @@ export function PublicTripHeader({
       <h1 className="public-trip-title">{itinerary.trip.title}</h1>
       <p className="public-trip-meta">
         <CalendarDays aria-hidden="true" className="size-3.5 shrink-0" />
-        {publicDateSummary(itinerary)} · {itinerary.variant.name}
+        <span className="public-trip-meta-copy">
+          {publicDateSummary(itinerary)} · {itinerary.variant.name}
+        </span>
       </p>
     </div>
   );

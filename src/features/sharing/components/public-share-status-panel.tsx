@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink, Link2, ShieldCheck, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, ShieldCheck, Trash2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -13,66 +13,37 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
-import type { OwnerShareImageState, PublicItineraryLink } from "../types";
-import { LongImageExportPanel } from "./long-image-export-panel";
-import { ShareLinkActions, ShareQrCode } from "./share-tools";
-
+import type { PublicItineraryLink } from "../types";
 export function PublicShareStatusPanel({
   activeLink,
-  description,
-  imageState,
-  onImageStateChange,
   onRevoke,
   pending,
   publicUrl,
-  siteUrl,
-  title,
 }: {
   activeLink?: PublicItineraryLink;
-  description: string;
-  imageState: OwnerShareImageState | null;
-  onImageStateChange: (state: OwnerShareImageState | null) => void;
   onRevoke: () => void;
   pending: boolean;
   publicUrl: string;
-  siteUrl: string;
-  title: string;
 }) {
   return (
-    <aside className="min-w-0 space-y-4">
+    <aside className="min-w-0 space-y-4 lg:sticky lg:top-0 lg:self-start">
       {activeLink ? (
         <div className="space-y-4 border p-4">
           <div className="flex items-start gap-2">
             <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 text-primary" />
             <div>
-              <h3 className="font-semibold">Public link active</h3>
-              <p className="text-xs text-muted-foreground">
-                No sign-in required · Published snapshot
-              </p>
+              <h3 className="font-semibold">Published shareable page</h3>
+              <p className="text-xs text-muted-foreground">Public snapshot · No sign-in required</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 border bg-muted/30 p-2 text-xs">
-            <Link2 aria-hidden="true" className="size-4 shrink-0" />
-            <span className="min-w-0 flex-1 truncate">{publicUrl}</span>
-            <Button asChild className="size-9 p-0" size="sm" variant="ghost">
-              <a
-                aria-label="Open public view"
-                href={publicUrl}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                <ExternalLink className="size-4" />
-              </a>
-            </Button>
-          </div>
-          <ShareLinkActions description={description} title={title} url={publicUrl} />
-          <ShareQrCode label="Scan in WeChat" url={publicUrl} />
-          <LongImageExportPanel
-            imageState={imageState}
-            onImageStateChange={onImageStateChange}
-            sharePage={activeLink}
-            siteUrl={siteUrl}
-          />
+          <Button asChild className="min-h-11 w-full">
+            <a href={publicUrl} rel="noopener noreferrer" target="_blank">
+              <ExternalLink className="size-4" /> Open shareable page
+            </a>
+          </Button>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Share the link, show its QR code, or create an image from the published page.
+          </p>
           <div className="flex flex-wrap gap-2 border-t pt-4">
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -99,9 +70,10 @@ export function PublicShareStatusPanel({
       ) : (
         <div className="border p-4">
           <ShieldCheck aria-hidden="true" className="size-6 text-primary" />
-          <h3 className="mt-3 font-semibold">Ready to create</h3>
+          <h3 className="mt-3 font-semibold">Ready to publish</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Only the selected route and enabled public fields will be exposed.
+            Review the settings, then create the shareable link. Open the published page to choose
+            dates and download an image.
           </p>
         </div>
       )}

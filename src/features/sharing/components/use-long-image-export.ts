@@ -10,7 +10,14 @@ import {
   prepareShareImageVersion,
   revokeShareImageExport,
 } from "../long-image/actions";
-import type { OwnerShareImageState, PublicItineraryLink, ShareImagePartInput } from "../types";
+import type {
+  LongImageScope,
+  OwnerShareImageState,
+  PublicItineraryLink,
+  ShareImagePartInput,
+} from "../types";
+import { copyTextToClipboard } from "./copy-to-clipboard";
+import { downloadShareImageParts } from "./share-image-download";
 
 type GenerateMode = "new_export" | "replace_existing";
 
@@ -31,8 +38,9 @@ export function useLongImageExport({
   const [pending, startTransition] = useTransition();
   const permanentUrl = imageState ? `${siteUrl}/share/image/${imageState.permanentSlug}` : "";
 
-  function generate(mode: GenerateMode) {
+  function generate(mode: GenerateMode, scope?: LongImageScope) {
     setError(undefined);
+    setCopied(false);
     setProgress("Preparing snapshot…");
     startTransition(async () => {
       const uploadedPaths: string[] = [];
@@ -42,6 +50,7 @@ export function useLongImageExport({
           exportId: mode === "replace_existing" ? (imageState?.exportId ?? null) : null,
           mode,
           sharePageId: sharePage.id,
+          scope,
         });
         if ("error" in prepared) throw new Error(prepared.error);
         versionId = prepared.data.versionId;
@@ -88,14 +97,21 @@ export function useLongImageExport({
         const now = new Date().toISOString();
         onImageStateChange({
           createdAt: mode === "replace_existing" ? (imageState?.createdAt ?? now) : now,
+          expiresAt: finalized.data.expiresAt,
           exportId: prepared.data.exportId,
           partCount: finalized.data.partCount,
           permanentSlug: finalized.data.permanentSlug,
+          renderConfig: prepared.data.renderConfig,
           sourceSnapshotHash: prepared.data.sourceSnapshotHash,
           updatedAt: now,
           versionNumber: prepared.data.versionNumber,
         });
-        setProgress("Timeline export ready.");
+        setProgress(
+          finalized.data.partCount === 1
+            ? "Image ready. Download started."
+            : `Image ready. Downloading ${finalized.data.partCount} files.`,
+        );
+        downloadShareImageParts(finalized.data.permanentSlug, finalized.data.partCount);
       } catch (caught) {
         if (uploadedPaths.length)
           await createClient().storage.from("share-images").remove(uploadedPaths);
@@ -110,9 +126,20 @@ export function useLongImageExport({
     });
   }
 
+  function downloadCurrent() {
+    if (!imageState) return;
+    downloadShareImageParts(imageState.permanentSlug, imageState.partCount);
+    setProgress(
+      imageState.partCount === 1
+        ? "Download started."
+        : `Downloading ${imageState.partCount} image files.`,
+    );
+  }
+
   async function copyPermanentLink() {
+    setError(undefined);
     try {
-      await navigator.clipboard.writeText(permanentUrl);
+      await copyTextToClipboard(permanentUrl);
       setCopied(true);
     } catch {
       setError("Copy was unavailable. Open the image page and copy its URL.");
@@ -121,6 +148,7 @@ export function useLongImageExport({
 
   async function sharePermanentLink() {
     if (!imageState) return;
+    setError(undefined);
     try {
       if (navigator.share) {
         await navigator.share({
@@ -129,10 +157,10 @@ export function useLongImageExport({
         });
         return;
       }
-      await copyPermanentLink();
+      window.open(permanentUrl, "_blank", "noopener,noreferrer");
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
-      setError("Sharing was unavailable. Copy the permanent image link instead.");
+      setError("Sharing was unavailable. Open the image page instead.");
     }
   }
 
@@ -153,6 +181,7 @@ export function useLongImageExport({
   return {
     copied,
     copyPermanentLink,
+    downloadCurrent,
     error,
     generate,
     pending,

@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { PlannerWorkspace } from "@/features/itinerary/components/planner-workspace";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicShareDialog } from "@/features/sharing/components/public-share-dialog";
-import { getOwnerShareImageState, listPublicItineraryLinks } from "@/features/sharing/data";
-import { getSiteUrl } from "@/features/sharing/site-url";
+import { listPublicItineraryLinks } from "@/features/sharing/data";
+import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { getPlannerVariants, getPlannerWorkspace } from "@/features/itinerary/data";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
@@ -24,13 +24,14 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const { tripId } = await params;
   if (!tripIdSchema.safeParse(tripId).success) notFound();
 
-  const [{ data: trip, error }, variantsResult, researchItems, query, exchangeRates] =
+  const [{ data: trip, error }, variantsResult, researchItems, query, exchangeRates, siteUrl] =
     await Promise.all([
       getTrip(tripId),
       getPlannerVariants(tripId),
       getPlanResearchItems(tripId),
       searchParams,
       getExchangeRateTable(),
+      getRequestSiteUrl(),
     ]);
   if (error || !trip) notFound();
   if (variantsResult.error || !variantsResult.data)
@@ -51,14 +52,6 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const { data: authData } = await supabase.auth.getUser();
   const owner = authData.user?.id === trip.owner_id;
   const shareLinks = owner ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
-  const shareImageStates = owner
-    ? Object.fromEntries(
-        await Promise.all(
-          shareLinks.data.map(async (page) => [page.id, await getOwnerShareImageState(page.id)]),
-        ),
-      )
-    : {};
-
   return (
     <main className="trip-detail-page trip-planner-page flex h-dvh min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -76,10 +69,9 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
               owner ? (
                 <PublicShareDialog
                   activeVariantId={workspace.variant.id}
-                  initialImageStates={shareImageStates}
                   initialLinks={shareLinks.data}
                   key="trip-share-controls"
-                  siteUrl={getSiteUrl()}
+                  siteUrl={siteUrl}
                   trip={trip}
                   variants={variantsResult.data}
                 />

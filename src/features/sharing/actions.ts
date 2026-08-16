@@ -34,6 +34,8 @@ function managementError(error?: string) {
     return "This route already has an active public link.";
   if (error?.includes("PUBLIC_TEMPLATE_UNAVAILABLE"))
     return "Choose an available built-in public template.";
+  if (error?.includes("PUBLIC_IMAGE_DAY_RANGE_INVALID"))
+    return "Choose an image range within this trip.";
   if (error?.match(/OWNER|permission|row-level security/i))
     return "Only the trip owner can manage public links.";
   return "The public link could not be changed. Try again.";
@@ -43,8 +45,10 @@ const rpcSettings = (input: PublicItinerarySettingsInput) => ({
   requested_allow_long_image_download: input.allowLongImageDownload,
   requested_allow_route_explore: input.allowRouteExplore,
   requested_default_view: input.defaultView,
+  requested_long_image_end_day_number: input.longImageEndDayNumber,
   requested_long_image_qr_destination: input.longImageQrDestination,
   requested_long_image_qr_share_page_id: input.longImageQrSharePageId,
+  requested_long_image_start_day_number: input.longImageStartDayNumber,
   requested_share_description: input.shareDescription,
   requested_share_title: input.shareTitle,
   requested_show_addresses: input.showAddresses,
@@ -67,7 +71,7 @@ export async function createPublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_share_page_v1", {
+  const { data, error } = await supabase.rpc("create_share_page_v2", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
@@ -89,7 +93,7 @@ export async function updatePublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_share_page_v1", {
+  const { data, error } = await supabase.rpc("update_share_page_v2", {
     target_share_page_id: linkId,
     ...rpcSettings(settings.data),
   });

@@ -7,8 +7,10 @@ export const defaultShareSettings: ShareSettings = {
   allowLongImageDownload: true,
   allowRouteExplore: true,
   defaultView: "timeline",
+  longImageEndDayNumber: null,
   longImageQrDestination: "current_share_page",
   longImageQrSharePageId: null,
+  longImageStartDayNumber: null,
   shareDescription: "",
   shareTitle: "",
   showAddresses: true,
@@ -35,12 +37,14 @@ export function settingsFromLink(link?: PublicItineraryLink): ShareSettings {
     allowLongImageDownload: link.allowLongImageDownload,
     allowRouteExplore: link.allowRouteExplore,
     defaultView: link.defaultView,
+    longImageEndDayNumber: link.longImageEndDayNumber,
     longImageQrDestination: hasExplicitSharePageTarget
       ? link.longImageQrDestination
       : link.longImageQrDestination === "share_page"
         ? "current_share_page"
         : link.longImageQrDestination,
     longImageQrSharePageId: hasExplicitSharePageTarget ? link.longImageQrSharePageId : null,
+    longImageStartDayNumber: link.longImageStartDayNumber,
     shareDescription: link.shareDescription ?? "",
     shareTitle: link.shareTitle ?? "",
     showAddresses: link.showAddresses,

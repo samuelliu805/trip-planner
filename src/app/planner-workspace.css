@@ -1,5 +1,8 @@
 html:has(.trip-planner-page),
 body:has(.trip-planner-page) {
+  position: fixed;
+  inset: 0;
+  width: 100%;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
@@ -7,10 +10,19 @@ body:has(.trip-planner-page) {
 }
 
 .trips-shell:has(.trip-planner-page) {
+  min-height: 0;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+.trip-planner-page {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: auto;
+  max-height: none;
 }
 
 .trips-global-header,
@@ -30,6 +42,18 @@ body:has(.trip-planner-page) {
 
 .planner-layout {
   grid-template-columns: var(--planner-grid-template);
+}
+
+.planner-layout,
+.planner-matrix,
+.planner-map-pane,
+.planner-map-landscape {
+  min-height: 0;
+}
+
+.planner-map-pane,
+.planner-map-landscape {
+  overflow: hidden;
 }
 
 .planner-matrix {

@@ -186,8 +186,10 @@ export const publicItineraryLinkSchema = z
     createdAt: z.string(),
     defaultView: publicViewSchema,
     id: z.uuid(),
+    longImageEndDayNumber: z.number().int().min(1).max(366).nullable(),
     longImageQrDestination: z.enum(["current_share_page", "share_page", "homepage"]),
     longImageQrSharePageId: z.uuid().nullable(),
+    longImageStartDayNumber: z.number().int().min(1).max(366).nullable(),
     publishedAt: z.string().nullable(),
     publicToken: z.uuid(),
     shareDescription: z.string().nullable(),
@@ -209,15 +211,25 @@ export const publicItineraryLinkSchema = z
     updatedAt: z.string(),
     variantId: z.uuid().nullable(),
   })
-  .strict();
+  .strict()
+  .refine(
+    ({ longImageEndDayNumber, longImageStartDayNumber }) =>
+      (longImageStartDayNumber === null && longImageEndDayNumber === null) ||
+      (longImageStartDayNumber !== null &&
+        longImageEndDayNumber !== null &&
+        longImageStartDayNumber <= longImageEndDayNumber),
+    { message: "The long-image date range is invalid." },
+  );
 
 export const publicItinerarySettingsSchema = z
   .object({
     allowLongImageDownload: z.boolean(),
     allowRouteExplore: z.boolean(),
     defaultView: z.enum(canonicalPublicViews),
+    longImageEndDayNumber: z.number().int().min(1).max(366).nullable(),
     longImageQrDestination: z.enum(["current_share_page", "share_page", "homepage"]),
     longImageQrSharePageId: z.uuid().nullable(),
+    longImageStartDayNumber: z.number().int().min(1).max(366).nullable(),
     shareDescription: z.string().trim().max(500),
     shareTitle: z.string().trim().max(160),
     showAddresses: z.boolean(),
@@ -230,7 +242,15 @@ export const publicItinerarySettingsSchema = z
     templateVersion: publicTemplateVersionSchema,
     variantId: z.uuid(),
   })
-  .strict();
+  .strict()
+  .refine(
+    ({ longImageEndDayNumber, longImageStartDayNumber }) =>
+      (longImageStartDayNumber === null && longImageEndDayNumber === null) ||
+      (longImageStartDayNumber !== null &&
+        longImageEndDayNumber !== null &&
+        longImageStartDayNumber <= longImageEndDayNumber),
+    { message: "Choose a valid long-image date range." },
+  );
 
 export const linkMutationSchema = z.object({ linkId: z.uuid(), tripId: z.uuid() }).strict();
 

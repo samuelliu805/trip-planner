@@ -1,6 +1,8 @@
 import type { z } from "zod";
 
 import type {
+  longImageRenderConfigSchema,
+  longImageScopeSchema,
   ownerShareImageStateSchema,
   prepareShareImageSchema,
   shareImageManifestSchema,
@@ -22,6 +24,8 @@ export type PublicView = z.infer<typeof publicViewSchema>;
 export type PublicItineraryLink = z.infer<typeof publicItineraryLinkSchema>;
 export type PublicRouteCalculation = z.infer<typeof publicRouteCalculationSchema>;
 export type OwnerShareImageState = z.infer<typeof ownerShareImageStateSchema>;
+export type LongImageRenderConfig = z.infer<typeof longImageRenderConfigSchema>;
+export type LongImageScope = z.infer<typeof longImageScopeSchema>;
 export type PreparedShareImage = z.infer<typeof prepareShareImageSchema>;
 export type ShareImageManifest = z.infer<typeof shareImageManifestSchema>;
 export type ShareImagePartInput = z.infer<typeof shareImagePartInputSchema>;

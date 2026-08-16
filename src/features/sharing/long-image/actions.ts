@@ -5,16 +5,23 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 import { getPublicItinerary } from "../data";
-import { publicItineraryLinkSchema } from "../schema";
-import { getSiteUrl } from "../site-url";
+import { getRequestSiteUrl } from "../request-site-url";
+import { publicItineraryLinkSchema, publicItinerarySchema } from "../schema";
 import type { PreparedShareImage, ShareActionResult, ShareImagePartInput } from "../types";
-import { prepareShareImageSchema, shareImagePartInputSchema } from "./schema";
+import {
+  longImageRenderConfigSchema,
+  longImageScopeSchema,
+  prepareShareImageSchema,
+  shareImagePartInputSchema,
+} from "./schema";
+import { longImageScopeFromPage, scopePublicItinerary } from "./scope";
 
 const prepareImageInputSchema = z
   .object({
     exportId: z.uuid().nullable(),
     mode: z.enum(["new_export", "replace_existing"]),
     sharePageId: z.uuid(),
+    scope: longImageScopeSchema.optional(),
   })
   .strict();
 
@@ -50,27 +57,47 @@ export async function prepareShareImageVersion(
     if (!destination.success) return { error: "Choose an active Share Page for the QR code." };
     destinationPage = destination.data;
   }
-  const siteUrl = getSiteUrl();
+  const siteUrl = await getRequestSiteUrl();
   const qrDestinationType =
     page.data.longImageQrDestination === "homepage" ? "homepage" : "share_page";
   const qrDestinationUrl =
     qrDestinationType === "homepage"
       ? `${siteUrl}/?utm_source=shared_image&utm_medium=qr`
       : `${siteUrl}/share/${destinationPage.publicToken}`;
-  const { data, error } = await supabase.rpc("prepare_share_image_version_v1", {
+  const renderConfig = {
+    renderer: "timeline" as const,
+    scope: input.data.scope ?? longImageScopeFromPage(page.data),
+    version: 1 as const,
+    width: 1080 as const,
+  };
+  const { data, error } = await supabase.rpc("prepare_share_image_version_v2", {
     requested_mode: input.data.mode,
     requested_qr_destination_type: qrDestinationType,
     requested_qr_destination_url: qrDestinationUrl,
-    requested_render_config: { renderer: "timeline", version: 1, width: 1080 },
+    requested_render_config: renderConfig,
     target_export_id: input.data.exportId,
     target_share_page_id: page.data.id,
   });
   if (error || !data) return { error: imageError(error?.message) };
   const rpcData = data as Record<string, unknown>;
   const enrichedSnapshot = await getPublicItinerary(page.data.publicToken);
+  const parsedRenderConfig = longImageRenderConfigSchema.safeParse(rpcData.renderConfig);
+  if (!parsedRenderConfig.success) return { error: "The image settings could not be read." };
+  const parsedSnapshot = publicItinerarySchema.safeParse(
+    enrichedSnapshot ?? rpcData.sourceSnapshot,
+  );
+  if (!parsedSnapshot.success) return { error: "The image snapshot could not be read." };
+  let sourceSnapshot;
+  try {
+    sourceSnapshot = scopePublicItinerary(parsedSnapshot.data, parsedRenderConfig.data.scope);
+  } catch (caught) {
+    return {
+      error: caught instanceof Error ? caught.message : "The image date range is unavailable.",
+    };
+  }
   const prepared = prepareShareImageSchema.safeParse({
     ...rpcData,
-    sourceSnapshot: enrichedSnapshot ?? rpcData.sourceSnapshot,
+    sourceSnapshot,
     uploadPathPrefix: `${userData.user.id}/${rpcData.exportId}/${rpcData.versionId}`,
   });
   return prepared.success
@@ -81,7 +108,7 @@ export async function prepareShareImageVersion(
 export async function finalizeShareImageVersion(rawInput: {
   parts: ShareImagePartInput[];
   versionId: string;
-}): Promise<ShareActionResult<{ permanentSlug: string; partCount: number }>> {
+}): Promise<ShareActionResult<{ expiresAt: string; permanentSlug: string; partCount: number }>> {
   const input = z
     .object({ parts: shareImagePartInputSchema.array().min(1).max(20), versionId: z.uuid() })
     .strict()
@@ -93,12 +120,23 @@ export async function finalizeShareImageVersion(rawInput: {
     target_version_id: input.data.versionId,
   });
   const parsed = z
-    .object({ partCount: z.number().int().positive(), permanentSlug: z.string().length(24) })
+    .object({
+      expiresAt: z.string().optional(),
+      partCount: z.number().int().positive(),
+      permanentSlug: z.string().length(24),
+    })
     .passthrough()
     .safeParse(data);
   return error || !parsed.success
     ? { error: imageError(error?.message) }
-    : { data: { partCount: parsed.data.partCount, permanentSlug: parsed.data.permanentSlug } };
+    : {
+        data: {
+          expiresAt:
+            parsed.data.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString(),
+          partCount: parsed.data.partCount,
+          permanentSlug: parsed.data.permanentSlug,
+        },
+      };
 }
 
 export async function failShareImageVersion(versionId: string, message: string) {
@@ -115,6 +153,17 @@ export async function revokeShareImageExport(
 ): Promise<ShareActionResult<{ revoked: true }>> {
   if (!z.uuid().safeParse(exportId).success) return { error: "The image link is invalid." };
   const supabase = await createClient();
+  const pathsResult = await supabase.rpc("owner_share_image_export_paths_v1", {
+    target_export_id: exportId,
+  });
+  const paths = z.array(z.string().min(1).max(1_000)).max(5_000).safeParse(pathsResult.data);
+  if (pathsResult.error || !paths.success) return { error: imageError(pathsResult.error?.message) };
+  for (let index = 0; index < paths.data.length; index += 100) {
+    const { error } = await supabase.storage
+      .from("share-images")
+      .remove(paths.data.slice(index, index + 100));
+    if (error) return { error: "The stored image could not be deleted. Try again." };
+  }
   const { error } = await supabase.rpc("revoke_share_image_export_v1", {
     target_export_id: exportId,
   });

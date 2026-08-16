@@ -1,87 +1,149 @@
 "use client";
 
-import { Copy, Download, ImageDown, LoaderCircle, Share2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  Download,
+  ExternalLink,
+  ImageDown,
+  LoaderCircle,
+  Settings2,
+  Share2,
+} from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import type { OwnerShareImageState, PublicItineraryLink } from "../types";
+import {
+  longImageScopeFromPage,
+  longImageScopeLabel,
+  sameLongImageScope,
+} from "../long-image/scope";
+import { formatShareImageExpiry } from "../long-image/expiration";
+import type { OwnerShareImageState, PublicItinerary, PublicItineraryLink } from "../types";
 import { LongImageRegenerateDialog, LongImageRevokeDialog } from "./long-image-export-dialogs";
+import { LongImageScopePicker } from "./long-image-scope-picker";
 import { useLongImageExport } from "./use-long-image-export";
 
 export function LongImageExportPanel({
   imageState,
+  itinerary,
   onImageStateChange,
   sharePage,
   siteUrl,
 }: {
   imageState: OwnerShareImageState | null;
+  itinerary: PublicItinerary;
   onImageStateChange: (state: OwnerShareImageState | null) => void;
   sharePage: PublicItineraryLink;
   siteUrl: string;
 }) {
   const controller = useLongImageExport({ imageState, onImageStateChange, sharePage, siteUrl });
+  const configuredScope = longImageScopeFromPage(sharePage);
+  const generatedScope = imageState?.renderConfig.scope ?? configuredScope;
+  const [scope, setScope] = useState(generatedScope);
+  const snapshotChanged = imageState
+    ? sharePage.snapshotHash !== imageState.sourceSnapshotHash
+    : false;
+  const canDownloadCurrent = Boolean(
+    imageState && !snapshotChanged && sameLongImageScope(scope, generatedScope),
+  );
+
+  function createOrDownload() {
+    if (canDownloadCurrent) controller.downloadCurrent();
+    else controller.generate("new_export", scope);
+  }
 
   return (
-    <section className="space-y-3 border-t pt-4">
-      <div>
-        <h4 className="text-sm font-semibold">Timeline export v1</h4>
-        <p className="mt-1 text-xs text-muted-foreground">
-          A 1080 px long image with a fixed QR destination.
+    <section className="space-y-4">
+      <LongImageScopePicker
+        dayCount={itinerary.trip.dayCount}
+        onChange={setScope}
+        startDate={itinerary.trip.startDate ?? null}
+        value={scope}
+      />
+      {snapshotChanged ? (
+        <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs">
+          Trip updated. A new image will use the latest content.
         </p>
-      </div>
+      ) : null}
+      <Button
+        className="min-h-11 w-full"
+        disabled={controller.pending}
+        onClick={createOrDownload}
+        size="sm"
+      >
+        {controller.pending ? (
+          <LoaderCircle className="size-4 animate-spin" />
+        ) : canDownloadCurrent ? (
+          <Download className="size-4" />
+        ) : (
+          <ImageDown className="size-4" />
+        )}
+        {controller.pending
+          ? "Creating image…"
+          : canDownloadCurrent
+            ? "Download image"
+            : "Create image & download"}
+      </Button>
       {imageState ? (
-        <div className="grid grid-cols-2 gap-2">
-          {sharePage.snapshotHash !== imageState.sourceSnapshotHash ? (
-            <p className="col-span-2 border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs">
-              This Share Page has changed since the image was generated. The existing image remains
-              available.
+        <details className="group border-t pt-3">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <Settings2 aria-hidden="true" className="size-4" />
+            <span className="min-w-0 flex-1">Manage image link</span>
+            <ChevronDown
+              aria-hidden="true"
+              className="size-4 shrink-0 transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <p className="col-span-2 text-xs text-muted-foreground">
+              {longImageScopeLabel(generatedScope)} · Available until{" "}
+              {formatShareImageExpiry(imageState.expiresAt)}
             </p>
-          ) : null}
-          <Button asChild className="min-h-11" size="sm" variant="outline">
-            <a href={controller.permanentUrl} rel="noopener noreferrer" target="_blank">
-              <Download className="size-4" /> Open image
-            </a>
-          </Button>
-          <Button
-            className="min-h-11"
-            onClick={() => void controller.copyPermanentLink()}
-            size="sm"
-            variant="outline"
-          >
-            <Copy className="size-4" /> {controller.copied ? "Copied" : "Copy image link"}
-          </Button>
-          <Button
-            className="col-span-2 min-h-11"
-            onClick={() => void controller.sharePermanentLink()}
-            size="sm"
-            variant="outline"
-          >
-            <Share2 className="size-4" /> Share image
-          </Button>
-          <LongImageRegenerateDialog
-            onGenerate={controller.generate}
-            pending={controller.pending}
-          />
-          <LongImageRevokeDialog
-            onRevoke={controller.revokePermanentLink}
-            pending={controller.pending}
-          />
-        </div>
-      ) : (
-        <Button
-          className="min-h-11 w-full"
-          disabled={controller.pending}
-          onClick={() => controller.generate("new_export")}
-          size="sm"
-        >
-          {controller.pending ? (
-            <LoaderCircle className="size-4 animate-spin" />
-          ) : (
-            <ImageDown className="size-4" />
-          )}
-          {controller.pending ? "Generating…" : "Generate long image"}
-        </Button>
-      )}
+            <Button asChild className="min-h-11 min-w-0" size="sm" variant="outline">
+              <a
+                aria-label="Open image page"
+                href={controller.permanentUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <ExternalLink aria-hidden="true" className="size-4" /> Open page
+              </a>
+            </Button>
+            <Button
+              className="min-h-11 min-w-0"
+              onClick={() => void controller.copyPermanentLink()}
+              size="sm"
+              variant="outline"
+            >
+              {controller.copied ? (
+                <Check aria-hidden="true" className="size-4" />
+              ) : (
+                <Copy aria-hidden="true" className="size-4" />
+              )}
+              {controller.copied ? "Copied" : "Copy link"}
+            </Button>
+            <Button
+              className="col-span-2 min-h-11"
+              onClick={() => void controller.sharePermanentLink()}
+              size="sm"
+              variant="outline"
+            >
+              <Share2 className="size-4" /> Share image
+            </Button>
+            <LongImageRegenerateDialog
+              onGenerate={(mode) => controller.generate(mode, scope)}
+              pending={controller.pending}
+            />
+            <LongImageRevokeDialog
+              onRevoke={controller.revokePermanentLink}
+              pending={controller.pending}
+            />
+          </div>
+        </details>
+      ) : null}
       {controller.progress ? (
         <p aria-live="polite" className="text-xs text-muted-foreground">
           {controller.progress}

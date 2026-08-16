@@ -11,7 +11,7 @@ import {
   getPublicShareImage,
 } from "@/features/sharing/data";
 import { publicShareUrlState } from "@/features/sharing/public-url-state";
-import { getSiteUrl } from "@/features/sharing/site-url";
+import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { resolvePublicTemplate } from "@/features/sharing/templates/resolver";
 import { publicTemplateRuntimeConfig } from "@/features/sharing/templates/runtime/config.server";
 
@@ -64,10 +64,11 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
 
 export default async function PublicSharePage({ params, searchParams }: PublicSharePageProps) {
   const [{ token }, search] = await Promise.all([params, searchParams]);
-  const [itinerary, shareImage, ownerPage] = await Promise.all([
+  const [itinerary, shareImage, ownerPage, siteUrl] = await Promise.all([
     loadItinerary(token),
     loadShareImage(token),
     loadOwnerPage(token),
+    getRequestSiteUrl(),
   ]);
   if (!itinerary) return <PublicUnavailable />;
   const ownerImageState = ownerPage ? await getOwnerShareImageState(ownerPage.id) : null;
@@ -92,7 +93,7 @@ export default async function PublicSharePage({ params, searchParams }: PublicSh
       legacyTemplateOverride={urlState.legacyTemplate}
       ownerImageState={ownerImageState}
       ownerSharePage={ownerPage}
-      publicUrl={`${getSiteUrl()}/share/${token}`}
+      publicUrl={`${siteUrl}/share/${token}`}
       shareImage={shareImage}
       templateKey={resolvedTemplate.key}
       token={token}

@@ -431,8 +431,10 @@ export type Database = {
           created_by: string
           default_view: Database["public"]["Enums"]["public_itinerary_view"]
           id: string
+          long_image_end_day_number: number | null
           long_image_qr_destination: string
           long_image_qr_share_page_id: string | null
+          long_image_start_day_number: number | null
           published_at: string | null
           published_snapshot: Json | null
           public_token: string
@@ -459,8 +461,10 @@ export type Database = {
           created_by: string
           default_view?: Database["public"]["Enums"]["public_itinerary_view"]
           id?: string
+          long_image_end_day_number?: number | null
           long_image_qr_destination?: string
           long_image_qr_share_page_id?: string | null
+          long_image_start_day_number?: number | null
           published_at?: string | null
           published_snapshot?: Json | null
           public_token?: string
@@ -487,8 +491,10 @@ export type Database = {
           created_by?: string
           default_view?: Database["public"]["Enums"]["public_itinerary_view"]
           id?: string
+          long_image_end_day_number?: number | null
           long_image_qr_destination?: string
           long_image_qr_share_page_id?: string | null
+          long_image_start_day_number?: number | null
           published_at?: string | null
           published_snapshot?: Json | null
           public_token?: string
@@ -529,6 +535,7 @@ export type Database = {
         Row: {
           created_at: string
           current_version_id: string | null
+          expires_at: string
           id: string
           owner_id: string
           permanent_slug: string
@@ -542,6 +549,7 @@ export type Database = {
         Insert: {
           created_at?: string
           current_version_id?: string | null
+          expires_at?: string
           id?: string
           owner_id: string
           permanent_slug?: string
@@ -555,6 +563,7 @@ export type Database = {
         Update: {
           created_at?: string
           current_version_id?: string | null
+          expires_at?: string
           id?: string
           owner_id?: string
           permanent_slug?: string
@@ -1428,9 +1437,40 @@ export type Database = {
         }
         Returns: Json
       }
+      create_share_page_v2: {
+        Args: {
+          requested_allow_long_image_download?: boolean
+          requested_allow_route_explore?: boolean
+          requested_default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_end_day_number?: number | null
+          requested_long_image_qr_destination?: string
+          requested_long_image_qr_share_page_id?: string | null
+          requested_long_image_start_day_number?: number | null
+          requested_share_description?: string
+          requested_share_title?: string
+          requested_show_addresses?: boolean
+          requested_show_map_routes?: boolean
+          requested_show_notes?: boolean
+          requested_show_place_photos?: boolean
+          requested_show_quick_action_links?: boolean
+          requested_show_times?: boolean
+          requested_template_id?: string
+          requested_template_version?: number
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       fail_share_image_version_v1: {
         Args: { requested_error_message: string; target_version_id: string }
         Returns: undefined
+      }
+      expired_share_image_cleanup_batch_v1: {
+        Args: { requested_limit?: number }
+        Returns: Json
+      }
+      finalize_expired_share_image_cleanup_v1: {
+        Args: { target_export_ids: string[] }
+        Returns: number
       }
       finalize_share_image_version_v1: {
         Args: { requested_parts: Json; target_version_id: string }
@@ -1448,6 +1488,10 @@ export type Database = {
         Args: { target_share_page_id: string }
         Returns: Json
       }
+      owner_share_image_export_paths_v1: {
+        Args: { target_export_id: string }
+        Returns: Json
+      }
       owner_share_page_by_token_v1: {
         Args: { shared_token: string }
         Returns: Json
@@ -1461,6 +1505,17 @@ export type Database = {
         Returns: boolean
       }
       prepare_share_image_version_v1: {
+        Args: {
+          requested_mode: string
+          requested_qr_destination_type: string
+          requested_qr_destination_url: string
+          requested_render_config: Json
+          target_export_id: string | null
+          target_share_page_id: string
+        }
+        Returns: Json
+      }
+      prepare_share_image_version_v2: {
         Args: {
           requested_mode: string
           requested_qr_destination_type: string
@@ -1494,6 +1549,29 @@ export type Database = {
           requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
           requested_long_image_qr_destination: string
           requested_long_image_qr_share_page_id?: string | null
+          requested_share_description: string
+          requested_share_title: string
+          requested_show_addresses: boolean
+          requested_show_map_routes: boolean
+          requested_show_notes: boolean
+          requested_show_place_photos: boolean
+          requested_show_quick_action_links: boolean
+          requested_show_times: boolean
+          requested_template_id: string
+          requested_template_version: number
+          target_share_page_id: string
+        }
+        Returns: Json
+      }
+      update_share_page_v2: {
+        Args: {
+          requested_allow_long_image_download: boolean
+          requested_allow_route_explore: boolean
+          requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_end_day_number?: number | null
+          requested_long_image_qr_destination: string
+          requested_long_image_qr_share_page_id?: string | null
+          requested_long_image_start_day_number?: number | null
           requested_share_description: string
           requested_share_title: string
           requested_show_addresses: boolean
