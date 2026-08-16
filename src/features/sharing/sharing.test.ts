@@ -1139,8 +1139,14 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(exportPanel, /Trip updated/);
   assert.match(exportPanel, /Create image & download/);
   assert.match(exportPanel, /Manage image link/);
+  assert.match(exportPanel, /Open image page/);
+  assert.match(exportPanel, /target="_blank"/);
+  assert.match(exportPanel, /rel="noopener noreferrer"/);
   assert.match(exportPanel, /Available until/);
   assert.match(exportController, /navigator\.share/);
+  assert.match(exportController, /window\.open\(permanentUrl/);
+  assert.doesNotMatch(exportPanel, /Copy image link/);
+  assert.doesNotMatch(exportController, /navigator\.clipboard/);
   assert.match(exportController, /downloadShareImageParts/);
   assert.match(exportDocument, /<PublicTimeline/);
   assert.match(exportDocument, /<PublicTripHeader/);

@@ -33,7 +33,6 @@ export function useLongImageExport({
 }) {
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<string>();
-  const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
   const permanentUrl = imageState ? `${siteUrl}/share/image/${imageState.permanentSlug}` : "";
 
@@ -134,17 +133,9 @@ export function useLongImageExport({
     );
   }
 
-  async function copyPermanentLink() {
-    try {
-      await navigator.clipboard.writeText(permanentUrl);
-      setCopied(true);
-    } catch {
-      setError("Copy was unavailable. Open the image page and copy its URL.");
-    }
-  }
-
   async function sharePermanentLink() {
     if (!imageState) return;
+    setError(undefined);
     try {
       if (navigator.share) {
         await navigator.share({
@@ -153,10 +144,10 @@ export function useLongImageExport({
         });
         return;
       }
-      await copyPermanentLink();
+      window.open(permanentUrl, "_blank", "noopener,noreferrer");
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
-      setError("Sharing was unavailable. Copy the permanent image link instead.");
+      setError("Sharing was unavailable. Open the image page instead.");
     }
   }
 
@@ -175,8 +166,6 @@ export function useLongImageExport({
   }
 
   return {
-    copied,
-    copyPermanentLink,
     downloadCurrent,
     error,
     generate,

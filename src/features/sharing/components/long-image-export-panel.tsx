@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Download, ImageDown, LoaderCircle, Settings2, Share2 } from "lucide-react";
+import { Download, ExternalLink, ImageDown, LoaderCircle, Settings2, Share2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -87,13 +87,10 @@ export function LongImageExportPanel({
               {longImageScopeLabel(generatedScope)} · Available until{" "}
               {formatShareImageExpiry(imageState.expiresAt)}
             </p>
-            <Button
-              className="col-span-2 min-h-11"
-              onClick={() => void controller.copyPermanentLink()}
-              size="sm"
-              variant="outline"
-            >
-              <Copy className="size-4" /> {controller.copied ? "Copied" : "Copy image link"}
+            <Button asChild className="col-span-2 min-h-11" size="sm" variant="outline">
+              <a href={controller.permanentUrl} rel="noopener noreferrer" target="_blank">
+                <ExternalLink className="size-4" /> Open image page
+              </a>
             </Button>
             <Button
               className="col-span-2 min-h-11"
