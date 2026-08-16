@@ -62,7 +62,7 @@ export function PublicViewerShareDialog({
         </Button>
       </DialogTrigger>
       <DialogContent
-        className={`public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(100dvh-max(8px,env(safe-area-inset-top)))] flex-col overflow-hidden sm:max-h-[min(90dvh,720px)]`}
+        className={`public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),720px)]`}
         data-public-template-key={template.key}
       >
         <DialogHeader className="shrink-0">

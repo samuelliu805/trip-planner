@@ -1124,7 +1124,10 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   );
   assert.match(dialog, /z-\[100\]/);
   assert.match(dialog, /z-\[110\]/);
-  assert.match(dialog, /max-h-\[92dvh\]/);
+  assert.match(dialog, /window\.visualViewport/);
+  assert.match(dialog, /--dialog-viewport-center/);
+  assert.match(dialog, /--dialog-viewport-height/);
+  assert.match(dialog, /100svh/);
   assert.match(dialog, /max-w-full/);
   assert.match(dialog, /overflow-x-hidden overflow-y-auto/);
   assert.match(alertDialog, /z-\[130\]/);
@@ -1405,6 +1408,7 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     /event\.key === "Enter"/,
   );
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
+  assert.match(shareSettings, /--dialog-viewport-height/);
   assert.ok(
     shareSettings.indexOf('aria-live="polite"') <
       shareSettings.indexOf("min-h-0 flex-1 touch-pan-y"),
@@ -1425,6 +1429,7 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   );
   assert.match(shareStatus, /Open shareable page/);
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
+  assert.match(viewerShare, /--dialog-viewport-height/);
   assert.match(viewerShare, /downloadShareImageParts/);
   assert.ok(
     viewerShare.indexOf("<ShareLinkActions") < viewerShare.indexOf("<LongImageExportPanel"),

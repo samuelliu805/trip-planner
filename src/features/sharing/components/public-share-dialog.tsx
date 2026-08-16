@@ -138,7 +138,7 @@ export function PublicShareDialog({
           <span className="hidden lg:inline">Share</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="public-share-settings-dialog flex max-h-[calc(100dvh-max(8px,env(safe-area-inset-top)))] flex-col overflow-hidden sm:max-h-[min(90dvh,860px)] sm:max-w-5xl">
+      <DialogContent className="public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-5xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>Share trip</DialogTitle>
           <DialogDescription>

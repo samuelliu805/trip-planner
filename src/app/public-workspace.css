@@ -273,18 +273,27 @@
   }
 
   .app-dialog-content {
-    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    max-height: calc(
+      var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
+        max(8px, env(safe-area-inset-bottom))
+    );
     padding-bottom: env(safe-area-inset-bottom);
   }
 
   .public-viewer-share-dialog {
     height: auto;
-    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    max-height: calc(
+      var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
+        max(8px, env(safe-area-inset-bottom))
+    );
   }
 
   .public-share-settings-dialog,
   .public-map-sheet {
-    height: calc(100dvh - max(8px, env(safe-area-inset-top))) !important;
+    height: calc(
+      var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
+        max(8px, env(safe-area-inset-bottom))
+    ) !important;
     max-height: none !important;
     padding-bottom: env(safe-area-inset-bottom) !important;
   }
