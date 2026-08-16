@@ -535,6 +535,7 @@ export type Database = {
         Row: {
           created_at: string
           current_version_id: string | null
+          expires_at: string
           id: string
           owner_id: string
           permanent_slug: string
@@ -548,6 +549,7 @@ export type Database = {
         Insert: {
           created_at?: string
           current_version_id?: string | null
+          expires_at?: string
           id?: string
           owner_id: string
           permanent_slug?: string
@@ -561,6 +563,7 @@ export type Database = {
         Update: {
           created_at?: string
           current_version_id?: string | null
+          expires_at?: string
           id?: string
           owner_id?: string
           permanent_slug?: string
@@ -1460,6 +1463,14 @@ export type Database = {
       fail_share_image_version_v1: {
         Args: { requested_error_message: string; target_version_id: string }
         Returns: undefined
+      }
+      expired_share_image_cleanup_batch_v1: {
+        Args: { requested_limit?: number }
+        Returns: Json
+      }
+      finalize_expired_share_image_cleanup_v1: {
+        Args: { target_export_ids: string[] }
+        Returns: number
       }
       finalize_share_image_version_v1: {
         Args: { requested_parts: Json; target_version_id: string }

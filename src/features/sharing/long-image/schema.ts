@@ -46,6 +46,7 @@ export const shareImageManifestSchema = z
         })
         .strict(),
     ),
+    expiresAt: z.string().nullable().default(null),
     permanentSlug: z.string().regex(/^[0-9a-f]{24}$/),
     qrDestinationType: z.enum(["share_page", "homepage"]),
     title: z.string().min(1).max(160),
@@ -56,6 +57,7 @@ export const shareImageManifestSchema = z
 export const ownerShareImageStateSchema = z
   .object({
     createdAt: z.string(),
+    expiresAt: z.string().optional(),
     exportId: z.uuid(),
     partCount: z.number().int().positive(),
     permanentSlug: z.string().regex(/^[0-9a-f]{24}$/),
@@ -69,7 +71,13 @@ export const ownerShareImageStateSchema = z
     updatedAt: z.string(),
     versionNumber: z.number().int().positive(),
   })
-  .strict();
+  .strict()
+  .transform((state) => ({
+    ...state,
+    expiresAt:
+      state.expiresAt ??
+      new Date(Date.parse(state.updatedAt) + 30 * 24 * 60 * 60 * 1_000).toISOString(),
+  }));
 
 export const prepareShareImageSchema = z
   .object({

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { getShareImageManifest } from "@/features/sharing/data";
+import { formatShareImageExpiry } from "@/features/sharing/long-image/expiration";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,7 +41,10 @@ export default async function ShareImagePage({ params }: { params: Promise<{ slu
             </p>
             <h1 className="mt-1 text-xl font-semibold">{manifest.title}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Permanent link · Version {manifest.versionNumber} · {manifest.parts.length}{" "}
+              {manifest.expiresAt
+                ? `Available until ${formatShareImageExpiry(manifest.expiresAt)} · `
+                : ""}
+              Version {manifest.versionNumber} · {manifest.parts.length}{" "}
               {manifest.parts.length === 1 ? "part" : "parts"}
             </p>
           </div>

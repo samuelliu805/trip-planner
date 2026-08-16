@@ -1103,6 +1103,21 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     ),
     "utf8",
   );
+  const imageExpiryMigration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260816015443_expire_share_images_after_thirty_days.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const cronCleanup = await readFile(
+    new URL("../../app/api/cron/share-image-cleanup/route.ts", import.meta.url),
+    "utf8",
+  );
+  const privateImagePart = await readFile(
+    new URL("../../app/share/image/[slug]/part/[part]/route.ts", import.meta.url),
+    "utf8",
+  );
   const tripHeader = await readFile(
     new URL("./components/public-trip-header.tsx", import.meta.url),
     "utf8",
@@ -1118,11 +1133,13 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(alertDialog, /overflow-x-hidden/);
   assert.match(exportDialogs, /Create new link \(recommended\)/);
   assert.match(exportDialogs, /Replace existing version/);
-  assert.match(exportDialogs, /QR destination\s+remains unchanged/);
+  assert.match(exportDialogs, /QR\s+destination remains unchanged/);
   assert.match(exportDialogs, /Revoke image link/);
-  assert.match(exportPanel, /The trip changed after the current image was created/);
+  assert.match(exportDialogs, /renews it for 30 days/);
+  assert.match(exportPanel, /Trip updated/);
   assert.match(exportPanel, /Create image & download/);
-  assert.match(exportPanel, /Image link options/);
+  assert.match(exportPanel, /Manage image link/);
+  assert.match(exportPanel, /Available until/);
   assert.match(exportController, /navigator\.share/);
   assert.match(exportController, /downloadShareImageParts/);
   assert.match(exportDocument, /<PublicTimeline/);
@@ -1141,6 +1158,17 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(imageCleanupMigration, /owner_share_image_export_paths_v1/);
   assert.match(imageCleanupMigration, /owners remove their share images/);
   assert.match(imageCleanupMigration, /grant execute[\s\S]*to authenticated/);
+  assert.match(imageExpiryMigration, /interval '30 days'/);
+  assert.match(imageExpiryMigration, /update storage\.buckets[\s\S]*public = false/);
+  assert.match(imageExpiryMigration, /storage\.allow_any_operation/);
+  assert.match(imageExpiryMigration, /private\.can_read_share_image_object_v1/);
+  assert.match(imageExpiryMigration, /export\.expires_at > now\(\)/);
+  assert.match(imageExpiryMigration, /expired_share_image_cleanup_batch_v1/);
+  assert.match(imageExpiryMigration, /to service_role/);
+  assert.match(cronCleanup, /Bearer \$\{cronSecret\}/);
+  assert.match(cronCleanup, /\.from\("share-images"\)[\s\S]*\.remove/);
+  assert.match(privateImagePart, /\.from\("share-images"\)\.download/);
+  assert.doesNotMatch(privateImagePart, /object\/public/);
   assert.match(exportRenderer, /getFontEmbedCSS/);
   assert.match(exportRenderer, /documentHeight\(node\)/);
   assert.doesNotMatch(exportRenderer, /fillText|timelineItemHeight/);
@@ -1392,6 +1420,12 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(shareStatus, /Open shareable page/);
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
   assert.match(viewerShare, /downloadShareImageParts/);
+  assert.ok(
+    viewerShare.indexOf("<ShareLinkActions") < viewerShare.indexOf("<LongImageExportPanel"),
+    "share link actions stay above image generation",
+  );
+  assert.match(viewerShare, /showWechatQr \? \(/);
+  assert.match(shareTools, /aria-expanded=\{qrExpanded\}/);
   assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
   assert.match(shareTools, /className=\{`block size-36 max-w-full/);
   assert.match(shareTools, /width: 144/);

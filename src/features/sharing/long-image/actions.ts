@@ -108,7 +108,7 @@ export async function prepareShareImageVersion(
 export async function finalizeShareImageVersion(rawInput: {
   parts: ShareImagePartInput[];
   versionId: string;
-}): Promise<ShareActionResult<{ permanentSlug: string; partCount: number }>> {
+}): Promise<ShareActionResult<{ expiresAt: string; permanentSlug: string; partCount: number }>> {
   const input = z
     .object({ parts: shareImagePartInputSchema.array().min(1).max(20), versionId: z.uuid() })
     .strict()
@@ -120,12 +120,23 @@ export async function finalizeShareImageVersion(rawInput: {
     target_version_id: input.data.versionId,
   });
   const parsed = z
-    .object({ partCount: z.number().int().positive(), permanentSlug: z.string().length(24) })
+    .object({
+      expiresAt: z.string().optional(),
+      partCount: z.number().int().positive(),
+      permanentSlug: z.string().length(24),
+    })
     .passthrough()
     .safeParse(data);
   return error || !parsed.success
     ? { error: imageError(error?.message) }
-    : { data: { partCount: parsed.data.partCount, permanentSlug: parsed.data.permanentSlug } };
+    : {
+        data: {
+          expiresAt:
+            parsed.data.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString(),
+          partCount: parsed.data.partCount,
+          permanentSlug: parsed.data.permanentSlug,
+        },
+      };
 }
 
 export async function failShareImageVersion(versionId: string, message: string) {

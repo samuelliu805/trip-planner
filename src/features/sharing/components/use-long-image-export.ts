@@ -95,6 +95,7 @@ export function useLongImageExport({
         const now = new Date().toISOString();
         onImageStateChange({
           createdAt: mode === "replace_existing" ? (imageState?.createdAt ?? now) : now,
+          expiresAt: finalized.data.expiresAt,
           exportId: prepared.data.exportId,
           partCount: finalized.data.partCount,
           permanentSlug: finalized.data.permanentSlug,

@@ -10,6 +10,7 @@ import {
   longImageScopeLabel,
   sameLongImageScope,
 } from "../long-image/scope";
+import { formatShareImageExpiry } from "../long-image/expiration";
 import type { OwnerShareImageState, PublicItinerary, PublicItineraryLink } from "../types";
 import { LongImageRegenerateDialog, LongImageRevokeDialog } from "./long-image-export-dialogs";
 import { LongImageScopePicker } from "./long-image-scope-picker";
@@ -46,12 +47,6 @@ export function LongImageExportPanel({
 
   return (
     <section className="space-y-4">
-      <div>
-        <h4 className="text-sm font-semibold">Download trip image</h4>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Choose the days, then download without leaving this page.
-        </p>
-      </div>
       <LongImageScopePicker
         dayCount={itinerary.trip.dayCount}
         onChange={setScope}
@@ -60,8 +55,7 @@ export function LongImageExportPanel({
       />
       {snapshotChanged ? (
         <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs">
-          The trip changed after the current image was created. A new image will use the latest
-          published content.
+          Trip updated. A new image will use the latest content.
         </p>
       ) : null}
       <Button
@@ -86,11 +80,12 @@ export function LongImageExportPanel({
       {imageState ? (
         <details className="group border-t pt-3">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
-            <Settings2 className="size-4" /> Image link options
+            <Settings2 className="size-4" /> Manage image link
           </summary>
           <div className="grid grid-cols-2 gap-2 pt-2">
             <p className="col-span-2 text-xs text-muted-foreground">
-              Current image · {longImageScopeLabel(generatedScope)} · 1080 px
+              {longImageScopeLabel(generatedScope)} · Available until{" "}
+              {formatShareImageExpiry(imageState.expiresAt)}
             </p>
             <Button
               className="col-span-2 min-h-11"
