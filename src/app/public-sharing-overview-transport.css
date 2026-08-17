@@ -50,12 +50,17 @@
 }
 
 .overview-transport-copy-v4,
+.overview-transport-details-v4,
 .overview-transport-title-v4,
 .overview-transport-kind-v4,
 .overview-transport-route-v4,
 .overview-transport-meta-v4,
 .overview-transport-notes-v4 {
   min-width: 0;
+}
+
+.overview-transport-details-v4 {
+  display: block;
 }
 
 .overview-transport-title-v4,
@@ -67,22 +72,22 @@
 }
 
 .overview-transport-title-v4 {
-  overflow: hidden;
+  overflow: visible;
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.35;
   overflow-wrap: normal;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
 }
 
 .overview-transport-kind-v4 {
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: 0.1875rem;
   color: var(--primary);
   font: 700 0.5rem/1.2 var(--font-mono);
   letter-spacing: 0.08em;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   text-transform: uppercase;
   white-space: nowrap;
 }

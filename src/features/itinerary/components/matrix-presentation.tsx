@@ -52,7 +52,9 @@ export function MatrixItemSummary({
   const ModeIcon = transportMode ? (transportModeIcons[transportMode] ?? CarFront) : null;
   return (
     <>
-      <span className="flex min-w-0 items-center gap-1.5">
+      <span
+        className={`flex min-w-0 items-center gap-1.5 ${transportMode ? "matrix-transport-summary flex-wrap" : ""}`}
+      >
         {ModeIcon ? (
           <ModeIcon className="size-4 shrink-0 text-muted-foreground sm:size-3.5" />
         ) : null}
@@ -61,7 +63,13 @@ export function MatrixItemSummary({
             {startTime.slice(0, 5)}
           </span>
         ) : null}
-        <span className="truncate font-medium">
+        <span
+          className={
+            transportMode
+              ? "matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium"
+              : "truncate font-medium"
+          }
+        >
           {transportMode ? transportModeLabels[transportMode] : title}
         </span>
       </span>

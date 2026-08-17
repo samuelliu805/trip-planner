@@ -43,9 +43,9 @@ These rules apply to all future UI work in this repository.
 
 ## Public itinerary information hierarchy
 
-- Transport type and title labels (for example, Flight, Train, or Car rental) must stay on one line in Overview, Table, and Timeline at every breakpoint. Truncate the label when space is constrained; keep route, service number, schedule, place, and notes available as separate supporting detail.
+- Transport type and short name labels (for example, Flight, Train, or Car rental) must remain fully visible on one line in Overview, Table, and Timeline at every breakpoint. Never truncate or ellipsize these labels; wrap or resize the surrounding layout first, while keeping route, service number, schedule, place, and notes available as supporting detail.
 - Never show a generic placeholder such as `Field` when the itinerary category is known. Display the real category label or omit that label and promote the item title.
-- In Overview, present multiple transport entries as one grouped surface with separators instead of repeating standalone item cards.
+- In Overview, present multiple transport entries as one compact grouped information band with separators instead of giving each transport the visual weight or vertical footprint of a standalone item card.
 
 ## Public auth routes and dev-server route state
 

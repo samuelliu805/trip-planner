@@ -118,17 +118,6 @@
   background: transparent;
 }
 
-.public-template-traverse .overview-transport-list-v4 {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin: 0.5rem 0 0;
-  overflow: hidden;
-  border: 1px solid var(--traverse-line);
-  border-radius: 0;
-  background: rgb(248 250 247 / 74%);
-}
-
 .public-template-traverse .overview-item-card-v4 {
   position: relative;
   display: flex;
@@ -191,41 +180,6 @@
   grid-column: 2;
 }
 
-.public-template-traverse .overview-transport-item-v4 {
-  display: grid;
-  min-width: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
-  border: 0;
-  background: transparent;
-  padding: 0.6875rem 0.75rem;
-}
-
-.public-template-traverse .overview-transport-item-v4 + .overview-transport-item-v4 {
-  border-top: 1px solid var(--traverse-line);
-  box-shadow: none;
-}
-
-.public-template-traverse .overview-transport-button-v4 {
-  grid-template-columns: 1.5rem minmax(0, 1fr);
-  align-items: start;
-  gap: 0.625rem;
-  padding: 0;
-}
-
-.public-template-traverse .overview-transport-copy-v4 {
-  grid-column: 2;
-}
-
-.public-template-traverse .overview-transport-kind-v4 {
-  color: var(--traverse-orange);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.public-template-traverse .overview-transport-title-v4,
 .public-template-traverse .overview-item-title-v4 {
   color: #172024;
   font-size: 0.96875rem;
@@ -233,16 +187,6 @@
   line-height: 1.45;
 }
 
-.public-template-traverse .overview-transport-title-v4 {
-  overflow: hidden;
-  overflow-wrap: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.public-template-traverse .overview-transport-route-v4,
-.public-template-traverse .overview-transport-meta-v4,
-.public-template-traverse .overview-transport-notes-v4,
 .public-template-traverse .overview-item-meta-v4,
 .public-template-traverse .overview-item-notes-v4 {
   margin-top: 0.3125rem;

@@ -1052,6 +1052,11 @@ test("public and owner Matrix use the same canonical category columns", async ()
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
   assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-40/);
   assert.doesNotMatch(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
+  assert.match(
+    matrixPresentation,
+    /matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium/,
+  );
+  assert.match(matrixPresentation, /matrix-transport-summary flex-wrap/);
   assert.match(dialog, /fixed inset-0 z-\[100\]/);
   assert.match(dialog, /z-\[110\]/);
 });
@@ -1415,23 +1420,28 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   );
   assert.match(
     styles,
-    /\.public-template-traverse \.overview-transport-list-v4 \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*overflow: hidden;[^}]*border: 1px solid/,
+    /\.public-template-traverse \.overview-transport-list-v4 \{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(15rem, 100%\), 1fr\)\);[^}]*gap: 1px;[^}]*overflow: hidden;[^}]*border: 1px solid[^}]*background: var\(--traverse-line\)/,
   );
   assert.match(
     styles,
-    /\.public-template-traverse \.overview-transport-item-v4 \+ \.overview-transport-item-v4 \{[^}]*border-top: 1px solid[^}]*box-shadow: none/,
+    /\.public-template-traverse \.overview-transport-item-v4 \+ \.overview-transport-item-v4 \{[^}]*border: 0;[^}]*box-shadow: none/,
+  );
+  assert.match(styles, /@container public-content \(max-width: 36rem\)/);
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-title-v4 \{[^}]*overflow: visible;[^}]*overflow-wrap: normal;[^}]*text-overflow: clip;[^}]*white-space: nowrap/,
   );
   assert.match(
     styles,
-    /\.public-template-traverse \.overview-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
+    /\.public-template-traverse \.timeline-transport-title-v4 \{[^}]*overflow: visible;[^}]*overflow-wrap: normal;[^}]*text-overflow: clip;[^}]*white-space: nowrap/,
   );
   assert.match(
     styles,
-    /\.public-template-traverse \.timeline-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
+    /\.public-template-traverse \.overview-transport-details-v4 \{[^}]*display: flex;[^}]*flex-wrap: wrap/,
   );
   assert.match(
     styles,
-    /\.public-template-traverse \.overview-transport-route-v4,[\s\S]*\.public-template-traverse \.overview-transport-notes-v4,[\s\S]*\{[^}]*white-space: normal/,
+    /\.public-template-traverse \.overview-transport-details-v4 > span \{[^}]*white-space: normal/,
   );
   assert.doesNotMatch(
     styles,
@@ -1807,11 +1817,15 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.doesNotMatch(styles, /\.timeline-transport-list-v4 \{[^}]*flex-direction: column/);
   assert.match(
     styles,
-    /\.timeline-transport-title-v4 \{[\s\S]*overflow-wrap: normal;[\s\S]*text-overflow: ellipsis;[\s\S]*white-space: nowrap/,
+    /\.timeline-transport-title-v4 \{[\s\S]*flex: 0 0 auto;[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
   );
   assert.match(
     styles,
-    /\.overview-transport-title-v4 \{[\s\S]*overflow-wrap: normal;[\s\S]*text-overflow: ellipsis;[\s\S]*white-space: nowrap/,
+    /\.overview-transport-title-v4 \{[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.overview-transport-kind-v4 \{[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
   );
   assert.match(
     styles,
