@@ -1,0 +1,27 @@
+@media (max-width: 899px) {
+  .public-template-journal .overview-item-title-v4,
+  .public-template-journal .timeline-node-title-v4 {
+    font-size: 1.0625rem;
+  }
+
+  .public-template-journal .overview-item-meta-v4,
+  .public-template-journal .overview-item-notes-v4,
+  .public-template-journal .timeline-node-meta-v4 {
+    font-size: 0.8125rem;
+  }
+
+  .public-template-journal .overview-transport-title-v4,
+  .public-template-journal .timeline-transport-title-v4 {
+    font-size: 0.875rem;
+  }
+
+  .public-template-journal .overview-transport-meta-v4,
+  .public-template-journal .timeline-transport-meta-v4 {
+    font-size: 0.75rem;
+  }
+
+  .public-template-journal .public-matrix [role="gridcell"],
+  .public-template-journal .public-matrix [role="rowheader"] {
+    font-size: 0.875rem;
+  }
+}

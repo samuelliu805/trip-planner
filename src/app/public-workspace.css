@@ -1,37 +1,33 @@
-@import "./public-sharing-theme.css";
 @import "./public-sharing-overview.css";
 @import "./public-sharing-overview-transport.css";
-@import "./public-sharing-bento-overview.css";
 @import "./public-sharing-table.css";
 @import "./public-sharing-timeline.css";
 @import "./public-sharing-timeline-transport.css";
-@import "./public-sharing-bento-timeline.css";
-@import "./public-sharing-bento-timeline-mobile.css";
-@import "./public-sharing-bento-readable.css";
-@import "./public-sharing-bento-readability-v2.css";
-@import "./public-sharing-ethereal-theme.css";
-@import "./public-sharing-ethereal-overview.css";
-@import "./public-sharing-ethereal-overview-mobile.css";
-@import "./public-sharing-ethereal-timeline-table.css";
-@import "./public-sharing-ethereal-timeline-table-mobile.css";
-@import "./public-sharing-ethereal-timeline-tablet.css";
-@import "./public-sharing-ethereal-minimal.css";
-@import "./public-sharing-ethereal-transport.css";
-@import "./public-sharing-journal-theme.css";
-@import "./public-sharing-journal-overview.css";
-@import "./public-sharing-journal-overview-responsive.css";
-@import "./public-sharing-journal-overview-vibrant.css";
-@import "./public-sharing-journal-timeline.css";
-@import "./public-sharing-journal-timeline-mobile.css";
-@import "./public-sharing-journal-table.css";
-@import "./public-sharing-mobile-readability.css";
 @import "./public-sharing-quick-actions.css";
 @import "./public-sharing-timeline-export.css";
-@import "./public-sharing-timeline-export-templates.css";
+@import "../features/sharing/templates/builtins/bento/index.css";
+@import "../features/sharing/templates/builtins/ethereal/index.css";
+@import "../features/sharing/templates/builtins/journal/index.css";
+@import "../features/sharing/templates/builtins/traverse/index.css";
+@import "./public-workspace-tablet.css";
+
+html:has(.public-itinerary-shell),
+body:has(.public-itinerary-shell) {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 
 .public-itinerary-shell {
+  position: relative;
+  width: 100%;
   height: 100dvh;
   max-height: 100dvh;
+  overflow: hidden;
   overscroll-behavior: none;
 }
 
@@ -67,8 +63,7 @@
 }
 
 .public-itinerary-header {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 80;
   flex: none;
   border-bottom: 1px solid var(--border);
@@ -210,14 +205,6 @@
 
 .public-mobile-map-control {
   display: none;
-}
-
-@media (min-width: 900px) and (max-width: 1199px) {
-  .public-itinerary-grid {
-    grid-template-columns:
-      minmax(480px, var(--public-content-split)) 4px
-      minmax(340px, var(--public-map-split));
-  }
 }
 
 @media (max-width: 899px) {

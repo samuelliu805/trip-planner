@@ -252,6 +252,10 @@
   scrollbar-color: #c6c2b8 transparent;
 }
 
+.public-template-ethereal .public-matrix .matrix-grid-header {
+  height: 2.75rem;
+}
+
 .public-template-ethereal .public-matrix [role="row"]:not(.matrix-grid-header) {
   min-height: 6.5rem;
   border-color: var(--border);

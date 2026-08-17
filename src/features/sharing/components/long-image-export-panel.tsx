@@ -7,6 +7,7 @@ import {
   Download,
   ExternalLink,
   ImageDown,
+  ImagePlus,
   LoaderCircle,
   Settings2,
   Share2,
@@ -50,11 +51,6 @@ export function LongImageExportPanel({
     imageState && !snapshotChanged && sameLongImageScope(scope, generatedScope),
   );
 
-  function createOrDownload() {
-    if (canDownloadCurrent) controller.downloadCurrent();
-    else controller.generate("new_export", scope);
-  }
-
   return (
     <section className="space-y-4">
       <LongImageScopePicker
@@ -68,25 +64,46 @@ export function LongImageExportPanel({
           Trip updated. A new image will use the latest content.
         </p>
       ) : null}
-      <Button
-        className="min-h-11 w-full"
-        disabled={controller.pending}
-        onClick={createOrDownload}
-        size="sm"
-      >
-        {controller.pending ? (
-          <LoaderCircle className="size-4 animate-spin" />
-        ) : canDownloadCurrent ? (
-          <Download className="size-4" />
-        ) : (
-          <ImageDown className="size-4" />
-        )}
-        {controller.pending
-          ? "Creating image…"
-          : canDownloadCurrent
-            ? "Download image"
-            : "Create image & download"}
-      </Button>
+      {canDownloadCurrent ? (
+        <>
+          <Button asChild className="min-h-11 w-full min-[1200px]:hidden" size="sm">
+            <a href={controller.permanentUrl} rel="noopener noreferrer" target="_blank">
+              <ExternalLink aria-hidden="true" className="size-4" /> Open image
+            </a>
+          </Button>
+          <Button
+            className="hidden min-h-11 w-full min-[1200px]:inline-flex"
+            onClick={controller.downloadCurrent}
+            size="sm"
+          >
+            <Download className="size-4" /> Download image
+          </Button>
+        </>
+      ) : (
+        <Button
+          className="min-h-11 w-full"
+          disabled={controller.pending}
+          onClick={() => controller.generate("new_export", scope)}
+          size="sm"
+        >
+          {controller.pending ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <>
+              <ImagePlus className="size-4 min-[1200px]:hidden" />
+              <ImageDown className="hidden size-4 min-[1200px]:block" />
+            </>
+          )}
+          {controller.pending ? (
+            "Creating image…"
+          ) : (
+            <>
+              <span className="min-[1200px]:hidden">Create image</span>
+              <span className="hidden min-[1200px]:inline">Create image &amp; download</span>
+            </>
+          )}
+        </Button>
+      )}
       {imageState ? (
         <details className="group border-t pt-3">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">

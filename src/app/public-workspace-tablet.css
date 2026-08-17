@@ -1,0 +1,51 @@
+@media (min-width: 900px) and (max-width: 1199px) {
+  .public-itinerary-shell .public-itinerary-grid {
+    grid-template-columns:
+      minmax(480px, var(--public-content-split)) 4px
+      minmax(340px, var(--public-map-split));
+  }
+}
+
+@media (max-width: 1199px) {
+  .public-itinerary-shell .public-itinerary-grid {
+    order: 2;
+  }
+
+  .public-itinerary-shell .public-template-region-view-navigation {
+    position: relative;
+    inset: auto;
+    order: 3;
+    display: block;
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    padding: 0;
+    flex: 0 0 auto;
+    transform: translateZ(0);
+  }
+
+  .public-itinerary-shell .public-view-switcher {
+    position: static;
+    inset: auto;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+    border-radius: 0;
+    transform: none;
+  }
+
+  .public-itinerary-shell .public-view-scroll {
+    scroll-padding-bottom: 0;
+  }
+
+  .public-itinerary-shell .overview-v4,
+  .public-itinerary-shell .timeline-v4 {
+    padding-bottom: 0.75rem;
+  }
+
+  .public-itinerary-shell.public-template-traverse .public-view-scroll {
+    padding-top: 0;
+  }
+}

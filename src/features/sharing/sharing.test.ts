@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import "./templates/templates.test.ts";
 
@@ -59,41 +59,38 @@ import { longImageScopeSchema } from "./long-image/schema.ts";
 import { scopePublicItinerary } from "./long-image/scope.ts";
 
 async function readAppStyles() {
+  const templateStyleDirectories = ["bento", "ethereal", "journal", "traverse"].map(
+    (template) => new URL(`./templates/builtins/${template}/`, import.meta.url),
+  );
+  const templateStyles = (
+    await Promise.all(
+      templateStyleDirectories.map(async (directory) =>
+        Promise.all(
+          (await readdir(directory))
+            .filter((name) => name.endsWith(".css"))
+            .map((name) => readFile(new URL(name, directory), "utf8")),
+        ),
+      ),
+    )
+  ).flat();
   return (
     await Promise.all(
       [
         "../../app/globals.css",
         "../../app/planner-workspace.css",
         "../../app/public-workspace.css",
-        "../../app/public-sharing-theme.css",
+        "../../app/public-workspace-tablet.css",
         "../../app/public-sharing-overview.css",
         "../../app/public-sharing-overview-transport.css",
-        "../../app/public-sharing-bento-overview.css",
         "../../app/public-sharing-table.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
-        "../../app/public-sharing-bento-timeline.css",
-        "../../app/public-sharing-bento-timeline-mobile.css",
-        "../../app/public-sharing-bento-readable.css",
-        "../../app/public-sharing-bento-readability-v2.css",
-        "../../app/public-sharing-ethereal-theme.css",
-        "../../app/public-sharing-ethereal-overview.css",
-        "../../app/public-sharing-ethereal-overview-mobile.css",
-        "../../app/public-sharing-ethereal-timeline-table.css",
-        "../../app/public-sharing-ethereal-timeline-tablet.css",
-        "../../app/public-sharing-ethereal-minimal.css",
-        "../../app/public-sharing-ethereal-transport.css",
-        "../../app/public-sharing-journal-theme.css",
-        "../../app/public-sharing-journal-overview.css",
-        "../../app/public-sharing-journal-overview-vibrant.css",
-        "../../app/public-sharing-journal-timeline.css",
-        "../../app/public-sharing-journal-table.css",
-        "../../app/public-sharing-mobile-readability.css",
         "../../app/public-sharing-timeline-export.css",
-        "../../app/public-sharing-timeline-export-templates.css",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
-  ).join("\n");
+  )
+    .concat(templateStyles)
+    .join("\n");
 }
 
 const ref = (character: string) => character.repeat(64);
@@ -254,7 +251,8 @@ test("long-image date ranges are inclusive and update the exported trip summary"
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
   assert.equal(defaultShareSettings.defaultView, "timeline");
-  assert.equal(defaultShareSettings.templateVersion, 2);
+  assert.equal(defaultShareSettings.templateId, "ethereal");
+  assert.equal(defaultShareSettings.templateVersion, 1);
   for (const setting of [
     "allowRouteExplore",
     "showAddresses",
@@ -1054,6 +1052,11 @@ test("public and owner Matrix use the same canonical category columns", async ()
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
   assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-40/);
   assert.doesNotMatch(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
+  assert.match(
+    matrixPresentation,
+    /matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium/,
+  );
+  assert.match(matrixPresentation, /matrix-transport-summary flex-wrap/);
   assert.match(dialog, /fixed inset-0 z-\[100\]/);
   assert.match(dialog, /z-\[110\]/);
 });
@@ -1144,7 +1147,10 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(exportDialogs, /Revoke image link/);
   assert.match(exportDialogs, /renews it for 30 days/);
   assert.match(exportPanel, /Trip updated/);
-  assert.match(exportPanel, /Create image & download/);
+  assert.match(exportPanel, /Create image &amp; download/);
+  assert.match(exportPanel, /min-\[1200px\]:hidden">Create image/);
+  assert.match(exportPanel, /min-\[1200px\]:hidden[\s\S]*Open image/);
+  assert.match(exportPanel, /hidden min-h-11 w-full min-\[1200px\]:inline-flex/);
   assert.match(exportPanel, /Manage image link/);
   assert.match(exportPanel, /Open page/);
   assert.match(exportPanel, /Copy link/);
@@ -1158,6 +1164,8 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(clipboardHelper, /navigator\.clipboard/);
   assert.match(clipboardHelper, /document\.execCommand\("copy"\)/);
   assert.match(exportController, /downloadShareImageParts/);
+  assert.match(exportController, /window\.matchMedia\("\(min-width: 1200px\)"\)\.matches/);
+  assert.match(exportController, /Image ready\. Open it from this panel\./);
   assert.match(exportDocument, /<PublicTimeline/);
   assert.match(exportDocument, /<PublicTripHeader/);
   assert.doesNotMatch(exportDocument, /Timeline export/);
@@ -1314,6 +1322,7 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(overviewTransport, /publicItemTypeLabels/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
+  assert.match(overviewCard, /data-public-item-category=\{publicItemTypeLabels\[item\.type\]\}/);
   assert.doesNotMatch(overviewCard, /\{media\.length\} media/);
   assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
   assert.doesNotMatch(overview + overviewCard, /PublicTimelineNode|PublicDayJourney/);
@@ -1346,7 +1355,23 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-view-switcher \{[\s\S]*width: 100%/);
   assert.match(styles, /\.public-view-switcher \{[\s\S]*border-bottom: 0/);
   assert.match(styles, /env\(safe-area-inset-bottom\)/);
-  assert.match(styles, /\.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 6rem/);
+  assert.match(styles, /\.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 0/);
+  assert.match(
+    styles,
+    /\.public-template-standard \.public-matrix > \[role="grid"\],[\s\S]*\.public-template-bento \.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 5rem/,
+  );
+  assert.doesNotMatch(
+    styles,
+    /max-width: 639px[\s\S]*\.public-itinerary-shell \.public-matrix > \[role="grid"\] \{[\s\S]*padding-bottom: 6rem/,
+  );
+  assert.match(
+    styles,
+    /max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-matrix \{[\s\S]*scrollbar-width: none;[\s\S]*scrollbar-gutter: auto/,
+  );
+  assert.match(
+    styles,
+    /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-matrix > \[role="grid"\] \{[\s\S]*min-height: 100%[\s\S]*flex-direction: column[\s\S]*\[role="row"\]:not\(\.matrix-grid-header\) \{[\s\S]*flex: 1 0 auto/,
+  );
   assert.match(styles, /\.public-matrix \{[\s\S]*overflow: auto/);
   assert.match(styles, /\.public-matrix \{[\s\S]*overscroll-behavior: none/);
   assert.match(styles, /\.public-matrix \{[\s\S]*overflow-anchor: none/);
@@ -1387,12 +1412,79 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     styles,
     /\.public-template-journal \.timeline-node-list-v4 \{[\s\S]*scroll-snap-type: none/,
   );
+  assert.match(styles, /\.public-template-traverse \.public-itinerary-header/);
+  assert.doesNotMatch(styles, /content:\s*["']FIELD["']/i);
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-item-icon-v4::after \{[^}]*content: attr\(data-public-item-category\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-list-v4 \{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(15rem, 100%\), 1fr\)\);[^}]*gap: 1px;[^}]*overflow: hidden;[^}]*border: 1px solid[^}]*background: var\(--traverse-line\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-item-v4 \+ \.overview-transport-item-v4 \{[^}]*border: 0;[^}]*box-shadow: none/,
+  );
+  assert.match(styles, /@container public-content \(max-width: 36rem\)/);
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-title-v4 \{[^}]*overflow: visible;[^}]*overflow-wrap: normal;[^}]*text-overflow: clip;[^}]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.timeline-transport-title-v4 \{[^}]*overflow: visible;[^}]*overflow-wrap: normal;[^}]*text-overflow: clip;[^}]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-details-v4 \{[^}]*display: flex;[^}]*flex-wrap: wrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-details-v4 > span \{[^}]*white-space: normal/,
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.public-template-traverse \.overview-transport-list-v4,[\s\S]{0,120}\.public-template-traverse \.overview-board-v4 \{[^}]*grid-row:/,
+  );
   assert.match(styles, /\.span-featured, \.span-activity, \.span-compact/);
   assert.match(styles, /\.public-template-bento/);
   assert.match(styles, /grid-template-columns: repeat\(12, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
-  assert.match(styles, /\.public-itinerary-header[\s\S]*position: sticky/);
+  assert.match(
+    styles,
+    /html:has\(\.public-itinerary-shell\),[\s\S]*body:has\(\.public-itinerary-shell\)[\s\S]*position: fixed/,
+  );
+  assert.match(styles, /\.public-itinerary-header[\s\S]*position: relative/);
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-date-column \{[\s\S]*width: 6rem;[\s\S]*flex: 0 0 6rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-matrix \[role="row"\]:not\(\.matrix-grid-header\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-matrix \.matrix-grid-header \{\s*height: 3\.25rem;/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.public-matrix \.matrix-grid-header \{\s*height: 2\.75rem;/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.public-matrix \.matrix-grid-header \{\s*height: 2\.75rem;/,
+  );
   assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
+  assert.match(
+    styles,
+    /max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*width: 100%[\s\S]*flex: 0 0 auto[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: 100%[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-overview-empty \{[\s\S]*grid-column: 2/,
+  );
   assert.match(styles, /max-width: 899px/);
   assert.match(styles, /\.public-matrix \.matrix-day-column/);
   assert.match(styles, /width: 6rem/);
@@ -1438,6 +1530,8 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
   assert.match(viewerShare, /--dialog-viewport-height/);
   assert.match(viewerShare, /downloadShareImageParts/);
+  assert.match(viewerShare, /min-\[1200px\]:hidden[\s\S]*Open image/);
+  assert.match(viewerShare, /hidden min-h-11 w-full min-\[1200px\]:inline-flex/);
   assert.ok(
     viewerShare.indexOf("<ShareLinkActions") < viewerShare.indexOf("<LongImageExportPanel"),
     "share link actions stay above image generation",
@@ -1723,11 +1817,15 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.doesNotMatch(styles, /\.timeline-transport-list-v4 \{[^}]*flex-direction: column/);
   assert.match(
     styles,
-    /\.timeline-transport-title-v4 \{[\s\S]*text-overflow: clip;[\s\S]*white-space: normal/,
+    /\.timeline-transport-title-v4 \{[\s\S]*flex: 0 0 auto;[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
   );
   assert.match(
     styles,
-    /\.overview-transport-title-v4 \{[\s\S]*text-overflow: clip;[\s\S]*white-space: normal/,
+    /\.overview-transport-title-v4 \{[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.overview-transport-kind-v4 \{[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
   );
   assert.match(
     styles,

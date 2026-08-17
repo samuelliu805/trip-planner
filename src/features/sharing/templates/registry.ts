@@ -3,6 +3,7 @@ import { bentoPublicTemplateV2 } from "./generated/bento-v2.ts";
 import { etherealPublicTemplateV1 } from "./generated/ethereal-v1.ts";
 import { journalPublicTemplateV1 } from "./generated/journal-v1.ts";
 import { standardPublicTemplateV1 } from "./generated/standard-v1.ts";
+import { traversePublicTemplateV1 } from "./generated/traverse-v1.ts";
 import { resolvePublicTemplateAsset } from "./runtime/assets.ts";
 import {
   compiledPublicTemplateSchemaV1,
@@ -10,7 +11,7 @@ import {
   type CompiledPublicTemplateV1,
 } from "./schema.ts";
 
-export const DEFAULT_PUBLIC_TEMPLATE_KEY = "bento@2" as const;
+export const DEFAULT_PUBLIC_TEMPLATE_KEY = "ethereal@1" as const;
 export const LEGACY_PUBLIC_TEMPLATE_KEY = "standard@1" as const;
 
 export type PublicTemplateRegistryEntry = {
@@ -23,13 +24,13 @@ export type PublicTemplateRegistryEntry = {
 export const publicTemplateRegistry = {
   "bento@1": {
     enabled: true,
-    label: "Bento (legacy)",
+    label: "Midnight",
     selectable: false,
     template: bentoPublicTemplateV1,
   },
   "bento@2": {
     enabled: true,
-    label: "Bento",
+    label: "Midnight",
     selectable: true,
     template: bentoPublicTemplateV2,
   },
@@ -47,9 +48,15 @@ export const publicTemplateRegistry = {
   },
   "standard@1": {
     enabled: true,
-    label: "Standard",
+    label: "Classic",
     selectable: false,
     template: standardPublicTemplateV1,
+  },
+  "traverse@1": {
+    enabled: true,
+    label: "Traverse",
+    selectable: true,
+    template: traversePublicTemplateV1,
   },
 } as const satisfies Record<string, PublicTemplateRegistryEntry>;
 

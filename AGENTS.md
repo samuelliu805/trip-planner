@@ -22,6 +22,16 @@ These rules apply to all future UI work in this repository.
 - Apply scroll containment and Safari compositing safeguards to the Matrix at every breakpoint. At a scroll boundary, continued touch movement must not rubber-band the frozen header, date/day columns, workspace shell, or expose blank space beyond the workspace.
 - Verify owner planner behavior at 768px, 820px, and 1024px widths in both relevant orientations. Assert that `documentElement` and `body` do not exceed `innerHeight`, a forced `window.scrollTo` leaves `scrollY` at 0, the table/map reaches the viewport bottom (or the mobile tab bar top), and the app bar remains at top 0 while the Matrix scrolls in either axis.
 
+## Recurring tablet table regressions (release-blocking)
+
+- Treat any blank strip between an editable or read-only table and its bottom boundary as a regression. Bottom navigation that is already a flex sibling must not be compensated for with Matrix padding, spacer rows, margins, or viewport-height arithmetic.
+- On tablet, a short table must fill the Matrix to its bottom boundary: distribute spare height across data rows instead of leaving an empty strip after the final row.
+- Mobile and tablet bottom view navigation must span the full shell width as a non-scrolling flex sibling, not an overlay on the Table. At maximum Matrix scroll, the final row must terminate directly above it without padding, a blank strip, or a hidden overlap.
+- The app bar/header and bottom navigation must be non-scrolling siblings of the table workspace. At tablet widths, only the Matrix may scroll; `window.scrollY`, the app bar top, and the table workspace bottom must remain fixed while the Matrix is forced to every scroll boundary.
+- A table header must meet the first data row with no spacer or unused row height. Assert that the first row's top equals the header's bottom within 1px in both editable and read-only tables.
+- Frozen header cells and their body columns must share one explicit width and left offset. At 768px, 820px, and 1024px, assert that the first header cell and first body cell have matching `left`, `right`, and `width` values after horizontal scrolling.
+- Verify these contracts on both the authenticated owner planner and a public read-only Table. For public pages, also open the Share dialog after every template-root positioning change; portal content must remain fixed, visible, and above all frozen layers.
+
 ## Production file size
 
 - Keep manually maintained production files focused and at or below 300 lines when practical. When a UI component or stylesheet grows past 300 lines, split it by responsibility instead of adding another section; generated types and comprehensive test suites are exempt.
@@ -30,6 +40,12 @@ These rules apply to all future UI work in this repository.
 
 - Change content-to-map selection only after an explicit click or Enter/Space activation. Hover and focus alone must never move or rescope the map.
 - Keep marker-to-content selection explicit on marker click, with scroll/focus restoration and no owner-data mutation.
+
+## Public itinerary information hierarchy
+
+- Transport type and short name labels (for example, Flight, Train, or Car rental) must remain fully visible on one line in Overview, Table, and Timeline at every breakpoint. Never truncate or ellipsize these labels; wrap or resize the surrounding layout first, while keeping route, service number, schedule, place, and notes available as supporting detail.
+- Never show a generic placeholder such as `Field` when the itinerary category is known. Display the real category label or omit that label and promote the item title.
+- In Overview, present multiple transport entries as one compact grouped information band with separators instead of giving each transport the visual weight or vertical footprint of a standalone item card.
 
 ## Public auth routes and dev-server route state
 

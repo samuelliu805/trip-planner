@@ -1,0 +1,52 @@
+@media (max-width: 899px) {
+  .public-template-ethereal .overview-item-card-v4 {
+    min-height: 5rem;
+    padding-top: 1.125rem;
+    padding-bottom: 1.125rem;
+  }
+
+  .public-template-ethereal .overview-item-title-v4,
+  .public-template-ethereal .overview-transport-title-v4,
+  .public-template-ethereal .timeline-node-title-v4 {
+    font-size: 1.125rem;
+  }
+
+  .public-template-ethereal .overview-transport-item-v4 {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    padding-right: 0.25rem;
+    padding-left: 0.25rem;
+  }
+
+  .public-template-ethereal .overview-transport-item-v4 + .overview-transport-item-v4 {
+    padding-left: 0.25rem;
+  }
+
+  .public-template-ethereal .overview-transport-button-v4 {
+    width: 100%;
+  }
+
+  .public-template-ethereal .overview-transport-title-v4 {
+    font-size: 1rem;
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
+
+  .public-template-ethereal .overview-transport-item-v4 > .public-quick-actions {
+    margin-top: 0.5rem;
+  }
+
+  .public-template-ethereal .overview-item-meta-v4,
+  .public-template-ethereal .overview-item-notes-v4,
+  .public-template-ethereal .overview-transport-meta-v4,
+  .public-template-ethereal .timeline-node-meta-v4 {
+    font-size: 0.75rem;
+  }
+
+  .public-template-ethereal .public-matrix [role="gridcell"],
+  .public-template-ethereal .public-matrix [role="rowheader"] {
+    font-size: 0.875rem;
+  }
+}

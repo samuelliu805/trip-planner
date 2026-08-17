@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageDown, Share2 } from "lucide-react";
+import { ExternalLink, ImageDown, Share2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -105,8 +105,17 @@ export function PublicViewerShareDialog({
               ) : null}
               {!ownerSharePage && shareImage ? (
                 <div className="space-y-2 border bg-muted/30 p-4">
+                  <Button asChild className="min-h-11 w-full min-[1200px]:hidden">
+                    <a
+                      href={`/share/image/${shareImage.permanentSlug}`}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      <ExternalLink aria-hidden="true" className="size-4" /> Open image
+                    </a>
+                  </Button>
                   <Button
-                    className="min-h-11 w-full"
+                    className="hidden min-h-11 w-full min-[1200px]:inline-flex"
                     onClick={() =>
                       downloadShareImageParts(shareImage.permanentSlug, shareImage.parts.length)
                     }

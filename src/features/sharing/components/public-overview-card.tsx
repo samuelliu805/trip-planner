@@ -39,7 +39,10 @@ export function PublicOverviewCard({
         onClick={onSelect}
         type="button"
       >
-        <span className="overview-item-icon-v4">
+        <span
+          className="overview-item-icon-v4"
+          data-public-item-category={publicItemTypeLabels[item.type]}
+        >
           <PublicItemIcon className="size-3.5" type={item.type} />
         </span>
         <span className="overview-item-copy-v4">

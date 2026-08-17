@@ -19,8 +19,8 @@ export const defaultShareSettings: ShareSettings = {
   showPlacePhotos: true,
   showQuickActionLinks: true,
   showTimes: true,
-  templateId: "bento",
-  templateVersion: 2,
+  templateId: "ethereal",
+  templateVersion: 1,
 };
 
 export const publicViewLabels: Record<PublicView, string> = {

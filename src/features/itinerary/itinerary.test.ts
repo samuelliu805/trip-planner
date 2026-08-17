@@ -2308,6 +2308,18 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(workspace, /TripAppBar/);
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);
+  assert.match(
+    styles,
+    /max-width: 899px[\s\S]*\.planner-matrix \{[\s\S]*padding-bottom: 0;[\s\S]*scroll-padding-bottom: 0;/,
+  );
+  assert.match(
+    styles,
+    /min-width: 900px[\s\S]*\.planner-matrix \[role="row"\] > :first-child \{[\s\S]*width: 6rem;[\s\S]*flex: 0 0 6rem/,
+  );
+  assert.match(
+    styles,
+    /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.planner-matrix > \[role="grid"\] \{[\s\S]*min-height: 100%[\s\S]*flex-direction: column[\s\S]*\[role="row"\]:not\(\.matrix-grid-header\) \{[\s\S]*flex: 1 0 auto/,
+  );
   assert.match(tripsLayout, /h-14[\s\S]*sm:h-16/);
   assert.match(secondaryFields, /id=\{`item-time-\$\{item\?\.id \?\? dayId\}-\$\{type\}`\}/);
   assert.doesNotMatch(secondaryFields, /sm:grid-cols-2|item-end-/);

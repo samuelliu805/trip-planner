@@ -54,13 +54,13 @@
 
 .timeline-transport-title-v4 {
   min-width: 0;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   overflow: visible;
   color: var(--foreground);
   font-size: 0.6875rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   text-overflow: clip;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .timeline-transport-meta-v4 {
