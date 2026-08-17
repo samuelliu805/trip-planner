@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Eye, Paperclip } from "lucide-react";
+import { Eye, FileImage, FileText, Film, Play } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -43,37 +43,80 @@ function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: bo
   );
 }
 
-function AttachmentPreviewLink({
+function attachmentKindLabel(kind: AttachmentMedia["kind"]) {
+  if (kind === "image") return "Photo";
+  if (kind === "video") return "Video";
+  return "PDF document";
+}
+
+function AttachmentVisual({ attachment }: { attachment: AttachmentMedia }) {
+  if (attachment.thumbnailUrl) {
+    return (
+      <span className="public-attachment-visual has-thumbnail">
+        <Image
+          alt=""
+          className="object-cover"
+          fill
+          sizes="56px"
+          src={attachment.thumbnailUrl}
+          unoptimized
+        />
+        {attachment.kind === "video" ? (
+          <span className="public-attachment-play">
+            <Play aria-hidden="true" className="size-3.5 fill-current" />
+          </span>
+        ) : null}
+      </span>
+    );
+  }
+
+  return (
+    <span className={`public-attachment-visual is-${attachment.kind}`}>
+      {attachment.kind === "pdf" ? (
+        <FileText aria-hidden="true" className="size-5" />
+      ) : attachment.kind === "video" ? (
+        <Film aria-hidden="true" className="size-5" />
+      ) : (
+        <FileImage aria-hidden="true" className="size-5" />
+      )}
+    </span>
+  );
+}
+
+function AttachmentButtons({
   attachments,
   onOpen,
+  variant,
 }: {
   attachments: AttachmentMedia[];
   onOpen: (attachment: AttachmentMedia, trigger: HTMLButtonElement) => void;
+  variant: "overview" | "table" | "timeline" | "transport";
 }) {
   if (!attachments.length) return null;
-  const first = attachments[0];
   return (
-    <button
-      aria-label={
-        attachments.length === 1
-          ? `Open attachment ${first.label}`
-          : `Open ${attachments.length} attachments`
-      }
-      className="public-attachment-link"
-      onClick={(event) => {
-        event.stopPropagation();
-        onOpen(first, event.currentTarget);
-      }}
-      type="button"
-    >
-      <Paperclip aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="truncate underline decoration-current/45 underline-offset-4">
-        {attachments.length === 1
-          ? `View ${first.label}`
-          : `View ${attachments.length} attachments`}
-      </span>
-      <Eye aria-hidden="true" className="size-3.5 shrink-0 opacity-70" />
-    </button>
+    <div aria-label="Attachments" className={`public-attachment-grid ${variant}`} role="group">
+      {attachments.map((attachment) => (
+        <button
+          aria-label={`Open attachment ${attachment.label}`}
+          className="public-attachment-button"
+          key={attachment.id}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(attachment, event.currentTarget);
+          }}
+          type="button"
+        >
+          <AttachmentVisual attachment={attachment} />
+          <span className="public-attachment-copy">
+            <span className="public-attachment-name">{attachment.label}</span>
+            <span className="public-attachment-meta">
+              {attachmentKindLabel(attachment.kind)} · View
+            </span>
+          </span>
+          <Eye aria-hidden="true" className="public-attachment-open-icon size-4" />
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -117,7 +160,7 @@ export function PublicItemMediaGallery({
           </div>
         </div>
       ) : null}
-      <AttachmentPreviewLink attachments={attachmentMedia} onOpen={openAttachment} />
+      <AttachmentButtons attachments={attachmentMedia} onOpen={openAttachment} variant={variant} />
       {showGoogleMedia ? (
         <div className="public-media-attribution">
           {googleMedia.map((entry) => (

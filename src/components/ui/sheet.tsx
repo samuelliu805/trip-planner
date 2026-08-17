@@ -11,14 +11,12 @@ const SheetTrigger = SheetPrimitive.Trigger;
 const SheetClose = SheetPrimitive.Close;
 
 type SheetViewportStyle = React.CSSProperties & {
-  "--sheet-viewport-bottom"?: string;
   "--sheet-viewport-height"?: string;
   "--sheet-viewport-top"?: string;
 };
 
 function useSheetViewport() {
   const [viewport, setViewport] = React.useState<{
-    bottom: number;
     height: number;
     top: number;
   }>();
@@ -29,12 +27,9 @@ function useSheetViewport() {
     function measure() {
       const height = visualViewport?.height ?? window.innerHeight;
       const top = visualViewport?.offsetTop ?? 0;
-      const bottom = Math.max(0, window.innerHeight - top - height);
-      const next = { bottom, height, top };
+      const next = { height, top };
       setViewport((current) =>
-        current?.bottom === bottom && current.height === height && current.top === top
-          ? current
-          : next,
+        current?.height === height && current.top === top ? current : next,
       );
     }
     function scheduleMeasure() {
@@ -66,7 +61,6 @@ function SheetContent({
   const viewportStyle: SheetViewportStyle = {
     ...(viewport
       ? {
-          "--sheet-viewport-bottom": `${viewport.bottom}px`,
           "--sheet-viewport-height": `${viewport.height}px`,
           "--sheet-viewport-top": `${viewport.top}px`,
         }

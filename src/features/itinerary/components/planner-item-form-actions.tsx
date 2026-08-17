@@ -34,18 +34,27 @@ export function PlannerItemFormActions({
   type: ItineraryItemType;
 }) {
   return (
-    <>
+    <div
+      className="shrink-0 space-y-2 border-t bg-background px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      data-planner-editor-actions=""
+    >
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error.message}
         </p>
       ) : null}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center justify-between gap-2">
         <div>
           {item ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button disabled={pending} size="sm" type="button" variant="ghost">
+                <Button
+                  className="min-h-11"
+                  disabled={pending}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
                   Delete
                 </Button>
               </AlertDialogTrigger>
@@ -64,11 +73,17 @@ export function PlannerItemFormActions({
             </AlertDialog>
           ) : null}
         </div>
-        <div className="flex gap-2">
-          <Button onClick={onCancel} size="sm" type="button" variant="ghost">
+        <div className="flex min-w-0 gap-2">
+          <Button className="min-h-11" onClick={onCancel} size="sm" type="button" variant="ghost">
             Cancel
           </Button>
-          <Button aria-busy={pending} disabled={pending || !canSave} size="sm" type="submit">
+          <Button
+            aria-busy={pending}
+            className="min-h-11"
+            disabled={pending || !canSave}
+            size="sm"
+            type="submit"
+          >
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {pending
               ? (pendingLabel ?? "Saving…")
@@ -80,6 +95,6 @@ export function PlannerItemFormActions({
           </Button>
         </div>
       </div>
-    </>
+    </div>
   );
 }

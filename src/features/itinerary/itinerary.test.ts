@@ -2121,6 +2121,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     workspace += await readFile(new URL(file, import.meta.url), "utf8");
   let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
   form += await readFile(
+    new URL("./components/planner-item-form-content.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(
     new URL("./components/planner-item-form-actions.tsx", import.meta.url),
     "utf8",
   );
@@ -2206,7 +2210,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(styles, /planner-editor-sheet[\s\S]*--sheet-viewport-height/);
-  assert.match(styles, /height: min\([\s\S]*92dvh/);
+  assert.match(
+    styles,
+    /planner-editor-sheet[\s\S]*bottom: auto[\s\S]*height: var\(--sheet-viewport-height/,
+  );
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextBar/);
   assert.match(workspace, /planner-mobile-map-fab/);

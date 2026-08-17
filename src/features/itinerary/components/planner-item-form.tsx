@@ -6,10 +6,8 @@ import {
   useUpdateItineraryItem,
 } from "@/features/itinerary/item-mutations";
 import type { Json } from "@/types/database";
-import { PlannerItemPrimaryFields } from "@/features/itinerary/components/planner-item-primary-fields";
-import { PlannerBookingFields } from "@/features/itinerary/components/planner-booking-fields";
-import { PlannerItemSecondaryFields } from "@/features/itinerary/components/planner-item-secondary-fields";
 import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
+import { PlannerItemFormContent } from "@/features/itinerary/components/planner-item-form-content";
 import {
   itemCopy,
   itemFormCapabilities,
@@ -20,8 +18,6 @@ import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
-import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
-import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 export function PlannerItemForm({
   dayId,
   defaultCurrency,
@@ -43,7 +39,6 @@ export function PlannerItemForm({
   });
   const {
     arrivalTime,
-    availableTransportModes,
     carAction,
     carProvider,
     destination,
@@ -55,20 +50,6 @@ export function PlannerItemForm({
     priceAmount,
     priceCurrency,
     serviceNumber,
-    setArrivalTime,
-    setCarAction,
-    setCarProvider,
-    setDestination,
-    setLinks,
-    setNotes,
-    setOrigin,
-    setPlace,
-    setPriceAmount,
-    setPriceCurrency,
-    setServiceNumber,
-    setStartTime,
-    setTitle,
-    setTransportMode,
     startTime,
     title,
     transportMode,
@@ -215,7 +196,7 @@ export function PlannerItemForm({
 
   return (
     <form
-      className="max-w-full min-w-0 space-y-4 overflow-x-hidden"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       onKeyDown={(event) => {
         if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.key === "Escape") {
@@ -228,77 +209,21 @@ export function PlannerItemForm({
         save();
       }}
     >
-      <PlannerItemPrimaryFields
-        availableTransportModes={availableTransportModes}
-        carAction={carAction}
-        carProvider={carProvider}
+      <PlannerItemFormContent
         copyLabel={copy.label}
         copyPlaceholder={copy.placeholder}
         dayId={dayId}
-        item={item}
-        pending={pending}
-        place={place}
-        placeLabel={placeLabel}
-        setCarAction={setCarAction}
-        setCarProvider={setCarProvider}
-        setPlace={setPlace}
-        setTitle={setTitle}
-        setTransportMode={setTransportMode}
-        title={title}
-        titleRef={titleRef}
-        transportMode={transportMode}
-        type={type}
-      />
-      <PlannerBookingFields
-        arrivalTime={arrivalTime}
-        carAction={carAction}
-        dayId={dayId}
         defaultCurrency={defaultCurrency}
-        destination={destination}
-        itemId={item?.id}
-        origin={origin}
-        priceAmount={priceAmount}
-        priceCurrency={priceCurrency}
-        serviceNumber={serviceNumber}
-        setArrivalTime={setArrivalTime}
-        setDestination={setDestination}
-        setOrigin={setOrigin}
-        setPriceAmount={setPriceAmount}
-        setPriceCurrency={setPriceCurrency}
-        setServiceNumber={setServiceNumber}
-        setStartTime={setStartTime}
-        startTime={startTime}
-        transportMode={transportMode}
-        type={type}
-      />
-      <PlannerItemSecondaryFields
-        carAction={carAction}
-        copyLabel={copy.label}
-        dayId={dayId}
         item={item}
         linkLabel={linkLabel}
-        links={links}
-        notes={notes}
-        setLinks={setLinks}
-        setNotes={setNotes}
-        setStartTime={setStartTime}
-        startTime={startTime}
-        type={type}
-      />
-      {!item && type === "hotel" ? (
-        <div className="rounded-md border bg-muted/30 px-3 py-2.5">
-          <p className="text-sm font-medium">Position · End of day</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Hotel is always kept after the Day’s other Activities.
-          </p>
-        </div>
-      ) : null}
-      <ItemAttachmentsSection
-        item={item}
-        onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
-        onPendingChange={setAttachmentPending}
+        onAttachmentPendingChange={setAttachmentPending}
+        pending={pending}
+        placeLabel={placeLabel}
         shareAttachmentsEnabled={shareAttachmentsEnabled}
+        state={state}
+        titleRef={titleRef}
         tripId={tripId}
+        type={type}
       />
       <PlannerItemFormActions
         canSave={canSave}

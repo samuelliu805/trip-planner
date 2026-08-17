@@ -89,7 +89,7 @@ function AttachmentViewerDialog({
   return (
     <Dialog onOpenChange={onOpenChange} open>
       <DialogContent
-        className="attachment-viewer fixed inset-0 flex h-[var(--dialog-viewport-height,100dvh)] max-h-none w-full max-w-full translate-x-0 translate-y-0 flex-col overflow-hidden rounded-none border-0 bg-black p-0 text-white sm:inset-0 sm:h-[var(--dialog-viewport-height,100dvh)] sm:w-full sm:max-w-full sm:translate-x-0 sm:translate-y-0 sm:rounded-none"
+        className="attachment-viewer fixed inset-0 h-dvh max-h-dvh w-dvw max-w-none translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 bg-black p-0 text-white sm:inset-0 sm:h-dvh sm:w-dvw sm:max-w-none sm:translate-x-0 sm:translate-y-0 sm:rounded-none"
         data-attachment-overlay=""
         onCloseAutoFocus={(event) => {
           if (!trigger) return;

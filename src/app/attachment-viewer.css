@@ -1,17 +1,25 @@
 .attachment-viewer {
   position: fixed !important;
-  top: var(--dialog-viewport-top, 0px) !important;
+  top: 0 !important;
   right: 0 !important;
-  bottom: auto !important;
+  bottom: 0 !important;
   left: 0 !important;
-  width: 100% !important;
-  height: var(--dialog-viewport-height, 100dvh) !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100dvw !important;
+  min-height: 100dvh !important;
+  height: 100dvh !important;
   max-width: none !important;
-  max-height: none !important;
+  max-height: 100dvh !important;
   transform: none !important;
   overflow: hidden !important;
   border-radius: 0 !important;
   overscroll-behavior: none;
+}
+
+.attachment-viewer > header,
+.attachment-viewer > footer {
+  min-width: 0;
 }
 
 .attachment-viewer .app-dialog-close {
