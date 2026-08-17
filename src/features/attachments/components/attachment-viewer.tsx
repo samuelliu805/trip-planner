@@ -128,12 +128,14 @@ function AttachmentViewerDialog({
 
         <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
           <div
+            aria-label={isPdf ? "PDF pages" : "Attachment preview"}
             className={
               isPdf
                 ? "h-full min-h-0 w-full touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain p-3 sm:p-6"
                 : "flex h-full min-h-0 items-center justify-center overflow-auto p-3 sm:p-6"
             }
             data-attachment-viewer-scroll=""
+            tabIndex={0}
           >
             {attachment.kind === "image" && !previewFailed ? (
               // eslint-disable-next-line @next/next/no-img-element -- private signed redirects are dynamic.

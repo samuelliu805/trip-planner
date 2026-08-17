@@ -2205,7 +2205,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(styles, /planner-editor-sheet[\s\S]*max-height: 92dvh/);
+  assert.match(styles, /planner-editor-sheet[\s\S]*--sheet-viewport-height/);
+  assert.match(styles, /height: min\([\s\S]*92dvh/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextBar/);
   assert.match(workspace, /planner-mobile-map-fab/);

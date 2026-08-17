@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FileText, Paperclip, Play } from "lucide-react";
+import { Eye, Paperclip } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -43,38 +43,7 @@ function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: bo
   );
 }
 
-function AttachmentPreview({ media }: { media: AttachmentMedia }) {
-  if (media.kind === "pdf")
-    return (
-      <span className="media-pdf-v4">
-        <span className="pdf-icon-v4">
-          <FileText aria-hidden="true" className="size-3" /> PDF
-        </span>
-        <span className="line-clamp-2 break-words">{media.label}</span>
-      </span>
-    );
-
-  return (
-    <span className="media-thumb-v4">
-      {media.thumbnailUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- access uses short-lived signed redirects.
-        <img
-          alt={media.kind === "image" ? (media.alt ?? media.label) : ""}
-          className="absolute inset-0 size-full object-cover"
-          loading="lazy"
-          src={media.thumbnailUrl}
-        />
-      ) : null}
-      {media.kind === "video" ? (
-        <span className="media-video-icon-v4">
-          <Play aria-hidden="true" className="size-4 fill-current" />
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function CompactAttachments({
+function AttachmentPreviewLink({
   attachments,
   onOpen,
 }: {
@@ -90,7 +59,7 @@ function CompactAttachments({
           ? `Open attachment ${first.label}`
           : `Open ${attachments.length} attachments`
       }
-      className="public-attachment-chip"
+      className="public-attachment-link"
       onClick={(event) => {
         event.stopPropagation();
         onOpen(first, event.currentTarget);
@@ -98,9 +67,12 @@ function CompactAttachments({
       type="button"
     >
       <Paperclip aria-hidden="true" className="size-3.5 shrink-0" />
-      <span className="truncate">
-        {attachments.length === 1 ? first.label : `${attachments.length} attachments`}
+      <span className="truncate underline decoration-current/45 underline-offset-4">
+        {attachments.length === 1
+          ? `View ${first.label}`
+          : `View ${attachments.length} attachments`}
       </span>
+      <Eye aria-hidden="true" className="size-3.5 shrink-0 opacity-70" />
     </button>
   );
 }
@@ -124,9 +96,6 @@ export function PublicItemMediaGallery({
   const googleMedia = media.filter(
     (entry): entry is GoogleMedia => entry.source === "google_place",
   );
-  const visibleAttachments = attachmentMedia.slice(0, 3);
-  const hiddenAttachmentCount = attachmentMedia.length - visibleAttachments.length;
-  const showAttachmentPreviews = variant === "overview" || variant === "timeline";
   const showGoogleMedia = variant === "overview" && googleMedia.length > 0;
   if (!showGoogleMedia && !attachmentMedia.length) return null;
 
@@ -135,10 +104,12 @@ export function PublicItemMediaGallery({
     setViewerId(attachment.id);
   }
 
-  const mixedOverviewMedia = showGoogleMedia && attachmentMedia.length > 0;
+  const rootClass = showGoogleMedia
+    ? `public-item-media ${variant}${attachmentMedia.length ? " mixed-media" : ""}`
+    : `public-item-attachments ${variant}`;
 
   return (
-    <div className={`public-item-media ${variant}${mixedOverviewMedia ? " mixed-media" : ""}`}>
+    <div className={rootClass}>
       {showGoogleMedia ? (
         <div className={`public-media-gallery media-grid-v4 count-1 google-place ${variant}`}>
           <div className="public-media-entry">
@@ -146,33 +117,7 @@ export function PublicItemMediaGallery({
           </div>
         </div>
       ) : null}
-      {showAttachmentPreviews && visibleAttachments.length ? (
-        <div
-          className={`public-media-gallery media-grid-v4 count-${visibleAttachments.length} attachments ${variant}`}
-        >
-          {visibleAttachments.map((entry, index) => (
-            <div className="public-media-entry" key={entry.id}>
-              <button
-                aria-label={`Open ${entry.label}`}
-                className="media-preview-button-v4"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openAttachment(entry, event.currentTarget);
-                }}
-                type="button"
-              >
-                <AttachmentPreview media={entry} />
-                <span className="media-view-v4">View</span>
-              </button>
-              {hiddenAttachmentCount > 0 && index === visibleAttachments.length - 1 ? (
-                <span className="media-more-v4">+{hiddenAttachmentCount}</span>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <CompactAttachments attachments={attachmentMedia} onOpen={openAttachment} />
-      )}
+      <AttachmentPreviewLink attachments={attachmentMedia} onOpen={openAttachment} />
       {showGoogleMedia ? (
         <div className="public-media-attribution">
           {googleMedia.map((entry) => (

@@ -30,13 +30,16 @@ import { AttachmentViewer } from "./attachment-viewer";
 import { viewerAttachment } from "./attachment-presentation";
 import { AttachmentUploadTask, type UploadTask } from "./attachment-upload-task";
 import { OwnerAttachmentCard } from "./owner-attachment-card";
+import { ShareAttachmentsCallout } from "./share-attachments-callout";
 export function SavedItemAttachmentsSection({
   item,
+  onOpenShareSettings,
   onPendingChange,
   shareAttachmentsEnabled,
   tripId,
 }: {
   item: ItineraryItem;
+  onOpenShareSettings: () => void;
   onPendingChange?: (pending: boolean) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
@@ -65,6 +68,9 @@ export function SavedItemAttachmentsSection({
   const viewerAttachments = attachments
     .filter(({ status }) => status === "ready")
     .map((attachment) => viewerAttachment(tripId, attachment));
+  const hasShareEligibleAttachment = attachments.some(
+    ({ includeInShare, status }) => includeInShare && status === "ready",
+  );
   const pending = activeTasks.length > 0 || mutationPending;
 
   useEffect(() => {
@@ -236,6 +242,10 @@ export function SavedItemAttachmentsSection({
           tripId={tripId}
         />
       ))}
+
+      {hasShareEligibleAttachment && !shareAttachmentsEnabled ? (
+        <ShareAttachmentsCallout onOpen={onOpenShareSettings} />
+      ) : null}
 
       {!attachments.length && !tasks.length ? (
         <div className="rounded-md border border-dashed px-3 py-4 text-center text-xs leading-5 text-muted-foreground">

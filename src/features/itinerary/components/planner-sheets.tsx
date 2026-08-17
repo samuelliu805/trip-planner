@@ -141,7 +141,7 @@ export function PlannerSheets({
       />
       <Sheet onOpenChange={(open) => !open && onEditorClose()} open={Boolean(editor)}>
         <SheetContent className="planner-editor-sheet">
-          <SheetHeader>
+          <SheetHeader className="min-w-0 shrink-0">
             <SheetTitle>{editor?.item ? "Edit itinerary item" : "Add itinerary item"}</SheetTitle>
             <SheetDescription>
               <span className="sm:hidden">Add the details for this itinerary item.</span>

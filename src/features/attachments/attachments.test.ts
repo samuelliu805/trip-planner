@@ -206,6 +206,14 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     new URL("./components/item-attachments-section.tsx", import.meta.url),
     "utf8",
   );
+  const ownerAttachment = await readFile(
+    new URL("./components/owner-attachment-card.tsx", import.meta.url),
+    "utf8",
+  );
+  const viewerStyles = await readFile(
+    new URL("../../app/attachment-viewer.css", import.meta.url),
+    "utf8",
+  );
   const publicMediaStyles = await readFile(
     new URL("../../app/public-sharing-media.css", import.meta.url),
     "utf8",
@@ -239,16 +247,24 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(continuousPdf, /data-continuous-pdf/);
   assert.match(continuousPdf, /data-pdf-page/);
   assert.match(publicMedia, /AttachmentViewer/);
-  assert.match(publicMedia, /hiddenAttachmentCount/);
+  assert.match(publicMedia, /AttachmentPreviewLink/);
   assert.match(publicMedia, /google-place/);
-  assert.match(publicMedia, /variant === "overview" \|\| variant === "timeline"/);
-  assert.match(publicMedia, /media-view-v4/);
+  assert.match(publicMedia, /public-item-attachments/);
+  assert.doesNotMatch(publicMedia, /media-preview-button-v4/);
   assert.match(publicMedia, /mixed-media/);
-  assert.match(publicMedia, /public-attachment-chip/);
-  assert.match(publicMediaStyles, /\.public-attachment-chip \{[\s\S]*min-height: 2\.75rem/);
+  assert.match(publicMedia, /public-attachment-link/);
+  assert.match(publicMediaStyles, /\.public-attachment-link \{[\s\S]*min-height: 2\.75rem/);
+  assert.match(ownerAttachment, /> Preview/);
+  assert.match(viewerStyles, /\.attachment-viewer \{[\s\S]*height: var\(--dialog-viewport-height/);
+  assert.match(viewerStyles, /\.app-dialog-close[\s\S]*width: 2\.75rem[\s\S]*color: white/);
+  assert.match(
+    viewerStyles,
+    /data-attachment-viewer-scroll[\s\S]*-webkit-overflow-scrolling: touch/,
+  );
   assert.match(itemAction, /attachments:asset_links/);
   assert.match(itemAction, /ownerAttachmentsFromRows\(attachmentRows\)/);
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
+  assert.match(attachmentSection, /ShareAttachmentsCallout/);
   assert.match(itemForm, /pendingLabel=\{attachmentPending \? "Updating attachments…"/);
   assert.match(itemForm, /max-w-full min-w-0[\s\S]*overflow-x-hidden/);
   assert.match(

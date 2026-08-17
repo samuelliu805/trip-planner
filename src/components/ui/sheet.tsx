@@ -10,12 +10,69 @@ const Sheet = SheetPrimitive.Root;
 const SheetTrigger = SheetPrimitive.Trigger;
 const SheetClose = SheetPrimitive.Close;
 
+type SheetViewportStyle = React.CSSProperties & {
+  "--sheet-viewport-bottom"?: string;
+  "--sheet-viewport-height"?: string;
+  "--sheet-viewport-top"?: string;
+};
+
+function useSheetViewport() {
+  const [viewport, setViewport] = React.useState<{
+    bottom: number;
+    height: number;
+    top: number;
+  }>();
+
+  React.useEffect(() => {
+    const visualViewport = window.visualViewport;
+    let frame = 0;
+    function measure() {
+      const height = visualViewport?.height ?? window.innerHeight;
+      const top = visualViewport?.offsetTop ?? 0;
+      const bottom = Math.max(0, window.innerHeight - top - height);
+      const next = { bottom, height, top };
+      setViewport((current) =>
+        current?.bottom === bottom && current.height === height && current.top === top
+          ? current
+          : next,
+      );
+    }
+    function scheduleMeasure() {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    }
+    measure();
+    window.addEventListener("resize", scheduleMeasure);
+    visualViewport?.addEventListener("resize", scheduleMeasure);
+    visualViewport?.addEventListener("scroll", scheduleMeasure);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", scheduleMeasure);
+      visualViewport?.removeEventListener("resize", scheduleMeasure);
+      visualViewport?.removeEventListener("scroll", scheduleMeasure);
+    };
+  }, []);
+  return viewport;
+}
+
 function SheetContent({
   className,
   children,
   side = "right",
+  style,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: "right" | "bottom" }) {
+  const viewport = useSheetViewport();
+  const viewportStyle: SheetViewportStyle = {
+    ...(viewport
+      ? {
+          "--sheet-viewport-bottom": `${viewport.bottom}px`,
+          "--sheet-viewport-height": `${viewport.height}px`,
+          "--sheet-viewport-top": `${viewport.top}px`,
+        }
+      : null),
+    ...style,
+  };
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none" />
@@ -27,10 +84,11 @@ function SheetContent({
             : "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-xl border-t data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
           className,
         )}
+        style={viewportStyle}
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <SheetPrimitive.Close className="absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <X className="size-4" aria-hidden="true" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>

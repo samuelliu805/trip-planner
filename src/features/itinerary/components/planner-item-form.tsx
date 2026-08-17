@@ -21,6 +21,7 @@ import type { PlannerItemFormProps } from "@/features/itinerary/components/plann
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
+import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 export function PlannerItemForm({
   dayId,
   defaultCurrency,
@@ -294,6 +295,7 @@ export function PlannerItemForm({
       ) : null}
       <ItemAttachmentsSection
         item={item}
+        onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
         onPendingChange={setAttachmentPending}
         shareAttachmentsEnabled={shareAttachmentsEnabled}
         tripId={tripId}

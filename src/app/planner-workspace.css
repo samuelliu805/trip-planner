@@ -91,10 +91,27 @@ body:has(.trip-planner-page) {
 }
 
 .planner-editor-sheet {
-  max-width: 100%;
+  top: var(--sheet-viewport-top, 0px);
+  bottom: var(--sheet-viewport-bottom, 0px);
+  max-width: min(28rem, 100%);
   overflow: hidden;
   overscroll-behavior-x: none;
   touch-action: pan-y;
+}
+
+.planner-editor-sheet > [data-planner-editor-scroll] {
+  width: 100%;
+  max-width: 100%;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.planner-editor-sheet > [data-planner-editor-scroll] > form,
+.planner-editor-sheet > [data-planner-editor-scroll] fieldset,
+.planner-editor-sheet > [data-planner-editor-scroll] section,
+.planner-editor-sheet > [data-planner-editor-scroll] article {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (min-width: 640px) and (max-width: 1199px) {
@@ -197,10 +214,14 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    inset: auto 0 0 !important;
+    inset: auto 0 var(--sheet-viewport-bottom, 0px) !important;
     width: 100% !important;
+    height: min(
+      92dvh,
+      calc(var(--sheet-viewport-height, 100dvh) - max(8px, env(safe-area-inset-top)))
+    );
     max-width: none !important;
-    max-height: 92dvh;
+    max-height: calc(var(--sheet-viewport-height, 100dvh) - max(8px, env(safe-area-inset-top)));
     border-left: 0 !important;
     border-top: 1px solid var(--border);
     border-radius: 0.75rem 0.75rem 0 0;
@@ -260,7 +281,8 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    height: calc(var(--sheet-viewport-height, 100dvh) - max(8px, env(safe-area-inset-top)));
+    max-height: calc(var(--sheet-viewport-height, 100dvh) - max(8px, env(safe-area-inset-top)));
     overflow: hidden;
   }
 

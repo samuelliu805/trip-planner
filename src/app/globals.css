@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./attachment-viewer.css";
 @import "./planner-workspace.css";
 @import "./public-workspace.css";
 @import "./trip-detail-workspace.css";
@@ -61,14 +62,6 @@
 
 body {
   @apply bg-background text-foreground antialiased;
-}
-
-.attachment-viewer > button:last-child {
-  top: max(0.5rem, env(safe-area-inset-top));
-  right: max(0.5rem, env(safe-area-inset-right));
-  width: 2.75rem;
-  height: 2.75rem;
-  color: white;
 }
 
 .planner-place-autocomplete {

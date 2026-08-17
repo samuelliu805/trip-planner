@@ -1,0 +1,41 @@
+.attachment-viewer {
+  position: fixed !important;
+  top: var(--dialog-viewport-top, 0px) !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: var(--dialog-viewport-height, 100dvh) !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
+  overflow: hidden !important;
+  border-radius: 0 !important;
+  overscroll-behavior: none;
+}
+
+.attachment-viewer .app-dialog-close {
+  top: max(0.5rem, env(safe-area-inset-top)) !important;
+  right: max(0.5rem, env(safe-area-inset-right)) !important;
+  z-index: 30;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgb(255 255 255 / 24%);
+  background: rgb(0 0 0 / 62%);
+  color: white;
+}
+
+.attachment-viewer .app-dialog-close:hover {
+  background: rgb(255 255 255 / 16%);
+  color: white;
+}
+
+.attachment-viewer [data-attachment-viewer-scroll] {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.attachment-viewer [data-continuous-pdf] {
+  min-height: 100%;
+}

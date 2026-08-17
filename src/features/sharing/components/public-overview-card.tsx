@@ -19,8 +19,9 @@ export function PublicOverviewCard({
   const { item, media } = presentation;
   const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const place = item.place?.localityName ?? item.place?.displayName;
+  const hasVisualMedia = media.some(({ source }) => source === "google_place");
 
-  const spanClass = media.length
+  const spanClass = hasVisualMedia
     ? "span-featured"
     : item.type === "activity"
       ? "span-activity"
@@ -29,7 +30,7 @@ export function PublicOverviewCard({
 
   return (
     <article
-      className={`public-overview-card overview-item-card-v4 ${spanClass} ${typeClass} ${media.length ? "has-media" : "no-media"} ${selected ? "is-selected" : ""}`}
+      className={`public-overview-card overview-item-card-v4 ${spanClass} ${typeClass} ${hasVisualMedia ? "has-media" : "no-media"} ${selected ? "is-selected" : ""}`}
     >
       <button
         aria-current={selected ? "true" : undefined}

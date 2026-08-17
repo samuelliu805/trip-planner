@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, Plus, Share2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -29,6 +29,7 @@ import {
   revokePublicItineraryLink,
   updatePublicItineraryLink,
 } from "../actions";
+import { OPEN_SHARE_SETTINGS_EVENT } from "../events";
 import type { PublicItineraryLink } from "../types";
 import { PublicShareSettingsFields } from "./public-share-settings-fields";
 import {
@@ -66,6 +67,12 @@ export function PublicShareDialog({
   const suggestedDescription = `${trip.day_count}-day itinerary · View plans, tickets and routes`;
   const activeSiteUrl = open && typeof window !== "undefined" ? window.location.origin : siteUrl;
   const publicUrl = activeLink ? `${activeSiteUrl}/share/${activeLink.publicToken}` : "";
+
+  useEffect(() => {
+    const openShareSettings = () => setOpen(true);
+    window.addEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
+    return () => window.removeEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
+  }, []);
 
   function chooseVariant(nextVariantId: string) {
     setVariantId(nextVariantId);

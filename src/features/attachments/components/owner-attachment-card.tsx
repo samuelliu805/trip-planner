@@ -1,4 +1,4 @@
-import { Download, FileText, Play, Trash2 } from "lucide-react";
+import { Download, Eye, FileText, Play, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,7 +55,7 @@ export function OwnerAttachmentCard({
 }) {
   return (
     <article className="min-w-0 rounded-md border p-3">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <button
           aria-label={`Open ${attachment.fileName}`}
           className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -76,25 +76,36 @@ export function OwnerAttachmentCard({
                 : "Eligible to share · hidden until Attachments is enabled for the Share Page"
               : "Owner only"}
           </p>
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+            <Button
+              className="min-h-11 min-w-0 justify-start px-1 text-primary underline decoration-primary/40 underline-offset-4 hover:bg-transparent hover:text-primary"
+              onClick={(event) => onOpen(event.currentTarget)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <Eye aria-hidden="true" className="size-4 shrink-0" /> Preview
+            </Button>
+            <Button asChild className="size-11 shrink-0 p-0" variant="ghost">
+              <a
+                aria-label={`Download ${attachment.fileName}`}
+                href={`${ownerAttachmentUrl(tripId, attachment.publicRef)}?download=1`}
+              >
+                <Download aria-hidden="true" className="size-4" />
+              </a>
+            </Button>
+            <Button
+              aria-label={`Delete ${attachment.fileName}`}
+              className="size-11 shrink-0 p-0 text-destructive"
+              disabled={disabled}
+              onClick={onDelete}
+              type="button"
+              variant="ghost"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+            </Button>
+          </div>
         </div>
-        <Button asChild className="size-11 shrink-0 p-0" variant="ghost">
-          <a
-            aria-label={`Download ${attachment.fileName}`}
-            href={`${ownerAttachmentUrl(tripId, attachment.publicRef)}?download=1`}
-          >
-            <Download aria-hidden="true" className="size-4" />
-          </a>
-        </Button>
-        <Button
-          aria-label={`Delete ${attachment.fileName}`}
-          className="size-11 shrink-0 p-0 text-destructive"
-          disabled={disabled}
-          onClick={onDelete}
-          type="button"
-          variant="ghost"
-        >
-          <Trash2 aria-hidden="true" className="size-4" />
-        </Button>
       </div>
       <div className="mt-3 border-t pt-2">
         <Label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 text-sm">

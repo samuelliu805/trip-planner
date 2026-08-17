@@ -7,11 +7,13 @@ import { UnsavedAttachmentsSection } from "./unsaved-attachments-section";
 
 export function ItemAttachmentsSection({
   item,
+  onOpenShareSettings,
   onPendingChange,
   shareAttachmentsEnabled,
   tripId,
 }: {
   item?: ItineraryItem;
+  onOpenShareSettings: () => void;
   onPendingChange?: (pending: boolean) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
@@ -24,6 +26,7 @@ export function ItemAttachmentsSection({
     <SavedItemAttachmentsSection
       item={item}
       key={`${item.id}:${attachmentVersion}`}
+      onOpenShareSettings={onOpenShareSettings}
       onPendingChange={onPendingChange}
       shareAttachmentsEnabled={shareAttachmentsEnabled}
       tripId={tripId}
