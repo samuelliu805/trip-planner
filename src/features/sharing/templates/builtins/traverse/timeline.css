@@ -105,8 +105,12 @@
 }
 
 .public-template-traverse .timeline-transport-title-v4 {
+  overflow: hidden;
   color: #172024;
   font-weight: 690;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .public-template-traverse .timeline-transport-meta-v4 {

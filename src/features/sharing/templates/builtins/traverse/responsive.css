@@ -130,12 +130,10 @@
     margin-top: 0.4375rem;
   }
 
-  .public-template-traverse .overview-transport-item-v4,
   .public-template-traverse .overview-item-card-v4 {
     padding: 0.875rem 0 0.9375rem 2.5rem;
   }
 
-  .public-template-traverse .overview-transport-item-v4::before,
   .public-template-traverse .overview-item-card-v4::before {
     top: 1.5rem;
     left: 0.8125rem;
@@ -143,18 +141,15 @@
     height: 0.5rem;
   }
 
-  .public-template-traverse .overview-transport-button-v4,
   .public-template-traverse .overview-item-top-v4 {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.625rem;
   }
 
-  .public-template-traverse .overview-transport-icon-v4,
   .public-template-traverse .overview-item-icon-v4 {
     grid-column: 1 / 3;
   }
 
-  .public-template-traverse .overview-transport-copy-v4,
   .public-template-traverse .overview-item-copy-v4 {
     grid-column: 1;
   }

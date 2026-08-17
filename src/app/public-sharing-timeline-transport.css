@@ -55,12 +55,12 @@
 .timeline-transport-title-v4 {
   min-width: 0;
   flex: 0 1 auto;
-  overflow: visible;
+  overflow: hidden;
   color: var(--foreground);
   font-size: 0.6875rem;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-  white-space: normal;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .timeline-transport-meta-v4 {

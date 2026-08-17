@@ -41,6 +41,12 @@ These rules apply to all future UI work in this repository.
 - Change content-to-map selection only after an explicit click or Enter/Space activation. Hover and focus alone must never move or rescope the map.
 - Keep marker-to-content selection explicit on marker click, with scroll/focus restoration and no owner-data mutation.
 
+## Public itinerary information hierarchy
+
+- Transport type and title labels (for example, Flight, Train, or Car rental) must stay on one line in Overview, Table, and Timeline at every breakpoint. Truncate the label when space is constrained; keep route, service number, schedule, place, and notes available as separate supporting detail.
+- Never show a generic placeholder such as `Field` when the itinerary category is known. Display the real category label or omit that label and promote the item title.
+- In Overview, present multiple transport entries as one grouped surface with separators instead of repeating standalone item cards.
+
 ## Public auth routes and dev-server route state
 
 - `/login` and `/signup` are permanent public App Router routes. After changing, adding, removing, or renaming anything under `src/app`, verify both with `npm run check:auth-routes`; a valid check returns `200` and the expected form heading for each route.

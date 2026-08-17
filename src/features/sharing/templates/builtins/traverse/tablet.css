@@ -30,7 +30,6 @@
     left: 1.5625rem;
   }
 
-  .public-template-traverse .overview-transport-button-v4,
   .public-template-traverse .overview-item-top-v4 {
     grid-template-columns: 4.875rem minmax(0, 1fr) auto;
     gap: 0.625rem;

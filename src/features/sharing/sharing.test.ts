@@ -1317,6 +1317,7 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(overviewTransport, /publicItemTypeLabels/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
+  assert.match(overviewCard, /data-public-item-category=\{publicItemTypeLabels\[item\.type\]\}/);
   assert.doesNotMatch(overviewCard, /\{media\.length\} media/);
   assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
   assert.doesNotMatch(overview + overviewCard, /PublicTimelineNode|PublicDayJourney/);
@@ -1407,6 +1408,31 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     /\.public-template-journal \.timeline-node-list-v4 \{[\s\S]*scroll-snap-type: none/,
   );
   assert.match(styles, /\.public-template-traverse \.public-itinerary-header/);
+  assert.doesNotMatch(styles, /content:\s*["']FIELD["']/i);
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-item-icon-v4::after \{[^}]*content: attr\(data-public-item-category\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-list-v4 \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*overflow: hidden;[^}]*border: 1px solid/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-item-v4 \+ \.overview-transport-item-v4 \{[^}]*border-top: 1px solid[^}]*box-shadow: none/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.timeline-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.overview-transport-route-v4,[\s\S]*\.public-template-traverse \.overview-transport-notes-v4,[\s\S]*\{[^}]*white-space: normal/,
+  );
   assert.doesNotMatch(
     styles,
     /\.public-template-traverse \.overview-transport-list-v4,[\s\S]{0,120}\.public-template-traverse \.overview-board-v4 \{[^}]*grid-row:/,
@@ -1781,11 +1807,11 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.doesNotMatch(styles, /\.timeline-transport-list-v4 \{[^}]*flex-direction: column/);
   assert.match(
     styles,
-    /\.timeline-transport-title-v4 \{[\s\S]*text-overflow: clip;[\s\S]*white-space: normal/,
+    /\.timeline-transport-title-v4 \{[\s\S]*overflow-wrap: normal;[\s\S]*text-overflow: ellipsis;[\s\S]*white-space: nowrap/,
   );
   assert.match(
     styles,
-    /\.overview-transport-title-v4 \{[\s\S]*text-overflow: clip;[\s\S]*white-space: normal/,
+    /\.overview-transport-title-v4 \{[\s\S]*overflow-wrap: normal;[\s\S]*text-overflow: ellipsis;[\s\S]*white-space: nowrap/,
   );
   assert.match(
     styles,
