@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Paperclip, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -89,6 +89,16 @@ export function PlannerItemRow({
           type={item.type}
         />
       </button>
+      {item.attachments?.some(({ status }) => status === "ready") ? (
+        <span
+          aria-label={`${item.attachments.filter(({ status }) => status === "ready").length} attachments`}
+          className="mr-0.5 inline-flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground"
+          title={`${item.attachments.filter(({ status }) => status === "ready").length} attachments`}
+        >
+          <Paperclip aria-hidden="true" className="size-3" />
+          {item.attachments.filter(({ status }) => status === "ready").length}
+        </span>
+      ) : null}
       {interactive ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

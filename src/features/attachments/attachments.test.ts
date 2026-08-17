@@ -1,0 +1,178 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+import { publicItemMediaSchema } from "../sharing/schema.ts";
+import {
+  MAX_ATTACHMENTS_PER_ITEM,
+  MAX_IMAGE_BYTES,
+  MAX_ITEM_ATTACHMENT_BYTES,
+  MAX_OWNER_ASSET_BYTES,
+  MAX_PDF_BYTES,
+  MAX_VIDEO_BYTES,
+  TUS_CHUNK_BYTES,
+} from "./config.ts";
+import { detectAttachmentType } from "./file-signature.ts";
+import { attachmentError, prepareAttachmentInputSchema } from "./schema.ts";
+
+const encoder = new TextEncoder();
+
+function bytes(...parts: (number[] | string)[]) {
+  return new Uint8Array(
+    parts.flatMap((part) => (typeof part === "string" ? [...encoder.encode(part)] : part)),
+  );
+}
+
+test("attachment limits remain the fixed shared product contract", () => {
+  assert.deepEqual(
+    {
+      itemBytes: MAX_ITEM_ATTACHMENT_BYTES,
+      itemCount: MAX_ATTACHMENTS_PER_ITEM,
+      ownerBytes: MAX_OWNER_ASSET_BYTES,
+      imageBytes: MAX_IMAGE_BYTES,
+      pdfBytes: MAX_PDF_BYTES,
+      tusChunk: TUS_CHUNK_BYTES,
+      videoBytes: MAX_VIDEO_BYTES,
+    },
+    {
+      itemBytes: 50 * 1024 * 1024,
+      itemCount: 5,
+      ownerBytes: 250 * 1024 * 1024,
+      imageBytes: 10 * 1024 * 1024,
+      pdfBytes: 20 * 1024 * 1024,
+      tusChunk: 6 * 1024 * 1024,
+      videoBytes: 30 * 1024 * 1024,
+    },
+  );
+});
+
+test("magic-byte detection accepts only the supported complete container signatures", () => {
+  const jpeg = bytes([0xff, 0xd8, 0xff], "photo", [0xff, 0xd9]);
+  const png = bytes(
+    [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    [0, 0, 0, 0],
+    "IHDR",
+    "payload-IEND",
+  );
+  const webp = bytes("RIFF", [0, 0, 0, 0], "WEBPVP8 payload");
+  const pdf = bytes("%PDF-1.7\ntravel ticket\n%%EOF\n");
+  const webm = bytes([0x1a, 0x45, 0xdf, 0xa3], "webm", "0".repeat(32));
+  const mp4 = bytes([0, 0, 0, 32], "ftyp", "isom", "moov", "vide", "mdat");
+  const mov = bytes([0, 0, 0, 32], "ftyp", "qt  ", "moov", "vide", "mdat");
+
+  assert.equal(detectAttachmentType(jpeg)?.mimeType, "image/jpeg");
+  assert.equal(detectAttachmentType(png)?.mimeType, "image/png");
+  assert.equal(detectAttachmentType(webp)?.mimeType, "image/webp");
+  assert.equal(detectAttachmentType(pdf)?.mimeType, "application/pdf");
+  assert.equal(detectAttachmentType(webm)?.mimeType, "video/webm");
+  assert.equal(detectAttachmentType(mp4)?.mimeType, "video/mp4");
+  assert.equal(detectAttachmentType(mov)?.mimeType, "video/quicktime");
+});
+
+test("spoofed and explicitly unsupported formats fail before upload", () => {
+  assert.equal(detectAttachmentType(bytes("<html><script>alert(1)</script></html>")), null);
+  assert.equal(detectAttachmentType(bytes("%PDF-1.7\nmissing trailer")), null);
+  assert.equal(detectAttachmentType(bytes([0, 0, 0, 24], "ftyp", "heic", "mdat")), null);
+  assert.equal(detectAttachmentType(bytes([0, 0, 0, 24], "ftyp", "isom", "moov", "mdat")), null);
+});
+
+test("prepare validation uses matching media kinds and per-type limits", () => {
+  const base = {
+    byteSize: 1_024,
+    fileName: "ticket.pdf",
+    kind: "pdf" as const,
+    mimeType: "application/pdf" as const,
+    sha256: "a".repeat(64),
+  };
+  assert.equal(prepareAttachmentInputSchema.safeParse(base).success, true);
+  assert.equal(
+    prepareAttachmentInputSchema.safeParse({ ...base, byteSize: MAX_PDF_BYTES + 1 }).success,
+    false,
+  );
+  assert.equal(prepareAttachmentInputSchema.safeParse({ ...base, kind: "image" }).success, false);
+  assert.equal(
+    prepareAttachmentInputSchema.safeParse({ ...base, fileName: "bad\u0000name.pdf" }).success,
+    false,
+  );
+});
+
+test("public attachment media accepts only the exact application access route", () => {
+  const token = "00000000-0000-4000-8000-000000000001";
+  const publicRef = "b".repeat(64);
+  const valid = {
+    byteSize: 1_024,
+    id: publicRef,
+    kind: "pdf" as const,
+    label: "Ticket.pdf",
+    mimeType: "application/pdf" as const,
+    source: "attachment" as const,
+    url: `/api/share/${token}/assets/${publicRef}`,
+  };
+  assert.equal(publicItemMediaSchema.safeParse(valid).success, true);
+  assert.equal(
+    publicItemMediaSchema.safeParse({ ...valid, url: `/storage/v1/object/sign/${publicRef}` })
+      .success,
+    false,
+  );
+  assert.equal(
+    publicItemMediaSchema.safeParse({ ...valid, url: `https://assets.example.com/${publicRef}` })
+      .success,
+    false,
+  );
+});
+
+test("database lifecycle errors remain actionable", () => {
+  assert.match(attachmentError("ATTACHMENT_COUNT_LIMIT"), /five attachments/i);
+  assert.match(attachmentError("ATTACHMENT_ITEM_BYTES_LIMIT"), /50 MB/i);
+  assert.match(attachmentError("ATTACHMENT_OWNER_BYTES_LIMIT"), /250 MB/i);
+  assert.match(attachmentError("ATTACHMENT_TYPE_UNSUPPORTED"), /HEIC is not supported/i);
+});
+
+test("upload and viewer source retain private, resumable, and expiry safeguards", async () => {
+  const upload = await readFile(new URL("./upload-client.ts", import.meta.url), "utf8");
+  const viewer = await readFile(
+    new URL("./components/attachment-viewer.tsx", import.meta.url),
+    "utf8",
+  );
+  const publicRoute = await readFile(
+    new URL("../../app/api/share/[token]/assets/[publicRef]/route.ts", import.meta.url),
+    "utf8",
+  );
+  const publicMedia = await readFile(
+    new URL("../sharing/components/public-item-media.tsx", import.meta.url),
+    "utf8",
+  );
+  const publicViews = await Promise.all(
+    [
+      "../sharing/components/public-overview-card.tsx",
+      "../sharing/components/public-overview-transport-list.tsx",
+      "../sharing/components/public-table.tsx",
+      "../sharing/components/public-timeline-day.tsx",
+      "../sharing/components/public-timeline-node.tsx",
+      "../sharing/components/public-timeline-transport.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  const longImage = await readFile(
+    new URL("../sharing/long-image/actions.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(upload, /x-signature/);
+  assert.match(upload, /retryDelays/);
+  assert.match(upload, /findPreviousUploads/);
+  assert.match(upload, /keepalive: true, method: "DELETE"/);
+  assert.match(viewer, /handlePreviewError/);
+  assert.match(viewer, /ArrowLeft/);
+  assert.match(viewer, /playsInline/);
+  assert.match(publicMedia, /AttachmentViewer/);
+  assert.match(publicMedia, /hiddenAttachmentCount/);
+  assert.match(publicMedia, /google-place/);
+  assert.equal(
+    publicViews.every((source) => /PublicItemMediaGallery/.test(source)),
+    true,
+  );
+  assert.match(publicRoute, /service_public_asset_access_v1/);
+  assert.match(publicRoute, /private, no-store/);
+  assert.match(longImage, /source !== "attachment"/);
+  assert.doesNotMatch(publicRoute, /service_role|SUPABASE_SERVICE_ROLE_KEY/);
+});

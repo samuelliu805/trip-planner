@@ -89,6 +89,9 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                 </div>
               </div>
             }
+            shareAttachmentsEnabled={shareLinks.data.some(
+              (link) => link.variantId === workspace.variant.id && link.showAttachments,
+            )}
           />
         </PlannerMapProvider>
       </div>

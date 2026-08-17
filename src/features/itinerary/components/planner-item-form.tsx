@@ -20,6 +20,7 @@ import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
+import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments-section";
 export function PlannerItemForm({
   dayId,
   defaultCurrency,
@@ -28,6 +29,7 @@ export function PlannerItemForm({
   onError,
   onDraftChange,
   onSaved,
+  shareAttachmentsEnabled,
   tripId,
   type,
   unavailableTransportModes = [],
@@ -211,6 +213,7 @@ export function PlannerItemForm({
     <form
       className="space-y-4"
       onKeyDown={(event) => {
+        if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.key === "Escape") {
           event.preventDefault();
           onCancel();
@@ -286,6 +289,11 @@ export function PlannerItemForm({
           </p>
         </div>
       ) : null}
+      <ItemAttachmentsSection
+        item={item}
+        shareAttachmentsEnabled={shareAttachmentsEnabled}
+        tripId={tripId}
+      />
       <PlannerItemFormActions
         canSave={canSave}
         error={error}

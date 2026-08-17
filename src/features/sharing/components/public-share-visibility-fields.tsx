@@ -21,6 +21,12 @@ export function PublicShareVisibilityFields({
         role="group"
       >
         <ShareSettingOption
+          checked={settings.showAttachments}
+          description="Only files individually marked ‘Show on shared trip’."
+          label="Attachments"
+          onCheckedChange={(value) => onSettingChange("showAttachments", value)}
+        />
+        <ShareSettingOption
           checked={settings.showMapRoutes}
           description="Shared places, maps, and safe saved-route details."
           label="Maps and routes"
@@ -79,7 +85,7 @@ export function PublicShareVisibilityFields({
         </div>
       </details>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Notes and links can contain booking references. Review them before publishing.
+        Notes, links, and attachments can contain booking references. Review them before publishing.
       </p>
     </ShareSettingSection>
   );

@@ -97,6 +97,7 @@ import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 import "../variants/comparison.test.ts";
 import "../variants/decision-summary.test.ts";
 import "../sharing/sharing.test.ts";
+import "../attachments/attachments.test.ts";
 import "../research/research.test.ts";
 
 test("Matrix transport routes prefer airport codes and compact terminal names", () => {

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import {
   clearItineraryItemsSchema,
   type ClearItineraryItemsInput,
@@ -198,6 +199,7 @@ export async function deleteItineraryItem(
       error: mutationError(error?.message ?? "You do not have permission to delete this item."),
     };
 
+  await drainAssetDeletionQueue(10);
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data };
 }
@@ -234,6 +236,7 @@ export async function clearItineraryItems(
       error: mutationError(error?.message ?? "The selected cells could not be cleared."),
     };
 
+  await drainAssetDeletionQueue(Math.min(100, parsed.data.itemIds.length * 5));
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data: { ids: parsed.data.itemIds } };
 }

@@ -48,6 +48,7 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
       const day = previous?.days.find(({ id }) => id === input.dayId);
       const optimistic: ItineraryItem = {
         booking_url: input.links?.[0]?.url ?? input.bookingUrl ?? null,
+        attachments: [],
         created_at: new Date().toISOString(),
         day_id: input.dayId,
         details: input.details ?? {},

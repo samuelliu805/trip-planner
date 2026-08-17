@@ -1,6 +1,7 @@
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
 import { publicTransportRouteLabel } from "../presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
+import { PublicItemMediaGallery } from "./public-item-media";
 import { PublicQuickActions } from "./public-quick-actions";
 
 export function PublicOverviewTransportList({
@@ -17,7 +18,7 @@ export function PublicOverviewTransportList({
       data-public-transport=""
       role="list"
     >
-      {items.map(({ item }) => {
+      {items.map(({ item, media }) => {
         const place = item.place?.localityName ?? item.place?.displayName;
         const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
         const route = publicTransportRouteLabel(item);
@@ -50,6 +51,7 @@ export function PublicOverviewTransportList({
                 ) : null}
               </span>
             </div>
+            <PublicItemMediaGallery media={media} variant="transport" />
             <PublicQuickActions compact item={item} quiet />
           </div>
         );

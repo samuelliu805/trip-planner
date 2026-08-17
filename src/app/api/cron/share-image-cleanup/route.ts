@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const cleanupBatchSchema = z.array(
@@ -9,19 +10,14 @@ const cleanupBatchSchema = z.array(
   }),
 );
 
-export async function GET(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
+async function cleanupExpiredShareImages() {
   const supabase = createAdminClient();
   const batchResult = await supabase.rpc("expired_share_image_cleanup_batch_v1", {
     requested_limit: 100,
   });
   const batch = cleanupBatchSchema.safeParse(batchResult.data);
   if (batchResult.error || !batch.success) {
-    return Response.json({ error: "Cleanup batch unavailable" }, { status: 500 });
+    return { deletedFiles: 0, error: "Share-image cleanup batch unavailable", revokedImages: 0 };
   }
 
   const paths = [...new Set(batch.data.flatMap((candidate) => candidate.paths))];
@@ -29,7 +25,8 @@ export async function GET(request: Request) {
     const { error } = await supabase.storage
       .from("share-images")
       .remove(paths.slice(index, index + 100));
-    if (error) return Response.json({ error: "Storage cleanup failed" }, { status: 500 });
+    if (error)
+      return { deletedFiles: 0, error: "Share-image storage cleanup failed", revokedImages: 0 };
   }
 
   const exportIds = batch.data.map((candidate) => candidate.exportId);
@@ -37,8 +34,30 @@ export async function GET(request: Request) {
     target_export_ids: exportIds,
   });
   if (finalizeResult.error) {
-    return Response.json({ error: "Cleanup could not be finalized" }, { status: 500 });
+    return {
+      deletedFiles: paths.length,
+      error: "Share-image cleanup could not be finalized",
+      revokedImages: 0,
+    };
   }
 
-  return Response.json({ deletedFiles: paths.length, revokedImages: finalizeResult.data });
+  return { deletedFiles: paths.length, error: null, revokedImages: finalizeResult.data };
+}
+
+export async function GET(request: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || request.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const [shareImages, assets] = await Promise.all([
+    cleanupExpiredShareImages(),
+    drainAssetDeletionQueue(100),
+  ]);
+  if (shareImages.error || assets.error)
+    return Response.json(
+      { assets, error: shareImages.error ?? assets.error, shareImages },
+      { status: 500 },
+    );
+  return Response.json({ assets, shareImages });
 }

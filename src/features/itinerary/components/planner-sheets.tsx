@@ -69,6 +69,7 @@ type PlannerSheetsProps = {
   selectionSourceDayId?: string;
   settings: React.ReactNode;
   settingsOpen: boolean;
+  shareAttachmentsEnabled: boolean;
   targetDays: Set<string>;
   tripId: string;
   unavailableTransportModes: TransportMode[];
@@ -118,6 +119,7 @@ export function PlannerSheets({
   selectionSourceDayId,
   settings,
   settingsOpen,
+  shareAttachmentsEnabled,
   targetDays,
   tripId,
   unavailableTransportModes,
@@ -162,6 +164,7 @@ export function PlannerSheets({
                   onEditorClose();
                   if (created) onItemCreated(savedItem);
                 }}
+                shareAttachmentsEnabled={shareAttachmentsEnabled}
                 tripId={tripId}
                 type={editor.type}
                 unavailableTransportModes={unavailableTransportModes}

@@ -47,7 +47,7 @@ import {
   publicRouteCalculationInputSchema,
   publicViewSchema,
 } from "./schema.ts";
-import type { PublicItinerary, PublicItineraryItem } from "./types.ts";
+import type { PublicItemMedia, PublicItinerary, PublicItineraryItem } from "./types.ts";
 import { defaultShareSettings } from "./components/public-share-settings.ts";
 import {
   paginateTimelineDayHeights,
@@ -319,15 +319,20 @@ test("Overview media presentation handles zero, one, and multiple item media", (
     url: `/api/public-place-photo/00000000-0000-4000-8000-000000000001/${ref("m")}?photo=places%2Fone%2Fphotos%2Ftwo&signature=${"a".repeat(64)}`,
   };
   const attachmentImage = {
+    byteSize: 1_024,
     id: "attachment-image",
     kind: "image" as const,
+    label: "Museum.jpg",
+    mimeType: "image/jpeg" as const,
     source: "attachment" as const,
     url: "https://assets.example.com/museum.jpg",
   };
   const attachmentPdf = {
+    byteSize: 2_048,
     id: "attachment-pdf",
     kind: "pdf" as const,
     label: "Museum tickets.pdf",
+    mimeType: "application/pdf" as const,
     source: "attachment" as const,
     url: "https://assets.example.com/tickets.pdf",
   };
@@ -350,8 +355,11 @@ test("Overview media presentation handles zero, one, and multiple item media", (
 
 test("Overview lays out a six-item mixed day in stable manual order with one feature cap", () => {
   const image = (id: string) => ({
+    byteSize: 1_024,
     id,
     kind: "image" as const,
+    label: `${id}.jpg`,
+    mimeType: "image/jpeg" as const,
     source: "attachment" as const,
     url: `https://assets.example.com/${id}.jpg`,
   });
@@ -393,7 +401,7 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
   assert.equal(layout.filter(({ featured }) => featured).length, 1);
   assert.equal(
     layout.flatMap(({ media }) => media).filter(({ kind }) => kind === "image").length,
-    1,
+    6,
   );
   assert.equal(layout.find(({ item }) => item.title === "Train")?.size, "compact");
   assert.deepEqual(
@@ -412,17 +420,33 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
   );
 });
 
-test("each Day presents one deterministic cover image while retaining PDF documents", () => {
-  const image = (id: string, source: "attachment" | "google_place" = "google_place") => ({
-    id,
-    kind: "image" as const,
-    source,
-    url: `https://assets.example.com/${id}.jpg`,
-  });
+test("each Day presents one deterministic place cover while retaining item attachments", () => {
+  const image = (
+    id: string,
+    source: "attachment" | "google_place" = "google_place",
+  ): PublicItemMedia =>
+    source === "attachment"
+      ? {
+          byteSize: 1_024,
+          id,
+          kind: "image",
+          label: `${id}.jpg`,
+          mimeType: "image/jpeg",
+          source,
+          url: `https://assets.example.com/${id}.jpg`,
+        }
+      : {
+          id,
+          kind: "image",
+          source,
+          url: `https://assets.example.com/${id}.jpg`,
+        };
   const pdf = {
+    byteSize: 2_048,
     id: "ticket",
     kind: "pdf" as const,
     label: "Ticket.pdf",
+    mimeType: "application/pdf" as const,
     source: "attachment" as const,
     url: "https://assets.example.com/ticket.pdf",
   };
@@ -469,7 +493,7 @@ test("each Day presents one deterministic cover image while retaining PDF docume
     mediaByItem.get(ref("j"))?.map(({ id }) => id),
     ["attachment", "ticket"],
   );
-  assert.equal([...mediaByItem.values()].flat().filter(({ kind }) => kind === "image").length, 1);
+  assert.equal([...mediaByItem.values()].flat().filter(({ kind }) => kind === "image").length, 3);
 });
 
 test("Timeline projects manual order and keeps transport out of the node rail", () => {
@@ -530,11 +554,13 @@ test("public schema keeps old payloads valid and accepts only safe optional medi
             ...itinerary.days[0].items[0],
             media: [
               {
-                id: "ticket",
+                byteSize: 2_048,
+                id: "a".repeat(64),
                 kind: "pdf",
                 label: "Ticket.pdf",
+                mimeType: "application/pdf",
                 source: "attachment",
-                url: "https://assets.example.com/ticket.pdf",
+                url: `/api/share/00000000-0000-4000-8000-000000000001/assets/${"a".repeat(64)}`,
               },
             ],
           },
@@ -1671,10 +1697,10 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(controller, /new URLSearchParams\(searchParams\.toString\(\)\)/);
   assert.match(controller, /if \(legacyTemplateOverride\) url\.searchParams\.set\("template"/);
   assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);
-  assert.match(data, /get_public_share_page_v1/);
-  assert.match(data, /list_share_pages_v1/);
-  assert.match(actions, /create_share_page_v2/);
-  assert.match(actions, /update_share_page_v2/);
+  assert.match(data, /get_public_share_page_v2/);
+  assert.match(data, /list_share_pages_v2/);
+  assert.match(actions, /create_share_page_v3/);
+  assert.match(actions, /update_share_page_v3/);
   assert.doesNotMatch(actions, /rotate_public_itinerary_link/);
   assert.match(baseMigration, /set template_id = 'standard', template_version = 1/);
   assert.ok(

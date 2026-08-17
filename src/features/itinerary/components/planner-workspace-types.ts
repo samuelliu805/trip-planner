@@ -17,6 +17,7 @@ export type PlannerWorkspaceProps = {
   initialVariants: PlannerVariant[];
   initialWorkspace: PlannerWorkspace;
   settings: ReactNode;
+  shareAttachmentsEnabled: boolean;
   shareControls?: ReactNode;
   trip: Tables<"trips">;
 };

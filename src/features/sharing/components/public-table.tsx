@@ -9,9 +9,11 @@ import {
 import { matrixCategoryColumns } from "@/features/itinerary/components/matrix-columns";
 import { transportModeLabels, type TransportMode } from "@/features/itinerary/types";
 
+import { orderedPublicItemMedia } from "../public-media-presentation";
+import type { PublicItinerary, PublicItineraryItem } from "../types";
+import { PublicItemMediaGallery } from "./public-item-media";
 import { PublicQuickActions } from "./public-quick-actions";
 import { useContainedPublicMatrix } from "./use-contained-public-matrix";
-import type { PublicItinerary, PublicItineraryItem } from "../types";
 
 function publicTransportMode(item: PublicItineraryItem): TransportMode | null {
   if (item.type === "flight") return "flight";
@@ -141,6 +143,10 @@ export function PublicTable({
                             title={item.title}
                             transportMode={publicTransportMode(item)}
                             type={item.type}
+                          />
+                          <PublicItemMediaGallery
+                            media={orderedPublicItemMedia(item)}
+                            variant="table"
                           />
                           <PublicQuickActions item={item} />
                         </div>

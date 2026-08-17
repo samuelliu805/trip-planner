@@ -257,6 +257,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         selectionSourceDayId={c.workspace.days[c.visibleSelectionBounds.top]?.id}
         settings={props.settings}
         settingsOpen={c.settingsOpen}
+        shareAttachmentsEnabled={props.shareAttachmentsEnabled}
         targetDays={c.clipboard.targetDays}
         tripId={props.trip.id}
         unavailableTransportModes={c.unavailableTransportModes}

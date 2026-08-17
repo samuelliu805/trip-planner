@@ -40,7 +40,7 @@ export async function prepareShareImageVersion(
   const supabase = await createClient();
   const [{ data: userData }, pageResult] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.rpc("owner_share_page_v1", { target_share_page_id: input.data.sharePageId }),
+    supabase.rpc("owner_share_page_v2", { target_share_page_id: input.data.sharePageId }),
   ]);
   if (!userData.user || pageResult.error) return { error: imageError(pageResult.error?.message) };
   const page = publicItineraryLinkSchema.safeParse(pageResult.data);
@@ -49,7 +49,7 @@ export async function prepareShareImageVersion(
   let destinationPage = page.data;
   if (page.data.longImageQrDestination === "share_page") {
     const destinationResult = page.data.longImageQrSharePageId
-      ? await supabase.rpc("owner_share_page_v1", {
+      ? await supabase.rpc("owner_share_page_v2", {
           target_share_page_id: page.data.longImageQrSharePageId,
         })
       : { data: null, error: null };
@@ -75,7 +75,8 @@ export async function prepareShareImageVersion(
     requested_qr_destination_type: qrDestinationType,
     requested_qr_destination_url: qrDestinationUrl,
     requested_render_config: renderConfig,
-    target_export_id: input.data.exportId,
+    // The RPC intentionally accepts null for a new export; generated types lose that nullability.
+    target_export_id: input.data.exportId as string,
     target_share_page_id: page.data.id,
   });
   if (error || !data) return { error: imageError(error?.message) };
@@ -83,9 +84,19 @@ export async function prepareShareImageVersion(
   const enrichedSnapshot = await getPublicItinerary(page.data.publicToken);
   const parsedRenderConfig = longImageRenderConfigSchema.safeParse(rpcData.renderConfig);
   if (!parsedRenderConfig.success) return { error: "The image settings could not be read." };
-  const parsedSnapshot = publicItinerarySchema.safeParse(
-    enrichedSnapshot ?? rpcData.sourceSnapshot,
-  );
+  const attachmentFreeSnapshot = enrichedSnapshot
+    ? {
+        ...enrichedSnapshot,
+        days: enrichedSnapshot.days.map((day) => ({
+          ...day,
+          items: day.items.map((item) => {
+            const media = item.media?.filter(({ source }) => source !== "attachment");
+            return { ...item, media: media?.length ? media : undefined };
+          }),
+        })),
+      }
+    : rpcData.sourceSnapshot;
+  const parsedSnapshot = publicItinerarySchema.safeParse(attachmentFreeSnapshot);
   if (!parsedSnapshot.success) return { error: "The image snapshot could not be read." };
   let sourceSnapshot;
   try {

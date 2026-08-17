@@ -8,6 +8,7 @@ export type PlannerItemFormProps = {
   onDraftChange?: (item: ItineraryItem | null) => void;
   onError: (message: string) => void;
   onSaved: (item: ItineraryItem) => void;
+  shareAttachmentsEnabled: boolean;
   tripId: string;
   type: ItineraryItemType;
   unavailableTransportModes?: TransportMode[];

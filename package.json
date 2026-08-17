@@ -31,7 +31,9 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
+    "sharp": "0.34.5",
     "tailwind-merge": "latest",
+    "tus-js-client": "4.3.1",
     "zod": "latest"
   },
   "devDependencies": {
