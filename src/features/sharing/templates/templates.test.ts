@@ -64,17 +64,28 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
   assert.equal(ethereal.sourceMode, "layout");
   assert.equal(journal.sourceMode, "layout");
   assert.equal(traverse.sourceMode, "layout");
+  for (const template of [standard, bentoV1, bentoV2]) {
+    const navigation = template.layout.children.find(
+      (node) => node.type === "region" && node.name === "view-navigation",
+    );
+    const workspace = template.layout.children.find(
+      (node) => node.type === "region" && node.name === "workspace",
+    );
+    assert.equal(navigation?.type, "region");
+    assert.equal(JSON.stringify(navigation).includes('"name":"view-switcher"'), true);
+    assert.equal(JSON.stringify(workspace).includes('"name":"view-switcher"'), false);
+  }
   assert.equal(
     standard.digest,
-    "sha256-423220052fc7a3c6bc4836b6ee475a13e95ffecef074efd1574d2900a4d69317",
+    "sha256-3dc4f599d71ca425c554718b628676dd88deff1b5f38ca11289b9718a94a06c7",
   );
   assert.equal(
     bentoV1.digest,
-    "sha256-77f1df05abc0fdf9822e6a03f15c15a347c59537ca9607fd77a1bce9a5828d6d",
+    "sha256-7dca663c9eab80a28c8d4dbad175a18973aa63fd8cc23b9d37c5cb3d4657035c",
   );
   assert.equal(
     bentoV2.digest,
-    "sha256-2fe05ab56e72a2cbd0ebfc5bcd52b063d8cbc6b360a37d3ceae9508f38a0474b",
+    "sha256-287bf4f40c8d8bef830e5e8ff4ca4b33e6db04aeb8afcf072cb9acddf6690c76",
   );
   assert.equal(
     ethereal.digest,

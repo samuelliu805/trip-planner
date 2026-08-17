@@ -26,7 +26,7 @@ These rules apply to all future UI work in this repository.
 
 - Treat any blank strip between an editable or read-only table and its bottom boundary as a regression. Bottom navigation that is already a flex sibling must not be compensated for with Matrix padding, spacer rows, margins, or viewport-height arithmetic.
 - On tablet, a short table must fill the Matrix to its bottom boundary: distribute spare height across data rows instead of leaving an empty strip after the final row.
-- Tablet bottom view navigation must be a non-scrolling flex sibling, not an overlay on the Table. The final row must terminate above it without padding or a hidden overlap.
+- Mobile and tablet bottom view navigation must span the full shell width as a non-scrolling flex sibling, not an overlay on the Table. At maximum Matrix scroll, the final row must terminate directly above it without padding, a blank strip, or a hidden overlap.
 - The app bar/header and bottom navigation must be non-scrolling siblings of the table workspace. At tablet widths, only the Matrix may scroll; `window.scrollY`, the app bar top, and the table workspace bottom must remain fixed while the Matrix is forced to every scroll boundary.
 - A table header must meet the first data row with no spacer or unused row height. Assert that the first row's top equals the header's bottom within 1px in both editable and read-only tables.
 - Frozen header cells and their body columns must share one explicit width and left offset. At 768px, 820px, and 1024px, assert that the first header cell and first body cell have matching `left`, `right`, and `width` values after horizontal scrolling.

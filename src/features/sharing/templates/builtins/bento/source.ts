@@ -12,10 +12,12 @@ export const bentoPublicTemplateSourceV1 = {
       <tp-part name="viewer-share-dialog" />
     </tp-region>
   </tp-region>
+  <tp-region name="view-navigation">
+    <tp-part name="view-switcher" />
+  </tp-region>
   <tp-region name="workspace">
     <tp-region name="content">
       <tp-part name="active-view" />
-      <tp-part name="view-switcher" />
     </tp-region>
     <tp-part name="map-workspace" />
   </tp-region>

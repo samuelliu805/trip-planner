@@ -116,7 +116,18 @@
   }
 }
 
-@media (min-width: 640px) and (max-width: 899px) {
+@media (max-width: 1199px) {
+  .public-itinerary-shell .public-matrix {
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+
+  .public-itinerary-shell .public-matrix::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   .public-itinerary-shell .public-matrix > [role="grid"] {
     padding-bottom: 0;
   }
@@ -136,11 +147,5 @@
   .public-matrix .matrix-grid-header .matrix-date-column {
     z-index: 80;
     background-color: var(--muted);
-  }
-}
-
-@media (max-width: 639px) {
-  .public-itinerary-shell .public-matrix > [role="grid"] {
-    padding-bottom: 6rem;
   }
 }

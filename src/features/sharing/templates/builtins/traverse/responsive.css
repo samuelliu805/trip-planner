@@ -39,19 +39,7 @@
     min-height: 2.875rem;
   }
 
-  .public-template-traverse .public-template-region-view-navigation {
-    position: static;
-    height: auto;
-  }
-
   .public-template-traverse .public-view-switcher {
-    position: absolute;
-    top: auto;
-    right: 0.625rem;
-    bottom: 0.5625rem;
-    left: 0.625rem;
-    z-index: 70;
-    width: auto;
     padding: 0.25rem;
     background: rgb(21 27 30 / 95%);
     box-shadow: 0 12px 32px rgb(13 26 31 / 26%);
@@ -116,6 +104,11 @@
     align-items: start;
     margin: 0;
     padding: 0.0625rem 0 0.75rem;
+  }
+
+  .public-template-traverse .public-overview-empty {
+    grid-column: 2;
+    min-width: 0;
   }
 
   .public-template-traverse .overview-day-title-v4 strong {

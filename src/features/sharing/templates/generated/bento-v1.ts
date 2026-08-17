@@ -20,7 +20,7 @@ export const bentoPublicTemplateV1 = {
     views: ["overview", "table", "timeline"],
   },
   compilerVersion: "1.0.0",
-  digest: "sha256-77f1df05abc0fdf9822e6a03f15c15a347c59537ca9607fd77a1bce9a5828d6d",
+  digest: "sha256-7dca663c9eab80a28c8d4dbad175a18973aa63fd8cc23b9d37c5cb3d4657035c",
   id: "bento",
   key: "bento@1",
   layout: {
@@ -52,13 +52,19 @@ export const bentoPublicTemplateV1 = {
       {
         children: [
           {
+            name: "view-switcher",
+            type: "part",
+          },
+        ],
+        name: "view-navigation",
+        type: "region",
+      },
+      {
+        children: [
+          {
             children: [
               {
                 name: "active-view",
-                type: "part",
-              },
-              {
-                name: "view-switcher",
                 type: "part",
               },
             ],

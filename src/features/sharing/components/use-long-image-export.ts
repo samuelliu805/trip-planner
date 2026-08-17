@@ -106,12 +106,16 @@ export function useLongImageExport({
           updatedAt: now,
           versionNumber: prepared.data.versionNumber,
         });
-        setProgress(
-          finalized.data.partCount === 1
-            ? "Image ready. Download started."
-            : `Image ready. Downloading ${finalized.data.partCount} files.`,
-        );
-        downloadShareImageParts(finalized.data.permanentSlug, finalized.data.partCount);
+        if (window.matchMedia("(min-width: 1200px)").matches) {
+          setProgress(
+            finalized.data.partCount === 1
+              ? "Image ready. Download started."
+              : `Image ready. Downloading ${finalized.data.partCount} files.`,
+          );
+          downloadShareImageParts(finalized.data.permanentSlug, finalized.data.partCount);
+        } else {
+          setProgress("Image ready. Open it from this panel.");
+        }
       } catch (caught) {
         if (uploadedPaths.length)
           await createClient().storage.from("share-images").remove(uploadedPaths);

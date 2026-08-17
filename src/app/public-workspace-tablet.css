@@ -6,46 +6,34 @@
   }
 }
 
-@media (min-width: 640px) and (max-width: 899px) {
-  .public-itinerary-shell .public-content-pane {
-    display: flex;
-    min-height: 0;
-    flex-direction: column;
-  }
-
-  .public-itinerary-shell
-    .public-content-pane
-    > .public-template-part-host[data-tp-part="active-view"] {
-    height: auto;
-    min-height: 0;
-    flex: 1 1 0;
-  }
-
-  .public-itinerary-shell
-    .public-content-pane
-    > .public-template-part-host[data-tp-part="view-switcher"] {
-    display: block;
-    flex: 0 0 auto;
-  }
-
+@media (max-width: 1199px) {
   .public-itinerary-shell .public-itinerary-grid {
     order: 2;
   }
 
   .public-itinerary-shell .public-template-region-view-navigation {
     position: relative;
+    inset: auto;
     order: 3;
     display: block;
+    width: 100%;
     height: auto;
+    min-width: 0;
+    padding: 0;
     flex: 0 0 auto;
+    transform: translateZ(0);
   }
 
   .public-itinerary-shell .public-view-switcher {
     position: static;
+    inset: auto;
     width: 100%;
+    max-width: none;
     height: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin: 0;
     border-radius: 0;
+    transform: none;
   }
 
   .public-itinerary-shell .public-view-scroll {
@@ -55,5 +43,9 @@
   .public-itinerary-shell .overview-v4,
   .public-itinerary-shell .timeline-v4 {
     padding-bottom: 0.75rem;
+  }
+
+  .public-itinerary-shell.public-template-traverse .public-view-scroll {
+    padding-top: 0;
   }
 }

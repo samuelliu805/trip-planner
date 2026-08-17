@@ -20,7 +20,7 @@ export const standardPublicTemplateV1 = {
     views: ["overview", "table", "timeline"],
   },
   compilerVersion: "1.0.0",
-  digest: "sha256-423220052fc7a3c6bc4836b6ee475a13e95ffecef074efd1574d2900a4d69317",
+  digest: "sha256-3dc4f599d71ca425c554718b628676dd88deff1b5f38ca11289b9718a94a06c7",
   id: "standard",
   key: "standard@1",
   layout: {
@@ -52,13 +52,19 @@ export const standardPublicTemplateV1 = {
       {
         children: [
           {
+            name: "view-switcher",
+            type: "part",
+          },
+        ],
+        name: "view-navigation",
+        type: "region",
+      },
+      {
+        children: [
+          {
             children: [
               {
                 name: "active-view",
-                type: "part",
-              },
-              {
-                name: "view-switcher",
                 type: "part",
               },
             ],

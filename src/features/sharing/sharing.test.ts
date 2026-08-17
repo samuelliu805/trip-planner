@@ -1142,7 +1142,10 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(exportDialogs, /Revoke image link/);
   assert.match(exportDialogs, /renews it for 30 days/);
   assert.match(exportPanel, /Trip updated/);
-  assert.match(exportPanel, /Create image & download/);
+  assert.match(exportPanel, /Create image &amp; download/);
+  assert.match(exportPanel, /min-\[1200px\]:hidden">Create image/);
+  assert.match(exportPanel, /min-\[1200px\]:hidden[\s\S]*Open image/);
+  assert.match(exportPanel, /hidden min-h-11 w-full min-\[1200px\]:inline-flex/);
   assert.match(exportPanel, /Manage image link/);
   assert.match(exportPanel, /Open page/);
   assert.match(exportPanel, /Copy link/);
@@ -1156,6 +1159,8 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(clipboardHelper, /navigator\.clipboard/);
   assert.match(clipboardHelper, /document\.execCommand\("copy"\)/);
   assert.match(exportController, /downloadShareImageParts/);
+  assert.match(exportController, /window\.matchMedia\("\(min-width: 1200px\)"\)\.matches/);
+  assert.match(exportController, /Image ready\. Open it from this panel\./);
   assert.match(exportDocument, /<PublicTimeline/);
   assert.match(exportDocument, /<PublicTripHeader/);
   assert.doesNotMatch(exportDocument, /Timeline export/);
@@ -1349,9 +1354,13 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
     styles,
     /\.public-template-standard \.public-matrix > \[role="grid"\],[\s\S]*\.public-template-bento \.public-matrix > \[role="grid"\][\s\S]*padding-bottom: 5rem/,
   );
-  assert.match(
+  assert.doesNotMatch(
     styles,
     /max-width: 639px[\s\S]*\.public-itinerary-shell \.public-matrix > \[role="grid"\] \{[\s\S]*padding-bottom: 6rem/,
+  );
+  assert.match(
+    styles,
+    /max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-matrix \{[\s\S]*scrollbar-width: none;[\s\S]*scrollbar-gutter: auto/,
   );
   assert.match(
     styles,
@@ -1434,11 +1443,11 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
   assert.match(
     styles,
-    /min-width: 640px[\s\S]*max-width: 899px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*flex: 0 0 auto[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: 100%/,
+    /max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*width: 100%[\s\S]*flex: 0 0 auto[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: 100%[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
   );
   assert.match(
     styles,
-    /\.public-content-pane[\s\S]*display: flex[\s\S]*flex-direction: column[\s\S]*data-tp-part="active-view"[\s\S]*flex: 1 1 0[\s\S]*data-tp-part="view-switcher"[\s\S]*flex: 0 0 auto/,
+    /\.public-template-traverse \.public-overview-empty \{[\s\S]*grid-column: 2/,
   );
   assert.match(styles, /max-width: 899px/);
   assert.match(styles, /\.public-matrix \.matrix-day-column/);
@@ -1485,6 +1494,8 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
   assert.match(viewerShare, /--dialog-viewport-height/);
   assert.match(viewerShare, /downloadShareImageParts/);
+  assert.match(viewerShare, /min-\[1200px\]:hidden[\s\S]*Open image/);
+  assert.match(viewerShare, /hidden min-h-11 w-full min-\[1200px\]:inline-flex/);
   assert.ok(
     viewerShare.indexOf("<ShareLinkActions") < viewerShare.indexOf("<LongImageExportPanel"),
     "share link actions stay above image generation",
