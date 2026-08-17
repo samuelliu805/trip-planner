@@ -90,6 +90,13 @@ body:has(.trip-planner-page) {
   bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
 }
 
+.planner-editor-sheet {
+  max-width: 100%;
+  overflow: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
 @media (min-width: 640px) and (max-width: 1199px) {
   .planner-matrix > [role="grid"] {
     display: flex;
@@ -197,7 +204,10 @@ body:has(.trip-planner-page) {
     border-left: 0 !important;
     border-top: 1px solid var(--border);
     border-radius: 0.75rem 0.75rem 0 0;
+    overflow: hidden;
+    overscroll-behavior-x: none;
     padding-bottom: env(safe-area-inset-bottom);
+    touch-action: pan-y;
   }
 
   .planner-editor-sheet input,

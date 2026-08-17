@@ -80,6 +80,7 @@ async function readAppStyles() {
         "../../app/planner-workspace.css",
         "../../app/public-workspace.css",
         "../../app/public-workspace-tablet.css",
+        "../../app/public-sharing-media.css",
         "../../app/public-sharing-overview.css",
         "../../app/public-sharing-overview-transport.css",
         "../../app/public-sharing-table.css",
@@ -1224,7 +1225,7 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.doesNotMatch(exportRenderer, /fillText|timelineItemHeight/);
 });
 
-test("public UI contracts keep distinct views, a bottom switcher, and the existing map shell", async () => {
+test("public UI contracts keep distinct views, a responsive switcher, and the map shell", async () => {
   const overview = await readFile(
     new URL("./components/public-overview.tsx", import.meta.url),
     "utf8",
@@ -1505,7 +1506,11 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
   assert.match(
     styles,
-    /max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*width: 100%[\s\S]*flex: 0 0 auto[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: 100%[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+    /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*display: flex[\s\S]*height: 4rem[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: min\(22\.5rem, 100%\)[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /max-width: 639px[\s\S]*\.public-itinerary-shell \.public-itinerary-grid \{[\s\S]*order: 2[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*width: 100%[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*width: 100%/,
   );
   assert.match(
     styles,

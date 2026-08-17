@@ -214,7 +214,7 @@ export function PlannerItemForm({
 
   return (
     <form
-      className="space-y-4"
+      className="max-w-full min-w-0 space-y-4 overflow-x-hidden"
       onKeyDown={(event) => {
         if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.key === "Escape") {

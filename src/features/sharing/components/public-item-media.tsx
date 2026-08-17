@@ -126,7 +126,7 @@ export function PublicItemMediaGallery({
   );
   const visibleAttachments = attachmentMedia.slice(0, 3);
   const hiddenAttachmentCount = attachmentMedia.length - visibleAttachments.length;
-  const compactAttachments = variant !== "overview" || googleMedia.length > 0;
+  const showAttachmentPreviews = variant === "overview" || variant === "timeline";
   const showGoogleMedia = variant === "overview" && googleMedia.length > 0;
   if (!showGoogleMedia && !attachmentMedia.length) return null;
 
@@ -135,8 +135,10 @@ export function PublicItemMediaGallery({
     setViewerId(attachment.id);
   }
 
+  const mixedOverviewMedia = showGoogleMedia && attachmentMedia.length > 0;
+
   return (
-    <div className={`public-item-media ${variant}`}>
+    <div className={`public-item-media ${variant}${mixedOverviewMedia ? " mixed-media" : ""}`}>
       {showGoogleMedia ? (
         <div className={`public-media-gallery media-grid-v4 count-1 google-place ${variant}`}>
           <div className="public-media-entry">
@@ -144,9 +146,7 @@ export function PublicItemMediaGallery({
           </div>
         </div>
       ) : null}
-      {compactAttachments ? (
-        <CompactAttachments attachments={attachmentMedia} onOpen={openAttachment} />
-      ) : visibleAttachments.length ? (
+      {showAttachmentPreviews && visibleAttachments.length ? (
         <div
           className={`public-media-gallery media-grid-v4 count-${visibleAttachments.length} attachments ${variant}`}
         >
@@ -162,6 +162,7 @@ export function PublicItemMediaGallery({
                 type="button"
               >
                 <AttachmentPreview media={entry} />
+                <span className="media-view-v4">View</span>
               </button>
               {hiddenAttachmentCount > 0 && index === visibleAttachments.length - 1 ? (
                 <span className="media-more-v4">+{hiddenAttachmentCount}</span>
@@ -169,7 +170,9 @@ export function PublicItemMediaGallery({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <CompactAttachments attachments={attachmentMedia} onOpen={openAttachment} />
+      )}
       {showGoogleMedia ? (
         <div className="public-media-attribution">
           {googleMedia.map((entry) => (

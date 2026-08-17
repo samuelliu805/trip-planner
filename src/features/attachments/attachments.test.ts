@@ -177,6 +177,10 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     new URL("./components/attachment-viewer.tsx", import.meta.url),
     "utf8",
   );
+  const continuousPdf = await readFile(
+    new URL("./components/continuous-pdf-viewer.tsx", import.meta.url),
+    "utf8",
+  );
   const publicRoute = await readFile(
     new URL("../../app/api/share/[token]/assets/[publicRef]/route.ts", import.meta.url),
     "utf8",
@@ -190,12 +194,20 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     new URL("../itinerary/components/planner-item-form.tsx", import.meta.url),
     "utf8",
   );
+  const plannerSheets = await readFile(
+    new URL("../itinerary/components/planner-sheets.tsx", import.meta.url),
+    "utf8",
+  );
+  const plannerStyles = await readFile(
+    new URL("../../app/planner-workspace.css", import.meta.url),
+    "utf8",
+  );
   const attachmentSection = await readFile(
     new URL("./components/item-attachments-section.tsx", import.meta.url),
     "utf8",
   );
   const publicMediaStyles = await readFile(
-    new URL("../../app/public-sharing-overview.css", import.meta.url),
+    new URL("../../app/public-sharing-media.css", import.meta.url),
     "utf8",
   );
   const publicViews = await Promise.all(
@@ -220,16 +232,33 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(viewer, /handlePreviewError/);
   assert.match(viewer, /ArrowLeft/);
   assert.match(viewer, /playsInline/);
+  assert.match(viewer, /ContinuousPdfViewer/);
+  assert.match(viewer, /fixed inset-0 flex[\s\S]*flex-col overflow-hidden/);
+  assert.doesNotMatch(viewer, /<iframe/);
+  assert.match(continuousPdf, /Array\.from\(\{ length: pageCount \}/);
+  assert.match(continuousPdf, /data-continuous-pdf/);
+  assert.match(continuousPdf, /data-pdf-page/);
   assert.match(publicMedia, /AttachmentViewer/);
   assert.match(publicMedia, /hiddenAttachmentCount/);
   assert.match(publicMedia, /google-place/);
-  assert.match(publicMedia, /variant !== "overview" \|\| googleMedia\.length > 0/);
+  assert.match(publicMedia, /variant === "overview" \|\| variant === "timeline"/);
+  assert.match(publicMedia, /media-view-v4/);
+  assert.match(publicMedia, /mixed-media/);
   assert.match(publicMedia, /public-attachment-chip/);
   assert.match(publicMediaStyles, /\.public-attachment-chip \{[\s\S]*min-height: 2\.75rem/);
   assert.match(itemAction, /attachments:asset_links/);
   assert.match(itemAction, /ownerAttachmentsFromRows\(attachmentRows\)/);
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
   assert.match(itemForm, /pendingLabel=\{attachmentPending \? "Updating attachments…"/);
+  assert.match(itemForm, /max-w-full min-w-0[\s\S]*overflow-x-hidden/);
+  assert.match(
+    plannerSheets,
+    /overflow-x-hidden[\s\S]*overflow-y-auto[\s\S]*data-planner-editor-scroll/,
+  );
+  assert.match(
+    plannerStyles,
+    /\.planner-editor-sheet \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior-x: none[\s\S]*touch-action: pan-y/,
+  );
   assert.equal(
     publicViews.every((source) => /PublicItemMediaGallery/.test(source)),
     true,

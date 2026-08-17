@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, Download, ExternalLink, RotateCw, ZoomIn } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatBytes, type AttachmentKind } from "@/features/attachments/config";
+
+const ContinuousPdfViewer = dynamic(
+  () => import("./continuous-pdf-viewer").then((module) => module.ContinuousPdfViewer),
+  {
+    loading: () => (
+      <div
+        className="flex min-h-[50dvh] items-center justify-center text-sm text-white/75"
+        role="status"
+      >
+        Loading PDF viewer…
+      </div>
+    ),
+    ssr: false,
+  },
+);
 
 export type ViewerAttachment = {
   byteSize: number;
@@ -51,6 +67,7 @@ function AttachmentViewerDialog({
 
   const attachment = attachments[index];
   const sourceUrl = attachment ? refreshedUrl(attachment.url, refresh) : "";
+  const isPdf = attachment?.kind === "pdf";
 
   function move(direction: -1 | 1) {
     if (attachments.length < 2) return;
@@ -72,7 +89,7 @@ function AttachmentViewerDialog({
   return (
     <Dialog onOpenChange={onOpenChange} open>
       <DialogContent
-        className="attachment-viewer fixed inset-0 h-[var(--dialog-viewport-height,100dvh)] max-h-none w-full max-w-full translate-x-0 translate-y-0 overflow-hidden rounded-none border-0 bg-black p-0 text-white sm:inset-0 sm:h-[var(--dialog-viewport-height,100dvh)] sm:w-full sm:max-w-full sm:translate-x-0 sm:translate-y-0 sm:rounded-none"
+        className="attachment-viewer fixed inset-0 flex h-[var(--dialog-viewport-height,100dvh)] max-h-none w-full max-w-full translate-x-0 translate-y-0 flex-col overflow-hidden rounded-none border-0 bg-black p-0 text-white sm:inset-0 sm:h-[var(--dialog-viewport-height,100dvh)] sm:w-full sm:max-w-full sm:translate-x-0 sm:translate-y-0 sm:rounded-none"
         data-attachment-overlay=""
         onCloseAutoFocus={(event) => {
           if (!trigger) return;
@@ -90,9 +107,11 @@ function AttachmentViewerDialog({
           }
         }}
         onPointerDown={(event) => {
+          if (isPdf) return;
           swipeStart.current = event.clientX;
         }}
         onPointerUp={(event) => {
+          if (isPdf) return;
           if (swipeStart.current === undefined) return;
           const delta = event.clientX - swipeStart.current;
           swipeStart.current = undefined;
@@ -108,7 +127,14 @@ function AttachmentViewerDialog({
         </DialogHeader>
 
         <div className="relative min-h-0 flex-1 overflow-hidden bg-black">
-          <div className="flex h-full min-h-0 items-center justify-center overflow-auto p-3 sm:p-6">
+          <div
+            className={
+              isPdf
+                ? "h-full min-h-0 w-full touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain p-3 sm:p-6"
+                : "flex h-full min-h-0 items-center justify-center overflow-auto p-3 sm:p-6"
+            }
+            data-attachment-viewer-scroll=""
+          >
             {attachment.kind === "image" && !previewFailed ? (
               // eslint-disable-next-line @next/next/no-img-element -- private signed redirects are dynamic.
               <img
@@ -118,10 +144,11 @@ function AttachmentViewerDialog({
                 src={sourceUrl}
               />
             ) : attachment.kind === "pdf" && !previewFailed ? (
-              <iframe
-                className="h-full min-h-[60dvh] w-full max-w-6xl border-0 bg-white"
-                src={sourceUrl}
-                title={attachment.fileName}
+              <ContinuousPdfViewer
+                fileName={attachment.fileName}
+                key={sourceUrl}
+                onError={handlePreviewError}
+                url={sourceUrl}
               />
             ) : attachment.kind === "video" && !previewFailed ? (
               <video
@@ -154,7 +181,7 @@ function AttachmentViewerDialog({
               </div>
             )}
           </div>
-          {attachments.length > 1 ? (
+          {attachments.length > 1 && !isPdf ? (
             <>
               <button
                 aria-label="Previous attachment"
@@ -177,6 +204,28 @@ function AttachmentViewerDialog({
         </div>
 
         <footer className="flex shrink-0 flex-wrap items-center justify-center gap-2 border-t border-white/15 bg-black/90 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+          {isPdf && attachments.length > 1 ? (
+            <>
+              <Button
+                aria-label="Previous attachment"
+                className="min-h-11 border-white/30 bg-white/10 text-white hover:bg-white/20"
+                onClick={() => move(-1)}
+                type="button"
+                variant="outline"
+              >
+                <ChevronLeft className="size-4" /> Previous
+              </Button>
+              <Button
+                aria-label="Next attachment"
+                className="min-h-11 border-white/30 bg-white/10 text-white hover:bg-white/20"
+                onClick={() => move(1)}
+                type="button"
+                variant="outline"
+              >
+                Next <ChevronRight className="size-4" />
+              </Button>
+            </>
+          ) : null}
           {attachment.kind === "image" ? (
             <Button
               className="min-h-11 border-white/30 bg-white/10 text-white hover:bg-white/20"
