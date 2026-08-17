@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(38);
+select plan(39);
 
 select ok(
   (select relrowsecurity from pg_catalog.pg_class where oid = 'public.assets'::regclass),
@@ -390,6 +390,21 @@ select is(
   null::jsonb,
   'revocation immediately rejects new public access requests'
 );
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"68000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+select lives_ok(
+  format(
+    'delete from public.trips where id = %L::uuid',
+    (select id from attachment_state where key = 'trip_a')
+  ),
+  'an authenticated owner can delete a Trip with attachment cleanup triggers'
+);
+reset role;
 
 select lives_ok(
   $$delete from auth.users where id = '68000000-0000-4000-8000-000000000001'$$,

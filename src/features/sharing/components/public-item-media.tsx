@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { FileText, Play } from "lucide-react";
+import { FileText, Paperclip, Play } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -74,6 +74,37 @@ function AttachmentPreview({ media }: { media: AttachmentMedia }) {
   );
 }
 
+function CompactAttachments({
+  attachments,
+  onOpen,
+}: {
+  attachments: AttachmentMedia[];
+  onOpen: (attachment: AttachmentMedia, trigger: HTMLButtonElement) => void;
+}) {
+  if (!attachments.length) return null;
+  const first = attachments[0];
+  return (
+    <button
+      aria-label={
+        attachments.length === 1
+          ? `Open attachment ${first.label}`
+          : `Open ${attachments.length} attachments`
+      }
+      className="public-attachment-chip"
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen(first, event.currentTarget);
+      }}
+      type="button"
+    >
+      <Paperclip aria-hidden="true" className="size-3.5 shrink-0" />
+      <span className="truncate">
+        {attachments.length === 1 ? first.label : `${attachments.length} attachments`}
+      </span>
+    </button>
+  );
+}
+
 export function PublicItemMediaGallery({
   media,
   prioritizeFirst = false,
@@ -95,17 +126,27 @@ export function PublicItemMediaGallery({
   );
   const visibleAttachments = attachmentMedia.slice(0, 3);
   const hiddenAttachmentCount = attachmentMedia.length - visibleAttachments.length;
+  const compactAttachments = variant !== "overview" || googleMedia.length > 0;
+  const showGoogleMedia = variant === "overview" && googleMedia.length > 0;
+  if (!showGoogleMedia && !attachmentMedia.length) return null;
+
+  function openAttachment(attachment: AttachmentMedia, trigger: HTMLElement) {
+    setViewerTrigger(trigger);
+    setViewerId(attachment.id);
+  }
 
   return (
     <div className={`public-item-media ${variant}`}>
-      {googleMedia.length ? (
+      {showGoogleMedia ? (
         <div className={`public-media-gallery media-grid-v4 count-1 google-place ${variant}`}>
           <div className="public-media-entry">
             <GoogleImage media={googleMedia[0]} prioritize={prioritizeFirst} />
           </div>
         </div>
       ) : null}
-      {visibleAttachments.length ? (
+      {compactAttachments ? (
+        <CompactAttachments attachments={attachmentMedia} onOpen={openAttachment} />
+      ) : visibleAttachments.length ? (
         <div
           className={`public-media-gallery media-grid-v4 count-${visibleAttachments.length} attachments ${variant}`}
         >
@@ -116,8 +157,7 @@ export function PublicItemMediaGallery({
                 className="media-preview-button-v4"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setViewerTrigger(event.currentTarget);
-                  setViewerId(entry.id);
+                  openAttachment(entry, event.currentTarget);
                 }}
                 type="button"
               >
@@ -130,7 +170,7 @@ export function PublicItemMediaGallery({
           ))}
         </div>
       ) : null}
-      {googleMedia.length ? (
+      {showGoogleMedia ? (
         <div className="public-media-attribution">
           {googleMedia.map((entry) => (
             <span key={`${entry.id}:attribution`}>

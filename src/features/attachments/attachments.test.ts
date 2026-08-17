@@ -13,6 +13,7 @@ import {
   TUS_CHUNK_BYTES,
 } from "./config.ts";
 import { detectAttachmentType } from "./file-signature.ts";
+import { ownerAttachmentsFromRows } from "./owner-attachment-records.ts";
 import { attachmentError, prepareAttachmentInputSchema } from "./schema.ts";
 
 const encoder = new TextEncoder();
@@ -128,6 +129,48 @@ test("database lifecycle errors remain actionable", () => {
   assert.match(attachmentError("ATTACHMENT_TYPE_UNSUPPORTED"), /HEIC is not supported/i);
 });
 
+test("owner attachment query rows remain attached to saved planner items", () => {
+  const publicRef = "c".repeat(64);
+  assert.deepEqual(
+    ownerAttachmentsFromRows([
+      {
+        asset: {
+          byte_size: 4_096,
+          duration_seconds: null,
+          height: 800,
+          media_kind: "image",
+          mime_type: "image/jpeg",
+          status: "ready",
+          width: 1_200,
+        },
+        created_at: "2026-08-17T12:00:00.000Z",
+        display_filename: "museum.jpg",
+        id: "00000000-0000-4000-8000-000000000003",
+        include_in_share: true,
+        public_ref: publicRef,
+        sort_order: 0,
+      },
+    ]),
+    [
+      {
+        byteSize: 4_096,
+        createdAt: "2026-08-17T12:00:00.000Z",
+        durationSeconds: null,
+        fileName: "museum.jpg",
+        height: 800,
+        id: "00000000-0000-4000-8000-000000000003",
+        includeInShare: true,
+        kind: "image",
+        mimeType: "image/jpeg",
+        publicRef,
+        sortOrder: 0,
+        status: "ready",
+        width: 1_200,
+      },
+    ],
+  );
+});
+
 test("upload and viewer source retain private, resumable, and expiry safeguards", async () => {
   const upload = await readFile(new URL("./upload-client.ts", import.meta.url), "utf8");
   const viewer = await readFile(
@@ -140,6 +183,19 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   );
   const publicMedia = await readFile(
     new URL("../sharing/components/public-item-media.tsx", import.meta.url),
+    "utf8",
+  );
+  const itemAction = await readFile(new URL("../itinerary/actions.ts", import.meta.url), "utf8");
+  const itemForm = await readFile(
+    new URL("../itinerary/components/planner-item-form.tsx", import.meta.url),
+    "utf8",
+  );
+  const attachmentSection = await readFile(
+    new URL("./components/item-attachments-section.tsx", import.meta.url),
+    "utf8",
+  );
+  const publicMediaStyles = await readFile(
+    new URL("../../app/public-sharing-overview.css", import.meta.url),
     "utf8",
   );
   const publicViews = await Promise.all(
@@ -167,6 +223,13 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(publicMedia, /AttachmentViewer/);
   assert.match(publicMedia, /hiddenAttachmentCount/);
   assert.match(publicMedia, /google-place/);
+  assert.match(publicMedia, /variant !== "overview" \|\| googleMedia\.length > 0/);
+  assert.match(publicMedia, /public-attachment-chip/);
+  assert.match(publicMediaStyles, /\.public-attachment-chip \{[\s\S]*min-height: 2\.75rem/);
+  assert.match(itemAction, /attachments:asset_links/);
+  assert.match(itemAction, /ownerAttachmentsFromRows\(attachmentRows\)/);
+  assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
+  assert.match(itemForm, /pendingLabel=\{attachmentPending \? "Updating attachments…"/);
   assert.equal(
     publicViews.every((source) => /PublicItemMediaGallery/.test(source)),
     true,

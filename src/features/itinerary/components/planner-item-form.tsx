@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useCreateItineraryItem,
   useDeleteItineraryItem,
@@ -20,7 +20,7 @@ import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
-import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments-section";
+import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 export function PlannerItemForm({
   dayId,
   defaultCurrency,
@@ -75,8 +75,11 @@ export function PlannerItemForm({
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const deleteMutation = useDeleteItineraryItem(tripId, variantId);
+  const [attachmentPending, setAttachmentPending] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
-  const pending = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const itemMutationPending =
+    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const pending = itemMutationPending || attachmentPending;
   const error = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
 
   useEffect(() => {
@@ -291,6 +294,7 @@ export function PlannerItemForm({
       ) : null}
       <ItemAttachmentsSection
         item={item}
+        onPendingChange={setAttachmentPending}
         shareAttachmentsEnabled={shareAttachmentsEnabled}
         tripId={tripId}
       />
@@ -301,6 +305,7 @@ export function PlannerItemForm({
         onCancel={onCancel}
         onRemove={remove}
         pending={pending}
+        pendingLabel={attachmentPending ? "Updating attachments…" : undefined}
         type={type}
       />
     </form>

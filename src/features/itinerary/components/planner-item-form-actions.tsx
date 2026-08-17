@@ -21,6 +21,7 @@ export function PlannerItemFormActions({
   onCancel,
   onRemove,
   pending,
+  pendingLabel,
   type,
 }: {
   canSave: boolean;
@@ -29,6 +30,7 @@ export function PlannerItemFormActions({
   onCancel: () => void;
   onRemove: () => Promise<void>;
   pending: boolean;
+  pendingLabel?: string;
   type: ItineraryItemType;
 }) {
   return (
@@ -69,7 +71,7 @@ export function PlannerItemFormActions({
           <Button aria-busy={pending} disabled={pending || !canSave} size="sm" type="submit">
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {pending
-              ? "Saving…"
+              ? (pendingLabel ?? "Saving…")
               : item
                 ? "Save"
                 : ["activity", "meal"].includes(type)

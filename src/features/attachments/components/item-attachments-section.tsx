@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, Paperclip, UploadCloud } from "lucide-react";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -30,14 +30,14 @@ import { AttachmentViewer } from "./attachment-viewer";
 import { viewerAttachment } from "./attachment-presentation";
 import { AttachmentUploadTask, type UploadTask } from "./attachment-upload-task";
 import { OwnerAttachmentCard } from "./owner-attachment-card";
-import { UnsavedAttachmentsSection } from "./unsaved-attachments-section";
-
-function SavedItemAttachmentsSection({
+export function SavedItemAttachmentsSection({
   item,
+  onPendingChange,
   shareAttachmentsEnabled,
   tripId,
 }: {
   item: ItineraryItem;
+  onPendingChange?: (pending: boolean) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
 }) {
@@ -65,6 +65,12 @@ function SavedItemAttachmentsSection({
   const viewerAttachments = attachments
     .filter(({ status }) => status === "ready")
     .map((attachment) => viewerAttachment(tripId, attachment));
+  const pending = activeTasks.length > 0 || mutationPending;
+
+  useEffect(() => {
+    onPendingChange?.(pending);
+  }, [onPendingChange, pending]);
+  useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
   function updateTask(id: string, values: Partial<UploadTask>) {
     setTasks((current) => current.map((task) => (task.id === id ? { ...task, ...values } : task)));
@@ -272,28 +278,5 @@ function SavedItemAttachmentsSection({
         </AlertDialogContent>
       </AlertDialog>
     </section>
-  );
-}
-
-export function ItemAttachmentsSection({
-  item,
-  shareAttachmentsEnabled,
-  tripId,
-}: {
-  item?: ItineraryItem;
-  shareAttachmentsEnabled: boolean;
-  tripId: string;
-}) {
-  if (!item) return <UnsavedAttachmentsSection />;
-  const attachmentVersion = (item.attachments ?? [])
-    .map(({ includeInShare, publicRef, status }) => `${publicRef}:${status}:${includeInShare}`)
-    .join(",");
-  return (
-    <SavedItemAttachmentsSection
-      item={item}
-      key={`${item.id}:${attachmentVersion}`}
-      shareAttachmentsEnabled={shareAttachmentsEnabled}
-      tripId={tripId}
-    />
   );
 }

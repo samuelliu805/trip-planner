@@ -3,6 +3,7 @@ import { isRouteLegMode } from "@/features/routes/route-config";
 import { parseCalculatedRouteLegs } from "@/features/routes/results";
 import type { DayRouteCalculation, DayRouteLeg, DayRoutePlan } from "@/features/routes/types";
 import type { Tables } from "@/types/database";
+import { ownerAttachmentsFromRows } from "@/features/attachments/owner-attachment-records";
 
 import type { PlannerWorkspace } from "./types";
 
@@ -114,30 +115,7 @@ export async function getPlannerWorkspace(
     const snapshot = row.place;
     const item = {
       ...row,
-      attachments: (row.attachments ?? [])
-        .flatMap((link) => {
-          const asset = link.asset;
-          if (!asset) return [];
-          return [
-            {
-              byteSize: asset.byte_size,
-              createdAt: link.created_at,
-              durationSeconds: asset.duration_seconds,
-              fileName: link.display_filename,
-              height: asset.height,
-              id: link.id,
-              includeInShare: link.include_in_share,
-              kind: asset.media_kind,
-              mimeType:
-                asset.mime_type as import("@/features/attachments/config").AttachmentMimeType,
-              publicRef: link.public_ref,
-              sortOrder: link.sort_order,
-              status: asset.status,
-              width: asset.width,
-            },
-          ];
-        })
-        .sort((left, right) => left.sortOrder - right.sortOrder),
+      attachments: ownerAttachmentsFromRows(row.attachments),
       links: [...(row.links ?? [])].sort((a, b) => a.sort_order - b.sort_order),
       place:
         snapshot?.display_name && snapshot.latitude !== null && snapshot.longitude !== null
