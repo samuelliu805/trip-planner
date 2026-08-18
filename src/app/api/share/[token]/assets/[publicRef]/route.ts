@@ -16,7 +16,7 @@ export async function GET(
   const parsed = paramsSchema.safeParse(await params);
   if (!parsed.success) return new Response("Not found", { status: 404 });
   const admin = createAdminClient();
-  const result = await admin.rpc("service_public_asset_access_v1", {
+  const result = await admin.rpc("service_public_asset_access_v2", {
     requested_public_ref: parsed.data.publicRef,
     shared_token: parsed.data.token,
   });

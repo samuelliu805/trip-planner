@@ -19,7 +19,7 @@ import type {
 
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_share_page_v2", {
+  const { data, error } = await supabase.rpc("get_public_share_page_v3", {
     shared_token: token,
   });
   if (error) return null;

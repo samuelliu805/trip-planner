@@ -53,7 +53,7 @@ export async function getPlannerWorkspace(
     supabase
       .from("itinerary_items")
       .select(
-        "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)), links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)",
+        "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)), links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)",
       )
       .eq("trip_id", tripId)
       .eq("variant_id", variant.id)

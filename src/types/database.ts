@@ -58,6 +58,8 @@ export type Database = {
           asset_id: string
           created_at: string
           display_filename: string
+          draft_expires_at: string | null
+          draft_session_id: string | null
           id: string
           include_in_share: boolean
           itinerary_item_id: string
@@ -71,6 +73,8 @@ export type Database = {
           asset_id: string
           created_at?: string
           display_filename: string
+          draft_expires_at?: string | null
+          draft_session_id?: string | null
           id?: string
           include_in_share?: boolean
           itinerary_item_id: string
@@ -84,6 +88,8 @@ export type Database = {
           asset_id?: string
           created_at?: string
           display_filename?: string
+          draft_expires_at?: string | null
+          draft_session_id?: string | null
           id?: string
           include_in_share?: boolean
           itinerary_item_id?: string
@@ -1686,7 +1692,15 @@ export type Database = {
         Args: { requested_limit?: number }
         Returns: Json
       }
+      asset_cleanup_batch_v2: {
+        Args: { requested_limit?: number }
+        Returns: Json
+      }
       asset_link_owner_json_v1: {
+        Args: { target_link_id: string }
+        Returns: Json
+      }
+      asset_link_owner_json_v2: {
         Args: { target_link_id: string }
         Returns: Json
       }
@@ -1709,6 +1723,14 @@ export type Database = {
           target_variant_id: string
         }
         Returns: number
+      }
+      commit_item_asset_session_v1: {
+        Args: {
+          requested_draft_session_id: string
+          target_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
       }
       copy_itinerary_items_to_days: {
         Args: { source_item_ids: string[]; target_day_ids: string[] }
@@ -1914,6 +1936,14 @@ export type Database = {
         }
         Returns: string
       }
+      discard_item_asset_session_v1: {
+        Args: {
+          requested_draft_session_id: string
+          target_item_id: string
+          target_trip_id: string
+        }
+        Returns: number
+      }
       duplicate_route_variant: {
         Args: {
           source_variant_id: string
@@ -1961,6 +1991,20 @@ export type Database = {
         }
         Returns: Json
       }
+      finalize_item_asset_v2: {
+        Args: {
+          target_asset_id: string
+          thumbnail_ready?: boolean
+          verified_byte_size: number
+          verified_duration_seconds?: number
+          verified_height?: number
+          verified_media_kind: Database["public"]["Enums"]["asset_media_kind"]
+          verified_mime_type: string
+          verified_sha256: string
+          verified_width?: number
+        }
+        Returns: Json
+      }
       finalize_share_image_version_v1: {
         Args: { requested_parts: Json; target_version_id: string }
         Returns: Json
@@ -1974,6 +2018,10 @@ export type Database = {
         Returns: Json
       }
       get_public_share_page_v2: {
+        Args: { shared_token: string }
+        Returns: Json
+      }
+      get_public_share_page_v3: {
         Args: { shared_token: string }
         Returns: Json
       }
@@ -2060,6 +2108,19 @@ export type Database = {
       prepare_item_asset_v2: {
         Args: {
           requested_byte_size: number
+          requested_filename: string
+          requested_media_kind: Database["public"]["Enums"]["asset_media_kind"]
+          requested_mime_type: string
+          requested_sha256: string
+          target_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
+      prepare_item_asset_v3: {
+        Args: {
+          requested_byte_size: number
+          requested_draft_session_id: string
           requested_filename: string
           requested_media_kind: Database["public"]["Enums"]["asset_media_kind"]
           requested_mime_type: string
@@ -2300,7 +2361,20 @@ export type Database = {
         Args: { requested_public_ref: string; shared_token: string }
         Returns: Json
       }
+      service_public_asset_access_v2: {
+        Args: { requested_public_ref: string; shared_token: string }
+        Returns: Json
+      }
       set_item_asset_share_v1: {
+        Args: {
+          requested_include_in_share: boolean
+          requested_public_ref: string
+          target_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
+      set_item_asset_share_v2: {
         Args: {
           requested_include_in_share: boolean
           requested_public_ref: string
@@ -2316,6 +2390,10 @@ export type Database = {
       sync_trip_schedule_from_primary_days: {
         Args: { target_trip_id: string }
         Returns: undefined
+      }
+      untracked_asset_storage_batch_v1: {
+        Args: { requested_limit?: number }
+        Returns: Json
       }
       update_public_itinerary_link: {
         Args: {

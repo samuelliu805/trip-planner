@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(39);
+select plan(53);
 
 select ok(
   (select relrowsecurity from pg_catalog.pg_class where oid = 'public.assets'::regclass),
@@ -26,11 +26,24 @@ select ok(not has_function_privilege('anon', 'public.service_public_asset_access
   'anonymous users cannot call the raw public access resolver');
 select ok(has_function_privilege('service_role', 'public.service_public_asset_access_v1(uuid,text)', 'EXECUTE'),
   'only the service boundary can resolve public Storage objects');
+select ok(not has_function_privilege('anon', 'public.service_public_asset_access_v2(uuid,text)', 'EXECUTE'),
+  'anonymous users cannot call the draft-safe Storage resolver');
+select ok(has_function_privilege('service_role', 'public.service_public_asset_access_v2(uuid,text)', 'EXECUTE'),
+  'the service boundary can call the draft-safe Storage resolver');
 select ok(has_function_privilege(
   'authenticated',
   'public.prepare_item_asset_v2(uuid,uuid,text,text,bigint,public.asset_media_kind,text)',
   'EXECUTE'
 ), 'authenticated owners can prepare uploads');
+select ok(has_function_privilege(
+  'authenticated',
+  'public.prepare_item_asset_v3(uuid,uuid,text,text,bigint,public.asset_media_kind,text,uuid)',
+  'EXECUTE'
+), 'authenticated owners can prepare draft-session uploads');
+select ok(not has_function_privilege('authenticated', 'public.asset_cleanup_batch_v2(integer)', 'EXECUTE'),
+  'clients cannot run physical asset cleanup batches');
+select ok(not has_function_privilege('authenticated', 'public.untracked_asset_storage_batch_v1(integer)', 'EXECUTE'),
+  'clients cannot enumerate untracked Storage objects');
 select is(
   (select pg_get_expr(default_value.adbin, default_value.adrelid)
    from pg_catalog.pg_attrdef default_value
@@ -211,6 +224,128 @@ select ok(
     (select payload #>> '{attachment,publicRef}' from attachment_state where key = 'prepare_a')
   ) is not null,
   'the service resolver authorizes an active projected attachment'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"68000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+insert into attachment_state (key, id) values
+  ('draft_session_a', '68000000-0000-4000-8000-000000000010');
+insert into attachment_state (key, payload)
+select 'draft_prepare', public.prepare_item_asset_v3(
+  (select id from attachment_state where key = 'trip_a'),
+  (select id from attachment_state where key = 'item_a'),
+  'Draft.pdf', repeat('9', 64), 2048, 'pdf', 'application/pdf',
+  (select id from attachment_state where key = 'draft_session_a')
+);
+select is(
+  (select payload #>> '{attachment,draft}' from attachment_state where key = 'draft_prepare'),
+  'true', 'new uploads remain draft until the itinerary form saves'
+);
+select public.finalize_item_asset_v2(
+  ((select payload ->> 'assetId' from attachment_state where key = 'draft_prepare'))::uuid,
+  repeat('9', 64), 2048, 'pdf', 'application/pdf'
+);
+select public.set_item_asset_share_v2(
+  (select id from attachment_state where key = 'trip_a'),
+  (select id from attachment_state where key = 'item_a'),
+  (select payload #>> '{attachment,publicRef}' from attachment_state where key = 'draft_prepare'),
+  true
+);
+reset role;
+select ok(
+  position((select payload #>> '{attachment,publicRef}' from attachment_state where key = 'draft_prepare')
+    in public.get_public_share_page_v3(
+      ((select payload ->> 'publicToken' from attachment_state where key = 'share_page'))::uuid
+    )::text) = 0,
+  'draft attachments are absent from the public Share Page projection'
+);
+select is(
+  public.service_public_asset_access_v2(
+    ((select payload ->> 'publicToken' from attachment_state where key = 'share_page'))::uuid,
+    (select payload #>> '{attachment,publicRef}' from attachment_state where key = 'draft_prepare')
+  ),
+  null::jsonb,
+  'draft attachments cannot resolve to a Storage object'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"68000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+select throws_ok(
+  format(
+    'select public.prepare_item_asset_v3(%L::uuid,%L::uuid,%L,%L,2048,%L,%L,%L::uuid)',
+    (select id from attachment_state where key = 'trip_a'),
+    (select id from attachment_state where key = 'item_a'),
+    'Duplicate.pdf', repeat('9', 64), 'pdf', 'application/pdf',
+    (select id from attachment_state where key = 'draft_session_a')
+  ),
+  '23505', 'ATTACHMENT_DUPLICATE',
+  'the same bytes cannot be attached twice to one itinerary item'
+);
+insert into attachment_state (key, payload)
+select 'draft_commit', public.commit_item_asset_session_v1(
+  (select id from attachment_state where key = 'trip_a'),
+  (select id from attachment_state where key = 'item_a'),
+  (select id from attachment_state where key = 'draft_session_a')
+);
+select is(
+  (select attachment ->> 'draft'
+   from jsonb_array_elements((select payload from attachment_state where key = 'draft_commit')) attachment
+   where attachment ->> 'publicRef' =
+     (select payload #>> '{attachment,publicRef}' from attachment_state where key = 'draft_prepare')),
+  'false', 'saving the itinerary form commits its ready attachment links'
+);
+reset role;
+select ok(
+  position((select payload #>> '{attachment,publicRef}' from attachment_state where key = 'draft_prepare')
+    in public.get_public_share_page_v3(
+      ((select payload ->> 'publicToken' from attachment_state where key = 'share_page'))::uuid
+    )::text) > 0,
+  'a committed shared attachment appears in the public projection'
+);
+select ok(
+  public.service_public_asset_access_v2(
+    ((select payload ->> 'publicToken' from attachment_state where key = 'share_page'))::uuid,
+    (select payload #>> '{attachment,publicRef}' from attachment_state where key = 'draft_prepare')
+  ) is not null,
+  'a committed shared attachment resolves through the service boundary'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"68000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+set local role authenticated;
+insert into attachment_state (key, payload)
+select 'discard_prepare', public.prepare_item_asset_v3(
+  (select id from attachment_state where key = 'trip_a'),
+  (select id from attachment_state where key = 'item_a'),
+  'Discard.pdf', repeat('8', 64), 1024, 'pdf', 'application/pdf',
+  '68000000-0000-4000-8000-000000000011'
+);
+select public.finalize_item_asset_v2(
+  ((select payload ->> 'assetId' from attachment_state where key = 'discard_prepare'))::uuid,
+  repeat('8', 64), 1024, 'pdf', 'application/pdf'
+);
+select is(
+  public.discard_item_asset_session_v1(
+    (select id from attachment_state where key = 'trip_a'),
+    (select id from attachment_state where key = 'item_a'),
+    '68000000-0000-4000-8000-000000000011'
+  ),
+  1, 'canceling the form deletes its draft attachment link'
+);
+reset role;
+select ok(
+  exists (select 1 from public.asset_deletion_queue
+    where asset_id = ((select payload ->> 'assetId' from attachment_state where key = 'discard_prepare'))::uuid),
+  'canceling the final draft link queues the unused physical object for deletion'
 );
 
 select set_config(

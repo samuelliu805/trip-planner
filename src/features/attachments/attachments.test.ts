@@ -84,6 +84,7 @@ test("prepare validation uses matching media kinds and per-type limits", () => {
     kind: "pdf" as const,
     mimeType: "application/pdf" as const,
     sha256: "a".repeat(64),
+    uploadSessionId: "00000000-0000-4000-8000-000000000002",
   };
   assert.equal(prepareAttachmentInputSchema.safeParse(base).success, true);
   assert.equal(
@@ -123,6 +124,7 @@ test("public attachment media accepts only the exact application access route", 
 });
 
 test("database lifecycle errors remain actionable", () => {
+  assert.match(attachmentError("ATTACHMENT_DUPLICATE"), /already attached/i);
   assert.match(attachmentError("ATTACHMENT_COUNT_LIMIT"), /five attachments/i);
   assert.match(attachmentError("ATTACHMENT_ITEM_BYTES_LIMIT"), /50 MB/i);
   assert.match(attachmentError("ATTACHMENT_OWNER_BYTES_LIMIT"), /250 MB/i);
@@ -144,6 +146,7 @@ test("owner attachment query rows remain attached to saved planner items", () =>
           width: 1_200,
         },
         created_at: "2026-08-17T12:00:00.000Z",
+        draft_session_id: null,
         display_filename: "museum.jpg",
         id: "00000000-0000-4000-8000-000000000003",
         include_in_share: true,
@@ -155,6 +158,7 @@ test("owner attachment query rows remain attached to saved planner items", () =>
       {
         byteSize: 4_096,
         createdAt: "2026-08-17T12:00:00.000Z",
+        draft: false,
         durationSeconds: null,
         fileName: "museum.jpg",
         height: 800,
@@ -200,6 +204,26 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   );
   const plannerStyles = await readFile(
     new URL("../../app/planner-workspace.css", import.meta.url),
+    "utf8",
+  );
+  const attachmentSession = await readFile(
+    new URL("../itinerary/components/use-attachment-edit-session.ts", import.meta.url),
+    "utf8",
+  );
+  const cleanup = await readFile(new URL("./cleanup.server.ts", import.meta.url), "utf8");
+  const formControls = await Promise.all(
+    [
+      "../../components/ui/input.tsx",
+      "../../components/ui/select.tsx",
+      "../../components/ui/textarea.tsx",
+      "../itinerary/components/booking-price-fields.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  const sessionRoute = await readFile(
+    new URL(
+      "../../app/api/trips/[tripId]/items/[itemId]/attachments/session/[sessionId]/route.ts",
+      import.meta.url,
+    ),
     "utf8",
   );
   const attachmentSection = await readFile(
@@ -270,7 +294,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(itemAction, /ownerAttachmentsFromRows\(attachmentRows\)/);
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
   assert.match(attachmentSection, /ShareAttachmentsCallout/);
-  assert.match(itemForm, /pendingLabel=\{attachmentPending \? "Updating attachments…"/);
+  assert.match(itemForm, /attachmentSession\.attachmentPending \? "Updating attachments…"/);
   assert.match(itemForm, /max-w-full min-w-0[\s\S]*overflow-x-hidden/);
   assert.match(
     plannerSheets,
@@ -286,8 +310,22 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     publicViews.every((source) => /PublicItemMediaGallery/.test(source)),
     true,
   );
-  assert.match(publicRoute, /service_public_asset_access_v1/);
+  assert.match(publicRoute, /service_public_asset_access_v2/);
   assert.match(publicRoute, /private, no-store/);
   assert.match(longImage, /source !== "attachment"/);
   assert.doesNotMatch(publicRoute, /service_role|SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(attachmentSession, /beforeunload/);
+  assert.match(attachmentSession, /const itemId = item\?\.id/);
+  assert.doesNotMatch(attachmentSession, /\[item, tripId, uploadSessionId\]/);
+  assert.match(attachmentSession, /commitAttachmentUploadSession/);
+  assert.match(attachmentSession, /discardAttachmentUploadSession/);
+  assert.match(sessionRoute, /commit_item_asset_session_v1/);
+  assert.match(sessionRoute, /discard_item_asset_session_v1/);
+  assert.match(cleanup, /asset_cleanup_batch_v2/);
+  assert.match(cleanup, /untracked_asset_storage_batch_v1/);
+  assert.match(cleanup, /storage\.from\("trip-assets"\)\.remove/);
+  assert.equal(
+    formControls.every((source) => /ring-inset/.test(source) && /max-w-full/.test(source)),
+    true,
+  );
 });

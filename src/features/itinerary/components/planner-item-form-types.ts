@@ -5,6 +5,7 @@ export type PlannerItemFormProps = {
   defaultCurrency: string;
   item?: ItineraryItem;
   onCancel: () => void;
+  onCloseRequestRegistration?: (handler: (() => void) | null) => void;
   onDraftChange?: (item: ItineraryItem | null) => void;
   onError: (message: string) => void;
   onSaved: (item: ItineraryItem) => void;

@@ -131,6 +131,8 @@ export async function POST(
     }
   } else if (detected.kind === "video" && body.data.posterUploaded && asset.thumbnail_object_key) {
     thumbnailReady = await verifyStoredPoster(asset.thumbnail_object_key);
+    if (!thumbnailReady)
+      await admin.storage.from(ATTACHMENT_BUCKET).remove([asset.thumbnail_object_key]);
   }
 
   const rpcInput = {
@@ -143,9 +145,9 @@ export async function POST(
     verified_sha256: actualHash,
     ...(width === null ? {} : { verified_width: width }),
   };
-  let result = await supabase.rpc("finalize_item_asset_v1", rpcInput);
+  let result = await supabase.rpc("finalize_item_asset_v2", rpcInput);
   if (result.error?.message.includes("ATTACHMENT_FINALIZE_CONFLICT"))
-    result = await supabase.rpc("finalize_item_asset_v1", rpcInput);
+    result = await supabase.rpc("finalize_item_asset_v2", rpcInput);
   const finalized = finalizedAttachmentSchema.safeParse(result.data);
   if (result.error || !finalized.success) return fail(attachmentError(result.error?.message), 409);
 

@@ -137,7 +137,7 @@ export async function updateItineraryItem(
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
     .select(
-      "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))",
+      "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))",
     )
     .maybeSingle();
   if (error || !data)

@@ -23,7 +23,7 @@ export async function setAttachmentShare(
     .safeParse(rawInput);
   if (!input.success) return { error: "The attachment request is invalid." };
   const supabase = await createClient();
-  const result = await supabase.rpc("set_item_asset_share_v1", {
+  const result = await supabase.rpc("set_item_asset_share_v2", {
     requested_include_in_share: input.data.includeInShare,
     requested_public_ref: input.data.publicRef,
     target_item_id: input.data.itemId,

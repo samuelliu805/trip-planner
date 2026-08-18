@@ -1,21 +1,49 @@
 .public-template-bento .public-quick-actions.is-quiet > a,
-.public-template-bento .public-quick-actions.is-quiet > details > summary {
-  border: 1px solid #405a48;
-  background: #101f16;
+.public-template-bento .public-quick-actions.is-quiet > details > summary,
+.public-template-bento .public-attachment-button {
+  border-color: transparent;
+  background: rgb(16 31 22 / 62%);
   box-shadow: none;
+}
+
+.public-template-bento .public-attachment-button {
+  font-family: var(--font-mono);
+  letter-spacing: 0.03em;
 }
 
 .public-template-journal .public-quick-actions.is-quiet > a,
-.public-template-journal .public-quick-actions.is-quiet > details > summary {
-  border: 1px solid rgb(119 101 73 / 32%);
-  background: rgb(255 253 247 / 56%);
+.public-template-journal .public-quick-actions.is-quiet > details > summary,
+.public-template-journal .public-attachment-button {
+  border-color: transparent;
+  background: rgb(244 237 221 / 46%);
   box-shadow: none;
 }
 
+.public-template-journal .public-attachment-button {
+  font-family: var(--journal-sans);
+}
+
 .public-template-ethereal .public-quick-actions.is-quiet > a,
-.public-template-ethereal .public-quick-actions.is-quiet > details > summary {
-  border: 1px solid rgb(102 113 105 / 38%);
+.public-template-ethereal .public-quick-actions.is-quiet > details > summary,
+.public-template-ethereal .public-attachment-button {
+  border-color: transparent;
   border-radius: 0;
-  background: rgb(255 254 250 / 62%);
+  background: rgb(239 237 231 / 42%);
   box-shadow: none;
+}
+
+.public-template-ethereal .public-attachment-button {
+  font-family: var(--font-sans);
+}
+
+.public-template-traverse .public-attachment-button {
+  border-radius: 0;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 899px) {
+  .public-template-bento[data-public-template-key="bento@2"] .public-attachment-name {
+    font-size: 0.75rem;
+  }
 }

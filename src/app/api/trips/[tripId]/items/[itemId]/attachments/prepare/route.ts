@@ -28,12 +28,13 @@ export async function POST(
   if (!authData.user)
     return Response.json({ error: "Sign in to add attachments." }, { status: 401 });
 
-  const result = await supabase.rpc("prepare_item_asset_v2", {
+  const result = await supabase.rpc("prepare_item_asset_v3", {
     requested_byte_size: input.data.byteSize,
     requested_filename: input.data.fileName,
     requested_media_kind: input.data.kind,
     requested_mime_type: input.data.mimeType,
     requested_sha256: input.data.sha256,
+    requested_draft_session_id: input.data.uploadSessionId,
     target_item_id: routeParams.data.itemId,
     target_trip_id: routeParams.data.tripId,
   });

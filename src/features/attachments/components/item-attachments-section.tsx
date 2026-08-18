@@ -33,16 +33,22 @@ import { OwnerAttachmentCard } from "./owner-attachment-card";
 import { ShareAttachmentsCallout } from "./share-attachments-callout";
 export function SavedItemAttachmentsSection({
   item,
+  onDraftCountChange,
   onOpenShareSettings,
   onPendingChange,
   shareAttachmentsEnabled,
   tripId,
+  uploadSessionId,
+  uploadSessionSignal,
 }: {
   item: ItineraryItem;
+  onDraftCountChange?: (count: number) => void;
   onOpenShareSettings: () => void;
   onPendingChange?: (pending: boolean) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
+  uploadSessionId: string;
+  uploadSessionSignal: AbortSignal;
 }) {
   const router = useRouter();
   const [attachments, setAttachments] = useState<OwnerAttachment[]>(item?.attachments ?? []);
@@ -72,11 +78,24 @@ export function SavedItemAttachmentsSection({
     ({ includeInShare, status }) => includeInShare && status === "ready",
   );
   const pending = activeTasks.length > 0 || mutationPending;
+  const draftCount = attachments.filter(({ draft }) => draft).length;
 
   useEffect(() => {
     onPendingChange?.(pending);
   }, [onPendingChange, pending]);
   useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
+  useEffect(() => {
+    onDraftCountChange?.(draftCount);
+  }, [draftCount, onDraftCountChange]);
+  useEffect(() => {
+    const abortTasks = () =>
+      setTasks((current) => {
+        current.forEach(({ controller }) => controller.abort());
+        return current;
+      });
+    uploadSessionSignal.addEventListener("abort", abortTasks, { once: true });
+    return () => uploadSessionSignal.removeEventListener("abort", abortTasks);
+  }, [uploadSessionSignal]);
 
   function updateTask(id: string, values: Partial<UploadTask>) {
     setTasks((current) => current.map((task) => (task.id === id ? { ...task, ...values } : task)));
@@ -90,6 +109,7 @@ export function SavedItemAttachmentsSection({
         onProgress: (progress) => updateTask(task.id, { progress }),
         signal: task.controller.signal,
         tripId,
+        uploadSessionId,
       });
       setAttachments((current) =>
         [...current.filter(({ publicRef }) => publicRef !== attachment.publicRef), attachment].sort(
@@ -192,7 +212,7 @@ export function SavedItemAttachmentsSection({
         <input
           accept={ATTACHMENT_ACCEPT}
           className="sr-only"
-          disabled={!remaining}
+          disabled={!remaining || activeTasks.length > 0}
           multiple
           onChange={(event) => {
             queueFiles(Array.from(event.target.files ?? []));
@@ -203,7 +223,7 @@ export function SavedItemAttachmentsSection({
         />
         <Button
           className="min-h-11 shrink-0"
-          disabled={!remaining}
+          disabled={!remaining || activeTasks.length > 0}
           onClick={() => inputRef.current?.click()}
           size="sm"
           type="button"
@@ -251,6 +271,11 @@ export function SavedItemAttachmentsSection({
         <div className="rounded-md border border-dashed px-3 py-4 text-center text-xs leading-5 text-muted-foreground">
           Files stay private unless you turn on Share file.
         </div>
+      ) : null}
+      {draftCount ? (
+        <p className="text-xs leading-5 text-muted-foreground">
+          Save this itinerary item to keep {draftCount === 1 ? "this file" : "these files"}.
+        </p>
       ) : null}
       {error ? (
         <p className="text-sm text-destructive" role="alert">

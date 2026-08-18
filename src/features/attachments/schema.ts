@@ -13,6 +13,7 @@ export const ownerAttachmentSchema = z
   .object({
     byteSize: z.number().int().positive(),
     createdAt: z.string(),
+    draft: z.boolean(),
     durationSeconds: z.number().nonnegative().nullable(),
     fileName: z.string().trim().min(1).max(240),
     height: z.number().int().positive().nullable(),
@@ -41,6 +42,7 @@ export const prepareAttachmentInputSchema = z
     kind: z.enum(attachmentKinds),
     mimeType: z.enum(attachmentMimeTypes),
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    uploadSessionId: z.uuid(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -99,6 +101,8 @@ export const finalizedAttachmentSchema = z
   .object({ attachment: ownerAttachmentSchema, deduplicated: z.boolean() })
   .strict();
 
+export const attachmentSessionSchema = z.array(ownerAttachmentSchema).max(5);
+
 export const assetAccessSchema = z
   .object({
     bucket: z.literal("trip-assets"),
@@ -112,6 +116,8 @@ export const assetAccessSchema = z
   .strict();
 
 export function attachmentError(message?: string) {
+  if (message?.includes("ATTACHMENT_DUPLICATE"))
+    return "This file is already attached to this itinerary item.";
   if (message?.includes("ATTACHMENT_COUNT_LIMIT"))
     return "This itinerary item already has five attachments.";
   if (message?.includes("ATTACHMENT_ITEM_BYTES_LIMIT"))

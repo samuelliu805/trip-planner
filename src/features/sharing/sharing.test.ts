@@ -1702,7 +1702,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(controller, /new URLSearchParams\(searchParams\.toString\(\)\)/);
   assert.match(controller, /if \(legacyTemplateOverride\) url\.searchParams\.set\("template"/);
   assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);
-  assert.match(data, /get_public_share_page_v2/);
+  assert.match(data, /get_public_share_page_v3/);
   assert.match(data, /list_share_pages_v2/);
   assert.match(actions, /create_share_page_v3/);
   assert.match(actions, /update_share_page_v3/);

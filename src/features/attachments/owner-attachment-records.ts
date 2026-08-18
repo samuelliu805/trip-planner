@@ -8,7 +8,13 @@ type AttachmentAssetRow = Pick<
 
 export type OwnerAttachmentRow = Pick<
   Tables<"asset_links">,
-  "created_at" | "display_filename" | "id" | "include_in_share" | "public_ref" | "sort_order"
+  | "created_at"
+  | "display_filename"
+  | "draft_session_id"
+  | "id"
+  | "include_in_share"
+  | "public_ref"
+  | "sort_order"
 > & { asset: AttachmentAssetRow | null };
 
 export function ownerAttachmentsFromRows(
@@ -16,11 +22,12 @@ export function ownerAttachmentsFromRows(
 ): OwnerAttachment[] {
   return (rows ?? [])
     .flatMap((link) => {
-      if (!link.asset) return [];
+      if (!link.asset || link.draft_session_id) return [];
       return [
         {
           byteSize: link.asset.byte_size,
           createdAt: link.created_at,
+          draft: false,
           durationSeconds: link.asset.duration_seconds,
           fileName: link.display_filename,
           height: link.asset.height,

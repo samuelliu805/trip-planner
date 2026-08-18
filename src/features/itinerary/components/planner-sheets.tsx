@@ -2,6 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { LoaderCircle } from "lucide-react";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -126,6 +127,7 @@ export function PlannerSheets({
   mapViewportKey,
   workspace,
 }: PlannerSheetsProps) {
+  const editorCloseRequest = useRef(onEditorClose);
   return (
     <>
       <RouteVariantComparisonSheet
@@ -139,7 +141,7 @@ export function PlannerSheets({
         open={decisionSummarySheetOpen}
         summary={decisionSummary}
       />
-      <Sheet onOpenChange={(open) => !open && onEditorClose()} open={Boolean(editor)}>
+      <Sheet onOpenChange={(open) => !open && editorCloseRequest.current()} open={Boolean(editor)}>
         <SheetContent className="planner-editor-sheet">
           <SheetHeader className="min-w-0 shrink-0">
             <SheetTitle>{editor?.item ? "Edit itinerary item" : "Add itinerary item"}</SheetTitle>
@@ -160,6 +162,9 @@ export function PlannerSheets({
                 defaultCurrency={defaultCurrency}
                 item={editor.item}
                 onCancel={onEditorClose}
+                onCloseRequestRegistration={(handler) => {
+                  editorCloseRequest.current = handler ?? onEditorClose;
+                }}
                 onError={onInteractionError}
                 onDraftChange={editor.item ? onEditorDraftChange : undefined}
                 onSaved={(savedItem) => {

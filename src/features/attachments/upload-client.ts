@@ -11,6 +11,7 @@ import {
 } from "./config";
 import { detectAttachmentType } from "./file-signature";
 import {
+  attachmentSessionSchema,
   finalizedAttachmentSchema,
   preparedAttachmentSchema,
   type OwnerAttachment,
@@ -30,6 +31,7 @@ type UploadOptions = {
   onProgress: (progress: AttachmentUploadProgress) => void;
   signal: AbortSignal;
   tripId: string;
+  uploadSessionId: string;
 };
 
 function responseError(payload: unknown, fallback: string) {
@@ -185,6 +187,7 @@ export async function uploadFileAttachment({
   onProgress,
   signal,
   tripId,
+  uploadSessionId,
 }: UploadOptions): Promise<OwnerAttachment> {
   onProgress({ percent: 3, stage: "hashing" });
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -212,6 +215,7 @@ export async function uploadFileAttachment({
       kind: detected.kind,
       mimeType: detected.mimeType,
       sha256,
+      uploadSessionId,
     }),
     headers: { "Content-Type": "application/json" },
     method: "POST",
@@ -292,4 +296,40 @@ export async function uploadFileAttachment({
     await fetch(lifecycleUrl, { keepalive: true, method: "DELETE" }).catch(() => undefined);
     throw error;
   }
+}
+
+function attachmentSessionUrl({
+  itemId,
+  tripId,
+  uploadSessionId,
+}: {
+  itemId: string;
+  tripId: string;
+  uploadSessionId: string;
+}) {
+  return `/api/trips/${tripId}/items/${itemId}/attachments/session/${uploadSessionId}`;
+}
+
+export async function commitAttachmentUploadSession(input: {
+  itemId: string;
+  tripId: string;
+  uploadSessionId: string;
+}) {
+  const response = await fetch(attachmentSessionUrl(input), { method: "POST" });
+  const payload: unknown = await response.json().catch(() => null);
+  if (!response.ok)
+    throw new Error(responseError(payload, "The new attachments could not be saved."));
+  const attachments = attachmentSessionSchema.safeParse(payload);
+  if (!attachments.success) throw new Error("The saved attachment response is invalid.");
+  return attachments.data;
+}
+
+export async function discardAttachmentUploadSession(
+  input: { itemId: string; tripId: string; uploadSessionId: string },
+  keepalive = false,
+) {
+  const response = await fetch(attachmentSessionUrl(input), { keepalive, method: "DELETE" });
+  if (response.ok) return;
+  const payload: unknown = await response.json().catch(() => null);
+  throw new Error(responseError(payload, "The unused attachments could not be removed."));
 }

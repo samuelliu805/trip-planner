@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   useCreateItineraryItem,
   useDeleteItineraryItem,
@@ -22,11 +22,14 @@ import { usePlannerItemFormState } from "@/features/itinerary/components/use-pla
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
+import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
+import { useAttachmentEditSession } from "@/features/itinerary/components/use-attachment-edit-session";
 export function PlannerItemForm({
   dayId,
   defaultCurrency,
   item,
   onCancel,
+  onCloseRequestRegistration,
   onError,
   onDraftChange,
   onSaved,
@@ -76,11 +79,17 @@ export function PlannerItemForm({
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const deleteMutation = useDeleteItineraryItem(tripId, variantId);
-  const [attachmentPending, setAttachmentPending] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const itemMutationPending =
     createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-  const pending = itemMutationPending || attachmentPending;
+  const attachmentSession = useAttachmentEditSession({
+    item,
+    itemMutationPending,
+    onCancel,
+    onCloseRequestRegistration,
+    tripId,
+  });
+  const pending = itemMutationPending || attachmentSession.attachmentPending;
   const error = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
 
   useEffect(() => {
@@ -104,7 +113,7 @@ export function PlannerItemForm({
     type,
   });
 
-  function save() {
+  async function save() {
     if (type === "location" && !place) {
       onError("Choose a city from Google Maps before saving.");
       return;
@@ -151,10 +160,6 @@ export function PlannerItemForm({
       type,
       carAction,
     );
-    const callbacks = {
-      onError: (mutationError: Error) => onError(mutationError.message),
-      onSuccess: onSaved,
-    };
     const googlePlace =
       place?.provider === "google" && place.providerPlaceId
         ? {
@@ -190,14 +195,25 @@ export function PlannerItemForm({
       placeId: supportsPlace && place ? item?.place_id : null,
       placeSnapshot: supportsPlace ? googlePlace : undefined,
     };
-    if (item) updateMutation.mutate({ ...values, id: item.id }, callbacks);
-    else createMutation.mutate({ ...values, dayId }, callbacks);
+    try {
+      const savedItem = item
+        ? await updateMutation.mutateAsync({ ...values, id: item.id })
+        : await createMutation.mutateAsync({ ...values, dayId });
+      onSaved(await attachmentSession.commit(savedItem));
+    } catch (mutationError) {
+      onError(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "The itinerary item could not be saved.",
+      );
+    }
   }
 
   async function remove() {
     if (!item) return;
     try {
       await deleteMutation.mutateAsync({ id: item.id, tripId, variantId });
+      attachmentSession.markHandled();
       onCancel();
     } catch {
       // TanStack Query exposes the mutation error in the form below.
@@ -220,12 +236,12 @@ export function PlannerItemForm({
         if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.key === "Escape") {
           event.preventDefault();
-          onCancel();
+          attachmentSession.requestCancel();
         }
       }}
       onSubmit={(event) => {
         event.preventDefault();
-        save();
+        void save();
       }}
     >
       <PlannerItemPrimaryFields
@@ -295,20 +311,31 @@ export function PlannerItemForm({
       ) : null}
       <ItemAttachmentsSection
         item={item}
+        onDraftCountChange={attachmentSession.setDraftCount}
         onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
-        onPendingChange={setAttachmentPending}
+        onPendingChange={attachmentSession.setAttachmentPending}
         shareAttachmentsEnabled={shareAttachmentsEnabled}
         tripId={tripId}
+        uploadSessionId={attachmentSession.uploadSessionId}
+        uploadSessionSignal={attachmentSession.uploadSessionSignal}
       />
       <PlannerItemFormActions
         canSave={canSave}
         error={error}
         item={item}
-        onCancel={onCancel}
+        onCancel={attachmentSession.requestCancel}
         onRemove={remove}
         pending={pending}
-        pendingLabel={attachmentPending ? "Updating attachments…" : undefined}
+        pendingLabel={attachmentSession.attachmentPending ? "Updating attachments…" : undefined}
         type={type}
+      />
+      <AttachmentSessionDiscardDialog
+        error={attachmentSession.error}
+        onDiscard={attachmentSession.discard}
+        onOpenChange={attachmentSession.setDiscardDialogOpen}
+        open={attachmentSession.discardDialogOpen}
+        pending={attachmentSession.discardPending}
+        uploadPending={attachmentSession.attachmentPending}
       />
     </form>
   );

@@ -7,16 +7,22 @@ import { UnsavedAttachmentsSection } from "./unsaved-attachments-section";
 
 export function ItemAttachmentsSection({
   item,
+  onDraftCountChange,
   onOpenShareSettings,
   onPendingChange,
   shareAttachmentsEnabled,
+  uploadSessionId,
+  uploadSessionSignal,
   tripId,
 }: {
   item?: ItineraryItem;
+  onDraftCountChange?: (count: number) => void;
   onOpenShareSettings: () => void;
   onPendingChange?: (pending: boolean) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
+  uploadSessionId: string;
+  uploadSessionSignal: AbortSignal;
 }) {
   if (!item) return <UnsavedAttachmentsSection />;
   const attachmentVersion = (item.attachments ?? [])
@@ -26,10 +32,13 @@ export function ItemAttachmentsSection({
     <SavedItemAttachmentsSection
       item={item}
       key={`${item.id}:${attachmentVersion}`}
+      onDraftCountChange={onDraftCountChange}
       onOpenShareSettings={onOpenShareSettings}
       onPendingChange={onPendingChange}
       shareAttachmentsEnabled={shareAttachmentsEnabled}
       tripId={tripId}
+      uploadSessionId={uploadSessionId}
+      uploadSessionSignal={uploadSessionSignal}
     />
   );
 }

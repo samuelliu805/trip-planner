@@ -80,11 +80,13 @@ export function OwnerAttachmentCard({
             {ownerAttachmentType(attachment)} · {formatBytes(attachment.byteSize)}
           </p>
           <p className="mt-1 text-xs font-medium">
-            {attachment.includeInShare
-              ? shareAttachmentsEnabled
-                ? "Shared"
-                : "Share page attachments off"
-              : "Private"}
+            {attachment.draft
+              ? "Not saved yet"
+              : attachment.includeInShare
+                ? shareAttachmentsEnabled
+                  ? "Shared"
+                  : "Share page attachments off"
+                : "Private"}
           </p>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
             <Button
