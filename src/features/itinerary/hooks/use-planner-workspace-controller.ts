@@ -23,6 +23,7 @@ import { useDayRoute } from "../../routes/use-day-route";
 import { useRouteVariants } from "../../variants/queries";
 import { usePlannerClipboard } from "./use-planner-clipboard";
 import { usePlannerInteractions } from "./use-planner-interactions";
+import { usePlannerItemSelection } from "./use-planner-item-selection";
 import { usePlannerMap } from "./use-planner-map";
 import { usePlannerMutations } from "./use-planner-mutations";
 
@@ -76,6 +77,9 @@ export function usePlannerWorkspaceController({
   const projectedWorkspace = useMemo(
     () => projectWorkspaceDraft(workspace, draftItem),
     [draftItem, workspace],
+  );
+  const { selectedItem, selectedItemId, setSelectedItemId } = usePlannerItemSelection(
+    projectedWorkspace.days,
   );
   const mutating = useIsMutating() > 0;
   const selectedCount = plannerSelectionSize(selectionAnchor, selectionEnd);
@@ -151,6 +155,7 @@ export function usePlannerWorkspaceController({
     if (!cleared) return;
     clearTargetItems.forEach(({ id }) => dayRoute.removeItem(id));
     if (editor?.item && clearTargetItems.some(({ id }) => id === editor.item?.id)) setEditor(null);
+    if (clearTargetItems.some(({ id }) => id === selectedItemId)) setSelectedItemId(undefined);
     map.setSelectedItemId(undefined);
     setClearTargetItems([]);
   }
@@ -190,6 +195,7 @@ export function usePlannerWorkspaceController({
     map.setMapMode(mode);
     if (mode !== "overview") return;
     setSelectedDayRow(null);
+    setSelectedItemId(undefined);
     map.setSelectedItemId(undefined);
     setSelectionAnchor({ column: -1, row: -1 });
     setSelectionEnd({ column: -1, row: -1 });
@@ -202,20 +208,28 @@ export function usePlannerWorkspaceController({
     fillFrame,
     fillSourceRight,
     rangeJustSelected,
+    selectedItemId,
     selectionAnchor,
     selectionEnd,
     selectionEndRef,
     setEditor,
     setInteractionError,
     setIsFillDragging,
+    setSelectedItemId,
     setSelectedDayRow,
-    setSelectedItemId: map.setSelectedItemId,
+    setSelectedMapItemId: map.setSelectedItemId,
     setMapMode: map.setMapModeFromSelection,
     setSelectionAnchor,
     setSelectionEnd,
     setSplit,
     workspace,
   });
+
+  function selectMapMarker(itemId?: string) {
+    if (map.mapMode === "comparison") return;
+    setSelectedItemId(itemId);
+    map.selectMarker(itemId);
+  }
 
   return {
     activeCategory,
@@ -256,6 +270,9 @@ export function usePlannerWorkspaceController({
     selectedDay,
     selectedDayRow,
     selectedItems,
+    selectedItem,
+    selectedItemId,
+    selectMapMarker,
     selectionAnchor,
     selectionEnd,
     selectionEndRef,

@@ -1,6 +1,6 @@
 "use client";
 
-import { ListOrdered, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ListOrdered, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -28,38 +28,61 @@ export function AddItemButton({
   category,
   day,
   disabled,
+  editLabel,
   onAdd,
+  onEdit,
 }: {
   category: PlannerCategory;
   day: PlannerDay;
   disabled?: boolean;
+  editLabel?: string;
   onAdd: () => void;
+  onEdit?: () => void;
 }) {
-  if (disabled) return null;
+  if (disabled && !onEdit) return null;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          aria-label={`Add ${category.label.toLowerCase()} on day ${day.day_number}`}
-          className="mt-auto flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
-          data-add-item
-          disabled={disabled}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAdd();
-          }}
-          type="button"
-        >
-          <Plus className="size-3.5" />
-          Add
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {disabled
-          ? "Only one hotel is allowed per day"
-          : `Add another ${category.label.toLowerCase()}`}
-      </TooltipContent>
-    </Tooltip>
+    <div className="mt-auto flex h-8 w-full shrink-0 overflow-hidden rounded border border-dashed bg-background text-[11px] font-medium text-muted-foreground">
+      {!disabled ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              aria-label={`Add ${category.label.toLowerCase()} on day ${day.day_number}`}
+              className="flex h-full min-w-0 flex-1 items-center justify-center gap-1 px-2 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              data-add-item
+              onClick={(event) => {
+                event.stopPropagation();
+                onAdd();
+              }}
+              type="button"
+            >
+              <Plus className="size-3.5" />
+              Add
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{`Add another ${category.label.toLowerCase()}`}</TooltipContent>
+        </Tooltip>
+      ) : null}
+      {onEdit ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              aria-label={`Edit ${editLabel ?? category.label.toLowerCase()}`}
+              className={`flex h-full min-w-0 flex-1 items-center justify-center gap-1 px-2 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${disabled ? "" : "border-l border-dashed"}`}
+              data-edit-cell-item
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit();
+              }}
+              type="button"
+            >
+              <Pencil className="size-3.5" />
+              Edit
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{`Edit ${editLabel ?? category.label.toLowerCase()}`}</TooltipContent>
+        </Tooltip>
+      ) : null}
+    </div>
   );
 }
 

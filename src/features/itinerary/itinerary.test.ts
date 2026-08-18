@@ -1685,7 +1685,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(interactions, /\["activities", "hotel", "meals"\][\s\S]*setMapMode\("day_route"\)/);
   assert.match(
     interactions,
-    /\["activity", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedItemId\(item\.place \? item\.id : undefined\)/,
+    /\["activity", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedMapItemId\(item\.place \? item\.id : undefined\)/,
   );
   assert.doesNotMatch(interactions, /hasDayRoute|routeExists/);
   assert.match(interactions, /setMapMode\("overview"\)/);
@@ -2169,6 +2169,13 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /onDoubleClick=\{openEditorFromDoubleClick\}/);
   assert.match(workspace, /data-edit-item=\{item\.id\}/);
   assert.match(workspace, /interactive=\{selected\}/);
+  assert.match(workspace, /selected=\{item\.id === selectedItemId\}/);
+  assert.match(workspace, /setSelectedItemId\(item\.id\);[\s\S]*if \(item\.type === "location"\)/);
+  assert.match(workspace, /setSelectedMapItemId\(undefined\)/);
+  assert.match(workspace, /items\.find\(\(\{ id \}\) => id === selectedItemId\)/);
+  assert.match(workspace, /items\.length === 1 \? items\[0\] : undefined/);
+  assert.match(workspace, /data-edit-cell-item/);
+  assert.match(workspace, /mt-auto flex h-8 w-full/);
   assert.match(workspace, /pointer-events-none/);
   assert.match(workspace, /M12 3V9M9 6H15/);
   assert.match(workspace, /M12 15V21M9 18H15/);

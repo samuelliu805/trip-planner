@@ -24,17 +24,12 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
 function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
   usePlannerViewportContainment();
   const c = usePlannerWorkspaceController(props);
-  const selectedResearchItem = c.map.selectedItemId
-    ? c.projectedWorkspace.days
-        .flatMap(({ items }) => items)
-        .find(({ id }) => id === c.map.selectedItemId)
-    : undefined;
-  const researchItem =
-    selectedResearchItem ??
+  const activeItem =
+    c.selectedItem ??
     (c.selectedCount === 1 && c.selectedItems.length === 1 ? c.selectedItems[0] : undefined);
   const researchContext =
     c.selectedCount === 1
-      ? planResearchContext(c.workspace.variant.id, c.activeDay, c.activeCategory, researchItem)
+      ? planResearchContext(c.workspace.variant.id, c.activeDay, c.activeCategory, activeItem)
       : undefined;
   const rawCostLines = useMemo(
     () =>
@@ -107,7 +102,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         researchSelections={props.initialResearchSelections}
         selectedCount={c.selectedCount}
         selectedDay={c.selectedDay}
-        selectedItem={c.selectedItems.length === 1 ? c.selectedItems[0] : undefined}
+        selectedItem={activeItem}
         setCopyDaysOpen={c.clipboard.setCopyDaysOpen}
         setEditor={c.setEditor}
         setInteractionError={c.setInteractionError}
@@ -165,13 +160,14 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         onEditMapItem={c.editMapItem}
         onMapExpand={() => c.setMapExpanded(true)}
         onMapModeChange={c.changeMapModeAndSelection}
-        onMapSelectionClear={() => c.map.setSelectedItemId(undefined)}
-        onMarkerClick={c.map.selectMarker}
+        onMapSelectionClear={c.selectMapMarker}
+        onMarkerClick={c.selectMapMarker}
         openEditorFromDoubleClick={c.interactions.openEditorFromDoubleClick}
         overviewRoute={c.map.overviewRoute}
         removeDay={c.removeDay}
         selectedCount={c.selectedCount}
         selectedDayRow={c.selectedDayRow}
+        selectedItemId={c.selectedItemId}
         selectedMapItem={c.map.selectedMapItem}
         selectionAnchor={c.selectionAnchor}
         selectionEnd={c.selectionEnd}
@@ -250,8 +246,8 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
             c.map.exitComparison();
         }}
         onMapModeChange={c.changeMapModeAndSelection}
-        onMapSelectionClear={() => c.map.setSelectedItemId(undefined)}
-        onMarkerClick={c.map.selectMarker}
+        onMapSelectionClear={c.selectMapMarker}
+        onMarkerClick={c.selectMapMarker}
         onSettingsOpenChange={c.setSettingsOpen}
         onTargetDaysChange={c.clipboard.setTargetDays}
         overviewRoute={c.map.overviewRoute}
