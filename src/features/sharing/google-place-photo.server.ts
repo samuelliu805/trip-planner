@@ -156,11 +156,15 @@ export async function resolveGooglePlaceMedia(
   return resolved;
 }
 
-export async function fetchGooglePhotoMedia(photoName: string, providerPlaceId: string) {
+export async function fetchGooglePhotoMedia(
+  photoName: string,
+  providerPlaceId: string,
+  maxWidthPx = 1200,
+) {
   const key = apiKey();
   if (!key || !photoName.startsWith(`places/${providerPlaceId}/photos/`)) return null;
   try {
-    const search = new URLSearchParams({ key, maxWidthPx: "1200" });
+    const search = new URLSearchParams({ key, maxWidthPx: String(maxWidthPx) });
     const response = await fetch(
       `https://places.googleapis.com/v1/${photoName}/media?${search.toString()}`,
       { cache: "no-store", redirect: "follow" },

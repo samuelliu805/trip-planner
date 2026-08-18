@@ -11,6 +11,7 @@
 @import "../features/sharing/templates/builtins/journal/index.css";
 @import "../features/sharing/templates/builtins/traverse/index.css";
 @import "./public-workspace-tablet.css";
+@import "./public-readability.css";
 
 html:has(.public-itinerary-shell),
 body:has(.public-itinerary-shell) {

@@ -55,11 +55,9 @@ export function MatrixItemSummary({
       <span
         className={`flex min-w-0 items-center gap-1.5 ${transportMode ? "matrix-transport-summary flex-wrap" : ""}`}
       >
-        {ModeIcon ? (
-          <ModeIcon className="size-4 shrink-0 text-muted-foreground sm:size-3.5" />
-        ) : null}
+        {ModeIcon ? <ModeIcon className="size-4 shrink-0 text-muted-foreground" /> : null}
         {startTime ? (
-          <span className="shrink-0 font-mono text-xs text-muted-foreground sm:text-[10px]">
+          <span className="shrink-0 font-mono text-xs text-muted-foreground">
             {startTime.slice(0, 5)}
           </span>
         ) : null}
@@ -75,7 +73,7 @@ export function MatrixItemSummary({
       </span>
       {subtitle ? (
         <span
-          className="block truncate text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal"
+          className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground"
           title={subtitle}
         >
           {subtitle}
@@ -94,7 +92,7 @@ export function MatrixGridHeader({
 }) {
   return (
     <div
-      className="matrix-grid-header sticky top-0 z-[70] flex h-10 border-b bg-muted/95 text-xs font-semibold text-muted-foreground sm:h-9 sm:text-[11px]"
+      className="matrix-grid-header sticky top-0 z-[70] flex h-10 border-b bg-muted/95 text-xs font-semibold text-muted-foreground"
       role="row"
     >
       <div

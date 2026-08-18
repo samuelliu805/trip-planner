@@ -51,7 +51,7 @@ export function RouteVariantSwitcher({
       <div className="hidden items-center gap-1 min-[960px]:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="h-9 max-w-56 gap-2 px-2.5" variant="outline">
+            <Button className="h-11 max-w-48 gap-2 rounded-full px-3" variant="outline">
               <VariantIdentity compact variant={activeVariant} />
               <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
             </Button>
@@ -96,7 +96,7 @@ export function RouteVariantSwitcher({
 
       <Button
         aria-label={`Plan: ${activeVariant.name}${activeVariant.is_primary ? ", Primary" : ""}`}
-        className="h-11 min-w-0 gap-1.5 px-2 min-[960px]:hidden"
+        className="h-11 min-w-0 max-w-32 gap-1.5 rounded-full px-2.5 min-[960px]:hidden"
         onClick={() => onSheetOpenChange(true)}
         variant="outline"
       >
@@ -105,7 +105,7 @@ export function RouteVariantSwitcher({
           className="size-2.5 rounded-full"
           style={{ backgroundColor: activeVariant.color }}
         />
-        <span className="max-w-20 truncate text-xs">{activeVariant.name}</span>
+        <span className="truncate text-xs font-semibold">{activeVariant.name}</span>
         <ChevronDown className="size-3.5" />
       </Button>
 

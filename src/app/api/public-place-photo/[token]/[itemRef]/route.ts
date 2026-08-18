@@ -12,6 +12,7 @@ const requestSchema = z
     photo: z.string().regex(/^places\/[^/]+\/photos\/[^/]+$/),
     signature: z.string().regex(/^[a-f0-9]{64}$/),
     token: z.uuid(),
+    width: z.coerce.number().int().min(160).max(1200).default(1200),
   })
   .strict();
 
@@ -25,6 +26,7 @@ export async function GET(
     ...routeParams,
     photo: search.get("photo"),
     signature: search.get("signature"),
+    width: search.get("width") ?? undefined,
   });
   if (!parsed.success) return new Response(null, { status: 404 });
 
@@ -42,7 +44,11 @@ export async function GET(
   )
     return new Response(null, { status: 404 });
 
-  const photo = await fetchGooglePhotoMedia(parsed.data.photo, source.providerPlaceId);
+  const photo = await fetchGooglePhotoMedia(
+    parsed.data.photo,
+    source.providerPlaceId,
+    parsed.data.width,
+  );
   if (!photo) return new Response(null, { status: 404 });
   return new Response(photo.body, {
     headers: {

@@ -2173,7 +2173,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /setSelectedItemId\(item\.id\);[\s\S]*if \(item\.type === "location"\)/);
   assert.match(workspace, /setSelectedMapItemId\(undefined\)/);
   assert.doesNotMatch(workspace, /data-edit-cell-item/);
-  assert.match(workspace, /mt-auto flex h-8 w-full/);
+  assert.match(workspace, /mt-auto flex h-11 w-full/);
   assert.match(workspace, /pointer-events-none/);
   assert.match(workspace, /M12 3V9M9 6H15/);
   assert.match(workspace, /M12 15V21M9 18H15/);
@@ -2326,10 +2326,15 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(workspace, /usePlannerViewportContainment/);
   assert.match(viewportContainment, /visualViewport/);
   assert.match(viewportContainment, /focusout/);
+  assert.match(viewportContainment, /viewportIsUnobscured/);
+  assert.match(viewportContainment, /document\.scrollingElement\?\.scrollTo/);
+  assert.doesNotMatch(viewportContainment, /return !isEditing\(\) &&/);
   assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);
   assert.doesNotMatch(viewportContainment + styles, /planner-visual-viewport/);
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);
+  assert.match(styles, /\.planner-matrix \[data-edit-item\] \{[\s\S]*font-size: 0\.875rem/);
+  assert.match(styles, /\.trip-title-plan-group/);
   assert.match(
     styles,
     /max-width: 899px[\s\S]*\.planner-matrix \{[\s\S]*padding-bottom: 0;[\s\S]*scroll-padding-bottom: 0;/,

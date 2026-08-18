@@ -41,7 +41,7 @@ export function AddItemButton({
       <TooltipTrigger asChild>
         <button
           aria-label={`Add ${category.label.toLowerCase()} on day ${day.day_number}`}
-          className="mt-auto flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-auto flex h-11 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-add-item
           onClick={(event) => {
             event.stopPropagation();
@@ -107,8 +107,8 @@ export function DayActions({
   if (!visible) return null;
   const mobile = location === "mobilebar";
   const buttonClass = mobile
-    ? "flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md border bg-background px-2 text-xs font-medium text-primary"
-    : "flex h-9 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground";
+    ? "flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-md border bg-background px-2 text-xs font-medium text-primary"
+    : "flex h-11 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground";
   const insertIcon = (direction: "up" | "down") => (
     <InsertRowIcon direction={direction === "up" ? "above" : "below"} />
   );
@@ -232,8 +232,8 @@ export function DayActions({
               aria-label={`Remove day ${day.day_number}`}
               className={
                 mobile
-                  ? "col-span-2 flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border bg-background px-2 text-xs font-medium text-destructive disabled:opacity-30"
-                  : "flex h-9 items-center justify-center border-l text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30"
+                  ? "col-span-2 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-md border bg-background px-2 text-xs font-medium text-destructive disabled:opacity-30"
+                  : "flex h-11 items-center justify-center border-l text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30"
               }
               disabled={isOnlyDay || pending}
               onClick={(event) => {

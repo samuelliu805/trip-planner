@@ -320,7 +320,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     /\.planner-editor-sheet \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior-x: none[\s\S]*touch-action: pan-y/,
   );
   assert.equal(
-    publicViews.every((source) => /PublicItemMediaGallery/.test(source)),
+    publicViews.every((source) => /PublicItemResources/.test(source)),
     true,
   );
   assert.match(publicRoute, /service_public_asset_access_v2/);

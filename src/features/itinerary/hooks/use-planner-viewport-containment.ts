@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 const EDITABLE_SELECTOR = "input, textarea, select, [contenteditable='true']";
+const KEYBOARD_GAP_PX = 120;
 
 function isEditing() {
   return document.activeElement?.matches(EDITABLE_SELECTOR) ?? false;
@@ -13,20 +14,21 @@ export function usePlannerViewportContainment() {
     const visualViewport = window.visualViewport;
     const timers = new Set<number>();
 
-    function keyboardIsClosed() {
+    function viewportIsUnobscured() {
       if (!visualViewport) return !isEditing();
-      return !isEditing() && window.innerHeight - visualViewport.height < 80;
+      return window.innerHeight - visualViewport.height < KEYBOARD_GAP_PX;
     }
 
     function resetDocumentScroll() {
-      if (!keyboardIsClosed()) return;
+      if (!viewportIsUnobscured()) return;
       window.scrollTo({ left: 0, top: 0, behavior: "auto" });
+      document.scrollingElement?.scrollTo({ left: 0, top: 0, behavior: "auto" });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     }
 
     function settleAfterKeyboard() {
-      [0, 80, 240, 500].forEach((delay) => {
+      [0, 80, 240, 500, 900].forEach((delay) => {
         const timer = window.setTimeout(() => {
           timers.delete(timer);
           resetDocumentScroll();

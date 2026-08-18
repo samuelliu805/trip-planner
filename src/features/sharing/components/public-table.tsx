@@ -11,8 +11,7 @@ import { transportModeLabels, type TransportMode } from "@/features/itinerary/ty
 
 import { orderedPublicItemMedia } from "../public-media-presentation";
 import type { PublicItinerary, PublicItineraryItem } from "../types";
-import { PublicItemMediaGallery } from "./public-item-media";
-import { PublicQuickActions } from "./public-quick-actions";
+import { PublicItemResources } from "./public-item-resources";
 import { useContainedPublicMatrix } from "./use-contained-public-matrix";
 
 function publicTransportMode(item: PublicItineraryItem): TransportMode | null {
@@ -66,7 +65,7 @@ export function PublicTable({
           return (
             <div
               aria-current={selectedDayRef === day.ref ? "true" : undefined}
-              className={`flex min-h-24 border-b ${selectedDayRef === day.ref ? "bg-primary/[0.035]" : ""}`}
+              className={`flex min-h-20 border-b ${selectedDayRef === day.ref ? "bg-primary/[0.035]" : ""}`}
               data-public-day-ref={day.ref}
               key={day.ref}
               onClick={() => onSelectDay(day.ref)}
@@ -122,7 +121,7 @@ export function PublicTable({
                       {items.map((item) => (
                         <div
                           aria-current={selectedItemRef === item.ref ? "true" : undefined}
-                          className={`public-item-focus min-h-11 cursor-default px-1.5 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
+                          className={`public-item-focus min-h-11 cursor-default px-2 py-1.5 text-sm leading-5 outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
                           data-public-item-ref={item.ref}
                           key={item.ref}
                           onClick={(event) => {
@@ -144,11 +143,11 @@ export function PublicTable({
                             transportMode={publicTransportMode(item)}
                             type={item.type}
                           />
-                          <PublicItemMediaGallery
+                          <PublicItemResources
+                            item={item}
                             media={orderedPublicItemMedia(item)}
                             variant="table"
                           />
-                          <PublicQuickActions item={item} />
                         </div>
                       ))}
                     </div>

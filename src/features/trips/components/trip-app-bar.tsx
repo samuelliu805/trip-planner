@@ -113,18 +113,18 @@ export function TripAppBar({
 }: TripAppBarProps) {
   return (
     <header className="trip-app-bar z-[70] shrink-0 border-b bg-background/95 backdrop-blur">
-      <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-2 min-[960px]:grid min-[960px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] min-[960px]:gap-4">
-        <div className="flex min-w-0 items-center gap-1.5">
+      <div className="trip-app-bar-inner flex h-16 min-w-0 items-center gap-2 min-[960px]:grid min-[960px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] min-[960px]:gap-4">
+        <div className="trip-app-bar-leading flex min-w-0 flex-1 items-center gap-2 min-[960px]:flex-initial">
           <Button asChild className="size-11 shrink-0 p-0" variant="ghost">
             <Link aria-label="Back to Trips" href="/trips">
               <ArrowLeft aria-hidden="true" className="size-4" />
             </Link>
           </Button>
-          <div className="flex min-w-0 items-center gap-1 rounded-xl bg-muted/55 p-1">
-            <h1 className="min-w-0 flex-1 truncate px-1.5 text-sm font-semibold sm:max-w-36 min-[960px]:max-w-56 min-[960px]:text-base">
+          <div className="trip-title-plan-group grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+            <h1 className="trip-app-title min-w-0 truncate text-[15px] font-semibold leading-tight min-[960px]:text-base">
               {title}
             </h1>
-            <div className="min-w-0 shrink-0">{variantControls}</div>
+            <div className="trip-variant-control min-w-0 shrink-0">{variantControls}</div>
           </div>
         </div>
 

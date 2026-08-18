@@ -34,6 +34,17 @@ body:has(.trip-planner-page) {
   transform: translateZ(0);
 }
 
+.trip-title-plan-group,
+.trip-app-title,
+.trip-variant-control,
+.trip-variant-control > * {
+  min-width: 0;
+}
+
+.trip-variant-control {
+  max-width: min(8rem, 36vw);
+}
+
 .trip-planner-page,
 .planner-workspace,
 .planner-layout {
@@ -62,6 +73,11 @@ body:has(.trip-planner-page) {
   overflow-anchor: none;
   scrollbar-gutter: stable;
   touch-action: pan-x pan-y;
+}
+
+.planner-matrix [data-edit-item] {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 }
 
 .planner-matrix .matrix-grid-header {
@@ -281,6 +297,23 @@ body:has(.trip-planner-page) {
     padding-right: max(8px, env(safe-area-inset-right));
     padding-bottom: max(8px, env(safe-area-inset-bottom));
     padding-left: max(8px, env(safe-area-inset-left));
+  }
+
+  .trip-app-bar-inner {
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+  }
+
+  .trip-app-bar-leading {
+    gap: 0.375rem;
+  }
+
+  .trip-title-plan-group {
+    gap: 0.375rem;
+  }
+
+  .trip-variant-control {
+    max-width: min(7.5rem, 34vw);
   }
 
   .planner-editor-sheet {

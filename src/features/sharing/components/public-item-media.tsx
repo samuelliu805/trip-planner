@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image, { type ImageLoaderProps } from "next/image";
 import { FileImage, FileText, Film, Play } from "lucide-react";
 import { useState } from "react";
 
@@ -14,6 +14,11 @@ import type { PublicItemMedia } from "../types";
 
 type AttachmentMedia = Extract<PublicItemMedia, { source: "attachment" }>;
 type GoogleMedia = Extract<PublicItemMedia, { source: "google_place" }>;
+
+function responsiveGooglePhotoLoader({ src, width }: ImageLoaderProps) {
+  const separator = src.includes("?") ? "&" : "?";
+  return `${src}${separator}width=${Math.min(width, 1200)}`;
+}
 
 function viewerAttachment(media: AttachmentMedia): ViewerAttachment {
   return {
@@ -35,10 +40,10 @@ function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: bo
         className="object-cover"
         fill
         fetchPriority={prioritize ? "high" : undefined}
+        loader={responsiveGooglePhotoLoader}
         loading={prioritize ? "eager" : "lazy"}
         sizes="(max-width: 639px) calc(100vw - 3rem), (max-width: 1199px) 34vw, 24vw"
         src={media.thumbnailUrl ?? media.url}
-        unoptimized
       />
     </div>
   );

@@ -1,7 +1,6 @@
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
-import { PublicItemMediaGallery } from "./public-item-media";
-import { PublicQuickActions } from "./public-quick-actions";
+import { PublicItemResources } from "./public-item-resources";
 
 export function PublicOverviewCard({
   onSelect,
@@ -20,7 +19,6 @@ export function PublicOverviewCard({
   const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const place = item.place?.localityName ?? item.place?.displayName;
   const placeMedia = media.filter(({ source }) => source === "google_place");
-  const attachments = media.filter(({ source }) => source === "attachment");
   const hasVisualMedia = placeMedia.length > 0;
 
   const spanClass = hasVisualMedia
@@ -59,10 +57,11 @@ export function PublicOverviewCard({
         <span className="overview-order-v4">{String(order).padStart(2, "0")}</span>
       </button>
 
-      <PublicItemMediaGallery media={attachments} variant="overview" />
-      <PublicItemMediaGallery
-        media={placeMedia}
+      <PublicItemResources
+        item={item}
+        media={media}
         prioritizeFirst={prioritizeMedia}
+        quiet
         variant="overview"
       />
 
@@ -73,7 +72,6 @@ export function PublicOverviewCard({
       ) : null}
       <footer className="overview-item-footer-v4">
         <span>{publicItemTypeLabels[item.type]}</span>
-        <PublicQuickActions item={item} quiet />
       </footer>
     </article>
   );

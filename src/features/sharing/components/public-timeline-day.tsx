@@ -10,7 +10,7 @@ import { publicTimelineDayPresentation } from "../public-timeline-presentation";
 import type { PublicItineraryDay } from "../types";
 import { PublicTimelineNode } from "./public-timeline-node";
 import { PublicTimelineTransport } from "./public-timeline-transport";
-import { PublicItemMediaGallery } from "./public-item-media";
+import { PublicItemResources } from "./public-item-resources";
 
 function useTimelineRailWheel() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -171,7 +171,12 @@ export function PublicTimelineDay({
                   </span>
                 ) : null}
               </span>
-              <PublicItemMediaGallery media={orderedPublicItemMedia(item)} variant="timeline" />
+              <PublicItemResources
+                item={item}
+                media={orderedPublicItemMedia(item)}
+                quiet
+                variant="timeline"
+              />
             </div>
           ))}
         </section>

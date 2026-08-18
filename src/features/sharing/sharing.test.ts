@@ -78,6 +78,7 @@ async function readAppStyles() {
       [
         "../../app/globals.css",
         "../../app/planner-workspace.css",
+        "../../app/public-readability.css",
         "../../app/public-workspace.css",
         "../../app/public-workspace-tablet.css",
         "../../app/public-sharing-media.css",
@@ -1233,6 +1234,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./components/public-overview-card.tsx", import.meta.url),
     "utf8",
   );
+  const itemResources = await readFile(
+    new URL("./components/public-item-resources.tsx", import.meta.url),
+    "utf8",
+  );
   const overviewTransport = await readFile(
     new URL("./components/public-overview-transport-list.tsx", import.meta.url),
     "utf8",
@@ -1347,7 +1352,9 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(overviewTransport, /data-public-transport/);
   assert.match(overviewTransport, /publicItemTypeLabels/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
-  assert.match(overviewCard, /PublicItemMediaGallery/);
+  assert.match(overviewCard, /PublicItemResources/);
+  assert.match(itemResources, /aria-label="Links and attachments"/);
+  assert.match(itemResources, /PublicItemMediaGallery[\s\S]*PublicQuickActions/);
   assert.match(overviewCard, /data-public-item-category=\{publicItemTypeLabels\[item\.type\]\}/);
   assert.doesNotMatch(overviewCard, /\{media\.length\} media/);
   assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
@@ -1369,9 +1376,12 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.doesNotMatch(timelineSources, /PublicOverviewCard/);
   assert.match(timelineNode, /variant="timeline"/);
   assert.ok(
-    timelineNode.indexOf("timeline-node-topline-v4") <
-      timelineNode.indexOf("<PublicItemMediaGallery"),
+    timelineNode.indexOf("timeline-node-topline-v4") < timelineNode.indexOf("<PublicItemResources"),
     "timeline media remains inside its item after the item copy",
+  );
+  assert.match(
+    styles,
+    /\.public-item-resources > \.public-item-attachments,[\s\S]*display: contents/,
   );
   assert.match(styles, /public-itinerary-grid/);
   assert.match(styles, /var\(--public-content-split\)/);
@@ -1397,6 +1407,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(
     styles,
     /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-matrix > \[role="grid"\] \{[\s\S]*min-height: 100%[\s\S]*flex-direction: column[\s\S]*\[role="row"\]:not\(\.matrix-grid-header\) \{[\s\S]*flex: 1 0 auto/,
+  );
+  assert.match(
+    styles,
+    /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-itinerary-grid \{\s*order: 2;[\s\S]*\.public-template-region-view-navigation \{\s*order: 3;/,
   );
   assert.match(styles, /\.public-matrix \{[\s\S]*overflow: auto/);
   assert.match(styles, /\.public-matrix \{[\s\S]*overscroll-behavior: none/);
@@ -1822,6 +1836,9 @@ test("Google place photos stay server-only, attributed, no-store, and public-tok
   assert.match(photoRoute, /private, no-store, max-age=0/);
   assert.match(media, /Photo by/);
   assert.match(media, /Google Maps/);
+  assert.match(media, /responsiveGooglePhotoLoader/);
+  assert.match(media, /sizes="\(max-width: 639px\)/);
+  assert.match(photoRoute, /width: z\.coerce\.number\(\)\.int\(\)\.min\(160\)\.max\(1200\)/);
   assert.match(migration, /security definer/);
   assert.match(migration, /link\.public_token = shared_token/);
   assert.match(migration, /link\.revoked_at is null/);
@@ -1853,7 +1870,7 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(timeline, /ref=\{timelineSectionRef\}/);
   assert.match(timeline, /viewScroller\.scrollTop \+= delta/);
   assert.doesNotMatch(timelineTransport, /data-public-item-ref|onClick|aria-current/);
-  assert.match(timelineTransport, /PublicQuickActions compact item=\{item\} quiet/);
+  assert.match(timelineTransport, /PublicItemResources[\s\S]*compact[\s\S]*quiet/);
   assert.match(presentation, /timelineNodeTypes/);
   assert.match(presentation, /"car_rental"/);
   assert.match(presentation, /\.filter\(isPublicTransfer\)/);

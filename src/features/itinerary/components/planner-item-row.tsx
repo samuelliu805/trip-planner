@@ -65,7 +65,7 @@ export function PlannerItemRow({
       className={`group/item grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
     >
       <button
-        className="flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-1 text-left text-sm leading-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-xs sm:leading-normal"
+        className="flex min-h-11 min-w-0 flex-col justify-center rounded px-2 py-1.5 text-left text-sm leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-edit-item={item.id}
         aria-pressed={selected}
         onClick={(event) => {
@@ -104,11 +104,11 @@ export function PlannerItemRow({
           <DropdownMenuTrigger asChild>
             <button
               aria-label={`Actions for ${title}`}
-              className="flex size-8 shrink-0 items-center justify-center self-center rounded hover:bg-background"
+              className="flex size-11 shrink-0 items-center justify-center self-center rounded hover:bg-background"
               onClick={(event) => event.stopPropagation()}
               type="button"
             >
-              <MoreHorizontal className="size-3.5" />
+              <MoreHorizontal className="size-4" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
