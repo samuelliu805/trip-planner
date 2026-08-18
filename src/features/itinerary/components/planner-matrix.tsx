@@ -162,9 +162,6 @@ export function PlannerMatrix({
                   const lastSelected =
                     row === visibleSelectionBounds.bottom &&
                     column === visibleSelectionBounds.right;
-                  const editableItem =
-                    items.find(({ id }) => id === selectedItemId) ??
-                    (items.length === 1 ? items[0] : undefined);
                   return (
                     <div
                       aria-selected={selected}
@@ -221,18 +218,7 @@ export function PlannerMatrix({
                           category={category}
                           day={day}
                           disabled={category.id === "hotel" && items.length > 0}
-                          editLabel={editableItem?.title}
                           onAdd={() => setEditor({ dayId: day.id, type: category.defaultType })}
-                          onEdit={
-                            editableItem
-                              ? () =>
-                                  setEditor({
-                                    dayId: day.id,
-                                    item: editableItem,
-                                    type: editableItem.type,
-                                  })
-                              : undefined
-                          }
                         />
                       ) : null}
                       {lastSelected && selectionAnchor.row === selectionEnd.row ? (

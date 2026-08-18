@@ -617,9 +617,12 @@ test("Trip detail keeps context controls at top and uses one mobile destination 
   assert.doesNotMatch(compareWorkspace, /<h1|trip\.title/);
   assert.match(account, /\{email\}/);
   assert.match(account, /Log out/);
-  assert.doesNotMatch(account, /Trip settings/);
+  assert.match(account, /Trip settings/);
   assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
-  assert.match(appBar, /More trip actions/);
+  assert.doesNotMatch(appBar, /More trip actions|<MoreHorizontal/);
+  assert.match(appBar, /aria-label="Trip settings"/);
+  assert.match(appBar, /Saving/);
+  assert.doesNotMatch(appBar, />Saved</);
   assert.doesNotMatch(appBar, /Open settings for/);
 });
 

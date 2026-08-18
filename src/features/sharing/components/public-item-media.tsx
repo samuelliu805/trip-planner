@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import {
   AttachmentViewer,
+  preloadAttachmentPdfViewer,
   type ViewerAttachment,
 } from "@/features/attachments/components/attachment-viewer";
 
@@ -104,6 +105,9 @@ function AttachmentButtons({
             event.stopPropagation();
             onOpen(attachment, event.currentTarget);
           }}
+          onFocus={attachment.kind === "pdf" ? preloadAttachmentPdfViewer : undefined}
+          onPointerDown={attachment.kind === "pdf" ? preloadAttachmentPdfViewer : undefined}
+          onPointerEnter={attachment.kind === "pdf" ? preloadAttachmentPdfViewer : undefined}
           type="button"
         >
           <AttachmentVisual attachment={attachment} />

@@ -1511,6 +1511,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(styles, /:has\(\.public-mobile-map-control\)[\s\S]*padding-bottom: max\(5\.25rem/);
   assert.match(
     styles,
+    /max-width: 899px[\s\S]*\.public-itinerary-shell \.timeline-section-header-v4 \{[\s\S]*position: sticky;[\s\S]*top: 0;/,
+  );
+  assert.match(
+    styles,
     /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*display: flex[\s\S]*height: 4rem[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: min\(22\.5rem, 100%\)[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
   );
   assert.match(
@@ -1534,7 +1538,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shell, /<PublicTemplateRenderer template=\{template\}/);
   assert.doesNotMatch(shell + controller + renderer, /fetch\(|dangerouslySetInnerHTML|eval\(/);
   assert.match(views, /public-view-scroll h-full min-w-0/);
-  assert.match(views, /containTouchScroll/);
+  assert.doesNotMatch(views, /containTouchScroll|onTouchStart/);
   assert.doesNotMatch(
     overviewCard + overviewTransport + timelineSources + publicTable,
     /onMouseEnter|onFocus=/,

@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, UserRound } from "lucide-react";
+import { LogOut, Settings2, Share2, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,15 @@ function accountInitials(email: string) {
   );
 }
 
-export function TripAccountMenu({ email = "Account" }: { email?: string }) {
+export function TripAccountMenu({
+  email = "Account",
+  onShareTrip,
+  onTripSettings,
+}: {
+  email?: string;
+  onShareTrip?: () => void;
+  onTripSettings?: () => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -46,6 +54,16 @@ export function TripAccountMenu({ email = "Account" }: { email?: string }) {
           </p>
         </div>
         <DropdownMenuSeparator />
+        {onShareTrip ? (
+          <DropdownMenuItem className="sm:hidden" onSelect={onShareTrip}>
+            <Share2 aria-hidden="true" className="size-4" /> Share trip
+          </DropdownMenuItem>
+        ) : null}
+        {onTripSettings ? (
+          <DropdownMenuItem className="sm:hidden" onSelect={onTripSettings}>
+            <Settings2 aria-hidden="true" className="size-4" /> Trip settings
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem disabled>
           <UserRound aria-hidden="true" className="size-4" /> Account settings
         </DropdownMenuItem>

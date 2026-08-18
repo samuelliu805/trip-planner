@@ -79,6 +79,29 @@
   }
 }
 
+@media (max-width: 899px) {
+  .public-itinerary-shell .timeline-section-v4 {
+    overflow: visible;
+  }
+
+  .public-itinerary-shell .timeline-section-header-v4 {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--background);
+    box-shadow: 0 1px 0 var(--border);
+    transform: translateZ(0);
+  }
+
+  .public-itinerary-shell.public-template-bento .timeline-section-header-v4 {
+    background: #0b1710;
+  }
+
+  .public-itinerary-shell.public-template-traverse .timeline-section-header-v4 {
+    background: #d3e0e1;
+  }
+}
+
 @media (max-width: 639px) {
   .public-itinerary-shell .public-itinerary-grid {
     order: 2;

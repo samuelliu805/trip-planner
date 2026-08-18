@@ -25,7 +25,7 @@ export function ContinuousPdfViewer({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const updateWidth = () => setPageWidth(Math.max(240, Math.min(960, container.clientWidth)));
+    const updateWidth = () => setPageWidth(Math.max(240, Math.min(960, container.clientWidth - 2)));
     updateWidth();
     const observer = new ResizeObserver(updateWidth);
     observer.observe(container);
@@ -33,7 +33,7 @@ export function ContinuousPdfViewer({
   }, []);
 
   return (
-    <div className="mx-auto w-full max-w-5xl" ref={containerRef}>
+    <div className="mx-auto w-full min-w-0 max-w-full overflow-x-hidden" ref={containerRef}>
       <Document
         error={null}
         file={url}
@@ -51,8 +51,13 @@ export function ContinuousPdfViewer({
           data-continuous-pdf=""
         >
           {Array.from({ length: pageCount }, (_, index) => (
-            <figure className="m-0 max-w-full" data-pdf-page={index + 1} key={index + 1}>
+            <figure
+              className="m-0 flex w-full max-w-full flex-col items-center overflow-hidden"
+              data-pdf-page={index + 1}
+              key={index + 1}
+            >
               <Page
+                className="flex w-full max-w-full justify-center overflow-hidden"
                 loading={
                   <div
                     className="grid min-h-72 place-items-center bg-white text-sm text-black/60"

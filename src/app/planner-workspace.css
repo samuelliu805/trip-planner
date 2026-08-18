@@ -11,21 +11,18 @@ body:has(.trip-planner-page) {
 
 .trips-shell:has(.trip-planner-page) {
   min-height: 0;
-  height: var(--planner-visual-viewport-height, 100dvh);
-  max-height: var(--planner-visual-viewport-height, 100dvh);
+  height: 100dvh;
+  max-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
 }
 
 .trip-planner-page {
   position: fixed;
-  top: var(--planner-visual-viewport-top, 0px);
-  right: 0;
-  bottom: auto;
-  left: 0;
+  inset: 0;
   width: 100%;
-  height: var(--planner-visual-viewport-height, 100dvh);
-  max-height: var(--planner-visual-viewport-height, 100dvh);
+  height: 100dvh;
+  max-height: 100dvh;
 }
 
 .trips-global-header,
@@ -215,14 +212,11 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    top: var(--planner-visual-viewport-top, 0px) !important;
-    right: 0 !important;
-    bottom: auto !important;
-    left: 0 !important;
+    inset: 0 !important;
     width: 100% !important;
-    height: var(--planner-visual-viewport-height, 100dvh);
+    height: 100dvh;
     max-width: none !important;
-    max-height: var(--planner-visual-viewport-height, 100dvh);
+    max-height: 100dvh;
     border-left: 0 !important;
     border-top: 1px solid var(--border);
     border-radius: 0.75rem 0.75rem 0 0;
@@ -286,8 +280,8 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    height: var(--planner-visual-viewport-height, 100dvh);
-    max-height: var(--planner-visual-viewport-height, 100dvh);
+    height: 100dvh;
+    max-height: 100dvh;
     overflow: hidden;
   }
 
