@@ -67,6 +67,7 @@ export type PlannerMatrixProps = {
   removeDay: (id: string) => Promise<void>;
   selectedCount: number;
   selectedDayRow: number | null;
+  selectedItemId?: string;
   selectedMapItem?: ItineraryItem;
   selectionAnchor: GridCoordinate;
   selectionEnd: GridCoordinate;

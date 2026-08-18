@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowLeft, LogOut, Settings2, UserRound } from "lucide-react";
-import Link from "next/link";
+import { LogOut, Settings2, Share2, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +28,11 @@ function accountInitials(email: string) {
 
 export function TripAccountMenu({
   email = "Account",
+  onShareTrip,
   onTripSettings,
 }: {
   email?: string;
+  onShareTrip?: () => void;
   onTripSettings?: () => void;
 }) {
   return (
@@ -53,13 +54,13 @@ export function TripAccountMenu({
           </p>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="md:hidden">
-          <Link href="/trips">
-            <ArrowLeft aria-hidden="true" className="size-4" /> Back to Trips
-          </Link>
-        </DropdownMenuItem>
+        {onShareTrip ? (
+          <DropdownMenuItem className="sm:hidden" onSelect={onShareTrip}>
+            <Share2 aria-hidden="true" className="size-4" /> Share trip
+          </DropdownMenuItem>
+        ) : null}
         {onTripSettings ? (
-          <DropdownMenuItem className="md:hidden" onSelect={onTripSettings}>
+          <DropdownMenuItem className="sm:hidden" onSelect={onTripSettings}>
             <Settings2 aria-hidden="true" className="size-4" /> Trip settings
           </DropdownMenuItem>
         ) : null}

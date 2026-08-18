@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import { createTripSchema, tripIdSchema, updateTripSchema } from "@/features/trips/schema";
 import type { TripActionState } from "@/features/trips/types";
 import { createClient } from "@/lib/supabase/server";
@@ -84,5 +85,6 @@ export async function deleteTrip(formData: FormData) {
     .select("id")
     .maybeSingle();
   if (error || !data) redirect(`/trips/${parsed.data}?error=delete`);
+  await drainAssetDeletionQueue(100);
   redirect("/trips");
 }

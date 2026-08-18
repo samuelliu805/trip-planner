@@ -13,11 +13,13 @@ const DialogClose = DialogPrimitive.Close;
 type DialogViewport = {
   center: number;
   height: number;
+  top: number;
 };
 
 type DialogViewportStyle = React.CSSProperties & {
   "--dialog-viewport-center"?: string;
   "--dialog-viewport-height"?: string;
+  "--dialog-viewport-top"?: string;
 };
 
 function useDialogViewport() {
@@ -30,9 +32,13 @@ function useDialogViewport() {
     function measure() {
       const height = visualViewport?.height ?? window.innerHeight;
       const offsetTop = visualViewport?.offsetTop ?? 0;
-      const next = { center: offsetTop + height / 2, height };
+      const next = { center: offsetTop + height / 2, height, top: offsetTop };
       setViewport((current) =>
-        current?.center === next.center && current.height === next.height ? current : next,
+        current?.center === next.center &&
+        current.height === next.height &&
+        current.top === next.top
+          ? current
+          : next,
       );
     }
 
@@ -68,6 +74,7 @@ function DialogContent({
       ? {
           "--dialog-viewport-center": `${viewport.center}px`,
           "--dialog-viewport-height": `${viewport.height}px`,
+          "--dialog-viewport-top": `${viewport.top}px`,
         }
       : null),
     ...style,
@@ -85,7 +92,10 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 flex size-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-8">
+        <DialogPrimitive.Close
+          className="app-dialog-close absolute right-4 top-4 z-20 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          data-dialog-close=""
+        >
           <X aria-hidden="true" className="size-5" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>

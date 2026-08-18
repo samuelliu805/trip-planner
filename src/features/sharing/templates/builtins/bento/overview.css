@@ -65,7 +65,10 @@
   padding: 0.5625rem 0.625rem;
 }
 
-.public-template-bento .overview-item-card-v4.span-featured,
+.public-template-bento .overview-item-card-v4.span-featured {
+  grid-column: span 12;
+}
+
 .public-template-bento .overview-item-card-v4.span-activity {
   grid-column: span 6;
 }
@@ -166,7 +169,10 @@
 }
 
 @container public-content (max-width: 40rem) {
-  .public-template-bento .overview-item-card-v4.span-featured,
+  .public-template-bento .overview-item-card-v4.span-featured {
+    grid-column: span 12;
+  }
+
   .public-template-bento .overview-item-card-v4.span-activity,
   .public-template-bento .overview-item-card-v4.span-compact {
     grid-column: span 6;
@@ -174,7 +180,11 @@
 }
 
 @media (min-width: 900px) and (max-width: 1199px) {
-  .public-template-bento .overview-item-card-v4:is(.span-featured, .span-activity, .span-compact) {
+  .public-template-bento .overview-item-card-v4.span-featured {
+    grid-column: span 12;
+  }
+
+  .public-template-bento .overview-item-card-v4:is(.span-activity, .span-compact) {
     grid-column: span 6;
   }
 }
@@ -270,7 +280,11 @@
 }
 
 @media (min-width: 640px) and (max-width: 899px) {
-  .public-template-bento .overview-item-card-v4:is(.span-featured, .span-activity, .span-compact) {
+  .public-template-bento .overview-item-card-v4.span-featured {
+    grid-column: span 2;
+  }
+
+  .public-template-bento .overview-item-card-v4:is(.span-activity, .span-compact) {
     grid-column: span 1;
   }
 }

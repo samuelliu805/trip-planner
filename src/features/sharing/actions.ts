@@ -45,13 +45,20 @@ const rpcSettings = (input: PublicItinerarySettingsInput) => ({
   requested_allow_long_image_download: input.allowLongImageDownload,
   requested_allow_route_explore: input.allowRouteExplore,
   requested_default_view: input.defaultView,
-  requested_long_image_end_day_number: input.longImageEndDayNumber,
+  ...(input.longImageEndDayNumber === null
+    ? {}
+    : { requested_long_image_end_day_number: input.longImageEndDayNumber }),
   requested_long_image_qr_destination: input.longImageQrDestination,
-  requested_long_image_qr_share_page_id: input.longImageQrSharePageId,
-  requested_long_image_start_day_number: input.longImageStartDayNumber,
+  ...(input.longImageQrSharePageId === null
+    ? {}
+    : { requested_long_image_qr_share_page_id: input.longImageQrSharePageId }),
+  ...(input.longImageStartDayNumber === null
+    ? {}
+    : { requested_long_image_start_day_number: input.longImageStartDayNumber }),
   requested_share_description: input.shareDescription,
   requested_share_title: input.shareTitle,
   requested_show_addresses: input.showAddresses,
+  requested_show_attachments: input.showAttachments,
   requested_show_map_routes: input.showMapRoutes,
   requested_show_notes: input.showNotes,
   requested_show_place_photos: input.showPlacePhotos,
@@ -71,7 +78,7 @@ export async function createPublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_share_page_v2", {
+  const { data, error } = await supabase.rpc("create_share_page_v3", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
@@ -93,7 +100,7 @@ export async function updatePublicItineraryLink(
   )
     return { error: "Review the public link settings." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_share_page_v2", {
+  const { data, error } = await supabase.rpc("update_share_page_v3", {
     target_share_page_id: linkId,
     ...rpcSettings(settings.data),
   });

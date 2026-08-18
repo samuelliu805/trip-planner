@@ -203,6 +203,12 @@
   font-size: 0.6875rem;
 }
 
+.public-timeline-note > .public-item-media {
+  width: 7rem;
+  min-width: 0;
+  margin-left: auto;
+}
+
 .public-timeline-note:hover,
 .public-timeline-note.is-selected {
   background: var(--muted);

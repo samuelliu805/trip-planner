@@ -1,0 +1,57 @@
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
+import { attachmentError, attachmentSessionSchema } from "@/features/attachments/schema";
+import { createClient } from "@/lib/supabase/server";
+
+const paramsSchema = z.object({ itemId: z.uuid(), sessionId: z.uuid(), tripId: z.uuid() });
+
+async function authorizedRoute(
+  params: Promise<{ itemId: string; sessionId: string; tripId: string }>,
+) {
+  const route = paramsSchema.safeParse(await params);
+  if (!route.success) return { error: new Response(null, { status: 404 }) };
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { error: new Response(null, { status: 401 }) };
+  return { route: route.data, supabase };
+}
+
+export async function POST(
+  _request: Request,
+  { params }: { params: Promise<{ itemId: string; sessionId: string; tripId: string }> },
+) {
+  const authorized = await authorizedRoute(params);
+  if ("error" in authorized) return authorized.error;
+  const { route, supabase } = authorized;
+  const result = await supabase.rpc("commit_item_asset_session_v1", {
+    requested_draft_session_id: route.sessionId,
+    target_item_id: route.itemId,
+    target_trip_id: route.tripId,
+  });
+  const attachments = attachmentSessionSchema.safeParse(result.data);
+  if (result.error || !attachments.success)
+    return Response.json({ error: attachmentError(result.error?.message) }, { status: 400 });
+  revalidatePath(`/trips/${route.tripId}`);
+  return Response.json(attachments.data, { headers: { "Cache-Control": "no-store" } });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ itemId: string; sessionId: string; tripId: string }> },
+) {
+  const authorized = await authorizedRoute(params);
+  if ("error" in authorized) return authorized.error;
+  const { route, supabase } = authorized;
+  const result = await supabase.rpc("discard_item_asset_session_v1", {
+    requested_draft_session_id: route.sessionId,
+    target_item_id: route.itemId,
+    target_trip_id: route.tripId,
+  });
+  if (result.error)
+    return Response.json({ error: attachmentError(result.error.message) }, { status: 400 });
+  await drainAssetDeletionQueue(10);
+  revalidatePath(`/trips/${route.tripId}`);
+  return new Response(null, { status: 204 });
+}

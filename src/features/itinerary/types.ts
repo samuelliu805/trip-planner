@@ -1,12 +1,14 @@
 import type { Tables } from "@/types/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import type { DayRoutePlan } from "@/features/routes/types";
+import type { OwnerAttachment } from "@/features/attachments/schema";
 
 export type ItineraryItemLink = Pick<
   Tables<"itinerary_item_links">,
   "id" | "item_id" | "label" | "url" | "sort_order"
 >;
 export type ItineraryItem = Tables<"itinerary_items"> & {
+  attachments?: OwnerAttachment[];
   links?: ItineraryItemLink[];
   place?: PersistedPlaceSnapshot | null;
 };

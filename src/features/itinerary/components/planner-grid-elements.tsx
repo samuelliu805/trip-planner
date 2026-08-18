@@ -41,9 +41,8 @@ export function AddItemButton({
       <TooltipTrigger asChild>
         <button
           aria-label={`Add ${category.label.toLowerCase()} on day ${day.day_number}`}
-          className="mt-auto flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-auto flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-add-item
-          disabled={disabled}
           onClick={(event) => {
             event.stopPropagation();
             onAdd();
@@ -54,11 +53,7 @@ export function AddItemButton({
           Add
         </button>
       </TooltipTrigger>
-      <TooltipContent>
-        {disabled
-          ? "Only one hotel is allowed per day"
-          : `Add another ${category.label.toLowerCase()}`}
-      </TooltipContent>
+      <TooltipContent>{`Add another ${category.label.toLowerCase()}`}</TooltipContent>
     </Tooltip>
   );
 }

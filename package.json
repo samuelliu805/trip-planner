@@ -30,8 +30,11 @@
     "radix-ui": "^1.6.7",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-pdf": "9.2.1",
     "server-only": "^0.0.1",
+    "sharp": "0.34.5",
     "tailwind-merge": "latest",
+    "tus-js-client": "4.3.1",
     "zod": "latest"
   },
   "devDependencies": {

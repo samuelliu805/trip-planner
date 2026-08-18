@@ -1,24 +1,37 @@
+"use client";
+
 import Image from "next/image";
-import { ExternalLink, FileText } from "lucide-react";
+import { FileImage, FileText, Film, Play } from "lucide-react";
+import { useState } from "react";
+
+import {
+  AttachmentViewer,
+  preloadAttachmentPdfViewer,
+  type ViewerAttachment,
+} from "@/features/attachments/components/attachment-viewer";
 
 import type { PublicItemMedia } from "../types";
 
-function MediaPreview({ media, prioritize }: { media: PublicItemMedia; prioritize: boolean }) {
-  if (media.kind === "pdf")
-    return (
-      <a className="media-pdf-v4" href={media.url} rel="noopener noreferrer" target="_blank">
-        <span className="pdf-icon-v4">
-          <FileText aria-hidden="true" className="size-3" /> PDF
-        </span>
-        <span>{media.label}</span>
-        <ExternalLink aria-hidden="true" className="size-3" />
-      </a>
-    );
+type AttachmentMedia = Extract<PublicItemMedia, { source: "attachment" }>;
+type GoogleMedia = Extract<PublicItemMedia, { source: "google_place" }>;
 
+function viewerAttachment(media: AttachmentMedia): ViewerAttachment {
+  return {
+    byteSize: media.byteSize,
+    fileName: media.label,
+    id: media.id,
+    kind: media.kind,
+    mimeType: media.mimeType,
+    thumbnailUrl: media.thumbnailUrl,
+    url: media.url,
+  };
+}
+
+function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: boolean }) {
   return (
     <div className="media-thumb-v4">
       <Image
-        alt={media.alt ?? "Itinerary item image"}
+        alt={media.alt ?? "Itinerary place"}
         className="object-cover"
         fill
         fetchPriority={prioritize ? "high" : undefined}
@@ -31,6 +44,83 @@ function MediaPreview({ media, prioritize }: { media: PublicItemMedia; prioritiz
   );
 }
 
+function attachmentKindLabel(kind: AttachmentMedia["kind"]) {
+  if (kind === "image") return "Image";
+  if (kind === "video") return "Video";
+  return "PDF";
+}
+
+function AttachmentVisual({ attachment }: { attachment: AttachmentMedia }) {
+  if (attachment.thumbnailUrl) {
+    return (
+      <span className="public-attachment-visual has-thumbnail">
+        <Image
+          alt=""
+          className="object-cover"
+          fill
+          sizes="56px"
+          src={attachment.thumbnailUrl}
+          unoptimized
+        />
+        {attachment.kind === "video" ? (
+          <span className="public-attachment-play">
+            <Play aria-hidden="true" className="size-3.5 fill-current" />
+          </span>
+        ) : null}
+      </span>
+    );
+  }
+
+  return (
+    <span className={`public-attachment-visual is-${attachment.kind}`}>
+      {attachment.kind === "pdf" ? (
+        <FileText aria-hidden="true" className="size-5" />
+      ) : attachment.kind === "video" ? (
+        <Film aria-hidden="true" className="size-5" />
+      ) : (
+        <FileImage aria-hidden="true" className="size-5" />
+      )}
+    </span>
+  );
+}
+
+function AttachmentButtons({
+  attachments,
+  onOpen,
+  variant,
+}: {
+  attachments: AttachmentMedia[];
+  onOpen: (attachment: AttachmentMedia, trigger: HTMLButtonElement) => void;
+  variant: "overview" | "table" | "timeline" | "transport";
+}) {
+  if (!attachments.length) return null;
+  return (
+    <div aria-label="Attachments" className={`public-attachment-grid ${variant}`} role="group">
+      {attachments.map((attachment) => (
+        <button
+          aria-label={`Open attachment ${attachment.label}`}
+          className="public-attachment-button"
+          key={attachment.id}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(attachment, event.currentTarget);
+          }}
+          onFocus={attachment.kind === "pdf" ? preloadAttachmentPdfViewer : undefined}
+          onPointerDown={attachment.kind === "pdf" ? preloadAttachmentPdfViewer : undefined}
+          onPointerEnter={attachment.kind === "pdf" ? preloadAttachmentPdfViewer : undefined}
+          type="button"
+        >
+          <AttachmentVisual attachment={attachment} />
+          <span className="public-attachment-copy">
+            <span className="public-attachment-name">{attachment.label}</span>
+            <span className="public-attachment-meta">{attachmentKindLabel(attachment.kind)}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function PublicItemMediaGallery({
   media,
   prioritizeFirst = false,
@@ -38,29 +128,41 @@ export function PublicItemMediaGallery({
 }: {
   media: PublicItemMedia[];
   prioritizeFirst?: boolean;
-  variant?: "overview" | "timeline";
+  variant?: "overview" | "table" | "timeline" | "transport";
 }) {
+  const [viewerId, setViewerId] = useState<string>();
+  const [viewerTrigger, setViewerTrigger] = useState<HTMLElement | null>(null);
   if (!media.length) return null;
-  const visible = media.slice(0, 3);
-  const hiddenCount = media.length - visible.length;
-  const googleMedia = media.filter(
-    (entry): entry is Extract<PublicItemMedia, { kind: "image" }> =>
-      entry.kind === "image" && entry.source === "google_place",
+
+  const attachmentMedia = media.filter(
+    (entry): entry is AttachmentMedia => entry.source === "attachment",
   );
+  const googleMedia = media.filter(
+    (entry): entry is GoogleMedia => entry.source === "google_place",
+  );
+  const showGoogleMedia = variant === "overview" && googleMedia.length > 0;
+  if (!showGoogleMedia && !attachmentMedia.length) return null;
+
+  function openAttachment(attachment: AttachmentMedia, trigger: HTMLElement) {
+    setViewerTrigger(trigger);
+    setViewerId(attachment.id);
+  }
+
+  const rootClass = showGoogleMedia
+    ? `public-item-media ${variant}`
+    : `public-item-attachments ${variant}`;
 
   return (
-    <div className={`public-item-media ${variant}`}>
-      <div className={`public-media-gallery media-grid-v4 count-${visible.length} ${variant}`}>
-        {visible.map((entry, index) => (
-          <div className="public-media-entry" key={entry.id}>
-            <MediaPreview media={entry} prioritize={prioritizeFirst && index === 0} />
-            {hiddenCount && index === visible.length - 1 ? (
-              <span className="media-more-v4">+{hiddenCount}</span>
-            ) : null}
+    <div className={rootClass}>
+      {showGoogleMedia ? (
+        <div className={`public-media-gallery media-grid-v4 count-1 google-place ${variant}`}>
+          <div className="public-media-entry">
+            <GoogleImage media={googleMedia[0]} prioritize={prioritizeFirst} />
           </div>
-        ))}
-      </div>
-      {googleMedia.length ? (
+        </div>
+      ) : null}
+      <AttachmentButtons attachments={attachmentMedia} onOpen={openAttachment} variant={variant} />
+      {showGoogleMedia ? (
         <div className="public-media-attribution">
           {googleMedia.map((entry) => (
             <span key={`${entry.id}:attribution`}>
@@ -97,6 +199,15 @@ export function PublicItemMediaGallery({
             </span>
           ))}
         </div>
+      ) : null}
+      {attachmentMedia.length ? (
+        <AttachmentViewer
+          attachments={attachmentMedia.map(viewerAttachment)}
+          initialId={viewerId}
+          onOpenChange={(open) => !open && setViewerId(undefined)}
+          open={Boolean(viewerId)}
+          trigger={viewerTrigger}
+        />
       ) : null}
     </div>
   );

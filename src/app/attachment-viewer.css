@@ -1,0 +1,117 @@
+.attachment-viewer {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100dvw !important;
+  min-height: 100dvh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: 100dvh !important;
+  transform: none !important;
+  overflow: hidden !important;
+  border-radius: 0 !important;
+  overscroll-behavior: none;
+}
+
+.attachment-viewer > header,
+.attachment-viewer > div,
+.attachment-viewer > footer {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.attachment-viewer .app-dialog-close {
+  top: max(0.5rem, env(safe-area-inset-top)) !important;
+  right: max(0.5rem, env(safe-area-inset-right)) !important;
+  z-index: 30;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgb(255 255 255 / 24%);
+  background: rgb(0 0 0 / 62%);
+  color: white;
+}
+
+.attachment-viewer .app-dialog-close:hover {
+  background: rgb(255 255 255 / 16%);
+  color: white;
+}
+
+.attachment-viewer [data-attachment-viewer-scroll] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.attachment-viewer [data-continuous-pdf] {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+}
+
+.attachment-viewer-slide {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  animation: attachment-slide-next 190ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.attachment-viewer-slide.is-previous {
+  animation-name: attachment-slide-previous;
+}
+
+.attachment-viewer-slide.is-pdf {
+  display: block;
+}
+
+.attachment-viewer [data-pdf-page],
+.attachment-viewer .react-pdf__Page,
+.attachment-viewer .react-pdf__Page__canvas {
+  margin-right: auto !important;
+  margin-left: auto !important;
+}
+
+.attachment-viewer .react-pdf__Page__canvas {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+@keyframes attachment-slide-next {
+  from {
+    opacity: 0.4;
+    transform: translateX(min(12vw, 5rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes attachment-slide-previous {
+  from {
+    opacity: 0.4;
+    transform: translateX(max(-12vw, -5rem));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attachment-viewer-slide {
+    animation: none;
+  }
+}

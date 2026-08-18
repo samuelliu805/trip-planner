@@ -9,7 +9,7 @@ import {
 
 import type { PublicItineraryLink } from "../types";
 import type { ShareSettings } from "./public-share-settings";
-import { ShareSettingSection, ShareSettingToggle } from "./public-share-setting-card";
+import { ShareSettingSection } from "./public-share-setting-card";
 
 export function LongImageSettingsFields({
   onSettingChange,
@@ -22,8 +22,8 @@ export function LongImageSettingsFields({
 }) {
   return (
     <ShareSettingSection
-      description="Choose where the image QR code opens and whether visitors can download images you create."
-      title="Image sharing"
+      description="Choose where the QR code on generated trip images opens."
+      title="Image QR code"
     >
       <div className="min-w-0 space-y-1.5">
         <Label htmlFor="long-image-qr-destination">QR code opens</Label>
@@ -60,14 +60,6 @@ export function LongImageSettingsFields({
           Each permanent image keeps the QR destination used when it was first generated.
         </p>
       </div>
-
-      <ShareSettingToggle
-        checked={settings.allowLongImageDownload}
-        description="Visitors to the shareable page can download your latest generated image."
-        id="share-allow-long-image-download"
-        label="Allow visitor downloads"
-        onCheckedChange={(value) => onSettingChange("allowLongImageDownload", value)}
-      />
     </ShareSettingSection>
   );
 }

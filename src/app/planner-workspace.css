@@ -21,8 +21,8 @@ body:has(.trip-planner-page) {
   position: fixed;
   inset: 0;
   width: 100%;
-  height: auto;
-  max-height: none;
+  height: 100dvh;
+  max-height: 100dvh;
 }
 
 .trips-global-header,
@@ -64,6 +64,10 @@ body:has(.trip-planner-page) {
   touch-action: pan-x pan-y;
 }
 
+.planner-matrix .matrix-grid-header {
+  z-index: 70;
+}
+
 .planner-matrix .matrix-grid-header,
 .planner-matrix [role="row"] > [role="columnheader"]:first-child,
 .planner-matrix [role="row"] > [role="columnheader"]:nth-child(2),
@@ -88,6 +92,28 @@ body:has(.trip-planner-page) {
 
 .map-panel-reopen {
   bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+}
+
+.planner-editor-sheet {
+  max-width: min(28rem, 100%);
+  overflow: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.planner-editor-sheet > [data-planner-editor-scroll] {
+  width: 100%;
+  max-width: 100%;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.planner-editor-sheet > [data-planner-editor-scroll] > form,
+.planner-editor-sheet > [data-planner-editor-scroll] fieldset,
+.planner-editor-sheet > [data-planner-editor-scroll] section,
+.planner-editor-sheet > [data-planner-editor-scroll] article {
+  min-width: 0;
+  max-width: 100%;
 }
 
 @media (min-width: 640px) and (max-width: 1199px) {
@@ -190,14 +216,18 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    inset: auto 0 0 !important;
+    inset: 0 !important;
     width: 100% !important;
+    height: 100dvh;
     max-width: none !important;
-    max-height: 92dvh;
+    max-height: 100dvh;
     border-left: 0 !important;
     border-top: 1px solid var(--border);
     border-radius: 0.75rem 0.75rem 0 0;
+    overflow: hidden;
+    overscroll-behavior-x: none;
     padding-bottom: env(safe-area-inset-bottom);
+    touch-action: pan-y;
   }
 
   .planner-editor-sheet input,
@@ -243,6 +273,10 @@ body:has(.trip-planner-page) {
 }
 
 @media (max-width: 639px) {
+  .plan-context-bar.is-idle {
+    display: none;
+  }
+
   .planner-workspace {
     padding-right: max(8px, env(safe-area-inset-right));
     padding-bottom: max(8px, env(safe-area-inset-bottom));
@@ -250,7 +284,8 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
+    height: 100dvh;
+    max-height: 100dvh;
     overflow: hidden;
   }
 

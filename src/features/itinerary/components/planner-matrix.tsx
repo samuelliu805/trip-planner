@@ -57,6 +57,7 @@ export function PlannerMatrix({
   selectedCount,
   selectDay,
   selectedDayRow,
+  selectedItemId,
   selectedMapItem,
   selectionAnchor,
   selectionEnd,
@@ -206,10 +207,9 @@ export function PlannerMatrix({
                               })
                             }
                             onSelect={() => {
-                              if (item.id === selectedMapItem?.id) onMapSelectionClear();
-                              else selectItem(item, { row, column });
+                              selectItem(item, { row, column });
                             }}
-                            selected={item.id === selectedMapItem?.id}
+                            selected={item.id === selectedItemId}
                           />
                         ))}
                       </div>

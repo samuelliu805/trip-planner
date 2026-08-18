@@ -608,6 +608,7 @@ test("Trip detail keeps context controls at top and uses one mobile destination 
   assert.match(appBar, /label: "Ideas & Options"/);
   assert.match(planToolbar, /<TripAppBar[\s\S]*<PlannerContextBar/);
   assert.match(contextBar, /aria-label="Plan context"/);
+  assert.match(contextBar, /is-idle/);
   assert.match(compareWorkspace, /aria-label="Research context"/);
   assert.match(compareWorkspace, /<TripMobileTabBar/);
   assert.doesNotMatch(contextBar, /TripSectionNav|TripMobileTabBar/);
@@ -616,6 +617,13 @@ test("Trip detail keeps context controls at top and uses one mobile destination 
   assert.doesNotMatch(compareWorkspace, /<h1|trip\.title/);
   assert.match(account, /\{email\}/);
   assert.match(account, /Log out/);
+  assert.match(account, /Trip settings/);
+  assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
+  assert.doesNotMatch(appBar, /More trip actions|<MoreHorizontal/);
+  assert.match(appBar, /aria-label="Trip settings"/);
+  assert.match(appBar, /Saving/);
+  assert.doesNotMatch(appBar, />Saved</);
+  assert.doesNotMatch(appBar, /Open settings for/);
 });
 
 test("selection, Apply, and Revert use owner-authorized RPC boundaries with durable history", async () => {

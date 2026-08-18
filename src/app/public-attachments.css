@@ -1,0 +1,155 @@
+.public-attachment-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), min(100%, 12.5rem)));
+  justify-content: start;
+  gap: 0.375rem;
+  width: 100%;
+  min-width: 0;
+  margin-top: 0.375rem;
+}
+
+.public-attachment-button,
+.public-resource-button {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--muted) 32%, transparent);
+  padding: 0.25rem;
+  color: var(--foreground);
+  font-family: var(--font-mono);
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  touch-action: manipulation;
+}
+
+.public-attachment-button:hover,
+.public-resource-button:hover {
+  border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+  background: color-mix(in srgb, var(--primary) 6%, var(--muted));
+}
+
+.public-attachment-button:focus-visible,
+.public-resource-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.public-attachment-visual {
+  position: relative;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  overflow: hidden;
+  place-items: center;
+  border-radius: 0.3125rem;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.public-attachment-visual.is-pdf {
+  background: color-mix(in srgb, #dc2626 10%, var(--background));
+  color: #b91c1c;
+}
+
+.public-attachment-play {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  transform: translate(-50%, -50%);
+  place-items: center;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 68%);
+  color: white;
+}
+
+.public-attachment-copy {
+  min-width: 0;
+}
+
+.public-attachment-name,
+.public-attachment-meta {
+  display: block;
+}
+
+.public-attachment-name {
+  display: block;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: inherit;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-attachment-meta {
+  margin-top: 0.125rem;
+  color: var(--muted-foreground);
+  font-family: inherit;
+  font-size: 0.6875rem;
+  letter-spacing: inherit;
+  line-height: 1.2;
+}
+
+.public-item-attachments,
+.public-item-media {
+  min-width: 0;
+}
+
+.public-item-attachments.overview {
+  margin-top: 0.5rem;
+}
+
+.public-item-media.overview {
+  margin-top: 0.625rem;
+}
+
+.public-attachment-grid.table,
+.public-attachment-grid.transport {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.public-attachment-grid.table .public-attachment-button,
+.public-attachment-grid.transport .public-attachment-button {
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.375rem;
+  min-height: 2.75rem;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.375rem;
+}
+
+.public-attachment-grid.table .public-attachment-visual,
+.public-attachment-grid.transport .public-attachment-visual {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.public-attachment-grid.table .public-attachment-meta,
+.public-attachment-grid.transport .public-attachment-meta {
+  display: none;
+}
+
+.public-attachment-grid.table .public-attachment-name,
+.public-attachment-grid.transport .public-attachment-name {
+  display: block;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.public-item-attachments.transport {
+  width: min(100%, 11rem);
+  flex: 0 1 11rem;
+}

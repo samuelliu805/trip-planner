@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
+import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
+import { ownerAttachmentsFromRows } from "@/features/attachments/owner-attachment-records";
 import {
   clearItineraryItemsSchema,
   type ClearItineraryItemsInput,
@@ -134,7 +136,9 @@ export async function updateItineraryItem(
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
-    .select("*")
+    .select(
+      "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))",
+    )
     .maybeSingle();
   if (error || !data)
     return {
@@ -153,15 +157,21 @@ export async function updateItineraryItem(
     };
   }
 
+  const { attachments: attachmentRows, ...updatedItem } = data;
+  const itemWithAttachments = {
+    ...updatedItem,
+    attachments: ownerAttachmentsFromRows(attachmentRows),
+  };
+
   revalidatePath(`/trips/${data.trip_id}`);
   return {
     data:
       persistedPlaceId !== undefined
         ? {
-            ...withPlace(data, parsed.data.placeSnapshot, persistedPlaceId),
+            ...withPlace(itemWithAttachments, parsed.data.placeSnapshot, persistedPlaceId),
             ...(links && { links }),
           }
-        : { ...data, ...(links && { links }) },
+        : { ...itemWithAttachments, ...(links && { links }) },
   };
 }
 
@@ -198,6 +208,7 @@ export async function deleteItineraryItem(
       error: mutationError(error?.message ?? "You do not have permission to delete this item."),
     };
 
+  await drainAssetDeletionQueue(10);
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data };
 }
@@ -234,6 +245,7 @@ export async function clearItineraryItems(
       error: mutationError(error?.message ?? "The selected cells could not be cleared."),
     };
 
+  await drainAssetDeletionQueue(Math.min(100, parsed.data.itemIds.length * 5));
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data: { ids: parsed.data.itemIds } };
 }

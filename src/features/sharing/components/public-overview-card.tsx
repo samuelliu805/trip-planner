@@ -19,8 +19,11 @@ export function PublicOverviewCard({
   const { item, media } = presentation;
   const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const place = item.place?.localityName ?? item.place?.displayName;
+  const placeMedia = media.filter(({ source }) => source === "google_place");
+  const attachments = media.filter(({ source }) => source === "attachment");
+  const hasVisualMedia = placeMedia.length > 0;
 
-  const spanClass = media.length
+  const spanClass = hasVisualMedia
     ? "span-featured"
     : item.type === "activity"
       ? "span-activity"
@@ -29,7 +32,7 @@ export function PublicOverviewCard({
 
   return (
     <article
-      className={`public-overview-card overview-item-card-v4 ${spanClass} ${typeClass} ${media.length ? "has-media" : "no-media"} ${selected ? "is-selected" : ""}`}
+      className={`public-overview-card overview-item-card-v4 ${spanClass} ${typeClass} ${hasVisualMedia ? "has-media" : "no-media"} ${selected ? "is-selected" : ""}`}
     >
       <button
         aria-current={selected ? "true" : undefined}
@@ -56,7 +59,12 @@ export function PublicOverviewCard({
         <span className="overview-order-v4">{String(order).padStart(2, "0")}</span>
       </button>
 
-      <PublicItemMediaGallery media={media} prioritizeFirst={prioritizeMedia} variant="overview" />
+      <PublicItemMediaGallery media={attachments} variant="overview" />
+      <PublicItemMediaGallery
+        media={placeMedia}
+        prioritizeFirst={prioritizeMedia}
+        variant="overview"
+      />
 
       {item.notes ? (
         <button className="overview-item-notes-v4" onClick={onSelect} type="button">
@@ -65,7 +73,7 @@ export function PublicOverviewCard({
       ) : null}
       <footer className="overview-item-footer-v4">
         <span>{publicItemTypeLabels[item.type]}</span>
-        <PublicQuickActions compact item={item} quiet />
+        <PublicQuickActions item={item} quiet />
       </footer>
     </article>
   );

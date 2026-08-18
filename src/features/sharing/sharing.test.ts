@@ -47,7 +47,7 @@ import {
   publicRouteCalculationInputSchema,
   publicViewSchema,
 } from "./schema.ts";
-import type { PublicItinerary, PublicItineraryItem } from "./types.ts";
+import type { PublicItemMedia, PublicItinerary, PublicItineraryItem } from "./types.ts";
 import { defaultShareSettings } from "./components/public-share-settings.ts";
 import {
   paginateTimelineDayHeights,
@@ -80,6 +80,7 @@ async function readAppStyles() {
         "../../app/planner-workspace.css",
         "../../app/public-workspace.css",
         "../../app/public-workspace-tablet.css",
+        "../../app/public-sharing-media.css",
         "../../app/public-sharing-overview.css",
         "../../app/public-sharing-overview-transport.css",
         "../../app/public-sharing-table.css",
@@ -319,15 +320,20 @@ test("Overview media presentation handles zero, one, and multiple item media", (
     url: `/api/public-place-photo/00000000-0000-4000-8000-000000000001/${ref("m")}?photo=places%2Fone%2Fphotos%2Ftwo&signature=${"a".repeat(64)}`,
   };
   const attachmentImage = {
+    byteSize: 1_024,
     id: "attachment-image",
     kind: "image" as const,
+    label: "Museum.jpg",
+    mimeType: "image/jpeg" as const,
     source: "attachment" as const,
     url: "https://assets.example.com/museum.jpg",
   };
   const attachmentPdf = {
+    byteSize: 2_048,
     id: "attachment-pdf",
     kind: "pdf" as const,
     label: "Museum tickets.pdf",
+    mimeType: "application/pdf" as const,
     source: "attachment" as const,
     url: "https://assets.example.com/tickets.pdf",
   };
@@ -350,8 +356,11 @@ test("Overview media presentation handles zero, one, and multiple item media", (
 
 test("Overview lays out a six-item mixed day in stable manual order with one feature cap", () => {
   const image = (id: string) => ({
+    byteSize: 1_024,
     id,
     kind: "image" as const,
+    label: `${id}.jpg`,
+    mimeType: "image/jpeg" as const,
     source: "attachment" as const,
     url: `https://assets.example.com/${id}.jpg`,
   });
@@ -393,7 +402,7 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
   assert.equal(layout.filter(({ featured }) => featured).length, 1);
   assert.equal(
     layout.flatMap(({ media }) => media).filter(({ kind }) => kind === "image").length,
-    1,
+    6,
   );
   assert.equal(layout.find(({ item }) => item.title === "Train")?.size, "compact");
   assert.deepEqual(
@@ -412,17 +421,33 @@ test("Overview lays out a six-item mixed day in stable manual order with one fea
   );
 });
 
-test("each Day presents one deterministic cover image while retaining PDF documents", () => {
-  const image = (id: string, source: "attachment" | "google_place" = "google_place") => ({
-    id,
-    kind: "image" as const,
-    source,
-    url: `https://assets.example.com/${id}.jpg`,
-  });
+test("each Day presents one deterministic place cover while retaining item attachments", () => {
+  const image = (
+    id: string,
+    source: "attachment" | "google_place" = "google_place",
+  ): PublicItemMedia =>
+    source === "attachment"
+      ? {
+          byteSize: 1_024,
+          id,
+          kind: "image",
+          label: `${id}.jpg`,
+          mimeType: "image/jpeg",
+          source,
+          url: `https://assets.example.com/${id}.jpg`,
+        }
+      : {
+          id,
+          kind: "image",
+          source,
+          url: `https://assets.example.com/${id}.jpg`,
+        };
   const pdf = {
+    byteSize: 2_048,
     id: "ticket",
     kind: "pdf" as const,
     label: "Ticket.pdf",
+    mimeType: "application/pdf" as const,
     source: "attachment" as const,
     url: "https://assets.example.com/ticket.pdf",
   };
@@ -469,7 +494,7 @@ test("each Day presents one deterministic cover image while retaining PDF docume
     mediaByItem.get(ref("j"))?.map(({ id }) => id),
     ["attachment", "ticket"],
   );
-  assert.equal([...mediaByItem.values()].flat().filter(({ kind }) => kind === "image").length, 1);
+  assert.equal([...mediaByItem.values()].flat().filter(({ kind }) => kind === "image").length, 3);
 });
 
 test("Timeline projects manual order and keeps transport out of the node rail", () => {
@@ -530,11 +555,13 @@ test("public schema keeps old payloads valid and accepts only safe optional medi
             ...itinerary.days[0].items[0],
             media: [
               {
-                id: "ticket",
+                byteSize: 2_048,
+                id: "a".repeat(64),
                 kind: "pdf",
                 label: "Ticket.pdf",
+                mimeType: "application/pdf",
                 source: "attachment",
-                url: "https://assets.example.com/ticket.pdf",
+                url: `/api/share/00000000-0000-4000-8000-000000000001/assets/${"a".repeat(64)}`,
               },
             ],
           },
@@ -1050,8 +1077,7 @@ test("public and owner Matrix use the same canonical category columns", async ()
   );
   assert.match(publicTableContainment, /boundaryBlocked && event\.cancelable/);
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
-  assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-40/);
-  assert.doesNotMatch(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
+  assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
   assert.match(
     matrixPresentation,
     /matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium/,
@@ -1198,7 +1224,7 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.doesNotMatch(exportRenderer, /fillText|timelineItemHeight/);
 });
 
-test("public UI contracts keep distinct views, a bottom switcher, and the existing map shell", async () => {
+test("public UI contracts keep distinct views, a responsive switcher, and the map shell", async () => {
   const overview = await readFile(
     new URL("./components/public-overview.tsx", import.meta.url),
     "utf8",
@@ -1479,7 +1505,20 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
   assert.match(
     styles,
-    /max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*width: 100%[\s\S]*flex: 0 0 auto[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: 100%[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+    /\.public-view-scroll[\s\S]*overflow-anchor: none[\s\S]*touch-action: pan-y/,
+  );
+  assert.match(styles, /:has\(\.public-mobile-map-control\)[\s\S]*padding-bottom: max\(5\.25rem/);
+  assert.match(
+    styles,
+    /max-width: 899px[\s\S]*\.public-itinerary-shell \.timeline-section-header-v4 \{[\s\S]*position: sticky;[\s\S]*top: 0;/,
+  );
+  assert.match(
+    styles,
+    /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*display: flex[\s\S]*height: 4rem[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: min\(22\.5rem, 100%\)[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /max-width: 639px[\s\S]*\.public-itinerary-shell \.public-itinerary-grid \{[\s\S]*order: 2[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*order: 3[\s\S]*width: 100%[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*width: 100%/,
   );
   assert.match(
     styles,
@@ -1498,6 +1537,7 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(shell, /<PublicTemplateRenderer template=\{template\}/);
   assert.doesNotMatch(shell + controller + renderer, /fetch\(|dangerouslySetInnerHTML|eval\(/);
   assert.match(views, /public-view-scroll h-full min-w-0/);
+  assert.doesNotMatch(views, /containTouchScroll|onTouchStart/);
   assert.doesNotMatch(
     overviewCard + overviewTransport + timelineSources + publicTable,
     /onMouseEnter|onFocus=/,
@@ -1515,6 +1555,8 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   );
   assert.match(shareVisibilityFields, /Select everything you want people with the link to see/);
   assert.match(shareVisibilityFields, /ShareSettingOption/);
+  assert.match(shareVisibilityFields, /Image downloads/);
+  assert.match(shareVisibilityFields, /allowLongImageDownload/);
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
   assert.match(shareSettingsFields, /LongImageSettingsFields/);
@@ -1522,6 +1564,7 @@ test("public UI contracts keep distinct views, a bottom switcher, and the existi
   assert.match(longImageScopePicker, /Entire trip/);
   assert.match(longImageScopePicker, /Date range/);
   assert.match(longImageFields, /QR code opens/);
+  assert.doesNotMatch(longImageFields, /allowLongImageDownload|ShareSettingToggle/);
   assert.doesNotMatch(
     shareStatus,
     /Public preview|LongImageExportPanel|ShareLinkActions|ShareQrCode/,
@@ -1666,15 +1709,18 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(page, /templateKey=\{resolvedTemplate\.key\}/);
   assert.match(shell, /getPublicTemplate\(templateKey\)/);
   assert.match(shell, /PublicTemplateControllerProvider[\s\S]*PublicTemplateRenderer/);
-  assert.match(controller, /router\.replace\(`\$\{pathname\}\?\$\{nextParams\.toString\(\)\}`/);
-  assert.match(controller, /\{ scroll: false \}/);
+  assert.match(
+    controller,
+    /window\.history\.replaceState\(window\.history\.state, "", `\$\{pathname\}\?\$\{nextParams\.toString\(\)\}`/,
+  );
+  assert.doesNotMatch(controller, /useRouter|router\.replace/);
   assert.match(controller, /new URLSearchParams\(searchParams\.toString\(\)\)/);
   assert.match(controller, /if \(legacyTemplateOverride\) url\.searchParams\.set\("template"/);
   assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);
-  assert.match(data, /get_public_share_page_v1/);
-  assert.match(data, /list_share_pages_v1/);
-  assert.match(actions, /create_share_page_v2/);
-  assert.match(actions, /update_share_page_v2/);
+  assert.match(data, /get_public_share_page_v3/);
+  assert.match(data, /list_share_pages_v2/);
+  assert.match(actions, /create_share_page_v3/);
+  assert.match(actions, /update_share_page_v3/);
   assert.doesNotMatch(actions, /rotate_public_itinerary_link/);
   assert.match(baseMigration, /set template_id = 'standard', template_version = 1/);
   assert.ok(

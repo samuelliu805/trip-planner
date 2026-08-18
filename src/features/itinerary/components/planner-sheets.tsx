@@ -2,6 +2,7 @@
 
 import { format, parseISO } from "date-fns";
 import { LoaderCircle } from "lucide-react";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -69,6 +70,7 @@ type PlannerSheetsProps = {
   selectionSourceDayId?: string;
   settings: React.ReactNode;
   settingsOpen: boolean;
+  shareAttachmentsEnabled: boolean;
   targetDays: Set<string>;
   tripId: string;
   unavailableTransportModes: TransportMode[];
@@ -118,12 +120,14 @@ export function PlannerSheets({
   selectionSourceDayId,
   settings,
   settingsOpen,
+  shareAttachmentsEnabled,
   targetDays,
   tripId,
   unavailableTransportModes,
   mapViewportKey,
   workspace,
 }: PlannerSheetsProps) {
+  const editorCloseRequest = useRef(onEditorClose);
   return (
     <>
       <RouteVariantComparisonSheet
@@ -137,9 +141,9 @@ export function PlannerSheets({
         open={decisionSummarySheetOpen}
         summary={decisionSummary}
       />
-      <Sheet onOpenChange={(open) => !open && onEditorClose()} open={Boolean(editor)}>
+      <Sheet onOpenChange={(open) => !open && editorCloseRequest.current()} open={Boolean(editor)}>
         <SheetContent className="planner-editor-sheet">
-          <SheetHeader>
+          <SheetHeader className="min-w-0 shrink-0">
             <SheetTitle>{editor?.item ? "Edit itinerary item" : "Add itinerary item"}</SheetTitle>
             <SheetDescription>
               <span className="sm:hidden">Add the details for this itinerary item.</span>
@@ -148,13 +152,19 @@ export function PlannerSheets({
               </span>
             </SheetDescription>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-5">
+          <div
+            className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+            data-planner-editor-scroll=""
+          >
             {editor ? (
               <PlannerItemForm
                 dayId={editor.dayId}
                 defaultCurrency={defaultCurrency}
                 item={editor.item}
                 onCancel={onEditorClose}
+                onCloseRequestRegistration={(handler) => {
+                  editorCloseRequest.current = handler ?? onEditorClose;
+                }}
                 onError={onInteractionError}
                 onDraftChange={editor.item ? onEditorDraftChange : undefined}
                 onSaved={(savedItem) => {
@@ -162,6 +172,7 @@ export function PlannerSheets({
                   onEditorClose();
                   if (created) onItemCreated(savedItem);
                 }}
+                shareAttachmentsEnabled={shareAttachmentsEnabled}
                 tripId={tripId}
                 type={editor.type}
                 unavailableTransportModes={unavailableTransportModes}

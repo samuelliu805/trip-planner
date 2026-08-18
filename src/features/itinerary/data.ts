@@ -3,6 +3,7 @@ import { isRouteLegMode } from "@/features/routes/route-config";
 import { parseCalculatedRouteLegs } from "@/features/routes/results";
 import type { DayRouteCalculation, DayRouteLeg, DayRoutePlan } from "@/features/routes/types";
 import type { Tables } from "@/types/database";
+import { ownerAttachmentsFromRows } from "@/features/attachments/owner-attachment-records";
 
 import type { PlannerWorkspace } from "./types";
 
@@ -52,7 +53,7 @@ export async function getPlannerWorkspace(
     supabase
       .from("itinerary_items")
       .select(
-        "*, links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)",
+        "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)), links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)",
       )
       .eq("trip_id", tripId)
       .eq("variant_id", variant.id)
@@ -114,6 +115,7 @@ export async function getPlannerWorkspace(
     const snapshot = row.place;
     const item = {
       ...row,
+      attachments: ownerAttachmentsFromRows(row.attachments),
       links: [...(row.links ?? [])].sort((a, b) => a.sort_order - b.sort_order),
       place:
         snapshot?.display_name && snapshot.latitude !== null && snapshot.longitude !== null

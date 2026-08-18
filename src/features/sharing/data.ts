@@ -19,7 +19,7 @@ import type {
 
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_share_page_v1", {
+  const { data, error } = await supabase.rpc("get_public_share_page_v3", {
     shared_token: token,
   });
   if (error) return null;
@@ -37,7 +37,7 @@ export async function getPublicItinerary(token: string): Promise<PublicItinerary
       ...day,
       items: day.items.map((item) => {
         const media = mediaByItem.get(item.ref);
-        return media?.length ? { ...item, media } : item;
+        return media?.length ? { ...item, media: [...(item.media ?? []), ...media] } : item;
       }),
     })),
   };
@@ -49,7 +49,7 @@ export async function listPublicItineraryLinks(
   tripId: string,
 ): Promise<{ data: PublicItineraryLink[]; error: string | null }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_share_pages_v1", {
+  const { data, error } = await supabase.rpc("list_share_pages_v2", {
     target_trip_id: tripId,
   });
   if (error) return { data: [], error: error.message };
@@ -95,7 +95,7 @@ export async function getOwnerShareImageState(
 
 export async function getOwnerSharePageByToken(token: string): Promise<PublicItineraryLink | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_share_page_by_token_v1", {
+  const { data, error } = await supabase.rpc("owner_share_page_by_token_v2", {
     shared_token: token,
   });
   if (error || data === null) return null;

@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./attachment-viewer.css";
 @import "./planner-workspace.css";
+@import "./public-attachments.css";
 @import "./public-workspace.css";
 @import "./trip-detail-workspace.css";
 

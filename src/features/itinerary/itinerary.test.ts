@@ -97,6 +97,7 @@ import { resolveActiveVariant, variantHref } from "../variants/active.ts";
 import "../variants/comparison.test.ts";
 import "../variants/decision-summary.test.ts";
 import "../sharing/sharing.test.ts";
+import "../attachments/attachments.test.ts";
 import "../research/research.test.ts";
 
 test("Matrix transport routes prefer airport codes and compact terminal names", () => {
@@ -454,6 +455,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(tripsData, /\.eq\("route_variants\.is_primary", true\)/);
   assert.match(tripsPage, /primaryVariant\.name/);
   assert.match(tripsPage, /backgroundColor: primaryVariant\.color/);
+  assert.match(tripsPage, /\?share=1/);
+  assert.match(tripsPage, /\?settings=1/);
+  assert.match(page, /initialOpen=\{query\.share === "1"\}/);
+  assert.match(page, /initialSettingsOpen=\{query\.settings === "1"\}/);
   assert.doesNotMatch(tripsPage, />\s*Route A\s*</);
   assert.match(variantActions, /revalidatePath\("\/trips"\)/);
 
@@ -1680,7 +1685,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(interactions, /\["activities", "hotel", "meals"\][\s\S]*setMapMode\("day_route"\)/);
   assert.match(
     interactions,
-    /\["activity", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedItemId\(item\.place \? item\.id : undefined\)/,
+    /\["activity", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedMapItemId\(item\.place \? item\.id : undefined\)/,
   );
   assert.doesNotMatch(interactions, /hasDayRoute|routeExists/);
   assert.match(interactions, /setMapMode\("overview"\)/);
@@ -2164,6 +2169,11 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /onDoubleClick=\{openEditorFromDoubleClick\}/);
   assert.match(workspace, /data-edit-item=\{item\.id\}/);
   assert.match(workspace, /interactive=\{selected\}/);
+  assert.match(workspace, /selected=\{item\.id === selectedItemId\}/);
+  assert.match(workspace, /setSelectedItemId\(item\.id\);[\s\S]*if \(item\.type === "location"\)/);
+  assert.match(workspace, /setSelectedMapItemId\(undefined\)/);
+  assert.doesNotMatch(workspace, /data-edit-cell-item/);
+  assert.match(workspace, /mt-auto flex h-8 w-full/);
   assert.match(workspace, /pointer-events-none/);
   assert.match(workspace, /M12 3V9M9 6H15/);
   assert.match(workspace, /M12 15V21M9 18H15/);
@@ -2191,6 +2201,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
+  assert.match(styles, /\.planner-matrix \.matrix-grid-header \{\s*z-index: 70;/);
   assert.match(workspace, /Insert day above/);
   assert.match(workspace, /Insert day below/);
   assert.match(workspace, /Remove Day/);
@@ -2204,7 +2215,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(styles, /planner-editor-sheet[\s\S]*max-height: 92dvh/);
+  assert.match(styles, /planner-editor-sheet[\s\S]*inset: 0 !important;[\s\S]*height: 100dvh/);
+  assert.doesNotMatch(styles, /--(?:sheet|planner-visual)-viewport-(height|top|bottom)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextBar/);
   assert.match(workspace, /planner-mobile-map-fab/);
@@ -2254,6 +2266,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   workspace += await readFile(new URL("./hooks/use-planner-mutations.ts", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
+  const viewportContainment = await readFile(
+    new URL("./hooks/use-planner-viewport-containment.ts", import.meta.url),
+    "utf8",
+  );
   const secondaryFields = await readFile(
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
@@ -2264,6 +2280,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
     "utf8",
   );
   assert.match(styles, /max-width: 639px/);
+  assert.match(styles, /\.plan-context-bar\.is-idle \{\s*display: none;/);
   assert.match(styles, /safe-area-inset-left/);
   assert.match(styles, /planner-editor-sheet input,[\s\S]*font-size: 16px/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
@@ -2273,7 +2290,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /body:has\(\.trip-planner-page\)[\s\S]*position: fixed;[\s\S]*inset: 0;/);
   assert.match(
     styles,
-    /\.trip-planner-page \{[\s\S]*position: fixed;[\s\S]*inset: 0;[\s\S]*height: auto;/,
+    /\.trip-planner-page \{[\s\S]*position: fixed;[\s\S]*inset: 0;[\s\S]*height: 100dvh/,
   );
   assert.match(
     styles,
@@ -2306,6 +2323,11 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.doesNotMatch(workspace, /mobile-selected-day-bar/);
   assert.match(tripsLayout, /trips-global-header sticky top-0 z-\[80\]/);
   assert.match(workspace, /TripAppBar/);
+  assert.match(workspace, /usePlannerViewportContainment/);
+  assert.match(viewportContainment, /visualViewport/);
+  assert.match(viewportContainment, /focusout/);
+  assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);
+  assert.doesNotMatch(viewportContainment + styles, /planner-visual-viewport/);
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);
   assert.match(

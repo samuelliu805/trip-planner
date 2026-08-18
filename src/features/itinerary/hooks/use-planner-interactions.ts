@@ -25,14 +25,16 @@ export function usePlannerInteractions({
   fillFrame,
   fillSourceRight,
   rangeJustSelected,
+  selectedItemId,
   selectionAnchor,
   selectionEnd,
   selectionEndRef,
   setEditor,
   setInteractionError,
   setIsFillDragging,
-  setSelectedDayRow,
   setSelectedItemId,
+  setSelectedDayRow,
+  setSelectedMapItemId,
   setMapMode,
   setSelectionAnchor,
   setSelectionEnd,
@@ -45,14 +47,16 @@ export function usePlannerInteractions({
   fillFrame: Ref<number | null>;
   fillSourceRight: Ref<number>;
   rangeJustSelected: Ref<boolean>;
+  selectedItemId?: string;
   selectionAnchor: GridCoordinate;
   selectionEnd: GridCoordinate;
   selectionEndRef: Ref<GridCoordinate>;
   setEditor: Dispatch<SetStateAction<EditorState | null>>;
   setInteractionError: Dispatch<SetStateAction<string | undefined>>;
   setIsFillDragging: Dispatch<SetStateAction<boolean>>;
-  setSelectedDayRow: Dispatch<SetStateAction<number | null>>;
   setSelectedItemId: Dispatch<SetStateAction<string | undefined>>;
+  setSelectedDayRow: Dispatch<SetStateAction<number | null>>;
+  setSelectedMapItemId: Dispatch<SetStateAction<string | undefined>>;
   setMapMode: (mode: PlannerMapMode) => void;
   setSelectionAnchor: Dispatch<SetStateAction<GridCoordinate>>;
   setSelectionEnd: SetCoordinate;
@@ -73,6 +77,7 @@ export function usePlannerInteractions({
     if (selectedAgain) {
       setSelectedDayRow(null);
       setSelectedItemId(undefined);
+      setSelectedMapItemId(undefined);
       setSelectionAnchor({ column: -1, row: -1 });
       setSelectionEnd({ column: -1, row: -1 });
       setMapMode("overview");
@@ -80,6 +85,7 @@ export function usePlannerInteractions({
     }
     setSelectedDayRow(null);
     setSelectedItemId(undefined);
+    setSelectedMapItemId(undefined);
     if (!extend) {
       const category = categories[coordinate.column];
       if (category?.id === "city") setMapMode("overview");
@@ -102,6 +108,7 @@ export function usePlannerInteractions({
   function selectDay(row: number) {
     setSelectedDayRow(row);
     setSelectedItemId(undefined);
+    setSelectedMapItemId(undefined);
     setSelectionAnchor({ column: -1, row: -1 });
     setSelectionEnd({ column: -1, row: -1 });
     setInteractionError(undefined);
@@ -111,17 +118,23 @@ export function usePlannerInteractions({
     setSelectedDayRow(null);
     setSelectionAnchor(coordinate);
     setSelectionEnd(coordinate);
+    if (selectedItemId === item.id) {
+      setSelectedItemId(undefined);
+      setSelectedMapItemId(undefined);
+      return;
+    }
+    setSelectedItemId(item.id);
     if (item.type === "location") {
       setMapMode("overview");
-      setSelectedItemId(item.place ? item.id : undefined);
+      setSelectedMapItemId(item.place ? item.id : undefined);
       return;
     }
     if (["activity", "hotel", "meal"].includes(item.type)) {
       setMapMode("day_route");
-      setSelectedItemId(item.place ? item.id : undefined);
+      setSelectedMapItemId(item.place ? item.id : undefined);
       return;
     }
-    setSelectedItemId(undefined);
+    setSelectedMapItemId(undefined);
   }
 
   function startRangeSelection(event: React.PointerEvent<HTMLDivElement>) {

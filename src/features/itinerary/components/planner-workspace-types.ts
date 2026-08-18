@@ -14,9 +14,11 @@ export type PlannerWorkspaceProps = {
   exchangeRates: ExchangeRateTable | null;
   initialResearchItems: PlanResearchItem[];
   initialResearchSelections: VariantResearchSelection[];
+  initialSettingsOpen?: boolean;
   initialVariants: PlannerVariant[];
   initialWorkspace: PlannerWorkspace;
   settings: ReactNode;
+  shareAttachmentsEnabled: boolean;
   shareControls?: ReactNode;
   trip: Tables<"trips">;
 };

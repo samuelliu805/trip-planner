@@ -5,10 +5,12 @@ import { NotebookText } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { publicDayCityLabel } from "../presentation";
+import { orderedPublicItemMedia } from "../public-media-presentation";
 import { publicTimelineDayPresentation } from "../public-timeline-presentation";
 import type { PublicItineraryDay } from "../types";
 import { PublicTimelineNode } from "./public-timeline-node";
 import { PublicTimelineTransport } from "./public-timeline-transport";
+import { PublicItemMediaGallery } from "./public-item-media";
 
 function useTimelineRailWheel() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -169,6 +171,7 @@ export function PublicTimelineDay({
                   </span>
                 ) : null}
               </span>
+              <PublicItemMediaGallery media={orderedPublicItemMedia(item)} variant="timeline" />
             </div>
           ))}
         </section>

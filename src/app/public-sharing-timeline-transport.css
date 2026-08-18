@@ -21,7 +21,7 @@
   min-width: 0;
   max-width: 100%;
   flex: 0 1 auto;
-  grid-template-columns: 1.125rem minmax(0, 1fr) auto;
+  grid-template-columns: 1.125rem minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 0.375rem;
   color: var(--muted-foreground);

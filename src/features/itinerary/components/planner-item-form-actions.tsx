@@ -21,6 +21,7 @@ export function PlannerItemFormActions({
   onCancel,
   onRemove,
   pending,
+  pendingLabel,
   type,
 }: {
   canSave: boolean;
@@ -29,6 +30,7 @@ export function PlannerItemFormActions({
   onCancel: () => void;
   onRemove: () => Promise<void>;
   pending: boolean;
+  pendingLabel?: string;
   type: ItineraryItemType;
 }) {
   return (
@@ -38,12 +40,18 @@ export function PlannerItemFormActions({
           {error.message}
         </p>
       ) : null}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center justify-between gap-2 pt-1">
         <div>
           {item ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button disabled={pending} size="sm" type="button" variant="ghost">
+                <Button
+                  className="min-h-11"
+                  disabled={pending}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
                   Delete
                 </Button>
               </AlertDialogTrigger>
@@ -62,14 +70,20 @@ export function PlannerItemFormActions({
             </AlertDialog>
           ) : null}
         </div>
-        <div className="flex gap-2">
-          <Button onClick={onCancel} size="sm" type="button" variant="ghost">
+        <div className="flex min-w-0 gap-2">
+          <Button className="min-h-11" onClick={onCancel} size="sm" type="button" variant="ghost">
             Cancel
           </Button>
-          <Button aria-busy={pending} disabled={pending || !canSave} size="sm" type="submit">
+          <Button
+            aria-busy={pending}
+            className="min-h-11"
+            disabled={pending || !canSave}
+            size="sm"
+            type="submit"
+          >
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {pending
-              ? "Saving…"
+              ? (pendingLabel ?? "Saving…")
               : item
                 ? "Save"
                 : ["activity", "meal"].includes(type)

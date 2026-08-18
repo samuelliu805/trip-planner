@@ -21,6 +21,12 @@ export function PublicShareVisibilityFields({
         role="group"
       >
         <ShareSettingOption
+          checked={settings.showAttachments}
+          description="Files with Share file turned on."
+          label="Attachments"
+          onCheckedChange={(value) => onSettingChange("showAttachments", value)}
+        />
+        <ShareSettingOption
           checked={settings.showMapRoutes}
           description="Shared places, maps, and safe saved-route details."
           label="Maps and routes"
@@ -48,9 +54,9 @@ export function PublicShareVisibilityFields({
 
       <details className="group min-w-0 border-t pt-2">
         <summary className="flex min-h-11 min-w-0 cursor-pointer list-none items-center gap-2 text-sm font-medium marker:hidden">
-          <span>More privacy controls</span>
+          <span>More controls</span>
           <span className="ml-auto min-w-0 truncate text-xs font-normal text-muted-foreground">
-            Times, addresses, route tools
+            Times, addresses, downloads
           </span>
           <ChevronDown
             aria-hidden="true"
@@ -76,10 +82,16 @@ export function PublicShareVisibilityFields({
             label="Route exploration"
             onCheckedChange={(value) => onSettingChange("allowRouteExplore", value)}
           />
+          <ShareSettingOption
+            checked={settings.allowLongImageDownload}
+            description="Visitors can download your latest generated trip image."
+            label="Image downloads"
+            onCheckedChange={(value) => onSettingChange("allowLongImageDownload", value)}
+          />
         </div>
       </details>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Notes and links can contain booking references. Review them before publishing.
+        Notes, links, and attachments can contain booking references. Review them before publishing.
       </p>
     </ShareSettingSection>
   );

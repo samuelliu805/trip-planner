@@ -1,20 +1,13 @@
 "use client";
 
-import { ArrowLeft, Lightbulb, MoreHorizontal, Settings2, Table2 } from "lucide-react";
+import { ArrowLeft, Lightbulb, LoaderCircle, Settings2, Table2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AppBottomNavigation } from "@/components/navigation/app-bottom-navigation";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { PlannerSaveStatus } from "@/features/itinerary/components/planner-save-status";
+import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ResearchCategory } from "@/features/research/types";
 import {
   parseResearchCategoryRouteSegment,
@@ -120,32 +113,19 @@ export function TripAppBar({
 }: TripAppBarProps) {
   return (
     <header className="trip-app-bar z-[70] shrink-0 border-b bg-background/95 backdrop-blur">
-      <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-2 min-[960px]:grid min-[960px]:h-16 min-[960px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] min-[960px]:gap-5">
-        <div className="flex min-w-0 items-center gap-2 md:gap-3">
+      <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-2 min-[960px]:grid min-[960px]:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] min-[960px]:gap-4">
+        <div className="flex min-w-0 items-center gap-1.5">
           <Button asChild className="size-11 shrink-0 p-0" variant="ghost">
             <Link aria-label="Back to Trips" href="/trips">
-              <ArrowLeft aria-hidden="true" className="size-4 md:hidden" />
-              <span className="hidden font-bold tracking-tight md:inline">TP</span>
+              <ArrowLeft aria-hidden="true" className="size-4" />
             </Link>
           </Button>
-          <button
-            aria-label={onTripSettings ? `Open settings for ${title}` : undefined}
-            className="flex min-h-11 min-w-0 items-center gap-1 rounded-lg bg-muted/60 px-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none md:bg-transparent md:px-1 md:hover:bg-muted/60"
-            disabled={!onTripSettings}
-            onClick={onTripSettings}
-            type="button"
-          >
-            <div className="hidden items-baseline min-[960px]:flex">
-              <h1 className="max-w-64 truncate text-base font-semibold">{title}</h1>
-            </div>
-            <h1 className="max-w-24 truncate text-sm font-semibold sm:max-w-40 min-[960px]:hidden">
+          <div className="flex min-w-0 items-center gap-1 rounded-xl bg-muted/55 p-1">
+            <h1 className="min-w-0 flex-1 truncate px-1.5 text-sm font-semibold sm:max-w-36 min-[960px]:max-w-56 min-[960px]:text-base">
               {title}
             </h1>
-            {onTripSettings ? (
-              <Settings2 aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            ) : null}
-          </button>
-          <div className="min-w-0 shrink">{variantControls}</div>
+            <div className="min-w-0 shrink-0">{variantControls}</div>
+          </div>
         </div>
 
         <div className="hidden justify-self-center min-[960px]:block">
@@ -158,35 +138,37 @@ export function TripAppBar({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center justify-end gap-1.5 md:ml-0 md:gap-2">
-          {active === "plan" ? <PlannerSaveStatus mutating={mutating} /> : null}
-          {shareControls}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="More trip actions"
-                className="hidden size-11 p-0 md:inline-flex"
-                variant="outline"
-              >
-                <MoreHorizontal aria-hidden="true" className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/trips">
-                  <ArrowLeft aria-hidden="true" className="size-4" /> Back to Trips
-                </Link>
-              </DropdownMenuItem>
-              {onTripSettings ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={onTripSettings}>
-                    <Settings2 aria-hidden="true" className="size-4" /> Trip settings
-                  </DropdownMenuItem>
-                </>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <TripAccountMenu email={accountEmail} onTripSettings={onTripSettings} />
+          {active === "plan" && mutating ? (
+            <span
+              aria-live="polite"
+              className="hidden items-center gap-1 text-xs text-muted-foreground md:flex"
+              role="status"
+            >
+              <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> Saving
+            </span>
+          ) : null}
+          <div className="hidden sm:block">{shareControls}</div>
+          {onTripSettings ? (
+            <Button
+              aria-label="Trip settings"
+              className="hidden size-11 shrink-0 p-0 sm:inline-flex"
+              onClick={onTripSettings}
+              title="Trip settings"
+              type="button"
+              variant="ghost"
+            >
+              <Settings2 aria-hidden="true" className="size-4" />
+            </Button>
+          ) : null}
+          <TripAccountMenu
+            email={accountEmail}
+            onShareTrip={
+              shareControls
+                ? () => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
+                : undefined
+            }
+            onTripSettings={onTripSettings}
+          />
         </div>
       </div>
     </header>

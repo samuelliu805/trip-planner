@@ -57,7 +57,7 @@ export function PublicTimelineNode({
             <span className="timeline-node-type-v4">{publicItemTypeLabels[item.type]}</span>
           </button>
           <PublicItemMediaGallery media={node.media} variant="timeline" />
-          <PublicQuickActions compact item={item} quiet />
+          <PublicQuickActions item={item} quiet />
         </div>
       </div>
     </li>

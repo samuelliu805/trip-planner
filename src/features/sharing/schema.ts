@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MAX_IMAGE_BYTES, MAX_PDF_BYTES, MAX_VIDEO_BYTES } from "../attachments/config.ts";
 import { itineraryItemTypes } from "../itinerary/item-schema.ts";
 import { publicSavedRouteSchema } from "./public-route-schema.ts";
 import { publicTemplateIdSchema, publicTemplateVersionSchema } from "./templates/schema.ts";
@@ -36,20 +37,27 @@ const publicMediaUrlSchema = z
     if (value.startsWith("/api/public-place-photo/")) return true;
     return publicUrlSchema.safeParse(value).success;
   }, "Only safe public media URLs can be shared.");
+const publicAttachmentUrlSchema = z
+  .string()
+  .max(500)
+  .regex(
+    /^\/api\/share\/[0-9a-f-]{36}\/assets\/[0-9a-f]{64}(?:\?variant=thumbnail)?$/,
+    "Only the private attachment access route can be shared.",
+  );
 const publicMediaAttributionSchema = z
   .object({
     label: z.string().trim().min(1).max(200),
     url: publicUrlSchema.optional(),
   })
   .strict();
-const publicItemMediaSchema = z.discriminatedUnion("kind", [
+export const publicItemMediaSchema = z.union([
   z
     .object({
       alt: z.string().trim().max(300).optional(),
       attribution: publicMediaAttributionSchema.optional(),
       id: z.string().trim().min(1).max(500),
       kind: z.literal("image"),
-      source: z.enum(["google_place", "attachment"]),
+      source: z.literal("google_place"),
       sourceUrl: publicUrlSchema.optional(),
       thumbnailUrl: publicMediaUrlSchema.optional(),
       url: publicMediaUrlSchema,
@@ -57,12 +65,39 @@ const publicItemMediaSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
-      id: z.string().trim().min(1).max(500),
+      alt: z.string().trim().max(300).optional(),
+      byteSize: z.number().int().positive().max(MAX_IMAGE_BYTES),
+      id: z.string().regex(/^[0-9a-f]{64}$/),
+      kind: z.literal("image"),
+      label: z.string().trim().min(1).max(240),
+      mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+      source: z.literal("attachment"),
+      thumbnailUrl: publicAttachmentUrlSchema.optional(),
+      url: publicAttachmentUrlSchema,
+    })
+    .strict(),
+  z
+    .object({
+      byteSize: z.number().int().positive().max(MAX_PDF_BYTES),
+      id: z.string().regex(/^[0-9a-f]{64}$/),
       kind: z.literal("pdf"),
       label: z.string().trim().min(1).max(240),
+      mimeType: z.literal("application/pdf"),
       source: z.literal("attachment"),
-      thumbnailUrl: publicMediaUrlSchema.optional(),
-      url: publicMediaUrlSchema,
+      thumbnailUrl: publicAttachmentUrlSchema.optional(),
+      url: publicAttachmentUrlSchema,
+    })
+    .strict(),
+  z
+    .object({
+      byteSize: z.number().int().positive().max(MAX_VIDEO_BYTES),
+      id: z.string().regex(/^[0-9a-f]{64}$/),
+      kind: z.literal("video"),
+      label: z.string().trim().min(1).max(240),
+      mimeType: z.enum(["video/mp4", "video/webm", "video/quicktime"]),
+      source: z.literal("attachment"),
+      thumbnailUrl: publicAttachmentUrlSchema.optional(),
+      url: publicAttachmentUrlSchema,
     })
     .strict(),
 ]);
@@ -153,6 +188,7 @@ export const publicItinerarySchema = z
         allowRouteExplore: z.boolean(),
         defaultView: publicViewSchema,
         showAddresses: z.boolean(),
+        showAttachments: z.boolean().optional().default(false),
         showMapRoutes: z.boolean(),
         showNotes: z.boolean(),
         showPlacePhotos: z.boolean().optional(),
@@ -195,6 +231,7 @@ export const publicItineraryLinkSchema = z
     shareDescription: z.string().nullable(),
     shareTitle: z.string().nullable(),
     showAddresses: z.boolean(),
+    showAttachments: z.boolean(),
     showMapRoutes: z.boolean(),
     showNotes: z.boolean(),
     showPlacePhotos: z.boolean(),
@@ -233,6 +270,7 @@ export const publicItinerarySettingsSchema = z
     shareDescription: z.string().trim().max(500),
     shareTitle: z.string().trim().max(160),
     showAddresses: z.boolean(),
+    showAttachments: z.boolean(),
     showMapRoutes: z.boolean(),
     showNotes: z.boolean(),
     showPlacePhotos: z.boolean(),
