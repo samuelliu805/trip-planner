@@ -4,6 +4,14 @@ import { PublicOverview } from "./public-overview";
 import { PublicTable } from "./public-table";
 import { PublicTimeline } from "./public-timeline";
 
+function containTouchScroll(event: React.TouchEvent<HTMLDivElement>) {
+  const scroller = event.currentTarget;
+  const maximum = scroller.scrollHeight - scroller.clientHeight;
+  if (maximum <= 1) return;
+  if (scroller.scrollTop <= 0) scroller.scrollTop = 1;
+  else if (scroller.scrollTop >= maximum) scroller.scrollTop = maximum - 1;
+}
+
 export function PublicItineraryViews({
   itinerary,
   onSelectDay,
@@ -61,6 +69,7 @@ export function PublicItineraryViewPanel({
     >
       <div
         className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
+        onTouchStart={option === "table" ? undefined : containTouchScroll}
       >
         {option === "overview" ? (
           <PublicOverview {...viewProps} />

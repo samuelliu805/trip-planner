@@ -168,8 +168,11 @@ body:has(.public-itinerary-shell) {
 }
 
 .public-view-scroll {
+  -webkit-overflow-scrolling: touch;
+  overflow-anchor: none;
   overscroll-behavior-y: none;
   scroll-padding-bottom: 7rem;
+  touch-action: pan-y pinch-zoom;
 }
 
 .public-section-label {

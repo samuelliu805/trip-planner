@@ -1,5 +1,5 @@
 import { format, parseISO } from "date-fns";
-import { CalendarDays, MapPin, MoreVertical } from "lucide-react";
+import { CalendarDays, MapPin, MoreVertical, Share2, Settings2 } from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +110,14 @@ export default async function TripsPage() {
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem asChild>
-                        <Link href={`/trips/${trip.id}`}>Trip settings</Link>
+                        <Link href={`/trips/${trip.id}?share=1`}>
+                          <Share2 aria-hidden="true" className="size-4" /> Share trip
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/trips/${trip.id}?settings=1`}>
+                          <Settings2 aria-hidden="true" className="size-4" /> Trip settings
+                        </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

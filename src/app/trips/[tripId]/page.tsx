@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
-  searchParams: Promise<{ error?: string; variant?: string }>;
+  searchParams: Promise<{ error?: string; settings?: string; share?: string; variant?: string }>;
 };
 
 export default async function TripPage({ params, searchParams }: TripPageProps) {
@@ -61,6 +61,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             exchangeRates={exchangeRates}
             initialResearchItems={researchItems}
             initialResearchSelections={planState.selections}
+            initialSettingsOpen={query.settings === "1"}
             initialVariants={variantsResult.data}
             initialWorkspace={workspace}
             trip={trip}
@@ -69,6 +70,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
               owner ? (
                 <PublicShareDialog
                   activeVariantId={workspace.variant.id}
+                  initialOpen={query.share === "1"}
                   initialLinks={shareLinks.data}
                   key="trip-share-controls"
                   siteUrl={siteUrl}

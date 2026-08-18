@@ -73,7 +73,7 @@ export function PublicOverviewCard({
       ) : null}
       <footer className="overview-item-footer-v4">
         <span>{publicItemTypeLabels[item.type]}</span>
-        <PublicQuickActions compact item={item} quiet />
+        <PublicQuickActions item={item} quiet />
       </footer>
     </article>
   );

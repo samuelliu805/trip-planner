@@ -1,6 +1,45 @@
+.public-quick-actions:not(.is-compact) {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), min(100%, 12.5rem)));
+  justify-content: start;
+  gap: 0.375rem;
+  margin-top: 0.375rem;
+}
+
+.public-quick-actions:not(.is-compact) > details {
+  min-width: 0;
+}
+
+.public-quick-actions:not(.is-compact) .public-resource-button {
+  width: 100%;
+}
+
+.public-quick-actions.is-compact {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.public-quick-actions.is-compact .public-resource-button {
+  width: auto;
+  min-width: 7.5rem;
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.375rem;
+  padding: 0.25rem 0.375rem;
+}
+
+.public-quick-actions.is-compact .public-attachment-visual {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
 .public-template-bento .public-quick-actions.is-quiet > a,
 .public-template-bento .public-quick-actions.is-quiet > details > summary,
-.public-template-bento .public-attachment-button {
+.public-template-bento .public-attachment-button,
+.public-template-bento .public-resource-button {
   border-color: transparent;
   background: rgb(16 31 22 / 62%);
   box-shadow: none;
@@ -13,7 +52,8 @@
 
 .public-template-journal .public-quick-actions.is-quiet > a,
 .public-template-journal .public-quick-actions.is-quiet > details > summary,
-.public-template-journal .public-attachment-button {
+.public-template-journal .public-attachment-button,
+.public-template-journal .public-resource-button {
   border-color: transparent;
   background: rgb(244 237 221 / 46%);
   box-shadow: none;
@@ -25,7 +65,8 @@
 
 .public-template-ethereal .public-quick-actions.is-quiet > a,
 .public-template-ethereal .public-quick-actions.is-quiet > details > summary,
-.public-template-ethereal .public-attachment-button {
+.public-template-ethereal .public-attachment-button,
+.public-template-ethereal .public-resource-button {
   border-color: transparent;
   border-radius: 0;
   background: rgb(239 237 231 / 42%);
@@ -36,7 +77,8 @@
   font-family: var(--font-sans);
 }
 
-.public-template-traverse .public-attachment-button {
+.public-template-traverse .public-attachment-button,
+.public-template-traverse .public-resource-button {
   border-radius: 0;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;

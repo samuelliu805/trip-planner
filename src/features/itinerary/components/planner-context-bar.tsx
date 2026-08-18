@@ -64,6 +64,9 @@ export function PlannerContextBar(props: PlannerContextBarProps) {
     !props.selectedItem &&
     !props.activeCellAtCapacity &&
     props.activeCategory?.id !== "city";
+  const mobileContextActive =
+    manyCells ||
+    (oneCell && (canAdd || Boolean(props.selectedItem) || Boolean(props.researchContext)));
   const contextLabel = manyCells
     ? `${props.selectedCount} cells selected`
     : oneCell && props.activeDay && props.activeCategory
@@ -102,7 +105,7 @@ export function PlannerContextBar(props: PlannerContextBarProps) {
   return (
     <div
       aria-label="Plan context"
-      className="plan-context-bar z-[70] flex min-h-14 min-w-0 shrink-0 items-center border-b bg-background/95 backdrop-blur"
+      className={`plan-context-bar z-[70] flex min-h-14 min-w-0 shrink-0 items-center border-b bg-background/95 backdrop-blur ${mobileContextActive ? "" : "is-idle"}`}
     >
       <div className="flex min-h-14 w-full min-w-0 items-center gap-2 px-4 md:px-6">
         <div className="min-w-0 flex-1">

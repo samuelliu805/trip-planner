@@ -54,9 +54,9 @@ export function PublicShareVisibilityFields({
 
       <details className="group min-w-0 border-t pt-2">
         <summary className="flex min-h-11 min-w-0 cursor-pointer list-none items-center gap-2 text-sm font-medium marker:hidden">
-          <span>More privacy controls</span>
+          <span>More controls</span>
           <span className="ml-auto min-w-0 truncate text-xs font-normal text-muted-foreground">
-            Times, addresses, route tools
+            Times, addresses, downloads
           </span>
           <ChevronDown
             aria-hidden="true"
@@ -81,6 +81,12 @@ export function PublicShareVisibilityFields({
             description="Visitors can calculate temporary routes from shared stops."
             label="Route exploration"
             onCheckedChange={(value) => onSettingChange("allowRouteExplore", value)}
+          />
+          <ShareSettingOption
+            checked={settings.allowLongImageDownload}
+            description="Visitors can download your latest generated trip image."
+            label="Image downloads"
+            onCheckedChange={(value) => onSettingChange("allowLongImageDownload", value)}
           />
         </div>
       </details>

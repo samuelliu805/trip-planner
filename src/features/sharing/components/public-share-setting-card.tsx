@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import { Checkbox } from "@/components/ui/checkbox";
-
 export function ShareSettingSection({
   children,
   description,
@@ -19,40 +17,6 @@ export function ShareSettingSection({
       </div>
       {children}
     </section>
-  );
-}
-
-export function ShareSettingToggle({
-  checked,
-  description,
-  id,
-  label,
-  onCheckedChange,
-}: {
-  checked: boolean;
-  description: string;
-  id: string;
-  label: string;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  return (
-    <label
-      className="flex min-h-11 min-w-0 cursor-pointer items-start gap-3 border px-3 py-2.5"
-      htmlFor={id}
-    >
-      <Checkbox
-        checked={checked}
-        className="mt-0.5 size-5"
-        id={id}
-        onCheckedChange={(value) => onCheckedChange(value === true)}
-      />
-      <span className="min-w-0">
-        <span className="block text-sm font-medium">{label}</span>
-        <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-          {description}
-        </span>
-      </span>
-    </label>
   );
 }
 

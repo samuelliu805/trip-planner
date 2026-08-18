@@ -65,6 +65,11 @@
     padding-bottom: 0.75rem;
   }
 
+  .public-itinerary-shell:has(.public-mobile-map-control) .overview-v4,
+  .public-itinerary-shell:has(.public-mobile-map-control) .timeline-v4 {
+    padding-bottom: max(5.25rem, calc(4.5rem + env(safe-area-inset-bottom)));
+  }
+
   .public-itinerary-shell.public-template-traverse .public-view-scroll {
     padding-top: 0;
   }
@@ -111,6 +116,11 @@
   .public-itinerary-shell .overview-v4,
   .public-itinerary-shell .timeline-v4 {
     padding-bottom: 0.75rem;
+  }
+
+  .public-itinerary-shell:has(.public-mobile-map-control) .overview-v4,
+  .public-itinerary-shell:has(.public-mobile-map-control) .timeline-v4 {
+    padding-bottom: max(4.75rem, calc(4rem + env(safe-area-inset-bottom)));
   }
 
   .public-itinerary-shell.public-template-traverse .public-view-scroll {

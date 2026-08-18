@@ -21,21 +21,36 @@ export function PublicQuickActions({
 
   return (
     <div
-      className={`public-quick-actions flex flex-wrap items-center gap-1.5 ${quiet ? "is-quiet" : ""} ${compact ? "shrink-0" : "mt-2"}`}
+      className={`public-quick-actions ${quiet ? "is-quiet" : ""} ${compact ? "is-compact shrink-0" : ""}`}
     >
       <a
-        className={`inline-flex min-h-11 touch-manipulation items-center gap-1 rounded px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:px-2.5 sm:text-xs ${quiet ? "text-muted-foreground hover:bg-muted hover:text-foreground" : "border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"}`}
+        aria-label={`Open website ${primary.label}`}
+        className="public-resource-button touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         href={primary.url}
         rel="noopener noreferrer"
         target="_blank"
       >
-        {primary.label}
-        <ExternalLink aria-hidden="true" className="size-3" />
+        <span className="public-attachment-visual" aria-hidden="true">
+          <ExternalLink className="size-4" />
+        </span>
+        <span className="public-attachment-copy">
+          <span className="public-attachment-name">{primary.label}</span>
+          <span className="public-attachment-meta">Website</span>
+        </span>
       </a>
       {secondary.length ? (
         <details className="relative">
-          <summary className="flex min-h-11 touch-manipulation cursor-pointer list-none items-center gap-1 rounded px-2 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8 sm:text-xs">
-            More links <ChevronDown aria-hidden="true" className="size-3" />
+          <summary
+            aria-label={`Show ${secondary.length} more ${secondary.length === 1 ? "link" : "links"}`}
+            className="public-resource-button touch-manipulation cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="public-attachment-visual" aria-hidden="true">
+              <ChevronDown className="size-4" />
+            </span>
+            <span className="public-attachment-copy">
+              <span className="public-attachment-name">More links</span>
+              <span className="public-attachment-meta">{secondary.length} more</span>
+            </span>
           </summary>
           <div className="absolute right-0 top-full z-[120] mt-1 min-w-36 border bg-background p-1 shadow-lg">
             {secondary.map((link, index) => (

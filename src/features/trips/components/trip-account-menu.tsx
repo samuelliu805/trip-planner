@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowLeft, LogOut, Settings2, UserRound } from "lucide-react";
-import Link from "next/link";
+import { LogOut, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,13 +26,7 @@ function accountInitials(email: string) {
   );
 }
 
-export function TripAccountMenu({
-  email = "Account",
-  onTripSettings,
-}: {
-  email?: string;
-  onTripSettings?: () => void;
-}) {
+export function TripAccountMenu({ email = "Account" }: { email?: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -53,16 +46,6 @@ export function TripAccountMenu({
           </p>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="md:hidden">
-          <Link href="/trips">
-            <ArrowLeft aria-hidden="true" className="size-4" /> Back to Trips
-          </Link>
-        </DropdownMenuItem>
-        {onTripSettings ? (
-          <DropdownMenuItem className="md:hidden" onSelect={onTripSettings}>
-            <Settings2 aria-hidden="true" className="size-4" /> Trip settings
-          </DropdownMenuItem>
-        ) : null}
         <DropdownMenuItem disabled>
           <UserRound aria-hidden="true" className="size-4" /> Account settings
         </DropdownMenuItem>

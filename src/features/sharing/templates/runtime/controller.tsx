@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   createContext,
   useContext,
@@ -93,7 +93,6 @@ export function PublicTemplateControllerProvider({
   const [selection, setSelection] = useState<PublicMapSelection>({});
   const shellRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const showMap = itinerary.settings.showMapRoutes;
 
@@ -110,8 +109,8 @@ export function PublicTemplateControllerProvider({
     applyTemplateQuery(nextParams, legacyTemplateOverride);
     nextParams.set("view", initialView);
     if (nextParams.toString() === searchParams.toString()) return;
-    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
-  }, [initialView, legacyTemplateOverride, pathname, router, searchParams]);
+    window.history.replaceState(window.history.state, "", `${pathname}?${nextParams.toString()}`);
+  }, [initialView, legacyTemplateOverride, pathname, searchParams]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 900px)");
@@ -129,7 +128,7 @@ export function PublicTemplateControllerProvider({
       setSelection({});
       setView(nextView);
     }
-    router.replace(`${pathname}?${nextParams.toString()}`, { scroll: false });
+    window.history.replaceState(window.history.state, "", `${pathname}?${nextParams.toString()}`);
   }
 
   function selectDay(dayRef: string) {

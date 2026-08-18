@@ -1506,6 +1506,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
   assert.match(
     styles,
+    /\.public-view-scroll[\s\S]*overflow-anchor: none[\s\S]*touch-action: pan-y/,
+  );
+  assert.match(styles, /:has\(\.public-mobile-map-control\)[\s\S]*padding-bottom: max\(5\.25rem/);
+  assert.match(
+    styles,
     /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*display: flex[\s\S]*height: 4rem[\s\S]*\.public-itinerary-shell \.public-view-switcher \{[\s\S]*position: static[\s\S]*width: min\(22\.5rem, 100%\)[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
   );
   assert.match(
@@ -1529,6 +1534,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shell, /<PublicTemplateRenderer template=\{template\}/);
   assert.doesNotMatch(shell + controller + renderer, /fetch\(|dangerouslySetInnerHTML|eval\(/);
   assert.match(views, /public-view-scroll h-full min-w-0/);
+  assert.match(views, /containTouchScroll/);
   assert.doesNotMatch(
     overviewCard + overviewTransport + timelineSources + publicTable,
     /onMouseEnter|onFocus=/,
@@ -1546,6 +1552,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(shareVisibilityFields, /Select everything you want people with the link to see/);
   assert.match(shareVisibilityFields, /ShareSettingOption/);
+  assert.match(shareVisibilityFields, /Image downloads/);
+  assert.match(shareVisibilityFields, /allowLongImageDownload/);
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
   assert.match(shareSettingsFields, /LongImageSettingsFields/);
@@ -1553,6 +1561,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(longImageScopePicker, /Entire trip/);
   assert.match(longImageScopePicker, /Date range/);
   assert.match(longImageFields, /QR code opens/);
+  assert.doesNotMatch(longImageFields, /allowLongImageDownload|ShareSettingToggle/);
   assert.doesNotMatch(
     shareStatus,
     /Public preview|LongImageExportPanel|ShareLinkActions|ShareQrCode/,
@@ -1697,8 +1706,11 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(page, /templateKey=\{resolvedTemplate\.key\}/);
   assert.match(shell, /getPublicTemplate\(templateKey\)/);
   assert.match(shell, /PublicTemplateControllerProvider[\s\S]*PublicTemplateRenderer/);
-  assert.match(controller, /router\.replace\(`\$\{pathname\}\?\$\{nextParams\.toString\(\)\}`/);
-  assert.match(controller, /\{ scroll: false \}/);
+  assert.match(
+    controller,
+    /window\.history\.replaceState\(window\.history\.state, "", `\$\{pathname\}\?\$\{nextParams\.toString\(\)\}`/,
+  );
+  assert.doesNotMatch(controller, /useRouter|router\.replace/);
   assert.match(controller, /new URLSearchParams\(searchParams\.toString\(\)\)/);
   assert.match(controller, /if \(legacyTemplateOverride\) url\.searchParams\.set\("template"/);
   assert.doesNotMatch(controller, /searchParams\.set\("templateVersion"/);

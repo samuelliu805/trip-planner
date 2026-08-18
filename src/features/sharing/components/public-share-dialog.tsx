@@ -41,18 +41,20 @@ import { PublicShareStatusPanel } from "./public-share-status-panel";
 
 export function PublicShareDialog({
   activeVariantId,
+  initialOpen = false,
   initialLinks,
   siteUrl,
   trip,
   variants,
 }: {
   activeVariantId: string;
+  initialOpen?: boolean;
   initialLinks: PublicItineraryLink[];
   siteUrl: string;
   trip: Tables<"trips">;
   variants: PlannerVariant[];
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [links, setLinks] = useState(initialLinks);
   const [variantId, setVariantId] = useState(activeVariantId);
   const initialLink = initialLinks.find((link) => link.variantId === activeVariantId);
