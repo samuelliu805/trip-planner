@@ -108,7 +108,7 @@
   padding: 1.625rem 0.25rem 0.875rem;
   scroll-snap-type: none;
   scrollbar-color: #c8baa5 transparent;
-  touch-action: pan-x pinch-zoom;
+  touch-action: pan-x pan-y pinch-zoom;
   overscroll-behavior-inline: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -204,7 +204,7 @@
   background: #fffdf7;
   padding: 1.125rem 1.0625rem;
   box-shadow: 4px 5px 0 rgb(113 140 115 / 10%);
-  touch-action: pan-x pinch-zoom;
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
 .public-template-journal .timeline-node-v4:nth-child(2n) .timeline-node-content-v4 {

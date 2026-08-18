@@ -22,7 +22,7 @@ export function PublicShareVisibilityFields({
       >
         <ShareSettingOption
           checked={settings.showAttachments}
-          description="Only files individually marked ‘Show on shared trip’."
+          description="Files with Share file turned on."
           label="Attachments"
           onCheckedChange={(value) => onSettingChange("showAttachments", value)}
         />

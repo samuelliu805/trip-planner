@@ -6,8 +6,7 @@ export function UnsavedAttachmentsSection() {
           Attachments
         </h3>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Save this itinerary item first, then reopen it to add private files. This prevents files
-          from being linked to a temporary draft.
+          Save first, then reopen to add files.
         </p>
       </div>
     </section>

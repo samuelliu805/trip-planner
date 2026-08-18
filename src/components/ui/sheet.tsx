@@ -10,63 +10,12 @@ const Sheet = SheetPrimitive.Root;
 const SheetTrigger = SheetPrimitive.Trigger;
 const SheetClose = SheetPrimitive.Close;
 
-type SheetViewportStyle = React.CSSProperties & {
-  "--sheet-viewport-height"?: string;
-  "--sheet-viewport-top"?: string;
-};
-
-function useSheetViewport() {
-  const [viewport, setViewport] = React.useState<{
-    height: number;
-    top: number;
-  }>();
-
-  React.useEffect(() => {
-    const visualViewport = window.visualViewport;
-    let frame = 0;
-    function measure() {
-      const height = visualViewport?.height ?? window.innerHeight;
-      const top = visualViewport?.offsetTop ?? 0;
-      const next = { height, top };
-      setViewport((current) =>
-        current?.height === height && current.top === top ? current : next,
-      );
-    }
-    function scheduleMeasure() {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(measure);
-    }
-    measure();
-    window.addEventListener("resize", scheduleMeasure);
-    visualViewport?.addEventListener("resize", scheduleMeasure);
-    visualViewport?.addEventListener("scroll", scheduleMeasure);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", scheduleMeasure);
-      visualViewport?.removeEventListener("resize", scheduleMeasure);
-      visualViewport?.removeEventListener("scroll", scheduleMeasure);
-    };
-  }, []);
-  return viewport;
-}
-
 function SheetContent({
   className,
   children,
   side = "right",
-  style,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: "right" | "bottom" }) {
-  const viewport = useSheetViewport();
-  const viewportStyle: SheetViewportStyle = {
-    ...(viewport
-      ? {
-          "--sheet-viewport-height": `${viewport.height}px`,
-          "--sheet-viewport-top": `${viewport.top}px`,
-        }
-      : null),
-    ...style,
-  };
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none" />
@@ -78,7 +27,6 @@ function SheetContent({
             : "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-xl border-t data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
           className,
         )}
-        style={viewportStyle}
         {...props}
       >
         {children}

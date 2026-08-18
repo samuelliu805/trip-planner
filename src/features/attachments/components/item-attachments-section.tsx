@@ -249,8 +249,7 @@ export function SavedItemAttachmentsSection({
 
       {!attachments.length && !tasks.length ? (
         <div className="rounded-md border border-dashed px-3 py-4 text-center text-xs leading-5 text-muted-foreground">
-          Tickets, confirmations, maps, menus, and short videos stay private until you explicitly
-          share each one.
+          Files stay private unless you turn on Share file.
         </div>
       ) : null}
       {error ? (

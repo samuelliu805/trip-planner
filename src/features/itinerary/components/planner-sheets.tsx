@@ -150,26 +150,31 @@ export function PlannerSheets({
               </span>
             </SheetDescription>
           </SheetHeader>
-          {editor ? (
-            <PlannerItemForm
-              dayId={editor.dayId}
-              defaultCurrency={defaultCurrency}
-              item={editor.item}
-              onCancel={onEditorClose}
-              onError={onInteractionError}
-              onDraftChange={editor.item ? onEditorDraftChange : undefined}
-              onSaved={(savedItem) => {
-                const created = !editor.item;
-                onEditorClose();
-                if (created) onItemCreated(savedItem);
-              }}
-              shareAttachmentsEnabled={shareAttachmentsEnabled}
-              tripId={tripId}
-              type={editor.type}
-              unavailableTransportModes={unavailableTransportModes}
-              variantId={workspace.variant.id}
-            />
-          ) : null}
+          <div
+            className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+            data-planner-editor-scroll=""
+          >
+            {editor ? (
+              <PlannerItemForm
+                dayId={editor.dayId}
+                defaultCurrency={defaultCurrency}
+                item={editor.item}
+                onCancel={onEditorClose}
+                onError={onInteractionError}
+                onDraftChange={editor.item ? onEditorDraftChange : undefined}
+                onSaved={(savedItem) => {
+                  const created = !editor.item;
+                  onEditorClose();
+                  if (created) onItemCreated(savedItem);
+                }}
+                shareAttachmentsEnabled={shareAttachmentsEnabled}
+                tripId={tripId}
+                type={editor.type}
+                unavailableTransportModes={unavailableTransportModes}
+                variantId={workspace.variant.id}
+              />
+            ) : null}
+          </div>
         </SheetContent>
       </Sheet>
       <Sheet onOpenChange={onMapExpandedChange} open={mapExpanded}>

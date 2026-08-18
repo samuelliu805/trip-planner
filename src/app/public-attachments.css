@@ -9,7 +9,7 @@
 
 .public-attachment-button {
   display: grid;
-  grid-template-columns: 3.25rem minmax(0, 1fr) auto;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
   width: 100%;
   min-width: 0;
   min-height: 2.75rem;
@@ -76,7 +76,7 @@
 .public-attachment-name {
   display: -webkit-box;
   overflow: hidden;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 650;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -87,18 +87,23 @@
 .public-attachment-meta {
   margin-top: 0.1875rem;
   color: var(--muted-foreground);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.25;
-}
-
-.public-attachment-open-icon {
-  margin-right: 0.25rem;
-  color: var(--primary);
 }
 
 .public-item-attachments,
 .public-item-media {
   min-width: 0;
+}
+
+.public-item-attachments.overview {
+  margin-top: 0.625rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+  padding-top: 0.125rem;
+}
+
+.public-item-media.overview {
+  margin-top: 0.625rem;
 }
 
 .public-attachment-grid.table,
@@ -124,9 +129,7 @@
 }
 
 .public-attachment-grid.table .public-attachment-meta,
-.public-attachment-grid.transport .public-attachment-meta,
-.public-attachment-grid.table .public-attachment-open-icon,
-.public-attachment-grid.transport .public-attachment-open-icon {
+.public-attachment-grid.transport .public-attachment-meta {
   display: none;
 }
 

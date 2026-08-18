@@ -23,29 +23,6 @@
   grid-row: 1 / span 2;
 }
 
-.public-item-media.mixed-media .media-grid-v4.attachments {
-  grid-template-rows: 4.25rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.public-item-media.mixed-media .media-grid-v4.attachments.count-1 {
-  grid-template-columns: minmax(0, 8rem);
-}
-
-.public-item-media.mixed-media .media-grid-v4.attachments.count-2 {
-  grid-template-columns: repeat(2, minmax(0, 8rem));
-}
-
-.public-item-media.mixed-media .media-grid-v4.attachments.count-3 > :first-child {
-  grid-row: auto;
-}
-
-.public-item-media.mixed-media .media-grid-v4.attachments .public-media-entry,
-.public-item-media.mixed-media .media-grid-v4.attachments .media-thumb-v4,
-.public-item-media.mixed-media .media-grid-v4.attachments .media-pdf-v4 {
-  min-height: 4.25rem;
-}
-
 .public-media-entry,
 .media-thumb-v4 {
   position: relative;

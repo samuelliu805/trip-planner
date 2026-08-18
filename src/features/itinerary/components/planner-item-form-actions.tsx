@@ -34,16 +34,13 @@ export function PlannerItemFormActions({
   type: ItineraryItemType;
 }) {
   return (
-    <div
-      className="shrink-0 space-y-2 border-t bg-background px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-      data-planner-editor-actions=""
-    >
+    <>
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error.message}
         </p>
       ) : null}
-      <div className="flex min-w-0 items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center justify-between gap-2 pt-1">
         <div>
           {item ? (
             <AlertDialog>
@@ -95,6 +92,6 @@ export function PlannerItemFormActions({
           </Button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -19,7 +19,9 @@ export function PublicOverviewCard({
   const { item, media } = presentation;
   const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const place = item.place?.localityName ?? item.place?.displayName;
-  const hasVisualMedia = media.some(({ source }) => source === "google_place");
+  const placeMedia = media.filter(({ source }) => source === "google_place");
+  const attachments = media.filter(({ source }) => source === "attachment");
+  const hasVisualMedia = placeMedia.length > 0;
 
   const spanClass = hasVisualMedia
     ? "span-featured"
@@ -57,7 +59,12 @@ export function PublicOverviewCard({
         <span className="overview-order-v4">{String(order).padStart(2, "0")}</span>
       </button>
 
-      <PublicItemMediaGallery media={media} prioritizeFirst={prioritizeMedia} variant="overview" />
+      <PublicItemMediaGallery media={attachments} variant="overview" />
+      <PublicItemMediaGallery
+        media={placeMedia}
+        prioritizeFirst={prioritizeMedia}
+        variant="overview"
+      />
 
       {item.notes ? (
         <button className="overview-item-notes-v4" onClick={onSelect} type="button">

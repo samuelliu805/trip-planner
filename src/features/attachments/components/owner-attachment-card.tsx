@@ -8,6 +8,16 @@ import type { OwnerAttachment } from "@/features/attachments/schema";
 
 import { ownerAttachmentUrl } from "./attachment-presentation";
 
+function ownerAttachmentType(attachment: OwnerAttachment) {
+  if (attachment.mimeType === "image/jpeg") return "JPG Image";
+  if (attachment.mimeType === "image/png") return "PNG Image";
+  if (attachment.mimeType === "image/webp") return "WebP Image";
+  if (attachment.mimeType === "video/mp4") return "MP4 Video";
+  if (attachment.mimeType === "video/webm") return "WebM Video";
+  if (attachment.mimeType === "video/quicktime") return "MOV Video";
+  return "PDF";
+}
+
 function AttachmentTile({ attachment, tripId }: { attachment: OwnerAttachment; tripId: string }) {
   if (attachment.kind === "pdf")
     return (
@@ -67,14 +77,14 @@ export function OwnerAttachmentCard({
         <div className="min-w-0 flex-1">
           <p className="break-words text-sm font-medium">{attachment.fileName}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {attachment.mimeType} · {formatBytes(attachment.byteSize)}
+            {ownerAttachmentType(attachment)} · {formatBytes(attachment.byteSize)}
           </p>
           <p className="mt-1 text-xs font-medium">
             {attachment.includeInShare
               ? shareAttachmentsEnabled
-                ? "Shown on the active shared Trip page"
-                : "Eligible to share · hidden until Attachments is enabled for the Share Page"
-              : "Owner only"}
+                ? "Shared"
+                : "Share page attachments off"
+              : "Private"}
           </p>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
             <Button
@@ -114,7 +124,7 @@ export function OwnerAttachmentCard({
             disabled={disabled || attachment.status !== "ready"}
             onCheckedChange={(checked) => onShareChange(checked === true)}
           />
-          <span className="min-w-0">Show on shared trip</span>
+          <span className="min-w-0">Share file</span>
         </Label>
       </div>
     </article>

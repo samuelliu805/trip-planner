@@ -194,10 +194,6 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     new URL("../itinerary/components/planner-item-form.tsx", import.meta.url),
     "utf8",
   );
-  const itemFormContent = await readFile(
-    new URL("../itinerary/components/planner-item-form-content.tsx", import.meta.url),
-    "utf8",
-  );
   const plannerSheets = await readFile(
     new URL("../itinerary/components/planner-sheets.tsx", import.meta.url),
     "utf8",
@@ -255,7 +251,10 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(publicMedia, /google-place/);
   assert.match(publicMedia, /public-item-attachments/);
   assert.doesNotMatch(publicMedia, /media-preview-button-v4/);
-  assert.match(publicMedia, /mixed-media/);
+  assert.doesNotMatch(publicMedia, /\bEye\b|· View|>View</);
+  assert.match(publicMedia, /return "Image"/);
+  assert.match(publicMedia, /return "Video"/);
+  assert.match(publicMedia, /return "PDF"/);
   assert.match(publicMedia, /attachments\.map\(\(attachment\)/);
   assert.match(publicMedia, /public-attachment-button/);
   assert.match(publicMediaStyles, /\.public-attachment-button \{[\s\S]*min-height: 2\.75rem/);
@@ -272,13 +271,13 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
   assert.match(attachmentSection, /ShareAttachmentsCallout/);
   assert.match(itemForm, /pendingLabel=\{attachmentPending \? "Updating attachments…"/);
-  assert.match(itemFormContent, /max-w-full min-w-0[\s\S]*overflow-x-hidden/);
+  assert.match(itemForm, /max-w-full min-w-0[\s\S]*overflow-x-hidden/);
   assert.match(
-    itemFormContent,
+    plannerSheets,
     /overflow-x-hidden[\s\S]*overflow-y-auto[\s\S]*data-planner-editor-scroll/,
   );
   assert.match(itemForm, /PlannerItemFormActions/);
-  assert.doesNotMatch(plannerSheets, /data-planner-editor-scroll/);
+  assert.doesNotMatch(itemForm, /data-planner-editor-actions|flex-1 flex-col overflow-hidden/);
   assert.match(
     plannerStyles,
     /\.planner-editor-sheet \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior-x: none[\s\S]*touch-action: pan-y/,

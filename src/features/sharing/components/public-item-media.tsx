@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Eye, FileImage, FileText, Film, Play } from "lucide-react";
+import { FileImage, FileText, Film, Play } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -44,9 +44,9 @@ function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: bo
 }
 
 function attachmentKindLabel(kind: AttachmentMedia["kind"]) {
-  if (kind === "image") return "Photo";
+  if (kind === "image") return "Image";
   if (kind === "video") return "Video";
-  return "PDF document";
+  return "PDF";
 }
 
 function AttachmentVisual({ attachment }: { attachment: AttachmentMedia }) {
@@ -109,11 +109,8 @@ function AttachmentButtons({
           <AttachmentVisual attachment={attachment} />
           <span className="public-attachment-copy">
             <span className="public-attachment-name">{attachment.label}</span>
-            <span className="public-attachment-meta">
-              {attachmentKindLabel(attachment.kind)} · View
-            </span>
+            <span className="public-attachment-meta">{attachmentKindLabel(attachment.kind)}</span>
           </span>
-          <Eye aria-hidden="true" className="public-attachment-open-icon size-4" />
         </button>
       ))}
     </div>
@@ -148,7 +145,7 @@ export function PublicItemMediaGallery({
   }
 
   const rootClass = showGoogleMedia
-    ? `public-item-media ${variant}${attachmentMedia.length ? " mixed-media" : ""}`
+    ? `public-item-media ${variant}`
     : `public-item-attachments ${variant}`;
 
   return (
@@ -199,13 +196,15 @@ export function PublicItemMediaGallery({
           ))}
         </div>
       ) : null}
-      <AttachmentViewer
-        attachments={attachmentMedia.map(viewerAttachment)}
-        initialId={viewerId}
-        onOpenChange={(open) => !open && setViewerId(undefined)}
-        open={Boolean(viewerId)}
-        trigger={viewerTrigger}
-      />
+      {attachmentMedia.length ? (
+        <AttachmentViewer
+          attachments={attachmentMedia.map(viewerAttachment)}
+          initialId={viewerId}
+          onOpenChange={(open) => !open && setViewerId(undefined)}
+          open={Boolean(viewerId)}
+          trigger={viewerTrigger}
+        />
+      ) : null}
     </div>
   );
 }

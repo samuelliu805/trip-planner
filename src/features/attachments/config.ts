@@ -54,4 +54,4 @@ export function attachmentLimitMessage(kind: AttachmentKind) {
 }
 
 export const attachmentAcceptedTypeCopy =
-  "JPEG, PNG, or WebP up to 10 MB; PDF up to 20 MB; MP4, WebM, or MOV up to 30 MB.";
+  "JPG/PNG/WebP Image (10 MB) · PDF (20 MB) · MP4/WebM/MOV Video (30 MB)";
