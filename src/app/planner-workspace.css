@@ -64,6 +64,10 @@ body:has(.trip-planner-page) {
   touch-action: pan-x pan-y;
 }
 
+.planner-matrix .matrix-grid-header {
+  z-index: 70;
+}
+
 .planner-matrix .matrix-grid-header,
 .planner-matrix [role="row"] > [role="columnheader"]:first-child,
 .planner-matrix [role="row"] > [role="columnheader"]:nth-child(2),

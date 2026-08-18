@@ -1077,8 +1077,7 @@ test("public and owner Matrix use the same canonical category columns", async ()
   );
   assert.match(publicTableContainment, /boundaryBlocked && event\.cancelable/);
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
-  assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-40/);
-  assert.doesNotMatch(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
+  assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
   assert.match(
     matrixPresentation,
     /matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium/,

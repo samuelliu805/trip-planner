@@ -2201,6 +2201,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
+  assert.match(styles, /\.planner-matrix \.matrix-grid-header \{\s*z-index: 70;/);
   assert.match(workspace, /Insert day above/);
   assert.match(workspace, /Insert day below/);
   assert.match(workspace, /Remove Day/);
