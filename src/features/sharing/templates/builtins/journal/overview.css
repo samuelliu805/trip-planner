@@ -77,7 +77,7 @@
   grid-column: 2;
   margin-top: 0.4375rem;
   color: #6f756e;
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
   line-height: 1.45;
   white-space: normal;
 }
@@ -212,7 +212,7 @@
   gap: 0.75rem;
   padding-top: 0.75rem;
   color: #6f756e;
-  font-size: 0.65625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-journal .media-grid-v4 {

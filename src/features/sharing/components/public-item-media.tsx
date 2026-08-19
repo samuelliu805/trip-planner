@@ -27,6 +27,14 @@ function viewerAttachment(media: AttachmentMedia): ViewerAttachment {
   };
 }
 
+const GOOGLE_PHOTO_MAX_WIDTH = 1200;
+
+// Google renders the photo at whatever width we ask for, so a plain srcset lets a phone
+// download a ~400px copy instead of the 1200px one a desktop needs.
+function googlePhotoLoader({ src, width }: { src: string; width: number }) {
+  return `${src}${src.includes("?") ? "&" : "?"}w=${Math.min(width, GOOGLE_PHOTO_MAX_WIDTH)}`;
+}
+
 function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: boolean }) {
   return (
     <div className="media-thumb-v4">
@@ -35,10 +43,10 @@ function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: bo
         className="object-cover"
         fill
         fetchPriority={prioritize ? "high" : undefined}
+        loader={googlePhotoLoader}
         loading={prioritize ? "eager" : "lazy"}
         sizes="(max-width: 639px) calc(100vw - 3rem), (max-width: 1199px) 34vw, 24vw"
         src={media.thumbnailUrl ?? media.url}
-        unoptimized
       />
     </div>
   );

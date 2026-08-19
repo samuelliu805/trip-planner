@@ -1,7 +1,6 @@
 import type { PublicTimelineNodePresentation } from "../public-timeline-presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
-import { PublicItemMediaGallery } from "./public-item-media";
-import { PublicQuickActions } from "./public-quick-actions";
+import { PublicItemResources } from "./public-item-resources";
 
 export function PublicTimelineNode({
   node,
@@ -56,8 +55,7 @@ export function PublicTimelineNode({
             </span>
             <span className="timeline-node-type-v4">{publicItemTypeLabels[item.type]}</span>
           </button>
-          <PublicItemMediaGallery media={node.media} variant="timeline" />
-          <PublicQuickActions item={item} quiet />
+          <PublicItemResources item={item} media={node.media} quiet variant="timeline" />
         </div>
       </div>
     </li>

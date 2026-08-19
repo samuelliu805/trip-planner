@@ -1348,6 +1348,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(overviewTransport, /publicItemTypeLabels/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
+  assert.match(overviewCard, /<PublicItemResources item=\{item\} media=\{media\} quiet/);
   assert.match(overviewCard, /data-public-item-category=\{publicItemTypeLabels\[item\.type\]\}/);
   assert.doesNotMatch(overviewCard, /\{media\.length\} media/);
   assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
@@ -1369,8 +1370,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.doesNotMatch(timelineSources, /PublicOverviewCard/);
   assert.match(timelineNode, /variant="timeline"/);
   assert.ok(
-    timelineNode.indexOf("timeline-node-topline-v4") <
-      timelineNode.indexOf("<PublicItemMediaGallery"),
+    timelineNode.indexOf("timeline-node-topline-v4") < timelineNode.indexOf("<PublicItemResources"),
     "timeline media remains inside its item after the item copy",
   );
   assert.match(styles, /public-itinerary-grid/);
@@ -1853,7 +1853,7 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(timeline, /ref=\{timelineSectionRef\}/);
   assert.match(timeline, /viewScroller\.scrollTop \+= delta/);
   assert.doesNotMatch(timelineTransport, /data-public-item-ref|onClick|aria-current/);
-  assert.match(timelineTransport, /PublicQuickActions compact item=\{item\} quiet/);
+  assert.match(timelineTransport, /<PublicItemResources\s+compact[\s\S]*variant="transport"/);
   assert.match(presentation, /timelineNodeTypes/);
   assert.match(presentation, /"car_rental"/);
   assert.match(presentation, /\.filter\(isPublicTransfer\)/);
@@ -1913,4 +1913,125 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
     styles,
     /\.public-template-bento\[data-public-template-key="bento@2"\] \.timeline-transport-meta-v4 \{[^}]*flex: 1 1 auto;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
   );
+});
+
+test("public and owner itinerary type scales stay readable on tablets", async () => {
+  const styleDirectories = ["bento", "ethereal", "journal", "traverse"].map(
+    (template) => new URL(`./templates/builtins/${template}/`, import.meta.url),
+  );
+  const templateStyles = (
+    await Promise.all(
+      styleDirectories.map(async (directory) =>
+        Promise.all(
+          (await readdir(directory))
+            .filter((name) => name.endsWith(".css") && !name.includes("timeline-export"))
+            .map(async (name) => [
+              `${directory.pathname.split("/").at(-2)}/${name}`,
+              await readFile(new URL(name, directory), "utf8"),
+            ]),
+        ),
+      ),
+    )
+  ).flat() as Array<[string, string]>;
+  const sharedStyles = await Promise.all(
+    [
+      "../../app/public-attachments.css",
+      "../../app/public-item-resources.css",
+      "../../app/public-sharing-media.css",
+      "../../app/public-sharing-overview.css",
+      "../../app/public-sharing-overview-transport.css",
+      "../../app/public-sharing-quick-actions.css",
+      "../../app/public-sharing-table.css",
+      "../../app/public-sharing-timeline.css",
+      "../../app/public-sharing-timeline-transport.css",
+      "../../app/public-workspace.css",
+      "../../app/public-workspace-tablet.css",
+    ].map(async (path) => [path, await readFile(new URL(path, import.meta.url), "utf8")]),
+  );
+
+  // Templates set their own scale, but shareable itineraries are read on phones and tablets.
+  // Long-image exports render on a fixed canvas and keep their own smaller scale.
+  const tooSmall = [...templateStyles, ...sharedStyles].flatMap(([name, css]) =>
+    [...css.matchAll(/font-size: ([0-9.]+)rem/g)]
+      .filter(([, size]) => Number(size) < 0.6875)
+      .map(([, size]) => `${name}: ${size}rem`),
+  );
+  assert.deepEqual(tooSmall, []);
+
+  const table = await readFile(new URL("./components/public-table.tsx", import.meta.url), "utf8");
+  const summary = await readFile(
+    new URL("../itinerary/components/matrix-presentation.tsx", import.meta.url),
+    "utf8",
+  );
+  const itemRow = await readFile(
+    new URL("../itinerary/components/planner-item-row.tsx", import.meta.url),
+    "utf8",
+  );
+  // The read-only Table and the owner Matrix share one 15px title / 13px meta scale, and
+  // items keep a 44px row target at every touch width.
+  assert.match(table, /public-item-focus min-h-11[\s\S]*text-\[0\.9375rem\]/);
+  assert.match(itemRow, /min-h-9[\s\S]*text-\[0\.9375rem\]/);
+  assert.match(summary, /matrix-item-meta[\s\S]*text-\[0\.8125rem\]/);
+  assert.doesNotMatch(summary + itemRow, /sm:text-\[10px\]|sm:text-xs/);
+});
+
+test("shareable views group links and attachments into one resource band", async () => {
+  const resources = await readFile(
+    new URL("./components/public-item-resources.tsx", import.meta.url),
+    "utf8",
+  );
+  const consumers = await Promise.all(
+    [
+      "./components/public-overview-card.tsx",
+      "./components/public-overview-transport-list.tsx",
+      "./components/public-table.tsx",
+      "./components/public-timeline-node.tsx",
+      "./components/public-timeline-transport.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  const bandStyles = await readFile(
+    new URL("../../app/public-item-resources.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(resources, /aria-label="Links and files"/);
+  assert.match(resources, /PublicItemMediaGallery/);
+  assert.match(resources, /PublicQuickActions/);
+  consumers.forEach((source) => {
+    assert.match(source, /PublicItemResources/);
+    assert.doesNotMatch(source, /<PublicQuickActions/);
+  });
+  // Both grids collapse into the band's tracks so attachments and links share one rhythm.
+  assert.match(
+    bandStyles,
+    /\.public-item-resources > \.public-item-attachments,[\s\S]*\.public-item-resources \.public-attachment-grid \{\s*display: contents;/,
+  );
+  assert.match(bandStyles, /min-height: 2\.75rem/);
+});
+
+test("public place photos ship a small copy to small screens", async () => {
+  const route = await readFile(
+    new URL("../../app/api/public-place-photo/[token]/[itemRef]/route.ts", import.meta.url),
+    "utf8",
+  );
+  const media = await readFile(
+    new URL("./components/public-item-media.tsx", import.meta.url),
+    "utf8",
+  );
+  const server = await readFile(new URL("./google-place-photo.server.ts", import.meta.url), "utf8");
+
+  // `w` only chooses the rendered width, so it stays outside the signature but clamped.
+  assert.match(route, /width: z\.coerce\.number\(\)\.int\(\)\.min\(160\)\.max\(1600\)/);
+  assert.match(route, /width: search\.get\("w"\)/);
+  assert.match(server, /maxWidthPx = 1200/);
+  assert.match(server, /maxWidthPx: String\(maxWidthPx\)/);
+  assert.match(media, /loader=\{googlePhotoLoader\}/);
+  assert.match(media, /w=\$\{Math\.min\(width, GOOGLE_PHOTO_MAX_WIDTH\)\}/);
+  // `unoptimized` suppresses srcset, so the place photo must not carry it.
+  const googleImage = media.slice(
+    media.indexOf("function GoogleImage"),
+    media.indexOf("function attachmentKindLabel"),
+  );
+  assert.match(googleImage, /sizes=/);
+  assert.doesNotMatch(googleImage, /unoptimized/);
 });

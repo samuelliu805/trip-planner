@@ -15,6 +15,8 @@ import {
   type SetStateAction,
 } from "react";
 
+import { useAppViewport } from "@/lib/use-app-viewport";
+
 import type { PublicMapSelection } from "../../components/public-map-workspace";
 import type {
   OwnerShareImageState,
@@ -95,6 +97,7 @@ export function PublicTemplateControllerProvider({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const showMap = itinerary.settings.showMapRoutes;
+  useAppViewport();
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 900px) and (max-width: 1199px)");

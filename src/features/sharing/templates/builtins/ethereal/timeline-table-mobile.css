@@ -27,7 +27,7 @@
   }
 
   .public-template-ethereal .timeline-day-copy-v4 span {
-    font-size: 0.625rem;
+    font-size: 0.8125rem;
     white-space: normal;
   }
 
@@ -72,7 +72,7 @@
   .public-template-ethereal .timeline-node-key-v4 {
     position: static;
     padding-bottom: 0.4375rem;
-    font-size: 0.625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-ethereal .timeline-node-axis-v4 {
@@ -93,7 +93,7 @@
   .public-template-ethereal .timeline-node-type-v4 {
     margin-top: 0.4375rem;
     margin-bottom: 0;
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-ethereal .timeline-node-title-v4 {
@@ -101,7 +101,7 @@
   }
 
   .public-template-ethereal .timeline-node-meta-v4 {
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-ethereal .timeline-node-content-v4 .media-grid-v4 {

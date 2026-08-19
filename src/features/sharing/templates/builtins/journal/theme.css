@@ -70,7 +70,7 @@
 .public-template-journal .public-brand-kicker {
   gap: 0.4375rem;
   color: var(--journal-sage-dark);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.12em;
 }
 
@@ -89,7 +89,7 @@
 .public-template-journal .public-trip-meta {
   margin-top: 0.375rem;
   color: #6f756e;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.025em;
 }
 
@@ -134,7 +134,7 @@
   background: transparent;
   padding: 0 1rem;
   color: #6f756e;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   box-shadow: none;
 }
 
@@ -214,7 +214,7 @@
   }
 
   .public-template-journal .public-brand-kicker {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-journal .public-trip-title {
@@ -224,7 +224,7 @@
 
   .public-template-journal .public-trip-meta {
     margin-top: 0.4375rem;
-    font-size: 0.71875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-journal .public-template-region-view-navigation {
@@ -260,7 +260,7 @@
     gap: 0.1875rem;
     border-radius: 1rem;
     padding: 0;
-    font-size: 0.65625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-journal .public-view-switcher .app-bottom-navigation-item svg {

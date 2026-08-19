@@ -23,7 +23,7 @@
   }
 
   .public-template-journal .timeline-day-copy-v4 span {
-    font-size: 0.78125rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-journal .timeline-day-count-v4 {
@@ -82,7 +82,7 @@
   .public-template-journal .timeline-node-key-v4 {
     position: static;
     padding: 0 0 0.4375rem;
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-journal .timeline-node-axis-v4 {
@@ -106,7 +106,7 @@
 
   .public-template-journal .timeline-node-type-v4 {
     margin-top: 0.5rem;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-journal .timeline-node-title-v4 {
@@ -114,7 +114,7 @@
   }
 
   .public-template-journal .timeline-node-meta-v4 {
-    font-size: 0.78125rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-journal .timeline-node-content-v4 .public-media-entry,

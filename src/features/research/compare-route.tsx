@@ -79,7 +79,6 @@ export async function ResearchCompareRoute({
     <TripDetailRoute
       appBar={
         <TripSettingsAppBar
-          accountEmail={authData.user?.email ?? "Account"}
           active="compare"
           researchCategory={category}
           shareControls={

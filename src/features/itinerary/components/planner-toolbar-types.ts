@@ -48,7 +48,6 @@ export type PlannerToolbarProps = {
   setInteractionError: Dispatch<SetStateAction<string | undefined>>;
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   shareControls?: ReactNode;
-  accountEmail: string;
   trip: Tables<"trips">;
   variantControls: ReactNode;
   variantId: string;

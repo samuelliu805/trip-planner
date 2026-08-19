@@ -59,7 +59,7 @@
 .public-template-ethereal .timeline-day-copy-v4 span {
   margin-top: 0.3125rem;
   color: #77766f;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.07em;
 }
 
@@ -267,7 +267,7 @@
   border-color: var(--border);
   background: rgb(239 237 231 / 98%);
   color: #77766f;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -277,7 +277,7 @@
   border-color: var(--border);
   background: rgb(255 255 255 / 16%);
   padding: 0.8125rem 0.75rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 

@@ -94,7 +94,7 @@
 .public-template-traverse .overview-day-title-v4 > span:last-child {
   margin-top: 0.4rem;
   color: var(--traverse-muted);
-  font-size: 0.78125rem;
+  font-size: 0.9375rem;
   line-height: 1.4;
   white-space: normal;
 }
@@ -103,7 +103,7 @@
   border: 1px solid rgb(17 38 45 / 42%);
   padding: 0.375rem 0.5rem;
   color: var(--traverse-ocean);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-traverse .overview-board-v4 {
@@ -191,14 +191,14 @@
 .public-template-traverse .overview-item-notes-v4 {
   margin-top: 0.3125rem;
   color: var(--traverse-muted);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
   white-space: normal;
 }
 
 .public-template-traverse .overview-order-v4 {
   color: #738388;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-traverse .overview-item-footer-v4,

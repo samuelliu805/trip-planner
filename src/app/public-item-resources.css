@@ -1,0 +1,60 @@
+/* Attachments and links are the same thing to a reader — extra material for this stop — so
+   both grids collapse into one track set and read as a single band per item. */
+.public-item-resources {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), min(100%, 12.5rem)));
+  justify-content: start;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.public-item-resources > .public-item-attachments,
+.public-item-resources > .public-quick-actions,
+.public-item-resources .public-attachment-grid {
+  display: contents;
+}
+
+.public-item-resources .public-attachment-button,
+.public-item-resources .public-resource-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  margin-top: 0;
+}
+
+.public-item-resources > details {
+  min-width: 0;
+}
+
+.public-item-resources.table {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.public-item-resources.transport {
+  width: min(100%, 22rem);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr));
+  gap: 0.25rem;
+  margin-top: 0;
+}
+
+.public-item-resources.transport .public-attachment-button,
+.public-item-resources.transport .public-resource-button {
+  grid-template-columns: 1.75rem minmax(0, 1fr);
+  gap: 0.375rem;
+  padding: 0.25rem 0.375rem;
+}
+
+.public-item-resources.transport .public-attachment-visual {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+@media (max-width: 639px) {
+  .public-item-resources {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

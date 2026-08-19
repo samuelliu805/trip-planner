@@ -86,6 +86,6 @@
 
 @media (max-width: 899px) {
   .public-template-bento[data-public-template-key="bento@2"] .public-attachment-name {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
   }
 }

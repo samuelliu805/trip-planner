@@ -22,6 +22,25 @@ These rules apply to all future UI work in this repository.
 - Apply scroll containment and Safari compositing safeguards to the Matrix at every breakpoint. At a scroll boundary, continued touch movement must not rubber-band the frozen header, date/day columns, workspace shell, or expose blank space beyond the workspace.
 - Verify owner planner behavior at 768px, 820px, and 1024px widths in both relevant orientations. Assert that `documentElement` and `body` do not exceed `innerHeight`, a forced `window.scrollTo` leaves `scrollY` at 0, the table/map reaches the viewport bottom (or the mobile tab bar top), and the app bar remains at top 0 while the Matrix scrolls in either axis.
 
+## Software keyboard and visual viewport
+
+- iOS and iPadOS reveal a focused field by offsetting the visual viewport inside the layout viewport. A fixed, non-scrolling shell cannot undo that with `window.scrollTo`, so the app bar slides out of view and a blank strip appears under the workspace once the keyboard collapses.
+- Keep `interactive-widget=resizes-content` on the root viewport export. On browsers that honour it the layout viewport shrinks with the keyboard and no offset ever appears.
+- `useAppViewport` publishes `--app-viewport-height` and `--app-viewport-top` and every fixed shell (`.trip-planner-page`, `.trip-detail-page`, `.public-itinerary-shell`, planner sheets) sizes and positions from them. Publish those properties **only while the visual viewport is genuinely obscured or offset**, and remove them otherwise so the shell falls back to `100dvh`; a stale measurement must never be able to strand the shell short of the viewport bottom.
+- Measure inline on the event. A `requestAnimationFrame` callback is never delivered in a throttled or backgrounded tab, which silently freezes the published geometry.
+- Do not reintroduce unconditional viewport-height variables (the reverted `--planner-visual-viewport-*` pair), and do not compensate for the keyboard with padding or viewport-height arithmetic.
+
+## Itinerary type scale
+
+- The owner Matrix and the read-only Table share one scale: 15px item titles, 13px meta and column headers. Do not reintroduce `sm:`-prefixed downscaling that shrinks text on larger screens.
+- No public template may set a font size below `0.6875rem` outside the long-image export stylesheets, which render on a fixed canvas and keep their own scale. Raise a template's own declaration rather than adding a global override, so per-template intent stays readable in one place.
+- Larger text must not shrink controls: item rows and app bar controls keep a 44px target at every touch width, and Matrix column widths track the type scale so place names are not truncated.
+
+## Trip app bar
+
+- The bar carries one merged identity control: back, then trip title plus the active Plan, then the section nav (≥960px) and Share. Trip-scoped actions (plans, compare, Share, Trip settings) live in that one menu; account actions belong to `/trips`, one level up.
+- Never add a second overflow menu to the bar — the plan context bar already owns one for table actions.
+
 ## Recurring tablet table regressions (release-blocking)
 
 - Treat any blank strip between an editable or read-only table and its bottom boundary as a regression. Bottom navigation that is already a flex sibling must not be compensated for with Matrix padding, spacer rows, margins, or viewport-height arithmetic.

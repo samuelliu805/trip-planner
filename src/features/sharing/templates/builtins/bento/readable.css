@@ -38,12 +38,12 @@
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-day-title-v4 span,
 .public-template-bento[data-public-template-key="bento@2"] .timeline-day-copy-v4 span {
-  font-size: 0.6875rem;
+  font-size: 0.9375rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-day-items-v4,
 .public-template-bento[data-public-template-key="bento@2"] .timeline-day-count-v4 {
-  font-size: 0.5625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-board-v4 {
@@ -82,19 +82,19 @@
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-item-title-v4 {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.42;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-item-meta-v4 {
   margin-top: 0.3125rem;
-  font-size: 0.65625rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-order-v4,
 .public-template-bento[data-public-template-key="bento@2"] .overview-item-footer-v4 {
-  font-size: 0.59375rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .media-grid-v4 {
@@ -127,7 +127,7 @@
   width: 2.75rem;
   height: 2.75rem;
   border-radius: 0.8125rem;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-transport-list-v4 {
@@ -141,11 +141,11 @@
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-transport-title-v4 {
-  font-size: 0.71875rem;
+  font-size: 0.9375rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-transport-meta-v4 {
-  font-size: 0.59375rem;
+  font-size: 0.8125rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-list-v4 {
@@ -165,7 +165,7 @@
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-key-v4 {
   padding: 0.875rem 0.5625rem 0 0;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-dot-v4 {
@@ -190,11 +190,11 @@
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-type-v4 {
-  font-size: 0.5625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-meta-v4 {
-  font-size: 0.65625rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
@@ -206,7 +206,7 @@
 
 .public-template-bento[data-public-template-key="bento@2"] .public-matrix [role="gridcell"] {
   padding: 0.6875rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
@@ -226,7 +226,7 @@
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .public-trip-meta {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .overview-v4,

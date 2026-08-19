@@ -2173,7 +2173,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /setSelectedItemId\(item\.id\);[\s\S]*if \(item\.type === "location"\)/);
   assert.match(workspace, /setSelectedMapItemId\(undefined\)/);
   assert.doesNotMatch(workspace, /data-edit-cell-item/);
-  assert.match(workspace, /mt-auto flex h-8 w-full/);
+  assert.match(workspace, /mt-auto flex h-9 w-full/);
   assert.match(workspace, /pointer-events-none/);
   assert.match(workspace, /M12 3V9M9 6H15/);
   assert.match(workspace, /M12 15V21M9 18H15/);
@@ -2215,7 +2215,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(styles, /planner-editor-sheet[\s\S]*inset: 0 !important;[\s\S]*height: 100dvh/);
+  assert.match(
+    styles,
+    /planner-editor-sheet \{[\s\S]*inset: var\(--app-viewport-top, 0px\) 0 auto 0 !important;[\s\S]*height: var\(--app-viewport-height, 100dvh\)/,
+  );
   assert.doesNotMatch(styles, /--(?:sheet|planner-visual)-viewport-(height|top|bottom)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextBar/);
@@ -2267,9 +2270,14 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   const viewportContainment = await readFile(
-    new URL("./hooks/use-planner-viewport-containment.ts", import.meta.url),
+    new URL("../../lib/use-app-viewport.ts", import.meta.url),
     "utf8",
   );
+  const appBar = await readFile(
+    new URL("../trips/components/trip-app-bar.tsx", import.meta.url),
+    "utf8",
+  );
+  const rootLayout = await readFile(new URL("../../app/layout.tsx", import.meta.url), "utf8");
   const secondaryFields = await readFile(
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
@@ -2283,14 +2291,14 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /\.plan-context-bar\.is-idle \{\s*display: none;/);
   assert.match(styles, /safe-area-inset-left/);
   assert.match(styles, /planner-editor-sheet input,[\s\S]*font-size: 16px/);
-  assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
+  assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(\s*var\(--app-viewport-height/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
   assert.match(styles, /html:has\(\.trip-planner-page\),[\s\S]*overflow: hidden/);
   assert.match(styles, /body:has\(\.trip-planner-page\)[\s\S]*position: fixed;[\s\S]*inset: 0;/);
   assert.match(
     styles,
-    /\.trip-planner-page \{[\s\S]*position: fixed;[\s\S]*inset: 0;[\s\S]*height: 100dvh/,
+    /\.trip-planner-page \{[\s\S]*position: fixed;[\s\S]*inset: var\(--app-viewport-top, 0px\) 0 auto 0;[\s\S]*height: var\(--app-viewport-height, 100dvh\)/,
   );
   assert.match(
     styles,
@@ -2299,7 +2307,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /\.planner-map-pane,[\s\S]*\.planner-map-landscape \{\s*overflow: hidden;/);
   const tripShellRule = styles.match(/\.trips-shell:has\(\.trip-planner-page\) \{[^}]+\}/)?.[0];
   assert.ok(tripShellRule);
-  assert.match(tripShellRule, /height: 100dvh/);
+  assert.match(tripShellRule, /height: var\(--app-viewport-height, 100dvh\)/);
   assert.match(tripShellRule, /overflow: hidden/);
   assert.match(tripShellRule, /overscroll-behavior: none/);
   assert.doesNotMatch(tripShellRule, /display: none/);
@@ -2323,10 +2331,22 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.doesNotMatch(workspace, /mobile-selected-day-bar/);
   assert.match(tripsLayout, /trips-global-header sticky top-0 z-\[80\]/);
   assert.match(workspace, /TripAppBar/);
-  assert.match(workspace, /usePlannerViewportContainment/);
+  // iOS reveals a focused field by offsetting the visual viewport, which a fixed shell
+  // cannot scroll back. The shell follows that geometry instead, and `resizes-content`
+  // keeps the layout viewport itself in step on browsers that support it.
+  assert.match(appBar, /useAppViewport\(\)/);
+  assert.match(rootLayout, /interactiveWidget: "resizes-content"/);
   assert.match(viewportContainment, /visualViewport/);
   assert.match(viewportContainment, /focusout/);
   assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);
+  assert.match(viewportContainment, /--app-viewport-height/);
+  assert.match(viewportContainment, /--app-viewport-top/);
+  // The override only applies while the visual viewport is genuinely obscured, so a stale
+  // or missed measurement can never strand the shell short of the viewport bottom.
+  assert.match(viewportContainment, /const obscured =/);
+  assert.match(viewportContainment, /publish\(VIEWPORT_HEIGHT, obscured \? height : null\)/);
+  // Measurement must not depend on requestAnimationFrame, which a throttled tab may skip.
+  assert.doesNotMatch(viewportContainment, /requestAnimationFrame/);
   assert.doesNotMatch(viewportContainment + styles, /planner-visual-viewport/);
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);

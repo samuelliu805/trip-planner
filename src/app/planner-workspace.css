@@ -11,18 +11,18 @@ body:has(.trip-planner-page) {
 
 .trips-shell:has(.trip-planner-page) {
   min-height: 0;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: var(--app-viewport-height, 100dvh);
+  max-height: var(--app-viewport-height, 100dvh);
   overflow: hidden;
   overscroll-behavior: none;
 }
 
 .trip-planner-page {
   position: fixed;
-  inset: 0;
+  inset: var(--app-viewport-top, 0px) 0 auto 0;
   width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: var(--app-viewport-height, 100dvh);
+  max-height: var(--app-viewport-height, 100dvh);
 }
 
 .trips-global-header,
@@ -216,11 +216,11 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    inset: 0 !important;
+    inset: var(--app-viewport-top, 0px) 0 auto 0 !important;
     width: 100% !important;
-    height: 100dvh;
+    height: var(--app-viewport-height, 100dvh);
     max-width: none !important;
-    max-height: 100dvh;
+    max-height: var(--app-viewport-height, 100dvh);
     border-left: 0 !important;
     border-top: 1px solid var(--border);
     border-radius: 0.75rem 0.75rem 0 0;
@@ -284,13 +284,15 @@ body:has(.trip-planner-page) {
   }
 
   .planner-editor-sheet {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: var(--app-viewport-height, 100dvh);
+    max-height: var(--app-viewport-height, 100dvh);
     overflow: hidden;
   }
 
   .planner-map-sheet {
-    height: calc(100dvh - max(8px, env(safe-area-inset-top))) !important;
+    height: calc(
+      var(--app-viewport-height, 100dvh) - max(8px, env(safe-area-inset-top))
+    ) !important;
     max-height: none;
     padding-bottom: env(safe-area-inset-bottom) !important;
   }

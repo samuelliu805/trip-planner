@@ -149,7 +149,7 @@
 .public-template-journal .overview-transport-kind-v4 {
   color: #547e97;
   font-family: var(--journal-hand);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.025em;
   text-transform: none;
 }

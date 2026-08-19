@@ -590,7 +590,7 @@ test("Ideas & Options has direct category routes and instant in-workspace switch
 });
 
 test("Trip detail keeps context controls at top and uses one mobile destination tab bar", async () => {
-  const [planPage, comparePage, appBar, planToolbar, contextBar, compareWorkspace, account] =
+  const [planPage, comparePage, appBar, planToolbar, contextBar, compareWorkspace, tripMenu] =
     await Promise.all(
       [
         "../../app/trips/[tripId]/page.tsx",
@@ -599,7 +599,7 @@ test("Trip detail keeps context controls at top and uses one mobile destination 
         "../itinerary/components/planner-toolbar.tsx",
         "../itinerary/components/planner-context-bar.tsx",
         "./components/compare-workspace.tsx",
-        "../trips/components/trip-account-menu.tsx",
+        "../variants/components/route-variant-switcher.tsx",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     );
   assert.match(appBar, /aria-label="Trip sections"/);
@@ -615,12 +615,14 @@ test("Trip detail keeps context controls at top and uses one mobile destination 
   assert.doesNotMatch(`${planPage}\n${comparePage}`, /TripSectionNav/);
   assert.doesNotMatch(planToolbar, /PlannerEditingToolbar/);
   assert.doesNotMatch(compareWorkspace, /<h1|trip\.title/);
-  assert.match(account, /\{email\}/);
-  assert.match(account, /Log out/);
-  assert.match(account, /Trip settings/);
+  // The app bar carries one merged trip identity control, so trip-scoped actions live in
+  // that menu and account actions stay on /trips instead of adding a second overflow menu.
+  assert.match(tripMenu, /Trip settings/);
+  assert.match(tripMenu, /Share trip/);
+  assert.match(tripMenu, /useTripBarActions/);
   assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
-  assert.doesNotMatch(appBar, /More trip actions|<MoreHorizontal/);
-  assert.match(appBar, /aria-label="Trip settings"/);
+  assert.match(appBar, /TripBarActionsProvider/);
+  assert.doesNotMatch(appBar, /More trip actions|<MoreHorizontal|TripAccountMenu|accountEmail/);
   assert.match(appBar, /Saving/);
   assert.doesNotMatch(appBar, />Saved</);
   assert.doesNotMatch(appBar, /Open settings for/);

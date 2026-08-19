@@ -9,7 +9,6 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
   return (
     <>
       <TripAppBar
-        accountEmail={props.accountEmail}
         active="plan"
         mutating={props.mutating}
         onTripSettings={() => props.setSettingsOpen(true)}

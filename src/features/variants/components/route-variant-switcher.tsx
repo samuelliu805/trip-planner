@@ -1,6 +1,15 @@
 "use client";
 
-import { Check, ChevronDown, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Copy,
+  GitCompareArrows,
+  MoreHorizontal,
+  Plus,
+  Settings2,
+  Share2,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +27,52 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { PlannerVariant } from "@/features/itinerary/types";
+import { useTripBarActions } from "@/features/trips/components/trip-bar-actions";
 
 import { VariantIdentity } from "./route-variant-identity";
 
 export type RouteVariantAction = "create" | "duplicate" | "manage";
+
+function TripIdentityTrigger({
+  activeVariant,
+  className = "",
+  title,
+  ...props
+}: {
+  activeVariant: PlannerVariant;
+  className?: string;
+  onClick?: () => void;
+  title?: string;
+}) {
+  return (
+    <Button
+      aria-label={`${title ? `${title}. ` : ""}Plan: ${activeVariant.name}${
+        activeVariant.is_primary ? ", Primary" : ""
+      }. Open trip menu`}
+      className={`trip-identity-trigger h-11 min-w-0 flex-1 justify-start gap-2 px-2 ${className}`}
+      variant="ghost"
+      {...props}
+    >
+      <span
+        aria-hidden="true"
+        className="size-2.5 shrink-0 rounded-full border border-black/10"
+        style={{ backgroundColor: activeVariant.color }}
+      />
+      {title ? (
+        <span className="trip-identity-title min-w-0 flex-1 truncate text-left font-semibold">
+          {title}
+        </span>
+      ) : null}
+      <span
+        aria-hidden="true"
+        className="trip-identity-plan min-w-0 max-w-28 shrink-0 truncate font-normal text-muted-foreground"
+      >
+        {activeVariant.name}
+      </span>
+      <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+    </Button>
+  );
+}
 
 export function RouteVariantSwitcher({
   activeVariant,
@@ -46,15 +97,14 @@ export function RouteVariantSwitcher({
   sheetOpen: boolean;
   variants: PlannerVariant[];
 }) {
+  const { onShareTrip, onTripSettings, title } = useTripBarActions();
+
   return (
     <>
-      <div className="hidden items-center gap-1 min-[960px]:flex">
+      <div className="hidden min-w-0 flex-1 items-center min-[960px]:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="h-9 max-w-56 gap-2 px-2.5" variant="outline">
-              <VariantIdentity compact variant={activeVariant} />
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-            </Button>
+            <TripIdentityTrigger activeVariant={activeVariant} title={title} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
             <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">Plans</div>
@@ -90,29 +140,29 @@ export function RouteVariantSwitcher({
             <DropdownMenuItem onSelect={() => onAction("manage")}>
               <MoreHorizontal className="size-4" /> Manage Plans
             </DropdownMenuItem>
+            {onTripSettings ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={onTripSettings}>
+                  <Settings2 className="size-4" /> Trip settings
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <Button
-        aria-label={`Plan: ${activeVariant.name}${activeVariant.is_primary ? ", Primary" : ""}`}
-        className="h-11 min-w-0 gap-1.5 px-2 min-[960px]:hidden"
+      <TripIdentityTrigger
+        activeVariant={activeVariant}
+        className="min-[960px]:hidden"
         onClick={() => onSheetOpenChange(true)}
-        variant="outline"
-      >
-        <span
-          aria-hidden="true"
-          className="size-2.5 rounded-full"
-          style={{ backgroundColor: activeVariant.color }}
-        />
-        <span className="max-w-20 truncate text-xs">{activeVariant.name}</span>
-        <ChevronDown className="size-3.5" />
-      </Button>
+        title={title}
+      />
 
       <Sheet onOpenChange={onSheetOpenChange} open={sheetOpen}>
         <SheetContent side="bottom">
           <SheetHeader>
-            <SheetTitle>Plans</SheetTitle>
+            <SheetTitle>{title ?? "Plans"}</SheetTitle>
             <SheetDescription>Switch the Plan shown in the Matrix and map.</SheetDescription>
           </SheetHeader>
           <div className="overflow-y-auto px-4 py-4">
@@ -174,6 +224,34 @@ export function RouteVariantSwitcher({
                 <MoreHorizontal className="size-4" /> Manage Plans
               </Button>
             </div>
+            {onShareTrip || onTripSettings ? (
+              <div className="mt-4 grid gap-2 border-t pt-4">
+                {onShareTrip ? (
+                  <Button
+                    className="h-11 justify-start sm:hidden"
+                    onClick={() => {
+                      onSheetOpenChange(false);
+                      onShareTrip();
+                    }}
+                    variant="outline"
+                  >
+                    <Share2 className="size-4" /> Share trip
+                  </Button>
+                ) : null}
+                {onTripSettings ? (
+                  <Button
+                    className="h-11 justify-start"
+                    onClick={() => {
+                      onSheetOpenChange(false);
+                      onTripSettings();
+                    }}
+                    variant="outline"
+                  >
+                    <Settings2 className="size-4" /> Trip settings
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </SheetContent>
       </Sheet>

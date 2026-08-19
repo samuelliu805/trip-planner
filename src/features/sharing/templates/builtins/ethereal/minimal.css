@@ -114,7 +114,7 @@
 
   .public-template-ethereal .overview-day-number-v4,
   .public-template-ethereal .overview-day-date-v4 {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-ethereal .overview-day-title-v4 > span:last-child {
@@ -154,7 +154,7 @@
   .public-template-ethereal .overview-transport-meta-v4,
   .public-template-ethereal .overview-transport-notes-v4,
   .public-template-ethereal .timeline-node-meta-v4 {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-ethereal .overview-item-card-v4 {

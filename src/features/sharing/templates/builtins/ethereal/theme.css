@@ -46,7 +46,7 @@
 .public-template-ethereal .public-brand-kicker {
   gap: 0.5rem;
   color: var(--ethereal-sage);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   letter-spacing: 0.2em;
 }
 
@@ -70,7 +70,7 @@
 .public-template-ethereal .public-trip-meta {
   margin-top: 0.4375rem;
   color: #77766f;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
 }
 
@@ -120,7 +120,7 @@
   background: transparent;
   padding: 0;
   color: var(--ethereal-faint);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.08em;
   box-shadow: none;
@@ -189,7 +189,7 @@
   padding-left: 0.625rem;
   color: #556159;
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 38%);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -219,7 +219,7 @@
   }
 
   .public-template-ethereal .public-brand-kicker {
-    font-size: 0.5625rem;
+    font-size: 0.6875rem;
     letter-spacing: 0.15em;
   }
 
@@ -230,7 +230,7 @@
 
   .public-template-ethereal .public-trip-meta {
     margin-top: 0.4375rem;
-    font-size: 0.65625rem;
+    font-size: 0.75rem;
     letter-spacing: 0.035em;
   }
 
@@ -262,7 +262,7 @@
     flex-direction: column;
     gap: 0.1875rem;
     border-radius: 999px;
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: 0;
   }
 

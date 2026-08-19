@@ -61,30 +61,30 @@
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-transport-title-v4 {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.4;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-transport-kind-v4 {
   color: #9fc9ff;
-  font-size: 0.5625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-transport-route-v4 {
   margin-top: 0.1875rem;
   color: #a7b5aa;
-  font-size: 0.65625rem;
+  font-size: 0.8125rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-transport-meta-v4,
 .public-template-bento[data-public-template-key="bento@2"] .overview-transport-notes-v4 {
   margin-top: 0.1875rem;
-  font-size: 0.5625rem;
+  font-size: 0.8125rem;
   line-height: 1.45;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .overview-transport-order-v4 {
-  font-size: 0.5625rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-v4 {
@@ -109,7 +109,7 @@
 .public-template-bento[data-public-template-key="bento@2"] .timeline-day-index-v4 {
   width: 3rem;
   height: 3rem;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-day-copy-v4 strong {
@@ -117,7 +117,7 @@
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-day-copy-v4 span {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-list-v4 {
@@ -137,11 +137,11 @@
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-key-v4 {
   padding: 1.125rem 0.75rem 0 0;
-  font-size: 0.71875rem;
+  font-size: 0.75rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-key-v4.is-time {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-axis-v4 {
@@ -163,11 +163,11 @@
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-meta-v4 {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .public-template-bento[data-public-template-key="bento@2"] .timeline-node-type-v4 {
-  font-size: 0.625rem;
+  font-size: 0.75rem;
 }
 
 @media (max-width: 899px) {
@@ -217,12 +217,12 @@
     justify-content: flex-end;
     margin-top: 0.6875rem;
     padding: 0 0.375rem 0 0;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     line-height: 1;
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .timeline-node-key-v4.is-time {
-    font-size: 0.71875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .timeline-node-axis-v4 {
@@ -244,11 +244,11 @@
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .timeline-node-meta-v4 {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .timeline-node-type-v4 {
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-bento[data-public-template-key="bento@2"] .overview-transport-title-v4 {

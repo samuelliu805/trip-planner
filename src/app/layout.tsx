@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Mali, Nunito } from "next/font/google";
 
 import { QueryProvider } from "@/components/query-provider";
@@ -27,6 +27,14 @@ export const metadata: Metadata = {
     template: "%s | Trip Planner",
   },
   description: "A modern workspace for planning complex trips.",
+};
+
+// `resizes-content` shrinks the layout viewport with the software keyboard, so the fixed
+// workspace shell never gets pushed up behind it on tablets and phones.
+export const viewport: Viewport = {
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
+  width: "device-width",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

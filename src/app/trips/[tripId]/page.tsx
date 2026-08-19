@@ -53,11 +53,10 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const owner = authData.user?.id === trip.owner_id;
   const shareLinks = owner ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
   return (
-    <main className="trip-detail-page trip-planner-page flex h-dvh min-w-0 flex-col overflow-hidden">
+    <main className="trip-detail-page trip-planner-page flex min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <PlannerMapProvider>
           <PlannerWorkspace
-            accountEmail={authData.user?.email ?? "Account"}
             exchangeRates={exchangeRates}
             initialResearchItems={researchItems}
             initialResearchSelections={planState.selections}

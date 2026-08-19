@@ -32,14 +32,14 @@
 
 .public-template-journal .overview-transport-title-v4 {
   color: #303a33;
-  font-size: 0.75rem;
+  font-size: 0.9375rem;
   font-weight: 620;
 }
 
 .public-template-journal .overview-transport-meta-v4,
 .public-template-journal .overview-transport-notes-v4 {
   color: #6f756e;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
 }
 
 @media (min-width: 900px) and (max-width: 1199px) {
@@ -94,7 +94,7 @@
   }
 
   .public-template-journal .overview-day-title-v4 > span:last-child {
-    font-size: 0.78125rem;
+    font-size: 0.9375rem;
   }
 
   .public-template-journal .overview-day-items-v4 {
@@ -133,7 +133,7 @@
 
   .public-template-journal .overview-item-meta-v4,
   .public-template-journal .overview-item-notes-v4 {
-    font-size: 0.78125rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-journal .overview-transport-list-v4 {

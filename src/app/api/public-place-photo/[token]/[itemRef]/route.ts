@@ -6,12 +6,15 @@ import {
 } from "@/features/sharing/google-place-photo.server";
 import { getPublicPlaceMediaSources } from "@/features/sharing/public-media-data";
 
+// `w` is not signed: it only picks how large a copy Google renders, so a tampered value
+// cannot widen access. It is clamped so it can never become an expensive upstream request.
 const requestSchema = z
   .object({
     itemRef: z.string().length(64),
     photo: z.string().regex(/^places\/[^/]+\/photos\/[^/]+$/),
     signature: z.string().regex(/^[a-f0-9]{64}$/),
     token: z.uuid(),
+    width: z.coerce.number().int().min(160).max(1600).catch(1200),
   })
   .strict();
 
@@ -25,6 +28,7 @@ export async function GET(
     ...routeParams,
     photo: search.get("photo"),
     signature: search.get("signature"),
+    width: search.get("w") ?? undefined,
   });
   if (!parsed.success) return new Response(null, { status: 404 });
 
@@ -42,7 +46,11 @@ export async function GET(
   )
     return new Response(null, { status: 404 });
 
-  const photo = await fetchGooglePhotoMedia(parsed.data.photo, source.providerPlaceId);
+  const photo = await fetchGooglePhotoMedia(
+    parsed.data.photo,
+    source.providerPlaceId,
+    parsed.data.width,
+  );
   if (!photo) return new Response(null, { status: 404 });
   return new Response(photo.body, {
     headers: {

@@ -11,8 +11,7 @@ import { transportModeLabels, type TransportMode } from "@/features/itinerary/ty
 
 import { orderedPublicItemMedia } from "../public-media-presentation";
 import type { PublicItinerary, PublicItineraryItem } from "../types";
-import { PublicItemMediaGallery } from "./public-item-media";
-import { PublicQuickActions } from "./public-quick-actions";
+import { PublicItemResources } from "./public-item-resources";
 import { useContainedPublicMatrix } from "./use-contained-public-matrix";
 
 function publicTransportMode(item: PublicItineraryItem): TransportMode | null {
@@ -74,23 +73,23 @@ export function PublicTable({
               tabIndex={-1}
             >
               <div
-                className="matrix-date-column sticky left-0 z-30 w-24 shrink-0 border-r bg-background px-2 py-2 text-xs"
+                className="matrix-date-column sticky left-0 z-30 w-24 shrink-0 border-r bg-background px-2 py-2 text-[0.8125rem]"
                 role="rowheader"
               >
-                <span className="block font-sans text-sm font-semibold leading-4 sm:hidden">
+                <span className="block font-sans text-[0.9375rem] font-semibold leading-tight sm:hidden">
                   Day {day.dayNumber}
                 </span>
-                <span className="mt-0.5 block font-mono text-xs font-medium">
+                <span className="mt-0.5 block font-mono text-[0.8125rem] font-medium leading-tight">
                   {day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}
                 </span>
                 {day.date ? (
-                  <span className="block text-[10px] text-muted-foreground">
+                  <span className="mt-0.5 block text-xs leading-tight text-muted-foreground">
                     {format(parseISO(day.date), "EEE")}
                   </span>
                 ) : null}
               </div>
               <div
-                className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-2 text-xs font-semibold"
+                className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-2 text-[0.8125rem] font-semibold"
                 role="rowheader"
               >
                 {day.dayNumber}
@@ -111,7 +110,7 @@ export function PublicTable({
                       className={`public-table-cell-items ${column.id === "transport" ? "is-transport" : ""}`}
                     >
                       {column.id === "city" ? (
-                        <div className="px-1.5 py-1.5 text-xs">
+                        <div className="px-1.5 py-1.5 text-[0.8125rem]">
                           <span className="font-medium">
                             {day.localities?.join(" · ") ||
                               day.primaryLocality ||
@@ -122,7 +121,7 @@ export function PublicTable({
                       {items.map((item) => (
                         <div
                           aria-current={selectedItemRef === item.ref ? "true" : undefined}
-                          className={`public-item-focus min-h-11 cursor-default px-1.5 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
+                          className={`public-item-focus min-h-11 cursor-default px-1.5 py-1.5 text-[0.9375rem] leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring xl:min-h-0 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
                           data-public-item-ref={item.ref}
                           key={item.ref}
                           onClick={(event) => {
@@ -144,16 +143,18 @@ export function PublicTable({
                             transportMode={publicTransportMode(item)}
                             type={item.type}
                           />
-                          <PublicItemMediaGallery
+                          <PublicItemResources
+                            item={item}
                             media={orderedPublicItemMedia(item)}
                             variant="table"
                           />
-                          <PublicQuickActions item={item} />
                         </div>
                       ))}
                     </div>
                     {!items.length && column.id !== "city" ? (
-                      <span className="block px-1.5 py-1 text-xs text-muted-foreground">—</span>
+                      <span className="block px-1.5 py-1 text-[0.8125rem] text-muted-foreground">
+                        —
+                      </span>
                     ) : null}
                   </div>
                 );

@@ -125,7 +125,7 @@
   background: var(--muted);
   padding: 0.5625rem;
   color: var(--foreground);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
 }
 
 .pdf-icon-v4 {
@@ -155,6 +155,6 @@
 .public-media-attribution {
   margin-top: 0.25rem;
   color: var(--muted-foreground);
-  font-size: 0.5rem;
+  font-size: 0.6875rem;
   line-height: 1.35;
 }

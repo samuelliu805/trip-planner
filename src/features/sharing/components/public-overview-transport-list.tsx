@@ -1,8 +1,7 @@
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
 import { publicTransportRouteLabel } from "../presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
-import { PublicItemMediaGallery } from "./public-item-media";
-import { PublicQuickActions } from "./public-quick-actions";
+import { PublicItemResources } from "./public-item-resources";
 
 export function PublicOverviewTransportList({
   items,
@@ -51,8 +50,7 @@ export function PublicOverviewTransportList({
                 ) : null}
               </span>
             </div>
-            <PublicItemMediaGallery media={media} variant="transport" />
-            <PublicQuickActions compact item={item} quiet />
+            <PublicItemResources compact item={item} media={media} quiet variant="transport" />
           </div>
         );
       })}

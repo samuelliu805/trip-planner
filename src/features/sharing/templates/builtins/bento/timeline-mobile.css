@@ -26,19 +26,19 @@
     width: 2.0625rem;
     height: 2.0625rem;
     border-radius: 0.625rem;
-    font-size: 0.5rem;
+    font-size: 0.75rem;
   }
 
   .public-template-bento .timeline-day-copy-v4 strong {
-    font-size: 0.8125rem;
+    font-size: 0.9375rem;
   }
 
   .public-template-bento .timeline-day-copy-v4 span {
-    font-size: 0.5rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-bento .timeline-day-count-v4 {
-    font-size: 0.40625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-bento .timeline-transport-list-v4 {
@@ -61,11 +61,11 @@
 
   .public-template-bento .timeline-transport-title-v4 {
     max-width: 100%;
-    font-size: 0.5rem;
+    font-size: 0.9375rem;
   }
 
   .public-template-bento .timeline-transport-meta-v4 {
-    font-size: 0.4rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-bento .timeline-node-list-v4 {
@@ -85,11 +85,11 @@
 
   .public-template-bento .timeline-node-key-v4 {
     padding: 0.625rem 0.3125rem 0 0;
-    font-size: 0.46875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-bento .timeline-node-key-v4.is-time {
-    font-size: 0.5rem;
+    font-size: 0.75rem;
   }
 
   .public-template-bento .timeline-node-dot-v4 {
@@ -108,15 +108,15 @@
   }
 
   .public-template-bento .timeline-node-title-v4 {
-    font-size: 0.65625rem;
+    font-size: 0.9375rem;
   }
 
   .public-template-bento .timeline-node-type-v4 {
-    font-size: 0.39375rem;
+    font-size: 0.75rem;
   }
 
   .public-template-bento .timeline-node-meta-v4 {
-    font-size: 0.4375rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-bento .timeline-node-content-v4 .media-grid-v4 {

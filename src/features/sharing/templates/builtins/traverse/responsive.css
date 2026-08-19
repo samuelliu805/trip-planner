@@ -16,7 +16,7 @@
   }
 
   .public-template-traverse .public-brand-kicker {
-    font-size: 0.5625rem;
+    font-size: 0.6875rem;
   }
 
   .public-template-traverse .public-brand-kicker svg {
@@ -31,7 +31,7 @@
 
   .public-template-traverse .public-trip-meta {
     max-width: calc(100vw - 6.5rem);
-    font-size: 0.71875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-traverse .public-header-button {
@@ -50,7 +50,7 @@
     min-height: 3.25rem;
     flex-direction: column;
     gap: 0.25rem;
-    font-size: 0.5625rem;
+    font-size: 0.6875rem;
   }
 
   .public-template-traverse .public-view-scroll {
@@ -116,12 +116,12 @@
   }
 
   .public-template-traverse .overview-day-title-v4 > span:last-child {
-    font-size: 0.78125rem;
+    font-size: 0.9375rem;
   }
 
   .public-template-traverse .overview-day-items-v4 {
     align-self: start;
-    font-size: 0.5625rem;
+    font-size: 0.6875rem;
   }
 
   .public-template-traverse .overview-transport-list-v4,
@@ -187,7 +187,7 @@
   .public-template-traverse .timeline-day-count-v4 {
     grid-column: 2;
     margin-top: -0.25rem;
-    font-size: 0.5625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-traverse .timeline-transport-list-v4 {

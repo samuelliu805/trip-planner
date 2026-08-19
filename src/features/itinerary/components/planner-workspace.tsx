@@ -11,7 +11,6 @@ import { PlannerToolbar } from "./planner-toolbar";
 import { PlannerWorkspaceEventBoundary } from "./planner-workspace-event-boundary";
 import type { PlannerWorkspaceProps } from "./planner-workspace-types";
 import { usePlannerWorkspaceController } from "../hooks/use-planner-workspace-controller";
-import { usePlannerViewportContainment } from "../hooks/use-planner-viewport-containment";
 import { RouteVariantControls } from "../../variants/components/route-variant-controls";
 import { planResearchContext } from "../../research/planner-context";
 import { TripMobileTabBar } from "../../trips/components/trip-app-bar";
@@ -22,7 +21,6 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
 }
 
 function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
-  usePlannerViewportContainment();
   const c = usePlannerWorkspaceController(props);
   const activeItem =
     c.selectedItem ??
@@ -108,7 +106,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         setInteractionError={c.setInteractionError}
         setSettingsOpen={c.setSettingsOpen}
         shareControls={props.shareControls}
-        accountEmail={props.accountEmail}
         trip={props.trip}
         workspaceDayCount={c.projectedWorkspace.days.length}
         workspaceError={Boolean(c.workspaceError)}

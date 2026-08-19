@@ -22,12 +22,12 @@
   }
 
   .public-template-ethereal .overview-day-number-v4 {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-ethereal .overview-day-date-v4 {
     margin-top: 0;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
   }
 
   .public-template-ethereal .overview-day-title-v4 > span:last-child {
@@ -64,7 +64,7 @@
 
   .public-template-ethereal .overview-order-v4 {
     grid-column: 3;
-    font-size: 0.625rem;
+    font-size: 0.75rem;
   }
 
   .public-template-ethereal .overview-item-icon-v4,
@@ -86,13 +86,13 @@
   .public-template-ethereal .overview-item-meta-v4,
   .public-template-ethereal .overview-transport-meta-v4,
   .public-template-ethereal .overview-transport-notes-v4 {
-    font-size: 0.6875rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-ethereal .overview-item-footer-v4,
   .public-template-ethereal .overview-item-notes-v4 {
     margin-left: 2.625rem;
-    font-size: 0.5625rem;
+    font-size: 0.8125rem;
   }
 
   .public-template-ethereal .overview-item-card-v4.has-media {

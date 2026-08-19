@@ -65,7 +65,7 @@ export function PlannerItemRow({
       className={`group/item grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
     >
       <button
-        className="flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-1 text-left text-sm leading-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-xs sm:leading-normal"
+        className="flex min-h-9 min-w-0 flex-col justify-center rounded px-1.5 py-1 text-left text-[0.9375rem] leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-edit-item={item.id}
         aria-pressed={selected}
         onClick={(event) => {
@@ -92,7 +92,7 @@ export function PlannerItemRow({
       {item.attachments?.some(({ status }) => status === "ready") ? (
         <span
           aria-label={`${item.attachments.filter(({ status }) => status === "ready").length} attachments`}
-          className="mr-0.5 inline-flex h-8 shrink-0 items-center gap-0.5 self-center text-[10px] leading-none text-muted-foreground"
+          className="mr-0.5 inline-flex h-8 shrink-0 items-center gap-0.5 self-center text-[11px] leading-none text-muted-foreground"
           title={`${item.attachments.filter(({ status }) => status === "ready").length} attachments`}
         >
           <Paperclip aria-hidden="true" className="size-3" />
