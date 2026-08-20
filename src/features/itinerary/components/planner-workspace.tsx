@@ -118,6 +118,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
               c.map.enterComparison();
               c.setMapExpanded(true);
             }}
+            title={props.trip.title}
             tripId={props.trip.id}
             variants={c.variants}
           />

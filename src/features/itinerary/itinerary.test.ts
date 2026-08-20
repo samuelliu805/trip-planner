@@ -2138,6 +2138,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     workspace += await readFile(new URL(file, import.meta.url), "utf8");
   let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
   form += await readFile(
+    new URL("./components/planner-item-form-header.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(
     new URL("./components/planner-item-form-actions.tsx", import.meta.url),
     "utf8",
   );
@@ -2243,9 +2247,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(
     styles,
-    /planner-item-dialog[\s\S]*--planner-editor-viewport-top[\s\S]*--planner-editor-viewport-height/,
+    /planner-item-dialog[\s\S]*height: 100lvh[\s\S]*body:has\(\.planner-item-dialog\)[\s\S]*visibility: hidden/,
   );
-  assert.match(editorDialog, /useDialogViewport/);
+  assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
+  assert.match(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /planner-editor-viewport-locked/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
@@ -2317,7 +2322,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /max-width: 639px/);
   assert.doesNotMatch(styles, /\.plan-context-bar/);
   assert.match(styles, /safe-area-inset-left/);
-  assert.match(styles, /planner-item-dialog input,[\s\S]*font-size: 16px/);
+  assert.match(styles, /planner-item-dialog[\s\S]*input,[\s\S]*font-size: 1\.125rem/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: 100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
@@ -3036,7 +3041,11 @@ test("the item editor groups every type into short steps and gates required fiel
     );
     if (["activity", "meal", "hotel"].includes(type))
       assert.deepEqual(typeSteps.at(-1), { blocks: ["order"], id: "order", title: "Order" });
-    else assert.equal(typeSteps.some(({ id }) => id === "order"), false);
+    else
+      assert.equal(
+        typeSteps.some(({ id }) => id === "order"),
+        false,
+      );
   }
 
   const place = { displayName: "Kyoto" } as unknown as PlaceSnapshot;

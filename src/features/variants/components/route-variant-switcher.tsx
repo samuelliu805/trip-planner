@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
+import { Check, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,7 @@ export function RouteVariantSwitcher({
   onSheetOpenChange,
   onSwitch,
   sheetOpen,
+  title,
   variants,
 }: {
   activeVariant: PlannerVariant;
@@ -38,16 +39,25 @@ export function RouteVariantSwitcher({
   onSheetOpenChange: (open: boolean) => void;
   onSwitch: (variantId: string) => void;
   sheetOpen: boolean;
+  title: string;
   variants: PlannerVariant[];
 }) {
   return (
     <>
-      <div className="hidden items-center gap-1 min-[960px]:flex">
+      <div className="hidden min-w-0 max-w-full items-center gap-1 min-[960px]:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="h-9 max-w-56 gap-2 px-2.5" variant="outline">
-              <VariantIdentity compact variant={activeVariant} />
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            <Button
+              aria-label={`Open Plans for ${title}. Current Plan: ${activeVariant.name}`}
+              className="h-10 min-w-0 max-w-full justify-start gap-2 px-1.5"
+              variant="ghost"
+            >
+              <span
+                aria-hidden="true"
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: activeVariant.color }}
+              />
+              <span className="truncate text-sm font-semibold min-[960px]:text-base">{title}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
@@ -89,20 +99,17 @@ export function RouteVariantSwitcher({
       </div>
 
       <Button
-        aria-label={`Plan: ${activeVariant.name}${activeVariant.is_primary ? ", Primary" : ""}`}
-        className="h-10 min-w-0 shrink-0 gap-1 px-1.5 min-[960px]:hidden"
+        aria-label={`Open Plans for ${title}. Current Plan: ${activeVariant.name}`}
+        className="h-10 min-w-0 max-w-full justify-start gap-2 px-1.5 min-[960px]:hidden"
         onClick={() => onSheetOpenChange(true)}
-        variant="outline"
+        variant="ghost"
       >
         <span
           aria-hidden="true"
           className="size-2.5 rounded-full"
           style={{ backgroundColor: activeVariant.color }}
         />
-        <span className="hidden max-w-16 truncate text-xs min-[400px]:inline">
-          {activeVariant.name}
-        </span>
-        <ChevronDown className="size-3.5" />
+        <span className="truncate text-sm font-semibold">{title}</span>
       </Button>
 
       <PullUpPanel

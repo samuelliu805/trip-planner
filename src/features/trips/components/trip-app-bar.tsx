@@ -90,11 +90,9 @@ export function TripAppBar({
               <ArrowLeft aria-hidden="true" className="size-4" />
             </Link>
           </Button>
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold min-[960px]:text-base">
-              {title}
-            </h1>
-            <div className="min-w-0 shrink-0">{variantControls}</div>
+          <div className="min-w-0 flex-1" title={title}>
+            <h1 className="sr-only">{title}</h1>
+            {variantControls}
           </div>
         </div>
 

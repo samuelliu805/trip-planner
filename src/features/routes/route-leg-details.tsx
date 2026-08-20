@@ -104,7 +104,7 @@ export function RouteLegDetails({
         />
       </button>
       {open ? (
-        <div className="max-h-44 overflow-y-auto border-t">
+        <div className="max-h-44 overflow-y-auto overscroll-contain border-t">
           <RouteLegList legs={legs} />
         </div>
       ) : null}

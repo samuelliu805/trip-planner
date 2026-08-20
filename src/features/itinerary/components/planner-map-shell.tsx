@@ -151,6 +151,7 @@ export function PlannerMapShell({
       />
       <PlannerMapControls
         compact={compact}
+        comparisonBlockingReason={comparison.blockingReason}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
         mapMode={mapMode}
@@ -170,32 +171,18 @@ export function PlannerMapShell({
         panelDismissed={panelDismissed && !selectedId}
       />
       {!compact && selectedPlace ? (
-        <section className="map-place-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+        <section className="map-bottom-panel map-place-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
           <PullUpPanelHandle className="sm:hidden" onClose={closeSelectedPlace} />
-          <div className="min-h-0 overflow-y-auto px-3 pb-3">{selectedPlace}</div>
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-3 pb-3">
+            {selectedPlace}
+          </div>
         </section>
       ) : null}
       {!compact && !selectedId && mapMode === "overview" && overviewPanelVisible ? (
-        <OverviewRouteOverlay
-          comparisonBlockingReason={comparison.blockingReason}
-          onClose={closeOverviewPanel}
-          onCompare={() => {
-            setComparisonPanelOpen(true);
-            onMapModeChange("comparison");
-          }}
-          route={overviewRoute}
-        />
+        <OverviewRouteOverlay onClose={closeOverviewPanel} route={overviewRoute} />
       ) : null}
       {!compact && !selectedId && mapMode === "day_route" && dayPanelOpen ? (
-        <DayRouteOverlay
-          comparisonBlockingReason={comparison.blockingReason}
-          onClose={closeDayPanel}
-          onCompare={() => {
-            setComparisonPanelOpen(true);
-            onMapModeChange("comparison");
-          }}
-          route={dayRoute}
-        />
+        <DayRouteOverlay onClose={closeDayPanel} route={dayRoute} />
       ) : null}
       {mapMode === "comparison" ? (
         <>

@@ -21,6 +21,7 @@ export function RouteVariantControls({
   comparisonBlockingReason,
   onCompare,
   researchCategory,
+  title,
   tripId,
   variants,
 }: {
@@ -29,6 +30,7 @@ export function RouteVariantControls({
   comparisonBlockingReason?: string;
   onCompare?: () => void;
   researchCategory?: ResearchCategory;
+  title: string;
   tripId: string;
   variants: PlannerVariant[];
 }) {
@@ -70,6 +72,7 @@ export function RouteVariantControls({
         onSheetOpenChange={setSheetOpen}
         onSwitch={switchVariant}
         sheetOpen={sheetOpen}
+        title={title}
         variants={variants}
         comparisonBlockingReason={comparisonBlockingReason}
         onCompare={

@@ -24,7 +24,7 @@ export function RouteVariantDecisionSummaryPanel({
   return (
     <aside
       aria-label="Route variant decision summary"
-      className="mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden rounded-xl border bg-background/95 shadow-2xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
+      className="map-bottom-panel mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-2xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
       <PullUpPanelHandle className="sm:hidden" onClose={onCollapse} />
       <header className="flex min-h-11 items-center justify-between gap-4 border-b px-4 py-2">
@@ -43,7 +43,7 @@ export function RouteVariantDecisionSummaryPanel({
           <X aria-hidden="true" className="size-4" />
         </button>
       </header>
-      <div className="min-h-0 overflow-y-auto p-3">
+      <div className="min-h-0 overflow-y-auto overscroll-contain p-3">
         {summary.isLoading || summary.error ? (
           <DecisionSummaryFeedback summary={summary} />
         ) : (

@@ -2,6 +2,7 @@
 
 import { BarChart3, X } from "lucide-react";
 
+import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { VariantComparisonRows } from "@/features/variants/components/variant-comparison-rows";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 
@@ -20,8 +21,9 @@ export function RouteVariantComparisonPanel({
   return (
     <aside
       aria-label="Route variant comparison legend"
-      className="absolute bottom-3 left-3 z-20 hidden w-[min(21rem,calc(100%-1.5rem))] overflow-hidden rounded-xl border bg-background/95 shadow-xl backdrop-blur min-[900px]:block"
+      className="map-bottom-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
+      <PullUpPanelHandle className="hidden" onClose={onClose} />
       <div className="flex min-h-11 items-center justify-between border-b px-3 py-2">
         <div>
           <h2 className="text-sm font-semibold">
@@ -42,7 +44,7 @@ export function RouteVariantComparisonPanel({
           <X aria-hidden="true" className="size-4" />
         </button>
       </div>
-      <div className="max-h-[min(25rem,calc(100dvh-10rem))] space-y-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain p-2">
         <VariantComparisonRows comparison={comparison} />
       </div>
       {!comparison.dayNumber ? (

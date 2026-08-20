@@ -148,8 +148,8 @@ export function PlannerMobileMenuItems({
           Selected cells
         </p>
         <div className="space-y-1 rounded-xl border bg-muted/20 p-1">
-        <Button
-          className={rowClass}
+          <Button
+            className={rowClass}
             disabled={props.requestPending}
             onClick={() =>
               runAction(() => {

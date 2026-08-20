@@ -1,8 +1,19 @@
 .planner-item-dialog {
+  position: fixed !important;
+  inset: 0 !important;
   display: flex;
+  width: 100% !important;
+  height: 100vh !important;
+  height: 100lvh !important;
+  max-width: none !important;
+  max-height: none !important;
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--muted);
+  box-shadow: none !important;
   touch-action: pan-y;
 }
 
@@ -17,11 +28,46 @@ body.planner-editor-viewport-locked {
   overscroll-behavior: none !important;
 }
 
+body:has(.planner-item-dialog) .trip-planner-page {
+  visibility: hidden;
+}
+
+.planner-item-dialog .planner-item-form {
+  height: 100%;
+  background: var(--muted);
+}
+
 .planner-item-dialog [data-planner-editor-scroll] {
   width: 100%;
   max-width: 100%;
-  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-padding-block: 2rem;
   touch-action: pan-y;
+}
+
+.planner-item-dialog .planner-item-form-header {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  background: var(--background);
+}
+
+.planner-item-dialog .planner-item-form-header-inner {
+  width: min(52rem, 100%);
+  margin-inline: auto;
+}
+
+.planner-item-dialog .planner-item-form-content {
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+}
+
+.planner-item-dialog .planner-item-form-fields {
+  width: min(48rem, 100%);
+  min-width: 0;
+  margin-inline: auto;
 }
 
 .planner-item-dialog form,
@@ -42,12 +88,6 @@ body.planner-editor-viewport-locked {
   display: none;
 }
 
-.planner-item-dialog > [data-dialog-close],
-.planner-item-dialog > [data-sheet-close] {
-  top: 0.75rem;
-  right: max(0.75rem, env(safe-area-inset-right));
-}
-
 .planner-item-dialog [data-planner-editor-scroll] label,
 .planner-item-dialog [data-planner-editor-scroll] legend {
   font-size: 1rem;
@@ -65,103 +105,23 @@ body.planner-editor-viewport-locked {
 }
 
 .planner-item-dialog [data-planner-editor-scroll] textarea {
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
+  padding-block: 0.75rem;
 }
 
 .planner-item-dialog [data-planner-editor-scroll] p {
   line-height: 1.5;
 }
 
-/* Tablet is a dedicated editor screen. Follow the visual viewport so iPad Chrome cannot leave the
-   header behind its browser controls after the keyboard opens or closes. */
-@media (min-width: 640px) and (max-width: 1199px) {
-  .planner-item-dialog {
-    position: fixed !important;
-    top: var(--planner-editor-viewport-top, 0px) !important;
-    right: 0 !important;
-    bottom: auto !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: var(--planner-editor-viewport-height, 100dvh) !important;
-    min-height: var(--planner-editor-viewport-height, 100dvh);
-    max-width: none !important;
-    max-height: var(--planner-editor-viewport-height, 100dvh) !important;
-    border: 0;
-    border-radius: 0;
-    background: var(--muted);
-    box-shadow: none;
+@media (min-width: 640px) {
+  .planner-item-dialog .planner-item-form-content {
+    padding-top: 2.5rem;
   }
 
-  .planner-item-dialog .planner-item-form > :first-child {
-    background: var(--background);
-    padding-right: max(2rem, env(safe-area-inset-right));
-    padding-left: max(2rem, env(safe-area-inset-left));
-  }
-
-  .planner-item-dialog .planner-item-form-header-inner {
-    width: min(52rem, 100%);
-    margin-right: auto;
-    margin-left: auto;
-  }
-
-  .planner-item-dialog [data-planner-editor-scroll] {
-    display: flex;
-    align-items: flex-start;
-    padding: 2rem max(2rem, env(safe-area-inset-right)) 2rem max(2rem, env(safe-area-inset-left));
-  }
-
-  .planner-item-dialog [data-planner-editor-scroll] > * {
-    width: min(48rem, 100%);
-    min-height: 28rem;
-    margin: 0 auto;
+  .planner-item-dialog .planner-item-form-fields {
     padding: 2.25rem;
     border: 1px solid var(--border);
     border-radius: 1rem;
     background: var(--background);
     box-shadow: 0 12px 34px rgb(15 23 42 / 8%);
-  }
-
-  .planner-item-dialog input,
-  .planner-item-dialog select,
-  .planner-item-dialog textarea {
-    font-size: 16px;
-  }
-}
-
-/* One fixed height on desktop; the header actions and step rail stay anchored while fields scroll. */
-@media (min-width: 1200px) {
-  .planner-item-dialog {
-    width: min(42rem, calc(100% - 2rem));
-    max-width: min(42rem, calc(100% - 2rem));
-    height: min(calc(var(--dialog-viewport-height, 100svh) - 3rem), 42rem);
-    min-height: min(calc(var(--dialog-viewport-height, 100svh) - 3rem), 42rem);
-    max-height: min(calc(var(--dialog-viewport-height, 100svh) - 3rem), 42rem) !important;
-  }
-}
-
-@media (max-width: 639px) {
-  .planner-item-dialog {
-    position: fixed !important;
-    top: var(--planner-editor-viewport-top, 0px) !important;
-    right: 0 !important;
-    bottom: auto !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: var(--planner-editor-viewport-height, 100dvh) !important;
-    min-height: var(--planner-editor-viewport-height, 100dvh) !important;
-    max-width: none !important;
-    max-height: var(--planner-editor-viewport-height, 100dvh) !important;
-    border-radius: 0;
-    overflow: hidden;
-    overscroll-behavior-x: none;
-    padding-bottom: env(safe-area-inset-bottom);
-    touch-action: pan-y;
-  }
-
-  .planner-item-dialog input,
-  .planner-item-dialog select,
-  .planner-item-dialog textarea {
-    font-size: 16px;
   }
 }

@@ -29,7 +29,7 @@ export function RouteVariantDecisionSummarySheet({
       overlayClassName="z-[115]"
       title="Decision summary"
     >
-      <div className="min-h-0 space-y-3 overflow-y-auto p-4">
+      <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4">
         {summary.isLoading || summary.error ? (
           <DecisionSummaryFeedback summary={summary} />
         ) : (

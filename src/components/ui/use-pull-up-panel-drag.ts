@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 
 type DragGesture = {
+  dragEnabled: boolean;
   dragging: boolean;
   offset: number;
   scrollTarget: HTMLElement | null;
@@ -69,10 +70,10 @@ export function usePullUpPanelDrag(onClose: () => void) {
     };
 
     const begin = (clientX: number, clientY: number, target: EventTarget | null) => {
-      if (!controller.getClientRects().length) return;
       window.clearTimeout(settleTimer);
       clearInlineMotion();
       gesture = {
+        dragEnabled: Boolean(controller.getClientRects().length),
         dragging: false,
         offset: 0,
         scrollTarget: verticalScroller(target, surface),
@@ -86,22 +87,38 @@ export function usePullUpPanelDrag(onClose: () => void) {
       const current = gesture;
       if (!current) return;
 
-      if (current.scrollTarget && current.scrollTarget.scrollTop > 0) {
+      const distance = clientY - current.startY;
+      const horizontalDistance = Math.abs(clientX - current.startX);
+      const scrollTarget = current.scrollTarget;
+      const maximumScroll = scrollTarget
+        ? Math.max(0, scrollTarget.scrollHeight - scrollTarget.clientHeight)
+        : 0;
+      const canScroll = scrollTarget
+        ? distance > 0
+          ? scrollTarget.scrollTop > 1
+          : distance < 0 && scrollTarget.scrollTop < maximumScroll - 1
+        : false;
+
+      if (!current.dragging && canScroll) {
         current.startX = clientX;
         current.startY = clientY;
         current.startedAt = performance.now();
         return;
       }
 
-      const distance = clientY - current.startY;
-      const horizontalDistance = Math.abs(clientX - current.startX);
       if (!current.dragging) {
-        if (distance <= 0) return;
-        if (horizontalDistance > distance) {
+        if (Math.max(Math.abs(distance), horizontalDistance) < 3) return;
+        if (horizontalDistance > Math.abs(distance)) {
           gesture = undefined;
           return;
         }
         preventDefault();
+        if (distance <= 0 || !current.dragEnabled) {
+          current.startX = clientX;
+          current.startY = clientY;
+          current.startedAt = performance.now();
+          return;
+        }
         if (distance <= 6) return;
         current.dragging = true;
         surface.setAttribute("data-pull-up-dragging", "");

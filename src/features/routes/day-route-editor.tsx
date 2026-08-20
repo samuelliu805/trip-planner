@@ -55,7 +55,7 @@ export function DayRouteEditor({
   return (
     <section
       aria-label="Edit Route A"
-      className="day-route-editor mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 flex max-h-[62dvh] flex-col overflow-hidden rounded-xl border bg-background/97 shadow-xl backdrop-blur min-[900px]:left-auto min-[900px]:right-3 min-[900px]:top-14 min-[900px]:max-h-none min-[900px]:w-[min(360px,calc(100%-1.5rem))]"
+      className="day-route-editor mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/97 shadow-xl backdrop-blur min-[900px]:left-auto min-[900px]:right-3 min-[900px]:top-14 min-[900px]:max-h-none min-[900px]:w-[min(360px,calc(100%-1.5rem))]"
     >
       <PullUpPanelHandle className="sm:hidden" onClose={onBack} />
       <header className="border-b px-4 py-3">
@@ -77,7 +77,7 @@ export function DayRouteEditor({
         </div>
       </header>
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
         {draft.itemIds.length ? (
           <ol className="space-y-2" aria-label="Planned stops">
             {draft.itemIds.map((itemId, index) => {

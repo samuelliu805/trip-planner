@@ -1,6 +1,6 @@
 "use client";
 
-import { GitCompareArrows, Pencil, Plus, Route, X } from "lucide-react";
+import { Pencil, Plus, Route, X } from "lucide-react";
 
 import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { transportModeLabels } from "@/features/itinerary/types";
@@ -17,15 +17,11 @@ import { RouteLegDetails } from "./route-leg-details";
 import type { DayRouteUi } from "./use-day-route";
 
 function DayRouteSummary({
-  comparisonBlockingReason,
   onClose,
-  onCompare,
   route,
   selectedPlace,
 }: {
-  comparisonBlockingReason?: string;
   onClose: () => void;
-  onCompare: () => void;
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
@@ -57,10 +53,10 @@ function DayRouteSummary({
     })) ?? [];
 
   return (
-    <section className="day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+    <section className="map-bottom-panel day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 px-3 py-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
         <div className="mr-auto min-w-0">
           <div className="flex items-center gap-2">
             <Route className="size-4 text-primary" />
@@ -88,14 +84,6 @@ function DayRouteSummary({
           variant="secondary"
         >
           <Pencil className="size-4" />
-        </RouteIconButton>
-        <RouteIconButton
-          disabled={Boolean(comparisonBlockingReason)}
-          label="Compare route variants"
-          onClick={onCompare}
-          title={comparisonBlockingReason ?? "Compare route variants"}
-        >
-          <GitCompareArrows className="size-4" />
         </RouteIconButton>
         <RouteIconButton label="Close route panel" onClick={onClose} title="Close panel">
           <X className="size-4" />
@@ -135,21 +123,17 @@ function DayRouteSummary({
 }
 
 export function DayRouteOverlay({
-  comparisonBlockingReason,
   onClose,
-  onCompare,
   route,
   selectedPlace,
 }: {
-  comparisonBlockingReason?: string;
   onClose: () => void;
-  onCompare: () => void;
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
   if (!route.activeDay)
     return (
-      <section className="day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 px-4 pb-4 text-center shadow-lg backdrop-blur">
+      <section className="map-bottom-panel day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 overscroll-none rounded-xl border bg-background/95 px-4 pb-4 text-center shadow-lg backdrop-blur">
         <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
         <RouteIconButton
           className="absolute right-2 top-2"
@@ -170,20 +154,12 @@ export function DayRouteOverlay({
       <DayRouteEditor onBack={route.cancelEditing} route={route} selectedPlace={selectedPlace} />
     );
   if (route.plan)
-    return (
-      <DayRouteSummary
-        comparisonBlockingReason={comparisonBlockingReason}
-        onClose={onClose}
-        onCompare={onCompare}
-        route={route}
-        selectedPlace={selectedPlace}
-      />
-    );
+    return <DayRouteSummary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
   return (
-    <section className="day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+    <section className="map-bottom-panel day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 px-3 py-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold">Day {route.activeDay.day_number} · No day route</p>
           <p className="text-xs text-muted-foreground">
@@ -197,14 +173,6 @@ export function DayRouteOverlay({
           variant="primary"
         >
           <Plus className="size-4" />
-        </RouteIconButton>
-        <RouteIconButton
-          disabled={Boolean(comparisonBlockingReason)}
-          label="Compare route variants"
-          onClick={onCompare}
-          title={comparisonBlockingReason ?? "Compare route variants"}
-        >
-          <GitCompareArrows className="size-4" />
         </RouteIconButton>
         <RouteIconButton label="Close route panel" onClick={onClose} title="Close panel">
           <X className="size-4" />

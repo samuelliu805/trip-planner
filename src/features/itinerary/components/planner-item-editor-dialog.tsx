@@ -1,30 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
-import { Dialog, DialogContent, useDialogViewport } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 
-const editorMedia = "(max-width: 1199px)";
-
-function subscribeToEditorSurface(onChange: () => void) {
-  const media = window.matchMedia(editorMedia);
-  media.addEventListener("change", onChange);
-  return () => media.removeEventListener("change", onChange);
-}
-
-function useFullScreenEditor() {
-  return useSyncExternalStore(
-    subscribeToEditorSurface,
-    () => window.matchMedia(editorMedia).matches,
-    () => true,
-  );
-}
-
-/** A side-entering full-screen editor on touch widths and a centred dialog on desktop. */
+/** A dedicated full-screen editor that never shares its viewport with the Matrix. */
 export function PlannerItemEditorDialog({
   defaultCurrency,
   dayItems,
@@ -49,12 +32,15 @@ export function PlannerItemEditorDialog({
   variantId: string;
 }) {
   const closeRequest = useRef(onClose);
-  const fullScreen = useFullScreenEditor();
   const editorOpen = Boolean(editor);
-  const viewport = useDialogViewport(editorOpen && fullScreen);
+
+  const returnToPlanner = useCallback(() => {
+    onClose();
+    window.location.reload();
+  }, [onClose]);
 
   useEffect(() => {
-    if (!editorOpen || !fullScreen) return;
+    if (!editorOpen) return;
     const root = document.documentElement;
     const body = document.body;
     let frame = 0;
@@ -79,14 +65,8 @@ export function PlannerItemEditorDialog({
       body.classList.remove("planner-editor-viewport-locked");
       window.scrollTo(0, 0);
     };
-  }, [editorOpen, fullScreen]);
+  }, [editorOpen]);
 
-  const fullScreenStyle = viewport
-    ? ({
-        "--planner-editor-viewport-height": `${viewport.height}px`,
-        "--planner-editor-viewport-top": `${viewport.top}px`,
-      } as CSSProperties)
-    : undefined;
   const form = editor ? (
     <PlannerItemForm
       dayId={editor.dayId}
@@ -94,13 +74,13 @@ export function PlannerItemEditorDialog({
       defaultCurrency={defaultCurrency}
       item={editor.item}
       key={`${editor.dayId}:${editor.item?.id ?? "new"}:${editor.type}`}
-      onCancel={onClose}
+      onCancel={returnToPlanner}
       onCloseRequestRegistration={(handler) => {
-        closeRequest.current = handler ?? onClose;
+        closeRequest.current = handler ?? returnToPlanner;
       }}
       onError={onError}
       onDraftChange={editor.item ? onDraftChange : undefined}
-      onSaved={onClose}
+      onSaved={returnToPlanner}
       shareAttachmentsEnabled={shareAttachmentsEnabled}
       tripId={tripId}
       type={editor.type}
@@ -109,28 +89,16 @@ export function PlannerItemEditorDialog({
     />
   ) : null;
 
-  if (fullScreen)
-    return (
-      <Sheet onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
-        <SheetContent
-          className="planner-item-dialog p-0"
-          showCloseButton={false}
-          side="right"
-          style={fullScreenStyle}
-        >
-          {form}
-        </SheetContent>
-      </Sheet>
-    );
-
   return (
-    <Dialog onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
-      <DialogContent
-        className="planner-item-dialog flex flex-col overflow-hidden p-0"
+    <Sheet onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
+      <SheetContent
+        className="planner-item-dialog p-0"
+        overlayClassName="bg-background"
         showCloseButton={false}
+        side="right"
       >
         {form}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

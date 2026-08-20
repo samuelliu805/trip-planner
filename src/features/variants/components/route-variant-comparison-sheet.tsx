@@ -30,7 +30,7 @@ export function RouteVariantComparisonSheet({
       overlayClassName="z-[115]"
       title={comparison.dayNumber ? `Day ${comparison.dayNumber} routes` : "Routes on map"}
     >
-      <div className="space-y-2 overflow-y-auto p-4">
+      <div className="space-y-2 overflow-y-auto overscroll-contain p-4">
         {comparison.isLoading || comparison.error ? (
           <VariantComparisonSheetStatus comparison={comparison} />
         ) : (

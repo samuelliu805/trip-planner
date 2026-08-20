@@ -99,6 +99,7 @@ export async function ResearchCompareRoute({
               activeSection="compare"
               activeVariantId={resolution.activeVariant.id}
               researchCategory={category}
+              title={trip.title}
               tripId={trip.id}
               variants={variantsResult.data}
             />

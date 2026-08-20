@@ -1,14 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { LoaderCircle, X } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
+import { PlannerItemFormHeader } from "@/features/itinerary/components/planner-item-form-header";
 import {
   plannerItemFormSteps,
   plannerItemStepError,
@@ -17,11 +14,11 @@ import {
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { plannerItemSaveValues } from "@/features/itinerary/components/planner-item-save-values";
 import { PlannerItemStepFields } from "@/features/itinerary/components/planner-item-step-fields";
-import { PlannerItemStepNav } from "@/features/itinerary/components/planner-item-step-nav";
 import { useAttachmentEditSession } from "@/features/itinerary/components/use-attachment-edit-session";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
+import { usePlannerEditorKeyboardScroll } from "@/features/itinerary/components/use-planner-editor-keyboard-scroll";
 import {
   useCreateItineraryItem,
   useUpdateItineraryItem,
@@ -133,6 +130,7 @@ export function PlannerItemForm({
   }
 
   const stepBodyRef = usePlannerItemStepSwipe((offset) => moveStep(offset));
+  const editorScrollRef = usePlannerEditorKeyboardScroll();
 
   useEffect(() => {
     if (navigator.maxTouchPoints > 0) return;
@@ -205,75 +203,53 @@ export function PlannerItemForm({
         void save();
       }}
     >
-      <div className="planner-item-form-header shrink-0 border-b px-5 pb-5 pt-4 sm:px-6">
-        <div className="planner-item-form-header-inner space-y-4">
-          <div className="flex min-h-11 items-center justify-between gap-3">
-            <Button
-              aria-busy={pending}
-              className="min-h-11 min-w-24 px-4 font-semibold shadow-sm"
-              disabled={pending}
-              size="sm"
-              type="submit"
-            >
-              {pending ? (
-                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-              ) : null}
-              {pending ? pendingLabel : "Save"}
-            </Button>
-            <Button
-              aria-label="Close editor"
-              className="size-11 shrink-0 p-0"
-              disabled={itemMutationPending}
-              onClick={requestExit}
-              type="button"
-              variant="ghost"
-            >
-              <X aria-hidden="true" className="size-5" />
-            </Button>
-          </div>
-          <DialogTitle className="truncate text-xl font-extrabold tracking-tight">
-            {item ? "Edit" : "Add"} {copy.label.toLowerCase()}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            Step {stepIndex + 1} of {steps.length}: {activeStep.title}. The item can be saved from
-            any step.
-          </DialogDescription>
-          <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
-          {(stepError ?? mutationError?.message) ? (
-            <p className="text-sm font-medium text-destructive" role="alert">
-              {stepError ?? mutationError?.message}
-            </p>
-          ) : null}
-        </div>
-      </div>
       <div
-        className="min-h-0 min-w-0 flex-1 touch-pan-y space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-6 sm:px-6"
+        className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain"
         data-planner-editor-scroll=""
-        ref={stepBodyRef}
+        ref={editorScrollRef}
       >
-        <PlannerItemStepFields
-          attachments={
-            <ItemAttachmentsSection
-              item={item}
-              onDraftCountChange={attachmentSession.setDraftCount}
-              onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
-              onPendingChange={attachmentSession.setAttachmentPending}
-              shareAttachmentsEnabled={shareAttachmentsEnabled}
-              tripId={tripId}
-              uploadSessionId={attachmentSession.uploadSessionId}
-              uploadSessionSignal={attachmentSession.uploadSessionSignal}
-            />
-          }
-          blocks={activeStep.blocks}
-          dayItems={dayItems}
-          dayId={dayId}
-          defaultCurrency={defaultCurrency}
-          item={item}
+        <PlannerItemFormHeader
+          activeStep={activeStep}
+          closeDisabled={itemMutationPending}
+          editing={Boolean(item)}
+          error={stepError ?? mutationError?.message}
+          label={copy.label}
+          onClose={requestExit}
+          onStepSelect={goToStep}
           pending={pending}
-          state={state}
-          titleRef={titleRef}
-          type={type}
+          pendingLabel={pendingLabel}
+          stepIndex={stepIndex}
+          steps={steps}
         />
+        <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
+          <div className="planner-item-form-fields space-y-4" ref={stepBodyRef}>
+            <PlannerItemStepFields
+              attachments={
+                <ItemAttachmentsSection
+                  item={item}
+                  onDraftCountChange={attachmentSession.setDraftCount}
+                  onOpenShareSettings={() =>
+                    window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
+                  }
+                  onPendingChange={attachmentSession.setAttachmentPending}
+                  shareAttachmentsEnabled={shareAttachmentsEnabled}
+                  tripId={tripId}
+                  uploadSessionId={attachmentSession.uploadSessionId}
+                  uploadSessionSignal={attachmentSession.uploadSessionSignal}
+                />
+              }
+              blocks={activeStep.blocks}
+              dayItems={dayItems}
+              dayId={dayId}
+              defaultCurrency={defaultCurrency}
+              item={item}
+              pending={pending}
+              state={state}
+              titleRef={titleRef}
+              type={type}
+            />
+          </div>
+        </div>
       </div>
       <AttachmentSessionDiscardDialog
         error={attachmentSession.error}

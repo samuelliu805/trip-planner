@@ -547,7 +547,7 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
     )
   ).join("\n");
 
-  assert.doesNotMatch(controls, /label: "Compare"/);
+  assert.match(controls, /label: "Compare"/);
   assert.match(comparisonHook, /variants\.length >= 2/);
   assert.match(comparisonHook, /Discard or save the open Day route draft/);
   assert.match(comparisonHook, /variantId === activeVariantId \|\|/);
@@ -556,7 +556,7 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
   assert.match(comparisonUi, /Read only/);
   assert.match(comparisonUi, /min-h-11/);
   assert.match(comparisonUi, /min-\[900px\]:hidden/);
-  assert.match(comparisonUi, /min-\[900px\]:block/);
+  assert.match(comparisonUi, /min-\[900px\]:flex/);
   assert.match(comparisonUi, /Close comparison panel/);
   assert.doesNotMatch(comparisonUi, />\s*Exit\s*</);
   assert.match(comparisonUi, /PullUpPanelHandle className="sm:hidden"/);

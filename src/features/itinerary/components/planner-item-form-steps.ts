@@ -52,10 +52,7 @@ export function plannerItemFormSteps({
   type,
 }: StepInput): ItemFormStep[] {
   const journey = plannerJourneyFieldCapabilities(type, transportMode);
-  const { supportsLink, supportsPrice, supportsTime } = itemFormCapabilities(
-    type,
-    carAction,
-  );
+  const { supportsLink, supportsPrice, supportsTime } = itemFormCapabilities(type, carAction);
   const journeyTimes = journey.departureTime || journey.arrivalTime;
   const ownTime = supportsTime && !["flight", "train", "transport"].includes(type);
   // Step titles stay one short word so the longest six-step journey still fits a 390px bar.

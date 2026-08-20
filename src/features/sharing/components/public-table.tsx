@@ -112,14 +112,16 @@ export function PublicTable({
                     >
                       {column.id === "city" ? (
                         <div
-                          className="matrix-city-summary flex min-h-11 flex-col justify-center px-1.5 py-1 text-[15px] leading-[1.25] min-[1200px]:min-h-8 min-[1200px]:text-[13px]"
+                          className="matrix-city-summary flex min-h-11 min-w-0 flex-col justify-center px-1.5 py-1 min-[1200px]:min-h-8"
                           data-city-summary=""
                         >
-                          <span className="font-medium">
-                            {day.localities?.join(" · ") ||
+                          <MatrixItemSummary
+                            title={
+                              day.localities?.join(" · ") ||
                               day.primaryLocality ||
-                              "City / town unavailable"}
-                          </span>
+                              "City / town unavailable"
+                            }
+                          />
                         </div>
                       ) : null}
                       {items.map((item) => (

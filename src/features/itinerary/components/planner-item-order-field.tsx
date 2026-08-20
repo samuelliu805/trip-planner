@@ -2,10 +2,7 @@
 
 import { Check, ListOrdered } from "lucide-react";
 
-import {
-  compareActivityOrder,
-  isDestinationActivity,
-} from "@/features/itinerary/activity-order";
+import { compareActivityOrder, isDestinationActivity } from "@/features/itinerary/activity-order";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/types";
 
