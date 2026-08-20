@@ -29,18 +29,17 @@
   display: none;
 }
 
-/* Tablet is a dedicated editor screen. Keeping it on the visual viewport prevents iPadOS from
-   panning the Matrix and app bar when the software keyboard focuses a field. */
+/* Tablet is a dedicated editor screen. Its large-viewport height stays stable when iPadOS opens
+   the software keyboard, so the editor never shrinks to expose the Matrix underneath. */
 @media (min-width: 640px) and (max-width: 1199px) {
   .planner-item-dialog {
     position: fixed !important;
     inset: 0 !important;
-    top: var(--dialog-viewport-top, 0px) !important;
     width: 100% !important;
-    height: var(--dialog-viewport-height, 100svh) !important;
-    min-height: var(--dialog-viewport-height, 100svh);
+    height: 100lvh !important;
+    min-height: 100lvh;
     max-width: none !important;
-    max-height: var(--dialog-viewport-height, 100svh) !important;
+    max-height: 100lvh !important;
     border: 0;
     border-radius: 0;
     background: var(--muted);
@@ -49,7 +48,7 @@
 
   .planner-item-dialog .planner-item-form > :first-child {
     background: var(--background);
-    padding-right: max(4.5rem, env(safe-area-inset-right));
+    padding-right: max(2rem, env(safe-area-inset-right));
     padding-left: max(2rem, env(safe-area-inset-left));
   }
 
@@ -103,12 +102,11 @@
   .planner-item-dialog {
     position: fixed !important;
     inset: 0 !important;
-    top: var(--dialog-viewport-top, 0px) !important;
-    bottom: auto !important;
     width: 100% !important;
-    height: var(--dialog-viewport-height, 100dvh) !important;
+    height: 100lvh !important;
+    min-height: 100lvh !important;
     max-width: none !important;
-    max-height: var(--dialog-viewport-height, 100dvh) !important;
+    max-height: 100lvh !important;
     border-radius: 0;
     overflow: hidden;
     overscroll-behavior-x: none;

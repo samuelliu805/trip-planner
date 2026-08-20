@@ -187,7 +187,10 @@ export function PlannerMatrix({
                     >
                       <div className="space-y-px min-[1200px]:space-y-1">
                         {category.id === "city" ? (
-                          <div className="rounded-sm bg-muted/50 px-2 py-0.5">
+                          <div
+                            className="matrix-city-summary flex min-h-11 min-w-0 flex-col justify-center rounded bg-muted/50 px-1.5 py-1 min-[1200px]:min-h-8"
+                            data-city-summary=""
+                          >
                             <p className="text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
                               {formatDayLocalitySummary(deriveDayLocality(day))}
                             </p>

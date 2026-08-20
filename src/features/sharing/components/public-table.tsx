@@ -111,7 +111,10 @@ export function PublicTable({
                       className={`public-table-cell-items ${column.id === "transport" ? "is-transport" : ""}`}
                     >
                       {column.id === "city" ? (
-                        <div className="px-1.5 py-1 text-[15px] leading-[1.25] min-[1200px]:text-[13px]">
+                        <div
+                          className="matrix-city-summary flex min-h-11 flex-col justify-center px-1.5 py-1 text-[15px] leading-[1.25] min-[1200px]:min-h-8 min-[1200px]:text-[13px]"
+                          data-city-summary=""
+                        >
                           <span className="font-medium">
                             {day.localities?.join(" · ") ||
                               day.primaryLocality ||

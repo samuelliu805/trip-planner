@@ -212,8 +212,8 @@ export function PlannerItemForm({
         void save();
       }}
     >
-      <div className="shrink-0 space-y-3 border-b px-5 py-4 pr-16 sm:px-6">
-        <DialogTitle className="truncate text-base font-semibold">
+      <div className="shrink-0 space-y-3 border-b px-5 py-4 sm:px-6">
+        <DialogTitle className="truncate pr-12 text-base font-semibold">
           {item ? "Edit" : "Add"} {copy.label.toLowerCase()}
         </DialogTitle>
         <DialogDescription className="sr-only">

@@ -149,61 +149,63 @@ export function PlaceAutocomplete({
     );
 
   return (
-    <div className="planner-place-autocomplete relative min-w-0 max-w-full">
-      <Search
-        aria-hidden="true"
-        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-      />
-      <Input
-        aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
-        aria-autocomplete="list"
-        aria-controls={listId}
-        aria-expanded={suggestions.length > 0}
-        autoComplete="off"
-        autoFocus={autoFocus}
-        className="pl-9 pr-9"
-        disabled={disabled || !places}
-        onChange={(event) => {
-          setQuery(event.target.value);
-          if (!event.target.value.trim()) setSuggestions([]);
-        }}
-        onKeyDown={(event) => {
-          if (!suggestions.length) return;
-          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-            event.preventDefault();
-            setActiveIndex((current) => {
-              const next = current + (event.key === "ArrowDown" ? 1 : -1);
-              return (next + suggestions.length) % suggestions.length;
-            });
-          }
-          if (event.key === "Enter" && activeIndex >= 0) {
-            event.preventDefault();
-            void choose(suggestions[activeIndex]);
-          }
-          if (event.key === "Escape") {
-            event.stopPropagation();
-            setSuggestions([]);
-          }
-        }}
-        placeholder={placeholder}
-        ref={inputRef}
-        role="combobox"
-        type="text"
-        value={query}
-      />
-      {searching || resolving ? (
-        <LoaderCircle
+    <div className="planner-place-autocomplete min-w-0 max-w-full">
+      <div className="relative min-w-0">
+        <Search
           aria-hidden="true"
-          className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         />
-      ) : null}
-      <PlaceSuggestionList
-        activeIndex={activeIndex}
-        listId={listId}
-        onChoose={choose}
-        onHighlight={setActiveIndex}
-        suggestions={suggestions}
-      />
+        <Input
+          aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
+          aria-autocomplete="list"
+          aria-controls={listId}
+          aria-expanded={suggestions.length > 0}
+          autoComplete="off"
+          autoFocus={autoFocus}
+          className="pl-9 pr-9"
+          disabled={disabled || !places}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            if (!event.target.value.trim()) setSuggestions([]);
+          }}
+          onKeyDown={(event) => {
+            if (!suggestions.length) return;
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              setActiveIndex((current) => {
+                const next = current + (event.key === "ArrowDown" ? 1 : -1);
+                return (next + suggestions.length) % suggestions.length;
+              });
+            }
+            if (event.key === "Enter" && activeIndex >= 0) {
+              event.preventDefault();
+              void choose(suggestions[activeIndex]);
+            }
+            if (event.key === "Escape") {
+              event.stopPropagation();
+              setSuggestions([]);
+            }
+          }}
+          placeholder={placeholder}
+          ref={inputRef}
+          role="combobox"
+          type="text"
+          value={query}
+        />
+        {searching || resolving ? (
+          <LoaderCircle
+            aria-hidden="true"
+            className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+          />
+        ) : null}
+        <PlaceSuggestionList
+          activeIndex={activeIndex}
+          listId={listId}
+          onChoose={choose}
+          onHighlight={setActiveIndex}
+          suggestions={suggestions}
+        />
+      </div>
       {!places ? (
         <p className="mt-1 text-xs text-muted-foreground">
           Places search loads when Google Maps is configured.

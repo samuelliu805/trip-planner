@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
+import { usePullUpPanelDrag } from "./use-pull-up-panel-drag";
+
 const PANEL_OPEN_EVENT = "trip-planner:pull-up-panel-open";
 
 type PanelOpenDetail = { id: string };
@@ -42,76 +44,14 @@ export function useExclusivePullUpPanel(
 }
 
 export function PullUpPanelHandle({ onClose }: { onClose: () => void }) {
-  const gesture = useRef<{ startedAt: number; startY: number } | undefined>(undefined);
-  const onCloseRef = useRef(onClose);
-
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    const move = (clientY: number) => {
-      const current = gesture.current;
-      if (!current || clientY - current.startY < 72) return;
-      gesture.current = undefined;
-      onCloseRef.current();
-    };
-    const finish = (clientY: number) => {
-      const current = gesture.current;
-      gesture.current = undefined;
-      if (!current) return;
-      const distance = clientY - current.startY;
-      const elapsed = Math.max(1, performance.now() - current.startedAt);
-      if (distance >= 72 || (distance >= 36 && distance / elapsed >= 0.45)) {
-        onCloseRef.current();
-      }
-    };
-    const cancel = () => {
-      gesture.current = undefined;
-    };
-    const pointerMove = (event: PointerEvent) => move(event.clientY);
-    const pointerUp = (event: PointerEvent) => finish(event.clientY);
-    const mouseMove = (event: MouseEvent) => move(event.clientY);
-    const mouseUp = (event: MouseEvent) => finish(event.clientY);
-    const touchMove = (event: TouchEvent) => move(event.touches[0]?.clientY ?? 0);
-    const touchEnd = (event: TouchEvent) => finish(event.changedTouches[0]?.clientY ?? 0);
-
-    window.addEventListener("pointermove", pointerMove);
-    window.addEventListener("pointerup", pointerUp);
-    window.addEventListener("pointercancel", cancel);
-    window.addEventListener("mousemove", mouseMove);
-    window.addEventListener("mouseup", mouseUp);
-    window.addEventListener("touchmove", touchMove);
-    window.addEventListener("touchend", touchEnd);
-    window.addEventListener("touchcancel", cancel);
-    return () => {
-      window.removeEventListener("pointermove", pointerMove);
-      window.removeEventListener("pointerup", pointerUp);
-      window.removeEventListener("pointercancel", cancel);
-      window.removeEventListener("mousemove", mouseMove);
-      window.removeEventListener("mouseup", mouseUp);
-      window.removeEventListener("touchmove", touchMove);
-      window.removeEventListener("touchend", touchEnd);
-      window.removeEventListener("touchcancel", cancel);
-    };
-  }, []);
-
-  const startGesture = (clientY: number) => {
-    gesture.current = { startedAt: performance.now(), startY: clientY };
-  };
+  const controllerRef = usePullUpPanelDrag(onClose);
 
   return (
     <div
       aria-hidden="true"
       className="flex h-8 shrink-0 touch-none cursor-grab items-center justify-center active:cursor-grabbing"
       data-pull-up-handle=""
-      onMouseDown={(event) => startGesture(event.clientY)}
-      onPointerDown={(event) => {
-        if (event.pointerType === "mouse" && event.button !== 0) return;
-        event.currentTarget.setPointerCapture(event.pointerId);
-        startGesture(event.clientY);
-      }}
-      onTouchStart={(event) => startGesture(event.touches[0]?.clientY ?? 0)}
+      ref={controllerRef}
     >
       <span className="h-1 w-10 rounded-full bg-muted-foreground/25" />
     </div>

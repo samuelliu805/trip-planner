@@ -2,7 +2,7 @@
 
 import { useRef, useSyncExternalStore } from "react";
 
-import { Dialog, DialogContent, useDialogViewport } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
@@ -50,13 +50,6 @@ export function PlannerItemEditorDialog({
 }) {
   const closeRequest = useRef(onClose);
   const fullScreen = useFullScreenEditor();
-  const viewport = useDialogViewport();
-  const viewportStyle = viewport
-    ? ({
-        "--dialog-viewport-height": `${viewport.height}px`,
-        "--dialog-viewport-top": `${viewport.top}px`,
-      } as React.CSSProperties)
-    : undefined;
   const form = editor ? (
     <PlannerItemForm
       dayId={editor.dayId}
@@ -82,7 +75,7 @@ export function PlannerItemEditorDialog({
   if (fullScreen)
     return (
       <Sheet onOpenChange={(open) => !open && closeRequest.current()} open={Boolean(editor)}>
-        <SheetContent className="planner-item-dialog p-0" side="right" style={viewportStyle}>
+        <SheetContent className="planner-item-dialog p-0" side="right">
           {form}
         </SheetContent>
       </Sheet>

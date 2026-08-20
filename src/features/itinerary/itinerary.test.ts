@@ -2161,6 +2161,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-map-shell.tsx", import.meta.url),
     "utf8",
   );
+  const editorDialog = await readFile(
+    new URL("./components/planner-item-editor-dialog.tsx", import.meta.url),
+    "utf8",
+  );
   const styles = await readAppStyles();
   const queries = await readItineraryQueryModules();
   assert.match(workspace, /Arrange Activities/);
@@ -2235,8 +2239,9 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(
     styles,
-    /planner-item-dialog[\s\S]*inset: 0 !important;[\s\S]*height: var\(--dialog-viewport-height, 100dvh\)/,
+    /planner-item-dialog[\s\S]*inset: 0 !important;[\s\S]*height: 100lvh !important/,
   );
+  assert.doesNotMatch(editorDialog, /useDialogViewport|--dialog-viewport-height/);
   assert.doesNotMatch(styles, /--(?:sheet|planner-visual)-viewport-(height|top|bottom)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);

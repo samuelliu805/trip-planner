@@ -18,23 +18,33 @@ export function PlannerItemStepNav({
   steps: ItemFormStep[];
 }) {
   const activeIndex = steps.findIndex(({ id }) => id === activeStepId);
+  const interval = steps.length > 1 ? 100 / (steps.length - 1) : 0;
   return (
     <ol
       aria-label="Item details steps"
-      className="planner-item-step-nav grid min-w-0 items-end"
-      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+      className="planner-item-step-nav relative mx-3 h-11 min-w-0"
     >
+      {steps.slice(1).map((step, index) => (
+        <li
+          aria-hidden="true"
+          className={`absolute bottom-3.5 h-0 border-t-2 border-dotted ${index + 1 <= activeIndex ? "border-primary/40" : "border-muted-foreground/35"}`}
+          data-step-connector=""
+          key={`connector-${step.id}`}
+          style={{
+            left: `calc(${index * interval}% + 1.125rem)`,
+            width: `calc(${interval}% - 2.25rem)`,
+          }}
+        />
+      ))}
       {steps.map((step, index) => {
         const active = step.id === activeStepId;
         const done = index < activeIndex;
         return (
-          <li className="relative flex min-w-0 items-end justify-center" key={step.id}>
-            {index ? (
-              <span
-                aria-hidden="true"
-                className={`absolute bottom-3.5 right-1/2 h-0 w-full border-t-2 border-dotted ${index <= activeIndex ? "border-primary/40" : "border-muted-foreground/35"}`}
-              />
-            ) : null}
+          <li
+            className="absolute bottom-0 flex w-16 -translate-x-1/2 items-end justify-center"
+            key={step.id}
+            style={{ left: steps.length > 1 ? `${index * interval}%` : "50%" }}
+          >
             <button
               aria-current={active ? "step" : undefined}
               className="group relative z-10 flex min-h-11 min-w-0 w-full flex-col items-center gap-1 focus-visible:outline-none"

@@ -18,7 +18,10 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: "right" | "bottom" }) {
   return (
     <SheetPrimitive.Portal>
-      <SheetPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none" />
+      <SheetPrimitive.Overlay
+        className="fixed inset-0 z-[100] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none"
+        data-sheet-overlay=""
+      />
       <SheetPrimitive.Content
         className={cn(
           "fixed z-[110] flex min-w-0 max-w-full touch-pan-y flex-col overflow-x-hidden overscroll-contain border bg-background shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none",
