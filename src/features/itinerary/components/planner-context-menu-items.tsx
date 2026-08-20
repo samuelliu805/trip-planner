@@ -1,11 +1,12 @@
 "use client";
 
-import { ClipboardPaste, Copy, ListOrdered, Plus, Trash2 } from "lucide-react";
+import { ClipboardPaste, Copy, ListOrdered, Plus, ReceiptText, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { PlannerContextProps } from "@/features/itinerary/components/planner-context-bar";
 import { PlannerResearchActions } from "@/features/research/components/planner-research-actions";
+import { OPEN_PLAN_COST_EVENT } from "@/features/research/events";
 
 /** Table actions for the trip menu; the bar itself only keeps the contextual primary action. */
 export function PlannerContextMenuItems(props: PlannerContextProps) {
@@ -17,6 +18,9 @@ export function PlannerContextMenuItems(props: PlannerContextProps) {
     : undefined;
   return (
     <>
+      <DropdownMenuItem onSelect={() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT))}>
+        <ReceiptText className="size-4" /> Plan cost
+      </DropdownMenuItem>
       {showResearch && props.researchContext ? (
         <>
           <div className="px-1 py-1">
@@ -87,6 +91,13 @@ export function PlannerMobileMenuItems({
 
   return (
     <div className="space-y-1">
+      <Button
+        className={rowClass}
+        onClick={() => runAction(() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT)))}
+        variant="ghost"
+      >
+        <ReceiptText className="size-4" /> Plan cost
+      </Button>
       {showResearch && props.researchContext ? (
         <div className="pb-2">
           <PlannerResearchActions

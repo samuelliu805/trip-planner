@@ -2,6 +2,7 @@
 
 import { Pencil, Plus, Route, X } from "lucide-react";
 
+import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { transportModeLabels } from "@/features/itinerary/types";
 
 import { DayRouteEditor } from "./day-route-editor";
@@ -52,7 +53,8 @@ function DayRouteSummary({
     })) ?? [];
 
   return (
-    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+    <section className="day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      <PullUpPanelHandle onClose={onClose} />
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
         <div className="mr-auto min-w-0">
@@ -131,7 +133,8 @@ export function DayRouteOverlay({
 }) {
   if (!route.activeDay)
     return (
-      <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-4 text-center shadow-lg backdrop-blur">
+      <section className="day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 px-4 pb-4 text-center shadow-lg backdrop-blur">
+        <PullUpPanelHandle onClose={onClose} />
         <RouteIconButton
           className="absolute right-2 top-2"
           label="Close route panel"
@@ -153,7 +156,8 @@ export function DayRouteOverlay({
   if (route.plan)
     return <DayRouteSummary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
   return (
-    <section className="day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+    <section className="day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+      <PullUpPanelHandle onClose={onClose} />
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
         <div className="min-w-0">

@@ -37,7 +37,7 @@ export function PlaceAutocomplete({
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken>(null);
-  const [selectedValue, setSelectedValue] = useState<PlaceSnapshot | null>(() => value ?? null);
+  const selectedValue = value ?? null;
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -108,7 +108,6 @@ export function PlaceAutocomplete({
       sessionToken.current = null;
       setSuggestions([]);
       setQuery("");
-      setSelectedValue(normalized);
       onChange(normalized);
       onSelected?.();
     } catch (cause) {
@@ -118,38 +117,8 @@ export function PlaceAutocomplete({
     }
   }
 
-  if (selectedValue)
-    return (
-      <div className="w-full min-w-0 overflow-hidden rounded-md border bg-muted/30 p-3">
-        <div className="flex items-start gap-2">
-          <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{selectedValue.displayName}</p>
-            {selectedValue.formattedAddress ? (
-              <p className="break-words text-xs text-muted-foreground">
-                {selectedValue.formattedAddress}
-              </p>
-            ) : null}
-          </div>
-          <Button
-            aria-label="Clear map place"
-            className="size-9 p-0"
-            disabled={disabled}
-            onClick={() => {
-              setSelectedValue(null);
-              onChange(null);
-            }}
-            type="button"
-            variant="ghost"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-      </div>
-    );
-
   return (
-    <div className="planner-place-autocomplete min-w-0 max-w-full">
+    <div className="planner-place-autocomplete min-w-0 max-w-full space-y-2">
       <div className="relative min-w-0">
         <Search
           aria-hidden="true"
@@ -206,6 +175,33 @@ export function PlaceAutocomplete({
           suggestions={suggestions}
         />
       </div>
+      {selectedValue ? (
+        <div className="w-full min-w-0 overflow-hidden rounded-md border bg-muted/30 p-3">
+          <div className="flex items-start gap-2">
+            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{selectedValue.displayName}</p>
+              {selectedValue.formattedAddress ? (
+                <p className="break-words text-xs leading-5 text-muted-foreground">
+                  {selectedValue.formattedAddress}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              aria-label="Clear map place"
+              className="size-11 p-0"
+              disabled={disabled}
+              onClick={() => {
+                onChange(null);
+              }}
+              type="button"
+              variant="ghost"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {!places ? (
         <p className="mt-1 text-xs text-muted-foreground">
           Places search loads when Google Maps is configured.

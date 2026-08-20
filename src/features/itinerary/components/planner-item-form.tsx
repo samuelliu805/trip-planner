@@ -1,11 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { LoaderCircle } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
-import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import {
   plannerItemFormSteps,
@@ -19,9 +21,9 @@ import { PlannerItemStepNav } from "@/features/itinerary/components/planner-item
 import { useAttachmentEditSession } from "@/features/itinerary/components/use-attachment-edit-session";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
+import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
 import {
   useCreateItineraryItem,
-  useDeleteItineraryItem,
   useUpdateItineraryItem,
 } from "@/features/itinerary/item-mutations";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
@@ -52,11 +54,8 @@ export function PlannerItemForm({
   });
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
-  const deleteMutation = useDeleteItineraryItem(tripId, variantId);
   const titleRef = useRef<HTMLInputElement>(null);
-  const stepBodyRef = useRef<HTMLDivElement>(null);
-  const itemMutationPending =
-    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const itemMutationPending = createMutation.isPending || updateMutation.isPending;
   const attachmentSession = useAttachmentEditSession({
     item,
     itemMutationPending,
@@ -64,7 +63,8 @@ export function PlannerItemForm({
     tripId,
   });
   const pending = itemMutationPending || attachmentSession.attachmentPending;
-  const mutationError = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
+  const pendingLabel = attachmentSession.attachmentPending ? "Updating attachments…" : "Saving…";
+  const mutationError = createMutation.error ?? updateMutation.error;
   const steps = useMemo(
     () =>
       plannerItemFormSteps({
@@ -80,16 +80,6 @@ export function PlannerItemForm({
   const activeStep = steps.find(({ id }) => id === stepId) ?? steps[0];
   const stepIndex = steps.indexOf(activeStep);
   const { requestCancel } = attachmentSession;
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      if (activeStep.blocks.includes("place") && !item && ["location", "hotel"].includes(type))
-        return;
-      const fallback = stepBodyRef.current?.querySelector<HTMLElement>(stepFieldSelector);
-      (titleRef.current ?? fallback)?.focus();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [activeStep, item, type]);
 
   usePlannerItemDraft({
     arrivalTime: state.arrivalTime,
@@ -121,7 +111,7 @@ export function PlannerItemForm({
   }, [onCloseRequestRegistration, requestExit]);
 
   function goToStep(nextStepId: ItemFormStep["id"]) {
-    if (nextStepId === activeStep.id) return;
+    if (nextStepId === activeStep.id) return true;
     const blocking = plannerItemStepError({
       place: state.place,
       step: activeStep,
@@ -130,16 +120,30 @@ export function PlannerItemForm({
     });
     if (blocking) {
       setStepError(blocking);
-      return;
+      return false;
     }
     setStepError(undefined);
     setStepId(nextStepId);
+    return true;
   }
 
   function moveStep(offset: number) {
     const next = steps[stepIndex + offset];
-    if (next) goToStep(next.id);
+    return next ? goToStep(next.id) : false;
   }
+
+  const stepBodyRef = usePlannerItemStepSwipe((offset) => moveStep(offset));
+
+  useEffect(() => {
+    if (navigator.maxTouchPoints > 0) return;
+    const frame = requestAnimationFrame(() => {
+      if (activeStep.blocks.includes("place") && !item && ["location", "hotel"].includes(type))
+        return;
+      const fallback = stepBodyRef.current?.querySelector<HTMLElement>(stepFieldSelector);
+      (titleRef.current ?? fallback)?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeStep, item, stepBodyRef, type]);
 
   async function save() {
     const invalid = steps
@@ -167,17 +171,6 @@ export function PlannerItemForm({
           ? mutationFailure.message
           : "The itinerary item could not be saved.",
       );
-    }
-  }
-
-  async function remove() {
-    if (!item) return;
-    try {
-      await deleteMutation.mutateAsync({ id: item.id, tripId, variantId });
-      attachmentSession.markHandled();
-      onCancel();
-    } catch {
-      // TanStack Query exposes the mutation error in the form below.
     }
   }
 
@@ -212,8 +205,21 @@ export function PlannerItemForm({
         void save();
       }}
     >
-      <div className="shrink-0 space-y-3 border-b px-5 py-4 sm:px-6">
-        <DialogTitle className="truncate pr-12 text-base font-semibold">
+      <div className="planner-item-form-header shrink-0 space-y-3 border-b px-5 pb-4 pt-3 sm:px-6">
+        <div className="flex min-h-11 items-center">
+          <Button
+            aria-busy={pending}
+            className="-ml-3 min-h-11 px-3 font-semibold text-primary hover:text-primary"
+            disabled={pending}
+            size="sm"
+            type="submit"
+            variant="ghost"
+          >
+            {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
+            {pending ? pendingLabel : "Save"}
+          </Button>
+        </div>
+        <DialogTitle className="truncate text-xl font-bold tracking-tight">
           {item ? "Edit" : "Add"} {copy.label.toLowerCase()}
         </DialogTitle>
         <DialogDescription className="sr-only">
@@ -221,9 +227,14 @@ export function PlannerItemForm({
           step.
         </DialogDescription>
         <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
+        {(stepError ?? mutationError?.message) ? (
+          <p className="text-sm font-medium text-destructive" role="alert">
+            {stepError ?? mutationError?.message}
+          </p>
+        ) : null}
       </div>
       <div
-        className="min-h-0 min-w-0 flex-1 touch-pan-y space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4 sm:px-6"
+        className="min-h-0 min-w-0 flex-1 touch-pan-y space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-6 sm:px-6"
         data-planner-editor-scroll=""
         ref={stepBodyRef}
       >
@@ -251,18 +262,6 @@ export function PlannerItemForm({
           type={type}
         />
       </div>
-      <PlannerItemFormActions
-        error={stepError ?? mutationError?.message}
-        item={item}
-        lastStep={stepIndex === steps.length - 1}
-        onBack={() => moveStep(-1)}
-        onNext={() => moveStep(1)}
-        onRemove={remove}
-        pending={pending}
-        pendingLabel={attachmentSession.attachmentPending ? "Updating attachments…" : undefined}
-        primaryLabel={item ? "Save changes" : "Add item"}
-        showBack={stepIndex > 0}
-      />
       <AttachmentSessionDiscardDialog
         error={attachmentSession.error}
         onDiscard={attachmentSession.discard}

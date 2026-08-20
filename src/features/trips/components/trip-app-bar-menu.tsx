@@ -150,7 +150,6 @@ export function TripBarMenu({
         <MoreHorizontal aria-hidden="true" className="size-5" />
       </Button>
       <PullUpPanel
-        description="Quick actions and trip tools."
         id="trip-actions"
         onOpenChange={setPanelOpen}
         open={panelOpen}

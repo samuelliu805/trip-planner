@@ -939,7 +939,7 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
   assert.match(ui, /Retry summary/);
   assert.match(ui, /min-h-11/);
   assert.match(ui, /min-\[900px\]/);
-  assert.match(ui, /side="bottom"/);
+  assert.match(ui, /<PullUpPanel/);
   assert.match(ui, /Hotel occurrences/);
   assert.match(ui, /aria-label|aria-expanded/);
   assert.match(mapHook, /decisionSummaryPanelOpen \|\| decisionSummarySheetOpen/);

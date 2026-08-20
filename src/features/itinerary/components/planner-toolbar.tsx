@@ -34,14 +34,14 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
             disabled: !props.activeDay || props.dayMutationPending,
             icon: <ArrowUp aria-hidden="true" className="size-5" />,
             id: "day-before",
-            label: "Day before",
+            label: "Add day before",
             onSelect: () => void (props.activeDay && props.insertDay(props.activeDay.day_number)),
           },
           {
             disabled: !props.activeDay || props.dayMutationPending,
             icon: <ArrowDown aria-hidden="true" className="size-5" />,
             id: "day-after",
-            label: "Day after",
+            label: "Add day after",
             onSelect: () =>
               void (props.activeDay && props.insertDay(props.activeDay.day_number + 1)),
           },

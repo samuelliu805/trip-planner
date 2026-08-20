@@ -22,17 +22,17 @@ export function PlannerItemStepNav({
   return (
     <ol
       aria-label="Item details steps"
-      className="planner-item-step-nav relative mx-3 h-11 min-w-0"
+      className="planner-item-step-nav relative mx-4 h-14 min-w-0"
     >
       {steps.slice(1).map((step, index) => (
         <li
           aria-hidden="true"
-          className={`absolute bottom-3.5 h-0 border-t-2 border-dotted ${index + 1 <= activeIndex ? "border-primary/40" : "border-muted-foreground/35"}`}
+          className={`absolute bottom-[18px] h-0 border-t-2 border-dotted ${index + 1 <= activeIndex ? "border-primary/40" : "border-muted-foreground/35"}`}
           data-step-connector=""
           key={`connector-${step.id}`}
           style={{
-            left: `calc(${index * interval}% + 1.125rem)`,
-            width: `calc(${interval}% - 2.25rem)`,
+            left: `calc(${index * interval}% + var(--step-connector-inset))`,
+            width: `calc(${interval}% - var(--step-connector-width))`,
           }}
         />
       ))}
@@ -59,7 +59,7 @@ export function PlannerItemStepNav({
                 {step.title}
               </span>
               <span
-                className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors group-focus-visible:ring-2 group-focus-visible:ring-ring ${
+                className={`flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors group-focus-visible:ring-2 group-focus-visible:ring-ring ${
                   active
                     ? "border-primary bg-primary text-primary-foreground"
                     : done
@@ -67,7 +67,7 @@ export function PlannerItemStepNav({
                       : "border-border bg-background text-muted-foreground group-hover:border-primary/40 group-hover:text-foreground"
                 }`}
               >
-                {done ? <Check aria-hidden="true" className="size-3.5" /> : index + 1}
+                {done ? <Check aria-hidden="true" className="size-4" /> : index + 1}
               </span>
             </button>
           </li>

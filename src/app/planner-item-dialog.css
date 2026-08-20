@@ -22,6 +22,8 @@
 }
 
 .planner-item-step-nav {
+  --step-connector-inset: 1.375rem;
+  --step-connector-width: 2.75rem;
   scrollbar-width: none;
 }
 
@@ -29,20 +31,35 @@
   display: none;
 }
 
-/* Touch browsers can reserve part of the large viewport for their own chrome. Keep every editor
-   action directly below the step rail so saving and step navigation never sit behind that chrome
-   or the software keyboard. */
-@media (max-width: 1199px) {
-  .planner-item-dialog .planner-item-form-actions {
-    order: 1;
-    border-top: 0;
-    border-bottom: 1px solid var(--border);
-    background: var(--background);
-  }
+.planner-item-dialog > [data-dialog-close],
+.planner-item-dialog > [data-sheet-close] {
+  top: 0.75rem;
+  right: max(0.75rem, env(safe-area-inset-right));
+}
 
-  .planner-item-dialog [data-planner-editor-scroll] {
-    order: 2;
-  }
+.planner-item-dialog [data-planner-editor-scroll] label,
+.planner-item-dialog [data-planner-editor-scroll] legend {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] input,
+.planner-item-dialog [data-planner-editor-scroll] textarea,
+.planner-item-dialog [data-planner-editor-scroll] [role="combobox"] {
+  min-height: 3.25rem;
+  border-radius: 0.625rem;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] textarea {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] p {
+  line-height: 1.5;
 }
 
 /* Tablet is a dedicated editor screen. Its large-viewport height stays stable when iPadOS opens
@@ -82,18 +99,12 @@
 
   .planner-item-dialog [data-planner-editor-scroll] > * {
     width: min(42rem, 100%);
-    margin: auto;
+    margin: 0 auto;
     padding: 1.5rem;
     border: 1px solid var(--border);
     border-radius: 1rem;
     background: var(--background);
     box-shadow: 0 12px 34px rgb(15 23 42 / 8%);
-  }
-
-  .planner-item-dialog .planner-item-form-actions > * {
-    width: min(52rem, 100%);
-    margin-right: auto;
-    margin-left: auto;
   }
 
   .planner-item-dialog input,
@@ -103,7 +114,7 @@
   }
 }
 
-/* One fixed height on desktop so Next and Back never move under the pointer. */
+/* One fixed height on desktop; the header actions and step rail stay anchored while fields scroll. */
 @media (min-width: 1200px) {
   .planner-item-dialog {
     width: min(38rem, calc(100% - 2rem));

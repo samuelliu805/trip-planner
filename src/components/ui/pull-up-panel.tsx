@@ -65,6 +65,7 @@ export function PullUpPanel({
   id,
   onOpenChange,
   open,
+  overlayClassName,
   title,
 }: {
   children: ReactNode;
@@ -73,6 +74,7 @@ export function PullUpPanel({
   id: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  overlayClassName?: string;
   title: string;
 }) {
   useExclusivePullUpPanel(id, open, onOpenChange);
@@ -80,9 +82,10 @@ export function PullUpPanel({
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent
         className={cn(
-          "mobile-pull-up-panel max-h-[88dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)]",
+          "mobile-pull-up-panel max-h-[76dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)] [&>[data-sheet-close]]:top-8",
           className,
         )}
+        overlayClassName={overlayClassName}
         side="bottom"
       >
         <PullUpPanelHandle onClose={() => onOpenChange(false)} />

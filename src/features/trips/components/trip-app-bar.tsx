@@ -89,8 +89,8 @@ export function TripAppBar({
             <ArrowLeft aria-hidden="true" className="size-4" />
           </Link>
         </Button>
-        <div className="flex min-w-0 items-center gap-0.5 rounded-xl bg-muted/55 p-0.5 sm:gap-1 sm:p-1">
-          <h1 className="min-w-0 flex-1 truncate px-1.5 text-sm font-semibold sm:max-w-40 min-[960px]:max-w-64 min-[960px]:text-base">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold min-[960px]:text-base">
             {title}
           </h1>
           <div className="min-w-0 shrink-0">{variantControls}</div>

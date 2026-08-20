@@ -3,6 +3,7 @@
 import { LoaderCircle, RotateCcw, Route, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import {
   Select,
   SelectContent,
@@ -38,7 +39,8 @@ export function OverviewRouteOverlay({
 }) {
   if (!route.segments.length)
     return selectedPlace ? (
-      <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 p-3 pr-12 shadow-lg backdrop-blur">
+      <section className="overview-route-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 px-3 pb-3 pr-12 shadow-lg backdrop-blur">
+        <PullUpPanelHandle onClose={onClose} />
         {selectedPlace}
         <RouteIconButton
           className="absolute right-2 top-2"
@@ -68,7 +70,8 @@ export function OverviewRouteOverlay({
   );
 
   return (
-    <section className="overview-route-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[calc(100%-4.5rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+    <section className="overview-route-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur min-[900px]:max-h-[calc(100%-4.5rem)]">
+      <PullUpPanelHandle onClose={onClose} />
       {selectedPlace ? <div className="shrink-0 border-b px-3 py-2">{selectedPlace}</div> : null}
       <div className="flex min-h-0 flex-1 flex-col px-3 py-2">
         <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">

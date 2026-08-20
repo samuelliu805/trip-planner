@@ -410,6 +410,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     new URL("../trips/components/trip-app-bar.tsx", import.meta.url),
     "utf8",
   );
+  toolbar += await readFile(
+    new URL("./components/planner-context-menu-items.tsx", import.meta.url),
+    "utf8",
+  );
   const clearDialog = await readFile(
     new URL("./components/planner-clear-cells-dialog.tsx", import.meta.url),
     "utf8",
@@ -451,7 +455,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(workspaceEvents, /event\.key === "Backspace"/);
   assert.match(clearDialog, /<AlertDialog/);
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
-  assert.match(toolbar, />\s*Clear\s*</);
+  assert.match(toolbar, />\s*Clear selected cells\s*</);
   assert.match(toolbar, /Trip Planner \/|Back to Trips/);
   assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
   assert.match(
@@ -2248,10 +2252,6 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /planner-mobile-map-fab/);
   assert.match(workspace, /open=\{mapExpanded\}/);
   assert.doesNotMatch(workspace, /setMapExpanded\(!open\)/);
-  assert.match(
-    styles,
-    /max-width: 1199px[\s\S]*planner-item-form-actions[\s\S]*order: 1;[\s\S]*data-planner-editor-scroll[\s\S]*order: 2;/,
-  );
   assert.match(mapShell, /PlannerMapCanvas/);
   assert.match(workspace, /Promise\.all\(\s*replacements\.flatMap/);
   assert.match(workspace, /replacedIds/);

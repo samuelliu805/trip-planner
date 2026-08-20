@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, LoaderCircle, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { PlannerToolbarProps } from "@/features/itinerary/components/planner-toolbar-types";
@@ -36,8 +36,8 @@ export type PlannerContextProps = Pick<
 >;
 
 /**
- * The working controls that sit inside the one app bar: cost, the contextual Add or Edit action,
- * and the selection actions. Everything rarer lives in the trip menu next to them.
+ * The app bar keeps only the contextual Add/Edit or one selection action. Cost stays mounted here
+ * as a pull-up host but opens from the trip menu, where the remaining table actions also live.
  */
 export function PlannerContextActions(props: PlannerContextProps) {
   const oneCell = props.selectedCount === 1;
@@ -61,35 +61,22 @@ export function PlannerContextActions(props: PlannerContextProps) {
     <>
       <PlanCostMenu lines={props.planCostLines} summary={props.planCostSummary} />
       {manyCells ? (
-        <>
-          <Button
-            aria-busy={props.requestPending}
-            aria-label="Copy selected cells"
-            className="h-11 px-2.5"
-            disabled={props.requestPending}
-            onClick={props.copySelectionToClipboard}
-            size="sm"
-            variant="ghost"
-          >
-            {props.requestPending ? (
-              <LoaderCircle className="size-4 animate-spin" />
-            ) : (
-              <Copy className="size-4" />
-            )}
-            <span className="hidden sm:inline">Copy</span>
-          </Button>
-          <Button
-            aria-label="Clear selected cells"
-            className="h-11 px-2.5"
-            disabled={!props.clearItemCount || props.clearPending}
-            onClick={props.requestClearSelection}
-            size="sm"
-            variant="ghost"
-          >
-            <Trash2 className="size-4" />
-            <span className="hidden sm:inline">Clear</span>
-          </Button>
-        </>
+        <Button
+          aria-busy={props.requestPending}
+          aria-label="Copy selected cells"
+          className="h-11 px-2.5"
+          disabled={props.requestPending}
+          onClick={props.copySelectionToClipboard}
+          size="sm"
+          variant="ghost"
+        >
+          {props.requestPending ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <Copy className="size-4" />
+          )}
+          <span className="hidden sm:inline">Copy</span>
+        </Button>
       ) : null}
       {oneCell && (canAdd || props.selectedItem) ? (
         <Button className="h-11 px-3" onClick={openEditor} size="sm">
