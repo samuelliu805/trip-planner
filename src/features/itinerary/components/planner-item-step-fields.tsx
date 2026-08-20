@@ -4,6 +4,7 @@ import { Fragment, type ReactNode, type RefObject } from "react";
 
 import {
   ItemPriceField,
+  JourneyDateFields,
   JourneyEndpointFields,
   JourneyTimeFields,
   ServiceNumberField,
@@ -100,6 +101,16 @@ export function PlannerItemStepFields({
             showDeparture={journey.departureTime}
             startTime={state.startTime}
             transportMode={state.transportMode}
+          />
+        );
+      case "journeyDates":
+        return (
+          <JourneyDateFields
+            arrivalDate={state.arrivalDate}
+            departureDate={state.departureDate}
+            fieldId={fieldId}
+            setArrivalDate={state.setArrivalDate}
+            setDepartureDate={state.setDepartureDate}
           />
         );
       case "links":

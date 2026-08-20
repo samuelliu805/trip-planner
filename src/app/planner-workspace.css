@@ -102,6 +102,14 @@ body:has(.planner-map-sheet) {
   width: auto !important;
 }
 
+@media (min-width: 640px) {
+  .map-bottom-panel {
+    right: 1rem !important;
+    bottom: 1rem !important;
+    left: 1rem !important;
+  }
+}
+
 .planner-map-sheet,
 .planner-map-sheet .mobile-pull-up-panel,
 .planner-map-pane .mobile-pull-up-panel {

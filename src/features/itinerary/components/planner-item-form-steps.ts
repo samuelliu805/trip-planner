@@ -1,5 +1,4 @@
 import { itemCopy, itemFormCapabilities } from "./planner-item-form-config.ts";
-import { isDestinationActivity } from "../activity-order.ts";
 import { plannerJourneyFieldCapabilities } from "../transport-form-fields.ts";
 import type { CarRentalDetails, ItineraryItemType, TransportMode } from "../types.ts";
 import type { PlaceSnapshot } from "../../../lib/providers/places/types.ts";
@@ -9,6 +8,7 @@ export type ItemFormBlock =
   | "carAction"
   | "carProvider"
   | "endpoints"
+  | "journeyDates"
   | "journeyTimes"
   | "links"
   | "notes"
@@ -22,7 +22,7 @@ export type ItemFormBlock =
 
 export type ItemFormStep = {
   blocks: ItemFormBlock[];
-  id: "basics" | "route" | "files" | "schedule" | "extras" | "order";
+  id: "basics" | "details" | "route" | "files" | "schedule" | "extras" | "order";
   title: string;
 };
 
@@ -32,13 +32,11 @@ type StepInput = {
   type: ItineraryItemType;
 };
 
-function basicsBlocks(type: ItineraryItemType, serviceNumber: boolean): ItemFormBlock[] {
+function basicsBlocks(type: ItineraryItemType, endpoints: boolean): ItemFormBlock[] {
   if (type === "location") return ["place", "title"];
   if (type === "car_rental") return ["carAction", "carProvider", "place"];
-  if (type === "transport")
-    return serviceNumber ? ["transportMode", "serviceNumber", "place"] : ["transportMode", "place"];
-  if (type === "flight" || type === "train")
-    return serviceNumber ? ["title", "serviceNumber", "place"] : ["title", "place"];
+  if (type === "transport") return endpoints ? ["transportMode", "endpoints"] : ["transportMode"];
+  if (type === "flight" || type === "train") return endpoints ? ["title", "endpoints"] : ["title"];
   return ["title", "place"];
 }
 
@@ -58,12 +56,18 @@ export function plannerItemFormSteps({
   // Step titles stay one short word so the longest six-step journey still fits a 390px bar.
   const steps: ItemFormStep[] = [
     {
-      blocks: basicsBlocks(type, journey.serviceNumber),
+      blocks: basicsBlocks(type, journey.endpoints),
       id: "basics",
       title: type === "car_rental" ? "Rental" : itemCopy[type].label,
     },
   ];
-  if (journey.endpoints) steps.push({ blocks: ["endpoints"], id: "route", title: "Route" });
+  if (journeyTimes) steps.push({ blocks: ["journeyTimes"], id: "schedule", title: "Times" });
+  const journeyDetails: ItemFormBlock[] = [
+    ...(journey.serviceNumber ? (["serviceNumber"] as const) : []),
+    ...(journey.dates ? (["journeyDates"] as const) : []),
+  ];
+  if (journeyDetails.length)
+    steps.push({ blocks: journeyDetails, id: "details", title: "Details" });
   steps.push({
     blocks: supportsLink ? ["links", "attachments"] : ["attachments"],
     id: "files",
@@ -72,7 +76,6 @@ export function plannerItemFormSteps({
 
   const closing: ItemFormBlock[] = [];
   if (journeyTimes) {
-    steps.push({ blocks: ["journeyTimes"], id: "schedule", title: "Times" });
     if (supportsPrice) closing.push("price");
   } else if (ownTime) {
     steps.push({
@@ -88,7 +91,7 @@ export function plannerItemFormSteps({
       id: "extras",
       title: closing.includes("price") ? "Price" : "Notes",
     });
-  if (isDestinationActivity({ type }))
+  if (["activity", "meal"].includes(type))
     steps.push({ blocks: ["order"], id: "order", title: "Order" });
   return steps;
 }

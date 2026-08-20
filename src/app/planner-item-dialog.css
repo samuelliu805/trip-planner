@@ -66,6 +66,10 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
   padding-left: max(1.25rem, env(safe-area-inset-left));
 }
 
+.planner-item-dialog .planner-item-form-actions {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
 .planner-item-dialog .planner-item-form-fields {
   width: min(48rem, 100%);
   min-width: 0;
@@ -115,6 +119,10 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
 }
 
 @media (min-width: 640px) {
+  .planner-item-dialog .planner-item-form[data-editor-keyboard-open] .planner-item-form-actions {
+    display: none;
+  }
+
   .planner-item-dialog .planner-item-form-content {
     padding-top: 2.5rem;
   }

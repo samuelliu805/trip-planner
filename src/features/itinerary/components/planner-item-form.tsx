@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
+import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import { PlannerItemFormHeader } from "@/features/itinerary/components/planner-item-form-header";
 import {
@@ -251,6 +252,14 @@ export function PlannerItemForm({
           </div>
         </div>
       </div>
+      <PlannerItemFormActions
+        firstStep={stepIndex === 0}
+        lastStep={stepIndex === steps.length - 1}
+        onBack={() => moveStep(-1)}
+        onNext={() => moveStep(1)}
+        pending={pending}
+        pendingLabel={pendingLabel}
+      />
       <AttachmentSessionDiscardDialog
         error={attachmentSession.error}
         onDiscard={attachmentSession.discard}

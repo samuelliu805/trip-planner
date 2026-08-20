@@ -2044,17 +2044,19 @@ test("Hotel panel aggregation counts table occurrences and preserves split booki
   );
 });
 
-test("transport editor hides irrelevant journey fields for self-directed modes", () => {
+test("transport editor keeps endpoints first and hides irrelevant timed fields", () => {
   assert.deepEqual(plannerJourneyFieldCapabilities("transport", "self_driving"), {
     arrivalTime: false,
+    dates: false,
     departureTime: false,
-    endpoints: false,
+    endpoints: true,
     serviceNumber: false,
   });
   assert.deepEqual(plannerJourneyFieldCapabilities("transport", "walk"), {
     arrivalTime: false,
+    dates: false,
     departureTime: false,
-    endpoints: false,
+    endpoints: true,
     serviceNumber: false,
   });
   assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").endpoints, true);
@@ -2258,7 +2260,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(editorDialog, /planner-editor-viewport-locked/);
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
-  assert.match(editorKeyboardScroll, /surface\.scrollBy/);
+  assert.match(editorKeyboardScroll, /surface\.scrollTo/);
   assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
@@ -3011,13 +3013,17 @@ test("the item editor groups every type into short steps and gates required fiel
     ["basics", "files"],
   );
   assert.equal(plannerItemFormSteps({ ...rail, type: "meal" }).at(-1)?.id, "order");
-  assert.equal(plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)?.id, "order");
+  assert.equal(
+    plannerItemFormSteps({ ...rail, type: "hotel" }).some(({ id }) => id === "order"),
+    false,
+  );
   const flight = plannerItemFormSteps({ ...rail, transportMode: "flight", type: "transport" });
   assert.deepEqual(
     flight.map(({ id }) => id),
-    ["basics", "route", "files", "schedule", "extras"],
+    ["basics", "schedule", "details", "files", "extras"],
   );
-  assert.deepEqual(flight[0].blocks, ["transportMode", "serviceNumber", "place"]);
+  assert.deepEqual(flight[0].blocks, ["transportMode", "endpoints"]);
+  assert.deepEqual(flight[2].blocks, ["serviceNumber", "journeyDates"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, transportMode: "walk", type: "transport" }).map(({ id }) => id),
     ["basics", "files", "extras"],
@@ -3043,11 +3049,18 @@ test("the item editor groups every type into short steps and gates required fiel
     for (const step of typeSteps)
       assert.ok(step.blocks.length <= 3, `${type} step ${step.id} is too long`);
     assert.equal(itemFormCapabilities(type, "pickup").supportsPlace, true);
-    assert.ok(
-      typeSteps.some(({ blocks }) => blocks.includes("place")),
-      `${type} keeps its place field`,
-    );
-    if (["activity", "meal", "hotel"].includes(type))
+    if (["transport", "flight", "train"].includes(type))
+      assert.equal(
+        typeSteps.some(({ blocks }) => blocks.includes("place")),
+        false,
+        `${type} uses From and To instead of a Stop field`,
+      );
+    else
+      assert.ok(
+        typeSteps.some(({ blocks }) => blocks.includes("place")),
+        `${type} keeps its place field`,
+      );
+    if (["activity", "meal"].includes(type))
       assert.deepEqual(typeSteps.at(-1), { blocks: ["order"], id: "order", title: "Order" });
     else
       assert.equal(

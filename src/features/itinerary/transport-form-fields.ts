@@ -16,11 +16,13 @@ export function plannerJourneyFieldCapabilities(
     "shuttle",
     "cable_car",
   ].includes(mode);
-  const hasJourney = ["transport", "flight", "train"].includes(type) && !selfDirected;
+  const journeyItem = ["transport", "flight", "train"].includes(type);
+  const hasTimedJourney = journeyItem && !selfDirected;
   return {
-    arrivalTime: hasJourney && scheduled,
-    departureTime: hasJourney,
-    endpoints: hasJourney,
-    serviceNumber: hasJourney && scheduled,
+    arrivalTime: hasTimedJourney && scheduled,
+    dates: journeyItem && scheduled,
+    departureTime: hasTimedJourney,
+    endpoints: journeyItem,
+    serviceNumber: journeyItem && scheduled,
   };
 }

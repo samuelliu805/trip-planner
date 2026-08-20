@@ -24,9 +24,11 @@ export function plannerItemSaveValues({
 }) {
   const {
     arrivalTime,
+    arrivalDate,
     carAction,
     carProvider,
     destination,
+    departureDate,
     existingDetails,
     links,
     insertAfterItemId,
@@ -66,6 +68,10 @@ export function plannerItemSaveValues({
             ? {
                 ...existingDetails,
                 arrivalTime: journey.arrivalTime ? arrivalTime || null : null,
+                arrivalDate: journey.dates ? arrivalDate || null : existingDetails.arrivalDate,
+                departureDate: journey.dates
+                  ? departureDate || null
+                  : existingDetails.departureDate,
                 destination: journey.endpoints ? destination || null : null,
                 mode: type === "transport" ? transportMode : type,
                 origin: journey.endpoints ? origin || null : null,

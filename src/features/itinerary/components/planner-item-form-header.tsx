@@ -35,10 +35,10 @@ export function PlannerItemFormHeader({
   return (
     <div className="planner-item-form-header border-b px-5 pb-5 pt-4 sm:px-6">
       <div className="planner-item-form-header-inner space-y-4">
-        <div className="flex min-h-11 items-center justify-between gap-3">
+        <div className="flex min-h-11 flex-wrap items-center gap-3">
           <Button
             aria-busy={pending}
-            className="min-h-11 min-w-24 px-4 font-semibold shadow-sm"
+            className="min-h-11 min-w-24 px-4 font-semibold shadow-sm sm:hidden"
             disabled={pending}
             size="sm"
             type="submit"
@@ -46,9 +46,12 @@ export function PlannerItemFormHeader({
             {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
             {pending ? pendingLabel : "Save"}
           </Button>
+          <DialogTitle className="order-3 basis-full truncate text-xl font-extrabold tracking-tight sm:order-none sm:mr-auto sm:basis-auto">
+            {editing ? "Edit" : "Add"} {label.toLowerCase()}
+          </DialogTitle>
           <Button
             aria-label="Close editor"
-            className="size-11 shrink-0 p-0"
+            className="ml-auto size-11 shrink-0 p-0 sm:ml-0"
             disabled={closeDisabled}
             onClick={onClose}
             type="button"
@@ -57,9 +60,6 @@ export function PlannerItemFormHeader({
             <X aria-hidden="true" className="size-5" />
           </Button>
         </div>
-        <DialogTitle className="truncate text-xl font-extrabold tracking-tight">
-          {editing ? "Edit" : "Add"} {label.toLowerCase()}
-        </DialogTitle>
         <DialogDescription className="sr-only">
           Step {stepIndex + 1} of {steps.length}: {activeStep.title}. The item can be saved from any
           step.

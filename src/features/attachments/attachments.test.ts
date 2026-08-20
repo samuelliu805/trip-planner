@@ -314,7 +314,6 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     /overflow-x-hidden[\s\S]*overflow-y-auto[\s\S]*data-planner-editor-scroll/,
   );
   assert.match(plannerSheets, /planner-item-dialog/);
-  assert.doesNotMatch(itemForm, /PlannerItemFormActions/);
   assert.doesNotMatch(itemForm, /data-planner-editor-actions/);
   assert.match(
     plannerStyles,

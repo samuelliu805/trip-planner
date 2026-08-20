@@ -221,7 +221,7 @@ export function ItemPlaceField({
   type: ItineraryItemType;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5" data-planner-focus-region="place">
       <Label>
         {placeLabel}{" "}
         {type === "location" ? (
@@ -249,7 +249,12 @@ export function ItemPlaceField({
           )
             setTitle(nextPlace.displayName);
         }}
-        onSelected={() => requestAnimationFrame(() => titleRef.current?.focus())}
+        onSelected={() => {
+          // On touch keyboards, keeping focus in search avoids a second native viewport jump after
+          // the selected-place card mounts. Desktop users can continue directly into the title.
+          if (navigator.maxTouchPoints > 0) return;
+          requestAnimationFrame(() => titleRef.current?.focus());
+        }}
         value={place}
       />
     </div>

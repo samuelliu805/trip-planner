@@ -96,6 +96,48 @@ export function JourneyTimeFields({
   );
 }
 
+export function JourneyDateFields({
+  arrivalDate,
+  departureDate,
+  fieldId,
+  setArrivalDate,
+  setDepartureDate,
+}: {
+  arrivalDate: string;
+  departureDate: string;
+  fieldId: string;
+  setArrivalDate: Dispatch<SetStateAction<string>>;
+  setDepartureDate: Dispatch<SetStateAction<string>>;
+}) {
+  return (
+    <div className="grid min-w-0 gap-3 min-[430px]:grid-cols-2">
+      <div className="min-w-0 space-y-1.5">
+        <Label htmlFor={`journey-departure-date-${fieldId}`}>
+          Departure date <span className="font-normal text-muted-foreground">optional</span>
+        </Label>
+        <Input
+          id={`journey-departure-date-${fieldId}`}
+          onChange={(event) => setDepartureDate(event.target.value)}
+          type="date"
+          value={departureDate}
+        />
+      </div>
+      <div className="min-w-0 space-y-1.5">
+        <Label htmlFor={`journey-arrival-date-${fieldId}`}>
+          Arrival date <span className="font-normal text-muted-foreground">optional</span>
+        </Label>
+        <Input
+          id={`journey-arrival-date-${fieldId}`}
+          min={departureDate || undefined}
+          onChange={(event) => setArrivalDate(event.target.value)}
+          type="date"
+          value={arrivalDate}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ServiceNumberField({
   fieldId,
   serviceNumber,

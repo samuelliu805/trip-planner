@@ -109,6 +109,8 @@ export function PlaceAutocomplete({
       setSuggestions([]);
       setQuery("");
       onChange(normalized);
+      if (navigator.maxTouchPoints > 0)
+        requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
       onSelected?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The place could not be selected.");
