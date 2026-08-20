@@ -279,7 +279,25 @@ body:has(.public-itinerary-shell) {
     );
   }
 
-  .public-share-settings-dialog,
+  .public-share-settings-dialog {
+    height: min(
+      88dvh,
+      calc(
+        var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
+          max(8px, env(safe-area-inset-bottom))
+      )
+    ) !important;
+    max-height: min(
+      88dvh,
+      calc(
+        var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
+          max(8px, env(safe-area-inset-bottom))
+      )
+    ) !important;
+    border-radius: 1rem 1rem 0 0;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+
   .public-map-sheet {
     height: calc(
       var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -

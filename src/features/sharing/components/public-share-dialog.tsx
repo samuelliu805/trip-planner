@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import {
   Select,
   SelectContent,
@@ -76,6 +77,8 @@ export function PublicShareDialog({
     Boolean(activeLink) &&
     shareSettingsSignature(settings, variantId) ===
       shareSettingsSignature(settingsFromLink(activeLink), activeLink?.variantId ?? variantId);
+
+  useExclusivePullUpPanel("share-settings", open, setOpen);
 
   useEffect(() => {
     const openShareSettings = () => setOpen(true);
@@ -156,7 +159,11 @@ export function PublicShareDialog({
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-2xl">
+      <DialogContent className="mobile-pull-up-panel public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-2xl">
+        <div
+          aria-hidden="true"
+          className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/25 sm:hidden"
+        />
         <DialogHeader className="shrink-0">
           <DialogTitle>Share trip</DialogTitle>
           <DialogDescription>

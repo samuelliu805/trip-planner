@@ -10,13 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { PullUpPanel } from "@/components/ui/pull-up-panel";
 import type { PlannerVariant } from "@/features/itinerary/types";
 
 import { VariantIdentity } from "./route-variant-identity";
@@ -111,74 +105,74 @@ export function RouteVariantSwitcher({
         <ChevronDown className="size-3.5" />
       </Button>
 
-      <Sheet onOpenChange={onSheetOpenChange} open={sheetOpen}>
-        <SheetContent side="bottom">
-          <SheetHeader>
-            <SheetTitle>Plans</SheetTitle>
-            <SheetDescription>Switch the Plan shown in the Matrix and map.</SheetDescription>
-          </SheetHeader>
-          <div className="overflow-y-auto px-4 py-4">
-            <div className="space-y-1">
-              {variants.map((variant) => (
-                <Button
-                  className="h-11 w-full justify-between px-3 font-normal"
-                  key={variant.id}
-                  onClick={() => onSwitch(variant.id)}
-                  variant={variant.id === activeVariantId ? "outline" : "ghost"}
-                >
-                  <VariantIdentity variant={variant} />
-                  {variant.id === activeVariantId ? <Check className="size-4" /> : null}
-                </Button>
-              ))}
-            </div>
-            <div className="mt-4 grid gap-2 border-t pt-4">
-              {onCompare ? (
-                <>
-                  <Button
-                    aria-describedby={
-                      comparisonBlockingReason ? "mobile-comparison-disabled" : undefined
-                    }
-                    className="h-11 justify-start"
-                    disabled={Boolean(comparisonBlockingReason)}
-                    onClick={onCompare}
-                    variant="outline"
-                  >
-                    <GitCompareArrows className="size-4" /> Compare routes
-                  </Button>
-                  {comparisonBlockingReason ? (
-                    <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
-                      {comparisonBlockingReason}
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
+      <PullUpPanel
+        description="Switch the Plan shown in the Matrix and map."
+        id="route-variant-switcher"
+        onOpenChange={onSheetOpenChange}
+        open={sheetOpen}
+        title="Plans"
+      >
+        <div className="min-h-0 overflow-y-auto px-4 pb-4">
+          <div className="space-y-1">
+            {variants.map((variant) => (
               <Button
-                className="h-11 justify-start"
-                disabled={limitReached}
-                onClick={() => onAction("create")}
-                variant="outline"
+                className="h-11 w-full justify-between px-3 font-normal"
+                key={variant.id}
+                onClick={() => onSwitch(variant.id)}
+                variant={variant.id === activeVariantId ? "outline" : "ghost"}
               >
-                <Plus className="size-4" /> New empty Plan
+                <VariantIdentity variant={variant} />
+                {variant.id === activeVariantId ? <Check className="size-4" /> : null}
               </Button>
-              <Button
-                className="h-11 justify-start"
-                disabled={limitReached}
-                onClick={() => onAction("duplicate")}
-                variant="outline"
-              >
-                <Copy className="size-4" /> Duplicate Plan
-              </Button>
-              <Button
-                className="h-11 justify-start"
-                onClick={() => onAction("manage")}
-                variant="ghost"
-              >
-                <MoreHorizontal className="size-4" /> Manage Plans
-              </Button>
-            </div>
+            ))}
           </div>
-        </SheetContent>
-      </Sheet>
+          <div className="mt-4 grid gap-2 border-t pt-4">
+            {onCompare ? (
+              <>
+                <Button
+                  aria-describedby={
+                    comparisonBlockingReason ? "mobile-comparison-disabled" : undefined
+                  }
+                  className="h-11 justify-start"
+                  disabled={Boolean(comparisonBlockingReason)}
+                  onClick={onCompare}
+                  variant="outline"
+                >
+                  <GitCompareArrows className="size-4" /> Compare routes
+                </Button>
+                {comparisonBlockingReason ? (
+                  <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
+                    {comparisonBlockingReason}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            <Button
+              className="h-11 justify-start"
+              disabled={limitReached}
+              onClick={() => onAction("create")}
+              variant="outline"
+            >
+              <Plus className="size-4" /> New empty Plan
+            </Button>
+            <Button
+              className="h-11 justify-start"
+              disabled={limitReached}
+              onClick={() => onAction("duplicate")}
+              variant="outline"
+            >
+              <Copy className="size-4" /> Duplicate Plan
+            </Button>
+            <Button
+              className="h-11 justify-start"
+              onClick={() => onAction("manage")}
+              variant="ghost"
+            >
+              <MoreHorizontal className="size-4" /> Manage Plans
+            </Button>
+          </div>
+        </div>
+      </PullUpPanel>
     </>
   );
 }

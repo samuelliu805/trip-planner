@@ -46,7 +46,15 @@ export function itemFormFieldLabels(type: ItineraryItemType) {
         ? "Hotel location"
         : type === "car_rental"
           ? "Address"
-          : "Location";
+          : type === "flight"
+            ? "Airport or terminal"
+            : type === "train"
+              ? "Station"
+              : type === "transport"
+                ? "Stop or location"
+                : type === "note"
+                  ? "Related place"
+                  : "Location";
   const linkLabel =
     type === "hotel"
       ? "Hotel link"
@@ -68,7 +76,7 @@ export function itemFormCapabilities(
 ) {
   return {
     supportsLink: !["location", "note"].includes(type),
-    supportsPlace: !["note", "transport", "flight", "train"].includes(type),
+    supportsPlace: true,
     supportsPrice:
       !["location", "note"].includes(type) && !(type === "car_rental" && carAction === "return"),
     supportsTime: [

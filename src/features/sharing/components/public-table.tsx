@@ -66,7 +66,7 @@ export function PublicTable({
           return (
             <div
               aria-current={selectedDayRef === day.ref ? "true" : undefined}
-              className={`flex min-h-14 border-b ${selectedDayRef === day.ref ? "bg-primary/[0.035]" : ""}`}
+              className={`flex min-h-11 border-b min-[1200px]:min-h-[52px] ${selectedDayRef === day.ref ? "bg-primary/[0.035]" : ""}`}
               data-public-day-ref={day.ref}
               key={day.ref}
               onClick={() => onSelectDay(day.ref)}
@@ -74,23 +74,23 @@ export function PublicTable({
               tabIndex={-1}
             >
               <div
-                className="matrix-date-column sticky left-0 z-30 w-24 shrink-0 border-r bg-background px-2 py-1 text-[13px] min-[1200px]:text-[11px]"
+                className="matrix-date-column sticky left-0 z-30 w-24 shrink-0 border-r bg-background px-2 py-0.5 text-xs"
                 role="rowheader"
               >
-                <span className="block font-sans text-[15px] font-semibold leading-tight sm:hidden">
+                <span className="block font-sans text-sm font-semibold leading-tight sm:hidden">
                   Day {day.dayNumber}
                 </span>
-                <span className="block font-mono text-[15px] font-medium leading-tight min-[1200px]:text-[13px]">
+                <span className="block font-mono text-sm font-medium leading-tight">
                   {day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}
                 </span>
                 {day.date ? (
-                  <span className="block text-[13px] leading-tight text-muted-foreground min-[1200px]:text-[11px]">
+                  <span className="block text-xs leading-tight text-muted-foreground">
                     {format(parseISO(day.date), "EEE")}
                   </span>
                 ) : null}
               </div>
               <div
-                className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-semibold min-[1200px]:text-[13px]"
+                className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-0.5 text-sm font-semibold"
                 role="rowheader"
               >
                 {day.dayNumber}
@@ -111,7 +111,7 @@ export function PublicTable({
                       className={`public-table-cell-items ${column.id === "transport" ? "is-transport" : ""}`}
                     >
                       {column.id === "city" ? (
-                        <div className="px-1.5 py-0.5 text-[15px] leading-tight min-[1200px]:text-[13px]">
+                        <div className="px-1.5 py-0.5 text-sm leading-tight">
                           <span className="font-medium">
                             {day.localities?.join(" · ") ||
                               day.primaryLocality ||
@@ -122,7 +122,7 @@ export function PublicTable({
                       {items.map((item) => (
                         <div
                           aria-current={selectedItemRef === item.ref ? "true" : undefined}
-                          className={`public-item-focus min-h-11 cursor-default px-1.5 py-0.5 text-[15px] leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-0 min-[1200px]:text-[13px] ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
+                          className={`public-item-focus min-h-11 cursor-default px-1.5 py-0.5 text-sm leading-tight outline-none focus-visible:ring-2 focus-visible:ring-ring min-[1200px]:min-h-8 ${selectedItemRef === item.ref ? "bg-primary/5" : ""}`}
                           data-public-item-ref={item.ref}
                           key={item.ref}
                           onClick={(event) => {
@@ -153,9 +153,7 @@ export function PublicTable({
                       ))}
                     </div>
                     {!items.length && column.id !== "city" ? (
-                      <span className="block px-1.5 py-0.5 text-[13px] text-muted-foreground min-[1200px]:text-[11px]">
-                        —
-                      </span>
+                      <span className="block px-1.5 py-0.5 text-xs text-muted-foreground">—</span>
                     ) : null}
                   </div>
                 );

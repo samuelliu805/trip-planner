@@ -32,14 +32,12 @@ type StepInput = {
 };
 
 function basicsBlocks(type: ItineraryItemType, serviceNumber: boolean): ItemFormBlock[] {
-  if (type === "car_rental") return ["carAction", "place", "carProvider"];
+  if (type === "car_rental") return ["carAction", "carProvider"];
   if (type === "transport")
     return serviceNumber ? ["transportMode", "serviceNumber"] : ["transportMode"];
   if (type === "flight" || type === "train")
     return serviceNumber ? ["title", "serviceNumber"] : ["title"];
-  if (["hotel", "location", "meal"].includes(type)) return ["place", "title"];
-  if (type === "note") return ["title"];
-  return ["title", "place"];
+  return ["title"];
 }
 
 /** Activities and Meals share the Day's manual order, so ordering is their closing step. */
@@ -57,17 +55,23 @@ export function plannerItemFormSteps({
   type,
 }: StepInput): ItemFormStep[] {
   const journey = plannerJourneyFieldCapabilities(type, transportMode);
-  const { supportsLink, supportsPrice, supportsTime } = itemFormCapabilities(type, carAction);
+  const { supportsLink, supportsPlace, supportsPrice, supportsTime } = itemFormCapabilities(
+    type,
+    carAction,
+  );
   const journeyTimes = journey.departureTime || journey.arrivalTime;
   const ownTime = supportsTime && !["flight", "train", "transport"].includes(type);
-  // Step titles stay one short word so five circles still fit a 390px bar.
-  const steps: ItemFormStep[] = [
-    {
-      blocks: basicsBlocks(type, journey.serviceNumber),
-      id: "basics",
-      title: type === "car_rental" ? "Rental" : itemCopy[type].label,
-    },
-  ];
+  // Step titles stay one short word so the longest six-step journey still fits a 390px bar.
+  const steps: ItemFormStep[] =
+    type === "location"
+      ? [{ blocks: ["place", "title"], id: "place", title: "Place" }]
+      : [
+          {
+            blocks: basicsBlocks(type, journey.serviceNumber),
+            id: "basics",
+            title: type === "car_rental" ? "Rental" : itemCopy[type].label,
+          },
+        ];
   if (journey.endpoints) steps.push({ blocks: ["endpoints"], id: "route", title: "Route" });
   steps.push({
     blocks: supportsLink ? ["links", "attachments"] : ["attachments"],
@@ -93,8 +97,12 @@ export function plannerItemFormSteps({
       id: "extras",
       title: closing.includes("price") ? "Price" : "Notes",
     });
-  if (plannerItemIsPlaceable(type))
-    steps.push({ blocks: ["placement"], id: "place", title: "Place" });
+  if (type !== "location" && supportsPlace)
+    steps.push({
+      blocks: plannerItemIsPlaceable(type) ? ["place", "placement"] : ["place"],
+      id: "place",
+      title: "Place",
+    });
   return steps;
 }
 
@@ -109,10 +117,13 @@ export function plannerItemStepError({
   title: string;
   type: ItineraryItemType;
 }) {
+  if (step.id === "place") {
+    if (type === "location" && !place) return "Choose a city from Google Maps before continuing.";
+    if (type === "hotel" && !place && !title.trim())
+      return "Choose a hotel location or enter a displayed hotel name.";
+    return undefined;
+  }
   if (step.id !== "basics") return undefined;
-  if (type === "location" && !place) return "Choose a city from Google Maps before continuing.";
-  if (type === "hotel" && !place && !title.trim())
-    return "Choose a hotel location or enter a displayed hotel name.";
   if (!["car_rental", "hotel", "location", "transport"].includes(type) && !title.trim())
     return `${itemCopy[type].label} name is required.`;
   return undefined;

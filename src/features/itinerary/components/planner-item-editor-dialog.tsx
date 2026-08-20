@@ -7,10 +7,7 @@ import type { EditorState } from "@/features/itinerary/components/planner-config
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 
-/**
- * One centred modal on tablet and desktop, one full-height sheet on phones. The editor never
- * shares the screen with the workspace side panel, so the Matrix stays fully visible behind it.
- */
+/** A full-screen editor on touch widths and a centred dialog on desktop. */
 export function PlannerItemEditorDialog({
   defaultCurrency,
   editor,

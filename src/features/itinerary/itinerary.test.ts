@@ -33,6 +33,7 @@ import {
   plannerItemFormSteps,
   plannerItemStepError,
 } from "./components/planner-item-form-steps.ts";
+import { itemFormCapabilities } from "./components/planner-item-form-config.ts";
 import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
@@ -434,7 +435,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(mapHook, /overview:\$\{variantId\}/);
 
   assert.match(controls, /router\.push\(tripSectionHref/);
-  assert.match(variantUi, /<Sheet[\s\S]*side="bottom"/);
+  assert.match(variantUi, /<PullUpPanel/);
   assert.match(variantUi, /PrimaryBadge/);
   assert.match(variantUi, />\s*Primary\s*</);
   assert.match(variantUi, /Maximum of three variants reached/);
@@ -2760,7 +2761,7 @@ test("city items require a Google place while the displayed name remains optiona
   );
 });
 
-test("hotel permits a displayed name without an exact place and transport has no location", () => {
+test("hotel permits a displayed name and transport rejects legacy free-text locations", () => {
   assert.equal(
     createItineraryItemSchema.safeParse({
       ...base,
@@ -2973,33 +2974,33 @@ test("the item editor groups every type into short steps and gates required fiel
   assert.deepEqual(
     activity.map(({ blocks, id }) => `${id}:${blocks.join("+")}`),
     [
-      "basics:title+place",
+      "basics:title",
       "files:links+attachments",
       "schedule:startTime+price",
       "extras:notes",
-      "place:placement",
+      "place:place+placement",
     ],
   );
-  assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["place", "title"]);
+  assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["title"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "note" }).map(({ id }) => id),
-    ["basics", "files"],
+    ["basics", "files", "place"],
   );
   // Ordering is the closing step for the two types that share the Day's manual order.
   assert.equal(plannerItemFormSteps({ ...rail, type: "meal" }).at(-1)?.id, "place");
-  assert.equal(plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)?.id, "extras");
+  assert.equal(plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)?.id, "place");
   const flight = plannerItemFormSteps({ ...rail, transportMode: "flight", type: "transport" });
   assert.deepEqual(
     flight.map(({ id }) => id),
-    ["basics", "route", "files", "schedule", "extras"],
+    ["basics", "route", "files", "schedule", "extras", "place"],
   );
   assert.deepEqual(flight[0].blocks, ["transportMode", "serviceNumber"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, transportMode: "walk", type: "transport" }).map(({ id }) => id),
-    ["basics", "files", "extras"],
+    ["basics", "files", "extras", "place"],
   );
   const rentalReturn = plannerItemFormSteps({ ...rail, carAction: "return", type: "car_rental" });
-  assert.deepEqual(rentalReturn[0].blocks, ["carAction", "place", "carProvider"]);
+  assert.deepEqual(rentalReturn[0].blocks, ["carAction", "carProvider"]);
   assert.equal(
     rentalReturn.some(({ blocks }) => blocks.includes("price")),
     false,
@@ -3014,9 +3015,16 @@ test("the item editor groups every type into short steps and gates required fiel
     "note",
     "train",
     "transport",
-  ] as const)
-    for (const step of plannerItemFormSteps({ ...rail, type }))
+  ] as const) {
+    const typeSteps = plannerItemFormSteps({ ...rail, type });
+    for (const step of typeSteps)
       assert.ok(step.blocks.length <= 3, `${type} step ${step.id} is too long`);
+    assert.equal(itemFormCapabilities(type, "pickup").supportsPlace, true);
+    assert.ok(
+      typeSteps.some(({ blocks, id }) => id === "place" && blocks.includes("place")),
+      `${type} has a dedicated Place step`,
+    );
+  }
 
   const place = { displayName: "Kyoto" } as unknown as PlaceSnapshot;
   const cityBasics = plannerItemFormSteps({ ...rail, type: "location" })[0];
@@ -3028,13 +3036,13 @@ test("the item editor groups every type into short steps and gates required fiel
     plannerItemStepError({ place, step: cityBasics, title: "", type: "location" }),
     undefined,
   );
-  const hotelBasics = plannerItemFormSteps({ ...rail, type: "hotel" })[0];
+  const hotelPlace = plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)!;
   assert.match(
-    plannerItemStepError({ place: null, step: hotelBasics, title: " ", type: "hotel" }) ?? "",
+    plannerItemStepError({ place: null, step: hotelPlace, title: " ", type: "hotel" }) ?? "",
     /displayed hotel name/,
   );
   assert.equal(
-    plannerItemStepError({ place: null, step: hotelBasics, title: "Park", type: "hotel" }),
+    plannerItemStepError({ place: null, step: hotelPlace, title: "Park", type: "hotel" }),
     undefined,
   );
   assert.equal(

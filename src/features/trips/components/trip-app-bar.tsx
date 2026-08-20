@@ -10,7 +10,7 @@ import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ResearchCategory } from "@/features/research/types";
 import { tripSectionHref, type TripSection } from "@/features/research/urls";
 
-import { TripBarMenu } from "./trip-app-bar-menu";
+import { TripBarMenu, type TripMobileQuickAction } from "./trip-app-bar-menu";
 
 const sections: Array<{ id: TripSection; label: string }> = [
   { id: "plan", label: "Plan" },
@@ -49,6 +49,8 @@ export type TripAppBarProps = {
   actions?: ReactNode;
   active: TripSection;
   menuItems?: ReactNode;
+  mobileMenuItems?: (runAction: (action: () => void) => void) => ReactNode;
+  mobileQuickActions?: TripMobileQuickAction[];
   mutating?: boolean;
   onTripSettings?: () => void;
   researchCategory?: ResearchCategory;
@@ -68,6 +70,8 @@ export function TripAppBar({
   actions,
   active,
   menuItems,
+  mobileMenuItems,
+  mobileQuickActions,
   mutating = false,
   onTripSettings,
   researchCategory,
@@ -107,6 +111,8 @@ export function TripAppBar({
             accountEmail={accountEmail}
             active={active}
             extraItems={menuItems}
+            mobileMenuItems={mobileMenuItems}
+            mobileQuickActions={mobileQuickActions}
             onShareTrip={
               shareControls
                 ? () => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))

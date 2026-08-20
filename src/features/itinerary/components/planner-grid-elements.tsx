@@ -41,7 +41,7 @@ export function AddItemButton({
       <TooltipTrigger asChild>
         <button
           aria-label={`Add ${category.label.toLowerCase()} on day ${day.day_number}`}
-          className="mt-auto flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-[13px] font-medium text-muted-foreground min-[1200px]:h-7 min-[1200px]:text-[11px] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mt-auto flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-xs font-medium text-muted-foreground min-[1200px]:text-[13px] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           data-add-item
           onClick={(event) => {
             event.stopPropagation();

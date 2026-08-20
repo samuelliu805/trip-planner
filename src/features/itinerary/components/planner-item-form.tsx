@@ -77,12 +77,13 @@ export function PlannerItemForm({
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      if (activeStep.id === "basics" && !item && ["location", "hotel"].includes(type)) return;
+      if (activeStep.blocks.includes("place") && !item && ["location", "hotel"].includes(type))
+        return;
       const fallback = stepBodyRef.current?.querySelector<HTMLElement>(stepFieldSelector);
       (titleRef.current ?? fallback)?.focus();
     });
     return () => cancelAnimationFrame(frame);
-  }, [activeStep.id, item, type]);
+  }, [activeStep, item, type]);
 
   usePlannerItemDraft({
     arrivalTime: state.arrivalTime,
@@ -153,7 +154,9 @@ export function PlannerItemForm({
       const savedItem = item
         ? await updateMutation.mutateAsync({ ...values, id: item.id })
         : await createMutation.mutateAsync({ ...values, dayId });
-      onSaved(await attachmentSession.commit(savedItem), { place: activeStep.id === "place" });
+      onSaved(await attachmentSession.commit(savedItem), {
+        place: activeStep.blocks.includes("placement"),
+      });
     } catch (mutationFailure) {
       onError(
         mutationFailure instanceof Error
@@ -252,7 +255,13 @@ export function PlannerItemForm({
         onRemove={remove}
         pending={pending}
         pendingLabel={attachmentSession.attachmentPending ? "Updating attachments…" : undefined}
-        primaryLabel={activeStep.id === "place" ? "Place item" : item ? "Save changes" : "Add item"}
+        primaryLabel={
+          activeStep.blocks.includes("placement")
+            ? "Place item"
+            : item
+              ? "Save changes"
+              : "Add item"
+        }
         showBack={stepIndex > 0}
       />
       <AttachmentSessionDiscardDialog

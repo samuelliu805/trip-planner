@@ -4,6 +4,7 @@ import { ExternalLink, ImageDown, Share2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import {
   Dialog,
   DialogContent,
@@ -44,14 +45,13 @@ export function PublicViewerShareDialog({
   const [open, setOpen] = useState(false);
   const [showWechatQr, setShowWechatQr] = useState(false);
   const siteUrl = new URL(url).origin;
+  const onOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setShowWechatQr(false);
+  };
+  useExclusivePullUpPanel("viewer-share", open, onOpenChange);
   return (
-    <Dialog
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) setShowWechatQr(false);
-      }}
-      open={open}
-    >
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogTrigger asChild>
         <Button
           aria-label="Share itinerary"
@@ -62,9 +62,13 @@ export function PublicViewerShareDialog({
         </Button>
       </DialogTrigger>
       <DialogContent
-        className={`public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),720px)]`}
+        className={`mobile-pull-up-panel public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),720px)]`}
         data-public-template-key={template.key}
       >
+        <div
+          aria-hidden="true"
+          className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/25 sm:hidden"
+        />
         <DialogHeader className="shrink-0">
           <DialogTitle>Share itinerary</DialogTitle>
           <DialogDescription>Send a link or save an image.</DialogDescription>

@@ -2,6 +2,7 @@
 
 import { ClipboardPaste, Copy, ListOrdered, Plus, Trash2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { PlannerContextProps } from "@/features/itinerary/components/planner-context-bar";
 import { PlannerResearchActions } from "@/features/research/components/planner-research-actions";
@@ -66,5 +67,100 @@ export function PlannerContextMenuItems(props: PlannerContextProps) {
         Copy previous day
       </DropdownMenuItem>
     </>
+  );
+}
+
+export function PlannerMobileMenuItems({
+  props,
+  runAction,
+}: {
+  props: PlannerContextProps;
+  runAction: (action: () => void) => void;
+}) {
+  const showResearch = props.selectedCount === 1 && Boolean(props.researchContext);
+  const researchSourceItem = props.researchContext?.itemId
+    ? props.planDays
+        .flatMap(({ items }) => items)
+        .find(({ id }) => id === props.researchContext?.itemId)
+    : undefined;
+  const rowClass = "min-h-11 w-full justify-start px-3 font-normal";
+
+  return (
+    <div className="space-y-1">
+      {showResearch && props.researchContext ? (
+        <div className="pb-2">
+          <PlannerResearchActions
+            compact
+            context={props.researchContext}
+            currency={props.trip.currency}
+            days={props.planDays}
+            items={props.researchItems}
+            sourceItem={researchSourceItem}
+            tripId={props.trip.id}
+          />
+        </div>
+      ) : null}
+      {props.activeDay ? (
+        <Button
+          className={rowClass}
+          onClick={() => runAction(() => props.onArrangeActivities(props.activeDay!))}
+          variant="ghost"
+        >
+          <ListOrdered className="size-4" /> Arrange Activities
+        </Button>
+      ) : null}
+      <Button
+        className={rowClass}
+        disabled={props.dayMutationPending}
+        onClick={() =>
+          runAction(() => {
+            void props.insertDay(props.workspaceDayCount + 1);
+          })
+        }
+        variant="ghost"
+      >
+        <Plus className="size-4" /> Add day at end
+      </Button>
+      <Button
+        className={rowClass}
+        disabled={props.requestPending}
+        onClick={() =>
+          runAction(() => {
+            void props.pasteAvailableClipboard();
+          })
+        }
+        variant="ghost"
+      >
+        <ClipboardPaste className="size-4" /> Paste
+      </Button>
+      <Button
+        className={rowClass}
+        disabled={!props.clearItemCount || props.clearPending}
+        onClick={() => runAction(props.requestClearSelection)}
+        variant="ghost"
+      >
+        <Trash2 className="size-4" /> Clear selected cells
+      </Button>
+      <Button
+        className={rowClass}
+        disabled={props.requestPending}
+        onClick={() => runAction(() => props.setCopyDaysOpen(true))}
+        variant="ghost"
+      >
+        <Copy className="size-4" /> Copy to days…
+      </Button>
+      <Button
+        className={rowClass}
+        disabled={props.requestPending}
+        onClick={() =>
+          runAction(() => {
+            void props.copyPreviousDay();
+          })
+        }
+        variant="ghost"
+      >
+        <Copy className="size-4" /> Copy previous day
+      </Button>
+    </div>
   );
 }

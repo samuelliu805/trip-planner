@@ -29,8 +29,75 @@
   display: none;
 }
 
-/* One fixed height for every step so Next and Back never move under the pointer. */
-@media (min-width: 640px) {
+/* Tablet is a dedicated editor screen. Keeping it on the visual viewport prevents iPadOS from
+   panning the Matrix and app bar when the software keyboard focuses a field. */
+@media (min-width: 640px) and (max-width: 1199px) {
+  body:has(.planner-item-dialog) [data-dialog-overlay] {
+    background: var(--background);
+    backdrop-filter: none;
+  }
+
+  .planner-item-dialog {
+    inset: 0 !important;
+    top: var(--dialog-viewport-top, 0px) !important;
+    width: 100% !important;
+    height: var(--dialog-viewport-height, 100svh) !important;
+    min-height: var(--dialog-viewport-height, 100svh);
+    max-width: none !important;
+    max-height: var(--dialog-viewport-height, 100svh) !important;
+    transform: none !important;
+    translate: none !important;
+    animation: none !important;
+    scale: none !important;
+    border: 0;
+    border-radius: 0;
+    background: var(--muted);
+    box-shadow: none;
+  }
+
+  .planner-item-dialog .planner-item-form > :first-child {
+    background: var(--background);
+    padding-right: max(4.5rem, env(safe-area-inset-right));
+    padding-left: max(2rem, env(safe-area-inset-left));
+  }
+
+  .planner-item-dialog .planner-item-form > :first-child > * {
+    width: min(52rem, 100%);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .planner-item-dialog [data-planner-editor-scroll] {
+    display: flex;
+    align-items: flex-start;
+    padding: 2rem max(2rem, env(safe-area-inset-right)) 2rem max(2rem, env(safe-area-inset-left));
+  }
+
+  .planner-item-dialog [data-planner-editor-scroll] > * {
+    width: min(42rem, 100%);
+    margin: auto;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--background);
+    box-shadow: 0 12px 34px rgb(15 23 42 / 8%);
+  }
+
+  .planner-item-dialog .planner-item-form-actions > * {
+    width: min(52rem, 100%);
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .planner-item-dialog input,
+  .planner-item-dialog select,
+  .planner-item-dialog textarea {
+    font-size: 16px;
+  }
+}
+
+/* One fixed height on desktop so Next and Back never move under the pointer. */
+@media (min-width: 1200px) {
   .planner-item-dialog {
     width: min(38rem, calc(100% - 2rem));
     max-width: min(38rem, calc(100% - 2rem));
