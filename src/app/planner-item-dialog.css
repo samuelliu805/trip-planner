@@ -32,12 +32,8 @@
 /* Tablet is a dedicated editor screen. Keeping it on the visual viewport prevents iPadOS from
    panning the Matrix and app bar when the software keyboard focuses a field. */
 @media (min-width: 640px) and (max-width: 1199px) {
-  body:has(.planner-item-dialog) [data-dialog-overlay] {
-    background: var(--background);
-    backdrop-filter: none;
-  }
-
   .planner-item-dialog {
+    position: fixed !important;
     inset: 0 !important;
     top: var(--dialog-viewport-top, 0px) !important;
     width: 100% !important;
@@ -45,10 +41,6 @@
     min-height: var(--dialog-viewport-height, 100svh);
     max-width: none !important;
     max-height: var(--dialog-viewport-height, 100svh) !important;
-    transform: none !important;
-    translate: none !important;
-    animation: none !important;
-    scale: none !important;
     border: 0;
     border-radius: 0;
     background: var(--muted);
@@ -61,7 +53,7 @@
     padding-left: max(2rem, env(safe-area-inset-left));
   }
 
-  .planner-item-dialog .planner-item-form > :first-child > * {
+  .planner-item-dialog .planner-item-form > :first-child > :not(.sr-only) {
     width: min(52rem, 100%);
     margin-right: auto;
     margin-left: auto;
@@ -109,6 +101,7 @@
 
 @media (max-width: 639px) {
   .planner-item-dialog {
+    position: fixed !important;
     inset: 0 !important;
     top: var(--dialog-viewport-top, 0px) !important;
     bottom: auto !important;

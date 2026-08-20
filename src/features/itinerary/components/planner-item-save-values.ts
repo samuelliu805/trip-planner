@@ -28,6 +28,7 @@ export function plannerItemSaveValues({
     destination,
     existingDetails,
     links,
+    insertAfterItemId,
     notes,
     origin,
     place,
@@ -98,6 +99,7 @@ export function plannerItemSaveValues({
   return {
     bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
     links: supportsLink ? links : [],
+    insertAfterItemId,
     details: details as never,
     endTime: journey.arrivalTime ? arrivalTime : "",
     notes: type === "note" ? "" : notes,

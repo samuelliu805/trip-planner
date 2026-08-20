@@ -19,21 +19,25 @@ export function PlannerItemStepNav({
 }) {
   const activeIndex = steps.findIndex(({ id }) => id === activeStepId);
   return (
-    <ol aria-label="Item details steps" className="planner-item-step-nav flex min-w-0 items-end">
+    <ol
+      aria-label="Item details steps"
+      className="planner-item-step-nav grid min-w-0 items-end"
+      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+    >
       {steps.map((step, index) => {
         const active = step.id === activeStepId;
         const done = index < activeIndex;
         return (
-          <li className="flex min-w-0 flex-1 items-end" key={step.id}>
+          <li className="relative flex min-w-0 items-end justify-center" key={step.id}>
             {index ? (
               <span
                 aria-hidden="true"
-                className="mb-4 h-0 w-3 shrink-0 border-t border-dashed border-muted-foreground/40"
+                className={`absolute bottom-3.5 right-1/2 h-0 w-full border-t-2 border-dotted ${index <= activeIndex ? "border-primary/40" : "border-muted-foreground/35"}`}
               />
             ) : null}
             <button
               aria-current={active ? "step" : undefined}
-              className="group flex min-h-11 min-w-0 flex-1 flex-col items-center gap-1 focus-visible:outline-none"
+              className="group relative z-10 flex min-h-11 min-w-0 w-full flex-col items-center gap-1 focus-visible:outline-none"
               onClick={() => onSelect(step.id)}
               type="button"
             >

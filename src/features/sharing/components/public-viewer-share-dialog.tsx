@@ -4,7 +4,7 @@ import { ExternalLink, ImageDown, Share2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
+import { PullUpPanelHandle, useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import {
   Dialog,
   DialogContent,
@@ -65,10 +65,9 @@ export function PublicViewerShareDialog({
         className={`mobile-pull-up-panel public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),720px)]`}
         data-public-template-key={template.key}
       >
-        <div
-          aria-hidden="true"
-          className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/25 sm:hidden"
-        />
+        <div className="sm:hidden">
+          <PullUpPanelHandle onClose={() => onOpenChange(false)} />
+        </div>
         <DialogHeader className="shrink-0">
           <DialogTitle>Share itinerary</DialogTitle>
           <DialogDescription>Send a link or save an image.</DialogDescription>

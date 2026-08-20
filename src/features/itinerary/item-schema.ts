@@ -218,6 +218,7 @@ export const updateItineraryItemSchema = z
     ...itemBaseSchema.partial().shape,
     details: z.record(z.string(), z.json()).optional(),
     id: z.uuid(),
+    insertAfterItemId: z.uuid().nullable().optional(),
     tripId: z.uuid(),
     type: z.enum(itineraryItemTypes),
     variantId: z.uuid(),

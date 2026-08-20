@@ -106,7 +106,7 @@ export function PlannerMatrix({
               >
                 <div
                   aria-selected={selectedDayRow === row}
-                  className={`sticky left-0 z-20 w-24 shrink-0 cursor-pointer border-r px-2 py-0.5 font-mono text-xs ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                  className={`sticky left-0 z-20 w-24 shrink-0 cursor-pointer border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
                   onClick={() => selectDay(row)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -117,18 +117,18 @@ export function PlannerMatrix({
                   role="rowheader"
                   tabIndex={0}
                 >
-                  <span className="block font-sans text-sm font-semibold leading-tight sm:hidden">
+                  <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
                     Day {day.day_number}
                   </span>
-                  <span className="block text-sm font-medium leading-tight">
+                  <span className="block text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
                     {day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}
                   </span>
                   {day.date ? (
-                    <span className="block font-sans text-xs leading-tight text-muted-foreground">
+                    <span className="block font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
                       {format(parseISO(day.date), "EEE")}
                     </span>
                   ) : (
-                    <span className="hidden font-sans text-xs leading-tight text-muted-foreground sm:block">
+                    <span className="hidden font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px] sm:block">
                       Add dates later
                     </span>
                   )}
@@ -144,7 +144,7 @@ export function PlannerMatrix({
                   />
                 </div>
                 <div
-                  className="sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-0.5 text-sm font-semibold"
+                  className="sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]"
                   role="rowheader"
                 >
                   {day.day_number}
@@ -188,7 +188,7 @@ export function PlannerMatrix({
                       <div className="space-y-px min-[1200px]:space-y-1">
                         {category.id === "city" ? (
                           <div className="rounded-sm bg-muted/50 px-2 py-0.5">
-                            <p className="text-sm font-medium leading-tight">
+                            <p className="text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
                               {formatDayLocalitySummary(deriveDayLocality(day))}
                             </p>
                           </div>

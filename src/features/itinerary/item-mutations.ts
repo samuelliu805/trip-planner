@@ -119,54 +119,68 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const existing = plannerWorkspaceItems(previous).find(({ id }) => id === input.id);
-      if (existing)
-        client.setQueryData(
-          plannerQueryKey(tripId, variantId),
-          replaceItem(previous, {
-            ...existing,
-            ...(input.links !== undefined && {
-              booking_url: input.links[0]?.url ?? null,
-              links: input.links.map((link, sort_order) => ({
-                ...link,
-                id: `optimistic-link-${crypto.randomUUID()}`,
-                item_id: input.id,
-                sort_order,
-              })),
-            }),
-            ...(input.links === undefined &&
-              input.bookingUrl !== undefined && { booking_url: input.bookingUrl || null }),
-            ...(input.dayId !== undefined && { day_id: input.dayId }),
-            ...(input.details !== undefined && { details: input.details }),
-            ...(input.endTime !== undefined && { end_time: input.endTime || null }),
-            ...(input.notes !== undefined && { notes: input.notes || null }),
-            ...(input.placeId !== undefined && { place_id: input.placeId }),
-            ...(input.placeSnapshot !== undefined && {
-              place: input.placeSnapshot
-                ? {
-                    ...input.placeSnapshot,
-                    id: existing.place_id ?? `optimistic-place-${crypto.randomUUID()}`,
-                  }
-                : null,
-            }),
-            ...(input.placeSnapshot === undefined && input.placeId === null && { place: null }),
-            ...(input.priceAmount !== undefined && { price_amount: input.priceAmount }),
-            ...((input.priceAmount !== undefined || input.priceCurrency !== undefined) && {
-              price_currency:
-                input.priceAmount === null
-                  ? null
-                  : (input.priceCurrency ?? existing.price_currency),
-            }),
-            ...(input.startTime !== undefined && { start_time: input.startTime || null }),
-            ...((input.startTime !== undefined || input.endTime !== undefined) && {
-              schedule_kind: scheduleKind(
-                input.startTime === undefined ? existing.start_time : input.startTime,
-                input.endTime === undefined ? existing.end_time : input.endTime,
-              ),
-            }),
-            ...(input.title !== undefined && { title: input.title.trim() }),
-            ...(input.type !== undefined && { type: input.type }),
+      if (existing) {
+        const optimistic = {
+          ...existing,
+          ...(input.links !== undefined && {
+            booking_url: input.links[0]?.url ?? null,
+            links: input.links.map((link, sort_order) => ({
+              ...link,
+              id: `optimistic-link-${crypto.randomUUID()}`,
+              item_id: input.id,
+              sort_order,
+            })),
           }),
-        );
+          ...(input.links === undefined &&
+            input.bookingUrl !== undefined && { booking_url: input.bookingUrl || null }),
+          ...(input.dayId !== undefined && { day_id: input.dayId }),
+          ...(input.details !== undefined && { details: input.details }),
+          ...(input.endTime !== undefined && { end_time: input.endTime || null }),
+          ...(input.notes !== undefined && { notes: input.notes || null }),
+          ...(input.placeId !== undefined && { place_id: input.placeId }),
+          ...(input.placeSnapshot !== undefined && {
+            place: input.placeSnapshot
+              ? {
+                  ...input.placeSnapshot,
+                  id: existing.place_id ?? `optimistic-place-${crypto.randomUUID()}`,
+                }
+              : null,
+          }),
+          ...(input.placeSnapshot === undefined && input.placeId === null && { place: null }),
+          ...(input.priceAmount !== undefined && { price_amount: input.priceAmount }),
+          ...((input.priceAmount !== undefined || input.priceCurrency !== undefined) && {
+            price_currency:
+              input.priceAmount === null ? null : (input.priceCurrency ?? existing.price_currency),
+          }),
+          ...(input.startTime !== undefined && { start_time: input.startTime || null }),
+          ...((input.startTime !== undefined || input.endTime !== undefined) && {
+            schedule_kind: scheduleKind(
+              input.startTime === undefined ? existing.start_time : input.startTime,
+              input.endTime === undefined ? existing.end_time : input.endTime,
+            ),
+          }),
+          ...(input.title !== undefined && { title: input.title.trim() }),
+          ...(input.type !== undefined && { type: input.type }),
+        };
+        let optimisticWorkspace = replaceItem(previous, optimistic);
+        if (input.insertAfterItemId !== undefined && optimisticWorkspace)
+          optimisticWorkspace = {
+            ...optimisticWorkspace,
+            days: optimisticWorkspace.days.map((day) =>
+              day.id === optimistic.day_id
+                ? {
+                    ...day,
+                    items: insertActivityAtPlacement(
+                      day.items,
+                      optimistic,
+                      input.insertAfterItemId,
+                    ),
+                  }
+                : day,
+            ),
+          };
+        client.setQueryData(plannerQueryKey(tripId, variantId), optimisticWorkspace);
+      }
       return { existing, previous };
     },
     onError: (_error, _input, context) =>

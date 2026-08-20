@@ -2,13 +2,14 @@ import type { ItineraryItem, ItineraryItemType, TransportMode } from "../types";
 
 export type PlannerItemFormProps = {
   dayId: string;
+  dayItems: ItineraryItem[];
   defaultCurrency: string;
   item?: ItineraryItem;
   onCancel: () => void;
   onCloseRequestRegistration?: (handler: (() => void) | null) => void;
   onDraftChange?: (item: ItineraryItem | null) => void;
   onError: (message: string) => void;
-  onSaved: (item: ItineraryItem, options: { place: boolean }) => void;
+  onSaved: (item: ItineraryItem) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
   type: ItineraryItemType;

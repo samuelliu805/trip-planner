@@ -236,8 +236,17 @@ body:has(.trip-planner-page) {
   }
 
   .planner-map-sheet {
-    height: calc(100dvh - max(8px, env(safe-area-inset-top))) !important;
-    max-height: none;
+    height: 100dvh !important;
     padding-bottom: env(safe-area-inset-bottom) !important;
   }
+}
+
+.planner-map-sheet {
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: 100dvh !important;
+  border: 0 !important;
+  border-radius: 0 !important;
 }

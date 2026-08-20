@@ -11,8 +11,8 @@ export type ItemFormBlock =
   | "journeyTimes"
   | "links"
   | "notes"
+  | "order"
   | "place"
-  | "placement"
   | "price"
   | "serviceNumber"
   | "startTime"
@@ -21,7 +21,7 @@ export type ItemFormBlock =
 
 export type ItemFormStep = {
   blocks: ItemFormBlock[];
-  id: "basics" | "route" | "files" | "schedule" | "extras" | "place";
+  id: "basics" | "route" | "files" | "schedule" | "extras" | "order";
   title: string;
 };
 
@@ -32,17 +32,13 @@ type StepInput = {
 };
 
 function basicsBlocks(type: ItineraryItemType, serviceNumber: boolean): ItemFormBlock[] {
-  if (type === "car_rental") return ["carAction", "carProvider"];
+  if (type === "location") return ["place", "title"];
+  if (type === "car_rental") return ["carAction", "carProvider", "place"];
   if (type === "transport")
-    return serviceNumber ? ["transportMode", "serviceNumber"] : ["transportMode"];
+    return serviceNumber ? ["transportMode", "serviceNumber", "place"] : ["transportMode", "place"];
   if (type === "flight" || type === "train")
-    return serviceNumber ? ["title", "serviceNumber"] : ["title"];
-  return ["title"];
-}
-
-/** Activities and Meals share the Day's manual order, so ordering is their closing step. */
-export function plannerItemIsPlaceable(type: ItineraryItemType) {
-  return ["activity", "meal"].includes(type);
+    return serviceNumber ? ["title", "serviceNumber", "place"] : ["title", "place"];
+  return ["title", "place"];
 }
 
 /**
@@ -62,16 +58,13 @@ export function plannerItemFormSteps({
   const journeyTimes = journey.departureTime || journey.arrivalTime;
   const ownTime = supportsTime && !["flight", "train", "transport"].includes(type);
   // Step titles stay one short word so the longest six-step journey still fits a 390px bar.
-  const steps: ItemFormStep[] =
-    type === "location"
-      ? [{ blocks: ["place", "title"], id: "place", title: "Place" }]
-      : [
-          {
-            blocks: basicsBlocks(type, journey.serviceNumber),
-            id: "basics",
-            title: type === "car_rental" ? "Rental" : itemCopy[type].label,
-          },
-        ];
+  const steps: ItemFormStep[] = [
+    {
+      blocks: basicsBlocks(type, journey.serviceNumber),
+      id: "basics",
+      title: type === "car_rental" ? "Rental" : itemCopy[type].label,
+    },
+  ];
   if (journey.endpoints) steps.push({ blocks: ["endpoints"], id: "route", title: "Route" });
   steps.push({
     blocks: supportsLink ? ["links", "attachments"] : ["attachments"],
@@ -98,11 +91,7 @@ export function plannerItemFormSteps({
       title: closing.includes("price") ? "Price" : "Notes",
     });
   if (type !== "location" && supportsPlace)
-    steps.push({
-      blocks: plannerItemIsPlaceable(type) ? ["place", "placement"] : ["place"],
-      id: "place",
-      title: "Place",
-    });
+    steps.push({ blocks: ["order"], id: "order", title: "Order" });
   return steps;
 }
 
@@ -117,11 +106,10 @@ export function plannerItemStepError({
   title: string;
   type: ItineraryItemType;
 }) {
-  if (step.id === "place") {
+  if (step.blocks.includes("place")) {
     if (type === "location" && !place) return "Choose a city from Google Maps before continuing.";
     if (type === "hotel" && !place && !title.trim())
       return "Choose a hotel location or enter a displayed hotel name.";
-    return undefined;
   }
   if (step.id !== "basics") return undefined;
   if (!["car_rental", "hotel", "location", "transport"].includes(type) && !title.trim())

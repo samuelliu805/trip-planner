@@ -168,9 +168,9 @@ function MobileMapSheetPart() {
   return (
     <Sheet onOpenChange={setMapSheetOpen} open={mapSheetOpen}>
       <SheetContent
-        className={`public-map-sheet public-share-surface public-template-${template.id} h-[92dvh] max-h-[92dvh] p-0`}
+        className={`public-map-sheet public-share-surface public-template-${template.id} p-0`}
         data-public-template-key={template.key}
-        side="bottom"
+        side="right"
       >
         <SheetHeader className="shrink-0">
           <SheetTitle>Map & routes</SheetTitle>

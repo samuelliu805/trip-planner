@@ -26,12 +26,14 @@ import {
   ItemTimeField,
 } from "@/features/itinerary/components/planner-item-secondary-fields";
 import type { PlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
+import { PlannerItemOrderField } from "@/features/itinerary/components/planner-item-order-field";
 import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-form-fields";
 import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/types";
 
 export function PlannerItemStepFields({
   attachments,
   blocks,
+  dayItems,
   dayId,
   defaultCurrency,
   item,
@@ -42,6 +44,7 @@ export function PlannerItemStepFields({
 }: {
   attachments: ReactNode;
   blocks: ItemFormBlock[];
+  dayItems: ItineraryItem[];
   dayId: string;
   defaultCurrency: string;
   item?: ItineraryItem;
@@ -113,16 +116,16 @@ export function PlannerItemStepFields({
             type={type}
           />
         );
-      case "placement":
+      case "order":
         return (
-          <div className="rounded-md border bg-muted/30 px-3 py-3">
-            <p className="text-sm font-medium">Order inside the day</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {item
-                ? "Saving from this step opens the Day’s Activity order so you can move this item."
-                : "This item is added before the Hotel. Saving from this step opens the Day’s Activity order so you can drop it exactly where you want."}
-            </p>
-          </div>
+          <PlannerItemOrderField
+            insertAfterItemId={state.insertAfterItemId}
+            item={item}
+            items={dayItems}
+            onChange={state.setInsertAfterItemId}
+            title={state.title}
+            type={type}
+          />
         );
       case "place":
         return (
@@ -203,14 +206,6 @@ export function PlannerItemStepFields({
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
           Pickup and return are saved as separate items so each keeps its own day and time.
         </p>
-      ) : null}
-      {blocks.includes("place") && !item && type === "hotel" ? (
-        <div className="rounded-md border bg-muted/30 px-3 py-2.5">
-          <p className="text-sm font-medium">Position · End of day</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Hotel is always kept after the Day’s other Activities.
-          </p>
-        </div>
       ) : null}
       {blocks.includes("notes") && rentalReturn ? (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">

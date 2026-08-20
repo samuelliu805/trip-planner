@@ -211,6 +211,16 @@ body:has(.public-itinerary-shell) {
   display: none;
 }
 
+.public-map-sheet {
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: 100dvh !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
 @media (max-width: 899px) {
   .timeline-v4 {
     padding: 0.75rem 0.75rem 8.5rem;
@@ -299,11 +309,8 @@ body:has(.public-itinerary-shell) {
   }
 
   .public-map-sheet {
-    height: calc(
-      var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
-        max(8px, env(safe-area-inset-bottom))
-    ) !important;
-    max-height: none !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
     padding-bottom: env(safe-area-inset-bottom) !important;
   }
 

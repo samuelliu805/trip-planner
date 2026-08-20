@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CheckCircle2, Copy, ExternalLink, ShieldCheck, Trash2 } from "lucide-react";
+import { Check, CheckCircle2, Copy, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -61,33 +61,39 @@ export function PublicShareStatusPanel({
           <p className="text-xs text-muted-foreground">Public snapshot · No sign-in required</p>
         </div>
       </div>
-      <p className="min-w-0 break-all border bg-background px-3 py-2 font-mono text-xs">
-        {publicUrl}
-      </p>
-      <div className="flex min-w-0 flex-wrap gap-2">
+      <div className="flex min-w-0 items-stretch border bg-background">
         <Button
-          className="min-h-11"
+          className="h-auto min-h-11 min-w-0 flex-1 justify-start overflow-hidden rounded-none px-3 text-left font-mono text-xs font-normal whitespace-normal"
           onClick={() => {
             void copyTextToClipboard(publicUrl).then(() => {
               setCopied(true);
               window.setTimeout(() => setCopied(false), 2000);
             });
           }}
-          size="sm"
           type="button"
-          variant="outline"
+          variant="ghost"
+        >
+          <span className="block min-w-0 truncate">{publicUrl}</span>
+        </Button>
+        <Button
+          aria-label={copied ? "Link copied" : "Copy shareable page URL"}
+          className="min-h-11 w-11 shrink-0 rounded-none border-l p-0"
+          onClick={() => {
+            void copyTextToClipboard(publicUrl).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 2000);
+            });
+          }}
+          type="button"
+          variant="ghost"
         >
           {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-          {copied ? "Link copied" : "Copy link"}
         </Button>
-        <Button asChild className="min-h-11" size="sm">
-          <a href={publicUrl} rel="noopener noreferrer" target="_blank">
-            <ExternalLink className="size-4" /> Open page
-          </a>
-        </Button>
+      </div>
+      <div className="flex min-w-0 justify-start">
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button className="ml-auto min-h-11" disabled={pending} size="sm" variant="ghost">
+            <Button className="min-h-11" disabled={pending} size="sm" variant="ghost">
               <Trash2 className="size-4" /> Revoke
             </Button>
           </AlertDialogTrigger>

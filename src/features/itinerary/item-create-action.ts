@@ -45,7 +45,7 @@ export async function createItineraryItemMutation(
       ({ id, type }) => id === parsed.data.insertAfterItemId && type !== "hotel",
     )
   )
-    return { error: "The selected Activity position changed. Choose its position again." };
+    return { error: "The selected item position changed. Choose its position again." };
 
   let persistedPlaceId: string | null = null;
   try {

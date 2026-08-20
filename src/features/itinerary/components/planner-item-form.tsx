@@ -30,6 +30,7 @@ const stepFieldSelector = "input:not([type='hidden']),textarea,[role='combobox']
 
 export function PlannerItemForm({
   dayId,
+  dayItems,
   defaultCurrency,
   item,
   onCancel,
@@ -43,7 +44,12 @@ export function PlannerItemForm({
   unavailableTransportModes = [],
   variantId,
 }: PlannerItemFormProps) {
-  const state = usePlannerItemFormState({ defaultCurrency, item, unavailableTransportModes });
+  const state = usePlannerItemFormState({
+    defaultCurrency,
+    item,
+    items: dayItems,
+    unavailableTransportModes,
+  });
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const deleteMutation = useDeleteItineraryItem(tripId, variantId);
@@ -154,9 +160,7 @@ export function PlannerItemForm({
       const savedItem = item
         ? await updateMutation.mutateAsync({ ...values, id: item.id })
         : await createMutation.mutateAsync({ ...values, dayId });
-      onSaved(await attachmentSession.commit(savedItem), {
-        place: activeStep.blocks.includes("placement"),
-      });
+      onSaved(await attachmentSession.commit(savedItem));
     } catch (mutationFailure) {
       onError(
         mutationFailure instanceof Error
@@ -237,6 +241,7 @@ export function PlannerItemForm({
             />
           }
           blocks={activeStep.blocks}
+          dayItems={dayItems}
           dayId={dayId}
           defaultCurrency={defaultCurrency}
           item={item}
@@ -255,13 +260,7 @@ export function PlannerItemForm({
         onRemove={remove}
         pending={pending}
         pendingLabel={attachmentSession.attachmentPending ? "Updating attachments…" : undefined}
-        primaryLabel={
-          activeStep.blocks.includes("placement")
-            ? "Place item"
-            : item
-              ? "Save changes"
-              : "Add item"
-        }
+        primaryLabel={item ? "Save changes" : "Add item"}
         showBack={stepIndex > 0}
       />
       <AttachmentSessionDiscardDialog

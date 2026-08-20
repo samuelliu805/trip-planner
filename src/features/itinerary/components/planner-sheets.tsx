@@ -57,7 +57,6 @@ type PlannerSheetsProps = {
   onEditorDraftChange: (item: ItineraryItem | null) => void;
   onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
-  onPlaceItem: (item: ItineraryItem) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
@@ -107,7 +106,6 @@ export function PlannerSheets({
   onEditorDraftChange,
   onEditMapItem,
   onInteractionError,
-  onPlaceItem,
   onMapExpandedChange,
   onMarkerClick,
   onMapModeChange,
@@ -140,22 +138,24 @@ export function PlannerSheets({
         summary={decisionSummary}
       />
       <PlannerItemEditorDialog
+        dayItems={workspace.days.find(({ id }) => id === editor?.dayId)?.items ?? []}
         defaultCurrency={defaultCurrency}
         editor={editor}
         onClose={onEditorClose}
         onDraftChange={onEditorDraftChange}
         onError={onInteractionError}
-        onPlaceItem={onPlaceItem}
         shareAttachmentsEnabled={shareAttachmentsEnabled}
         tripId={tripId}
         unavailableTransportModes={unavailableTransportModes}
         variantId={workspace.variant.id}
       />
       <Sheet onOpenChange={onMapExpandedChange} open={mapExpanded}>
-        <SheetContent className="planner-map-sheet h-[86dvh] max-h-none p-0" side="bottom">
+        <SheetContent className="planner-map-sheet p-0" side="right">
           <SheetHeader className="py-4">
-            <SheetTitle>{selectedItem?.title ?? "Itinerary map"}</SheetTitle>
-            <SheetDescription>Saved places from your itinerary.</SheetDescription>
+            <SheetTitle>Map & routes</SheetTitle>
+            <SheetDescription>
+              {selectedItem?.title ?? "Saved places and route tools for this itinerary."}
+            </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell

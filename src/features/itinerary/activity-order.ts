@@ -18,6 +18,24 @@ export function orderedDayActivities(items: ItineraryItem[]) {
   return items.filter(({ type }) => type !== "location").sort(compareActivityOrder);
 }
 
+/** The insertion anchor used by the editor's Order step. Hotels remain the final day item. */
+export function itemOrderAnchor(
+  items: ItineraryItem[],
+  itemId?: string,
+  itemType?: ItineraryItem["type"],
+) {
+  const ordered = orderedDayActivities(items);
+  const existingIndex = itemId ? ordered.findIndex(({ id }) => id === itemId) : -1;
+  if (existingIndex >= 0) return existingIndex === 0 ? null : ordered[existingIndex - 1].id;
+
+  const remaining = itemId ? ordered.filter(({ id }) => id !== itemId) : ordered;
+  if (itemType === "hotel")
+    return remaining.filter(({ type }) => type !== "hotel").at(-1)?.id ?? null;
+  const hotelIndex = remaining.findIndex(({ type }) => type === "hotel");
+  const insertionIndex = hotelIndex >= 0 ? hotelIndex : remaining.length;
+  return insertionIndex === 0 ? null : remaining[insertionIndex - 1].id;
+}
+
 export function orderedDestinationActivities(items: ItineraryItem[]) {
   return items.filter(isDestinationActivity).sort(compareActivityOrder);
 }

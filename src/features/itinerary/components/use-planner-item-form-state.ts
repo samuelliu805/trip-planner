@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { normalizedActionLabel } from "./planner-item-form-config";
+import { itemOrderAnchor } from "../activity-order";
 import {
   normalizeTransportMode,
   transportModes,
@@ -16,10 +17,12 @@ import type { PlaceSnapshot } from "../../../lib/providers/places/types";
 export function usePlannerItemFormState({
   defaultCurrency,
   item,
+  items,
   unavailableTransportModes,
 }: {
   defaultCurrency: string;
   item?: ItineraryItem;
+  items: ItineraryItem[];
   unavailableTransportModes: TransportMode[];
 }) {
   const existingCar =
@@ -58,6 +61,9 @@ export function usePlannerItemFormState({
   );
   const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
   const [place, setPlace] = useState<PlaceSnapshot | null>(item?.place ?? null);
+  const [insertAfterItemId, setInsertAfterItemId] = useState<string | null>(() =>
+    itemOrderAnchor(items, item?.id, item?.type),
+  );
   const existingTransportMode = normalizeTransportMode(detailText("mode"));
   const availableTransportModes = transportModes.filter(
     (mode) =>
@@ -75,6 +81,7 @@ export function usePlannerItemFormState({
     carProvider,
     destination,
     links,
+    insertAfterItemId,
     notes,
     origin,
     place ? `${place.provider}:${place.providerPlaceId}:${place.displayName}` : null,
@@ -96,6 +103,7 @@ export function usePlannerItemFormState({
     destination,
     existingDetails,
     links,
+    insertAfterItemId,
     notes,
     origin,
     place,
@@ -107,6 +115,7 @@ export function usePlannerItemFormState({
     setCarProvider,
     setDestination,
     setLinks,
+    setInsertAfterItemId,
     setNotes,
     setOrigin,
     setPlace,

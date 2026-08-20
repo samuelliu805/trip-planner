@@ -17,7 +17,7 @@ import {
 } from "@/features/itinerary/item-schema";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { normalizedOptional, scheduleKind } from "@/features/itinerary/mutation-helpers";
-import type { MutationResult } from "@/features/itinerary/types";
+import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
 import { createClient } from "@/lib/supabase/server";
 import type { TablesUpdate } from "@/types/database";
 import {
@@ -29,6 +29,7 @@ import {
 } from "@/features/itinerary/action-helpers";
 import { validateVariantDay } from "@/features/itinerary/item-action-validation";
 import { createItineraryItemMutation } from "@/features/itinerary/item-create-action";
+import { insertedActivityOrderIds } from "@/features/itinerary/activity-order";
 
 export async function loadPlannerWorkspace(tripId: string, variantId: string) {
   return getPlannerWorkspace(tripId, variantId);
@@ -77,6 +78,27 @@ export async function updateItineraryItem(
     return {
       error: "Legacy City data is preserved for compatibility; edit an Activity place instead.",
     };
+
+  const orderTargetDayId = parsed.data.dayId ?? existingItem.day_id;
+  let orderTargetItems:
+    Array<{ id: string; sort_order: number; type: ItineraryItem["type"] }> | undefined;
+  if (parsed.data.insertAfterItemId !== undefined) {
+    const { data: targetItems, error: orderReadError } = await supabase
+      .from("itinerary_items")
+      .select("id, sort_order, type")
+      .eq("day_id", orderTargetDayId)
+      .order("sort_order")
+      .order("id");
+    if (orderReadError) return { error: mutationError(orderReadError.message) };
+    orderTargetItems = (targetItems ?? []).filter(({ id }) => id !== parsed.data.id);
+    if (
+      parsed.data.insertAfterItemId &&
+      !orderTargetItems.some(
+        ({ id, type }) => id === parsed.data.insertAfterItemId && type !== "hotel",
+      )
+    )
+      return { error: "The selected item position changed. Choose its position again." };
+  }
 
   let persistedPlaceId: string | null | undefined;
   try {
@@ -163,15 +185,33 @@ export async function updateItineraryItem(
     attachments: ownerAttachmentsFromRows(attachmentRows),
   };
 
+  let orderedItemIds: string[] | undefined;
+  if (parsed.data.insertAfterItemId !== undefined && orderTargetItems) {
+    orderedItemIds = insertedActivityOrderIds(
+      orderTargetItems,
+      { id: data.id, sort_order: data.sort_order, type: data.type },
+      parsed.data.insertAfterItemId,
+    );
+    const { error: reorderError } = await supabase.rpc("reorder_itinerary_items", {
+      ordered_item_ids: orderedItemIds,
+      target_day_id: orderTargetDayId,
+    });
+    if (reorderError) return { error: mutationError(reorderError.message) };
+  }
+
   revalidatePath(`/trips/${data.trip_id}`);
+  const savedItem = {
+    ...itemWithAttachments,
+    ...(orderedItemIds && { sort_order: orderedItemIds.indexOf(data.id) }),
+    ...(links && { links }),
+  };
   return {
     data:
       persistedPlaceId !== undefined
         ? {
-            ...withPlace(itemWithAttachments, parsed.data.placeSnapshot, persistedPlaceId),
-            ...(links && { links }),
+            ...withPlace(savedItem, parsed.data.placeSnapshot, persistedPlaceId),
           }
-        : { ...itemWithAttachments, ...(links && { links }) },
+        : savedItem,
   };
 }
 

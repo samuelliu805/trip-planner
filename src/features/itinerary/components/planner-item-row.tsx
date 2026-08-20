@@ -65,7 +65,7 @@ export function PlannerItemRow({
       className={`group/item grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
     >
       <button
-        className="flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-0.5 text-left text-sm leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         data-edit-item={item.id}
         aria-pressed={selected}
         onClick={(event) => {

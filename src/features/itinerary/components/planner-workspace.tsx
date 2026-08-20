@@ -226,9 +226,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         }}
         onEditorDraftChange={c.setDraftItem}
         onInteractionError={c.setInteractionError}
-        onPlaceItem={(item) =>
-          c.setArrangeActivitiesRequest({ dayId: item.day_id, initialMovingItemId: item.id })
-        }
         onMapExpandedChange={(open) => {
           c.setMapExpanded(open);
           if (

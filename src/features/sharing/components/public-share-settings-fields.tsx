@@ -39,10 +39,7 @@ export function PublicShareSettingsFields({
         variantId={variantId}
         variants={variants}
       />
-      <ShareSettingDisclosure
-        hint="Landing view, page text, shared content, QR code"
-        title="Advanced settings"
-      >
+      <ShareSettingDisclosure title="Advanced settings">
         <PublicSharePageFields
           onSettingChange={onSettingChange}
           settings={settings}

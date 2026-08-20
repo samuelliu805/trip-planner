@@ -93,6 +93,7 @@ import {
 import { isSameDayOrder, placeDayAtGap, reorderWorkspaceDays } from "./day-order.ts";
 import {
   insertActivityAtPlacement,
+  itemOrderAnchor,
   isActivityOrderAnchor,
   orderedDayActivities,
   orderedDestinationActivities,
@@ -2203,13 +2204,13 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     workspace,
     /oneCell &&[\s\S]*!props\.selectedItem &&[\s\S]*!props\.activeCellAtCapacity/,
   );
-  assert.doesNotMatch(form, /Place in day|After \$\{|insertAfterItemId/);
-  assert.match(form, /"Place item"/);
+  assert.match(form, /insertAfterItemId/);
+  assert.doesNotMatch(form, /"Place item"/);
   assert.match(form, /Step \{stepIndex \+ 1\} of \{steps\.length\}/);
   assert.match(workspace, /Click to place/);
-  assert.match(workspace, /onPlaceItem/);
+  assert.doesNotMatch(workspace, /onPlaceItem/);
   assert.match(workspace, /initialMovingItemId/);
-  assert.match(form, /Position · End of day/);
+  assert.match(form, /case "order"/);
   assert.match(workspace, /const active =\s*selectedCount === 1/);
   assert.match(workspace, /lastSelected &&\s*selectionAnchor\.row === selectionEnd\.row/);
   assert.match(workspace, /selectedDayRow/);
@@ -2307,7 +2308,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.doesNotMatch(styles, /\.plan-context-bar/);
   assert.match(styles, /safe-area-inset-left/);
   assert.match(styles, /planner-item-dialog input,[\s\S]*font-size: 16px/);
-  assert.match(styles, /planner-map-sheet[\s\S]*height: calc\(100dvh/);
+  assert.match(styles, /planner-map-sheet[\s\S]*height: 100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
   assert.match(styles, /html:has\(\.trip-planner-page\),[\s\S]*overflow: hidden/);
@@ -2974,33 +2975,32 @@ test("the item editor groups every type into short steps and gates required fiel
   assert.deepEqual(
     activity.map(({ blocks, id }) => `${id}:${blocks.join("+")}`),
     [
-      "basics:title",
+      "basics:title+place",
       "files:links+attachments",
       "schedule:startTime+price",
       "extras:notes",
-      "place:place+placement",
+      "order:order",
     ],
   );
-  assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["title"]);
+  assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["title", "place"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "note" }).map(({ id }) => id),
-    ["basics", "files", "place"],
+    ["basics", "files", "order"],
   );
-  // Ordering is the closing step for the two types that share the Day's manual order.
-  assert.equal(plannerItemFormSteps({ ...rail, type: "meal" }).at(-1)?.id, "place");
-  assert.equal(plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)?.id, "place");
+  assert.equal(plannerItemFormSteps({ ...rail, type: "meal" }).at(-1)?.id, "order");
+  assert.equal(plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)?.id, "order");
   const flight = plannerItemFormSteps({ ...rail, transportMode: "flight", type: "transport" });
   assert.deepEqual(
     flight.map(({ id }) => id),
-    ["basics", "route", "files", "schedule", "extras", "place"],
+    ["basics", "route", "files", "schedule", "extras", "order"],
   );
-  assert.deepEqual(flight[0].blocks, ["transportMode", "serviceNumber"]);
+  assert.deepEqual(flight[0].blocks, ["transportMode", "serviceNumber", "place"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, transportMode: "walk", type: "transport" }).map(({ id }) => id),
-    ["basics", "files", "extras", "place"],
+    ["basics", "files", "extras", "order"],
   );
   const rentalReturn = plannerItemFormSteps({ ...rail, carAction: "return", type: "car_rental" });
-  assert.deepEqual(rentalReturn[0].blocks, ["carAction", "carProvider"]);
+  assert.deepEqual(rentalReturn[0].blocks, ["carAction", "carProvider", "place"]);
   assert.equal(
     rentalReturn.some(({ blocks }) => blocks.includes("price")),
     false,
@@ -3021,9 +3021,11 @@ test("the item editor groups every type into short steps and gates required fiel
       assert.ok(step.blocks.length <= 3, `${type} step ${step.id} is too long`);
     assert.equal(itemFormCapabilities(type, "pickup").supportsPlace, true);
     assert.ok(
-      typeSteps.some(({ blocks, id }) => id === "place" && blocks.includes("place")),
-      `${type} has a dedicated Place step`,
+      typeSteps.some(({ blocks }) => blocks.includes("place")),
+      `${type} keeps its place field`,
     );
+    if (type !== "location")
+      assert.deepEqual(typeSteps.at(-1), { blocks: ["order"], id: "order", title: "Order" });
   }
 
   const place = { displayName: "Kyoto" } as unknown as PlaceSnapshot;
@@ -3036,7 +3038,7 @@ test("the item editor groups every type into short steps and gates required fiel
     plannerItemStepError({ place, step: cityBasics, title: "", type: "location" }),
     undefined,
   );
-  const hotelPlace = plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)!;
+  const hotelPlace = plannerItemFormSteps({ ...rail, type: "hotel" })[0];
   assert.match(
     plannerItemStepError({ place: null, step: hotelPlace, title: " ", type: "hotel" }) ?? "",
     /displayed hotel name/,
@@ -3053,4 +3055,14 @@ test("the item editor groups every type into short steps and gates required fiel
     plannerItemStepError({ place: null, step: activity[3], title: "", type: "activity" }),
     undefined,
   );
+});
+
+test("the editor Order step derives stable anchors for add and edit", () => {
+  const item = (id: string, sort_order: number, type: ItineraryItem["type"] = "activity") =>
+    ({ id, sort_order, type }) as ItineraryItem;
+  const items = [item("museum", 0), item("meal", 1, "meal"), item("hotel", 2, "hotel")];
+  assert.equal(itemOrderAnchor(items, "museum", "activity"), null);
+  assert.equal(itemOrderAnchor(items, "meal", "meal"), "museum");
+  assert.equal(itemOrderAnchor(items, undefined, "activity"), "meal");
+  assert.equal(itemOrderAnchor(items, undefined, "hotel"), "meal");
 });
