@@ -22,10 +22,11 @@ type DialogViewportStyle = React.CSSProperties & {
   "--dialog-viewport-top"?: string;
 };
 
-function useDialogViewport() {
+function useDialogViewport(active = true) {
   const [viewport, setViewport] = React.useState<DialogViewport>();
 
   React.useEffect(() => {
+    if (!active) return;
     const visualViewport = window.visualViewport;
     let frame = 0;
 
@@ -57,7 +58,7 @@ function useDialogViewport() {
       visualViewport?.removeEventListener("resize", scheduleMeasure);
       visualViewport?.removeEventListener("scroll", scheduleMeasure);
     };
-  }, []);
+  }, [active]);
 
   return viewport;
 }
@@ -65,9 +66,10 @@ function useDialogViewport() {
 function DialogContent({
   className,
   children,
+  showCloseButton = true,
   style,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { showCloseButton?: boolean }) {
   const viewport = useDialogViewport();
   const viewportStyle: DialogViewportStyle = {
     ...(viewport
@@ -95,13 +97,15 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close
-          className="app-dialog-close absolute right-4 top-4 z-20 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          data-dialog-close=""
-        >
-          <X aria-hidden="true" className="size-5" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {showCloseButton ? (
+          <DialogPrimitive.Close
+            className="app-dialog-close absolute right-4 top-4 z-20 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            data-dialog-close=""
+          >
+            <X aria-hidden="true" className="size-5" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        ) : null}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   );

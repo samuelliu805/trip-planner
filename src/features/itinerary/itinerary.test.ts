@@ -1708,8 +1708,8 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(mapShell, /closeOverviewPanel[\s\S]*onMapSelectionClear/);
   assert.match(mapShell, /closeDayPanel[\s\S]*onMapSelectionClear/);
   assert.match(mapShell, /PanelBottomOpen/);
-  assert.match(mapShell, /Open Overview panel/);
-  assert.match(mapShell, /Open day route panel/);
+  assert.match(mapShell, /Open map details/);
+  assert.match(mapShell, /Open map details/);
   assert.match(mapShell, /title="Edit item"/);
   assert.doesNotMatch(mapShell, /Show Route A panel/);
   assert.match(mapShell, /DayRouteOverlay[\s\S]*onClose=\{closeDayPanel\}/);
@@ -2243,10 +2243,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(
     styles,
-    /planner-item-dialog[\s\S]*inset: 0 !important;[\s\S]*height: 100lvh !important/,
+    /planner-item-dialog[\s\S]*--planner-editor-viewport-top[\s\S]*--planner-editor-viewport-height/,
   );
-  assert.doesNotMatch(editorDialog, /useDialogViewport|--dialog-viewport-height/);
-  assert.doesNotMatch(styles, /--(?:sheet|planner-visual)-viewport-(height|top|bottom)/);
+  assert.match(editorDialog, /useDialogViewport/);
+  assert.match(editorDialog, /planner-editor-viewport-locked/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
   assert.match(workspace, /planner-mobile-map-fab/);
@@ -2995,19 +2995,19 @@ test("the item editor groups every type into short steps and gates required fiel
   assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["title", "place"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "note" }).map(({ id }) => id),
-    ["basics", "files", "order"],
+    ["basics", "files"],
   );
   assert.equal(plannerItemFormSteps({ ...rail, type: "meal" }).at(-1)?.id, "order");
   assert.equal(plannerItemFormSteps({ ...rail, type: "hotel" }).at(-1)?.id, "order");
   const flight = plannerItemFormSteps({ ...rail, transportMode: "flight", type: "transport" });
   assert.deepEqual(
     flight.map(({ id }) => id),
-    ["basics", "route", "files", "schedule", "extras", "order"],
+    ["basics", "route", "files", "schedule", "extras"],
   );
   assert.deepEqual(flight[0].blocks, ["transportMode", "serviceNumber", "place"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, transportMode: "walk", type: "transport" }).map(({ id }) => id),
-    ["basics", "files", "extras", "order"],
+    ["basics", "files", "extras"],
   );
   const rentalReturn = plannerItemFormSteps({ ...rail, carAction: "return", type: "car_rental" });
   assert.deepEqual(rentalReturn[0].blocks, ["carAction", "carProvider", "place"]);
@@ -3034,8 +3034,9 @@ test("the item editor groups every type into short steps and gates required fiel
       typeSteps.some(({ blocks }) => blocks.includes("place")),
       `${type} keeps its place field`,
     );
-    if (type !== "location")
+    if (["activity", "meal", "hotel"].includes(type))
       assert.deepEqual(typeSteps.at(-1), { blocks: ["order"], id: "order", title: "Order" });
+    else assert.equal(typeSteps.some(({ id }) => id === "order"), false);
   }
 
   const place = { displayName: "Kyoto" } as unknown as PlaceSnapshot;
@@ -3070,9 +3071,15 @@ test("the item editor groups every type into short steps and gates required fiel
 test("the editor Order step derives stable anchors for add and edit", () => {
   const item = (id: string, sort_order: number, type: ItineraryItem["type"] = "activity") =>
     ({ id, sort_order, type }) as ItineraryItem;
-  const items = [item("museum", 0), item("meal", 1, "meal"), item("hotel", 2, "hotel")];
+  const items = [
+    item("museum", 0),
+    item("train", 1, "transport"),
+    item("meal", 2, "meal"),
+    item("hotel", 3, "hotel"),
+  ];
   assert.equal(itemOrderAnchor(items, "museum", "activity"), null);
   assert.equal(itemOrderAnchor(items, "meal", "meal"), "museum");
   assert.equal(itemOrderAnchor(items, undefined, "activity"), "meal");
   assert.equal(itemOrderAnchor(items, undefined, "hotel"), "meal");
+  assert.equal(itemOrderAnchor(items, "train", "transport"), null);
 });

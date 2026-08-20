@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, RotateCcw, Route, X } from "lucide-react";
+import { GitCompareArrows, LoaderCircle, RotateCcw, Route, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
@@ -29,18 +29,22 @@ const formatDuration = (seconds: number) => {
 };
 
 export function OverviewRouteOverlay({
+  comparisonBlockingReason,
   onClose,
+  onCompare,
   route,
   selectedPlace,
 }: {
+  comparisonBlockingReason?: string;
   onClose: () => void;
+  onCompare: () => void;
   route: OverviewRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
   if (!route.segments.length)
     return selectedPlace ? (
       <section className="overview-route-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 rounded-xl border bg-background/95 px-3 pb-3 pr-12 shadow-lg backdrop-blur">
-        <PullUpPanelHandle onClose={onClose} />
+        <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
         {selectedPlace}
         <RouteIconButton
           className="absolute right-2 top-2"
@@ -71,10 +75,10 @@ export function OverviewRouteOverlay({
 
   return (
     <section className="overview-route-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur min-[900px]:max-h-[calc(100%-4.5rem)]">
-      <PullUpPanelHandle onClose={onClose} />
+      <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
       {selectedPlace ? <div className="shrink-0 border-b px-3 py-2">{selectedPlace}</div> : null}
       <div className="flex min-h-0 flex-1 flex-col px-3 py-2">
-        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Route className="size-4 shrink-0 text-primary" />
             <div className="min-w-0">
@@ -89,11 +93,7 @@ export function OverviewRouteOverlay({
             </div>
           </div>
           <Button
-            className={
-              route.editing
-                ? "col-start-2 row-start-1"
-                : "col-span-2 w-full sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:w-auto"
-            }
+            className="col-start-2 row-start-1"
             onClick={() => route.setEditing(!route.editing)}
             size="sm"
             type="button"
@@ -103,7 +103,18 @@ export function OverviewRouteOverlay({
           </Button>
           {!route.editing ? (
             <RouteIconButton
-              className="col-start-2 row-start-1 sm:col-start-3 sm:row-start-1"
+              className="col-start-3 row-start-1"
+              disabled={Boolean(comparisonBlockingReason)}
+              label="Compare route variants"
+              onClick={onCompare}
+              title={comparisonBlockingReason ?? "Compare route variants"}
+            >
+              <GitCompareArrows className="size-4" />
+            </RouteIconButton>
+          ) : null}
+          {!route.editing ? (
+            <RouteIconButton
+              className="col-start-4 row-start-1"
               label="Close Overview panel"
               onClick={onClose}
               title="Close panel"

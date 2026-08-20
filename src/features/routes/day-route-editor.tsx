@@ -57,7 +57,7 @@ export function DayRouteEditor({
       aria-label="Edit Route A"
       className="day-route-editor mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 flex max-h-[62dvh] flex-col overflow-hidden rounded-xl border bg-background/97 shadow-xl backdrop-blur min-[900px]:left-auto min-[900px]:right-3 min-[900px]:top-14 min-[900px]:max-h-none min-[900px]:w-[min(360px,calc(100%-1.5rem))]"
     >
-      <PullUpPanelHandle onClose={onBack} />
+      <PullUpPanelHandle className="sm:hidden" onClose={onBack} />
       <header className="border-b px-4 py-3">
         <div className="flex items-center justify-between gap-3">
           <div>

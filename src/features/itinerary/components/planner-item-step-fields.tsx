@@ -198,7 +198,7 @@ export function PlannerItemStepFields({
   }
 
   return (
-    <div className="planner-item-step-fields min-w-0 space-y-6">
+    <div className="planner-item-step-fields min-w-0 space-y-8">
       {blocks.map((name) => (
         <Fragment key={name}>{block(name)}</Fragment>
       ))}

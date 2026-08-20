@@ -603,9 +603,9 @@ test("Trip detail keeps context controls at top and uses one mobile destination 
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     );
   assert.match(appBar, /ariaLabel="Trip sections"/);
-  assert.match(barMenu, /aria-current/);
-  assert.match(barMenu, /label: "Plan"/);
-  assert.match(barMenu, /label: "Ideas & Options"/);
+  assert.match(appBar, /aria-current/);
+  assert.match(appBar, /label: "Plan"/);
+  assert.match(appBar, /label: "Ideas & Options"/);
   assert.match(planToolbar, /<TripAppBar[\s\S]*actions=\{<PlannerContextActions/);
   assert.match(planToolbar, /menuItems=\{<PlannerContextMenuItems/);
   assert.match(compareWorkspace, /aria-label="Research context"/);

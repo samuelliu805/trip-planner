@@ -18,7 +18,11 @@ export function PlannerContextMenuItems(props: PlannerContextProps) {
     : undefined;
   return (
     <>
-      <DropdownMenuItem onSelect={() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT))}>
+      <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">Plan tools</p>
+      <DropdownMenuItem
+        className="bg-primary/10 font-semibold text-primary focus:bg-primary/15 focus:text-primary"
+        onSelect={() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT))}
+      >
         <ReceiptText className="size-4" /> Plan cost
       </DropdownMenuItem>
       {showResearch && props.researchContext ? (
@@ -49,6 +53,7 @@ export function PlannerContextMenuItems(props: PlannerContextProps) {
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuSeparator />
+      <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">Selection</p>
       <DropdownMenuItem disabled={props.requestPending} onSelect={props.copySelectionToClipboard}>
         <Copy className="size-4" /> Copy selected cells
       </DropdownMenuItem>
@@ -90,88 +95,101 @@ export function PlannerMobileMenuItems({
   const rowClass = "min-h-11 w-full justify-start px-3 font-normal";
 
   return (
-    <div className="space-y-1">
-      <Button
-        className={rowClass}
-        onClick={() => runAction(() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT)))}
-        variant="ghost"
-      >
-        <ReceiptText className="size-4" /> Plan cost
-      </Button>
-      {showResearch && props.researchContext ? (
-        <div className="pb-2">
-          <PlannerResearchActions
-            compact
-            context={props.researchContext}
-            currency={props.trip.currency}
-            days={props.planDays}
-            items={props.researchItems}
-            sourceItem={researchSourceItem}
-            tripId={props.trip.id}
-          />
+    <div className="space-y-4">
+      <section>
+        <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Plan tools
+        </p>
+        <div className="space-y-1 rounded-xl border bg-muted/20 p-1">
+          <Button
+            className="min-h-11 w-full justify-start px-3 font-semibold shadow-sm"
+            onClick={() => runAction(() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT)))}
+          >
+            <ReceiptText className="size-4" /> Plan cost
+          </Button>
+          {showResearch && props.researchContext ? (
+            <div className="pb-2">
+              <PlannerResearchActions
+                compact
+                context={props.researchContext}
+                currency={props.trip.currency}
+                days={props.planDays}
+                items={props.researchItems}
+                sourceItem={researchSourceItem}
+                tripId={props.trip.id}
+              />
+            </div>
+          ) : null}
+          {props.activeDay ? (
+            <Button
+              className={rowClass}
+              onClick={() => runAction(() => props.onArrangeActivities(props.activeDay!))}
+              variant="ghost"
+            >
+              <ListOrdered className="size-4" /> Arrange Activities
+            </Button>
+          ) : null}
+          <Button
+            className={rowClass}
+            disabled={props.dayMutationPending}
+            onClick={() =>
+              runAction(() => {
+                void props.insertDay(props.workspaceDayCount + 1);
+              })
+            }
+            variant="ghost"
+          >
+            <Plus className="size-4" /> Add day at end
+          </Button>
         </div>
-      ) : null}
-      {props.activeDay ? (
+      </section>
+      <section>
+        <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Selected cells
+        </p>
+        <div className="space-y-1 rounded-xl border bg-muted/20 p-1">
         <Button
           className={rowClass}
-          onClick={() => runAction(() => props.onArrangeActivities(props.activeDay!))}
-          variant="ghost"
-        >
-          <ListOrdered className="size-4" /> Arrange Activities
-        </Button>
-      ) : null}
-      <Button
-        className={rowClass}
-        disabled={props.dayMutationPending}
-        onClick={() =>
-          runAction(() => {
-            void props.insertDay(props.workspaceDayCount + 1);
-          })
-        }
-        variant="ghost"
-      >
-        <Plus className="size-4" /> Add day at end
-      </Button>
-      <Button
-        className={rowClass}
-        disabled={props.requestPending}
-        onClick={() =>
-          runAction(() => {
-            void props.pasteAvailableClipboard();
-          })
-        }
-        variant="ghost"
-      >
-        <ClipboardPaste className="size-4" /> Paste
-      </Button>
-      <Button
-        className={rowClass}
-        disabled={!props.clearItemCount || props.clearPending}
-        onClick={() => runAction(props.requestClearSelection)}
-        variant="ghost"
-      >
-        <Trash2 className="size-4" /> Clear selected cells
-      </Button>
-      <Button
-        className={rowClass}
-        disabled={props.requestPending}
-        onClick={() => runAction(() => props.setCopyDaysOpen(true))}
-        variant="ghost"
-      >
-        <Copy className="size-4" /> Copy to days…
-      </Button>
-      <Button
-        className={rowClass}
-        disabled={props.requestPending}
-        onClick={() =>
-          runAction(() => {
-            void props.copyPreviousDay();
-          })
-        }
-        variant="ghost"
-      >
-        <Copy className="size-4" /> Copy previous day
-      </Button>
+            disabled={props.requestPending}
+            onClick={() =>
+              runAction(() => {
+                void props.pasteAvailableClipboard();
+              })
+            }
+            variant="ghost"
+          >
+            <ClipboardPaste className="size-4" /> Paste
+          </Button>
+          <Button
+            className={rowClass}
+            disabled={!props.clearItemCount || props.clearPending}
+            onClick={() => runAction(props.requestClearSelection)}
+            variant="ghost"
+          >
+            <Trash2 className="size-4" /> Clear selected cells
+          </Button>
+          <Button
+            className={rowClass}
+            disabled={props.requestPending}
+            onClick={() => runAction(() => props.setCopyDaysOpen(true))}
+            variant="ghost"
+          >
+            <Copy className="size-4" /> Copy to days…
+          </Button>
+          <Button
+            className={rowClass}
+            disabled={props.requestPending}
+            onClick={() =>
+              runAction(() => {
+                void props.copyPreviousDay();
+              })
+            }
+            variant="ghost"
+          >
+            <Copy className="size-4" /> Copy previous day
+          </Button>
+        </div>
+      </section>
     </div>
   );
 }

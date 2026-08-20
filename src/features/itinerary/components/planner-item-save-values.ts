@@ -2,6 +2,7 @@ import {
   itemFormCapabilities,
   plannerItemTitle,
 } from "@/features/itinerary/components/planner-item-form-config";
+import { isDestinationActivity } from "@/features/itinerary/activity-order";
 import type { PlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-form-fields";
 import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/types";
@@ -99,7 +100,7 @@ export function plannerItemSaveValues({
   return {
     bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
     links: supportsLink ? links : [],
-    insertAfterItemId,
+    insertAfterItemId: isDestinationActivity({ type }) ? insertAfterItemId : undefined,
     details: details as never,
     endTime: journey.arrivalTime ? arrivalTime : "",
     notes: type === "note" ? "" : notes,

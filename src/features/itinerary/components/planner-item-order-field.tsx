@@ -2,7 +2,10 @@
 
 import { Check, ListOrdered } from "lucide-react";
 
-import { compareActivityOrder } from "@/features/itinerary/activity-order";
+import {
+  compareActivityOrder,
+  isDestinationActivity,
+} from "@/features/itinerary/activity-order";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/types";
 
@@ -49,7 +52,7 @@ export function PlannerItemOrderField({
   type: ItineraryItemType;
 }) {
   const ordered = items
-    .filter(({ id, type: itemType }) => id !== item?.id && itemType !== "location")
+    .filter((entry) => entry.id !== item?.id && isDestinationActivity(entry))
     .sort(compareActivityOrder);
   const label = title.trim() || item?.title || `New ${itemCopy[type].label.toLowerCase()}`;
 

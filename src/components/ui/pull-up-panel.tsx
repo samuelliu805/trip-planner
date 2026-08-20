@@ -43,13 +43,22 @@ export function useExclusivePullUpPanel(
   }, [id, open]);
 }
 
-export function PullUpPanelHandle({ onClose }: { onClose: () => void }) {
+export function PullUpPanelHandle({
+  className,
+  onClose,
+}: {
+  className?: string;
+  onClose: () => void;
+}) {
   const controllerRef = usePullUpPanelDrag(onClose);
 
   return (
     <div
       aria-hidden="true"
-      className="flex h-8 shrink-0 touch-none cursor-grab items-center justify-center active:cursor-grabbing"
+      className={cn(
+        "flex h-8 shrink-0 touch-none cursor-grab items-center justify-center active:cursor-grabbing",
+        className,
+      )}
       data-pull-up-handle=""
       ref={controllerRef}
     >
@@ -62,6 +71,7 @@ export function PullUpPanel({
   children,
   className,
   description,
+  dragMode = "all",
   id,
   onOpenChange,
   open,
@@ -71,6 +81,7 @@ export function PullUpPanel({
   children: ReactNode;
   className?: string;
   description?: string;
+  dragMode?: "all" | "mobile";
   id: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -88,7 +99,10 @@ export function PullUpPanel({
         overlayClassName={overlayClassName}
         side="bottom"
       >
-        <PullUpPanelHandle onClose={() => onOpenChange(false)} />
+        <PullUpPanelHandle
+          className={dragMode === "mobile" ? "sm:hidden" : undefined}
+          onClose={() => onOpenChange(false)}
+        />
         <SheetHeader className="shrink-0 border-b-0 pb-3 pt-3">
           <SheetTitle>{title}</SheetTitle>
           {description ? <SheetDescription>{description}</SheetDescription> : null}

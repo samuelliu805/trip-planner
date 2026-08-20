@@ -37,7 +37,7 @@ export function TripMobileTabBar({
     <AppBottomNavigation
       activeId={active}
       ariaLabel="Trip sections"
-      className="trip-mobile-tab-bar z-[70] grid-cols-2 shrink-0 rounded-none border-x-0 border-b-0 pb-[max(0.35rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-1 shadow-none min-[960px]:hidden"
+      className="trip-mobile-tab-bar z-[70] grid-cols-2 shrink-0 rounded-none border-x-0 border-b-0 pb-[max(0.35rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-1 shadow-none sm:hidden"
       itemClassName="min-h-14 flex-col gap-0.5 px-2 text-[11px] leading-none"
       items={items}
     />
@@ -83,20 +83,49 @@ export function TripAppBar({
 }: TripAppBarProps) {
   return (
     <header className="trip-app-bar z-[70] shrink-0 border-b bg-background/95 backdrop-blur">
-      <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:gap-2">
-        <Button asChild className="-ml-1 size-11 shrink-0 p-0" variant="ghost">
-          <Link aria-label="Back to Trips" href="/trips">
-            <ArrowLeft aria-hidden="true" className="size-4" />
-          </Link>
-        </Button>
+      <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-          <h1 className="min-w-0 flex-1 truncate text-sm font-semibold min-[960px]:text-base">
-            {title}
-          </h1>
-          <div className="min-w-0 shrink-0">{variantControls}</div>
+          <Button asChild className="-ml-1 size-11 shrink-0 p-0" variant="ghost">
+            <Link aria-label="Back to Trips" href="/trips">
+              <ArrowLeft aria-hidden="true" className="size-4" />
+            </Link>
+          </Button>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+            <h1 className="min-w-0 flex-1 truncate text-sm font-semibold min-[960px]:text-base">
+              {title}
+            </h1>
+            <div className="min-w-0 shrink-0">{variantControls}</div>
+          </div>
         </div>
 
-        <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-1.5">
+        <nav
+          aria-label="Trip sections"
+          className="hidden items-center rounded-lg bg-muted p-1 sm:flex"
+        >
+          {sections.map((section) => {
+            const Icon = section.id === "plan" ? Table2 : Lightbulb;
+            return (
+              <Button
+                asChild
+                className="h-9 min-h-9 gap-1.5 px-3 text-xs"
+                key={section.id}
+                size="sm"
+                variant={section.id === active ? "default" : "ghost"}
+              >
+                <Link
+                  aria-current={section.id === active ? "page" : undefined}
+                  href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
+                  prefetch
+                >
+                  <Icon aria-hidden="true" className="size-3.5" />
+                  {section.label}
+                </Link>
+              </Button>
+            );
+          })}
+        </nav>
+
+        <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:ml-0 sm:gap-1.5">
           {mutating ? (
             <span
               aria-live="polite"
@@ -109,7 +138,6 @@ export function TripAppBar({
           {actions}
           <TripBarMenu
             accountEmail={accountEmail}
-            active={active}
             extraItems={menuItems}
             mobileMenuItems={mobileMenuItems}
             mobileQuickActions={mobileQuickActions}
@@ -119,9 +147,6 @@ export function TripAppBar({
                 : undefined
             }
             onTripSettings={onTripSettings}
-            researchCategory={researchCategory}
-            tripId={tripId}
-            variantId={variantId}
           />
         </div>
         <div className="contents">{shareControls}</div>

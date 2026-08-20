@@ -81,6 +81,7 @@ export function PlannerMapShell({
 }) {
   const activeDayId = dayRoute.activeDay?.id ?? "no-day";
   const [overviewPanelOpen, setOverviewPanelOpen] = useState(true);
+  const [comparisonPanelOpen, setComparisonPanelOpen] = useState(true);
   const [dayPanelState, setDayPanelState] = useState<{
     dayId: string;
     open: boolean;
@@ -92,7 +93,7 @@ export function PlannerMapShell({
     mapMode === "overview"
       ? !overviewPanelVisible
       : mapMode === "comparison"
-        ? false
+        ? !comparisonPanelOpen
         : !dayPanelOpen;
   const setDayPanelOpen = (open: boolean) => setDayPanelState({ dayId: activeDayId, open });
   const handleMarkerClick = (id?: string) => {
@@ -150,7 +151,6 @@ export function PlannerMapShell({
       />
       <PlannerMapControls
         compact={compact}
-        comparisonBlockingReason={comparison.blockingReason}
         dayCityLayerAvailable={dayCityLayerAvailable}
         dayMapLayer={dayMapLayer}
         mapMode={mapMode}
@@ -158,34 +158,53 @@ export function PlannerMapShell({
         onExpand={onExpand}
         onMapModeChange={(mode) => {
           if (mode === "day_route") setDayPanelOpen(true);
-          else setOverviewPanelOpen(true);
+          else if (mode === "overview") setOverviewPanelOpen(true);
+          else setComparisonPanelOpen(true);
           onMapModeChange(mode);
         }}
         onPanelOpen={() => {
           if (mapMode === "overview") setOverviewPanelOpen(true);
           else if (mapMode === "day_route") setDayPanelOpen(true);
+          else setComparisonPanelOpen(true);
         }}
         panelDismissed={panelDismissed && !selectedId}
       />
       {!compact && selectedPlace ? (
         <section className="map-place-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
-          <PullUpPanelHandle onClose={closeSelectedPlace} />
+          <PullUpPanelHandle className="sm:hidden" onClose={closeSelectedPlace} />
           <div className="min-h-0 overflow-y-auto px-3 pb-3">{selectedPlace}</div>
         </section>
       ) : null}
       {!compact && !selectedId && mapMode === "overview" && overviewPanelVisible ? (
-        <OverviewRouteOverlay onClose={closeOverviewPanel} route={overviewRoute} />
+        <OverviewRouteOverlay
+          comparisonBlockingReason={comparison.blockingReason}
+          onClose={closeOverviewPanel}
+          onCompare={() => {
+            setComparisonPanelOpen(true);
+            onMapModeChange("comparison");
+          }}
+          route={overviewRoute}
+        />
       ) : null}
       {!compact && !selectedId && mapMode === "day_route" && dayPanelOpen ? (
-        <DayRouteOverlay onClose={closeDayPanel} route={dayRoute} />
+        <DayRouteOverlay
+          comparisonBlockingReason={comparison.blockingReason}
+          onClose={closeDayPanel}
+          onCompare={() => {
+            setComparisonPanelOpen(true);
+            onMapModeChange("comparison");
+          }}
+          route={dayRoute}
+        />
       ) : null}
       {mapMode === "comparison" ? (
         <>
           <VariantComparisonMapStatus comparison={comparison} />
-          {!compact ? (
+          {!compact && comparisonPanelOpen ? (
             <>
               <RouteVariantComparisonPanel
                 comparison={comparison}
+                onClose={() => setComparisonPanelOpen(false)}
                 onSummaryOpen={onDecisionSummaryOpen}
                 summaryOpen={decisionSummaryPanelOpen}
               />
@@ -200,6 +219,7 @@ export function PlannerMapShell({
               <VariantComparisonMobileBar
                 comparison={comparison}
                 onChooseRoutes={onComparisonSheetOpen}
+                onClose={() => setComparisonPanelOpen(false)}
                 onSummaryOpen={onDecisionSummaryOpen}
               />
             </>

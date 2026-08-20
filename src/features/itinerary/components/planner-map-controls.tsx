@@ -1,14 +1,12 @@
 "use client";
 
-import { GitCompareArrows, Maximize2, PanelBottomOpen } from "lucide-react";
-import { useId } from "react";
+import { Maximize2, PanelBottomOpen } from "lucide-react";
 
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerMapControls({
   compact,
-  comparisonBlockingReason,
   dayCityLayerAvailable,
   dayMapLayer,
   mapMode,
@@ -19,7 +17,6 @@ export function PlannerMapControls({
   panelDismissed,
 }: {
   compact: boolean;
-  comparisonBlockingReason?: string;
   dayCityLayerAvailable: boolean;
   dayMapLayer: DayMapLayer;
   mapMode: PlannerMapMode;
@@ -29,7 +26,6 @@ export function PlannerMapControls({
   onPanelOpen: () => void;
   panelDismissed: boolean;
 }) {
-  const comparisonReasonId = useId();
   return (
     <>
       {onExpand ? (
@@ -50,43 +46,24 @@ export function PlannerMapControls({
               [
                 { description: "Show the whole trip", label: "Whole trip", value: "overview" },
                 { description: "Show the selected day", label: "This day", value: "day_route" },
-                {
-                  description:
-                    comparisonBlockingReason ??
-                    (mapMode === "day_route"
-                      ? "Compare this Day route across variants"
-                      : "Compare route variants by Activity city/town stages"),
-                  disabled: Boolean(comparisonBlockingReason),
-                  label: "Compare",
-                  value: "comparison",
-                },
               ] as const
-            ).map(({ description, label, value, ...item }) => {
-              const disabled = "disabled" in item && item.disabled;
+            ).map(({ description, label, value }) => {
               return (
-                <span className="flex" key={value} title={disabled ? description : undefined}>
+                <span className="flex" key={value}>
                   <button
-                    aria-describedby={disabled ? comparisonReasonId : undefined}
                     aria-label={description}
                     aria-pressed={mapMode === value}
                     className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-                    disabled={disabled}
                     onClick={() => onMapModeChange(value)}
                     title={description}
                     type="button"
                   >
-                    {value === "comparison" ? <GitCompareArrows className="size-3.5" /> : null}
                     {label}
                   </button>
                 </span>
               );
             })}
           </div>
-          {comparisonBlockingReason ? (
-            <span className="sr-only" id={comparisonReasonId}>
-              {comparisonBlockingReason}
-            </span>
-          ) : null}
           {mapMode === "day_route" && dayCityLayerAvailable ? (
             <div
               aria-label="Day map content"
@@ -129,14 +106,13 @@ export function PlannerMapControls({
       ) : null}
       {!compact && panelDismissed ? (
         <button
-          aria-label={mapMode === "overview" ? "Open Overview panel" : "Open day route panel"}
-          className="map-panel-reopen absolute left-3 z-20 flex min-h-11 items-center gap-2 rounded-full border bg-background/95 px-3 text-xs font-semibold text-foreground shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Open map details"
+          className="map-panel-reopen absolute left-3 z-20 flex size-11 items-center justify-center rounded-full border bg-background/95 p-0 text-foreground shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onPanelOpen}
-          title={mapMode === "overview" ? "Open Overview panel" : "Open day route panel"}
+          title="Open map details"
           type="button"
         >
-          <PanelBottomOpen className="size-4 text-primary" />
-          <span>Route details</span>
+          <PanelBottomOpen className="size-5 text-primary" />
         </button>
       ) : null}
     </>

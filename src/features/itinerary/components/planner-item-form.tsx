@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -205,33 +205,46 @@ export function PlannerItemForm({
         void save();
       }}
     >
-      <div className="planner-item-form-header shrink-0 space-y-3 border-b px-5 pb-4 pt-3 sm:px-6">
-        <div className="flex min-h-11 items-center">
-          <Button
-            aria-busy={pending}
-            className="-ml-3 min-h-11 px-3 font-semibold text-primary hover:text-primary"
-            disabled={pending}
-            size="sm"
-            type="submit"
-            variant="ghost"
-          >
-            {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
-            {pending ? pendingLabel : "Save"}
-          </Button>
+      <div className="planner-item-form-header shrink-0 border-b px-5 pb-5 pt-4 sm:px-6">
+        <div className="planner-item-form-header-inner space-y-4">
+          <div className="flex min-h-11 items-center justify-between gap-3">
+            <Button
+              aria-busy={pending}
+              className="min-h-11 min-w-24 px-4 font-semibold shadow-sm"
+              disabled={pending}
+              size="sm"
+              type="submit"
+            >
+              {pending ? (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              ) : null}
+              {pending ? pendingLabel : "Save"}
+            </Button>
+            <Button
+              aria-label="Close editor"
+              className="size-11 shrink-0 p-0"
+              disabled={itemMutationPending}
+              onClick={requestExit}
+              type="button"
+              variant="ghost"
+            >
+              <X aria-hidden="true" className="size-5" />
+            </Button>
+          </div>
+          <DialogTitle className="truncate text-xl font-extrabold tracking-tight">
+            {item ? "Edit" : "Add"} {copy.label.toLowerCase()}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Step {stepIndex + 1} of {steps.length}: {activeStep.title}. The item can be saved from
+            any step.
+          </DialogDescription>
+          <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
+          {(stepError ?? mutationError?.message) ? (
+            <p className="text-sm font-medium text-destructive" role="alert">
+              {stepError ?? mutationError?.message}
+            </p>
+          ) : null}
         </div>
-        <DialogTitle className="truncate text-xl font-bold tracking-tight">
-          {item ? "Edit" : "Add"} {copy.label.toLowerCase()}
-        </DialogTitle>
-        <DialogDescription className="sr-only">
-          Step {stepIndex + 1} of {steps.length}: {activeStep.title}. The item can be saved from any
-          step.
-        </DialogDescription>
-        <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
-        {(stepError ?? mutationError?.message) ? (
-          <p className="text-sm font-medium text-destructive" role="alert">
-            {stepError ?? mutationError?.message}
-          </p>
-        ) : null}
       </div>
       <div
         className="min-h-0 min-w-0 flex-1 touch-pan-y space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-6 sm:px-6"

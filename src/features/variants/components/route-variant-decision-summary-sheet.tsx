@@ -22,6 +22,7 @@ export function RouteVariantDecisionSummarySheet({
     <PullUpPanel
       className="z-[120] max-h-[68dvh]"
       description="Saved facts for up to three routes. Primary is the baseline; differences are neutral."
+      dragMode="mobile"
       id="route-decision-summary"
       onOpenChange={onOpenChange}
       open={open}

@@ -1,8 +1,6 @@
 "use client";
 
-import { Check, LogOut, MoreHorizontal, Settings2, Share2 } from "lucide-react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { LogOut, MoreHorizontal, Settings2, Share2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -15,20 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PullUpPanel } from "@/components/ui/pull-up-panel";
 import { logout } from "@/features/auth/actions";
-import type { ResearchCategory } from "@/features/research/types";
-import {
-  parseResearchCategoryRouteSegment,
-  tripSectionHref,
-  type TripSection,
-} from "@/features/research/urls";
-
-const sections: Array<{ id: TripSection; label: string }> = [
-  { id: "plan", label: "Plan" },
-  { id: "compare", label: "Ideas & Options" },
-];
 
 export type TripMobileQuickAction = {
   disabled?: boolean;
+  emphasis?: "primary";
   icon: ReactNode;
   id: string;
   label: string;
@@ -40,31 +28,20 @@ type RunMobileAction = (action: () => void) => void;
 /** Desktop keeps a compact dropdown; touch widths use the same pull-up pattern as Plans. */
 export function TripBarMenu({
   accountEmail,
-  active,
   extraItems,
   mobileMenuItems,
   mobileQuickActions = [],
   onShareTrip,
   onTripSettings,
-  researchCategory,
-  tripId,
-  variantId,
 }: {
   accountEmail: string;
-  active: TripSection;
   extraItems?: ReactNode;
   mobileMenuItems?: (runAction: RunMobileAction) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
   onShareTrip?: () => void;
   onTripSettings?: () => void;
-  researchCategory?: ResearchCategory;
-  tripId: string;
-  variantId: string;
 }) {
-  const pathname = usePathname();
   const [panelOpen, setPanelOpen] = useState(false);
-  const currentResearchCategory =
-    parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? researchCategory;
   const quickActions: TripMobileQuickAction[] = [
     ...(onShareTrip
       ? [
@@ -72,6 +49,7 @@ export function TripBarMenu({
             icon: <Share2 aria-hidden="true" className="size-5" />,
             id: "share",
             label: "Share",
+            emphasis: "primary" as const,
             onSelect: onShareTrip,
           },
         ]
@@ -94,24 +72,8 @@ export function TripBarMenu({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">Go to</p>
-            {sections.map((section) => (
-              <DropdownMenuItem asChild key={section.id}>
-                <Link
-                  aria-current={section.id === active ? "page" : undefined}
-                  href={tripSectionHref(tripId, section.id, variantId, currentResearchCategory)}
-                  prefetch
-                >
-                  {section.label}
-                  {section.id === active ? (
-                    <Check aria-hidden="true" className="ml-auto size-4" />
-                  ) : null}
-                </Link>
-              </DropdownMenuItem>
-            ))}
             {extraItems ? (
               <>
-                <DropdownMenuSeparator />
                 {extraItems}
               </>
             ) : null}
@@ -165,13 +127,15 @@ export function TripBarMenu({
             >
               {quickActions.slice(0, 4).map((action) => (
                 <button
-                  className="flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-muted/70 px-2 py-3 text-center text-xs font-medium disabled:opacity-40"
+                  className={`flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl px-2 py-3 text-center text-xs font-semibold disabled:opacity-40 ${action.emphasis === "primary" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/70 text-foreground"}`}
                   disabled={action.disabled}
                   key={action.id}
                   onClick={() => runMobileAction(action.onSelect)}
                   type="button"
                 >
-                  <span className="flex size-9 items-center justify-center rounded-full bg-background text-foreground shadow-sm">
+                  <span
+                    className={`flex size-9 items-center justify-center rounded-full shadow-sm ${action.emphasis === "primary" ? "bg-primary-foreground/15 text-primary-foreground" : "bg-background text-foreground"}`}
+                  >
                     {action.icon}
                   </span>
                   <span className="line-clamp-2">{action.label}</span>
@@ -184,6 +148,9 @@ export function TripBarMenu({
             <div className="border-b py-3">{mobileMenuItems(runMobileAction)}</div>
           ) : null}
           <div className="space-y-1 pt-3">
+            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Trip
+            </p>
             {onTripSettings ? (
               <Button
                 className="min-h-11 w-full justify-start px-3 font-normal"

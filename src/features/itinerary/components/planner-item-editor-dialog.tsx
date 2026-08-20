@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore, type CSSProperties } from "react";
 
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, useDialogViewport } from "@/components/ui/dialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
@@ -50,6 +50,43 @@ export function PlannerItemEditorDialog({
 }) {
   const closeRequest = useRef(onClose);
   const fullScreen = useFullScreenEditor();
+  const editorOpen = Boolean(editor);
+  const viewport = useDialogViewport(editorOpen && fullScreen);
+
+  useEffect(() => {
+    if (!editorOpen || !fullScreen) return;
+    const root = document.documentElement;
+    const body = document.body;
+    let frame = 0;
+    const resetLayoutScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+        document.scrollingElement?.scrollTo(0, 0);
+      });
+    };
+
+    root.classList.add("planner-editor-viewport-locked");
+    body.classList.add("planner-editor-viewport-locked");
+    resetLayoutScroll();
+    window.addEventListener("scroll", resetLayoutScroll, { passive: true });
+    window.visualViewport?.addEventListener("resize", resetLayoutScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", resetLayoutScroll);
+      window.visualViewport?.removeEventListener("resize", resetLayoutScroll);
+      root.classList.remove("planner-editor-viewport-locked");
+      body.classList.remove("planner-editor-viewport-locked");
+      window.scrollTo(0, 0);
+    };
+  }, [editorOpen, fullScreen]);
+
+  const fullScreenStyle = viewport
+    ? ({
+        "--planner-editor-viewport-height": `${viewport.height}px`,
+        "--planner-editor-viewport-top": `${viewport.top}px`,
+      } as CSSProperties)
+    : undefined;
   const form = editor ? (
     <PlannerItemForm
       dayId={editor.dayId}
@@ -74,16 +111,24 @@ export function PlannerItemEditorDialog({
 
   if (fullScreen)
     return (
-      <Sheet onOpenChange={(open) => !open && closeRequest.current()} open={Boolean(editor)}>
-        <SheetContent className="planner-item-dialog p-0" side="right">
+      <Sheet onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
+        <SheetContent
+          className="planner-item-dialog p-0"
+          showCloseButton={false}
+          side="right"
+          style={fullScreenStyle}
+        >
           {form}
         </SheetContent>
       </Sheet>
     );
 
   return (
-    <Dialog onOpenChange={(open) => !open && closeRequest.current()} open={Boolean(editor)}>
-      <DialogContent className="planner-item-dialog flex flex-col overflow-hidden p-0">
+    <Dialog onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
+      <DialogContent
+        className="planner-item-dialog flex flex-col overflow-hidden p-0"
+        showCloseButton={false}
+      >
         {form}
       </DialogContent>
     </Dialog>

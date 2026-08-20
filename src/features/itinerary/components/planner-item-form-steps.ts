@@ -1,4 +1,5 @@
 import { itemCopy, itemFormCapabilities } from "./planner-item-form-config.ts";
+import { isDestinationActivity } from "../activity-order.ts";
 import { plannerJourneyFieldCapabilities } from "../transport-form-fields.ts";
 import type { CarRentalDetails, ItineraryItemType, TransportMode } from "../types.ts";
 import type { PlaceSnapshot } from "../../../lib/providers/places/types.ts";
@@ -51,7 +52,7 @@ export function plannerItemFormSteps({
   type,
 }: StepInput): ItemFormStep[] {
   const journey = plannerJourneyFieldCapabilities(type, transportMode);
-  const { supportsLink, supportsPlace, supportsPrice, supportsTime } = itemFormCapabilities(
+  const { supportsLink, supportsPrice, supportsTime } = itemFormCapabilities(
     type,
     carAction,
   );
@@ -90,7 +91,7 @@ export function plannerItemFormSteps({
       id: "extras",
       title: closing.includes("price") ? "Price" : "Notes",
     });
-  if (type !== "location" && supportsPlace)
+  if (isDestinationActivity({ type }))
     steps.push({ blocks: ["order"], id: "order", title: "Order" });
   return steps;
 }

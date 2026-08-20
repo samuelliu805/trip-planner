@@ -22,12 +22,12 @@ export function PlannerItemStepNav({
   return (
     <ol
       aria-label="Item details steps"
-      className="planner-item-step-nav relative mx-4 h-14 min-w-0"
+      className="planner-item-step-nav relative mx-8 h-16 min-w-0"
     >
       {steps.slice(1).map((step, index) => (
         <li
           aria-hidden="true"
-          className={`absolute bottom-[18px] h-0 border-t-2 border-dotted ${index + 1 <= activeIndex ? "border-primary/40" : "border-muted-foreground/35"}`}
+          className={`absolute bottom-5 h-0 border-t-2 border-dotted ${index + 1 <= activeIndex ? "border-primary/55" : "border-muted-foreground/30"}`}
           data-step-connector=""
           key={`connector-${step.id}`}
           style={{
@@ -52,19 +52,19 @@ export function PlannerItemStepNav({
               type="button"
             >
               <span
-                className={`w-full truncate text-center text-[11px] leading-none ${
+                className={`w-full truncate text-center text-xs leading-none ${
                   active ? "font-semibold text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {step.title}
               </span>
               <span
-                className={`flex size-9 shrink-0 items-center justify-center rounded-full border text-sm font-semibold transition-colors group-focus-visible:ring-2 group-focus-visible:ring-ring ${
+                className={`flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold shadow-sm transition-[background-color,border-color,color,box-shadow,transform] group-focus-visible:ring-2 group-focus-visible:ring-ring ${
                   active
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? "scale-105 border-primary bg-primary text-primary-foreground shadow-md ring-4 ring-primary/10"
                     : done
-                      ? "border-primary/40 bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground group-hover:border-primary/40 group-hover:text-foreground"
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-border bg-muted/70 text-foreground group-hover:border-primary/50"
                 }`}
               >
                 {done ? <Check aria-hidden="true" className="size-4" /> : index + 1}

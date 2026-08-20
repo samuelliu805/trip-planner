@@ -24,7 +24,8 @@ export function itemOrderAnchor(
   itemId?: string,
   itemType?: ItineraryItem["type"],
 ) {
-  const ordered = orderedDayActivities(items);
+  if (!itemType || !isDestinationActivity({ type: itemType })) return null;
+  const ordered = orderedDestinationActivities(items);
   const existingIndex = itemId ? ordered.findIndex(({ id }) => id === itemId) : -1;
   if (existingIndex >= 0) return existingIndex === 0 ? null : ordered[existingIndex - 1].id;
 
