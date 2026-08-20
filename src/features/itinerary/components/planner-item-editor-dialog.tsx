@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
@@ -33,11 +33,6 @@ export function PlannerItemEditorDialog({
 }) {
   const closeRequest = useRef(onClose);
   const editorOpen = Boolean(editor);
-
-  const returnToPlanner = useCallback(() => {
-    onClose();
-    window.location.reload();
-  }, [onClose]);
 
   useEffect(() => {
     if (!editorOpen) return;
@@ -74,13 +69,13 @@ export function PlannerItemEditorDialog({
       defaultCurrency={defaultCurrency}
       item={editor.item}
       key={`${editor.dayId}:${editor.item?.id ?? "new"}:${editor.type}`}
-      onCancel={returnToPlanner}
+      onCancel={onClose}
       onCloseRequestRegistration={(handler) => {
-        closeRequest.current = handler ?? returnToPlanner;
+        closeRequest.current = handler ?? onClose;
       }}
       onError={onError}
       onDraftChange={editor.item ? onDraftChange : undefined}
-      onSaved={returnToPlanner}
+      onSaved={onClose}
       shareAttachmentsEnabled={shareAttachmentsEnabled}
       tripId={tripId}
       type={editor.type}

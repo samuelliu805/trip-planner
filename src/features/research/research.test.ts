@@ -621,6 +621,7 @@ test("Trip detail keeps context controls at top and uses one mobile destination 
   assert.match(barMenu, /Log out/);
   assert.match(barMenu, /Trip settings/);
   assert.match(barMenu, /Share trip/);
+  assert.match(barMenu, /extraItems && \(onShareTrip \|\| onTripSettings\)/);
   assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
   assert.match(appBar, /Saving/);
   assert.doesNotMatch(appBar, />Saved</);

@@ -73,7 +73,7 @@ export function TripBarMenu({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             {extraItems ? <>{extraItems}</> : null}
-            {onShareTrip || onTripSettings ? <DropdownMenuSeparator /> : null}
+            {extraItems && (onShareTrip || onTripSettings) ? <DropdownMenuSeparator /> : null}
             {onShareTrip ? (
               <DropdownMenuItem onSelect={onShareTrip}>
                 <Share2 aria-hidden="true" className="size-4" /> Share trip

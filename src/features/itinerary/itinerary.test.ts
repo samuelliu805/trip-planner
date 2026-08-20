@@ -2173,6 +2173,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-item-editor-dialog.tsx", import.meta.url),
     "utf8",
   );
+  const editorKeyboardScroll = await readFile(
+    new URL("./components/use-planner-editor-keyboard-scroll.ts", import.meta.url),
+    "utf8",
+  );
   const styles = await readAppStyles();
   const queries = await readItineraryQueryModules();
   assert.match(workspace, /Arrange Activities/);
@@ -2247,11 +2251,15 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(
     styles,
-    /planner-item-dialog[\s\S]*height: 100lvh[\s\S]*body:has\(\.planner-item-dialog\)[\s\S]*visibility: hidden/,
+    /planner-item-dialog[\s\S]*height: 100lvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
   );
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
-  assert.match(editorDialog, /window\.location\.reload\(\)/);
+  assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /planner-editor-viewport-locked/);
+  assert.match(styles, /--planner-editor-keyboard-space/);
+  assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
+  assert.match(editorKeyboardScroll, /surface\.scrollBy/);
+  assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
   assert.match(workspace, /planner-mobile-map-fab/);
