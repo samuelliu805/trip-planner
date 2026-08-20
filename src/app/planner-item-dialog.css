@@ -104,7 +104,6 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
   border-radius: 0.75rem;
   font-size: 1.125rem;
   line-height: 1.5;
-  scroll-margin-block: 5rem;
 }
 
 .planner-item-dialog [data-planner-editor-scroll] textarea {

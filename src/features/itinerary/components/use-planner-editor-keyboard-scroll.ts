@@ -6,7 +6,7 @@ const editableSelector =
   "input:not([type='hidden']), textarea, select, [role='combobox'], [contenteditable='true']";
 
 const keyboardThreshold = 120;
-const keyboardToolbarClearance = 76;
+const keyboardEdgeClearance = 32;
 
 function revealDelta(
   field: Pick<DOMRect, "bottom" | "top">,
@@ -36,7 +36,7 @@ export function usePlannerEditorKeyboardScroll() {
       const keyboardOpen = keyboardSpace >= keyboardThreshold;
       surface.style.setProperty(
         "--planner-editor-keyboard-space",
-        keyboardOpen ? `${keyboardSpace + keyboardToolbarClearance}px` : "0px",
+        keyboardOpen ? `${keyboardSpace + keyboardEdgeClearance}px` : "0px",
       );
 
       cancelAnimationFrame(firstFrame);
@@ -47,7 +47,7 @@ export function usePlannerEditorKeyboardScroll() {
           if (!(active instanceof HTMLElement) || !active.matches(editableSelector)) return;
           if (!surface.contains(active)) return;
           const topClearance = keyboardOpen ? 20 : 12;
-          const bottomClearance = keyboardOpen ? keyboardToolbarClearance : 20;
+          const bottomClearance = keyboardOpen ? keyboardEdgeClearance : 20;
           const delta = revealDelta(
             active.getBoundingClientRect(),
             viewportTop + topClearance,
