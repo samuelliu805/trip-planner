@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, Plus, Share2 } from "lucide-react";
+import { ExternalLink, LoaderCircle, Plus, Share2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { PublicShareSettingsFields } from "./public-share-settings-fields";
 import {
   defaultShareSettings,
   settingsFromLink,
+  shareSettingsSignature,
   type ShareSettings,
 } from "./public-share-settings";
 import { PublicShareStatusPanel } from "./public-share-status-panel";
@@ -43,6 +44,7 @@ export function PublicShareDialog({
   activeVariantId,
   initialOpen = false,
   initialLinks,
+  renderTrigger = true,
   siteUrl,
   trip,
   variants,
@@ -50,6 +52,7 @@ export function PublicShareDialog({
   activeVariantId: string;
   initialOpen?: boolean;
   initialLinks: PublicItineraryLink[];
+  renderTrigger?: boolean;
   siteUrl: string;
   trip: Tables<"trips">;
   variants: PlannerVariant[];
@@ -69,6 +72,10 @@ export function PublicShareDialog({
   const suggestedDescription = `${trip.day_count}-day itinerary · View plans, tickets and routes`;
   const activeSiteUrl = open && typeof window !== "undefined" ? window.location.origin : siteUrl;
   const publicUrl = activeLink ? `${activeSiteUrl}/share/${activeLink.publicToken}` : "";
+  const unchanged =
+    Boolean(activeLink) &&
+    shareSettingsSignature(settings, variantId) ===
+      shareSettingsSignature(settingsFromLink(activeLink), activeLink?.variantId ?? variantId);
 
   useEffect(() => {
     const openShareSettings = () => setOpen(true);
@@ -141,18 +148,19 @@ export function PublicShareDialog({
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button aria-label="Share trip" className="h-11 min-w-11 px-3 xl:h-9" variant="outline">
-          <Share2 aria-hidden="true" className="size-4" />
-          <span className="hidden lg:inline">Share</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-5xl">
+      {renderTrigger ? (
+        <DialogTrigger asChild>
+          <Button aria-label="Share trip" className="h-11 min-w-11 px-3 xl:h-9" variant="outline">
+            <Share2 aria-hidden="true" className="size-4" />
+            <span className="hidden lg:inline">Share</span>
+          </Button>
+        </DialogTrigger>
+      ) : null}
+      <DialogContent className="public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-2xl">
         <DialogHeader className="shrink-0">
           <DialogTitle>Share trip</DialogTitle>
           <DialogDescription>
-            Create a shareable page, choose what it includes, and publish it when you are ready.
-            Each shareable page has its own link and settings.
+            Pick a route and a style to publish. Advanced settings stay optional.
           </DialogDescription>
         </DialogHeader>
 
@@ -167,6 +175,12 @@ export function PublicShareDialog({
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="min-w-0 space-y-4 px-4 py-4 sm:px-6 sm:py-5">
+            <PublicShareStatusPanel
+              activeLink={activeLink}
+              onRevoke={revoke}
+              pending={pending}
+              publicUrl={publicUrl}
+            />
             <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div className="min-w-0 space-y-1.5">
                 <Label htmlFor="share-page-picker">Shareable page</Label>
@@ -194,35 +208,35 @@ export function PublicShareDialog({
                 <Plus className="size-4" /> New shareable page
               </Button>
             </div>
-            <div className="grid min-w-0 gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,.72fr)]">
-              <PublicShareSettingsFields
-                existingPage={Boolean(activeLink)}
-                onChooseVariant={chooseVariant}
-                onSettingChange={setSetting}
-                settings={settings}
-                sharePages={links.filter(({ id }) => id !== activeLink?.id)}
-                suggestedDescription={suggestedDescription}
-                suggestedTitle={suggestedTitle}
-                variantId={variantId}
-                variants={variants}
-              />
-              <PublicShareStatusPanel
-                activeLink={activeLink}
-                onRevoke={revoke}
-                pending={pending}
-                publicUrl={publicUrl}
-              />
-            </div>
+            <PublicShareSettingsFields
+              existingPage={Boolean(activeLink)}
+              onChooseVariant={chooseVariant}
+              onSettingChange={setSetting}
+              settings={settings}
+              sharePages={links.filter(({ id }) => id !== activeLink?.id)}
+              suggestedDescription={suggestedDescription}
+              suggestedTitle={suggestedTitle}
+              variantId={variantId}
+              variants={variants}
+            />
           </div>
         </div>
-        <DialogFooter className="shrink-0 [&>button]:w-full sm:[&>button]:w-auto">
+        <DialogFooter className="shrink-0 [&>*]:w-full sm:[&>*]:w-auto">
           <Button onClick={() => setOpen(false)} type="button" variant="outline">
             Close
           </Button>
-          <Button aria-busy={pending} disabled={pending} onClick={save} type="button">
-            {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            {pending ? "Publishing…" : activeLink ? "Publish changes" : "Create and publish"}
-          </Button>
+          {unchanged ? (
+            <Button asChild>
+              <a href={publicUrl} rel="noopener noreferrer" target="_blank">
+                <ExternalLink className="size-4" /> Open page
+              </a>
+            </Button>
+          ) : (
+            <Button aria-busy={pending} disabled={pending} onClick={save} type="button">
+              {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              {pending ? "Publishing…" : activeLink ? "Publish changes" : "Create and publish"}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

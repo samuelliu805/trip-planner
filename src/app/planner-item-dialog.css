@@ -1,0 +1,64 @@
+.planner-item-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] {
+  width: 100%;
+  max-width: 100%;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
+}
+
+.planner-item-dialog form,
+.planner-item-dialog fieldset,
+.planner-item-dialog section,
+.planner-item-dialog article {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.planner-item-step-nav {
+  scrollbar-width: none;
+}
+
+.planner-item-step-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* One fixed height for every step so Next and Back never move under the pointer. */
+@media (min-width: 640px) {
+  .planner-item-dialog {
+    width: min(38rem, calc(100% - 2rem));
+    max-width: min(38rem, calc(100% - 2rem));
+    height: min(calc(var(--dialog-viewport-height, 100svh) - 3rem), 36rem);
+    min-height: min(calc(var(--dialog-viewport-height, 100svh) - 3rem), 36rem);
+    max-height: min(calc(var(--dialog-viewport-height, 100svh) - 3rem), 36rem) !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .planner-item-dialog {
+    inset: 0 !important;
+    top: var(--dialog-viewport-top, 0px) !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: var(--dialog-viewport-height, 100dvh) !important;
+    max-width: none !important;
+    max-height: var(--dialog-viewport-height, 100dvh) !important;
+    border-radius: 0;
+    overflow: hidden;
+    overscroll-behavior-x: none;
+    padding-bottom: env(safe-area-inset-bottom);
+    touch-action: pan-y;
+  }
+
+  .planner-item-dialog input,
+  .planner-item-dialog select,
+  .planner-item-dialog textarea {
+    font-size: 16px;
+  }
+}

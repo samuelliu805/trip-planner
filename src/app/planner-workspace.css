@@ -26,8 +26,7 @@ body:has(.trip-planner-page) {
 }
 
 .trips-global-header,
-.trip-app-bar,
-.plan-context-bar {
+.trip-app-bar {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   touch-action: pan-x;
@@ -92,28 +91,6 @@ body:has(.trip-planner-page) {
 
 .map-panel-reopen {
   bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
-}
-
-.planner-editor-sheet {
-  max-width: min(28rem, 100%);
-  overflow: hidden;
-  overscroll-behavior-x: none;
-  touch-action: pan-y;
-}
-
-.planner-editor-sheet > [data-planner-editor-scroll] {
-  width: 100%;
-  max-width: 100%;
-  overscroll-behavior-x: none;
-  touch-action: pan-y;
-}
-
-.planner-editor-sheet > [data-planner-editor-scroll] > form,
-.planner-editor-sheet > [data-planner-editor-scroll] fieldset,
-.planner-editor-sheet > [data-planner-editor-scroll] section,
-.planner-editor-sheet > [data-planner-editor-scroll] article {
-  min-width: 0;
-  max-width: 100%;
 }
 
 @media (min-width: 640px) and (max-width: 1199px) {
@@ -215,27 +192,6 @@ body:has(.trip-planner-page) {
     min-height: 44px;
   }
 
-  .planner-editor-sheet {
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100dvh;
-    max-width: none !important;
-    max-height: 100dvh;
-    border-left: 0 !important;
-    border-top: 1px solid var(--border);
-    border-radius: 0.75rem 0.75rem 0 0;
-    overflow: hidden;
-    overscroll-behavior-x: none;
-    padding-bottom: env(safe-area-inset-bottom);
-    touch-action: pan-y;
-  }
-
-  .planner-editor-sheet input,
-  .planner-editor-sheet select,
-  .planner-editor-sheet textarea {
-    font-size: 16px;
-  }
-
   .planner-matrix [data-edit-item],
   .planner-matrix [aria-label^="Actions for"] {
     min-height: 44px;
@@ -273,20 +229,10 @@ body:has(.trip-planner-page) {
 }
 
 @media (max-width: 639px) {
-  .plan-context-bar.is-idle {
-    display: none;
-  }
-
   .planner-workspace {
     padding-right: max(8px, env(safe-area-inset-right));
     padding-bottom: max(8px, env(safe-area-inset-bottom));
     padding-left: max(8px, env(safe-area-inset-left));
-  }
-
-  .planner-editor-sheet {
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
   }
 
   .planner-map-sheet {

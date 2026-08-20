@@ -14,6 +14,41 @@ These rules apply to all future UI work in this repository.
 - Controls must shrink within their grid or flex container (`min-width: 0`) and retain 44px minimum touch targets.
 - Verify modal and Sheet behavior at both 390px and 430px widths. Opening an overlay must cover every frozen Matrix layer, and the page beneath it must not horizontally swipe.
 
+## Itinerary item editor
+
+- The editor is one progressive modal: a centred Dialog from 640px up, a full-height sheet below it. Do not reintroduce a side sheet for editing, and never show a workspace side panel next to the open editor.
+- The step navigator is numbered circles joined by dotted rules with each label above its own number. Every number is a button; steps must stay reachable directly, not only through Next and Back.
+- The first step carries only what the item needs to exist, so it can be saved without opening the rest. Every step stays at three controls or fewer, and Add and Edit use the same steps.
+- Activities and Meals close with a dedicated Place step; that is the only step whose primary action opens the Day's Activity order. Do not scatter placement across the other steps.
+- Steps are freely selectable, but leaving a step validates it: a missing required field blocks the switch and says why. Saving validates every step and jumps to the first that fails.
+- The modal keeps one fixed height and Next/Back stay mounted and in place on the first and last step, so repeated clicks never chase a moving button. No step may add explanatory chrome — no shortcut legend, no restated step label, no preview card.
+- Closing a modified editor — overlay click, close button, or Escape — must confirm before discarding.
+- Field grouping and per-step validation live in `planner-item-form-steps.ts`. Cover changes with the step-grouping unit test instead of new source-text assertions.
+
+## Workspace clipboard boundary
+
+- React replays events from portalled overlays through the workspace subtree. The planner's copy and paste handlers must ignore events whose target sits in an input, textarea, select, contenteditable, or dialog, so editing a field never rewrites Matrix cells.
+
+## Place search field
+
+- The place field owns its own input and suggestion list (`AutocompleteSuggestion.fetchAutocompleteSuggestions`). Do not go back to `PlaceAutocompleteElement`: its closed shadow root cannot be sized and it fills the whole screen on narrow viewports.
+- Generate one session token per search session and drop it after `fetchFields`, and keep `includedPrimaryTypes` out of effect dependencies as an array — serialize it, or an inline array restarts the search on every render.
+
+## Trip app bar
+
+- The bar is one row: back, the trip identity (title plus active Plan), the contextual working actions, then one overflow menu. Never add a second bar beneath it; plan and table actions belong in the bar's action slot or in that menu.
+- Section switching, Share, Trip settings, and account actions live in the same single menu. Never add a second overflow menu to the bar.
+
+## Itinerary type scale
+
+- The owner Matrix and the read-only Table share one scale, set once and only stepped at 1200px: 15px item titles with 13px meta below 1200px, 13px titles with 11px meta from 1200px up. Column headers track the meta size. Do not reintroduce `sm:`-prefixed downscaling.
+- Density is tight at every width: compact row minimums, `p-0.5` cells, and no vertical rhythm added to compensate for the larger touch-width type. Item rows and app bar controls still keep a 44px target at touch widths.
+
+## Public share dialog
+
+- Publishing asks two questions — route and style. Everything else stays inside one collapsed Advanced settings disclosure.
+- A published page always shows its URL with copy and open actions. When nothing has changed since the last publish, the primary action opens the page instead of publishing again.
+
 ## Tablet workspace containment and Matrix freezing
 
 - Trip planner detail routes must occupy exactly one visual viewport. Keep the global header and planner toolbar pinned, prevent document-level vertical or horizontal scrolling, and let only the intended Matrix, panel, or overlay scroller move.

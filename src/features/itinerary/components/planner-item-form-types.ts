@@ -8,7 +8,7 @@ export type PlannerItemFormProps = {
   onCloseRequestRegistration?: (handler: (() => void) | null) => void;
   onDraftChange?: (item: ItineraryItem | null) => void;
   onError: (message: string) => void;
-  onSaved: (item: ItineraryItem) => void;
+  onSaved: (item: ItineraryItem, options: { place: boolean }) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
   type: ItineraryItemType;

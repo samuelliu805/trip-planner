@@ -79,7 +79,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         clearPending={c.clearPending}
         copyPreviousDay={c.clipboard.copyPreviousDay}
         copySelectionToClipboard={c.clipboard.copySelectionToClipboard}
-        dateRange={c.dateRange}
         dayMutationPending={c.dayMutationPending}
         deleteError={props.deleteError}
         fillLabel={c.fillLabel}
@@ -101,7 +100,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         researchItems={props.initialResearchItems}
         researchSelections={props.initialResearchSelections}
         selectedCount={c.selectedCount}
-        selectedDay={c.selectedDay}
         selectedItem={activeItem}
         setCopyDaysOpen={c.clipboard.setCopyDaysOpen}
         setEditor={c.setEditor}
@@ -228,13 +226,9 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         }}
         onEditorDraftChange={c.setDraftItem}
         onInteractionError={c.setInteractionError}
-        onItemCreated={(item) => {
-          if (["activity", "meal"].includes(item.type))
-            c.setArrangeActivitiesRequest({
-              dayId: item.day_id,
-              initialMovingItemId: item.id,
-            });
-        }}
+        onPlaceItem={(item) =>
+          c.setArrangeActivitiesRequest({ dayId: item.day_id, initialMovingItemId: item.id })
+        }
         onMapExpandedChange={(open) => {
           c.setMapExpanded(open);
           if (

@@ -590,37 +590,38 @@ test("Ideas & Options has direct category routes and instant in-workspace switch
 });
 
 test("Trip detail keeps context controls at top and uses one mobile destination tab bar", async () => {
-  const [planPage, comparePage, appBar, planToolbar, contextBar, compareWorkspace, account] =
+  const [planPage, comparePage, appBar, barMenu, planToolbar, contextBar, compareWorkspace] =
     await Promise.all(
       [
         "../../app/trips/[tripId]/page.tsx",
         "../../app/trips/[tripId]/compare/page.tsx",
         "../trips/components/trip-app-bar.tsx",
+        "../trips/components/trip-app-bar-menu.tsx",
         "../itinerary/components/planner-toolbar.tsx",
         "../itinerary/components/planner-context-bar.tsx",
         "./components/compare-workspace.tsx",
-        "../trips/components/trip-account-menu.tsx",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     );
-  assert.match(appBar, /aria-label="Trip sections"/);
-  assert.match(appBar, /aria-current/);
-  assert.match(appBar, /label: "Plan"/);
-  assert.match(appBar, /label: "Ideas & Options"/);
-  assert.match(planToolbar, /<TripAppBar[\s\S]*<PlannerContextBar/);
-  assert.match(contextBar, /aria-label="Plan context"/);
-  assert.match(contextBar, /is-idle/);
+  assert.match(appBar, /ariaLabel="Trip sections"/);
+  assert.match(barMenu, /aria-current/);
+  assert.match(barMenu, /label: "Plan"/);
+  assert.match(barMenu, /label: "Ideas & Options"/);
+  assert.match(planToolbar, /<TripAppBar[\s\S]*actions=\{<PlannerContextActions/);
+  assert.match(planToolbar, /menuItems=\{<PlannerContextMenuItems/);
   assert.match(compareWorkspace, /aria-label="Research context"/);
   assert.match(compareWorkspace, /<TripMobileTabBar/);
+  // The plan actions live inside the single app bar row; no second top bar may reappear.
+  assert.doesNotMatch(contextBar, /aria-label="Plan context"|min-h-14|is-idle/);
   assert.doesNotMatch(contextBar, /TripSectionNav|TripMobileTabBar/);
+  assert.doesNotMatch(appBar, /TripSectionNav/);
   assert.doesNotMatch(`${planPage}\n${comparePage}`, /TripSectionNav/);
   assert.doesNotMatch(planToolbar, /PlannerEditingToolbar/);
   assert.doesNotMatch(compareWorkspace, /<h1|trip\.title/);
-  assert.match(account, /\{email\}/);
-  assert.match(account, /Log out/);
-  assert.match(account, /Trip settings/);
+  assert.match(barMenu, /\{accountEmail\}/);
+  assert.match(barMenu, /Log out/);
+  assert.match(barMenu, /Trip settings/);
+  assert.match(barMenu, /Share trip/);
   assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
-  assert.doesNotMatch(appBar, /More trip actions|<MoreHorizontal/);
-  assert.match(appBar, /aria-label="Trip settings"/);
   assert.match(appBar, /Saving/);
   assert.doesNotMatch(appBar, />Saved</);
   assert.doesNotMatch(appBar, /Open settings for/);
@@ -778,10 +779,14 @@ test("Compare uses one responsive Context Bar below the Trip App Bar", async () 
 });
 
 test("mobile Research chrome stays on one row and add forms progressively disclose details", async () => {
-  const [workspace, planContext, fields, dialog, journey, dateRange, actions, migration] =
+  const [workspace, planContext, planMenu, fields, dialog, journey, dateRange, actions, migration] =
     await Promise.all([
       readFile(new URL("./components/compare-workspace.tsx", import.meta.url), "utf8"),
       readFile(new URL("../itinerary/components/planner-context-bar.tsx", import.meta.url), "utf8"),
+      readFile(
+        new URL("../itinerary/components/planner-context-menu-items.tsx", import.meta.url),
+        "utf8",
+      ),
       readFile(new URL("./components/research-item-fields.tsx", import.meta.url), "utf8"),
       readFile(new URL("./components/research-item-dialog.tsx", import.meta.url), "utf8"),
       readFile(new URL("./components/research-journey-fields.tsx", import.meta.url), "utf8"),
@@ -799,7 +804,6 @@ test("mobile Research chrome stays on one row and add forms progressively disclo
   assert.doesNotMatch(workspace, /KnownCost|PlanCostBreakdown/);
   assert.doesNotMatch(planContext, /Known Cost ·/);
   assert.match(planContext, /PlanCostMenu/);
-  assert.match(planContext, /ml-auto flex min-w-0 shrink-0 items-center/);
   assert.match(fields, /label="Hotel or area"/);
   assert.match(fields, /<DateRangeFields[\s\S]*endLabel="Check-out"/);
   assert.match(fields, /minimumNights=\{1\}/);
@@ -813,7 +817,7 @@ test("mobile Research chrome stays on one row and add forms progressively disclo
   assert.match(dateRange, /showPicker/);
   assert.match(dateRange, /openDatePicker\(endRef\.current\)/);
   assert.doesNotMatch(actions, /clearResearchSelection|Remove selection|<X/);
-  assert.match(planContext, /sourceItem=\{researchSourceItem\}/);
+  assert.match(planMenu, /sourceItem=\{researchSourceItem\}/);
   assert.match(migration, /alter column source_research_item_id drop not null/);
   assert.match(migration, /on delete set null \(source_research_item_id\)/);
 });

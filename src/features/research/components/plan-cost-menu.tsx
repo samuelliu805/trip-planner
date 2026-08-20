@@ -25,12 +25,12 @@ export function PlanCostMenu({
       <DropdownMenuTrigger asChild>
         <Button
           aria-label={`Cost: ${value}. Show breakdown`}
-          className="h-11 max-w-11 gap-2 px-2.5 min-[430px]:max-w-32 sm:max-w-48 sm:px-3"
+          className="h-11 max-w-11 gap-2 px-2.5 md:max-w-48 md:px-3"
           variant="ghost"
         >
           <ReceiptText aria-hidden="true" className="size-4 shrink-0" />
-          <span className="hidden text-xs text-muted-foreground sm:inline">Cost</span>
-          <span className="hidden truncate text-xs font-semibold tabular-nums min-[430px]:inline">
+          <span className="hidden text-xs text-muted-foreground md:inline">Cost</span>
+          <span className="hidden truncate text-xs font-semibold tabular-nums md:inline">
             {value}
           </span>
         </Button>

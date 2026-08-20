@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./attachment-viewer.css";
+@import "./planner-item-dialog.css";
 @import "./planner-workspace.css";
 @import "./public-attachments.css";
 @import "./public-workspace.css";
@@ -67,6 +68,10 @@ body {
 
 .planner-place-autocomplete {
   width: 100%;
+}
+
+.planner-place-autocomplete [role="listbox"] {
+  scrollbar-gutter: stable;
 }
 
 [data-add-item] {

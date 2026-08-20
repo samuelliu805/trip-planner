@@ -86,6 +86,7 @@ export async function ResearchCompareRoute({
             <PublicShareDialog
               activeVariantId={resolution.activeVariant.id}
               initialLinks={shareLinks.data}
+              renderTrigger={false}
               siteUrl={siteUrl}
               trip={trip}
               variants={variantsResult.data}

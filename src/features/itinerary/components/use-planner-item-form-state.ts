@@ -68,10 +68,30 @@ export function usePlannerItemFormState({
     item?.type === "transport" ? existingTransportMode : (availableTransportModes[0] ?? "train"),
   );
 
+  // One serialized snapshot answers "has anything changed?" for the exit confirmation.
+  const snapshot = JSON.stringify([
+    arrivalTime,
+    carAction,
+    carProvider,
+    destination,
+    links,
+    notes,
+    origin,
+    place ? `${place.provider}:${place.providerPlaceId}:${place.displayName}` : null,
+    priceAmount,
+    priceCurrency,
+    serviceNumber,
+    startTime,
+    title,
+    transportMode,
+  ]);
+  const [initialSnapshot] = useState(snapshot);
+
   return {
     arrivalTime,
     availableTransportModes,
     carAction,
+    dirty: snapshot !== initialSnapshot,
     carProvider,
     destination,
     existingDetails,
@@ -101,3 +121,5 @@ export function usePlannerItemFormState({
     transportMode,
   };
 }
+
+export type PlannerItemFormState = ReturnType<typeof usePlannerItemFormState>;

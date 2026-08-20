@@ -96,7 +96,7 @@ export function RouteVariantSwitcher({
 
       <Button
         aria-label={`Plan: ${activeVariant.name}${activeVariant.is_primary ? ", Primary" : ""}`}
-        className="h-11 min-w-0 gap-1.5 px-2 min-[960px]:hidden"
+        className="h-10 min-w-0 shrink-0 gap-1 px-1.5 min-[960px]:hidden"
         onClick={() => onSheetOpenChange(true)}
         variant="outline"
       >
@@ -105,7 +105,9 @@ export function RouteVariantSwitcher({
           className="size-2.5 rounded-full"
           style={{ backgroundColor: activeVariant.color }}
         />
-        <span className="max-w-20 truncate text-xs">{activeVariant.name}</span>
+        <span className="hidden max-w-16 truncate text-xs min-[400px]:inline">
+          {activeVariant.name}
+        </span>
         <ChevronDown className="size-3.5" />
       </Button>
 

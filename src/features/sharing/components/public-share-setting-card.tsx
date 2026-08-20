@@ -1,4 +1,32 @@
+import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
+
+/** Keeps the first decision short: everything optional stays folded until it is wanted. */
+export function ShareSettingDisclosure({
+  children,
+  hint,
+  title,
+}: {
+  children: ReactNode;
+  hint: string;
+  title: string;
+}) {
+  return (
+    <details className="group min-w-0 border bg-background">
+      <summary className="flex min-h-12 min-w-0 cursor-pointer list-none items-center gap-2 px-4 text-sm font-semibold marker:hidden sm:px-5">
+        <span>{title}</span>
+        <span className="ml-auto min-w-0 truncate text-xs font-normal text-muted-foreground">
+          {hint}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
+        />
+      </summary>
+      <div className="min-w-0 space-y-4 border-t p-4 sm:p-5">{children}</div>
+    </details>
+  );
+}
 
 export function ShareSettingSection({
   children,

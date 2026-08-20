@@ -1,7 +1,6 @@
 "use client";
 
 import { useIsMutating } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -112,10 +111,6 @@ export function usePlannerWorkspaceController({
     ],
   );
   const itemCount = projectedWorkspace.days.reduce((count, day) => count + day.items.length, 0);
-  const dateRange =
-    trip.start_date && trip.end_date
-      ? `${format(parseISO(trip.start_date), "MMM d")} – ${format(parseISO(trip.end_date), "MMM d, yyyy")}`
-      : `${trip.day_count} planning ${trip.day_count === 1 ? "day" : "days"} · Dates not set`;
   const gridTemplate = `minmax(520px, ${split}fr) 4px minmax(360px, ${100 - split}fr)`;
   const routeDay = activeDay ?? selectedDay ?? projectedWorkspace.days[0];
   const dayRoute = useDayRoute(projectedWorkspace, routeDay, trip.id);
@@ -243,7 +238,6 @@ export function usePlannerWorkspaceController({
     clipboard,
     confirmClearSelection,
     containerRef,
-    dateRange,
     dayMutationPending,
     dayRoute,
     deleteItem,

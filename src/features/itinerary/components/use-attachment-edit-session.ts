@@ -12,7 +12,6 @@ type AttachmentEditSessionOptions = {
   item?: ItineraryItem;
   itemMutationPending: boolean;
   onCancel: () => void;
-  onCloseRequestRegistration?: (handler: (() => void) | null) => void;
   tripId: string;
 };
 
@@ -20,7 +19,6 @@ export function useAttachmentEditSession({
   item,
   itemMutationPending,
   onCancel,
-  onCloseRequestRegistration,
   tripId,
 }: AttachmentEditSessionOptions) {
   const [attachmentPending, setAttachmentPendingState] = useState(false);
@@ -68,11 +66,6 @@ export function useAttachmentEditSession({
     }
     onCancel();
   }, [discardPending, hasUncommittedAttachments, itemMutationPending, onCancel]);
-
-  useEffect(() => {
-    onCloseRequestRegistration?.(requestCancel);
-    return () => onCloseRequestRegistration?.(null);
-  }, [onCloseRequestRegistration, requestCancel]);
 
   useEffect(() => {
     if (!hasUncommittedAttachments) return;

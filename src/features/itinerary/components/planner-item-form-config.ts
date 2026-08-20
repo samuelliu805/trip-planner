@@ -3,7 +3,7 @@ import {
   type CarRentalDetails,
   type ItineraryItemType,
   type TransportMode,
-} from "@/features/itinerary/types";
+} from "../types.ts";
 
 export function plannerItemTitle({
   carAction,

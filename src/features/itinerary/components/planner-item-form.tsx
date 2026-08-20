@@ -1,29 +1,33 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
+import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
+import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
+import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
+import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
+import {
+  plannerItemFormSteps,
+  plannerItemStepError,
+  type ItemFormStep,
+} from "@/features/itinerary/components/planner-item-form-steps";
+import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
+import { plannerItemSaveValues } from "@/features/itinerary/components/planner-item-save-values";
+import { PlannerItemStepFields } from "@/features/itinerary/components/planner-item-step-fields";
+import { PlannerItemStepNav } from "@/features/itinerary/components/planner-item-step-nav";
+import { useAttachmentEditSession } from "@/features/itinerary/components/use-attachment-edit-session";
+import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
+import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import {
   useCreateItineraryItem,
   useDeleteItineraryItem,
   useUpdateItineraryItem,
 } from "@/features/itinerary/item-mutations";
-import type { Json } from "@/types/database";
-import { PlannerItemPrimaryFields } from "@/features/itinerary/components/planner-item-primary-fields";
-import { PlannerBookingFields } from "@/features/itinerary/components/planner-booking-fields";
-import { PlannerItemSecondaryFields } from "@/features/itinerary/components/planner-item-secondary-fields";
-import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
-import {
-  itemCopy,
-  itemFormCapabilities,
-  itemFormFieldLabels,
-  plannerItemTitle,
-} from "@/features/itinerary/components/planner-item-form-config";
-import { plannerJourneyFieldCapabilities } from "@/features/itinerary/transport-form-fields";
-import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
-import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
-import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
-import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
-import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
-import { useAttachmentEditSession } from "@/features/itinerary/components/use-attachment-edit-session";
+
+const stepFieldSelector = "input:not([type='hidden']),textarea,[role='combobox']";
+
 export function PlannerItemForm({
   dayId,
   defaultCurrency,
@@ -39,171 +43,121 @@ export function PlannerItemForm({
   unavailableTransportModes = [],
   variantId,
 }: PlannerItemFormProps) {
-  const state = usePlannerItemFormState({
-    defaultCurrency,
-    item,
-    unavailableTransportModes,
-  });
-  const {
-    arrivalTime,
-    availableTransportModes,
-    carAction,
-    carProvider,
-    destination,
-    existingDetails,
-    links,
-    notes,
-    origin,
-    place,
-    priceAmount,
-    priceCurrency,
-    serviceNumber,
-    setArrivalTime,
-    setCarAction,
-    setCarProvider,
-    setDestination,
-    setLinks,
-    setNotes,
-    setOrigin,
-    setPlace,
-    setPriceAmount,
-    setPriceCurrency,
-    setServiceNumber,
-    setStartTime,
-    setTitle,
-    setTransportMode,
-    startTime,
-    title,
-    transportMode,
-  } = state;
+  const state = usePlannerItemFormState({ defaultCurrency, item, unavailableTransportModes });
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const deleteMutation = useDeleteItineraryItem(tripId, variantId);
   const titleRef = useRef<HTMLInputElement>(null);
+  const stepBodyRef = useRef<HTMLDivElement>(null);
   const itemMutationPending =
     createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
   const attachmentSession = useAttachmentEditSession({
     item,
     itemMutationPending,
     onCancel,
-    onCloseRequestRegistration,
     tripId,
   });
   const pending = itemMutationPending || attachmentSession.attachmentPending;
-  const error = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
+  const mutationError = createMutation.error ?? updateMutation.error ?? deleteMutation.error;
+  const steps = useMemo(
+    () =>
+      plannerItemFormSteps({
+        carAction: state.carAction,
+        transportMode: state.transportMode,
+        type,
+      }),
+    [state.carAction, state.transportMode, type],
+  );
+  const [stepId, setStepId] = useState<ItemFormStep["id"]>("basics");
+  const [stepError, setStepError] = useState<string>();
+  const [exitOpen, setExitOpen] = useState(false);
+  const activeStep = steps.find(({ id }) => id === stepId) ?? steps[0];
+  const stepIndex = steps.indexOf(activeStep);
+  const { requestCancel } = attachmentSession;
 
   useEffect(() => {
-    if (!item && ["location", "hotel"].includes(type)) return;
-    const frame = requestAnimationFrame(() => titleRef.current?.focus());
+    const frame = requestAnimationFrame(() => {
+      if (activeStep.id === "basics" && !item && ["location", "hotel"].includes(type)) return;
+      const fallback = stepBodyRef.current?.querySelector<HTMLElement>(stepFieldSelector);
+      (titleRef.current ?? fallback)?.focus();
+    });
     return () => cancelAnimationFrame(frame);
-  }, [item, type]);
+  }, [activeStep.id, item, type]);
 
   usePlannerItemDraft({
-    arrivalTime,
+    arrivalTime: state.arrivalTime,
     dayId,
     item,
-    links,
-    notes,
+    links: state.links,
+    notes: state.notes,
     onDraftChange,
-    place,
-    priceAmount,
-    priceCurrency,
-    startTime,
-    title,
+    place: state.place,
+    priceAmount: state.priceAmount,
+    priceCurrency: state.priceCurrency,
+    startTime: state.startTime,
+    title: state.title,
     type,
   });
 
-  async function save() {
-    if (type === "location" && !place) {
-      onError("Choose a city from Google Maps before saving.");
+  const requestExit = useCallback(() => {
+    if (itemMutationPending) return;
+    if (state.dirty) {
+      setExitOpen(true);
       return;
     }
-    if (type === "hotel" && !place && !title.trim()) {
-      onError("Choose a hotel location or enter a displayed hotel name.");
-      return;
-    }
-    const savedTitle = plannerItemTitle({
-      carAction,
-      placeName: place?.displayName,
-      title,
-      transportMode,
+    requestCancel();
+  }, [itemMutationPending, requestCancel, state.dirty]);
+
+  useEffect(() => {
+    onCloseRequestRegistration?.(requestExit);
+    return () => onCloseRequestRegistration?.(null);
+  }, [onCloseRequestRegistration, requestExit]);
+
+  function goToStep(nextStepId: ItemFormStep["id"]) {
+    if (nextStepId === activeStep.id) return;
+    const blocking = plannerItemStepError({
+      place: state.place,
+      step: activeStep,
+      title: state.title,
       type,
     });
-    if (pending || !savedTitle) return;
-    const journey = plannerJourneyFieldCapabilities(type, transportMode);
-    const placeText = place?.formattedAddress ?? place?.displayName ?? null;
-    const details: Record<string, Json> =
-      type === "car_rental"
-        ? {
-            ...existingDetails,
-            action: carAction,
-            address: placeText,
-            provider: carProvider || null,
-          }
-        : type === "hotel"
-          ? { ...existingDetails, address: placeText }
-          : type === "meal"
-            ? { ...existingDetails, location: placeText }
-            : ["transport", "flight", "train"].includes(type)
-              ? {
-                  ...existingDetails,
-                  arrivalTime: journey.arrivalTime ? arrivalTime || null : null,
-                  destination: journey.endpoints ? destination || null : null,
-                  mode: type === "transport" ? transportMode : type,
-                  origin: journey.endpoints ? origin || null : null,
-                  serviceNumber: journey.serviceNumber ? serviceNumber || null : null,
-                }
-              : type === "activity"
-                ? { ...existingDetails, location: placeText }
-                : {};
-    const { supportsLink, supportsPlace, supportsPrice, supportsTime } = itemFormCapabilities(
-      type,
-      carAction,
-    );
-    const googlePlace =
-      place?.provider === "google" && place.providerPlaceId
-        ? {
-            administrativeAreaName: place.administrativeAreaName,
-            countryCode: place.countryCode,
-            displayName: place.displayName,
-            formattedAddress: place.formattedAddress,
-            latitude: place.latitude,
-            ...(place.localitySource === "google_address_component" &&
-              place.localityKind !== "legacy_city" && {
-                localityKind: place.localityKind,
-                localityName: place.localityName,
-                localitySource: "google_address_component" as const,
-              }),
-            longitude: place.longitude,
-            provider: "google" as const,
-            providerPlaceId: place.providerPlaceId,
-          }
-        : undefined;
-    const values = {
-      bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
-      links: supportsLink ? links : [],
-      details: details as never,
-      endTime: journey.arrivalTime ? arrivalTime : "",
-      notes: type === "note" ? "" : notes,
-      priceAmount: supportsPrice && priceAmount ? Number(priceAmount) : null,
-      priceCurrency: supportsPrice && priceAmount ? priceCurrency : null,
-      startTime: supportsTime && (type !== "transport" || journey.departureTime) ? startTime : "",
-      title: savedTitle,
-      tripId,
-      type,
-      variantId,
-      placeId: supportsPlace && place ? item?.place_id : null,
-      placeSnapshot: supportsPlace ? googlePlace : undefined,
-    };
+    if (blocking) {
+      setStepError(blocking);
+      return;
+    }
+    setStepError(undefined);
+    setStepId(nextStepId);
+  }
+
+  function moveStep(offset: number) {
+    const next = steps[stepIndex + offset];
+    if (next) goToStep(next.id);
+  }
+
+  async function save() {
+    const invalid = steps
+      .map((step) => ({
+        message: plannerItemStepError({ place: state.place, step, title: state.title, type }),
+        step,
+      }))
+      .find(({ message }) => message);
+    if (invalid?.message) {
+      setStepId(invalid.step.id);
+      setStepError(invalid.message);
+      return;
+    }
+    setStepError(undefined);
+    const values = plannerItemSaveValues({ item, state, tripId, type, variantId });
+    if (pending || !values) return;
     try {
       const savedItem = item
         ? await updateMutation.mutateAsync({ ...values, id: item.id })
         : await createMutation.mutateAsync({ ...values, dayId });
-      onSaved(await attachmentSession.commit(savedItem));
-    } catch (mutationError) {
+      onSaved(await attachmentSession.commit(savedItem), { place: activeStep.id === "place" });
+    } catch (mutationFailure) {
       onError(
-        mutationError instanceof Error
-          ? mutationError.message
+        mutationFailure instanceof Error
+          ? mutationFailure.message
           : "The itinerary item could not be saved.",
       );
     }
@@ -221,22 +175,29 @@ export function PlannerItemForm({
   }
 
   const copy = itemCopy[type];
-  const canSave =
-    type === "location"
-      ? Boolean(place)
-      : type === "hotel"
-        ? Boolean(place || title.trim())
-        : ["car_rental", "transport"].includes(type) || Boolean(title.trim());
-  const { linkLabel, placeLabel } = itemFormFieldLabels(type);
-
   return (
     <form
-      className="max-w-full min-w-0 space-y-4 overflow-x-hidden"
+      className="planner-item-form flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       onKeyDown={(event) => {
         if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.key === "Escape") {
           event.preventDefault();
-          attachmentSession.requestCancel();
+          requestExit();
+          return;
+        }
+        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          void save();
+          return;
+        }
+        if (!event.altKey) return;
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          moveStep(1);
+        }
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          moveStep(-1);
         }
       }}
       onSubmit={(event) => {
@@ -244,90 +205,55 @@ export function PlannerItemForm({
         void save();
       }}
     >
-      <PlannerItemPrimaryFields
-        availableTransportModes={availableTransportModes}
-        carAction={carAction}
-        carProvider={carProvider}
-        copyLabel={copy.label}
-        copyPlaceholder={copy.placeholder}
-        dayId={dayId}
-        item={item}
-        pending={pending}
-        place={place}
-        placeLabel={placeLabel}
-        setCarAction={setCarAction}
-        setCarProvider={setCarProvider}
-        setPlace={setPlace}
-        setTitle={setTitle}
-        setTransportMode={setTransportMode}
-        title={title}
-        titleRef={titleRef}
-        transportMode={transportMode}
-        type={type}
-      />
-      <PlannerBookingFields
-        arrivalTime={arrivalTime}
-        carAction={carAction}
-        dayId={dayId}
-        defaultCurrency={defaultCurrency}
-        destination={destination}
-        itemId={item?.id}
-        origin={origin}
-        priceAmount={priceAmount}
-        priceCurrency={priceCurrency}
-        serviceNumber={serviceNumber}
-        setArrivalTime={setArrivalTime}
-        setDestination={setDestination}
-        setOrigin={setOrigin}
-        setPriceAmount={setPriceAmount}
-        setPriceCurrency={setPriceCurrency}
-        setServiceNumber={setServiceNumber}
-        setStartTime={setStartTime}
-        startTime={startTime}
-        transportMode={transportMode}
-        type={type}
-      />
-      <PlannerItemSecondaryFields
-        carAction={carAction}
-        copyLabel={copy.label}
-        dayId={dayId}
-        item={item}
-        linkLabel={linkLabel}
-        links={links}
-        notes={notes}
-        setLinks={setLinks}
-        setNotes={setNotes}
-        setStartTime={setStartTime}
-        startTime={startTime}
-        type={type}
-      />
-      {!item && type === "hotel" ? (
-        <div className="rounded-md border bg-muted/30 px-3 py-2.5">
-          <p className="text-sm font-medium">Position · End of day</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Hotel is always kept after the Day’s other Activities.
-          </p>
-        </div>
-      ) : null}
-      <ItemAttachmentsSection
-        item={item}
-        onDraftCountChange={attachmentSession.setDraftCount}
-        onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
-        onPendingChange={attachmentSession.setAttachmentPending}
-        shareAttachmentsEnabled={shareAttachmentsEnabled}
-        tripId={tripId}
-        uploadSessionId={attachmentSession.uploadSessionId}
-        uploadSessionSignal={attachmentSession.uploadSessionSignal}
-      />
+      <div className="shrink-0 space-y-3 border-b px-5 py-4 pr-16 sm:px-6">
+        <DialogTitle className="truncate text-base font-semibold">
+          {item ? "Edit" : "Add"} {copy.label.toLowerCase()}
+        </DialogTitle>
+        <DialogDescription className="sr-only">
+          Step {stepIndex + 1} of {steps.length}: {activeStep.title}. The item can be saved from any
+          step.
+        </DialogDescription>
+        <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
+      </div>
+      <div
+        className="min-h-0 min-w-0 flex-1 touch-pan-y space-y-4 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-4 sm:px-6"
+        data-planner-editor-scroll=""
+        ref={stepBodyRef}
+      >
+        <PlannerItemStepFields
+          attachments={
+            <ItemAttachmentsSection
+              item={item}
+              onDraftCountChange={attachmentSession.setDraftCount}
+              onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
+              onPendingChange={attachmentSession.setAttachmentPending}
+              shareAttachmentsEnabled={shareAttachmentsEnabled}
+              tripId={tripId}
+              uploadSessionId={attachmentSession.uploadSessionId}
+              uploadSessionSignal={attachmentSession.uploadSessionSignal}
+            />
+          }
+          blocks={activeStep.blocks}
+          dayId={dayId}
+          defaultCurrency={defaultCurrency}
+          item={item}
+          pending={pending}
+          state={state}
+          titleRef={titleRef}
+          type={type}
+        />
+      </div>
       <PlannerItemFormActions
-        canSave={canSave}
-        error={error}
+        error={stepError ?? mutationError?.message}
         item={item}
-        onCancel={attachmentSession.requestCancel}
+        lastStep={stepIndex === steps.length - 1}
+        onBack={() => moveStep(-1)}
+        onNext={() => moveStep(1)}
         onRemove={remove}
         pending={pending}
         pendingLabel={attachmentSession.attachmentPending ? "Updating attachments…" : undefined}
-        type={type}
+        primaryLabel={activeStep.id === "place" ? "Place item" : item ? "Save changes" : "Add item"}
+        showBack={stepIndex > 0}
       />
       <AttachmentSessionDiscardDialog
         error={attachmentSession.error}
@@ -336,6 +262,12 @@ export function PlannerItemForm({
         open={attachmentSession.discardDialogOpen}
         pending={attachmentSession.discardPending}
         uploadPending={attachmentSession.attachmentPending}
+      />
+      <PlannerItemExitDialog
+        editing={Boolean(item)}
+        onDiscard={requestCancel}
+        onOpenChange={setExitOpen}
+        open={exitOpen}
       />
     </form>
   );
