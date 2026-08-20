@@ -29,6 +29,22 @@
   display: none;
 }
 
+/* Touch browsers can reserve part of the large viewport for their own chrome. Keep every editor
+   action directly below the step rail so saving and step navigation never sit behind that chrome
+   or the software keyboard. */
+@media (max-width: 1199px) {
+  .planner-item-dialog .planner-item-form-actions {
+    order: 1;
+    border-top: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--background);
+  }
+
+  .planner-item-dialog [data-planner-editor-scroll] {
+    order: 2;
+  }
+}
+
 /* Tablet is a dedicated editor screen. Its large-viewport height stays stable when iPadOS opens
    the software keyboard, so the editor never shrinks to expose the Matrix underneath. */
 @media (min-width: 640px) and (max-width: 1199px) {

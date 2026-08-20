@@ -23,7 +23,11 @@ export function RouteVariantComparisonSheet({
   const active = comparison.presentations.find(({ isActive }) => isActive);
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
-      <SheetContent className="comparison-sheet max-h-[82dvh]" side="bottom">
+      <SheetContent
+        className="comparison-sheet z-[120] max-h-[82dvh]"
+        overlayClassName="z-[115]"
+        side="bottom"
+      >
         <SheetHeader className="py-4">
           <SheetTitle>
             {comparison.dayNumber ? `Day ${comparison.dayNumber} routes` : "Routes on map"}

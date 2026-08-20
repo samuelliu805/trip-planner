@@ -13,13 +13,20 @@ const SheetClose = SheetPrimitive.Close;
 function SheetContent({
   className,
   children,
+  overlayClassName,
   side = "right",
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content> & { side?: "right" | "bottom" }) {
+}: React.ComponentProps<typeof SheetPrimitive.Content> & {
+  overlayClassName?: string;
+  side?: "right" | "bottom";
+}) {
   return (
     <SheetPrimitive.Portal>
       <SheetPrimitive.Overlay
-        className="fixed inset-0 z-[100] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none"
+        className={cn(
+          "fixed inset-0 z-[100] bg-black/35 data-[state=open]:animate-in data-[state=closed]:animate-out motion-reduce:animate-none",
+          overlayClassName,
+        )}
         data-sheet-overlay=""
       />
       <SheetPrimitive.Content

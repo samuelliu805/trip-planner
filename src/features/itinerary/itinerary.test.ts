@@ -2247,6 +2247,11 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /PlannerContextActions/);
   assert.match(workspace, /planner-mobile-map-fab/);
   assert.match(workspace, /open=\{mapExpanded\}/);
+  assert.doesNotMatch(workspace, /setMapExpanded\(!open\)/);
+  assert.match(
+    styles,
+    /max-width: 1199px[\s\S]*planner-item-form-actions[\s\S]*order: 1;[\s\S]*data-planner-editor-scroll[\s\S]*order: 2;/,
+  );
   assert.match(mapShell, /PlannerMapCanvas/);
   assert.match(workspace, /Promise\.all\(\s*replacements\.flatMap/);
   assert.match(workspace, /replacedIds/);

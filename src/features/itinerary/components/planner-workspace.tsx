@@ -209,7 +209,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         onComparisonSheetOpenChange={(open) => {
           c.map.setComparisonSheetOpen(open);
           if (open) c.map.setDecisionSummarySheetOpen(false);
-          c.setMapExpanded(!open);
         }}
         onCopyDaysOpenChange={c.clipboard.setCopyDaysOpen}
         onCopyToSelectedDays={() => void c.clipboard.copyToSelectedDays()}
@@ -217,7 +216,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         onDecisionSummarySheetOpenChange={(open) => {
           c.map.setDecisionSummarySheetOpen(open);
           if (open) c.map.setComparisonSheetOpen(false);
-          c.setMapExpanded(!open);
         }}
         onEditMapItem={c.editMapItem}
         onEditorClose={() => {

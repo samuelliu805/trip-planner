@@ -26,7 +26,7 @@ export function RouteVariantDecisionSummarySheet({
   const visibility = decisionSummaryMetricVisibility(summary.summaries);
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
-      <SheetContent className="max-h-[88dvh]" side="bottom">
+      <SheetContent className="z-[120] max-h-[88dvh]" overlayClassName="z-[115]" side="bottom">
         <SheetHeader className="py-4">
           <SheetTitle>Decision summary</SheetTitle>
           <SheetDescription>
