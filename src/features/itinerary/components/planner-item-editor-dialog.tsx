@@ -10,6 +10,7 @@ import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 /** A dedicated full-screen editor that never shares its viewport with the Matrix. */
 export function PlannerItemEditorDialog({
   defaultCurrency,
+  dayDate,
   dayItems,
   editor,
   onClose,
@@ -21,6 +22,7 @@ export function PlannerItemEditorDialog({
   variantId,
 }: {
   defaultCurrency: string;
+  dayDate: string;
   dayItems: ItineraryItem[];
   editor: EditorState | null;
   onClose: () => void;
@@ -64,6 +66,7 @@ export function PlannerItemEditorDialog({
 
   const form = editor ? (
     <PlannerItemForm
+      dayDate={dayDate}
       dayId={editor.dayId}
       dayItems={dayItems}
       defaultCurrency={defaultCurrency}

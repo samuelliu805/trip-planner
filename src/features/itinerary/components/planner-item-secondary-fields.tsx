@@ -42,7 +42,7 @@ export function ItemTimeField({
   type: ItineraryItemType;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="min-w-0 space-y-2">
       <Label htmlFor={`item-time-${fieldId}-${type}`}>
         {type === "location"
           ? "Arrival time"
@@ -55,7 +55,7 @@ export function ItemTimeField({
       </Label>
       <div className="relative min-w-0">
         <Input
-          className="min-w-0 pr-9"
+          className="planner-native-time-input block min-w-0 max-w-full pr-9"
           id={`item-time-${fieldId}-${type}`}
           onChange={(event) => setStartTime(event.target.value)}
           type="time"
@@ -93,7 +93,7 @@ export function ItemLinksField({
       </legend>
       {links.map((link, index) => (
         <div
-          className="grid min-w-0 grid-cols-[minmax(92px,112px)_minmax(0,1fr)_44px] gap-2"
+          className="grid min-w-0 grid-cols-[minmax(92px,112px)_minmax(0,1fr)_44px] gap-3"
           key={index}
         >
           <Select
@@ -195,7 +195,7 @@ export function ItemNotesField({
   type: ItineraryItemType;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Label htmlFor={`item-notes-${fieldId}-${type}`}>
         {copyLabel} notes <span className="font-normal text-muted-foreground">optional</span>
       </Label>

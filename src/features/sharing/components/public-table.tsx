@@ -121,6 +121,7 @@ export function PublicTable({
                               day.primaryLocality ||
                               "City / town unavailable"
                             }
+                            type="location"
                           />
                         </div>
                       ) : null}

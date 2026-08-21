@@ -20,7 +20,7 @@ export function plannerJourneyFieldCapabilities(
   const hasTimedJourney = journeyItem && !selfDirected;
   return {
     arrivalTime: hasTimedJourney && scheduled,
-    dates: journeyItem && scheduled,
+    dates: hasTimedJourney,
     departureTime: hasTimedJourney,
     endpoints: journeyItem,
     serviceNumber: journeyItem && scheduled,

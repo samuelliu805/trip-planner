@@ -43,7 +43,7 @@ export function itemFormFieldLabels(type: ItineraryItemType) {
     type === "location"
       ? "City location"
       : type === "hotel"
-        ? "Hotel location"
+        ? "Address"
         : type === "car_rental"
           ? "Address"
           : type === "flight"

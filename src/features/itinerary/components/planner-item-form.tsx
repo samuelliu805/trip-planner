@@ -29,6 +29,7 @@ import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 const stepFieldSelector = "input:not([type='hidden']),textarea,[role='combobox']";
 
 export function PlannerItemForm({
+  dayDate,
   dayId,
   dayItems,
   defaultCurrency,
@@ -45,6 +46,7 @@ export function PlannerItemForm({
   variantId,
 }: PlannerItemFormProps) {
   const state = usePlannerItemFormState({
+    dayDate,
     defaultCurrency,
     item,
     items: dayItems,
@@ -217,49 +219,49 @@ export function PlannerItemForm({
           label={copy.label}
           onClose={requestExit}
           onStepSelect={goToStep}
-          pending={pending}
-          pendingLabel={pendingLabel}
           stepIndex={stepIndex}
           steps={steps}
         />
         <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
-          <div className="planner-item-form-fields space-y-4" ref={stepBodyRef}>
-            <PlannerItemStepFields
-              attachments={
-                <ItemAttachmentsSection
-                  item={item}
-                  onDraftCountChange={attachmentSession.setDraftCount}
-                  onOpenShareSettings={() =>
-                    window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
-                  }
-                  onPendingChange={attachmentSession.setAttachmentPending}
-                  shareAttachmentsEnabled={shareAttachmentsEnabled}
-                  tripId={tripId}
-                  uploadSessionId={attachmentSession.uploadSessionId}
-                  uploadSessionSignal={attachmentSession.uploadSessionSignal}
-                />
-              }
-              blocks={activeStep.blocks}
-              dayItems={dayItems}
-              dayId={dayId}
-              defaultCurrency={defaultCurrency}
-              item={item}
+          <div className="planner-item-form-card">
+            <div className="planner-item-form-fields" ref={stepBodyRef}>
+              <PlannerItemStepFields
+                attachments={
+                  <ItemAttachmentsSection
+                    item={item}
+                    onDraftCountChange={attachmentSession.setDraftCount}
+                    onOpenShareSettings={() =>
+                      window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
+                    }
+                    onPendingChange={attachmentSession.setAttachmentPending}
+                    shareAttachmentsEnabled={shareAttachmentsEnabled}
+                    tripId={tripId}
+                    uploadSessionId={attachmentSession.uploadSessionId}
+                    uploadSessionSignal={attachmentSession.uploadSessionSignal}
+                  />
+                }
+                blocks={activeStep.blocks}
+                dayItems={dayItems}
+                dayId={dayId}
+                defaultCurrency={defaultCurrency}
+                item={item}
+                pending={pending}
+                state={state}
+                titleRef={titleRef}
+                type={type}
+              />
+            </div>
+            <PlannerItemFormActions
+              firstStep={stepIndex === 0}
+              lastStep={stepIndex === steps.length - 1}
+              onBack={() => moveStep(-1)}
+              onNext={() => moveStep(1)}
               pending={pending}
-              state={state}
-              titleRef={titleRef}
-              type={type}
+              pendingLabel={pendingLabel}
             />
           </div>
         </div>
       </div>
-      <PlannerItemFormActions
-        firstStep={stepIndex === 0}
-        lastStep={stepIndex === steps.length - 1}
-        onBack={() => moveStep(-1)}
-        onNext={() => moveStep(1)}
-        pending={pending}
-        pendingLabel={pendingLabel}
-      />
       <AttachmentSessionDiscardDialog
         error={attachmentSession.error}
         onDiscard={attachmentSession.discard}

@@ -2061,6 +2061,7 @@ test("transport editor keeps endpoints first and hides irrelevant timed fields",
   });
   assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").endpoints, true);
   assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").arrivalTime, false);
+  assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").dates, true);
   assert.equal(plannerJourneyFieldCapabilities("flight", "self_driving").serviceNumber, true);
 });
 
@@ -3009,6 +3010,10 @@ test("the item editor groups every type into short steps and gates required fiel
   );
   assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["title", "place"]);
   assert.deepEqual(
+    plannerItemFormSteps({ ...rail, type: "meal" }).find(({ id }) => id === "extras"),
+    { blocks: ["startTime", "notes", "price"], id: "extras", title: "Detail" },
+  );
+  assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "note" }).map(({ id }) => id),
     ["basics", "files"],
   );
@@ -3020,10 +3025,15 @@ test("the item editor groups every type into short steps and gates required fiel
   const flight = plannerItemFormSteps({ ...rail, transportMode: "flight", type: "transport" });
   assert.deepEqual(
     flight.map(({ id }) => id),
-    ["basics", "schedule", "details", "files", "extras"],
+    ["basics", "schedule", "files", "extras"],
   );
   assert.deepEqual(flight[0].blocks, ["transportMode", "endpoints"]);
-  assert.deepEqual(flight[2].blocks, ["serviceNumber", "journeyDates"]);
+  assert.deepEqual(flight[1].blocks, ["journeySchedule"]);
+  assert.deepEqual(flight[3], {
+    blocks: ["serviceNumber", "price", "notes"],
+    id: "extras",
+    title: "Detail",
+  });
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, transportMode: "walk", type: "transport" }).map(({ id }) => id),
     ["basics", "files", "extras"],
@@ -3034,6 +3044,7 @@ test("the item editor groups every type into short steps and gates required fiel
     rentalReturn.some(({ blocks }) => blocks.includes("price")),
     false,
   );
+  assert.deepEqual(plannerItemFormSteps({ ...rail, type: "hotel" })[0].blocks, ["place", "title"]);
   for (const type of [
     "activity",
     "car_rental",

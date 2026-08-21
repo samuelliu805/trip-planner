@@ -60,7 +60,7 @@ export function CarActionField({
   setCarAction: Dispatch<SetStateAction<CarRentalDetails["action"]>>;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Label htmlFor={`car-action-${fieldId}`}>Pickup or return</Label>
       <Select
         onValueChange={(value) => setCarAction(value as CarRentalDetails["action"])}
@@ -88,7 +88,7 @@ export function CarProviderField({
   setCarProvider: Dispatch<SetStateAction<string>>;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Label htmlFor={`car-provider-${fieldId}`}>
         Rental company <span className="font-normal text-muted-foreground">optional</span>
       </Label>
@@ -114,7 +114,7 @@ export function TransportModeField({
   transportMode: TransportMode;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Label htmlFor={`transport-mode-${fieldId}`}>Transport</Label>
       <Select
         onValueChange={(value) => setTransportMode(value as TransportMode)}
@@ -162,7 +162,7 @@ export function ItemTitleField({
 }) {
   const named = ["location", "hotel"].includes(type);
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <Label htmlFor={`item-title-${fieldId}-${type}`}>
         {named ? (
           <>
@@ -221,7 +221,7 @@ export function ItemPlaceField({
   type: ItineraryItemType;
 }) {
   return (
-    <div className="space-y-1.5" data-planner-focus-region="place">
+    <div className="space-y-2" data-planner-focus-region="place">
       <Label>
         {placeLabel}{" "}
         {type === "location" ? (

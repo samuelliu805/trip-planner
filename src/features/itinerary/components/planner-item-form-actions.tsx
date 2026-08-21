@@ -18,7 +18,7 @@ export function PlannerItemFormActions({
   pendingLabel: string;
 }) {
   return (
-    <div className="planner-item-form-actions hidden shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-t bg-background px-6 py-3 sm:grid">
+    <div className="planner-item-form-actions mt-10 grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-3 border-t pt-6">
       <Button
         className="min-h-11 justify-self-start"
         disabled={firstStep}

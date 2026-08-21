@@ -4,9 +4,8 @@ import { Fragment, type ReactNode, type RefObject } from "react";
 
 import {
   ItemPriceField,
-  JourneyDateFields,
   JourneyEndpointFields,
-  JourneyTimeFields,
+  JourneyScheduleFields,
   ServiceNumberField,
 } from "@/features/itinerary/components/planner-booking-fields";
 import type { ItemFormBlock } from "@/features/itinerary/components/planner-item-form-steps";
@@ -90,27 +89,21 @@ export function PlannerItemStepFields({
             setOrigin={state.setOrigin}
           />
         );
-      case "journeyTimes":
+      case "journeySchedule":
         return (
-          <JourneyTimeFields
+          <JourneyScheduleFields
+            arrivalDate={state.arrivalDate}
             arrivalTime={state.arrivalTime}
+            departureDate={state.departureDate}
             fieldId={fieldId}
+            setArrivalDate={state.setArrivalDate}
             setArrivalTime={state.setArrivalTime}
+            setDepartureDate={state.setDepartureDate}
             setStartTime={state.setStartTime}
             showArrival={journey.arrivalTime}
             showDeparture={journey.departureTime}
             startTime={state.startTime}
             transportMode={state.transportMode}
-          />
-        );
-      case "journeyDates":
-        return (
-          <JourneyDateFields
-            arrivalDate={state.arrivalDate}
-            departureDate={state.departureDate}
-            fieldId={fieldId}
-            setArrivalDate={state.setArrivalDate}
-            setDepartureDate={state.setDepartureDate}
           />
         );
       case "links":
@@ -209,7 +202,7 @@ export function PlannerItemStepFields({
   }
 
   return (
-    <div className="planner-item-step-fields min-w-0 space-y-8">
+    <div className="planner-item-step-fields min-w-0 space-y-10">
       {blocks.map((name) => (
         <Fragment key={name}>{block(name)}</Fragment>
       ))}

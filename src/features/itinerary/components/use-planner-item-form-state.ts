@@ -17,10 +17,12 @@ import type { PlaceSnapshot } from "../../../lib/providers/places/types";
 const allTransportModes: TransportMode[] = [...transportModes];
 
 export function usePlannerItemFormState({
+  dayDate,
   defaultCurrency,
   item,
   items,
 }: {
+  dayDate: string;
   defaultCurrency: string;
   item?: ItineraryItem;
   items: ItineraryItem[];
@@ -40,8 +42,12 @@ export function usePlannerItemFormState({
   const [arrivalTime, setArrivalTime] = useState(
     item?.end_time?.slice(0, 5) ?? detailText("arrivalTime").slice(0, 5),
   );
-  const [arrivalDate, setArrivalDate] = useState(detailText("arrivalDate"));
-  const [departureDate, setDepartureDate] = useState(detailText("departureDate"));
+  const [arrivalDate, setArrivalDate] = useState(
+    detailText("arrivalDate") || (arrivalTime && dayDate ? dayDate : ""),
+  );
+  const [departureDate, setDepartureDate] = useState(
+    detailText("departureDate") || (startTime && dayDate ? dayDate : ""),
+  );
   const [origin, setOrigin] = useState(detailText("origin"));
   const [destination, setDestination] = useState(detailText("destination"));
   const [serviceNumber, setServiceNumber] = useState(detailText("serviceNumber"));

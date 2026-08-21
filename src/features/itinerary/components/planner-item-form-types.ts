@@ -1,6 +1,7 @@
 import type { ItineraryItem, ItineraryItemType, TransportMode } from "../types";
 
 export type PlannerItemFormProps = {
+  dayDate: string;
   dayId: string;
   dayItems: ItineraryItem[];
   defaultCurrency: string;

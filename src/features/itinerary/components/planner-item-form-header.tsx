@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -15,8 +15,6 @@ export function PlannerItemFormHeader({
   label,
   onClose,
   onStepSelect,
-  pending,
-  pendingLabel,
   stepIndex,
   steps,
 }: {
@@ -27,8 +25,6 @@ export function PlannerItemFormHeader({
   label: string;
   onClose: () => void;
   onStepSelect: (stepId: ItemFormStep["id"]) => void;
-  pending: boolean;
-  pendingLabel: string;
   stepIndex: number;
   steps: ItemFormStep[];
 }) {
@@ -36,22 +32,12 @@ export function PlannerItemFormHeader({
     <div className="planner-item-form-header border-b px-5 pb-5 pt-4 sm:px-6">
       <div className="planner-item-form-header-inner space-y-4">
         <div className="flex min-h-11 flex-wrap items-center gap-3">
-          <Button
-            aria-busy={pending}
-            className="min-h-11 min-w-24 px-4 font-semibold shadow-sm sm:hidden"
-            disabled={pending}
-            size="sm"
-            type="submit"
-          >
-            {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
-            {pending ? pendingLabel : "Save"}
-          </Button>
-          <DialogTitle className="order-3 basis-full truncate text-xl font-extrabold tracking-tight sm:order-none sm:mr-auto sm:basis-auto">
+          <DialogTitle className="mr-auto min-w-0 truncate text-xl font-extrabold tracking-tight">
             {editing ? "Edit" : "Add"} {label.toLowerCase()}
           </DialogTitle>
           <Button
             aria-label="Close editor"
-            className="ml-auto size-11 shrink-0 p-0 sm:ml-0"
+            className="size-11 shrink-0 p-0"
             disabled={closeDisabled}
             onClick={onClose}
             type="button"

@@ -22,8 +22,8 @@ export function JourneyEndpointFields({
   setOrigin: Dispatch<SetStateAction<string>>;
 }) {
   return (
-    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-      <div className="min-w-0 space-y-1.5">
+    <div className="grid min-w-0 gap-5 sm:grid-cols-2">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor={`journey-origin-${fieldId}`}>From</Label>
         <Input
           id={`journey-origin-${fieldId}`}
@@ -33,7 +33,7 @@ export function JourneyEndpointFields({
           value={origin}
         />
       </div>
-      <div className="min-w-0 space-y-1.5">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor={`journey-destination-${fieldId}`}>To</Label>
         <Input
           id={`journey-destination-${fieldId}`}
@@ -47,93 +47,87 @@ export function JourneyEndpointFields({
   );
 }
 
-export function JourneyTimeFields({
+function dateTimeValue(date: string, time: string) {
+  return date && time ? `${date}T${time}` : "";
+}
+
+function setDateTimeValue(
+  value: string,
+  setDate: Dispatch<SetStateAction<string>>,
+  setTime: Dispatch<SetStateAction<string>>,
+) {
+  const [date = "", time = ""] = value.split("T");
+  setDate(date);
+  setTime(time.slice(0, 5));
+}
+
+export function JourneyScheduleFields({
+  arrivalDate,
   arrivalTime,
+  departureDate,
   fieldId,
+  setArrivalDate,
   setArrivalTime,
+  setDepartureDate,
   setStartTime,
   showArrival,
   showDeparture,
   startTime,
   transportMode,
 }: {
+  arrivalDate: string;
   arrivalTime: string;
+  departureDate: string;
   fieldId: string;
+  setArrivalDate: Dispatch<SetStateAction<string>>;
   setArrivalTime: Dispatch<SetStateAction<string>>;
+  setDepartureDate: Dispatch<SetStateAction<string>>;
   setStartTime: Dispatch<SetStateAction<string>>;
   showArrival: boolean;
   showDeparture: boolean;
   startTime: string;
   transportMode: TransportMode;
 }) {
+  const departureValue = dateTimeValue(departureDate, startTime);
+  const arrivalValue = dateTimeValue(arrivalDate, arrivalTime);
   return (
-    <div className="grid min-w-0 gap-3 min-[430px]:grid-cols-2">
+    <div className="min-w-0 space-y-8">
       {showDeparture ? (
-        <div className="min-w-0 space-y-1.5">
+        <div className="min-w-0 space-y-2">
           <Label htmlFor={`journey-departure-${fieldId}`}>
-            {["taxi", "rideshare"].includes(transportMode) ? "Pick-up time" : "Departure time"}
+            {["taxi", "rideshare"].includes(transportMode) ? "Pick-up" : "Departure"}{" "}
+            <span className="font-normal text-muted-foreground">optional</span>
           </Label>
           <Input
+            className="planner-native-datetime-input block min-w-0 max-w-full"
             id={`journey-departure-${fieldId}`}
-            onChange={(event) => setStartTime(event.target.value)}
-            type="time"
-            value={startTime}
+            onChange={(event) =>
+              setDateTimeValue(event.target.value, setDepartureDate, setStartTime)
+            }
+            step="60"
+            type="datetime-local"
+            value={departureValue}
           />
         </div>
       ) : null}
       {showArrival ? (
-        <div className="min-w-0 space-y-1.5">
-          <Label htmlFor={`journey-arrival-${fieldId}`}>Arrival time</Label>
+        <div className="min-w-0 space-y-2">
+          <Label htmlFor={`journey-arrival-${fieldId}`}>
+            Arrival <span className="font-normal text-muted-foreground">optional</span>
+          </Label>
           <Input
+            className="planner-native-datetime-input block min-w-0 max-w-full"
             id={`journey-arrival-${fieldId}`}
-            onChange={(event) => setArrivalTime(event.target.value)}
-            type="time"
-            value={arrivalTime}
+            min={departureValue || undefined}
+            onChange={(event) =>
+              setDateTimeValue(event.target.value, setArrivalDate, setArrivalTime)
+            }
+            step="60"
+            type="datetime-local"
+            value={arrivalValue}
           />
         </div>
       ) : null}
-    </div>
-  );
-}
-
-export function JourneyDateFields({
-  arrivalDate,
-  departureDate,
-  fieldId,
-  setArrivalDate,
-  setDepartureDate,
-}: {
-  arrivalDate: string;
-  departureDate: string;
-  fieldId: string;
-  setArrivalDate: Dispatch<SetStateAction<string>>;
-  setDepartureDate: Dispatch<SetStateAction<string>>;
-}) {
-  return (
-    <div className="grid min-w-0 gap-3 min-[430px]:grid-cols-2">
-      <div className="min-w-0 space-y-1.5">
-        <Label htmlFor={`journey-departure-date-${fieldId}`}>
-          Departure date <span className="font-normal text-muted-foreground">optional</span>
-        </Label>
-        <Input
-          id={`journey-departure-date-${fieldId}`}
-          onChange={(event) => setDepartureDate(event.target.value)}
-          type="date"
-          value={departureDate}
-        />
-      </div>
-      <div className="min-w-0 space-y-1.5">
-        <Label htmlFor={`journey-arrival-date-${fieldId}`}>
-          Arrival date <span className="font-normal text-muted-foreground">optional</span>
-        </Label>
-        <Input
-          id={`journey-arrival-date-${fieldId}`}
-          min={departureDate || undefined}
-          onChange={(event) => setArrivalDate(event.target.value)}
-          type="date"
-          value={arrivalDate}
-        />
-      </div>
     </div>
   );
 }
@@ -152,7 +146,7 @@ export function ServiceNumberField({
   type: ItineraryItemType;
 }) {
   return (
-    <div className="min-w-0 space-y-1.5">
+    <div className="min-w-0 space-y-2">
       <Label htmlFor={`journey-service-${fieldId}`}>
         {type === "flight" || transportMode === "flight"
           ? "Flight number"

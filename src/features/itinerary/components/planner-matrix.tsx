@@ -194,6 +194,7 @@ export function PlannerMatrix({
                           >
                             <MatrixItemSummary
                               title={formatDayLocalitySummary(deriveDayLocality(day))}
+                              type="location"
                             />
                           </div>
                         ) : null}

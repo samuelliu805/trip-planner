@@ -8,8 +8,7 @@ export type ItemFormBlock =
   | "carAction"
   | "carProvider"
   | "endpoints"
-  | "journeyDates"
-  | "journeyTimes"
+  | "journeySchedule"
   | "links"
   | "notes"
   | "order"
@@ -22,7 +21,7 @@ export type ItemFormBlock =
 
 export type ItemFormStep = {
   blocks: ItemFormBlock[];
-  id: "basics" | "details" | "route" | "files" | "schedule" | "extras" | "order";
+  id: "basics" | "route" | "files" | "schedule" | "extras" | "order";
   title: string;
 };
 
@@ -34,6 +33,7 @@ type StepInput = {
 
 function basicsBlocks(type: ItineraryItemType, endpoints: boolean): ItemFormBlock[] {
   if (type === "location") return ["place", "title"];
+  if (type === "hotel") return ["place", "title"];
   if (type === "car_rental") return ["carAction", "carProvider", "place"];
   if (type === "transport") return endpoints ? ["transportMode", "endpoints"] : ["transportMode"];
   if (type === "flight" || type === "train") return endpoints ? ["title", "endpoints"] : ["title"];
@@ -51,7 +51,8 @@ export function plannerItemFormSteps({
 }: StepInput): ItemFormStep[] {
   const journey = plannerJourneyFieldCapabilities(type, transportMode);
   const { supportsLink, supportsPrice, supportsTime } = itemFormCapabilities(type, carAction);
-  const journeyTimes = journey.departureTime || journey.arrivalTime;
+  const journeyItem = ["flight", "train", "transport"].includes(type);
+  const journeySchedule = journey.departureTime || journey.arrivalTime;
   const ownTime = supportsTime && !["flight", "train", "transport"].includes(type);
   // Step titles stay one short word so the longest six-step journey still fits a 390px bar.
   const steps: ItemFormStep[] = [
@@ -61,36 +62,42 @@ export function plannerItemFormSteps({
       title: type === "car_rental" ? "Rental" : itemCopy[type].label,
     },
   ];
-  if (journeyTimes) steps.push({ blocks: ["journeyTimes"], id: "schedule", title: "Times" });
-  const journeyDetails: ItemFormBlock[] = [
-    ...(journey.serviceNumber ? (["serviceNumber"] as const) : []),
-    ...(journey.dates ? (["journeyDates"] as const) : []),
-  ];
-  if (journeyDetails.length)
-    steps.push({ blocks: journeyDetails, id: "details", title: "Details" });
+  if (journeySchedule) steps.push({ blocks: ["journeySchedule"], id: "schedule", title: "Time" });
   steps.push({
     blocks: supportsLink ? ["links", "attachments"] : ["attachments"],
     id: "files",
     title: supportsLink ? "Links" : "Files",
   });
 
-  const closing: ItemFormBlock[] = [];
-  if (journeyTimes) {
-    if (supportsPrice) closing.push("price");
-  } else if (ownTime) {
+  if (journeyItem) {
+    const details: ItemFormBlock[] = [];
+    if (journey.serviceNumber) details.push("serviceNumber");
+    if (supportsPrice) details.push("price");
+    details.push("notes");
+    steps.push({ blocks: details, id: "extras", title: "Detail" });
+  } else if (type === "meal") {
     steps.push({
-      blocks: supportsPrice ? ["startTime", "price"] : ["startTime"],
-      id: "schedule",
-      title: "Time",
-    });
-  } else if (supportsPrice) closing.push("price");
-  if (type !== "note") closing.push("notes");
-  if (closing.length)
-    steps.push({
-      blocks: closing,
+      blocks: supportsPrice ? ["startTime", "notes", "price"] : ["startTime", "notes"],
       id: "extras",
-      title: closing.includes("price") ? "Price" : "Notes",
+      title: "Detail",
     });
+  } else {
+    const closing: ItemFormBlock[] = [];
+    if (ownTime) {
+      steps.push({
+        blocks: supportsPrice ? ["startTime", "price"] : ["startTime"],
+        id: "schedule",
+        title: "Time",
+      });
+    } else if (supportsPrice) closing.push("price");
+    if (type !== "note") closing.push("notes");
+    if (closing.length)
+      steps.push({
+        blocks: closing,
+        id: "extras",
+        title: closing.includes("price") ? "Detail" : "Notes",
+      });
+  }
   if (["activity", "meal"].includes(type))
     steps.push({ blocks: ["order"], id: "order", title: "Order" });
   return steps;

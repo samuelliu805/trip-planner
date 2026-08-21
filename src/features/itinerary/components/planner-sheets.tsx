@@ -138,6 +138,7 @@ export function PlannerSheets({
         summary={decisionSummary}
       />
       <PlannerItemEditorDialog
+        dayDate={workspace.days.find(({ id }) => id === editor?.dayId)?.date ?? ""}
         dayItems={workspace.days.find(({ id }) => id === editor?.dayId)?.items ?? []}
         defaultCurrency={defaultCurrency}
         editor={editor}
