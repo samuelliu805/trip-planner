@@ -2,7 +2,7 @@ import type { ItineraryItem } from "@/features/itinerary/types";
 
 type OrderableActivity = Pick<ItineraryItem, "id" | "sort_order" | "type">;
 
-export const destinationActivityTypes = ["activity", "meal", "hotel"] as const;
+export const destinationActivityTypes = ["activity", "car_rental", "meal", "hotel"] as const;
 
 export function isDestinationActivity(item: Pick<ItineraryItem, "type">) {
   return destinationActivityTypes.includes(item.type as (typeof destinationActivityTypes)[number]);

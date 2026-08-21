@@ -3039,7 +3039,19 @@ test("the item editor groups every type into short steps and gates required fiel
     ["basics", "files", "extras"],
   );
   const rentalReturn = plannerItemFormSteps({ ...rail, carAction: "return", type: "car_rental" });
-  assert.deepEqual(rentalReturn[0].blocks, ["carAction", "carProvider", "place"]);
+  assert.deepEqual(rentalReturn[0].blocks, ["carProvider", "place"]);
+  assert.deepEqual(
+    rentalReturn.find(({ id }) => id === "extras"),
+    {
+      blocks: ["carAction", "startTime"],
+      id: "extras",
+      title: "Detail",
+    },
+  );
+  assert.deepEqual(
+    plannerItemFormSteps({ ...rail, type: "car_rental" }).find(({ id }) => id === "extras")?.blocks,
+    ["carAction", "startTime", "price"],
+  );
   assert.equal(
     rentalReturn.some(({ blocks }) => blocks.includes("price")),
     false,
@@ -3071,7 +3083,7 @@ test("the item editor groups every type into short steps and gates required fiel
         typeSteps.some(({ blocks }) => blocks.includes("place")),
         `${type} keeps its place field`,
       );
-    if (["activity", "meal"].includes(type))
+    if (["activity", "car_rental", "meal"].includes(type))
       assert.deepEqual(typeSteps.at(-1), { blocks: ["order"], id: "order", title: "Order" });
     else
       assert.equal(
@@ -3116,11 +3128,13 @@ test("the editor Order step derives stable anchors for add and edit", () => {
     item("museum", 0),
     item("train", 1, "transport"),
     item("meal", 2, "meal"),
-    item("hotel", 3, "hotel"),
+    item("rental", 3, "car_rental"),
+    item("hotel", 4, "hotel"),
   ];
   assert.equal(itemOrderAnchor(items, "museum", "activity"), null);
   assert.equal(itemOrderAnchor(items, "meal", "meal"), "museum");
-  assert.equal(itemOrderAnchor(items, undefined, "activity"), "meal");
-  assert.equal(itemOrderAnchor(items, undefined, "hotel"), "meal");
+  assert.equal(itemOrderAnchor(items, "rental", "car_rental"), "meal");
+  assert.equal(itemOrderAnchor(items, undefined, "activity"), "rental");
+  assert.equal(itemOrderAnchor(items, undefined, "hotel"), "rental");
   assert.equal(itemOrderAnchor(items, "train", "transport"), null);
 });

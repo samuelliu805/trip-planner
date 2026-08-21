@@ -4,14 +4,20 @@ import { Check, ListOrdered } from "lucide-react";
 
 import { compareActivityOrder, isDestinationActivity } from "@/features/itinerary/activity-order";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
-import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/types";
+import type {
+  CarRentalDetails,
+  ItineraryItem,
+  ItineraryItemType,
+} from "@/features/itinerary/types";
 
 function OrderGap({
   active,
+  activeLabel,
   anchor,
   onChange,
 }: {
   active: boolean;
+  activeLabel: string;
   anchor: string | null;
   onChange: (anchor: string | null) => void;
 }) {
@@ -27,13 +33,14 @@ function OrderGap({
         className={`relative flex items-center gap-1 rounded-full px-2.5 py-1 ${active ? "bg-primary text-primary-foreground" : "bg-background group-hover:text-primary"}`}
       >
         {active ? <Check aria-hidden="true" className="size-3" /> : null}
-        {active ? "Selected position" : "Move here"}
+        {active ? activeLabel : "Move here"}
       </span>
     </button>
   );
 }
 
 export function PlannerItemOrderField({
+  carAction,
   insertAfterItemId,
   item,
   items,
@@ -41,6 +48,7 @@ export function PlannerItemOrderField({
   title,
   type,
 }: {
+  carAction: CarRentalDetails["action"];
   insertAfterItemId: string | null;
   item?: ItineraryItem;
   items: ItineraryItem[];
@@ -51,7 +59,18 @@ export function PlannerItemOrderField({
   const ordered = items
     .filter((entry) => entry.id !== item?.id && isDestinationActivity(entry))
     .sort(compareActivityOrder);
-  const label = title.trim() || item?.title || `New ${itemCopy[type].label.toLowerCase()}`;
+  const selectedPositionLabel =
+    type === "activity"
+      ? "This activity"
+      : type === "meal"
+        ? "This meal"
+        : type === "car_rental"
+          ? `Rental ${carAction}`
+          : "Selected position";
+  const label =
+    type === "car_rental"
+      ? selectedPositionLabel
+      : title.trim() || item?.title || `New ${itemCopy[type].label.toLowerCase()}`;
 
   if (type === "hotel")
     return (
@@ -77,7 +96,12 @@ export function PlannerItemOrderField({
         <p className="min-w-0 truncate text-sm font-semibold">Moving {label}</p>
       </div>
       <div className="rounded-md border bg-background px-2 py-1">
-        <OrderGap active={insertAfterItemId === null} anchor={null} onChange={onChange} />
+        <OrderGap
+          active={insertAfterItemId === null}
+          activeLabel={selectedPositionLabel}
+          anchor={null}
+          onChange={onChange}
+        />
         {ordered.map((entry) => (
           <div key={entry.id}>
             <div className="flex min-h-12 items-center rounded-md border bg-muted/20 px-3 py-2">
@@ -91,6 +115,7 @@ export function PlannerItemOrderField({
             {entry.type !== "hotel" ? (
               <OrderGap
                 active={insertAfterItemId === entry.id}
+                activeLabel={selectedPositionLabel}
                 anchor={entry.id}
                 onChange={onChange}
               />

@@ -123,6 +123,7 @@ export function PlannerItemStepFields({
       case "order":
         return (
           <PlannerItemOrderField
+            carAction={state.carAction}
             insertAfterItemId={state.insertAfterItemId}
             item={item}
             items={dayItems}

@@ -34,7 +34,7 @@ type StepInput = {
 function basicsBlocks(type: ItineraryItemType, endpoints: boolean): ItemFormBlock[] {
   if (type === "location") return ["place", "title"];
   if (type === "hotel") return ["place", "title"];
-  if (type === "car_rental") return ["carAction", "carProvider", "place"];
+  if (type === "car_rental") return ["carProvider", "place"];
   if (type === "transport") return endpoints ? ["transportMode", "endpoints"] : ["transportMode"];
   if (type === "flight" || type === "train") return endpoints ? ["title", "endpoints"] : ["title"];
   return ["title", "place"];
@@ -81,6 +81,13 @@ export function plannerItemFormSteps({
       id: "extras",
       title: "Detail",
     });
+  } else if (type === "car_rental") {
+    steps.push({
+      blocks: supportsPrice ? ["carAction", "startTime", "price"] : ["carAction", "startTime"],
+      id: "extras",
+      title: "Detail",
+    });
+    steps.push({ blocks: ["notes"], id: "route", title: "Notes" });
   } else {
     const closing: ItemFormBlock[] = [];
     if (ownTime) {
@@ -98,7 +105,7 @@ export function plannerItemFormSteps({
         title: closing.includes("price") ? "Detail" : "Notes",
       });
   }
-  if (["activity", "meal"].includes(type))
+  if (["activity", "car_rental", "meal"].includes(type))
     steps.push({ blocks: ["order"], id: "order", title: "Order" });
   return steps;
 }
