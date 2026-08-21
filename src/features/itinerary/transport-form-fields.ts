@@ -6,6 +6,9 @@ export function plannerJourneyFieldCapabilities(
 ) {
   const mode = type === "flight" || type === "train" ? type : transportMode;
   const selfDirected = ["self_driving", "bike", "walk", "motorcycle"].includes(mode);
+  const simpleLocalMode = ["subway", "taxi", "rideshare", "shuttle", "tram", "cable_car"].includes(
+    mode,
+  );
   const scheduled = [
     "flight",
     "train",
@@ -16,11 +19,13 @@ export function plannerJourneyFieldCapabilities(
     "shuttle",
     "cable_car",
   ].includes(mode);
-  const hasJourney = ["transport", "flight", "train"].includes(type) && !selfDirected;
+  const journeyItem = ["transport", "flight", "train"].includes(type);
+  const hasTimedJourney = journeyItem && !selfDirected && !simpleLocalMode;
   return {
-    arrivalTime: hasJourney && scheduled,
-    departureTime: hasJourney,
-    endpoints: hasJourney,
-    serviceNumber: hasJourney && scheduled,
+    arrivalTime: hasTimedJourney && scheduled,
+    dates: hasTimedJourney,
+    departureTime: hasTimedJourney,
+    endpoints: journeyItem,
+    serviceNumber: journeyItem && scheduled,
   };
 }

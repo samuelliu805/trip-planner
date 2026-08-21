@@ -3,7 +3,7 @@ import {
   type CarRentalDetails,
   type ItineraryItemType,
   type TransportMode,
-} from "@/features/itinerary/types";
+} from "../types.ts";
 
 export function plannerItemTitle({
   carAction,
@@ -20,7 +20,7 @@ export function plannerItemTitle({
 }) {
   if (type === "car_rental") return carAction === "pickup" ? "Pickup" : "Return";
   if (type === "transport") return transportModeLabels[transportMode];
-  if (["location", "hotel"].includes(type)) return title.trim() || placeName || "";
+  if (["location", "hotel", "meal"].includes(type)) return title.trim() || placeName || "";
   return title.trim();
 }
 
@@ -43,10 +43,18 @@ export function itemFormFieldLabels(type: ItineraryItemType) {
     type === "location"
       ? "City location"
       : type === "hotel"
-        ? "Hotel location"
+        ? "Address"
         : type === "car_rental"
           ? "Address"
-          : "Location";
+          : type === "flight"
+            ? "Airport or terminal"
+            : type === "train"
+              ? "Station"
+              : type === "transport"
+                ? "Stop or location"
+                : type === "note"
+                  ? "Related place"
+                  : "Location";
   const linkLabel =
     type === "hotel"
       ? "Hotel link"
@@ -68,7 +76,7 @@ export function itemFormCapabilities(
 ) {
   return {
     supportsLink: !["location", "note"].includes(type),
-    supportsPlace: !["note", "transport", "flight", "train"].includes(type),
+    supportsPlace: true,
     supportsPrice:
       !["location", "note"].includes(type) && !(type === "car_rental" && carAction === "return"),
     supportsTime: [

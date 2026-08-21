@@ -1569,7 +1569,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     shareStatus,
     /Public preview|LongImageExportPanel|ShareLinkActions|ShareQrCode/,
   );
-  assert.match(shareStatus, /Open shareable page/);
+  assert.doesNotMatch(shareStatus, /Open page|Copy link/);
+  assert.match(shareStatus, /Copy shareable page URL/);
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
   assert.match(viewerShare, /--dialog-viewport-height/);
   assert.match(viewerShare, /downloadShareImageParts/);

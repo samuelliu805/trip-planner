@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
+import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { PlannerMapControls } from "@/features/itinerary/components/planner-map-controls";
 import { PlannerMapSelectedPlace } from "@/features/itinerary/components/planner-map-selected-place";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
@@ -80,6 +81,7 @@ export function PlannerMapShell({
 }) {
   const activeDayId = dayRoute.activeDay?.id ?? "no-day";
   const [overviewPanelOpen, setOverviewPanelOpen] = useState(true);
+  const [comparisonPanelOpen, setComparisonPanelOpen] = useState(true);
   const [dayPanelState, setDayPanelState] = useState<{
     dayId: string;
     open: boolean;
@@ -91,7 +93,7 @@ export function PlannerMapShell({
     mapMode === "overview"
       ? !overviewPanelVisible
       : mapMode === "comparison"
-        ? false
+        ? !comparisonPanelOpen
         : !dayPanelOpen;
   const setDayPanelOpen = (open: boolean) => setDayPanelState({ dayId: activeDayId, open });
   const handleMarkerClick = (id?: string) => {
@@ -157,18 +159,23 @@ export function PlannerMapShell({
         onExpand={onExpand}
         onMapModeChange={(mode) => {
           if (mode === "day_route") setDayPanelOpen(true);
-          else setOverviewPanelOpen(true);
+          else if (mode === "overview") setOverviewPanelOpen(true);
+          else setComparisonPanelOpen(true);
           onMapModeChange(mode);
         }}
         onPanelOpen={() => {
           if (mapMode === "overview") setOverviewPanelOpen(true);
           else if (mapMode === "day_route") setDayPanelOpen(true);
+          else setComparisonPanelOpen(true);
         }}
         panelDismissed={panelDismissed && !selectedId}
       />
       {!compact && selectedPlace ? (
-        <section className="map-place-panel absolute bottom-3 left-3 right-3 z-20 max-h-[min(28rem,calc(100%-4.5rem))] overflow-y-auto rounded-xl border bg-background/95 p-3 shadow-lg backdrop-blur">
-          {selectedPlace}
+        <section className="map-bottom-panel map-place-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+          <PullUpPanelHandle className="sm:hidden" onClose={closeSelectedPlace} />
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-3 pb-3 pt-1 sm:p-4">
+            {selectedPlace}
+          </div>
         </section>
       ) : null}
       {!compact && !selectedId && mapMode === "overview" && overviewPanelVisible ? (
@@ -180,10 +187,11 @@ export function PlannerMapShell({
       {mapMode === "comparison" ? (
         <>
           <VariantComparisonMapStatus comparison={comparison} />
-          {!compact ? (
+          {!compact && comparisonPanelOpen ? (
             <>
               <RouteVariantComparisonPanel
                 comparison={comparison}
+                onClose={() => setComparisonPanelOpen(false)}
                 onSummaryOpen={onDecisionSummaryOpen}
                 summaryOpen={decisionSummaryPanelOpen}
               />
@@ -198,6 +206,7 @@ export function PlannerMapShell({
               <VariantComparisonMobileBar
                 comparison={comparison}
                 onChooseRoutes={onComparisonSheetOpen}
+                onClose={() => setComparisonPanelOpen(false)}
                 onSummaryOpen={onDecisionSummaryOpen}
               />
             </>

@@ -73,6 +73,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                   initialOpen={query.share === "1"}
                   initialLinks={shareLinks.data}
                   key="trip-share-controls"
+                  renderTrigger={false}
                   siteUrl={siteUrl}
                   trip={trip}
                   variants={variantsResult.data}

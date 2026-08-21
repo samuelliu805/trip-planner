@@ -45,8 +45,10 @@ export type TransportDetails = {
   arrivalTime?: string;
   departureDate?: string;
   destination?: string;
+  destinationPlace?: PlaceSnapshot;
   mode: TransportMode;
   origin?: string;
+  originPlace?: PlaceSnapshot;
   researchSourceId?: string;
   segmentIndex?: number;
   serviceNumber?: string;

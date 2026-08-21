@@ -2,8 +2,10 @@ import type { PlannerVariant } from "@/features/itinerary/types";
 
 import type { PublicItineraryLink } from "../types";
 import { LongImageSettingsFields } from "./long-image-settings-fields";
+import { PublicShareBasicFields } from "./public-share-basic-fields";
 import { PublicSharePageFields } from "./public-share-page-fields";
 import type { ShareSettings } from "./public-share-settings";
+import { ShareSettingDisclosure } from "./public-share-setting-card";
 import { PublicShareVisibilityFields } from "./public-share-visibility-fields";
 
 export function PublicShareSettingsFields({
@@ -29,22 +31,28 @@ export function PublicShareSettingsFields({
 }) {
   return (
     <div className="min-w-0 space-y-4">
-      <PublicSharePageFields
+      <PublicShareBasicFields
         existingPage={existingPage}
         onChooseVariant={onChooseVariant}
         onSettingChange={onSettingChange}
         settings={settings}
-        suggestedDescription={suggestedDescription}
-        suggestedTitle={suggestedTitle}
         variantId={variantId}
         variants={variants}
       />
-      <PublicShareVisibilityFields onSettingChange={onSettingChange} settings={settings} />
-      <LongImageSettingsFields
-        onSettingChange={onSettingChange}
-        settings={settings}
-        sharePages={sharePages}
-      />
+      <ShareSettingDisclosure title="Advanced settings">
+        <PublicSharePageFields
+          onSettingChange={onSettingChange}
+          settings={settings}
+          suggestedDescription={suggestedDescription}
+          suggestedTitle={suggestedTitle}
+        />
+        <PublicShareVisibilityFields onSettingChange={onSettingChange} settings={settings} />
+        <LongImageSettingsFields
+          onSettingChange={onSettingChange}
+          settings={settings}
+          sharePages={sharePages}
+        />
+      </ShareSettingDisclosure>
     </div>
   );
 }

@@ -8,6 +8,19 @@ import {
   type PlannerClipboard,
 } from "@/features/itinerary/grid-interactions";
 
+/**
+ * React replays events from portalled overlays through this subtree, so an edit inside the item
+ * editor would otherwise reach the Matrix. Typing surfaces and overlays keep their own clipboard.
+ */
+function editableTarget(target: EventTarget | null) {
+  const element = target as Element | null;
+  return Boolean(
+    element?.closest?.(
+      "input, textarea, select, [contenteditable=''], [contenteditable='true'], [role='dialog'], [role='alertdialog']",
+    ),
+  );
+}
+
 export function PlannerWorkspaceEventBoundary({
   children,
   clipboardPayload,
@@ -41,6 +54,7 @@ export function PlannerWorkspaceEventBoundary({
         }
       }}
       onCopy={(event) => {
+        if (editableTarget(event.target)) return;
         const payload = clipboardPayload();
         if (payload) {
           event.preventDefault();
@@ -50,6 +64,7 @@ export function PlannerWorkspaceEventBoundary({
         }
       }}
       onPaste={(event) => {
+        if (editableTarget(event.target)) return;
         const payload =
           parsePlannerClipboard(event.clipboardData.getData("text/plain")) ?? internalClipboard;
         if (!payload) {

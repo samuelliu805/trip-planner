@@ -203,11 +203,11 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     "utf8",
   );
   const plannerSheets = await readFile(
-    new URL("../itinerary/components/planner-sheets.tsx", import.meta.url),
+    new URL("../itinerary/components/planner-item-editor-dialog.tsx", import.meta.url),
     "utf8",
   );
   const plannerStyles = await readFile(
-    new URL("../../app/planner-workspace.css", import.meta.url),
+    new URL("../../app/planner-item-dialog.css", import.meta.url),
     "utf8",
   );
   const attachmentSession = await readFile(
@@ -308,16 +308,16 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
   assert.match(attachmentSection, /ShareAttachmentsCallout/);
   assert.match(itemForm, /attachmentSession\.attachmentPending \? "Updating attachments…"/);
-  assert.match(itemForm, /max-w-full min-w-0[\s\S]*overflow-x-hidden/);
+  assert.match(itemForm, /min-w-0 flex-1 flex-col overflow-hidden/);
   assert.match(
-    plannerSheets,
+    itemForm,
     /overflow-x-hidden[\s\S]*overflow-y-auto[\s\S]*data-planner-editor-scroll/,
   );
-  assert.match(itemForm, /PlannerItemFormActions/);
-  assert.doesNotMatch(itemForm, /data-planner-editor-actions|flex-1 flex-col overflow-hidden/);
+  assert.match(plannerSheets, /planner-item-dialog/);
+  assert.doesNotMatch(itemForm, /data-planner-editor-actions/);
   assert.match(
     plannerStyles,
-    /\.planner-editor-sheet \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior-x: none[\s\S]*touch-action: pan-y/,
+    /\.planner-item-dialog \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior: none[\s\S]*touch-action: pan-y/,
   );
   assert.equal(
     publicViews.every((source) => /PublicItemMediaGallery/.test(source)),

@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { X } from "lucide-react";
 
+import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { DecisionSummaryCard } from "@/features/variants/components/decision-summary-card";
 import { DecisionSummaryFeedback } from "@/features/variants/components/decision-summary-feedback";
 import { decisionSummaryMetricVisibility } from "@/features/variants/decision-summary-presentation";
@@ -23,8 +24,9 @@ export function RouteVariantDecisionSummaryPanel({
   return (
     <aside
       aria-label="Route variant decision summary"
-      className="absolute inset-x-3 bottom-3 z-30 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden rounded-xl border bg-background/95 shadow-2xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
+      className="map-bottom-panel mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-2xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
+      <PullUpPanelHandle className="sm:hidden" onClose={onCollapse} />
       <header className="flex min-h-11 items-center justify-between gap-4 border-b px-4 py-2">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold">Decision summary</h2>
@@ -33,15 +35,15 @@ export function RouteVariantDecisionSummaryPanel({
           </p>
         </div>
         <button
-          aria-expanded="true"
-          className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close decision summary"
+          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onCollapse}
           type="button"
         >
-          <ChevronDown aria-hidden="true" className="size-4" /> Collapse
+          <X aria-hidden="true" className="size-4" />
         </button>
       </header>
-      <div className="min-h-0 overflow-y-auto p-3">
+      <div className="min-h-0 overflow-y-auto overscroll-contain p-3">
         {summary.isLoading || summary.error ? (
           <DecisionSummaryFeedback summary={summary} />
         ) : (

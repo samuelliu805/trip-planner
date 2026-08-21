@@ -30,6 +30,14 @@ export const publicViewLabels: Record<PublicView, string> = {
   timeline: "Timeline",
 };
 
+/** Stable signature used to tell "nothing changed" from "there is something to publish". */
+export function shareSettingsSignature(settings: ShareSettings, variantId: string) {
+  return JSON.stringify([
+    variantId,
+    ...Object.entries(settings).sort(([left], [right]) => left.localeCompare(right)),
+  ]);
+}
+
 export function settingsFromLink(link?: PublicItineraryLink): ShareSettings {
   if (!link) return defaultShareSettings;
   const hasExplicitSharePageTarget =

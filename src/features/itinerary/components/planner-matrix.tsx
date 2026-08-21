@@ -6,6 +6,7 @@ import { Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddItemButton, DayActions } from "@/features/itinerary/components/planner-grid-elements";
 import { PlannerItemRow } from "@/features/itinerary/components/planner-item-row";
+import { MatrixItemSummary } from "@/features/itinerary/components/matrix-presentation";
 import {
   PlannerDivider,
   PlannerGridHeader,
@@ -100,13 +101,13 @@ export function PlannerMatrix({
           {workspace.days.map((day, row) => (
             <div className="contents" key={day.id}>
               <div
-                className="flex min-h-16 border-b sm:min-h-24"
+                className="flex min-h-11 border-b min-[1200px]:min-h-[52px]"
                 role="row"
                 aria-rowindex={row + 2}
               >
                 <div
                   aria-selected={selectedDayRow === row}
-                  className={`sticky left-0 z-20 w-24 shrink-0 cursor-pointer border-r px-2 py-1 font-mono text-xs sm:py-2 sm:text-[11px] ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                  className={`sticky left-0 z-20 w-24 shrink-0 cursor-pointer border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
                   onClick={() => selectDay(row)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -117,18 +118,18 @@ export function PlannerMatrix({
                   role="rowheader"
                   tabIndex={0}
                 >
-                  <span className="block font-sans text-sm font-semibold leading-4 sm:hidden">
+                  <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
                     Day {day.day_number}
                   </span>
-                  <span className="mt-0.5 block text-sm font-medium leading-4 sm:mt-0 sm:text-xs sm:leading-normal">
+                  <span className="block text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
                     {day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}
                   </span>
                   {day.date ? (
-                    <span className="block font-sans text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal">
+                    <span className="block font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
                       {format(parseISO(day.date), "EEE")}
                     </span>
                   ) : (
-                    <span className="mt-0.5 hidden font-sans text-[10px] text-muted-foreground sm:block">
+                    <span className="hidden font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px] sm:block">
                       Add dates later
                     </span>
                   )}
@@ -144,7 +145,7 @@ export function PlannerMatrix({
                   />
                 </div>
                 <div
-                  className="sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-2 text-xs font-semibold"
+                  className="sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]"
                   role="rowheader"
                 >
                   {day.day_number}
@@ -165,7 +166,7 @@ export function PlannerMatrix({
                   return (
                     <div
                       aria-selected={selected}
-                      className={`${category.width} group relative flex shrink-0 flex-col border-r p-1 ${selected ? "bg-primary/5 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                      className={`${category.width} group relative flex shrink-0 flex-col border-r p-0.5 ${selected ? "bg-primary/5 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
                       data-cell={`${row}-${column}`}
                       key={category.id}
                       onClick={(event) => focusCell(coordinate, event.shiftKey)}
@@ -185,12 +186,16 @@ export function PlannerMatrix({
                       role="gridcell"
                       tabIndex={active ? 0 : -1}
                     >
-                      <div className="space-y-0.5">
+                      <div className="space-y-px min-[1200px]:space-y-1">
                         {category.id === "city" ? (
-                          <div className="rounded-sm bg-muted/50 px-2 py-1.5">
-                            <p className="text-xs font-medium leading-4">
-                              {formatDayLocalitySummary(deriveDayLocality(day))}
-                            </p>
+                          <div
+                            className="matrix-city-summary flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-1"
+                            data-city-summary=""
+                          >
+                            <MatrixItemSummary
+                              title={formatDayLocalitySummary(deriveDayLocality(day))}
+                              type="location"
+                            />
                           </div>
                         ) : null}
                         {items.map((item) => (

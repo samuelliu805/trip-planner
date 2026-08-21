@@ -1,0 +1,167 @@
+.planner-item-dialog {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex;
+  width: 100% !important;
+  height: 100vh !important;
+  height: 100lvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: none;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: var(--muted);
+  box-shadow: none !important;
+  touch-action: pan-y;
+}
+
+html.planner-editor-viewport-locked,
+body.planner-editor-viewport-locked {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
+  visibility: hidden;
+}
+
+.planner-item-dialog .planner-item-form {
+  height: 100%;
+  background: var(--muted);
+}
+
+.planner-item-dialog [data-planner-editor-scroll] {
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-padding-block: 2rem;
+  touch-action: pan-y;
+}
+
+.planner-item-dialog .planner-item-form-header {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  background: var(--background);
+}
+
+.planner-item-dialog .planner-item-form-header-inner {
+  width: min(52rem, 100%);
+  margin-inline: auto;
+}
+
+.planner-item-dialog .planner-item-form-content {
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+  padding-bottom: calc(
+    2rem + env(safe-area-inset-bottom) + var(--planner-editor-keyboard-space, 0px)
+  );
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+}
+
+.planner-item-dialog .planner-item-form-card {
+  width: min(48rem, 100%);
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.planner-item-dialog .planner-item-form-fields {
+  min-width: 0;
+}
+
+.planner-item-dialog form,
+.planner-item-dialog fieldset,
+.planner-item-dialog section,
+.planner-item-dialog article {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.planner-item-step-nav {
+  --step-connector-inset: 1.5rem;
+  --step-connector-width: 3rem;
+  scrollbar-width: none;
+}
+
+.planner-item-step-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] label,
+.planner-item-dialog [data-planner-editor-scroll] legend {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] input,
+.planner-item-dialog [data-planner-editor-scroll] select,
+.planner-item-dialog [data-planner-editor-scroll] textarea,
+.planner-item-dialog [data-planner-editor-scroll] [role="combobox"] {
+  min-height: 3.75rem;
+  border-radius: 0.75rem;
+  font-size: 1.125rem;
+  line-height: 1.5;
+}
+
+.planner-item-dialog .planner-native-time-input,
+.planner-item-dialog .planner-native-datetime-input {
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  inline-size: 100% !important;
+  min-width: 0 !important;
+  min-inline-size: 0 !important;
+  max-width: 100% !important;
+  max-inline-size: 100% !important;
+  -webkit-appearance: none;
+  appearance: none;
+  overflow: hidden;
+}
+
+.planner-item-dialog .planner-native-control-frame {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  contain: inline-size;
+}
+
+.planner-item-dialog .planner-native-currency-select {
+  height: 3.75rem !important;
+  min-height: 3.75rem !important;
+}
+
+.planner-item-dialog .planner-native-time-input::-webkit-date-and-time-value,
+.planner-item-dialog .planner-native-datetime-input::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] textarea {
+  padding-block: 0.75rem;
+}
+
+.planner-item-dialog [data-planner-editor-scroll] p {
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .planner-item-dialog .planner-item-form-content {
+    padding-top: 2.5rem;
+  }
+
+  .planner-item-dialog .planner-item-form-card {
+    padding: 2.25rem;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--background);
+    box-shadow: 0 12px 34px rgb(15 23 42 / 8%);
+  }
+}

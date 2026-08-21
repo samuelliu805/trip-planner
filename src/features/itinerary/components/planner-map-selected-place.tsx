@@ -1,15 +1,31 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import { ChevronDown, ExternalLink, Minus, Pencil, Plus, X } from "lucide-react";
+import {
+  Building2,
+  CalendarDays,
+  CarFront,
+  ChevronDown,
+  CircleDollarSign,
+  Clock3,
+  ExternalLink,
+  Hash,
+  MapPin,
+  Minus,
+  Pencil,
+  Plus,
+  StickyNote,
+  type LucideIcon,
+  X,
+} from "lucide-react";
 
 import { deriveHotelStaySummary } from "@/features/itinerary/hotel-stay-summary";
+import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
 import type { PlannerMapMarker } from "@/features/maps/planner-map-model";
+import { formatMoney } from "@/features/research/money";
 import { RouteIconButton } from "@/features/routes/route-icon-button";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
-import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
-import { formatMoney } from "@/features/research/money";
 
 function itemDetails(item?: ItineraryItem) {
   return item?.details && typeof item.details === "object" && !Array.isArray(item.details)
@@ -28,6 +44,27 @@ function stayRangeLabel(checkInDate: string, checkOutDate: string) {
   const checkOut = parseISO(checkOutDate);
   const sameYear = checkIn.getFullYear() === checkOut.getFullYear();
   return `${format(checkIn, sameYear ? "MMM d" : "MMM d, yyyy")} → ${format(checkOut, "MMM d, yyyy")}`;
+}
+
+type CompactFact = { icon: LucideIcon; label: string; value: string };
+
+function CompactFacts({ facts }: { facts: CompactFact[] }) {
+  if (!facts.length) return null;
+  return (
+    <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+      {facts.map(({ icon: Icon, label, value }) => (
+        <span
+          aria-label={`${label}: ${value}`}
+          className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 text-xs text-muted-foreground"
+          key={`${label}-${value}`}
+          title={`${label}: ${value}`}
+        >
+          <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+          <span className="truncate text-foreground">{value}</span>
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export function PlannerMapSelectedPlace({
@@ -53,55 +90,59 @@ export function PlannerMapSelectedPlace({
 }) {
   const entry = marker.entries.find(({ itemId }) => itemId === selectedId);
   if (!entry) return null;
-  const dayCount = new Set(marker.entries.map(({ dayNumber }) => dayNumber)).size;
-  const dateRanges = mergeMarkerDateRanges(marker.entries);
-  const hotelStay = deriveHotelStaySummary(days, item);
-  const staySummary =
-    entry.kind === "hotel"
-      ? `Total ${hotelStay?.totalDays ?? dayCount} ${(hotelStay?.totalDays ?? dayCount) === 1 ? "day" : "days"} at this hotel`
-      : entry.kind === "city"
-        ? `Total ${dayCount} ${dayCount === 1 ? "day" : "days"} in this city`
-        : null;
-  const eventSummary =
-    entry.kind === "activity"
-      ? `${marker.entries.length} ${marker.entries.length === 1 ? "activity" : "activities"} here`
-      : entry.kind === "meal"
-        ? `${marker.entries.length} ${marker.entries.length === 1 ? "meal" : "meals"} here`
-        : `${marker.entries.length} car rental ${marker.entries.length === 1 ? "event" : "events"} here`;
-  const eligibleDayStop = ["activity", "hotel", "meal"].includes(entry.kind);
   const details = itemDetails(item);
-  const time = timeLabel(item);
+  const hotelStay = deriveHotelStaySummary(days, item);
+  const firstStay = hotelStay?.ranges[0];
   const price =
     item?.price_amount !== null && item?.price_amount !== undefined && item.price_currency
       ? `${item.price_currency} ${formatMoney(item.price_amount, item.price_currency)}`
       : null;
-  const bookingLinks = item?.links?.length
+  const dateRanges = mergeMarkerDateRanges(marker.entries);
+  const dayCount = new Set(marker.entries.map(({ dayNumber }) => dayNumber)).size;
+  const dayValue =
+    entry.kind === "city"
+      ? dateRanges
+      : firstStay?.checkInDate && firstStay.checkOutDate
+        ? stayRangeLabel(firstStay.checkInDate, firstStay.checkOutDate)
+        : entry.dayLabel;
+  const time = timeLabel(item);
+  const facts: CompactFact[] = [
+    dayValue && { icon: CalendarDays, label: "Date", value: dayValue },
+    time && { icon: Clock3, label: "Time", value: time },
+    price && { icon: CircleDollarSign, label: "Price", value: price },
+    details.serviceNumber && { icon: Hash, label: "Service", value: details.serviceNumber },
+    details.provider && { icon: Building2, label: "Provider", value: details.provider },
+    details.action && {
+      icon: CarFront,
+      label: "Rental",
+      value: details.action === "pickup" ? "Pick-up" : "Return",
+    },
+  ].filter((fact): fact is CompactFact => Boolean(fact));
+  const links = item?.links?.length
     ? item.links.map(({ id, label, url }) => ({ id, label, url }))
     : item?.booking_url
       ? [{ id: item.id, label: "Booking", url: item.booking_url }]
       : [];
-  const facts = [
-    time && { label: "Time", value: time },
-    price && { label: "Price", value: price },
-    details.serviceNumber && { label: "Service", value: details.serviceNumber },
-    details.action && {
-      label: "Rental",
-      value: details.action === "pickup" ? "Pick-up" : "Return",
-    },
-    details.provider && { label: "Provider", value: details.provider },
-    entry.kind !== "hotel" &&
-      details.checkInDate && { label: "Check-in", value: details.checkInDate },
-    entry.kind !== "hotel" &&
-      details.checkOutDate && { label: "Check-out", value: details.checkOutDate },
-  ].filter((fact): fact is { label: string; value: string } => Boolean(fact));
+  const eligibleDayStop = ["activity", "hotel", "meal"].includes(entry.kind);
+  const repeatedLabel =
+    entry.kind === "city"
+      ? `${dayCount} ${dayCount === 1 ? "day" : "days"} in this city`
+      : entry.kind === "hotel"
+        ? `${hotelStay?.totalDays ?? dayCount} ${(hotelStay?.totalDays ?? dayCount) === 1 ? "day" : "days"}`
+        : entry.kind === "carRental"
+          ? `${marker.entries.length} rental events`
+          : `${marker.entries.length} ${entry.kind === "meal" ? "meals" : "activities"}`;
 
   return (
-    <div aria-live="polite">
-      <div className="flex items-start gap-2">
+    <article aria-live="polite" className="min-w-0">
+      <div className="flex min-w-0 items-start gap-2">
+        <MapPin aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{entry.title}</p>
+          <h3 className="truncate text-base font-bold leading-tight">{entry.title}</h3>
           {marker.address ? (
-            <p className="truncate text-xs text-muted-foreground">{marker.address}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">
+              {marker.address}
+            </p>
           ) : null}
         </div>
         <RouteIconButton
@@ -136,28 +177,23 @@ export function PlannerMapSelectedPlace({
           )
         ) : null}
       </div>
+
+      <CompactFacts facts={facts} />
       {marker.summary ? (
-        <p className="mt-1 text-xs font-medium">{marker.summary}</p>
-      ) : staySummary ? (
-        <p className="mt-1 text-xs">
-          <span className="font-medium">{staySummary}</span>
-          {entry.kind === "city" ? (
-            <span className="text-muted-foreground"> · {dateRanges}</span>
-          ) : null}
-        </p>
-      ) : marker.entries.length === 1 ? (
-        <p className="mt-1 text-xs text-muted-foreground">{entry.dayLabel}</p>
-      ) : (
+        <p className="mt-2 text-xs font-medium text-muted-foreground">{marker.summary}</p>
+      ) : null}
+
+      {marker.entries.length > 1 ? (
         <details className="group mt-2 border-t pt-2">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium marker:content-none">
-            <span>{eventSummary}</span>
+          <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-3 text-xs font-medium marker:content-none">
+            <span>{repeatedLabel}</span>
             <ChevronDown className="size-3.5 shrink-0 transition-transform group-open:rotate-180" />
           </summary>
-          <div className="mt-2 max-h-36 overflow-y-auto rounded-md border bg-background/80">
+          <div className="mt-1 max-h-32 overflow-y-auto rounded-md border">
             {marker.entries.map((candidate) => (
               <button
                 aria-current={candidate.itemId === selectedId ? "true" : undefined}
-                className={`grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b px-2.5 py-1.5 text-left text-xs last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${candidate.itemId === selectedId ? "bg-primary/10 font-medium" : "hover:bg-muted"}`}
+                className={`grid min-h-11 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b px-2.5 text-left text-xs last:border-b-0 ${candidate.itemId === selectedId ? "bg-primary/10 font-medium" : "hover:bg-muted"}`}
                 key={candidate.itemId}
                 onClick={() => onMarkerClick(candidate.itemId)}
                 type="button"
@@ -168,70 +204,35 @@ export function PlannerMapSelectedPlace({
             ))}
           </div>
         </details>
-      )}
-      {entry.kind === "hotel" && hotelStay?.ranges.length ? (
-        <div className="mt-2 space-y-1.5 border-t pt-2" aria-label="Hotel booking dates">
-          {hotelStay.ranges.map((range, index) => (
-            <div
-              className="flex items-center justify-between gap-3 text-xs"
-              key={`${range.checkInDate ?? range.firstDayNumber}-${range.checkOutDate ?? range.lastDayNumber}`}
+      ) : null}
+
+      {item?.notes || links.length ? (
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 border-t pt-2">
+          {item?.notes ? (
+            <p className="flex min-w-0 flex-1 items-start gap-2 text-xs leading-4 text-muted-foreground">
+              <StickyNote aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+              <span className="line-clamp-2 whitespace-pre-wrap text-foreground" title={item.notes}>
+                {item.notes}
+              </span>
+            </p>
+          ) : (
+            <span className="flex-1" />
+          )}
+          {links.map((link) => (
+            <a
+              aria-label={`Open ${link.label}`}
+              className="flex size-11 shrink-0 items-center justify-center rounded-md border bg-background hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              href={link.url}
+              key={link.id}
+              rel="noopener noreferrer"
+              target="_blank"
+              title={link.label}
             >
-              <span className="text-muted-foreground">
-                {range.checkInDate && range.checkOutDate
-                  ? stayRangeLabel(range.checkInDate, range.checkOutDate)
-                  : range.firstDayNumber === range.lastDayNumber
-                    ? `Day ${range.firstDayNumber}`
-                    : `Day ${range.firstDayNumber} → Day ${range.lastDayNumber + 1}`}
-              </span>
-              <span className="shrink-0 font-medium">
-                {range.dayCount} {range.dayCount === 1 ? "day" : "days"}
-              </span>
-              <span className="sr-only">Stay {index + 1}</span>
-            </div>
+              <ExternalLink aria-hidden="true" className="size-4" />
+            </a>
           ))}
         </div>
       ) : null}
-      {facts.length || item?.notes || bookingLinks.length ? (
-        <div className="mt-3 space-y-3 border-t pt-3">
-          {facts.length ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
-              {facts.map((fact) => (
-                <div className="min-w-0" key={fact.label}>
-                  <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {fact.label}
-                  </dt>
-                  <dd className="truncate font-medium" title={fact.value}>
-                    {fact.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          ) : null}
-          {item?.notes ? (
-            <div>
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                Notes
-              </p>
-              <p className="mt-1 whitespace-pre-wrap text-xs leading-5">{item.notes}</p>
-            </div>
-          ) : null}
-          {bookingLinks.length ? (
-            <div className="flex flex-wrap gap-2">
-              {bookingLinks.map((link) => (
-                <a
-                  className="inline-flex min-h-11 items-center gap-1.5 rounded-md border px-3 text-xs font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  href={link.url}
-                  key={link.id}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
-                  {link.label} <ExternalLink aria-hidden="true" className="size-3.5" />
-                </a>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+    </article>
   );
 }

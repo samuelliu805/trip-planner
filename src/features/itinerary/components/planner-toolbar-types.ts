@@ -19,7 +19,6 @@ export type PlannerToolbarProps = {
   clearPending: boolean;
   copyPreviousDay: () => Promise<void>;
   copySelectionToClipboard: () => Promise<void>;
-  dateRange: string;
   dayMutationPending: boolean;
   deleteError: boolean;
   fillLabel: string;
@@ -41,7 +40,6 @@ export type PlannerToolbarProps = {
   researchItems: PlanResearchItem[];
   researchSelections: VariantResearchSelection[];
   selectedCount: number;
-  selectedDay: PlannerDay | null;
   selectedItem?: ItineraryItem;
   setCopyDaysOpen: Dispatch<SetStateAction<boolean>>;
   setEditor: Dispatch<SetStateAction<EditorState | null>>;

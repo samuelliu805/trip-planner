@@ -2,7 +2,6 @@
 
 import { format, parseISO } from "date-fns";
 import { LoaderCircle } from "lucide-react";
-import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -14,7 +13,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
-import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
+import { PlannerItemEditorDialog } from "@/features/itinerary/components/planner-item-editor-dialog";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
@@ -58,7 +57,6 @@ type PlannerSheetsProps = {
   onEditorDraftChange: (item: ItineraryItem | null) => void;
   onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
-  onItemCreated: (item: ItineraryItem) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
@@ -108,7 +106,6 @@ export function PlannerSheets({
   onEditorDraftChange,
   onEditMapItem,
   onInteractionError,
-  onItemCreated,
   onMapExpandedChange,
   onMarkerClick,
   onMapModeChange,
@@ -127,7 +124,6 @@ export function PlannerSheets({
   mapViewportKey,
   workspace,
 }: PlannerSheetsProps) {
-  const editorCloseRequest = useRef(onEditorClose);
   return (
     <>
       <RouteVariantComparisonSheet
@@ -141,52 +137,26 @@ export function PlannerSheets({
         open={decisionSummarySheetOpen}
         summary={decisionSummary}
       />
-      <Sheet onOpenChange={(open) => !open && editorCloseRequest.current()} open={Boolean(editor)}>
-        <SheetContent className="planner-editor-sheet">
-          <SheetHeader className="min-w-0 shrink-0">
-            <SheetTitle>{editor?.item ? "Edit itinerary item" : "Add itinerary item"}</SheetTitle>
-            <SheetDescription>
-              <span className="sm:hidden">Add the details for this itinerary item.</span>
-              <span className="hidden sm:inline">
-                Press Enter to save, Tab to move between fields, or Escape to cancel.
-              </span>
-            </SheetDescription>
-          </SheetHeader>
-          <div
-            className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-            data-planner-editor-scroll=""
-          >
-            {editor ? (
-              <PlannerItemForm
-                dayId={editor.dayId}
-                defaultCurrency={defaultCurrency}
-                item={editor.item}
-                onCancel={onEditorClose}
-                onCloseRequestRegistration={(handler) => {
-                  editorCloseRequest.current = handler ?? onEditorClose;
-                }}
-                onError={onInteractionError}
-                onDraftChange={editor.item ? onEditorDraftChange : undefined}
-                onSaved={(savedItem) => {
-                  const created = !editor.item;
-                  onEditorClose();
-                  if (created) onItemCreated(savedItem);
-                }}
-                shareAttachmentsEnabled={shareAttachmentsEnabled}
-                tripId={tripId}
-                type={editor.type}
-                unavailableTransportModes={unavailableTransportModes}
-                variantId={workspace.variant.id}
-              />
-            ) : null}
-          </div>
-        </SheetContent>
-      </Sheet>
+      <PlannerItemEditorDialog
+        dayDate={workspace.days.find(({ id }) => id === editor?.dayId)?.date ?? ""}
+        dayItems={workspace.days.find(({ id }) => id === editor?.dayId)?.items ?? []}
+        defaultCurrency={defaultCurrency}
+        editor={editor}
+        onClose={onEditorClose}
+        onDraftChange={onEditorDraftChange}
+        onError={onInteractionError}
+        shareAttachmentsEnabled={shareAttachmentsEnabled}
+        tripId={tripId}
+        unavailableTransportModes={unavailableTransportModes}
+        variantId={workspace.variant.id}
+      />
       <Sheet onOpenChange={onMapExpandedChange} open={mapExpanded}>
-        <SheetContent className="planner-map-sheet h-[86dvh] max-h-none p-0" side="bottom">
+        <SheetContent className="planner-map-sheet p-0" side="right">
           <SheetHeader className="py-4">
-            <SheetTitle>{selectedItem?.title ?? "Itinerary map"}</SheetTitle>
-            <SheetDescription>Saved places from your itinerary.</SheetDescription>
+            <SheetTitle>Map & routes</SheetTitle>
+            <SheetDescription>
+              {selectedItem?.title ?? "Saved places and route tools for this itinerary."}
+            </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell

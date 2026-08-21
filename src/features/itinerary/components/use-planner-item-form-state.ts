@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { normalizedActionLabel } from "./planner-item-form-config";
+import { itemOrderAnchor } from "../activity-order";
 import {
   normalizeTransportMode,
   transportModes,
@@ -11,15 +12,20 @@ import {
   type TransportMode,
 } from "../types";
 import type { Json } from "../../../types/database";
-import type { PlaceSnapshot } from "../../../lib/providers/places/types";
+import { placeSnapshotFromJson, type PlaceSnapshot } from "../../../lib/providers/places/types";
+
+const allTransportModes: TransportMode[] = [...transportModes];
 
 export function usePlannerItemFormState({
+  dayDate,
   defaultCurrency,
   item,
-  unavailableTransportModes,
+  items,
 }: {
+  dayDate: string;
   defaultCurrency: string;
   item?: ItineraryItem;
+  items: ItineraryItem[];
   unavailableTransportModes: TransportMode[];
 }) {
   const existingCar =
@@ -27,8 +33,12 @@ export function usePlannerItemFormState({
   const existingDetails = (item?.details as Record<string, Json> | undefined) ?? {};
   const detailText = (key: string) =>
     typeof existingDetails[key] === "string" ? (existingDetails[key] as string) : "";
+  const existingOriginPlace = placeSnapshotFromJson(existingDetails.originPlace);
+  const existingDestinationPlace = placeSnapshotFromJson(existingDetails.destinationPlace);
   const [title, setTitle] = useState(
-    item && ["location", "hotel"].includes(item.type) && item.place?.displayName === item.title
+    item &&
+      ["location", "hotel", "meal"].includes(item.type) &&
+      item.place?.displayName === item.title
       ? ""
       : (item?.title ?? ""),
   );
@@ -36,8 +46,22 @@ export function usePlannerItemFormState({
   const [arrivalTime, setArrivalTime] = useState(
     item?.end_time?.slice(0, 5) ?? detailText("arrivalTime").slice(0, 5),
   );
-  const [origin, setOrigin] = useState(detailText("origin"));
-  const [destination, setDestination] = useState(detailText("destination"));
+  const [arrivalDate, setArrivalDate] = useState(
+    detailText("arrivalDate") || (arrivalTime && dayDate ? dayDate : ""),
+  );
+  const [departureDate, setDepartureDate] = useState(
+    detailText("departureDate") || (startTime && dayDate ? dayDate : ""),
+  );
+  const [originPlace, setOriginPlace] = useState<PlaceSnapshot | null>(existingOriginPlace);
+  const [destinationPlace, setDestinationPlace] = useState<PlaceSnapshot | null>(
+    existingDestinationPlace,
+  );
+  const [origin, setOrigin] = useState(
+    detailText("origin") || existingOriginPlace?.displayName || "",
+  );
+  const [destination, setDestination] = useState(
+    detailText("destination") || existingDestinationPlace?.displayName || "",
+  );
   const [serviceNumber, setServiceNumber] = useState(detailText("serviceNumber"));
   const [priceAmount, setPriceAmount] = useState(
     item?.price_amount === null || item?.price_amount === undefined
@@ -58,37 +82,72 @@ export function usePlannerItemFormState({
   );
   const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
   const [place, setPlace] = useState<PlaceSnapshot | null>(item?.place ?? null);
-  const existingTransportMode = normalizeTransportMode(detailText("mode"));
-  const availableTransportModes = transportModes.filter(
-    (mode) =>
-      (item?.type === "transport" && mode === existingTransportMode) ||
-      !unavailableTransportModes.includes(mode),
+  const [insertAfterItemId, setInsertAfterItemId] = useState<string | null>(() =>
+    itemOrderAnchor(items, item?.id, item?.type),
   );
+  const existingTransportMode = normalizeTransportMode(detailText("mode"));
+  // Multiple journeys of the same type are valid (for example two flights on one day), so the
+  // mode picker must never hide Flight or another mode just because it is already used.
   const [transportMode, setTransportMode] = useState<TransportMode>(
-    item?.type === "transport" ? existingTransportMode : (availableTransportModes[0] ?? "train"),
+    item?.type === "transport" ? existingTransportMode : (allTransportModes[0] ?? "train"),
   );
 
-  return {
+  // One serialized snapshot answers "has anything changed?" for the exit confirmation.
+  const snapshot = JSON.stringify([
     arrivalTime,
-    availableTransportModes,
+    arrivalDate,
     carAction,
     carProvider,
     destination,
-    existingDetails,
+    destinationPlace,
+    departureDate,
     links,
+    insertAfterItemId,
     notes,
     origin,
+    originPlace,
+    place ? `${place.provider}:${place.providerPlaceId}:${place.displayName}` : null,
+    priceAmount,
+    priceCurrency,
+    serviceNumber,
+    startTime,
+    title,
+    transportMode,
+  ]);
+  const [initialSnapshot] = useState(snapshot);
+
+  return {
+    arrivalDate,
+    arrivalTime,
+    availableTransportModes: allTransportModes,
+    carAction,
+    dirty: snapshot !== initialSnapshot,
+    carProvider,
+    destination,
+    destinationPlace,
+    departureDate,
+    existingDetails,
+    links,
+    insertAfterItemId,
+    notes,
+    origin,
+    originPlace,
     place,
     priceAmount,
     priceCurrency,
     serviceNumber,
     setArrivalTime,
+    setArrivalDate,
     setCarAction,
     setCarProvider,
     setDestination,
+    setDestinationPlace,
+    setDepartureDate,
     setLinks,
+    setInsertAfterItemId,
     setNotes,
     setOrigin,
+    setOriginPlace,
     setPlace,
     setPriceAmount,
     setPriceCurrency,
@@ -101,3 +160,5 @@ export function usePlannerItemFormState({
     transportMode,
   };
 }
+
+export type PlannerItemFormState = ReturnType<typeof usePlannerItemFormState>;

@@ -28,7 +28,6 @@ import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
 import {
   transportModeLabels,
   type CarRentalDetails,
-  type ItineraryItem,
   type ItineraryItemType,
   type TransportMode,
 } from "@/features/itinerary/types";
@@ -51,177 +50,223 @@ const transportModeIcons: Partial<Record<TransportMode, LucideIcon>> = {
   walk: Footprints,
 };
 
-export function PlannerItemPrimaryFields({
-  availableTransportModes,
+export function CarActionField({
   carAction,
+  fieldId,
+  setCarAction,
+}: {
+  carAction: CarRentalDetails["action"];
+  fieldId: string;
+  setCarAction: Dispatch<SetStateAction<CarRentalDetails["action"]>>;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`car-action-${fieldId}`}>Pickup or return</Label>
+      <Select
+        onValueChange={(value) => setCarAction(value as CarRentalDetails["action"])}
+        value={carAction}
+      >
+        <SelectTrigger id={`car-action-${fieldId}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pickup">Pickup</SelectItem>
+          <SelectItem value="return">Return</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+export function CarProviderField({
   carProvider,
+  fieldId,
+  setCarProvider,
+}: {
+  carProvider: string;
+  fieldId: string;
+  setCarProvider: Dispatch<SetStateAction<string>>;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`car-provider-${fieldId}`}>
+        Rental company <span className="font-normal text-muted-foreground">optional</span>
+      </Label>
+      <Input
+        id={`car-provider-${fieldId}`}
+        onChange={(event) => setCarProvider(event.target.value)}
+        placeholder="e.g. Sixt"
+        value={carProvider}
+      />
+    </div>
+  );
+}
+
+export function TransportModeField({
+  availableTransportModes,
+  fieldId,
+  setTransportMode,
+  transportMode,
+}: {
+  availableTransportModes: TransportMode[];
+  fieldId: string;
+  setTransportMode: Dispatch<SetStateAction<TransportMode>>;
+  transportMode: TransportMode;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`transport-mode-${fieldId}`}>Transport</Label>
+      <Select
+        onValueChange={(value) => setTransportMode(value as TransportMode)}
+        value={transportMode}
+      >
+        <SelectTrigger id={`transport-mode-${fieldId}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {availableTransportModes.map((mode) => {
+            const ModeIcon = transportModeIcons[mode] ?? CarFront;
+            return (
+              <SelectItem key={mode} value={mode}>
+                <span className="flex items-center gap-2">
+                  <ModeIcon className="size-4 text-muted-foreground" />
+                  {transportModeLabels[mode]}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+export function ItemTitleField({
   copyLabel,
   copyPlaceholder,
-  dayId,
+  fieldId,
+  place,
+  setTitle,
+  title,
+  titleRef,
+  type,
+}: {
+  copyLabel: string;
+  copyPlaceholder: string;
+  fieldId: string;
+  place: PlaceSnapshot | null;
+  setTitle: Dispatch<SetStateAction<string>>;
+  title: string;
+  titleRef: RefObject<HTMLInputElement | null>;
+  type: ItineraryItemType;
+}) {
+  const named = ["location", "hotel", "meal"].includes(type);
+  const displayedNameLabel =
+    type === "location"
+      ? "Displayed city name"
+      : type === "hotel"
+        ? "Displayed hotel name"
+        : "Displayed meal name";
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`item-title-${fieldId}-${type}`}>
+        {named ? (
+          <>
+            {displayedNameLabel}{" "}
+            <span className="font-normal text-muted-foreground">
+              {type !== "location" && !place ? "required without a location" : "optional"}
+            </span>
+          </>
+        ) : (
+          copyLabel
+        )}
+      </Label>
+      <Input
+        id={`item-title-${fieldId}-${type}`}
+        onChange={(event) => setTitle(event.target.value)}
+        placeholder={
+          named
+            ? (place?.displayName ??
+              `Enter a ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"} name`)
+            : copyPlaceholder
+        }
+        ref={titleRef}
+        value={title}
+      />
+      {named ? (
+        <p className="text-xs text-muted-foreground">
+          {place
+            ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
+            : type === "hotel"
+              ? "Use this when an exact map location is unavailable."
+              : type === "meal"
+                ? "Use this when an exact restaurant location is unavailable."
+                : "Choose a city location above."}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function ItemPlaceField({
   item,
   pending,
   place,
   placeLabel,
-  setCarAction,
-  setCarProvider,
   setPlace,
   setTitle,
-  setTransportMode,
   title,
   titleRef,
-  transportMode,
   type,
 }: {
-  availableTransportModes: TransportMode[];
-  carAction: CarRentalDetails["action"];
-  carProvider: string;
-  copyLabel: string;
-  copyPlaceholder: string;
-  dayId: string;
-  item?: ItineraryItem;
+  item?: { id: string };
   pending: boolean;
   place: PlaceSnapshot | null;
   placeLabel: string;
-  setCarAction: Dispatch<SetStateAction<CarRentalDetails["action"]>>;
-  setCarProvider: Dispatch<SetStateAction<string>>;
   setPlace: Dispatch<SetStateAction<PlaceSnapshot | null>>;
   setTitle: Dispatch<SetStateAction<string>>;
-  setTransportMode: Dispatch<SetStateAction<TransportMode>>;
   title: string;
   titleRef: RefObject<HTMLInputElement | null>;
-  transportMode: TransportMode;
   type: ItineraryItemType;
 }) {
-  const copy = { label: copyLabel, placeholder: copyPlaceholder };
   return (
-    <>
-      {type === "car_rental" ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`car-action-${item?.id ?? dayId}`}>Pickup or return</Label>
-          <Select
-            onValueChange={(value) => setCarAction(value as CarRentalDetails["action"])}
-            value={carAction}
-          >
-            <SelectTrigger id={`car-action-${item?.id ?? dayId}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pickup">Pickup</SelectItem>
-              <SelectItem value="return">Return</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      ) : type === "transport" ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`transport-mode-${item?.id ?? dayId}`}>Transport</Label>
-          <Select
-            onValueChange={(value) => setTransportMode(value as TransportMode)}
-            value={transportMode}
-          >
-            <SelectTrigger autoFocus id={`transport-mode-${item?.id ?? dayId}`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableTransportModes.map((mode) => {
-                const ModeIcon = transportModeIcons[mode] ?? CarFront;
-                return (
-                  <SelectItem key={mode} value={mode}>
-                    <span className="flex items-center gap-2">
-                      <ModeIcon className="size-4 text-muted-foreground" />
-                      {transportModeLabels[mode]}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : !["location", "hotel"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>{copy.label}</Label>
-          <Input
-            autoFocus
-            id={`item-title-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={copy.placeholder}
-            ref={titleRef}
-            value={title}
-          />
-        </div>
-      ) : null}
-      {!["note", "transport", "flight", "train"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label>
-            {placeLabel}{" "}
-            {type === "location" ? (
-              <span className="text-destructive">*</span>
-            ) : type === "hotel" ? (
-              <span className="font-normal text-muted-foreground">
-                optional if a displayed name is provided
-              </span>
-            ) : (
-              <span className="font-normal text-muted-foreground">optional</span>
-            )}
-          </Label>
-          <PlaceAutocomplete
-            autoFocus={!item && ["location", "hotel"].includes(type)}
-            disabled={pending}
-            onChange={(nextPlace) => {
-              setPlace(nextPlace);
-              if (!nextPlace) return;
-              if (
-                !title.trim() &&
-                type !== "location" &&
-                type !== "hotel" &&
-                type !== "car_rental" &&
-                type !== "transport"
-              )
-                setTitle(nextPlace.displayName);
-            }}
-            onSelected={() => requestAnimationFrame(() => titleRef.current?.focus())}
-            value={place}
-          />
-        </div>
-      ) : null}
-      {["location", "hotel"].includes(type) ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`item-title-${item?.id ?? dayId}-${type}`}>
-            {type === "location" ? "Displayed city name" : "Displayed hotel name"}{" "}
-            <span className="font-normal text-muted-foreground">
-              {type === "hotel" && !place ? "required without a location" : "optional"}
-            </span>
-          </Label>
-          <Input
-            id={`item-title-${item?.id ?? dayId}-${type}`}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={
-              place?.displayName ?? `Enter a ${type === "location" ? "city" : "hotel"} name`
-            }
-            ref={titleRef}
-            value={title}
-          />
-          <p className="text-xs text-muted-foreground">
-            {place
-              ? `Leave blank to display the selected ${type === "location" ? "city" : "hotel"}’s Google Maps name.`
-              : type === "hotel"
-                ? "Use this when an exact map location is unavailable."
-                : "Choose a city location above."}
-          </p>
-        </div>
-      ) : null}
-      {type === "car_rental" ? (
-        <div className="space-y-1.5">
-          <Label htmlFor={`car-provider-${item?.id ?? dayId}`}>
-            Rental company <span className="font-normal text-muted-foreground">optional</span>
-          </Label>
-          <Input
-            id={`car-provider-${item?.id ?? dayId}`}
-            onChange={(event) => setCarProvider(event.target.value)}
-            placeholder="e.g. Sixt"
-            value={carProvider}
-          />
-        </div>
-      ) : null}
-    </>
+    <div className="space-y-2" data-planner-focus-region="place">
+      <Label>
+        {placeLabel}{" "}
+        {type === "location" ? (
+          <span className="text-destructive">*</span>
+        ) : type === "hotel" || type === "meal" ? (
+          <span className="font-normal text-muted-foreground">
+            optional if a {type === "hotel" ? "displayed hotel" : "meal"} name is provided
+          </span>
+        ) : (
+          <span className="font-normal text-muted-foreground">optional</span>
+        )}
+      </Label>
+      <PlaceAutocomplete
+        autoFocus={!item && ["location", "hotel"].includes(type)}
+        disabled={pending}
+        onChange={(nextPlace) => {
+          setPlace(nextPlace);
+          if (!nextPlace) return;
+          if (
+            !title.trim() &&
+            type !== "location" &&
+            type !== "hotel" &&
+            type !== "meal" &&
+            type !== "car_rental" &&
+            type !== "transport"
+          )
+            setTitle(nextPlace.displayName);
+        }}
+        onSelected={() => {
+          // On touch keyboards, keeping focus in search avoids a second native viewport jump after
+          // the selected-place card mounts. Desktop users can continue directly into the title.
+          if (navigator.maxTouchPoints > 0) return;
+          requestAnimationFrame(() => titleRef.current?.focus());
+        }}
+        value={place}
+      />
+    </div>
   );
 }

@@ -42,6 +42,7 @@ export function MatrixItemSummary({
   subtitle,
   title,
   transportMode,
+  type,
 }: {
   startTime?: string | null;
   subtitle?: string;
@@ -55,19 +56,19 @@ export function MatrixItemSummary({
       <span
         className={`flex min-w-0 items-center gap-1.5 ${transportMode ? "matrix-transport-summary flex-wrap" : ""}`}
       >
-        {ModeIcon ? (
-          <ModeIcon className="size-4 shrink-0 text-muted-foreground sm:size-3.5" />
-        ) : null}
+        {ModeIcon ? <ModeIcon className="size-3.5 shrink-0 text-muted-foreground" /> : null}
         {startTime ? (
-          <span className="shrink-0 font-mono text-xs text-muted-foreground sm:text-[10px]">
+          <span className="shrink-0 font-mono text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
             {startTime.slice(0, 5)}
           </span>
         ) : null}
         <span
           className={
             transportMode
-              ? "matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium"
-              : "truncate font-medium"
+              ? "matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium text-[15px] leading-[1.25] min-[1200px]:text-[13px]"
+              : type === "location"
+                ? "whitespace-normal break-words text-[15px] font-medium leading-[1.5] min-[1200px]:text-[13px]"
+                : "truncate text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
           }
         >
           {transportMode ? transportModeLabels[transportMode] : title}
@@ -75,7 +76,7 @@ export function MatrixItemSummary({
       </span>
       {subtitle ? (
         <span
-          className="block truncate text-xs leading-4 text-muted-foreground sm:mt-0.5 sm:text-[10px] sm:leading-normal"
+          className="block truncate text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]"
           title={subtitle}
         >
           {subtitle}
@@ -94,7 +95,7 @@ export function MatrixGridHeader({
 }) {
   return (
     <div
-      className="matrix-grid-header sticky top-0 z-[70] flex h-10 border-b bg-muted/95 text-xs font-semibold text-muted-foreground sm:h-9 sm:text-[11px]"
+      className="matrix-grid-header sticky top-0 z-[70] flex h-9 border-b bg-muted/95 text-[13px] font-semibold leading-[1.35] text-muted-foreground min-[1200px]:h-10 min-[1200px]:text-[11px]"
       role="row"
     >
       <div

@@ -22,10 +22,11 @@ type DialogViewportStyle = React.CSSProperties & {
   "--dialog-viewport-top"?: string;
 };
 
-function useDialogViewport() {
+function useDialogViewport(active = true) {
   const [viewport, setViewport] = React.useState<DialogViewport>();
 
   React.useEffect(() => {
+    if (!active) return;
     const visualViewport = window.visualViewport;
     let frame = 0;
 
@@ -57,7 +58,7 @@ function useDialogViewport() {
       visualViewport?.removeEventListener("resize", scheduleMeasure);
       visualViewport?.removeEventListener("scroll", scheduleMeasure);
     };
-  }, []);
+  }, [active]);
 
   return viewport;
 }
@@ -65,9 +66,10 @@ function useDialogViewport() {
 function DialogContent({
   className,
   children,
+  showCloseButton = true,
   style,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { showCloseButton?: boolean }) {
   const viewport = useDialogViewport();
   const viewportStyle: DialogViewportStyle = {
     ...(viewport
@@ -82,7 +84,10 @@ function DialogContent({
 
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[2px] data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+      <DialogPrimitive.Overlay
+        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-[2px] data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+        data-dialog-overlay=""
+      />
       <DialogPrimitive.Content
         className={cn(
           "app-dialog-content fixed inset-x-0 bottom-0 z-[110] max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] w-full min-w-0 max-w-full touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain rounded-t-xl border bg-background shadow-xl data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-[var(--dialog-viewport-center,50svh)] sm:w-[calc(100%-2rem)] sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
@@ -92,13 +97,15 @@ function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close
-          className="app-dialog-close absolute right-4 top-4 z-20 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          data-dialog-close=""
-        >
-          <X aria-hidden="true" className="size-5" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {showCloseButton ? (
+          <DialogPrimitive.Close
+            className="app-dialog-close absolute right-4 top-4 z-20 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            data-dialog-close=""
+          >
+            <X aria-hidden="true" className="size-5" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        ) : null}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   );
@@ -134,4 +141,5 @@ export {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  useDialogViewport,
 };

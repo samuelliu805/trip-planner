@@ -31,8 +31,8 @@ export function BookingPriceFields({
     : [defaultCurrency, ...commonBookingCurrencies];
 
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_6.5rem] gap-3">
-      <div className="min-w-0 space-y-1.5">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_7rem] gap-5">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor={`${idPrefix}-amount`}>Price</Label>
         <Input
           disabled={disabled}
@@ -47,10 +47,10 @@ export function BookingPriceFields({
           value={amount}
         />
       </div>
-      <div className="min-w-0 space-y-1.5">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor={`${idPrefix}-currency`}>Currency</Label>
         <select
-          className="box-border flex h-11 w-full min-w-0 max-w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+          className="planner-native-currency-select box-border flex h-[3.75rem] min-h-[3.75rem] w-full min-w-0 max-w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
           disabled={disabled}
           id={`${idPrefix}-currency`}
           name={currencyName}

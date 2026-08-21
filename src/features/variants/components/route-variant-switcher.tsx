@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
+import { Check, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,13 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { PullUpPanel } from "@/components/ui/pull-up-panel";
 import type { PlannerVariant } from "@/features/itinerary/types";
 
 import { VariantIdentity } from "./route-variant-identity";
@@ -33,6 +27,7 @@ export function RouteVariantSwitcher({
   onSheetOpenChange,
   onSwitch,
   sheetOpen,
+  title,
   variants,
 }: {
   activeVariant: PlannerVariant;
@@ -44,16 +39,25 @@ export function RouteVariantSwitcher({
   onSheetOpenChange: (open: boolean) => void;
   onSwitch: (variantId: string) => void;
   sheetOpen: boolean;
+  title: string;
   variants: PlannerVariant[];
 }) {
   return (
     <>
-      <div className="hidden items-center gap-1 min-[960px]:flex">
+      <div className="hidden min-w-0 max-w-full items-center gap-1 min-[960px]:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="h-9 max-w-56 gap-2 px-2.5" variant="outline">
-              <VariantIdentity compact variant={activeVariant} />
-              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            <Button
+              aria-label={`Open Plans for ${title}. Current Plan: ${activeVariant.name}`}
+              className="h-10 min-w-0 max-w-full justify-start gap-2 px-1.5"
+              variant="ghost"
+            >
+              <span
+                aria-hidden="true"
+                className="size-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: activeVariant.color }}
+              />
+              <span className="truncate text-sm font-semibold min-[960px]:text-base">{title}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
@@ -95,88 +99,87 @@ export function RouteVariantSwitcher({
       </div>
 
       <Button
-        aria-label={`Plan: ${activeVariant.name}${activeVariant.is_primary ? ", Primary" : ""}`}
-        className="h-11 min-w-0 gap-1.5 px-2 min-[960px]:hidden"
+        aria-label={`Open Plans for ${title}. Current Plan: ${activeVariant.name}`}
+        className="h-10 min-w-0 max-w-full justify-start gap-2 px-1.5 min-[960px]:hidden"
         onClick={() => onSheetOpenChange(true)}
-        variant="outline"
+        variant="ghost"
       >
         <span
           aria-hidden="true"
           className="size-2.5 rounded-full"
           style={{ backgroundColor: activeVariant.color }}
         />
-        <span className="max-w-20 truncate text-xs">{activeVariant.name}</span>
-        <ChevronDown className="size-3.5" />
+        <span className="truncate text-sm font-semibold">{title}</span>
       </Button>
 
-      <Sheet onOpenChange={onSheetOpenChange} open={sheetOpen}>
-        <SheetContent side="bottom">
-          <SheetHeader>
-            <SheetTitle>Plans</SheetTitle>
-            <SheetDescription>Switch the Plan shown in the Matrix and map.</SheetDescription>
-          </SheetHeader>
-          <div className="overflow-y-auto px-4 py-4">
-            <div className="space-y-1">
-              {variants.map((variant) => (
-                <Button
-                  className="h-11 w-full justify-between px-3 font-normal"
-                  key={variant.id}
-                  onClick={() => onSwitch(variant.id)}
-                  variant={variant.id === activeVariantId ? "outline" : "ghost"}
-                >
-                  <VariantIdentity variant={variant} />
-                  {variant.id === activeVariantId ? <Check className="size-4" /> : null}
-                </Button>
-              ))}
-            </div>
-            <div className="mt-4 grid gap-2 border-t pt-4">
-              {onCompare ? (
-                <>
-                  <Button
-                    aria-describedby={
-                      comparisonBlockingReason ? "mobile-comparison-disabled" : undefined
-                    }
-                    className="h-11 justify-start"
-                    disabled={Boolean(comparisonBlockingReason)}
-                    onClick={onCompare}
-                    variant="outline"
-                  >
-                    <GitCompareArrows className="size-4" /> Compare routes
-                  </Button>
-                  {comparisonBlockingReason ? (
-                    <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
-                      {comparisonBlockingReason}
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
+      <PullUpPanel
+        description="Switch the Plan shown in the Matrix and map."
+        id="route-variant-switcher"
+        onOpenChange={onSheetOpenChange}
+        open={sheetOpen}
+        title="Plans"
+      >
+        <div className="min-h-0 overflow-y-auto px-4 pb-4">
+          <div className="space-y-1">
+            {variants.map((variant) => (
               <Button
-                className="h-11 justify-start"
-                disabled={limitReached}
-                onClick={() => onAction("create")}
-                variant="outline"
+                className="h-11 w-full justify-between px-3 font-normal"
+                key={variant.id}
+                onClick={() => onSwitch(variant.id)}
+                variant={variant.id === activeVariantId ? "outline" : "ghost"}
               >
-                <Plus className="size-4" /> New empty Plan
+                <VariantIdentity variant={variant} />
+                {variant.id === activeVariantId ? <Check className="size-4" /> : null}
               </Button>
-              <Button
-                className="h-11 justify-start"
-                disabled={limitReached}
-                onClick={() => onAction("duplicate")}
-                variant="outline"
-              >
-                <Copy className="size-4" /> Duplicate Plan
-              </Button>
-              <Button
-                className="h-11 justify-start"
-                onClick={() => onAction("manage")}
-                variant="ghost"
-              >
-                <MoreHorizontal className="size-4" /> Manage Plans
-              </Button>
-            </div>
+            ))}
           </div>
-        </SheetContent>
-      </Sheet>
+          <div className="mt-4 grid gap-2 border-t pt-4">
+            {onCompare ? (
+              <>
+                <Button
+                  aria-describedby={
+                    comparisonBlockingReason ? "mobile-comparison-disabled" : undefined
+                  }
+                  className="h-11 justify-start"
+                  disabled={Boolean(comparisonBlockingReason)}
+                  onClick={onCompare}
+                  variant="outline"
+                >
+                  <GitCompareArrows className="size-4" /> Compare routes
+                </Button>
+                {comparisonBlockingReason ? (
+                  <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
+                    {comparisonBlockingReason}
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            <Button
+              className="h-11 justify-start"
+              disabled={limitReached}
+              onClick={() => onAction("create")}
+              variant="outline"
+            >
+              <Plus className="size-4" /> New empty Plan
+            </Button>
+            <Button
+              className="h-11 justify-start"
+              disabled={limitReached}
+              onClick={() => onAction("duplicate")}
+              variant="outline"
+            >
+              <Copy className="size-4" /> Duplicate Plan
+            </Button>
+            <Button
+              className="h-11 justify-start"
+              onClick={() => onAction("manage")}
+              variant="ghost"
+            >
+              <MoreHorizontal className="size-4" /> Manage Plans
+            </Button>
+          </div>
+        </div>
+      </PullUpPanel>
     </>
   );
 }

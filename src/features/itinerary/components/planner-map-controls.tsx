@@ -75,7 +75,9 @@ export function PlannerMapControls({
                     title={description}
                     type="button"
                   >
-                    {value === "comparison" ? <GitCompareArrows className="size-3.5" /> : null}
+                    {value === "comparison" ? (
+                      <GitCompareArrows aria-hidden="true" className="size-3.5" />
+                    ) : null}
                     {label}
                   </button>
                 </span>
@@ -129,14 +131,13 @@ export function PlannerMapControls({
       ) : null}
       {!compact && panelDismissed ? (
         <button
-          aria-label={mapMode === "overview" ? "Open Overview panel" : "Open day route panel"}
-          className="map-panel-reopen absolute left-3 z-20 flex min-h-11 items-center gap-2 rounded-full border bg-background/95 px-3 text-xs font-semibold text-foreground shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Open map details"
+          className="map-panel-reopen absolute left-3 z-20 flex size-11 items-center justify-center rounded-full border bg-background/95 p-0 text-foreground shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onPanelOpen}
-          title={mapMode === "overview" ? "Open Overview panel" : "Open day route panel"}
+          title="Open map details"
           type="button"
         >
-          <PanelBottomOpen className="size-4 text-primary" />
-          <span>Route details</span>
+          <PanelBottomOpen className="size-5 text-primary" />
         </button>
       ) : null}
     </>

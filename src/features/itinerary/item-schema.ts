@@ -78,6 +78,7 @@ const transportDetailsSchema = z
     arrivalTime: optionalTime,
     departureDate: optionalText(10),
     destination: optionalText(200),
+    destinationPlace: placeSnapshotSchema.optional().nullable(),
     mode: z.enum([
       "flight",
       "train",
@@ -96,6 +97,7 @@ const transportDetailsSchema = z
       "other",
     ]),
     origin: optionalText(200),
+    originPlace: placeSnapshotSchema.optional().nullable(),
     researchSourceId: z.uuid().optional(),
     segmentIndex: z.number().int().min(0).max(11).optional(),
     serviceNumber: optionalText(80),
@@ -218,6 +220,7 @@ export const updateItineraryItemSchema = z
     ...itemBaseSchema.partial().shape,
     details: z.record(z.string(), z.json()).optional(),
     id: z.uuid(),
+    insertAfterItemId: z.uuid().nullable().optional(),
     tripId: z.uuid(),
     type: z.enum(itineraryItemTypes),
     variantId: z.uuid(),

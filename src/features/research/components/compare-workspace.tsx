@@ -125,39 +125,34 @@ export function CompareWorkspace({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <header
-        className="research-context-bar z-[70] flex min-h-14 min-w-0 shrink-0 items-center border-b bg-background/95 backdrop-blur"
-        aria-label="Research context"
-        role="region"
-      >
-        <div className="flex min-h-14 w-full min-w-0 items-center justify-between gap-3 px-4 py-2 sm:py-0 md:px-6">
-          <div className="min-w-0 justify-self-start">
-            <CategorySelector
-              active={category}
-              hrefs={categoryHrefs}
-              onNavigate={(nextCategory) => {
-                if (nextCategory === category) return;
-                window.history.pushState(null, "", categoryHrefs[nextCategory]);
-              }}
-            />
-          </div>
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
-            <ResearchSortMenu onChange={setSort} value={sort} />
-            <ResearchItemDialog
-              category={category}
-              context={context}
-              defaultCurrency={defaultCurrencyForTrip}
-              onSaved={saveItem}
-              tripId={tripId}
-            />
-          </div>
-        </div>
-      </header>
       <div className="trip-detail-scroller min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
-          <p className="text-xs text-muted-foreground">
-            {visible.length} saved in Ideas &amp; Options · Apply updates the Plan after review.
-          </p>
+          <div
+            aria-label="Ideas filters"
+            className="flex min-w-0 items-center justify-between gap-3"
+            role="region"
+          >
+            <div className="min-w-0">
+              <CategorySelector
+                active={category}
+                hrefs={categoryHrefs}
+                onNavigate={(nextCategory) => {
+                  if (nextCategory === category) return;
+                  window.history.pushState(null, "", categoryHrefs[nextCategory]);
+                }}
+              />
+            </div>
+            <div className="flex min-w-0 shrink-0 items-center gap-2">
+              <ResearchSortMenu onChange={setSort} value={sort} />
+              <ResearchItemDialog
+                category={category}
+                context={context}
+                defaultCurrency={defaultCurrencyForTrip}
+                onSaved={saveItem}
+                tripId={tripId}
+              />
+            </div>
+          </div>
           <ResearchItemList
             applicationsByItem={applicationsByItem}
             defaultCurrency={defaultCurrencyForTrip}

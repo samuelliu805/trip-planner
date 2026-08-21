@@ -25,6 +25,21 @@ export type PlaceSnapshot = Coordinates & {
   localitySource?: LocalitySource;
 };
 
+export function placeSnapshotFromJson(value: unknown): PlaceSnapshot | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Partial<PlaceSnapshot>;
+  if (
+    !["google", "custom"].includes(candidate.provider ?? "") ||
+    typeof candidate.displayName !== "string" ||
+    typeof candidate.latitude !== "number" ||
+    !Number.isFinite(candidate.latitude) ||
+    typeof candidate.longitude !== "number" ||
+    !Number.isFinite(candidate.longitude)
+  )
+    return null;
+  return candidate as PlaceSnapshot;
+}
+
 export const placeFields = [
   "id",
   "displayName",
