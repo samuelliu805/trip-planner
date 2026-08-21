@@ -41,6 +41,7 @@ function OrderGap({
 
 export function PlannerItemOrderField({
   carAction,
+  confirmed,
   insertAfterItemId,
   item,
   items,
@@ -49,6 +50,7 @@ export function PlannerItemOrderField({
   type,
 }: {
   carAction: CarRentalDetails["action"];
+  confirmed: boolean;
   insertAfterItemId: string | null;
   item?: ItineraryItem;
   items: ItineraryItem[];
@@ -97,7 +99,7 @@ export function PlannerItemOrderField({
       </div>
       <div className="rounded-md border bg-background px-2 py-1">
         <OrderGap
-          active={insertAfterItemId === null}
+          active={confirmed && insertAfterItemId === null}
           activeLabel={selectedPositionLabel}
           anchor={null}
           onChange={onChange}
@@ -114,7 +116,7 @@ export function PlannerItemOrderField({
             </div>
             {entry.type !== "hotel" ? (
               <OrderGap
-                active={insertAfterItemId === entry.id}
+                active={confirmed && insertAfterItemId === entry.id}
                 activeLabel={selectedPositionLabel}
                 anchor={entry.id}
                 onChange={onChange}

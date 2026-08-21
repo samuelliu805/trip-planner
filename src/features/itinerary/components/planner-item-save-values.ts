@@ -106,7 +106,10 @@ export function plannerItemSaveValues({
   return {
     bookingUrl: supportsLink ? (links[0]?.url ?? "") : "",
     links: supportsLink ? links : [],
-    insertAfterItemId: isDestinationActivity({ type }) ? insertAfterItemId : undefined,
+    insertAfterItemId:
+      isDestinationActivity({ type }) && (type === "hotel" || (!startTime && !arrivalTime))
+        ? insertAfterItemId
+        : undefined,
     details: details as never,
     endTime: journey.arrivalTime ? arrivalTime : "",
     notes: type === "note" ? "" : notes,

@@ -3002,9 +3002,9 @@ test("the item editor groups every type into short steps and gates required fiel
     activity.map(({ blocks, id }) => `${id}:${blocks.join("+")}`),
     [
       "basics:title+place",
-      "files:links+attachments",
       "schedule:startTime+price",
       "extras:notes",
+      "files:links+attachments",
       "order:order",
     ],
   );
@@ -3018,6 +3018,12 @@ test("the item editor groups every type into short steps and gates required fiel
     ["basics", "files"],
   );
   assert.equal(plannerItemFormSteps({ ...rail, type: "meal" }).at(-1)?.id, "order");
+  const addMeal = plannerItemFormSteps({ ...rail, includeOrder: false, type: "meal" });
+  assert.equal(
+    addMeal.some(({ id }) => id === "order"),
+    false,
+  );
+  assert.equal(addMeal.at(-1)?.id, "files");
   assert.equal(
     plannerItemFormSteps({ ...rail, type: "hotel" }).some(({ id }) => id === "order"),
     false,
@@ -3090,6 +3096,8 @@ test("the item editor groups every type into short steps and gates required fiel
         typeSteps.some(({ id }) => id === "order"),
         false,
       );
+    if (["activity", "car_rental", "meal"].includes(type))
+      assert.equal(typeSteps.at(-2)?.id, "files", `${type} keeps Links directly before Order`);
   }
 
   const place = { displayName: "Kyoto" } as unknown as PlaceSnapshot;

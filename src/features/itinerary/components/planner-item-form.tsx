@@ -65,14 +65,22 @@ export function PlannerItemForm({
   const pending = itemMutationPending || attachmentSession.attachmentPending;
   const pendingLabel = attachmentSession.attachmentPending ? "Updating attachments…" : "Saving…";
   const mutationError = createMutation.error ?? updateMutation.error;
+  const supportsManualOrder = ["activity", "car_rental", "meal"].includes(type);
+  const [orderRequested, setOrderRequested] = useState(
+    Boolean(item && supportsManualOrder && !item.start_time && !item.end_time),
+  );
+  const [orderConfirmed, setOrderConfirmed] = useState(Boolean(item));
+  const manualOrderNeeded = supportsManualOrder && !state.startTime && !state.arrivalTime;
+  const includeOrder = manualOrderNeeded && orderRequested;
   const steps = useMemo(
     () =>
       plannerItemFormSteps({
         carAction: state.carAction,
+        includeOrder,
         transportMode: state.transportMode,
         type,
       }),
-    [state.carAction, state.transportMode, type],
+    [includeOrder, state.carAction, state.transportMode, type],
   );
   const [stepId, setStepId] = useState<ItemFormStep["id"]>("basics");
   const [stepError, setStepError] = useState<string>();
@@ -129,7 +137,12 @@ export function PlannerItemForm({
 
   function moveStep(offset: number) {
     const next = steps[stepIndex + offset];
-    return next ? goToStep(next.id) : false;
+    if (next) return goToStep(next.id);
+    if (offset > 0 && manualOrderNeeded && !includeOrder) {
+      setOrderRequested(true);
+      return goToStep("order");
+    }
+    return false;
   }
 
   const stepBodyRef = usePlannerItemStepSwipe((offset) => moveStep(offset));
@@ -156,6 +169,16 @@ export function PlannerItemForm({
     if (invalid?.message) {
       setStepId(invalid.step.id);
       setStepError(invalid.message);
+      return;
+    }
+    if (manualOrderNeeded && !orderConfirmed) {
+      if (includeOrder && activeStep.id === "order") {
+        setStepError("Choose this item’s position before saving.");
+      } else {
+        setOrderRequested(true);
+        setStepId("order");
+        setStepError(undefined);
+      }
       return;
     }
     setStepError(undefined);
@@ -245,6 +268,12 @@ export function PlannerItemForm({
                 dayId={dayId}
                 defaultCurrency={defaultCurrency}
                 item={item}
+                onOrderChange={(nextItemId) => {
+                  state.setInsertAfterItemId(nextItemId);
+                  setOrderConfirmed(true);
+                  setStepError(undefined);
+                }}
+                orderConfirmed={orderConfirmed}
                 pending={pending}
                 state={state}
                 titleRef={titleRef}
@@ -253,7 +282,7 @@ export function PlannerItemForm({
             </div>
             <PlannerItemFormActions
               firstStep={stepIndex === 0}
-              lastStep={stepIndex === steps.length - 1}
+              lastStep={stepIndex === steps.length - 1 && !(manualOrderNeeded && !includeOrder)}
               onBack={() => moveStep(-1)}
               onNext={() => moveStep(1)}
               pending={pending}
