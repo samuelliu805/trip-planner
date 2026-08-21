@@ -53,9 +53,9 @@ export function ItemTimeField({
               : `${carAction === "pickup" ? "Pickup" : "Return"} time`}{" "}
         <span className="font-normal text-muted-foreground">optional</span>
       </Label>
-      <div className="relative min-w-0">
+      <div className="planner-native-control-frame relative min-w-0 max-w-full">
         <Input
-          className="planner-native-time-input block min-w-0 max-w-full pr-9"
+          className="planner-native-time-input block min-w-0 max-w-full pr-12"
           id={`item-time-${fieldId}-${type}`}
           onChange={(event) => setStartTime(event.target.value)}
           type="time"
@@ -64,7 +64,7 @@ export function ItemTimeField({
         {startTime ? (
           <button
             aria-label="Clear time"
-            className="absolute right-1 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => setStartTime("")}
             tabIndex={-1}
             type="button"

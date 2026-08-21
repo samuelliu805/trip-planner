@@ -71,7 +71,7 @@ export function PlannerItemForm({
   );
   const [orderConfirmed, setOrderConfirmed] = useState(Boolean(item));
   const manualOrderNeeded = supportsManualOrder && !state.startTime && !state.arrivalTime;
-  const includeOrder = manualOrderNeeded && orderRequested;
+  const includeOrder = manualOrderNeeded && (Boolean(item) || orderRequested);
   const steps = useMemo(
     () =>
       plannerItemFormSteps({
@@ -145,19 +145,32 @@ export function PlannerItemForm({
     return false;
   }
 
-  const stepBodyRef = usePlannerItemStepSwipe((offset) => moveStep(offset));
+  const { gestureSurfaceRef, motionSurfaceRef } = usePlannerItemStepSwipe((offset) =>
+    moveStep(offset),
+  );
   const editorScrollRef = usePlannerEditorKeyboardScroll();
+  const setEditorScrollNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      editorScrollRef.current = node;
+      gestureSurfaceRef.current = node;
+    },
+    [editorScrollRef, gestureSurfaceRef],
+  );
 
   useEffect(() => {
     if (navigator.maxTouchPoints > 0) return;
     const frame = requestAnimationFrame(() => {
-      if (activeStep.blocks.includes("place") && !item && ["location", "hotel"].includes(type))
+      if (
+        activeStep.blocks.includes("place") &&
+        !item &&
+        ["location", "hotel", "meal"].includes(type)
+      )
         return;
-      const fallback = stepBodyRef.current?.querySelector<HTMLElement>(stepFieldSelector);
+      const fallback = motionSurfaceRef.current?.querySelector<HTMLElement>(stepFieldSelector);
       (titleRef.current ?? fallback)?.focus();
     });
     return () => cancelAnimationFrame(frame);
-  }, [activeStep, item, stepBodyRef, type]);
+  }, [activeStep, item, motionSurfaceRef, type]);
 
   async function save() {
     const invalid = steps
@@ -232,7 +245,7 @@ export function PlannerItemForm({
       <div
         className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain"
         data-planner-editor-scroll=""
-        ref={editorScrollRef}
+        ref={setEditorScrollNode}
       >
         <PlannerItemFormHeader
           activeStep={activeStep}
@@ -247,7 +260,7 @@ export function PlannerItemForm({
         />
         <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
           <div className="planner-item-form-card">
-            <div className="planner-item-form-fields" ref={stepBodyRef}>
+            <div className="planner-item-form-fields" ref={motionSurfaceRef}>
               <PlannerItemStepFields
                 attachments={
                   <ItemAttachmentsSection

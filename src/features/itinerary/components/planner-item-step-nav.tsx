@@ -22,12 +22,12 @@ export function PlannerItemStepNav({
   return (
     <ol
       aria-label="Item details steps"
-      className="planner-item-step-nav relative mx-8 h-16 min-w-0"
+      className="planner-item-step-nav relative mx-8 h-[4.5rem] min-w-0"
     >
       {steps.slice(1).map((step, index) => (
         <li
           aria-hidden="true"
-          className={`absolute bottom-5 h-0 border-t-2 border-dotted ${index + 1 <= activeIndex ? "border-primary/55" : "border-muted-foreground/30"}`}
+          className={`absolute bottom-6 h-0 border-t-2 border-dotted ${index + 1 <= activeIndex ? "border-primary/55" : "border-muted-foreground/30"}`}
           data-step-connector=""
           key={`connector-${step.id}`}
           style={{
@@ -41,13 +41,13 @@ export function PlannerItemStepNav({
         const done = index < activeIndex;
         return (
           <li
-            className="absolute bottom-0 flex w-16 -translate-x-1/2 items-end justify-center"
+            className="absolute bottom-0 flex w-20 -translate-x-1/2 items-end justify-center"
             key={step.id}
             style={{ left: steps.length > 1 ? `${index * interval}%` : "50%" }}
           >
             <button
               aria-current={active ? "step" : undefined}
-              className="group relative z-10 flex min-h-11 min-w-0 w-full flex-col items-center gap-1 focus-visible:outline-none"
+              className="group relative z-10 flex min-h-14 w-full min-w-0 flex-col items-center gap-1 focus-visible:outline-none"
               onClick={() => onSelect(step.id)}
               type="button"
             >
@@ -59,7 +59,7 @@ export function PlannerItemStepNav({
                 {step.title}
               </span>
               <span
-                className={`flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold shadow-sm transition-[background-color,border-color,color,box-shadow,transform] group-focus-visible:ring-2 group-focus-visible:ring-ring ${
+                className={`flex size-12 shrink-0 items-center justify-center rounded-full border-2 text-base font-bold shadow-sm transition-[background-color,border-color,color,box-shadow,transform] group-focus-visible:ring-2 group-focus-visible:ring-ring ${
                   active
                     ? "scale-105 border-primary bg-primary text-primary-foreground shadow-md ring-4 ring-primary/10"
                     : done

@@ -160,15 +160,21 @@ export function ItemTitleField({
   titleRef: RefObject<HTMLInputElement | null>;
   type: ItineraryItemType;
 }) {
-  const named = ["location", "hotel"].includes(type);
+  const named = ["location", "hotel", "meal"].includes(type);
+  const displayedNameLabel =
+    type === "location"
+      ? "Displayed city name"
+      : type === "hotel"
+        ? "Displayed hotel name"
+        : "Displayed meal name";
   return (
     <div className="space-y-2">
       <Label htmlFor={`item-title-${fieldId}-${type}`}>
         {named ? (
           <>
-            {type === "location" ? "Displayed city name" : "Displayed hotel name"}{" "}
+            {displayedNameLabel}{" "}
             <span className="font-normal text-muted-foreground">
-              {type === "hotel" && !place ? "required without a location" : "optional"}
+              {type !== "location" && !place ? "required without a location" : "optional"}
             </span>
           </>
         ) : (
@@ -180,7 +186,8 @@ export function ItemTitleField({
         onChange={(event) => setTitle(event.target.value)}
         placeholder={
           named
-            ? (place?.displayName ?? `Enter a ${type === "location" ? "city" : "hotel"} name`)
+            ? (place?.displayName ??
+              `Enter a ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"} name`)
             : copyPlaceholder
         }
         ref={titleRef}
@@ -189,10 +196,12 @@ export function ItemTitleField({
       {named ? (
         <p className="text-xs text-muted-foreground">
           {place
-            ? `Leave blank to display the selected ${type === "location" ? "city" : "hotel"}’s Google Maps name.`
+            ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
             : type === "hotel"
               ? "Use this when an exact map location is unavailable."
-              : "Choose a city location above."}
+              : type === "meal"
+                ? "Use this when an exact restaurant location is unavailable."
+                : "Choose a city location above."}
         </p>
       ) : null}
     </div>
@@ -226,9 +235,9 @@ export function ItemPlaceField({
         {placeLabel}{" "}
         {type === "location" ? (
           <span className="text-destructive">*</span>
-        ) : type === "hotel" ? (
+        ) : type === "hotel" || type === "meal" ? (
           <span className="font-normal text-muted-foreground">
-            optional if a displayed name is provided
+            optional if a {type === "hotel" ? "displayed hotel" : "meal"} name is provided
           </span>
         ) : (
           <span className="font-normal text-muted-foreground">optional</span>
@@ -244,6 +253,7 @@ export function ItemPlaceField({
             !title.trim() &&
             type !== "location" &&
             type !== "hotel" &&
+            type !== "meal" &&
             type !== "car_rental" &&
             type !== "transport"
           )

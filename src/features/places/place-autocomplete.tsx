@@ -17,17 +17,21 @@ import { PlaceSuggestionList, type PlaceSuggestion } from "./place-suggestion-li
  * the whole screen on narrow viewports and its closed shadow root cannot be sized or restyled.
  */
 export function PlaceAutocomplete({
+  ariaLabel,
   autoFocus = false,
   disabled,
   includedPrimaryTypes,
+  initialQuery = "",
   onChange,
   onSelected,
   placeholder = "Search Google Maps",
   value,
 }: {
+  ariaLabel?: string;
   autoFocus?: boolean;
   disabled?: boolean;
   includedPrimaryTypes?: string[];
+  initialQuery?: string;
   onChange: (place: PlaceSnapshot | null) => void;
   onSelected?: () => void;
   placeholder?: string;
@@ -38,7 +42,7 @@ export function PlaceAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken>(null);
   const selectedValue = value ?? null;
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [searching, setSearching] = useState(false);
@@ -127,6 +131,7 @@ export function PlaceAutocomplete({
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         />
         <Input
+          aria-label={ariaLabel}
           aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
           aria-autocomplete="list"
           aria-controls={listId}
@@ -208,11 +213,7 @@ export function PlaceAutocomplete({
         <p className="mt-1 text-xs text-muted-foreground">
           Places search loads when Google Maps is configured.
         </p>
-      ) : (
-        <p className="mt-1 text-xs text-muted-foreground">
-          Choose a suggestion to confirm the map location.
-        </p>
-      )}
+      ) : null}
       {error ? (
         <p className="mt-1 text-xs text-destructive" role="alert">
           {error}

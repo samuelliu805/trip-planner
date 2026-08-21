@@ -1836,8 +1836,22 @@ test("canonical booking fields share route details and one currency-paired Plan 
     details: {
       arrivalTime: "17:40",
       destination: "NRT",
+      destinationPlace: {
+        displayName: "Narita International Airport",
+        latitude: 35.772,
+        longitude: 140.3929,
+        provider: "google" as const,
+        providerPlaceId: "google-nrt",
+      },
       mode: "flight" as const,
       origin: "SFO",
+      originPlace: {
+        displayName: "San Francisco International Airport",
+        latitude: 37.6213,
+        longitude: -122.379,
+        provider: "google" as const,
+        providerPlaceId: "google-sfo",
+      },
       serviceNumber: "NH7",
     },
     priceAmount: 842.15,
@@ -2061,7 +2075,12 @@ test("transport editor keeps endpoints first and hides irrelevant timed fields",
   });
   assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").endpoints, true);
   assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").arrivalTime, false);
-  assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").dates, true);
+  for (const mode of ["subway", "taxi", "rideshare", "shuttle", "tram", "cable_car"] as const) {
+    const capabilities = plannerJourneyFieldCapabilities("transport", mode);
+    assert.equal(capabilities.dates, false, `${mode} has no date fields`);
+    assert.equal(capabilities.departureTime, false, `${mode} has no time fields`);
+  }
+  assert.equal(plannerJourneyFieldCapabilities("transport", "bus").dates, true);
   assert.equal(plannerJourneyFieldCapabilities("flight", "self_driving").serviceNumber, true);
 });
 
@@ -3002,16 +3021,15 @@ test("the item editor groups every type into short steps and gates required fiel
     activity.map(({ blocks, id }) => `${id}:${blocks.join("+")}`),
     [
       "basics:title+place",
-      "schedule:startTime+price",
-      "extras:notes",
+      "extras:startTime+price+notes",
       "files:links+attachments",
       "order:order",
     ],
   );
-  assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["title", "place"]);
+  assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["place", "title"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "meal" }).find(({ id }) => id === "extras"),
-    { blocks: ["startTime", "notes", "price"], id: "extras", title: "Detail" },
+    { blocks: ["startTime", "price", "notes"], id: "extras", title: "Detail" },
   );
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "note" }).map(({ id }) => id),
@@ -3031,38 +3049,41 @@ test("the item editor groups every type into short steps and gates required fiel
   const flight = plannerItemFormSteps({ ...rail, transportMode: "flight", type: "transport" });
   assert.deepEqual(
     flight.map(({ id }) => id),
-    ["basics", "schedule", "files", "extras"],
+    ["basics", "extras", "files"],
   );
-  assert.deepEqual(flight[0].blocks, ["transportMode", "endpoints"]);
-  assert.deepEqual(flight[1].blocks, ["journeySchedule"]);
-  assert.deepEqual(flight[3], {
+  assert.deepEqual(flight[0].blocks, ["transportMode", "endpoints", "journeySchedule"]);
+  assert.deepEqual(flight[1], {
     blocks: ["serviceNumber", "price", "notes"],
     id: "extras",
     title: "Detail",
   });
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, transportMode: "walk", type: "transport" }).map(({ id }) => id),
-    ["basics", "files", "extras"],
+    ["basics", "extras", "files"],
   );
   const rentalReturn = plannerItemFormSteps({ ...rail, carAction: "return", type: "car_rental" });
-  assert.deepEqual(rentalReturn[0].blocks, ["carProvider", "place"]);
+  assert.deepEqual(rentalReturn[0].blocks, ["carAction", "place"]);
   assert.deepEqual(
     rentalReturn.find(({ id }) => id === "extras"),
     {
-      blocks: ["carAction", "startTime"],
+      blocks: ["rentalTiming", "notes"],
       id: "extras",
       title: "Detail",
     },
   );
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "car_rental" }).find(({ id }) => id === "extras")?.blocks,
-    ["carAction", "startTime", "price"],
+    ["rentalTiming", "price", "notes"],
   );
   assert.equal(
     rentalReturn.some(({ blocks }) => blocks.includes("price")),
     false,
   );
   assert.deepEqual(plannerItemFormSteps({ ...rail, type: "hotel" })[0].blocks, ["place", "title"]);
+  assert.deepEqual(
+    plannerItemFormSteps({ ...rail, type: "hotel" }).map(({ id }) => id),
+    ["basics", "extras", "files"],
+  );
   for (const type of [
     "activity",
     "car_rental",
@@ -3117,6 +3138,15 @@ test("the item editor groups every type into short steps and gates required fiel
   );
   assert.equal(
     plannerItemStepError({ place: null, step: hotelPlace, title: "Park", type: "hotel" }),
+    undefined,
+  );
+  const mealPlace = plannerItemFormSteps({ ...rail, type: "meal" })[0];
+  assert.match(
+    plannerItemStepError({ place: null, step: mealPlace, title: " ", type: "meal" }) ?? "",
+    /displayed meal name/,
+  );
+  assert.equal(
+    plannerItemStepError({ place, step: mealPlace, title: "", type: "meal" }),
     undefined,
   );
   assert.equal(

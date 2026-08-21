@@ -12,7 +12,7 @@ import {
   type TransportMode,
 } from "../types";
 import type { Json } from "../../../types/database";
-import type { PlaceSnapshot } from "../../../lib/providers/places/types";
+import { placeSnapshotFromJson, type PlaceSnapshot } from "../../../lib/providers/places/types";
 
 const allTransportModes: TransportMode[] = [...transportModes];
 
@@ -33,8 +33,12 @@ export function usePlannerItemFormState({
   const existingDetails = (item?.details as Record<string, Json> | undefined) ?? {};
   const detailText = (key: string) =>
     typeof existingDetails[key] === "string" ? (existingDetails[key] as string) : "";
+  const existingOriginPlace = placeSnapshotFromJson(existingDetails.originPlace);
+  const existingDestinationPlace = placeSnapshotFromJson(existingDetails.destinationPlace);
   const [title, setTitle] = useState(
-    item && ["location", "hotel"].includes(item.type) && item.place?.displayName === item.title
+    item &&
+      ["location", "hotel", "meal"].includes(item.type) &&
+      item.place?.displayName === item.title
       ? ""
       : (item?.title ?? ""),
   );
@@ -48,8 +52,16 @@ export function usePlannerItemFormState({
   const [departureDate, setDepartureDate] = useState(
     detailText("departureDate") || (startTime && dayDate ? dayDate : ""),
   );
-  const [origin, setOrigin] = useState(detailText("origin"));
-  const [destination, setDestination] = useState(detailText("destination"));
+  const [originPlace, setOriginPlace] = useState<PlaceSnapshot | null>(existingOriginPlace);
+  const [destinationPlace, setDestinationPlace] = useState<PlaceSnapshot | null>(
+    existingDestinationPlace,
+  );
+  const [origin, setOrigin] = useState(
+    detailText("origin") || existingOriginPlace?.displayName || "",
+  );
+  const [destination, setDestination] = useState(
+    detailText("destination") || existingDestinationPlace?.displayName || "",
+  );
   const [serviceNumber, setServiceNumber] = useState(detailText("serviceNumber"));
   const [priceAmount, setPriceAmount] = useState(
     item?.price_amount === null || item?.price_amount === undefined
@@ -87,11 +99,13 @@ export function usePlannerItemFormState({
     carAction,
     carProvider,
     destination,
+    destinationPlace,
     departureDate,
     links,
     insertAfterItemId,
     notes,
     origin,
+    originPlace,
     place ? `${place.provider}:${place.providerPlaceId}:${place.displayName}` : null,
     priceAmount,
     priceCurrency,
@@ -110,12 +124,14 @@ export function usePlannerItemFormState({
     dirty: snapshot !== initialSnapshot,
     carProvider,
     destination,
+    destinationPlace,
     departureDate,
     existingDetails,
     links,
     insertAfterItemId,
     notes,
     origin,
+    originPlace,
     place,
     priceAmount,
     priceCurrency,
@@ -125,11 +141,13 @@ export function usePlannerItemFormState({
     setCarAction,
     setCarProvider,
     setDestination,
+    setDestinationPlace,
     setDepartureDate,
     setLinks,
     setInsertAfterItemId,
     setNotes,
     setOrigin,
+    setOriginPlace,
     setPlace,
     setPriceAmount,
     setPriceCurrency,

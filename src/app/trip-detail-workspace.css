@@ -27,7 +27,6 @@ body:has(.trip-detail-page) {
 }
 
 .trip-app-bar,
-.research-context-bar,
 .trip-mobile-tab-bar {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
@@ -35,7 +34,6 @@ body:has(.trip-detail-page) {
 }
 
 .trip-app-bar,
-.research-context-bar,
 .trip-mobile-tab-bar {
   touch-action: pan-x;
 }

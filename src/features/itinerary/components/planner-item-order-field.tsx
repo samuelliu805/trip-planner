@@ -46,6 +46,7 @@ export function PlannerItemOrderField({
   item,
   items,
   onChange,
+  placeName,
   title,
   type,
 }: {
@@ -55,24 +56,17 @@ export function PlannerItemOrderField({
   item?: ItineraryItem;
   items: ItineraryItem[];
   onChange: (itemId: string | null) => void;
+  placeName?: string;
   title: string;
   type: ItineraryItemType;
 }) {
   const ordered = items
     .filter((entry) => entry.id !== item?.id && isDestinationActivity(entry))
     .sort(compareActivityOrder);
-  const selectedPositionLabel =
-    type === "activity"
-      ? "This activity"
-      : type === "meal"
-        ? "This meal"
-        : type === "car_rental"
-          ? `Rental ${carAction}`
-          : "Selected position";
-  const label =
-    type === "car_rental"
-      ? selectedPositionLabel
-      : title.trim() || item?.title || `New ${itemCopy[type].label.toLowerCase()}`;
+  const displayName =
+    title.trim() || placeName || item?.title || `New ${itemCopy[type].label.toLowerCase()}`;
+  const selectedPositionLabel = type === "car_rental" ? `Rental ${carAction}` : displayName;
+  const label = type === "car_rental" ? selectedPositionLabel : displayName;
 
   if (type === "hotel")
     return (

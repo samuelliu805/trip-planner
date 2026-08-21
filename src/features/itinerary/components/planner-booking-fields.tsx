@@ -4,43 +4,57 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
+import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 import { BookingPriceFields } from "./booking-price-fields";
 import type { ItineraryItemType, TransportMode } from "../types";
 
 export function JourneyEndpointFields({
   destination,
-  fieldId,
+  destinationPlace,
   origin,
+  originPlace,
   setDestination,
+  setDestinationPlace,
   setOrigin,
+  setOriginPlace,
 }: {
   destination: string;
-  fieldId: string;
+  destinationPlace: PlaceSnapshot | null;
   origin: string;
+  originPlace: PlaceSnapshot | null;
   setDestination: Dispatch<SetStateAction<string>>;
+  setDestinationPlace: Dispatch<SetStateAction<PlaceSnapshot | null>>;
   setOrigin: Dispatch<SetStateAction<string>>;
+  setOriginPlace: Dispatch<SetStateAction<PlaceSnapshot | null>>;
 }) {
   return (
     <div className="grid min-w-0 gap-5 sm:grid-cols-2">
       <div className="min-w-0 space-y-2">
-        <Label htmlFor={`journey-origin-${fieldId}`}>From</Label>
-        <Input
-          id={`journey-origin-${fieldId}`}
-          maxLength={200}
-          onChange={(event) => setOrigin(event.target.value)}
-          placeholder="Airport, station, or city"
-          value={origin}
+        <Label>From</Label>
+        <PlaceAutocomplete
+          ariaLabel="From"
+          initialQuery={originPlace ? "" : origin}
+          onChange={(nextPlace) => {
+            setOriginPlace(nextPlace);
+            setOrigin(nextPlace?.displayName ?? "");
+          }}
+          placeholder="Search origin on Google Maps"
+          value={originPlace}
         />
       </div>
       <div className="min-w-0 space-y-2">
-        <Label htmlFor={`journey-destination-${fieldId}`}>To</Label>
-        <Input
-          id={`journey-destination-${fieldId}`}
-          maxLength={200}
-          onChange={(event) => setDestination(event.target.value)}
-          placeholder="Airport, station, or city"
-          value={destination}
+        <Label>To</Label>
+        <PlaceAutocomplete
+          ariaLabel="To"
+          initialQuery={destinationPlace ? "" : destination}
+          onChange={(nextPlace) => {
+            setDestinationPlace(nextPlace);
+            setDestination(nextPlace?.displayName ?? "");
+          }}
+          placeholder="Search destination on Google Maps"
+          value={destinationPlace}
         />
       </div>
     </div>
@@ -93,7 +107,7 @@ export function JourneyScheduleFields({
   return (
     <div className="min-w-0 space-y-8">
       {showDeparture ? (
-        <div className="min-w-0 space-y-2">
+        <div className="planner-native-control-frame min-w-0 max-w-full space-y-2">
           <Label htmlFor={`journey-departure-${fieldId}`}>
             {["taxi", "rideshare"].includes(transportMode) ? "Pick-up" : "Departure"}{" "}
             <span className="font-normal text-muted-foreground">optional</span>
@@ -111,7 +125,7 @@ export function JourneyScheduleFields({
         </div>
       ) : null}
       {showArrival ? (
-        <div className="min-w-0 space-y-2">
+        <div className="planner-native-control-frame min-w-0 max-w-full space-y-2">
           <Label htmlFor={`journey-arrival-${fieldId}`}>
             Arrival <span className="font-normal text-muted-foreground">optional</span>
           </Label>

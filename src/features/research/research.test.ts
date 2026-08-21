@@ -589,26 +589,37 @@ test("Ideas & Options has direct category routes and instant in-workspace switch
   );
 });
 
-test("Trip detail keeps context controls at top and uses one mobile destination tab bar", async () => {
-  const [planPage, comparePage, appBar, barMenu, planToolbar, contextBar, compareWorkspace] =
-    await Promise.all(
-      [
-        "../../app/trips/[tripId]/page.tsx",
-        "../../app/trips/[tripId]/compare/page.tsx",
-        "../trips/components/trip-app-bar.tsx",
-        "../trips/components/trip-app-bar-menu.tsx",
-        "../itinerary/components/planner-toolbar.tsx",
-        "../itinerary/components/planner-context-bar.tsx",
-        "./components/compare-workspace.tsx",
-      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
-    );
+test("Trip detail keeps Ideas filters inline and uses one mobile destination tab bar", async () => {
+  const [
+    planPage,
+    comparePage,
+    appBar,
+    barMenu,
+    planToolbar,
+    contextBar,
+    compareWorkspace,
+    routeState,
+  ] = await Promise.all(
+    [
+      "../../app/trips/[tripId]/page.tsx",
+      "../../app/trips/[tripId]/compare/page.tsx",
+      "../trips/components/trip-app-bar.tsx",
+      "../trips/components/trip-app-bar-menu.tsx",
+      "../itinerary/components/planner-toolbar.tsx",
+      "../itinerary/components/planner-context-bar.tsx",
+      "./components/compare-workspace.tsx",
+      "./components/trip-detail-route-state.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
   assert.match(appBar, /ariaLabel="Trip sections"/);
   assert.match(appBar, /aria-current/);
   assert.match(appBar, /label: "Plan"/);
   assert.match(appBar, /label: "Ideas & Options"/);
   assert.match(planToolbar, /<TripAppBar[\s\S]*actions=\{<PlannerContextActions/);
   assert.match(planToolbar, /menuItems=\{<PlannerContextMenuItems/);
-  assert.match(compareWorkspace, /aria-label="Research context"/);
+  assert.match(compareWorkspace, /aria-label="Ideas filters"/);
+  assert.doesNotMatch(compareWorkspace, /research-context-bar/);
+  assert.doesNotMatch(routeState, /research-context-bar/);
   assert.match(compareWorkspace, /<TripMobileTabBar/);
   // The plan actions live inside the single app bar row; no second top bar may reappear.
   assert.doesNotMatch(contextBar, /aria-label="Plan context"|min-h-14|is-idle/);
@@ -736,7 +747,7 @@ test("Trip detail shell contains document scrolling separately from Matrix rules
   assert.match(plannerStyles, /planner-matrix[\s\S]*overscroll-behavior: none/);
 });
 
-test("Compare uses one responsive Context Bar below the Trip App Bar", async () => {
+test("Compare keeps one responsive inline filter row below the Trip App Bar", async () => {
   const categorySelector = await readFile(
     new URL("./components/category-selector.tsx", import.meta.url),
     "utf8",
@@ -769,8 +780,8 @@ test("Compare uses one responsive Context Bar below the Trip App Bar", async () 
   assert.match(mobileCategoryPicker, /min-h-16/);
   assert.match(mobileCategoryPicker, /Mobile price categories/);
   assert.match(mobileCategoryPicker, /safe-area-inset-bottom/);
-  assert.match(workspace, /aria-label="Research context"/);
-  assert.match(workspace, /saved in Ideas &amp; Options/);
+  assert.match(workspace, /aria-label="Ideas filters"/);
+  assert.doesNotMatch(workspace, /saved in Ideas &amp; Options|research-context-bar/);
   assert.match(workspace, /TripMobileTabBar/);
   assert.match(workspace, /CategorySelector[\s\S]*ResearchSortMenu[\s\S]*ResearchItemDialog/);
   assert.match(route, /\{appBar\}/);

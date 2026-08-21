@@ -87,10 +87,13 @@ export function PlannerItemStepFields({
         return (
           <JourneyEndpointFields
             destination={state.destination}
-            fieldId={fieldId}
+            destinationPlace={state.destinationPlace}
             origin={state.origin}
+            originPlace={state.originPlace}
             setDestination={state.setDestination}
+            setDestinationPlace={state.setDestinationPlace}
             setOrigin={state.setOrigin}
+            setOriginPlace={state.setOriginPlace}
           />
         );
       case "journeySchedule":
@@ -133,6 +136,7 @@ export function PlannerItemStepFields({
             item={item}
             items={dayItems}
             onChange={onOrderChange}
+            placeName={state.place?.displayName}
             title={state.title}
             type={type}
           />
@@ -161,6 +165,23 @@ export function PlannerItemStepFields({
             setPriceAmount={state.setPriceAmount}
             setPriceCurrency={state.setPriceCurrency}
           />
+        );
+      case "rentalTiming":
+        return (
+          <div className="space-y-10">
+            <ItemTimeField
+              carAction={state.carAction}
+              fieldId={fieldId}
+              setStartTime={state.setStartTime}
+              startTime={state.startTime}
+              type={type}
+            />
+            <CarProviderField
+              carProvider={state.carProvider}
+              fieldId={fieldId}
+              setCarProvider={state.setCarProvider}
+            />
+          </div>
         );
       case "serviceNumber":
         return (

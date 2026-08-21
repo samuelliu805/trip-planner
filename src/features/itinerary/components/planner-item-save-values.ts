@@ -28,12 +28,14 @@ export function plannerItemSaveValues({
     carAction,
     carProvider,
     destination,
+    destinationPlace,
     departureDate,
     existingDetails,
     links,
     insertAfterItemId,
     notes,
     origin,
+    originPlace,
     place,
     priceAmount,
     priceCurrency,
@@ -68,13 +70,25 @@ export function plannerItemSaveValues({
             ? {
                 ...existingDetails,
                 arrivalTime: journey.arrivalTime ? arrivalTime || null : null,
-                arrivalDate: journey.dates ? arrivalDate || null : existingDetails.arrivalDate,
-                departureDate: journey.dates
-                  ? departureDate || null
-                  : existingDetails.departureDate,
-                destination: journey.endpoints ? destination || null : null,
+                arrivalDate: journey.dates ? arrivalDate || null : null,
+                departureDate: journey.dates ? departureDate || null : null,
+                destination: journey.endpoints
+                  ? destinationPlace?.displayName || destination || null
+                  : null,
+                destinationPlace:
+                  journey.endpoints &&
+                  destinationPlace?.provider === "google" &&
+                  destinationPlace.providerPlaceId
+                    ? (destinationPlace as unknown as Json)
+                    : null,
                 mode: type === "transport" ? transportMode : type,
-                origin: journey.endpoints ? origin || null : null,
+                origin: journey.endpoints ? originPlace?.displayName || origin || null : null,
+                originPlace:
+                  journey.endpoints &&
+                  originPlace?.provider === "google" &&
+                  originPlace.providerPlaceId
+                    ? (originPlace as unknown as Json)
+                    : null,
                 serviceNumber: journey.serviceNumber ? serviceNumber || null : null,
               }
             : type === "activity"

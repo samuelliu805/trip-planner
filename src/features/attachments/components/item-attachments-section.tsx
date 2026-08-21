@@ -199,7 +199,7 @@ export function SavedItemAttachmentsSection({
     <section className="min-w-0 space-y-3 border-t pt-4" aria-labelledby="attachments-heading">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-1.5 text-sm font-medium" id="attachments-heading">
+          <h3 className="flex items-center gap-1.5 text-base font-bold" id="attachments-heading">
             <Paperclip aria-hidden="true" className="size-4" /> Attachments
             <span className="font-normal text-muted-foreground">
               {countedAttachments.length}/{MAX_ATTACHMENTS_PER_ITEM}

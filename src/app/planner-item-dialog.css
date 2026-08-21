@@ -85,8 +85,8 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
 }
 
 .planner-item-step-nav {
-  --step-connector-inset: 1.25rem;
-  --step-connector-width: 2.5rem;
+  --step-connector-inset: 1.5rem;
+  --step-connector-width: 3rem;
   scrollbar-width: none;
 }
 
@@ -113,10 +113,35 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
 
 .planner-item-dialog .planner-native-time-input,
 .planner-item-dialog .planner-native-datetime-input {
+  display: block !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
   inline-size: 100% !important;
+  min-width: 0 !important;
   min-inline-size: 0 !important;
+  max-width: 100% !important;
   max-inline-size: 100% !important;
+  -webkit-appearance: none;
+  appearance: none;
   overflow: hidden;
+}
+
+.planner-item-dialog .planner-native-control-frame {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  contain: inline-size;
+}
+
+.planner-item-dialog .planner-native-currency-select {
+  height: 3.75rem !important;
+  min-height: 3.75rem !important;
+}
+
+.planner-item-dialog .planner-native-time-input::-webkit-date-and-time-value,
+.planner-item-dialog .planner-native-datetime-input::-webkit-date-and-time-value {
+  min-width: 0;
+  text-align: left;
 }
 
 .planner-item-dialog [data-planner-editor-scroll] textarea {

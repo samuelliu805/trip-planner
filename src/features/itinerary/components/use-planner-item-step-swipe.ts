@@ -14,7 +14,8 @@ const interactiveTarget =
 
 /** Horizontal direct manipulation for the editor while leaving fields and vertical scroll alone. */
 export function usePlannerItemStepSwipe(onNavigate: (offset: -1 | 1) => boolean) {
-  const surfaceRef = useRef<HTMLDivElement>(null);
+  const gestureSurfaceRef = useRef<HTMLDivElement>(null);
+  const motionSurfaceRef = useRef<HTMLDivElement>(null);
   const onNavigateRef = useRef(onNavigate);
 
   useEffect(() => {
@@ -22,19 +23,20 @@ export function usePlannerItemStepSwipe(onNavigate: (offset: -1 | 1) => boolean)
   }, [onNavigate]);
 
   useEffect(() => {
-    const surface = surfaceRef.current;
-    if (!surface) return;
+    const gestureSurface = gestureSurfaceRef.current;
+    const motionSurface = motionSurfaceRef.current;
+    if (!gestureSurface || !motionSurface) return;
     let gesture: Gesture | undefined;
     let animationTimer = 0;
     let suppressClickUntil = 0;
 
     const clearMotion = () => {
-      surface.style.removeProperty("opacity");
-      surface.style.removeProperty("transform");
-      surface.style.removeProperty("transition");
-      surface.style.removeProperty("user-select");
-      surface.style.removeProperty("will-change");
-      surface.removeAttribute("data-step-dragging");
+      motionSurface.style.removeProperty("opacity");
+      motionSurface.style.removeProperty("transform");
+      motionSurface.style.removeProperty("transition");
+      motionSurface.style.removeProperty("user-select");
+      motionSurface.style.removeProperty("will-change");
+      motionSurface.removeAttribute("data-step-dragging");
     };
     const begin = (clientX: number, clientY: number, target: EventTarget | null) => {
       if (target instanceof Element && target.closest(interactiveTarget)) return;
@@ -58,15 +60,15 @@ export function usePlannerItemStepSwipe(onNavigate: (offset: -1 | 1) => boolean)
           return;
         }
         gesture.dragging = true;
-        surface.setAttribute("data-step-dragging", "");
-        surface.style.transition = "none";
-        surface.style.userSelect = "none";
-        surface.style.willChange = "transform, opacity";
+        motionSurface.setAttribute("data-step-dragging", "");
+        motionSurface.style.transition = "none";
+        motionSurface.style.userSelect = "none";
+        motionSurface.style.willChange = "transform, opacity";
       }
       preventDefault();
-      const offset = Math.max(-96, Math.min(96, x * 0.72));
-      surface.style.transform = `translate3d(${offset}px, 0, 0)`;
-      surface.style.opacity = String(1 - Math.min(0.18, Math.abs(offset) / 520));
+      const offset = Math.max(-112, Math.min(112, x * 0.9));
+      motionSurface.style.transform = `translate3d(${offset}px, 0, 0)`;
+      motionSurface.style.opacity = String(1 - Math.min(0.14, Math.abs(offset) / 680));
     };
     const settle = (clientX: number) => {
       const current = gesture;
@@ -78,40 +80,40 @@ export function usePlannerItemStepSwipe(onNavigate: (offset: -1 | 1) => boolean)
       const velocity = Math.abs(distance) / elapsed;
       const direction: -1 | 1 = distance < 0 ? 1 : -1;
       const shouldNavigate =
-        Math.abs(distance) >= 64 || (Math.abs(distance) >= 28 && velocity > 0.5);
+        Math.abs(distance) >= 48 || (Math.abs(distance) >= 22 && velocity > 0.35);
 
-      surface.style.transition = shouldNavigate
-        ? "transform 150ms cubic-bezier(0.32, 0.72, 0, 1), opacity 150ms ease-out"
-        : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease-out";
-      surface.style.transform = shouldNavigate
-        ? `translate3d(${direction === 1 ? -96 : 96}px, 0, 0)`
+      motionSurface.style.transition = shouldNavigate
+        ? "transform 110ms cubic-bezier(0.32, 0.72, 0, 1), opacity 110ms ease-out"
+        : "transform 190ms cubic-bezier(0.22, 1, 0.36, 1), opacity 170ms ease-out";
+      motionSurface.style.transform = shouldNavigate
+        ? `translate3d(${direction === 1 ? -112 : 112}px, 0, 0)`
         : "translate3d(0, 0, 0)";
-      surface.style.opacity = shouldNavigate ? "0.18" : "1";
+      motionSurface.style.opacity = shouldNavigate ? "0.2" : "1";
 
       animationTimer = window.setTimeout(
         () => {
           if (!shouldNavigate || !onNavigateRef.current(direction)) {
-            surface.style.transition =
-              "transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease-out";
-            surface.style.transform = "translate3d(0, 0, 0)";
-            surface.style.opacity = "1";
-            animationTimer = window.setTimeout(clearMotion, 280);
+            motionSurface.style.transition =
+              "transform 190ms cubic-bezier(0.22, 1, 0.36, 1), opacity 170ms ease-out";
+            motionSurface.style.transform = "translate3d(0, 0, 0)";
+            motionSurface.style.opacity = "1";
+            animationTimer = window.setTimeout(clearMotion, 200);
             return;
           }
-          surface.style.transition = "none";
-          surface.style.transform = `translate3d(${direction === 1 ? 56 : -56}px, 0, 0)`;
-          surface.style.opacity = "0.25";
+          motionSurface.style.transition = "none";
+          motionSurface.style.transform = `translate3d(${direction === 1 ? 44 : -44}px, 0, 0)`;
+          motionSurface.style.opacity = "0.32";
           requestAnimationFrame(() =>
             requestAnimationFrame(() => {
-              surface.style.transition =
-                "transform 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease-out";
-              surface.style.transform = "translate3d(0, 0, 0)";
-              surface.style.opacity = "1";
-              animationTimer = window.setTimeout(clearMotion, 250);
+              motionSurface.style.transition =
+                "transform 180ms cubic-bezier(0.22, 1, 0.36, 1), opacity 150ms ease-out";
+              motionSurface.style.transform = "translate3d(0, 0, 0)";
+              motionSurface.style.opacity = "1";
+              animationTimer = window.setTimeout(clearMotion, 190);
             }),
           );
         },
-        shouldNavigate ? 145 : 280,
+        shouldNavigate ? 105 : 190,
       );
     };
     const cancel = () => {
@@ -146,27 +148,27 @@ export function usePlannerItemStepSwipe(onNavigate: (offset: -1 | 1) => boolean)
       event.stopPropagation();
     };
 
-    surface.addEventListener("touchstart", onTouchStart, { passive: true });
-    surface.addEventListener("touchmove", onTouchMove, { passive: false });
-    surface.addEventListener("touchend", onTouchEnd);
-    surface.addEventListener("touchcancel", cancel);
-    surface.addEventListener("mousedown", onMouseDown);
-    surface.addEventListener("click", suppressDraggedClick, true);
+    gestureSurface.addEventListener("touchstart", onTouchStart, { passive: true });
+    gestureSurface.addEventListener("touchmove", onTouchMove, { passive: false });
+    gestureSurface.addEventListener("touchend", onTouchEnd);
+    gestureSurface.addEventListener("touchcancel", cancel);
+    gestureSurface.addEventListener("mousedown", onMouseDown);
+    gestureSurface.addEventListener("click", suppressDraggedClick, true);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     return () => {
       window.clearTimeout(animationTimer);
       clearMotion();
-      surface.removeEventListener("touchstart", onTouchStart);
-      surface.removeEventListener("touchmove", onTouchMove);
-      surface.removeEventListener("touchend", onTouchEnd);
-      surface.removeEventListener("touchcancel", cancel);
-      surface.removeEventListener("mousedown", onMouseDown);
-      surface.removeEventListener("click", suppressDraggedClick, true);
+      gestureSurface.removeEventListener("touchstart", onTouchStart);
+      gestureSurface.removeEventListener("touchmove", onTouchMove);
+      gestureSurface.removeEventListener("touchend", onTouchEnd);
+      gestureSurface.removeEventListener("touchcancel", cancel);
+      gestureSurface.removeEventListener("mousedown", onMouseDown);
+      gestureSurface.removeEventListener("click", suppressDraggedClick, true);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
   }, []);
 
-  return surfaceRef;
+  return { gestureSurfaceRef, motionSurfaceRef };
 }
