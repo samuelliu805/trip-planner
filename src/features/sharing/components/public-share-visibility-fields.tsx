@@ -22,7 +22,7 @@ export function PublicShareVisibilityFields({
       >
         <ShareSettingOption
           checked={settings.showAttachments}
-          description="Files with Share file turned on."
+          description="Files marked Public."
           label="Attachments"
           onCheckedChange={(value) => onSettingChange("showAttachments", value)}
         />

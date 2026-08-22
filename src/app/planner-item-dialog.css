@@ -1,12 +1,19 @@
+/*
+ * `.planner-item-dialog` is the shared full-screen editor shell. Two screens wear it: the itinerary
+ * item editor, and the trip editor (which adds `.trip-editor-dialog` and has no step navigator).
+ * Both therefore size, scroll, and scale their controls identically.
+ */
 .planner-item-dialog {
   position: fixed !important;
   inset: 0 !important;
   display: flex;
   width: 100% !important;
   height: 100vh !important;
-  height: 100lvh !important;
+  /* Dynamic, not large, viewport units: `lvh` reaches under the mobile browser toolbar, so the
+     scroller's last screenful — the Previous/Save/Next row — could never be scrolled into reach. */
+  height: 100dvh !important;
   max-width: none !important;
-  max-height: none !important;
+  max-height: 100dvh !important;
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;

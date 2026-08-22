@@ -24,6 +24,22 @@ These rules apply to all future UI work in this repository.
 - The modal keeps one fixed height and Next/Back stay mounted and in place on the first and last step, so repeated clicks never chase a moving button. No step may add explanatory chrome — no shortcut legend, no restated step label, no preview card.
 - Closing a modified editor — overlay click, close button, or Escape — must confirm before discarding.
 - Field grouping and per-step validation live in `planner-item-form-steps.ts`. Cover changes with the step-grouping unit test instead of new source-text assertions.
+- A bare Enter never saves. Enter is how a field is committed, so implicit form submission must stay suppressed for every control that is not a button, link, or textarea; Cmd/Ctrl+Enter remains the explicit save shortcut.
+
+## Full-screen editor shell
+
+- `.planner-item-dialog` is the shared shell for full-screen editors — the itinerary item editor and the trip editor both wear it. Size it in dynamic viewport units only. `vh` and `lvh` reach under the mobile browser toolbar, which repeatedly left the editor's bottom action row unscrollable and untappable.
+- The shell owns exactly one vertical scroller. A pinned header must be a non-scrolling flex sibling of it, never a sticky child.
+- The iPadOS software keyboard can leave the page panned inside the layout viewport, which the next screen inherits as a top bar scrolled out of reach and a strip of blank space under the table. `window.scrollY` reads 0 throughout, so document-scroll resets, rAF settle loops, and root-height clamps do not repair it — five commits proved that. Reduce the number of surfaces that open the keyboard instead, and verify any keyboard change on a real iPad: a desktop browser at iPad size has no software keyboard and cannot reproduce it.
+
+## Trip editor
+
+- Creating a trip asks nothing at all. The New trip button creates it immediately — one day, `USD`, the browser's timezone, and the placeholder name `New trip yyyy-mm-dd` — then opens its plan. Never reintroduce a creation form, page, or dialog; a text field on the way in is what let the iPad keyboard poison the plan behind it.
+- The first place written into a trip renames it, shortest honest name first: the place's locality, else the place itself. This only ever replaces the placeholder name, never one the traveller typed.
+- Trip settings edit an existing trip only. `TripForm` therefore requires its `trip`, and `createTrip` takes no user input beyond what the browser knows.
+- The screen has no steps and no Previous/Next: Trip name and Days lead, everything optional stays inside one collapsed More settings disclosure, and one Save action commits.
+- Timezone is neither asked for nor displayed. It is carried in a hidden field so existing trips keep theirs and new trips adopt the browser's.
+- Dates and length describe the same trip. Committing either — on blur, not on every keystroke — settles the other, so a save can never be rejected for a range that disagrees with its length.
 
 ## Workspace clipboard boundary
 

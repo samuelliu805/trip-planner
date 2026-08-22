@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const editableSelector =
   "input:not([type='hidden']), textarea, select, [role='combobox'], [contenteditable='true']";
@@ -19,13 +19,14 @@ function revealDelta(
 }
 
 /** Keeps the focused control visible when iPadOS changes only the visual viewport for its keyboard. */
-export function usePlannerEditorKeyboardScroll() {
-  const scrollRef = useRef<HTMLDivElement>(null);
+export function usePlannerEditorKeyboardScroll(active = true) {
+  const [surface, setSurface] = useState<HTMLDivElement | null>(null);
+  const scrollRef = useCallback((node: HTMLDivElement | null) => setSurface(node), []);
 
   useEffect(() => {
-    const currentSurface = scrollRef.current;
-    if (!currentSurface) return;
-    const surface: HTMLDivElement = currentSurface;
+    if (!active) return;
+    if (!surface) return;
+    const scrollSurface: HTMLDivElement = surface;
     let firstFrame = 0;
     let secondFrame = 0;
     let observedRegion: Element | null = null;
@@ -42,8 +43,12 @@ export function usePlannerEditorKeyboardScroll() {
     function revealFocusedControl() {
       const viewport = window.visualViewport;
       const viewportHeight = viewport?.height ?? window.innerHeight;
-      const keyboardOpen = surface.clientHeight - viewportHeight >= keyboardThreshold;
-      surface.closest("form")?.toggleAttribute("data-editor-keyboard-open", keyboardOpen);
+      const editorHeight =
+        scrollSurface.closest<HTMLElement>(".planner-item-dialog")?.clientHeight ??
+        scrollSurface.clientHeight;
+      const keyboardOpen = editorHeight - viewportHeight >= keyboardThreshold;
+      const ownerForm = scrollSurface.closest("form") ?? scrollSurface.querySelector("form");
+      ownerForm?.toggleAttribute("data-editor-keyboard-open", keyboardOpen);
 
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
@@ -52,14 +57,17 @@ export function usePlannerEditorKeyboardScroll() {
           const currentViewport = window.visualViewport;
           const currentViewportHeight = currentViewport?.height ?? window.innerHeight;
           const viewportTop = currentViewport?.offsetTop ?? 0;
-          const keyboardSpace = Math.max(0, surface.clientHeight - currentViewportHeight);
-          surface.style.setProperty(
+          const currentEditorHeight =
+            scrollSurface.closest<HTMLElement>(".planner-item-dialog")?.clientHeight ??
+            scrollSurface.clientHeight;
+          const keyboardSpace = Math.max(0, currentEditorHeight - currentViewportHeight);
+          scrollSurface.style.setProperty(
             "--planner-editor-keyboard-space",
             keyboardOpen ? `${keyboardSpace + keyboardEdgeClearance}px` : "0px",
           );
           const active = document.activeElement;
           if (!(active instanceof HTMLElement) || !active.matches(editableSelector)) return;
-          if (!surface.contains(active)) return;
+          if (!scrollSurface.contains(active)) return;
           observeFocusedRegion(active);
           const topClearance = keyboardOpen ? 20 : 12;
           const bottomClearance = keyboardOpen ? keyboardEdgeClearance : 20;
@@ -72,29 +80,33 @@ export function usePlannerEditorKeyboardScroll() {
               : active;
           const delta = revealDelta(target.getBoundingClientRect(), visibleTop, visibleBottom);
           if (Math.abs(delta) <= 1) return;
-          const maximum = Math.max(0, surface.scrollHeight - surface.clientHeight);
-          const nextTop = Math.max(0, Math.min(maximum, surface.scrollTop + delta));
-          surface.scrollTo({ behavior: "auto", top: nextTop });
+          const maximum = Math.max(0, scrollSurface.scrollHeight - scrollSurface.clientHeight);
+          const nextTop = Math.max(0, Math.min(maximum, scrollSurface.scrollTop + delta));
+          scrollSurface.scrollTo({ behavior: "auto", top: nextTop });
         });
       });
     }
 
-    surface.addEventListener("focusin", revealFocusedControl);
+    scrollSurface.addEventListener("focusin", revealFocusedControl);
     window.addEventListener("resize", revealFocusedControl);
     window.visualViewport?.addEventListener("resize", revealFocusedControl);
     window.visualViewport?.addEventListener("scroll", revealFocusedControl);
+    // A portalled editor can mount after the keyboard has already changed the visual viewport.
+    revealFocusedControl();
     return () => {
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
       regionObserver.disconnect();
-      surface.closest("form")?.removeAttribute("data-editor-keyboard-open");
-      surface.style.removeProperty("--planner-editor-keyboard-space");
-      surface.removeEventListener("focusin", revealFocusedControl);
+      (scrollSurface.closest("form") ?? scrollSurface.querySelector("form"))?.removeAttribute(
+        "data-editor-keyboard-open",
+      );
+      scrollSurface.style.removeProperty("--planner-editor-keyboard-space");
+      scrollSurface.removeEventListener("focusin", revealFocusedControl);
       window.removeEventListener("resize", revealFocusedControl);
       window.visualViewport?.removeEventListener("resize", revealFocusedControl);
       window.visualViewport?.removeEventListener("scroll", revealFocusedControl);
     };
-  }, []);
+  }, [active, surface]);
 
   return scrollRef;
 }

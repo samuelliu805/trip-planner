@@ -7,7 +7,7 @@ import { listPublicItineraryLinks } from "@/features/sharing/data";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { getPlannerVariants, getPlannerWorkspace } from "@/features/itinerary/data";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
-import { UpdateTripForm } from "@/features/trips/components/update-trip-form";
+import { TripForm } from "@/features/trips/components/trip-form";
 import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
@@ -81,16 +81,16 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
               ) : null
             }
             settings={
-              <div className="space-y-6">
-                <UpdateTripForm trip={trip} />
-                <div className="border-t pt-5">
+              <TripForm
+                footer={
                   <DeleteTripDialog
                     activeSharePageCount={shareLinks.data.length}
                     title={trip.title}
                     tripId={trip.id}
                   />
-                </div>
-              </div>
+                }
+                trip={trip}
+              />
             }
             shareAttachmentsEnabled={shareLinks.data.some(
               (link) => link.variantId === workspace.variant.id && link.showAttachments,

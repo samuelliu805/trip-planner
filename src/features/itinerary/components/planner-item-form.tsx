@@ -27,6 +27,8 @@ import {
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 
 const stepFieldSelector = "input:not([type='hidden']),textarea,[role='combobox']";
+/** Elements that legitimately act on Enter themselves: buttons, links, and multi-line text. */
+const interactiveSelector = "button,a,textarea,summary,[role='button'],[role='option']";
 
 export function PlannerItemForm({
   dayDate,
@@ -151,7 +153,7 @@ export function PlannerItemForm({
   const editorScrollRef = usePlannerEditorKeyboardScroll();
   const setEditorScrollNode = useCallback(
     (node: HTMLDivElement | null) => {
-      editorScrollRef.current = node;
+      editorScrollRef(node);
       gestureSurfaceRef.current = node;
     },
     [editorScrollRef, gestureSurfaceRef],
@@ -225,6 +227,12 @@ export function PlannerItemForm({
         if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
           event.preventDefault();
           void save();
+          return;
+        }
+        // Enter is how a field is committed, so implicit form submission turned finishing a field
+        // into an accidental save. Only the actions row and Cmd/Ctrl+Enter may save.
+        if (event.key === "Enter" && !(event.target as Element).closest(interactiveSelector)) {
+          event.preventDefault();
           return;
         }
         if (!event.altKey) return;

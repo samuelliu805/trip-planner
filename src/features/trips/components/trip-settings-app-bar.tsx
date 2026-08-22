@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { TripAppBar, type TripAppBarProps } from "./trip-app-bar";
-import { TripSettingsSheet } from "./trip-settings-sheet";
+import { TripEditorScreen } from "./trip-editor-screen";
 
 export function TripSettingsAppBar({
   settings,
@@ -13,9 +13,14 @@ export function TripSettingsAppBar({
   return (
     <>
       <TripAppBar {...props} onTripSettings={() => setOpen(true)} />
-      <TripSettingsSheet onOpenChange={setOpen} open={open}>
+      <TripEditorScreen
+        description="Rename the trip, change its length, or adjust its dates and currency."
+        onOpenChange={setOpen}
+        open={open}
+        title="Trip settings"
+      >
         {settings}
-      </TripSettingsSheet>
+      </TripEditorScreen>
     </>
   );
 }

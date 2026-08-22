@@ -1504,6 +1504,7 @@ export type Database = {
           id: string
           owner_id: string
           start_date: string | null
+          status: string
           timezone: string
           title: string
           updated_at: string
@@ -1516,6 +1517,7 @@ export type Database = {
           id?: string
           owner_id: string
           start_date?: string | null
+          status?: string
           timezone: string
           title: string
           updated_at?: string
@@ -1528,6 +1530,7 @@ export type Database = {
           id?: string
           owner_id?: string
           start_date?: string | null
+          status?: string
           timezone?: string
           title?: string
           updated_at?: string

@@ -291,14 +291,14 @@ body:has(.public-itinerary-shell) {
 
   .public-share-settings-dialog {
     height: min(
-      88dvh,
+      94dvh,
       calc(
         var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
           max(8px, env(safe-area-inset-bottom))
       )
     ) !important;
     max-height: min(
-      88dvh,
+      94dvh,
       calc(
         var(--dialog-viewport-height, 100svh) - max(8px, env(safe-area-inset-top)) -
           max(8px, env(safe-area-inset-bottom))

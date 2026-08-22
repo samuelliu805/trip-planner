@@ -1,0 +1,170 @@
+"use client";
+
+import { format, parseISO } from "date-fns";
+import {
+  CalendarDays,
+  CircleCheck,
+  MoreVertical,
+  Pencil,
+  RotateCcw,
+  Share2,
+  SquareArrowOutUpRight,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { setTripStatus } from "@/features/trips/actions";
+import { TripEditorScreen } from "@/features/trips/components/trip-editor-screen";
+import { TripForm } from "@/features/trips/components/trip-form";
+import { TripShareLauncher } from "@/features/trips/components/trip-share-launcher";
+import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
+import type { TripListEntry } from "@/features/trips/types";
+
+function tripDateSummary(trip: TripListEntry) {
+  if (trip.start_date && trip.end_date)
+    return `${format(parseISO(trip.start_date), "MMM d, yyyy")} – ${format(parseISO(trip.end_date), "MMM d, yyyy")}`;
+  return `${trip.day_count} planning ${trip.day_count === 1 ? "day" : "days"} · Dates TBD`;
+}
+
+function PrimaryRouteSummary({ trip }: { trip: TripListEntry }) {
+  const primary = trip.route_variants.find(({ is_primary }) => is_primary);
+  if (!primary)
+    return <p className="mt-1 text-xs font-medium text-destructive">Primary unavailable</p>;
+
+  return (
+    <p className="mt-1 flex items-center justify-end gap-1.5 font-semibold">
+      <span
+        aria-hidden="true"
+        className="size-2.5 shrink-0 rounded-full border border-black/10"
+        style={{ backgroundColor: primary.color }}
+      />
+      <span className="max-w-32 truncate">{primary.name}</span>
+    </p>
+  );
+}
+
+export function TripCard({ siteUrl, trip }: { siteUrl: string; trip: TripListEntry }) {
+  const router = useRouter();
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [statusPending, startStatusChange] = useTransition();
+  const status = tripStatusOf(trip);
+  const toggle = tripStatusToggle(status);
+
+  /** A menu item that opens an overlay has to let the menu finish closing first. */
+  function afterMenu(open: () => void) {
+    window.setTimeout(open, 0);
+  }
+
+  function changeStatus() {
+    startStatusChange(async () => {
+      await setTripStatus({ status: toggle.next, tripId: trip.id });
+      router.refresh();
+    });
+  }
+
+  return (
+    <>
+      <Card
+        className={`relative h-full transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
+      >
+        {/* The whole card opens the trip; only the overflow menu sits above this hit area. */}
+        <Link
+          className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          href={`/trips/${trip.id}`}
+        >
+          <span className="sr-only">Open {trip.title}</span>
+        </Link>
+        <CardHeader className="flex-row items-start justify-between gap-4">
+          <div className="min-w-0">
+            <CardTitle className="truncate text-lg sm:text-xl">{trip.title}</CardTitle>
+            <CardDescription className="mt-1 flex items-center gap-2">
+              <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
+              {tripDateSummary(trip)}
+            </CardDescription>
+            {status === "done" ? (
+              <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                <CircleCheck aria-hidden="true" className="size-3.5" /> Completed
+              </p>
+            ) : null}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label={`Actions for ${trip.title}`}
+                className="relative z-10 -mr-2 -mt-2 size-11 shrink-0 px-0"
+                variant="ghost"
+              >
+                <MoreVertical aria-hidden="true" className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem asChild>
+                <Link href={`/trips/${trip.id}`}>
+                  <SquareArrowOutUpRight aria-hidden="true" className="size-4" /> Open planner
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => afterMenu(() => setEditorOpen(true))}>
+                <Pencil aria-hidden="true" className="size-4" /> Edit trip
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => afterMenu(() => setShareOpen(true))}>
+                <Share2 aria-hidden="true" className="size-4" /> Share settings
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={statusPending} onSelect={changeStatus}>
+                {status === "done" ? (
+                  <RotateCcw aria-hidden="true" className="size-4" />
+                ) : (
+                  <CircleCheck aria-hidden="true" className="size-4" />
+                )}
+                {toggle.label}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </CardHeader>
+        <CardContent className="grid grid-cols-[1fr_auto] gap-4 border-t pt-4 text-sm">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Currency
+            </p>
+            <p className="mt-1 font-mono text-xs">{trip.currency}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Primary
+            </p>
+            <PrimaryRouteSummary trip={trip} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <TripEditorScreen
+        description="Rename the trip, change its length, or adjust dates and currency."
+        onOpenChange={setEditorOpen}
+        open={editorOpen}
+        title="Trip settings"
+      >
+        <TripForm
+          onSaved={() => {
+            setEditorOpen(false);
+            router.refresh();
+          }}
+          trip={trip}
+        />
+      </TripEditorScreen>
+      {shareOpen ? (
+        <TripShareLauncher onOpenChange={setShareOpen} siteUrl={siteUrl} trip={trip} />
+      ) : null}
+    </>
+  );
+}

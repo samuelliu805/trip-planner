@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
+import { usePlannerEditorViewportLock } from "@/features/itinerary/components/use-planner-editor-viewport-lock";
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 
 /** A dedicated full-screen editor that never shares its viewport with the Matrix. */
@@ -35,34 +36,7 @@ export function PlannerItemEditorDialog({
 }) {
   const closeRequest = useRef(onClose);
   const editorOpen = Boolean(editor);
-
-  useEffect(() => {
-    if (!editorOpen) return;
-    const root = document.documentElement;
-    const body = document.body;
-    let frame = 0;
-    const resetLayoutScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
-        document.scrollingElement?.scrollTo(0, 0);
-      });
-    };
-
-    root.classList.add("planner-editor-viewport-locked");
-    body.classList.add("planner-editor-viewport-locked");
-    resetLayoutScroll();
-    window.addEventListener("scroll", resetLayoutScroll, { passive: true });
-    window.visualViewport?.addEventListener("resize", resetLayoutScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", resetLayoutScroll);
-      window.visualViewport?.removeEventListener("resize", resetLayoutScroll);
-      root.classList.remove("planner-editor-viewport-locked");
-      body.classList.remove("planner-editor-viewport-locked");
-      window.scrollTo(0, 0);
-    };
-  }, [editorOpen]);
+  usePlannerEditorViewportLock(editorOpen);
 
   const form = editor ? (
     <PlannerItemForm

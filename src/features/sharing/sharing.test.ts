@@ -1548,6 +1548,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
   assert.match(shareSettings, /--dialog-viewport-height/);
+  assert.match(shareSettings, /sm:h-\[min\(calc\(var\(--dialog-viewport-height/);
+  assert.match(styles, /\.public-share-settings-dialog \{[\s\S]*94dvh/);
   assert.ok(
     shareSettings.indexOf('aria-live="polite"') <
       shareSettings.indexOf("min-h-0 flex-1 touch-pan-y"),

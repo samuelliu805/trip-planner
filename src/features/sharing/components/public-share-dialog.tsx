@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink, LoaderCircle, Plus, Share2 } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,7 @@ export function PublicShareDialog({
   activeVariantId,
   initialOpen = false,
   initialLinks,
+  onOpenChange,
   renderTrigger = true,
   siteUrl,
   trip,
@@ -53,6 +54,7 @@ export function PublicShareDialog({
   activeVariantId: string;
   initialOpen?: boolean;
   initialLinks: PublicItineraryLink[];
+  onOpenChange?: (open: boolean) => void;
   renderTrigger?: boolean;
   siteUrl: string;
   trip: Tables<"trips">;
@@ -67,6 +69,7 @@ export function PublicShareDialog({
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [pending, startTransition] = useTransition();
+  const openChangeRef = useRef(onOpenChange);
   const variant = variants.find(({ id }) => id === variantId) ?? variants[0];
   const activeLink = links.find((link) => link.id === selectedPageId);
   const suggestedTitle = `${trip.title} · ${variant?.name ?? "Route"}`;
@@ -81,10 +84,20 @@ export function PublicShareDialog({
   useExclusivePullUpPanel("share-settings", open, setOpen);
 
   useEffect(() => {
+    openChangeRef.current = onOpenChange;
+  }, [onOpenChange]);
+
+  useEffect(() => {
     const openShareSettings = () => setOpen(true);
     window.addEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
     return () => window.removeEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
   }, []);
+
+  // The dialog closes from the overlay, the handle, the footer, and another panel taking over, so
+  // an owner of this component is told about the result rather than about one of those paths.
+  useEffect(() => {
+    openChangeRef.current?.(open);
+  }, [open]);
 
   function chooseVariant(nextVariantId: string) {
     setVariantId(nextVariantId);
@@ -159,7 +172,7 @@ export function PublicShareDialog({
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="mobile-pull-up-panel public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-2xl">
+      <DialogContent className="mobile-pull-up-panel public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-2xl">
         <div className="sm:hidden">
           <PullUpPanelHandle onClose={() => setOpen(false)} />
         </div>

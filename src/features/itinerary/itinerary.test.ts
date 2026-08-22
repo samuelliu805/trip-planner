@@ -38,6 +38,16 @@ import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import {
+  defaultTripCurrency,
+  defaultTripDayCount,
+  defaultTripTitle,
+  isDefaultTripTitle,
+  tripDateInZone,
+  tripTitleFromPlace,
+} from "../trips/create-defaults.ts";
+import { sanitizeTripDayCountInput, settleTripDateFields } from "../trips/date-fields.ts";
+import { tripStatusFilterLabels, tripStatusToggle } from "../trips/status.ts";
+import {
   buildOverviewRouteLines,
   deriveOverviewStages,
   isOverviewRouteLeg,
@@ -355,6 +365,135 @@ test("Phase 5A migration owns atomic lifecycle, isolation, primary, and grant co
   assert.match(migration, /revoke insert, update, delete[\s\S]*trip_days from anon, authenticated/);
 });
 
+test("creating a trip takes no input and opens the plan", async () => {
+  const [actions, autoTitle, createButton, helpers, form, schema] = await Promise.all([
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/auto-title.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/create-trip-button.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./action-helpers.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/schema.ts", import.meta.url), "utf8"),
+  ]);
+
+  // Every text field on the way in reopens the iPadOS keyboard pan that outlives the surface.
+  assert.doesNotMatch(createButton, /TripEditorScreen|TripForm|href="\/trips\/new"/);
+  assert.match(createButton, /<form action=\{action\}/);
+  assert.equal(createButton.match(/type="hidden"/g)?.length, 2);
+  assert.doesNotMatch(createButton, /type="text"|<Input/);
+  await assert.rejects(() =>
+    readFile(new URL("../../app/trips/new/page.tsx", import.meta.url), "utf8"),
+  );
+  await assert.rejects(() =>
+    readFile(new URL("../../app/trip-create-page.css", import.meta.url), "utf8"),
+  );
+  assert.match(schema, /createTripSchema = z\.object\(\{\s*timezone:[\s\S]*today:/);
+  assert.match(actions, /trip_title: defaultTripTitle\(today\)/);
+  assert.match(actions, /trip_day_count: defaultTripDayCount/);
+  assert.match(actions, /trip_currency: defaultTripCurrency/);
+  assert.match(actions, /redirect\(`\/trips\/\$\{data\}`\)/);
+  // The first place the traveller writes is what names the trip.
+  assert.match(helpers, /await nameTripAfterFirstPlace\(supabase, tripId, snapshot\)/);
+  assert.match(autoTitle, /isDefaultTripTitle\(trip\.title\)/);
+  assert.match(autoTitle, /\.eq\("title", trip\.title\)/);
+
+  // Trip settings edit an existing trip; there is no create mode left to fall back to.
+  assert.match(form, /trip: Tables<"trips">;/);
+  assert.match(form, /useActionState\(updateTrip, \{\}\)/);
+  assert.doesNotMatch(form, /createTrip|"Create"|Creating…/);
+  assert.doesNotMatch(form, /More settings|border-t/);
+  assert.match(form, /grid min-w-0 grid-cols-2/);
+  assert.equal(form.match(/planner-native-datetime-input/g)?.length, 2);
+  assert.match(form, /defaultValue=\{trip\.title\}/);
+  assert.match(form, /inputMode="numeric"[\s\S]*max=\{366\}[\s\S]*min=\{1\}/);
+  assert.match(form, /step=\{1\}[\s\S]*type="number"[\s\S]*value=\{dayCount\}/);
+  assert.doesNotMatch(schema, /max\(366[^;]+\.optional\(\)/);
+});
+
+test("trip defaults name a new trip by date and rename it from its first place", () => {
+  assert.equal(defaultTripCurrency, "USD");
+  assert.equal(defaultTripDayCount, 1);
+  const created = new Date("2026-08-22T05:30:00Z");
+  assert.equal(tripDateInZone("Asia/Shanghai", created), "2026-08-22");
+  assert.equal(tripDateInZone("America/Los_Angeles", created), "2026-08-21");
+  assert.equal(tripDateInZone("Not/AZone", created), "2026-08-22");
+  assert.equal(defaultTripTitle("2026-08-22"), "New trip 2026-08-22");
+
+  assert.equal(isDefaultTripTitle("New trip 2026-08-22"), true);
+  assert.equal(isDefaultTripTitle("New trip 2026-08-22 "), true);
+  assert.equal(isDefaultTripTitle("New trip"), false);
+  assert.equal(isDefaultTripTitle("Kyoto"), false);
+  assert.equal(isDefaultTripTitle("New trip 2026-08-22 with Ana"), false);
+
+  // A locality is the shortest honest name; the place's own name only stands in for one.
+  assert.equal(
+    tripTitleFromPlace({ displayName: "Fushimi Inari Taisha", localityName: "Kyoto" }),
+    "Kyoto",
+  );
+  assert.equal(
+    tripTitleFromPlace({ displayName: "Kyoto Station", localityName: "  " }),
+    "Kyoto Station",
+  );
+  assert.equal(
+    tripTitleFromPlace({ displayName: "Grand Canyon National Park South Rim Village" }),
+    "Grand Canyon National Park",
+  );
+  assert.equal(tripTitleFromPlace({ displayName: "  Osaka   Castle  " }), "Osaka Castle");
+});
+
+test("the trips list keeps its status filter beside instant creation", async () => {
+  const statusFilter = await readFile(
+    new URL("../trips/components/trip-status-filter.tsx", import.meta.url),
+    "utf8",
+  );
+  const list = await readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8");
+
+  assert.match(list, /<CreateTripButton \/>/);
+  assert.match(list, /<TripStatusFilterTabs active=\{filter\}>/);
+  assert.match(statusFilter, /min-h-11[\s\S]*touch-manipulation/);
+  assert.match(statusFilter, /useTransition\(\)/);
+  assert.match(statusFilter, /router\.replace[\s\S]*scroll: false/);
+  assert.match(statusFilter, /aria-pressed=\{filter === displayedActive\}/);
+  assert.match(statusFilter, /id="trip-list"/);
+  assert.match(statusFilter, /aria-busy=\{pending\}/);
+  assert.match(statusFilter, /invisible[\s\S]*animate-spin[\s\S]*LoaderCircle/);
+  assert.doesNotMatch(statusFilter, /absolute left-2\.5/);
+  assert.deepEqual(tripStatusFilterLabels, {
+    all: "All",
+    done: "Completed",
+    open: "Active",
+  });
+  assert.deepEqual(tripStatusToggle("open"), { label: "Mark complete", next: "done" });
+  assert.deepEqual(tripStatusToggle("done"), { label: "Move to Active", next: "open" });
+});
+
+test("trip duration and dates infer the third field on commit", () => {
+  assert.deepEqual(
+    settleTripDateFields({ dayCount: "5", endDate: "", startDate: "2026-08-20" }, "startDate"),
+    { dayCount: "5", endDate: "2026-08-24", startDate: "2026-08-20" },
+  );
+  assert.deepEqual(
+    settleTripDateFields({ dayCount: "5", endDate: "2026-08-24", startDate: "" }, "endDate"),
+    { dayCount: "5", endDate: "2026-08-24", startDate: "2026-08-20" },
+  );
+  assert.deepEqual(
+    settleTripDateFields(
+      { dayCount: "", endDate: "2026-08-25", startDate: "2026-08-20" },
+      "endDate",
+    ),
+    { dayCount: "6", endDate: "2026-08-25", startDate: "2026-08-20" },
+  );
+  assert.deepEqual(
+    settleTripDateFields(
+      { dayCount: "6", endDate: "2026-08-24", startDate: "2026-08-20" },
+      "dayCount",
+    ),
+    { dayCount: "6", endDate: "2026-08-25", startDate: "2026-08-20" },
+  );
+  assert.equal(sanitizeTripDayCountInput("days: 005"), "5");
+  assert.equal(sanitizeTripDayCountInput("0"), "");
+  assert.equal(sanitizeTripDayCountInput("1e2"), "12");
+});
+
 test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-aware", async () => {
   const page = await readFile(
     new URL("../../app/trips/[tripId]/page.tsx", import.meta.url),
@@ -424,6 +563,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   );
   const itineraryActions = await readItineraryItemActions();
   const tripsPage = await readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8");
+  const tripCard = await readFile(
+    new URL("../trips/components/trip-card.tsx", import.meta.url),
+    "utf8",
+  );
   const tripsData = await readFile(new URL("../trips/data.ts", import.meta.url), "utf8");
 
   assert.match(page, /resolveActiveVariant\(variantsResult\.data, query\.variant\)/);
@@ -464,10 +607,13 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   );
   assert.match(tripsData, /route_variants\(id, name, color, is_primary\)/);
   assert.match(tripsData, /\.eq\("route_variants\.is_primary", true\)/);
-  assert.match(tripsPage, /primaryVariant\.name/);
-  assert.match(tripsPage, /backgroundColor: primaryVariant\.color/);
-  assert.match(tripsPage, /\?share=1/);
-  assert.match(tripsPage, /\?settings=1/);
+  assert.match(tripCard, /primary\.name/);
+  assert.match(tripCard, /backgroundColor: primary\.color/);
+  // Share and Trip settings resolve on the Trips list itself; neither routes into the planner.
+  assert.match(tripCard, /<TripShareLauncher/);
+  assert.match(tripCard, /<TripEditorScreen/);
+  assert.doesNotMatch(tripsPage, /\?share=1|\?settings=1/);
+  assert.doesNotMatch(tripCard, /\?share=1|\?settings=1/);
   assert.match(page, /initialOpen=\{query\.share === "1"\}/);
   assert.match(page, /initialSettingsOpen=\{query\.settings === "1"\}/);
   assert.doesNotMatch(tripsPage, />\s*Route A\s*</);
@@ -2199,6 +2345,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/use-planner-editor-keyboard-scroll.ts", import.meta.url),
     "utf8",
   );
+  const editorViewportLock = await readFile(
+    new URL("./components/use-planner-editor-viewport-lock.ts", import.meta.url),
+    "utf8",
+  );
   const styles = await readAppStyles();
   const queries = await readItineraryQueryModules();
   assert.match(workspace, /Arrange Activities/);
@@ -2273,14 +2423,22 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(
     styles,
-    /planner-item-dialog[\s\S]*height: 100lvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
+    /planner-item-dialog[\s\S]*height: 100dvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
   );
+  // `lvh` reaches under the mobile browser toolbar, which puts the editor's action row out of reach.
+  assert.doesNotMatch(styles, /\.planner-item-dialog \{[\s\S]*?100lvh/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
-  assert.match(editorDialog, /planner-editor-viewport-locked/);
+  assert.match(editorDialog, /usePlannerEditorViewportLock\(editorOpen\)/);
+  assert.match(editorViewportLock, /planner-editor-viewport-locked/);
+  // Root-height clamps and settle loops were tried against the iPadOS keyboard pan and failed;
+  // creation dropped its text fields instead. Keep this shell's lock plain.
+  assert.doesNotMatch(editorViewportLock, /setProperty\("height"|RELEASE_TIMEOUT_MS/);
   assert.match(styles, /--planner-editor-keyboard-space/);
-  assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
-  assert.match(editorKeyboardScroll, /surface\.scrollTo/);
+  assert.match(editorKeyboardScroll, /editorHeight - viewportHeight/);
+  assert.match(editorKeyboardScroll, /scrollSurface\.scrollTo/);
+  assert.match(editorKeyboardScroll, /setSurface\(node\)/);
+  assert.match(editorKeyboardScroll, /revealFocusedControl\(\);\s*return \(\) =>/);
   assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
@@ -2393,6 +2551,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(viewportContainment, /visualViewport/);
   assert.match(viewportContainment, /focusout/);
   assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);
+  assert.doesNotMatch(styles, /planner-workspace-viewport-contained/);
   assert.doesNotMatch(viewportContainment + styles, /planner-visual-viewport/);
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);
   assert.match(styles, /max-width: 899px[\s\S]*planner-workspace[\s\S]*padding: 0 8px;/);

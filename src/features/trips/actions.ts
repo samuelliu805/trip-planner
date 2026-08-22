@@ -4,7 +4,19 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
-import { createTripSchema, tripIdSchema, updateTripSchema } from "@/features/trips/schema";
+import {
+  defaultTripCurrency,
+  defaultTripDayCount,
+  defaultTripTitle,
+  tripDateInZone,
+} from "@/features/trips/create-defaults";
+import {
+  createTripSchema,
+  setTripStatusSchema,
+  tripIdSchema,
+  updateTripSchema,
+} from "@/features/trips/schema";
+import type { TripStatus } from "@/features/trips/status";
 import type { TripActionState } from "@/features/trips/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -12,31 +24,33 @@ function firstIssue(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Check the form and try again.";
 }
 
+/**
+ * Creating a trip asks nothing and opens the plan itself. Every value here is a default the
+ * traveller can change once they are inside, and the dated name gives way to the first place they
+ * write. Taking no text on the way in is deliberate: iPadOS leaves its keyboard's pan behind on a
+ * plainly scrolling page, and that pan followed the traveller into the plan.
+ */
 export async function createTrip(
   _state: TripActionState,
   formData: FormData,
 ): Promise<TripActionState> {
   const parsed = createTripSchema.safeParse({
-    title: formData.get("title"),
-    startDate: formData.get("start_date"),
-    endDate: formData.get("end_date"),
-    dayCount: formData.get("day_count") || undefined,
     timezone: formData.get("timezone"),
-    currency: formData.get("currency"),
+    today: formData.get("today"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const supabase = await createClient();
+  const today = parsed.data.today || tripDateInZone(parsed.data.timezone, new Date());
   const { data, error } = await supabase.rpc("create_trip", {
-    trip_title: parsed.data.title,
-    trip_start_date: parsed.data.startDate || undefined,
-    trip_end_date: parsed.data.endDate || undefined,
-    trip_day_count: parsed.data.dayCount,
+    trip_title: defaultTripTitle(today),
+    trip_day_count: defaultTripDayCount,
     trip_timezone: parsed.data.timezone,
-    trip_currency: parsed.data.currency,
+    trip_currency: defaultTripCurrency,
   });
 
   if (error || !data) return { error: error?.message ?? "Could not create the trip." };
+  revalidatePath("/trips");
   redirect(`/trips/${data}`);
 }
 
@@ -71,6 +85,31 @@ export async function updateTrip(
   revalidatePath("/trips");
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { success: "Trip settings saved." };
+}
+
+/** Completing a trip only moves it out of the default list; nothing about the plan changes. */
+export async function setTripStatus(input: {
+  status: TripStatus;
+  tripId: string;
+}): Promise<TripActionState> {
+  const parsed = setTripStatusSchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("trips")
+    .update({ status: parsed.data.status })
+    .eq("id", parsed.data.tripId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data)
+    return { error: error?.message ?? "You do not have permission to update this trip." };
+  revalidatePath("/trips");
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return {
+    success: parsed.data.status === "done" ? "Trip marked complete." : "Trip moved to Active.",
+  };
 }
 
 export async function deleteTrip(formData: FormData) {

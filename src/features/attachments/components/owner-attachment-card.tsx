@@ -46,6 +46,19 @@ function AttachmentTile({ attachment, tripId }: { attachment: OwnerAttachment; t
   );
 }
 
+/**
+ * Public/private is already stated by the Public checkbox, so the card only speaks up when
+ * something blocks it: an unsaved file, or a share page that has attachments turned off.
+ */
+function ownerAttachmentStatusNote(
+  attachment: OwnerAttachment,
+  shareAttachmentsEnabled: boolean,
+): string | undefined {
+  if (attachment.draft) return "Not saved yet";
+  if (attachment.includeInShare && !shareAttachmentsEnabled) return "Share page attachments off";
+  return undefined;
+}
+
 export function OwnerAttachmentCard({
   attachment,
   disabled,
@@ -63,6 +76,8 @@ export function OwnerAttachmentCard({
   shareAttachmentsEnabled: boolean;
   tripId: string;
 }) {
+  const statusNote = ownerAttachmentStatusNote(attachment, shareAttachmentsEnabled);
+
   return (
     <article className="min-w-0 rounded-md border p-3">
       <div className="flex min-w-0 items-start gap-3">
@@ -79,15 +94,7 @@ export function OwnerAttachmentCard({
           <p className="mt-0.5 text-xs text-muted-foreground">
             {ownerAttachmentType(attachment)} · {formatBytes(attachment.byteSize)}
           </p>
-          <p className="mt-1 text-xs font-medium">
-            {attachment.draft
-              ? "Not saved yet"
-              : attachment.includeInShare
-                ? shareAttachmentsEnabled
-                  ? "Shared"
-                  : "Share page attachments off"
-                : "Private"}
-          </p>
+          {statusNote ? <p className="mt-1 text-xs font-medium">{statusNote}</p> : null}
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
             <Button
               className="min-h-11 min-w-0 justify-start px-1 text-primary underline decoration-primary/40 underline-offset-4 hover:bg-transparent hover:text-primary"
@@ -126,7 +133,7 @@ export function OwnerAttachmentCard({
             disabled={disabled || attachment.status !== "ready"}
             onCheckedChange={(checked) => onShareChange(checked === true)}
           />
-          <span className="min-w-0">Share file</span>
+          <span className="min-w-0">Public</span>
         </Label>
       </div>
     </article>
