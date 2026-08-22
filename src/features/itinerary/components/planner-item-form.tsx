@@ -5,7 +5,7 @@ import { ItemAttachmentsSection } from "@/features/attachments/components/item-a
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
 import { PlannerEditorPage } from "@/features/itinerary/components/planner-editor-screen";
-import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
+import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import { PlannerItemFormHeader } from "@/features/itinerary/components/planner-item-form-header";
 import {
@@ -244,7 +244,6 @@ export function PlannerItemForm({
       }}
     >
       <PlannerEditorPage
-        headerScrolls
         header={
           <PlannerItemFormHeader
             activeStep={activeStep}
@@ -295,9 +294,9 @@ export function PlannerItemForm({
                 type={type}
               />
             </div>
-            <PlannerItemFormActions
-              firstStep={stepIndex === 0}
-              lastStep={stepIndex === steps.length - 1 && !(manualOrderNeeded && !includeOrder)}
+            <PlannerEditorFormActions
+              backDisabled={stepIndex === 0}
+              nextDisabled={stepIndex === steps.length - 1 && !(manualOrderNeeded && !includeOrder)}
               onBack={() => moveStep(-1)}
               onNext={() => moveStep(1)}
               pending={pending}

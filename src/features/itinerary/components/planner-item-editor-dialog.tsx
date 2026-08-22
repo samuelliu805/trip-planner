@@ -60,11 +60,7 @@ export function PlannerItemEditorDialog({
   ) : null;
 
   return (
-    <PlannerEditorScreen
-      itemViewportMatchesProduction
-      onOpenChange={(open) => !open && closeRequest.current()}
-      open={editorOpen}
-    >
+    <PlannerEditorScreen onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
       {form}
     </PlannerEditorScreen>
   );

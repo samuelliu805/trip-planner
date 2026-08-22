@@ -430,6 +430,7 @@ test("trip filters, date settlement, and lifecycle toggles stay deterministic", 
 
 test("trip cards expose loading filters, deletion, and the shared settings editor", async () => {
   const [
+    actions,
     card,
     deleteDialog,
     editor,
@@ -440,6 +441,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     settingsEditor,
     tripsPage,
   ] = await Promise.all([
+    readFile(new URL("./components/planner-item-form-actions.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
@@ -462,16 +464,22 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
-  assert.match(editor, /planner-item-dialog-production-item/);
+  assert.match(editor, /className="planner-item-dialog p-0"/);
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
-  assert.match(editor, /data-planner-editor-scroll/);
-  assert.match(itemDialog, /itemViewportMatchesProduction/);
-  assert.match(itemForm, /<PlannerEditorPage[\s\S]*headerScrolls/);
+  assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
+  assert.match(itemDialog, /<PlannerEditorScreen/);
+  assert.match(itemForm, /<PlannerEditorPage/);
   assert.match(itemForm, /usePlannerEditorKeyboardScroll\(\)/);
   assert.match(settingsEditor, /<PlannerEditorScreen/);
   assert.match(settingsEditor, /<PlannerEditorPage/);
   assert.match(settingsEditor, /usePlannerEditorKeyboardScroll\(\)/);
-  assert.doesNotMatch(settingsEditor, /headerScrolls|itemViewportMatchesProduction/);
+  assert.doesNotMatch(
+    editor + itemDialog + settingsEditor,
+    /headerScrolls|itemViewportMatchesProduction/,
+  );
+  assert.match(itemForm, /<PlannerEditorFormActions/);
+  assert.match(form, /<PlannerEditorFormActions pending=\{pending\} pendingLabel="Saving…" \/>/);
+  assert.match(actions, /onBack \?[\s\S]*Previous[\s\S]*Save[\s\S]*onNext \?[\s\S]*Next/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
   assert.match(form, />Trip name</);
   assert.match(form, />Duration \(days\)</);
@@ -2338,6 +2346,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   const styles = await readAppStyles();
+  const plannerDialogRule = styles.match(/\.planner-item-dialog \{([\s\S]*?)\n\}/)?.[1] ?? "";
   const queries = await readItineraryQueryModules();
   assert.match(workspace, /Arrange Activities/);
   assert.doesNotMatch(workspace, /Arrange Days/);
@@ -2409,14 +2418,9 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(
-    styles,
-    /planner-item-dialog[\s\S]*height: 100dvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
-  );
-  assert.match(
-    styles,
-    /\.planner-item-dialog-production-item \{[\s\S]*height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/,
-  );
+  assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
+  assert.doesNotMatch(plannerDialogRule, /100dvh/);
+  assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /<PlannerEditorScreen/);

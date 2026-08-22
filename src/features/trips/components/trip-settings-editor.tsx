@@ -21,7 +21,7 @@ function TripSettingsHeader({
   title: string;
 }) {
   return (
-    <div className="planner-item-form-header shrink-0 border-b px-5 pb-4 pt-4 sm:px-6">
+    <div className="planner-item-form-header border-b px-5 pb-4 pt-4 sm:px-6">
       <div className="planner-item-form-header-inner flex min-h-11 items-center gap-3">
         <div className="mr-auto min-w-0">
           <SheetTitle className="truncate text-xl font-extrabold tracking-tight">

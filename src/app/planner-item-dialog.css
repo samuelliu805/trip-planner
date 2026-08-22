@@ -4,9 +4,10 @@
   inset: 0 !important;
   display: flex;
   width: 100% !important;
-  height: 100dvh !important;
+  height: 100vh !important;
+  height: 100lvh !important;
   max-width: none !important;
-  max-height: 100dvh !important;
+  max-height: none !important;
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;
@@ -15,13 +16,6 @@
   background: var(--muted);
   box-shadow: none !important;
   touch-action: pan-y;
-}
-
-/* Match the current production itinerary-item viewport without changing trip settings. */
-.planner-item-dialog-production-item {
-  height: 100vh !important;
-  height: 100lvh !important;
-  max-height: none !important;
 }
 
 html.planner-editor-viewport-locked,

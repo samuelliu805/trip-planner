@@ -1,9 +1,7 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
 import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -13,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import { updateTrip } from "@/features/trips/actions";
 import {
   sanitizeTripDayCountInput,
@@ -65,6 +64,11 @@ export function TripForm({
       className="min-w-0 space-y-6"
       onKeyDown={(event) => {
         if (event.key !== "Enter") return;
+        if (event.metaKey || event.ctrlKey) {
+          event.preventDefault();
+          if (!pending) event.currentTarget.requestSubmit();
+          return;
+        }
         if ((event.target as Element).closest(interactiveSelector)) return;
         event.preventDefault();
       }}
@@ -171,17 +175,7 @@ export function TripForm({
         </p>
       ) : null}
 
-      <div className="flex min-w-0 pt-2">
-        <Button
-          aria-busy={pending}
-          className="min-h-12 w-full font-semibold shadow-sm sm:ml-auto sm:w-auto sm:min-w-32"
-          disabled={pending}
-          type="submit"
-        >
-          {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
-          {pending ? "Saving…" : "Save"}
-        </Button>
-      </div>
+      <PlannerEditorFormActions pending={pending} pendingLabel="Saving…" />
       {footer ? <div className="min-w-0 pt-2">{footer}</div> : null}
     </form>
   );
