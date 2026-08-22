@@ -32,9 +32,13 @@ import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
 import {
   plannerItemFormSteps,
   plannerItemNeedsOrderStep,
+  plannerItemSaveAction,
   plannerItemStepError,
 } from "./components/planner-item-form-steps.ts";
-import { itemFormCapabilities } from "./components/planner-item-form-config.ts";
+import {
+  itemFormCapabilities,
+  plannerItemCreationNeedsConfirmation,
+} from "./components/planner-item-form-config.ts";
 import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
@@ -464,16 +468,19 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   ]);
 
   assert.match(filter, /useTransition\(\)/);
-  assert.match(filter, /aria-busy=\{pending\}/);
-  assert.match(filter, /Loading \{tripStatusFilterLabels\[displayedActive\]\} trips/);
+  assert.match(filter, /aria-busy=\{loading\}/);
+  assert.match(filter, /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/);
   assert.match(filter, /items-center justify-between/);
   assert.match(filter, /bg-muted\/30/);
   assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
   assert.match(card, /<TripSettingsEditor/);
   assert.match(card, /<DeleteTripDialog/);
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
+  assert.match(card, /useTripListLoading\(\)/);
+  assert.match(card, /Deleting “\$\{trip\.title\}”/);
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
+  assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
   assert.match(editor, /className="planner-item-dialog p-0"/);
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
@@ -3367,4 +3374,27 @@ test("the Order step responds to legal slots and entered times", () => {
   assert.equal(plannerItemNeedsOrderStep({ ...base, startTime: "09:00", type: "activity" }), false);
   assert.equal(plannerItemNeedsOrderStep({ ...base, endTime: "10:00", type: "meal" }), false);
   assert.equal(plannerItemNeedsOrderStep({ ...base, type: "hotel" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "transport" }), false);
+});
+
+test("saving routes through Order and confirms deliberate item creation", () => {
+  assert.equal(
+    plannerItemSaveAction({ activeStepId: "basics", includeOrder: true }),
+    "confirm-order",
+  );
+  assert.equal(plannerItemSaveAction({ activeStepId: "order", includeOrder: true }), "save");
+  assert.equal(plannerItemSaveAction({ activeStepId: "basics", includeOrder: false }), "save");
+
+  for (const type of [
+    "activity",
+    "car_rental",
+    "flight",
+    "hotel",
+    "meal",
+    "train",
+    "transport",
+  ] as const)
+    assert.equal(plannerItemCreationNeedsConfirmation(type), true, `${type} confirms creation`);
+  assert.equal(plannerItemCreationNeedsConfirmation("location"), false);
+  assert.equal(plannerItemCreationNeedsConfirmation("note"), false);
 });

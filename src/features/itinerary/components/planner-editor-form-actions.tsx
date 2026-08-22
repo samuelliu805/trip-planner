@@ -11,6 +11,7 @@ export function PlannerEditorFormActions({
   nextDisabled = false,
   pending,
   pendingLabel,
+  saveLabel = "Save",
 }: {
   alternateSaveLabel?: string;
   backDisabled?: boolean;
@@ -19,7 +20,21 @@ export function PlannerEditorFormActions({
   onNext?: () => void;
   pending: boolean;
   pendingLabel: string;
+  saveLabel?: string;
 }) {
+  const saveButton = (
+    <Button
+      aria-busy={pending}
+      className="min-h-11 min-w-0 font-semibold shadow-sm"
+      disabled={pending}
+      size="sm"
+      type="submit"
+    >
+      {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+      {pending ? pendingLabel : saveLabel}
+    </Button>
+  );
+
   return (
     <div className="planner-item-form-actions mt-10 min-w-0 space-y-3 border-t pt-6">
       <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -37,16 +52,7 @@ export function PlannerEditorFormActions({
         ) : (
           <span aria-hidden="true" />
         )}
-        <Button
-          aria-busy={pending}
-          className="min-h-11 min-w-28 font-semibold shadow-sm"
-          disabled={pending}
-          size="sm"
-          type="submit"
-        >
-          {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-          {pending ? pendingLabel : "Save"}
-        </Button>
+        {alternateSaveLabel ? <span aria-hidden="true" /> : saveButton}
         {onNext ? (
           <Button
             className="min-h-11 justify-self-end"
@@ -63,15 +69,18 @@ export function PlannerEditorFormActions({
         )}
       </div>
       {alternateSaveLabel ? (
-        <Button
-          className="min-h-11 w-full"
-          data-planner-save-intent="save-and-create-another"
-          disabled={pending}
-          type="submit"
-          variant="outline"
-        >
-          {alternateSaveLabel}
-        </Button>
+        <div className="grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
+          {saveButton}
+          <Button
+            className="min-h-11 min-w-0 whitespace-normal"
+            data-planner-save-intent="save-and-create-another"
+            disabled={pending}
+            type="submit"
+            variant="outline"
+          >
+            {alternateSaveLabel}
+          </Button>
+        </div>
       ) : null}
     </div>
   );

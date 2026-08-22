@@ -102,3 +102,18 @@ export const itemCopy: Record<ItineraryItemType, { label: string; placeholder: s
   train: { label: "Train", placeholder: "e.g. Eurostar to Paris" },
   transport: { label: "Transport", placeholder: "e.g. Airport to city center" },
 };
+
+const confirmedCreationTypes: ItineraryItemType[] = [
+  "activity",
+  "car_rental",
+  "flight",
+  "hotel",
+  "meal",
+  "train",
+  "transport",
+];
+
+/** Categories whose creation is deliberate enough to require a final confirmation. */
+export function plannerItemCreationNeedsConfirmation(type: ItineraryItemType) {
+  return confirmedCreationTypes.includes(type);
+}

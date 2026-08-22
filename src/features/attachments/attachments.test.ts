@@ -202,6 +202,10 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     new URL("../itinerary/components/planner-item-form.tsx", import.meta.url),
     "utf8",
   );
+  const itemSaveFlow = await readFile(
+    new URL("../itinerary/components/use-planner-item-save-flow.ts", import.meta.url),
+    "utf8",
+  );
   const plannerForm = await readFile(
     new URL("../itinerary/components/planner-editor-form.tsx", import.meta.url),
     "utf8",
@@ -315,7 +319,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(itemAction, /ownerAttachmentsFromRows\(attachmentRows\)/);
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
   assert.match(attachmentSection, /ShareAttachmentsCallout/);
-  assert.match(itemForm, /attachmentSession\.attachmentPending \? "Updating attachments…"/);
+  assert.match(itemSaveFlow, /attachmentSession\.attachmentPending \? "Updating attachments…"/);
   assert.match(plannerForm, /min-w-0 flex-1 flex-col overflow-hidden/);
   assert.match(plannerForm, /<PlannerEditorPage/);
   assert.match(

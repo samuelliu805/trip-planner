@@ -30,6 +30,7 @@ export function PlannerEditorForm({
   onScrollNode,
   pending,
   pendingLabel,
+  saveLabel,
 }: {
   after?: ReactNode;
   alternateSaveLabel?: string;
@@ -48,6 +49,7 @@ export function PlannerEditorForm({
   onScrollNode?: (node: HTMLDivElement | null) => void;
   pending: boolean;
   pendingLabel: string;
+  saveLabel?: string;
 }) {
   const editorScrollRef = usePlannerEditorKeyboardScroll();
   const setEditorScrollNode = useCallback(
@@ -122,6 +124,7 @@ export function PlannerEditorForm({
               onNext={onNext}
               pending={pending}
               pendingLabel={pendingLabel}
+              saveLabel={saveLabel}
             />
             {footer ? <div className="min-w-0 pt-8">{footer}</div> : null}
           </div>
