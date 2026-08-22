@@ -3,16 +3,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
+import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
+import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
-import { PlannerEditorPage } from "@/features/itinerary/components/planner-editor-screen";
-import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
-import { PlannerItemFormHeader } from "@/features/itinerary/components/planner-item-form-header";
 import {
   plannerItemFormSteps,
   plannerItemStepError,
   type ItemFormStep,
 } from "@/features/itinerary/components/planner-item-form-steps";
+import { PlannerItemStepNav } from "@/features/itinerary/components/planner-item-step-nav";
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { plannerItemSaveValues } from "@/features/itinerary/components/planner-item-save-values";
 import { PlannerItemStepFields } from "@/features/itinerary/components/planner-item-step-fields";
@@ -20,7 +20,6 @@ import { useAttachmentEditSession } from "@/features/itinerary/components/use-at
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
-import { usePlannerEditorKeyboardScroll } from "@/features/itinerary/components/use-planner-editor-keyboard-scroll";
 import {
   useCreateItineraryItem,
   useUpdateItineraryItem,
@@ -149,13 +148,11 @@ export function PlannerItemForm({
   const { gestureSurfaceRef, motionSurfaceRef } = usePlannerItemStepSwipe((offset) =>
     moveStep(offset),
   );
-  const editorScrollRef = usePlannerEditorKeyboardScroll();
-  const setEditorScrollNode = useCallback(
+  const setGestureSurfaceNode = useCallback(
     (node: HTMLDivElement | null) => {
-      editorScrollRef.current = node;
       gestureSurfaceRef.current = node;
     },
-    [editorScrollRef, gestureSurfaceRef],
+    [gestureSurfaceRef],
   );
 
   useEffect(() => {
@@ -214,111 +211,77 @@ export function PlannerItemForm({
 
   const copy = itemCopy[type];
   return (
-    <form
-      className="planner-item-form flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-      onKeyDown={(event) => {
-        if ((event.target as Element).closest("[data-attachment-overlay]")) return;
-        if (event.key === "Escape") {
-          event.preventDefault();
-          requestExit();
-          return;
-        }
-        if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-          event.preventDefault();
-          void save();
-          return;
-        }
-        if (!event.altKey) return;
-        if (event.key === "ArrowRight") {
-          event.preventDefault();
-          moveStep(1);
-        }
-        if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          moveStep(-1);
-        }
-      }}
-      onSubmit={(event) => {
-        event.preventDefault();
-        void save();
-      }}
-    >
-      <PlannerEditorPage
-        header={
-          <PlannerItemFormHeader
-            activeStep={activeStep}
-            closeDisabled={itemMutationPending}
+    <PlannerEditorForm
+      after={
+        <>
+          <AttachmentSessionDiscardDialog
+            error={attachmentSession.error}
+            onDiscard={attachmentSession.discard}
+            onOpenChange={attachmentSession.setDiscardDialogOpen}
+            open={attachmentSession.discardDialogOpen}
+            pending={attachmentSession.discardPending}
+            uploadPending={attachmentSession.attachmentPending}
+          />
+          <PlannerItemExitDialog
             editing={Boolean(item)}
-            error={stepError ?? mutationError?.message}
-            label={copy.label}
-            onClose={requestExit}
-            onStepSelect={goToStep}
-            stepIndex={stepIndex}
-            steps={steps}
+            onDiscard={requestCancel}
+            onOpenChange={setExitOpen}
+            open={exitOpen}
+          />
+        </>
+      }
+      backDisabled={stepIndex === 0}
+      fieldsRef={motionSurfaceRef}
+      header={
+        <PlannerEditorHeader
+          closeDisabled={itemMutationPending}
+          description={`Step ${stepIndex + 1} of ${steps.length}: ${activeStep.title}. The item can be saved from any step.`}
+          error={stepError ?? mutationError?.message}
+          navigation={
+            <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
+          }
+          onClose={requestExit}
+          title={`${item ? "Edit" : "Add"} ${copy.label.toLowerCase()}`}
+        />
+      }
+      nextDisabled={stepIndex === steps.length - 1 && !(manualOrderNeeded && !includeOrder)}
+      onBack={() => moveStep(-1)}
+      onClose={requestExit}
+      onNext={() => moveStep(1)}
+      onSave={save}
+      onScrollNode={setGestureSurfaceNode}
+      pending={pending}
+      pendingLabel={pendingLabel}
+    >
+      <PlannerItemStepFields
+        attachments={
+          <ItemAttachmentsSection
+            item={item}
+            onDraftCountChange={attachmentSession.setDraftCount}
+            onOpenShareSettings={() => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))}
+            onPendingChange={attachmentSession.setAttachmentPending}
+            shareAttachmentsEnabled={shareAttachmentsEnabled}
+            tripId={tripId}
+            uploadSessionId={attachmentSession.uploadSessionId}
+            uploadSessionSignal={attachmentSession.uploadSessionSignal}
           />
         }
-        scrollRef={setEditorScrollNode}
-      >
-        <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
-          <div className="planner-item-form-card">
-            <div className="planner-item-form-fields" ref={motionSurfaceRef}>
-              <PlannerItemStepFields
-                attachments={
-                  <ItemAttachmentsSection
-                    item={item}
-                    onDraftCountChange={attachmentSession.setDraftCount}
-                    onOpenShareSettings={() =>
-                      window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
-                    }
-                    onPendingChange={attachmentSession.setAttachmentPending}
-                    shareAttachmentsEnabled={shareAttachmentsEnabled}
-                    tripId={tripId}
-                    uploadSessionId={attachmentSession.uploadSessionId}
-                    uploadSessionSignal={attachmentSession.uploadSessionSignal}
-                  />
-                }
-                blocks={activeStep.blocks}
-                dayItems={dayItems}
-                dayId={dayId}
-                defaultCurrency={defaultCurrency}
-                item={item}
-                onOrderChange={(nextItemId) => {
-                  state.setInsertAfterItemId(nextItemId);
-                  setOrderConfirmed(true);
-                  setStepError(undefined);
-                }}
-                orderConfirmed={orderConfirmed}
-                pending={pending}
-                state={state}
-                titleRef={titleRef}
-                type={type}
-              />
-            </div>
-            <PlannerEditorFormActions
-              backDisabled={stepIndex === 0}
-              nextDisabled={stepIndex === steps.length - 1 && !(manualOrderNeeded && !includeOrder)}
-              onBack={() => moveStep(-1)}
-              onNext={() => moveStep(1)}
-              pending={pending}
-              pendingLabel={pendingLabel}
-            />
-          </div>
-        </div>
-      </PlannerEditorPage>
-      <AttachmentSessionDiscardDialog
-        error={attachmentSession.error}
-        onDiscard={attachmentSession.discard}
-        onOpenChange={attachmentSession.setDiscardDialogOpen}
-        open={attachmentSession.discardDialogOpen}
-        pending={attachmentSession.discardPending}
-        uploadPending={attachmentSession.attachmentPending}
+        blocks={activeStep.blocks}
+        dayItems={dayItems}
+        dayId={dayId}
+        defaultCurrency={defaultCurrency}
+        item={item}
+        onOrderChange={(nextItemId) => {
+          state.setInsertAfterItemId(nextItemId);
+          setOrderConfirmed(true);
+          setStepError(undefined);
+        }}
+        orderConfirmed={orderConfirmed}
+        pending={pending}
+        state={state}
+        titleRef={titleRef}
+        type={type}
       />
-      <PlannerItemExitDialog
-        editing={Boolean(item)}
-        onDiscard={requestCancel}
-        onOpenChange={setExitOpen}
-        open={exitOpen}
-      />
-    </form>
+    </PlannerEditorForm>
   );
 }

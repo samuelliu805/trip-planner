@@ -434,10 +434,14 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     card,
     deleteDialog,
     editor,
+    editorFields,
+    editorForm,
+    editorHeader,
     filter,
     form,
     itemDialog,
     itemForm,
+    primaryFields,
     settingsEditor,
     tripsPage,
   ] = await Promise.all([
@@ -445,10 +449,14 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-header.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-status-filter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-editor-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-primary-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
@@ -468,23 +476,33 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
   assert.match(itemDialog, /<PlannerEditorScreen/);
-  assert.match(itemForm, /<PlannerEditorPage/);
-  assert.match(itemForm, /usePlannerEditorKeyboardScroll\(\)/);
+  assert.match(itemForm, /<PlannerEditorForm/);
+  assert.match(itemForm, /<PlannerEditorHeader/);
+  assert.match(itemForm, /<PlannerItemStepNav/);
+  assert.doesNotMatch(itemForm, /usePlannerEditorKeyboardScroll\(\)/);
   assert.match(settingsEditor, /<PlannerEditorScreen/);
-  assert.match(settingsEditor, /<PlannerEditorPage/);
-  assert.match(settingsEditor, /usePlannerEditorKeyboardScroll\(\)/);
+  assert.doesNotMatch(settingsEditor, /TripSettingsHeader|TripSettingsPage|PlannerEditorPage/);
+  assert.match(form, /<PlannerEditorForm/);
+  assert.match(form, /<PlannerEditorHeader/);
+  assert.doesNotMatch(form, /PlannerItemStepNav|usePlannerEditorKeyboardScroll\(\)/);
+  assert.match(editorForm, /<PlannerEditorPage/);
+  assert.match(editorForm, /usePlannerEditorKeyboardScroll\(\)/);
+  assert.match(editorForm, /<PlannerEditorFormActions/);
+  assert.match(editorForm, /planner-item-form-fields planner-item-step-fields/);
+  assert.match(editorHeader, /navigation\?: ReactNode/);
+  assert.match(editorFields, /export function PlannerEditorTextField/);
+  assert.match(primaryFields, /<PlannerEditorTextField/);
+  assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
   );
-  assert.match(itemForm, /<PlannerEditorFormActions/);
-  assert.match(form, /<PlannerEditorFormActions pending=\{pending\} pendingLabel="Saving…" \/>/);
   assert.match(actions, /onBack \?[\s\S]*Previous[\s\S]*Save[\s\S]*onNext \?[\s\S]*Next/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
-  assert.match(form, />Trip name</);
-  assert.match(form, />Duration \(days\)</);
+  assert.match(form, /label="Trip name"/);
+  assert.match(form, /label="Duration \(days\)"/);
   assert.equal(form.match(/planner-native-datetime-input/g)?.length, 2);
-  assert.match(form, />Currency</);
+  assert.match(form, /label="Currency"/);
   assert.doesNotMatch(form, /Timezone|Previous|Next|planner-item-step/);
 });
 
@@ -2298,7 +2316,12 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     workspace += await readFile(new URL(file, import.meta.url), "utf8");
   let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
   form += await readFile(
-    new URL("./components/planner-item-form-header.tsx", import.meta.url),
+    new URL("./components/planner-editor-header.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(new URL("./components/planner-editor-form.tsx", import.meta.url), "utf8");
+  form += await readFile(
+    new URL("./components/planner-editor-fields.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
@@ -2391,7 +2414,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   );
   assert.match(form, /insertAfterItemId/);
   assert.doesNotMatch(form, /"Place item"/);
-  assert.match(form, /Step \{stepIndex \+ 1\} of \{steps\.length\}/);
+  assert.match(form, /Step \$\{stepIndex \+ 1\} of \$\{steps\.length\}/);
   assert.match(workspace, /Click to place/);
   assert.doesNotMatch(workspace, /onPlaceItem/);
   assert.match(workspace, /initialMovingItemId/);

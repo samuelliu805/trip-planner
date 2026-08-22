@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PlannerEditorTextField } from "@/features/itinerary/components/planner-editor-fields";
 import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
 import {
   transportModeLabels,
@@ -167,10 +168,24 @@ export function ItemTitleField({
       : type === "hotel"
         ? "Displayed hotel name"
         : "Displayed meal name";
+  const description = named
+    ? place
+      ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
+      : type === "hotel"
+        ? "Use this when an exact map location is unavailable."
+        : type === "meal"
+          ? "Use this when an exact restaurant location is unavailable."
+          : "Choose a city location above."
+    : undefined;
+
   return (
-    <div className="space-y-2">
-      <Label htmlFor={`item-title-${fieldId}-${type}`}>
-        {named ? (
+    <PlannerEditorTextField
+      description={description}
+      focusRegion="title"
+      id={`item-title-${fieldId}-${type}`}
+      inputRef={titleRef}
+      label={
+        named ? (
           <>
             {displayedNameLabel}{" "}
             <span className="font-normal text-muted-foreground">
@@ -179,32 +194,17 @@ export function ItemTitleField({
           </>
         ) : (
           copyLabel
-        )}
-      </Label>
-      <Input
-        id={`item-title-${fieldId}-${type}`}
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder={
-          named
-            ? (place?.displayName ??
-              `Enter a ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"} name`)
-            : copyPlaceholder
-        }
-        ref={titleRef}
-        value={title}
-      />
-      {named ? (
-        <p className="text-xs text-muted-foreground">
-          {place
-            ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
-            : type === "hotel"
-              ? "Use this when an exact map location is unavailable."
-              : type === "meal"
-                ? "Use this when an exact restaurant location is unavailable."
-                : "Choose a city location above."}
-        </p>
-      ) : null}
-    </div>
+        )
+      }
+      onChange={(event) => setTitle(event.target.value)}
+      placeholder={
+        named
+          ? (place?.displayName ??
+            `Enter a ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"} name`)
+          : copyPlaceholder
+      }
+      value={title}
+    />
   );
 }
 

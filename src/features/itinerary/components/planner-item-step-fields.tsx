@@ -229,7 +229,7 @@ export function PlannerItemStepFields({
   }
 
   return (
-    <div className="planner-item-step-fields min-w-0 space-y-10">
+    <>
       {blocks.map((name) => (
         <Fragment key={name}>{block(name)}</Fragment>
       ))}
@@ -243,6 +243,6 @@ export function PlannerItemStepFields({
           Rental price is stored once on the matching pick-up item.
         </p>
       ) : null}
-    </div>
+    </>
   );
 }
