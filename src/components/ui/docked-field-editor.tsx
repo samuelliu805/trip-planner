@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, Pencil } from "lucide-react";
 import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 export function DockedFieldEditor({
   busy = false,
   error,
+  inputMode,
   label,
   maxLength,
   onCancel,
@@ -27,6 +28,7 @@ export function DockedFieldEditor({
 }: {
   busy?: boolean;
   error?: string;
+  inputMode?: "numeric" | "text";
   label: string;
   maxLength?: number;
   onCancel: () => void;
@@ -42,7 +44,7 @@ export function DockedFieldEditor({
 
   return createPortal(
     <div
-      className="fixed left-0 right-0 z-[110] flex flex-col justify-end"
+      className="fixed left-0 right-0 z-[120] flex flex-col justify-end"
       style={{
         height: "var(--visual-viewport-height, 100dvh)",
         paddingBottom: "var(--keyboard-inset, 0px)",
@@ -80,6 +82,7 @@ export function DockedFieldEditor({
               autoComplete="off"
               className="min-h-12 min-w-0 flex-1 text-base"
               id={fieldId}
+              inputMode={inputMode}
               maxLength={maxLength}
               onChange={(event) => setDraft(event.currentTarget.value)}
               value={draft}
@@ -107,5 +110,39 @@ export function DockedFieldEditor({
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * What stands in for a text input on a form the keyboard would otherwise cover: a row showing the
+ * value, which opens the dock on tap. The keyboard leaves about 195px of an iPad visible — one
+ * field, and no form at all — so a form of any height has to hand its typing to the dock.
+ */
+export function DockedFieldRow({
+  id,
+  label,
+  onEdit,
+  placeholder,
+  value,
+}: {
+  id: string;
+  label: string;
+  onEdit: () => void;
+  placeholder?: string;
+  value: string;
+}) {
+  return (
+    <button
+      aria-label={`${label}: ${value || placeholder || "empty"}`}
+      className="flex min-h-[3.75rem] w-full min-w-0 items-center justify-between gap-3 rounded-xl border bg-background px-4 text-left text-lg leading-relaxed hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      id={id}
+      onClick={onEdit}
+      type="button"
+    >
+      <span className={`min-w-0 truncate ${value ? "" : "text-muted-foreground"}`}>
+        {value || placeholder}
+      </span>
+      <Pencil aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+    </button>
   );
 }

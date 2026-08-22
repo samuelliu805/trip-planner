@@ -1,9 +1,10 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, Minus, Plus } from "lucide-react";
 import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { DockedFieldEditor, DockedFieldRow } from "@/components/ui/docked-field-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,9 +23,12 @@ import {
 import type { Tables } from "@/types/database";
 
 const currencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "KRW"];
+const maximumDays = 366;
 
 /** Enter commits a field; only the Save button saves, so a settled date can never submit stale. */
 const interactiveSelector = "button,a,textarea,[role='button']";
+
+type DockedField = "dayCount" | "title";
 
 /**
  * Trip settings for a trip that already exists — creation asks for nothing and has no form of its
@@ -41,6 +45,8 @@ export function TripForm({
   trip: Tables<"trips">;
 }) {
   const [state, action, pending] = useActionState(updateTrip, {});
+  const [title, setTitle] = useState(trip.title);
+  const [docked, setDocked] = useState<DockedField | null>(null);
   const [dayCount, setDayCount] = useState(String(trip.day_count));
   const [startDate, setStartDate] = useState(trip.start_date ?? "");
   const [endDate, setEndDate] = useState(trip.end_date ?? "");
@@ -55,6 +61,13 @@ export function TripForm({
     if (state.success) savedRef.current?.();
   }, [state.success]);
 
+  /** A step is already a commitment, so it settles the dates the way a blur used to. */
+  function stepDays(delta: number) {
+    const current = Number(dayCount) || 0;
+    const next = Math.min(maximumDays, Math.max(1, current + delta));
+    commitDateField("dayCount", String(next));
+  }
+
   /** The committed field plus either of the other two settles the remaining trip date field. */
   function commitDateField(committed: TripDateField, value: string) {
     const settled = settleTripDateFields(
@@ -66,7 +79,7 @@ export function TripForm({
     setEndDate(settled.endDate);
   }
 
-  return (
+  const form = (
     <form
       action={action}
       className="min-w-0 space-y-6"
@@ -82,35 +95,51 @@ export function TripForm({
       <input name="end_date" type="hidden" value={endDate} />
       <input name="currency" type="hidden" value={currency} />
 
-      <div className="min-w-0 space-y-2" data-planner-focus-region="">
+      <input name="title" type="hidden" value={title} />
+      <input name="day_count" type="hidden" value={dayCount} />
+
+      {/* Neither field types in place: the keyboard leaves too little of an iPad visible for that. */}
+      <div className="min-w-0 space-y-2">
         <Label htmlFor="trip-title">Trip name</Label>
-        <Input
-          autoComplete="off"
-          defaultValue={trip.title}
+        <DockedFieldRow
           id="trip-title"
-          maxLength={120}
-          name="title"
+          label="Trip name"
+          onEdit={() => setDocked("title")}
           placeholder="e.g. Kyoto in autumn"
-          required
+          value={title}
         />
       </div>
 
-      <div className="min-w-0 space-y-2" data-planner-focus-region="">
+      <div className="min-w-0 space-y-2">
         <Label htmlFor="trip-day-count">Duration (days)</Label>
-        <Input
-          autoComplete="off"
-          id="trip-day-count"
-          inputMode="numeric"
-          max={366}
-          min={1}
-          name="day_count"
-          onBlur={(event) => commitDateField("dayCount", event.currentTarget.value)}
-          onChange={(event) => setDayCount(sanitizeTripDayCountInput(event.currentTarget.value))}
-          required
-          step={1}
-          type="number"
-          value={dayCount}
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            aria-label="One day fewer"
+            className="size-14 shrink-0"
+            disabled={(Number(dayCount) || 0) <= 1}
+            onClick={() => stepDays(-1)}
+            type="button"
+            variant="outline"
+          >
+            <Minus aria-hidden="true" className="size-4" />
+          </Button>
+          <DockedFieldRow
+            id="trip-day-count"
+            label="Duration in days"
+            onEdit={() => setDocked("dayCount")}
+            value={dayCount}
+          />
+          <Button
+            aria-label="One day more"
+            className="size-14 shrink-0"
+            disabled={(Number(dayCount) || 0) >= maximumDays}
+            onClick={() => stepDays(1)}
+            type="button"
+            variant="outline"
+          >
+            <Plus aria-hidden="true" className="size-4" />
+          </Button>
+        </div>
         <p className="text-xs leading-5 text-muted-foreground">
           {startDate
             ? "Changing the length moves the end date to match."
@@ -194,5 +223,28 @@ export function TripForm({
       </div>
       {footer ? <div className="min-w-0 pt-2">{footer}</div> : null}
     </form>
+  );
+
+  return (
+    <>
+      {form}
+      {/* Kept outside the form: nested inside it, React would route the dock's Enter through the
+          form's own suppression and the key would do nothing. */}
+      {docked ? (
+        <DockedFieldEditor
+          inputMode={docked === "dayCount" ? "numeric" : "text"}
+          label={docked === "dayCount" ? "Duration (days)" : "Trip name"}
+          maxLength={docked === "dayCount" ? 3 : 120}
+          onCancel={() => setDocked(null)}
+          onSubmit={(next) => {
+            if (docked === "dayCount") commitDateField("dayCount", sanitizeTripDayCountInput(next));
+            else setTitle(next.trim());
+            setDocked(null);
+          }}
+          saveLabel="Done"
+          value={docked === "dayCount" ? dayCount : title}
+        />
+      ) : null}
+    </>
   );
 }

@@ -404,9 +404,19 @@ test("creating a trip takes no input and opens the plan", async () => {
   assert.doesNotMatch(form, /More settings|border-t/);
   assert.match(form, /grid min-w-0 grid-cols-2/);
   assert.equal(form.match(/planner-native-datetime-input/g)?.length, 2);
-  assert.match(form, /defaultValue=\{trip\.title\}/);
-  assert.match(form, /inputMode="numeric"[\s\S]*max=\{366\}[\s\S]*min=\{1\}/);
-  assert.match(form, /step=\{1\}[\s\S]*type="number"[\s\S]*value=\{dayCount\}/);
+  // Neither text field types in place: the keyboard leaves ~195px of an iPad visible, which fits
+  // one docked field and no form at all.
+  assert.match(form, /<DockedFieldRow[\s\S]*id="trip-title"/);
+  assert.match(form, /<DockedFieldRow[\s\S]*id="trip-day-count"/);
+  assert.doesNotMatch(form, /name="title"\s*\n?\s*placeholder|<Input[\s\S]*name="day_count"/);
+  assert.match(form, /<input name="title" type="hidden" value=\{title\} \/>/);
+  assert.match(form, /<input name="day_count" type="hidden" value=\{dayCount\} \/>/);
+  // A step is a commitment, so it settles the dates the way a blur used to.
+  assert.match(form, /aria-label="One day fewer"[\s\S]*onClick=\{\(\) => stepDays\(-1\)\}/);
+  assert.match(form, /aria-label="One day more"[\s\S]*onClick=\{\(\) => stepDays\(1\)\}/);
+  assert.match(form, /Math\.min\(maximumDays, Math\.max\(1, current \+ delta\)\)/);
+  // Inside the form, React would route the dock's Enter through the form's own suppression.
+  assert.match(form, /<\/form>\s*\);\s*return \(\s*<>\s*\{form\}/);
   assert.doesNotMatch(schema, /max\(366[^;]+\.optional\(\)/);
 });
 
