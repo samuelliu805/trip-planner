@@ -3379,15 +3379,10 @@ test("full-screen surfaces follow the visual viewport instead of the layout view
   ]);
 
   assert.match(layout, /<VisualViewportVars \/>/);
-  // Focusing a field on iPadOS is a zoom-to-fit; with the scale pinned there is nothing to fit.
-  assert.match(
-    layout,
-    /export const viewport: Viewport = \{[\s\S]*maximumScale: 1,\s*minimumScale: 1/,
-  );
-  // Switching pinch zoom off would cost every user WCAG 1.4.4 for a key iOS ignores anyway.
-  assert.doesNotMatch(layout, /userScalable:/);
-  // `viewport-fit: cover` would push content under the notch; the safe-area insets expect the default.
-  assert.doesNotMatch(layout, /viewportFit:/);
+  assert.match(layout, /<ViewportDebug \/>/);
+  // Pinning the scale made iPadOS scroll further to fit the field, not less. Reverted; do not
+  // reintroduce it, and leave `viewport-fit` alone too — cover would push content under the notch.
+  assert.doesNotMatch(layout, /maximumScale|minimumScale|userScalable|viewportFit/);
   assert.match(
     vars,
     /setProperty\("--visual-viewport-top", `\$\{Math\.round\(viewport\.offsetTop\)\}px`\)/,
