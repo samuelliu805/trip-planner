@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
+import { PlannerEditorPage } from "@/features/itinerary/components/planner-editor-screen";
 import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import { PlannerItemFormHeader } from "@/features/itinerary/components/planner-item-form-header";
@@ -19,7 +20,6 @@ import { useAttachmentEditSession } from "@/features/itinerary/components/use-at
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
-import { usePlannerEditorKeyboardScroll } from "@/features/itinerary/components/use-planner-editor-keyboard-scroll";
 import {
   useCreateItineraryItem,
   useUpdateItineraryItem,
@@ -148,13 +148,11 @@ export function PlannerItemForm({
   const { gestureSurfaceRef, motionSurfaceRef } = usePlannerItemStepSwipe((offset) =>
     moveStep(offset),
   );
-  const editorScrollRef = usePlannerEditorKeyboardScroll();
   const setEditorScrollNode = useCallback(
     (node: HTMLDivElement | null) => {
-      editorScrollRef.current = node;
       gestureSurfaceRef.current = node;
     },
-    [editorScrollRef, gestureSurfaceRef],
+    [gestureSurfaceRef],
   );
 
   useEffect(() => {
@@ -242,21 +240,21 @@ export function PlannerItemForm({
         void save();
       }}
     >
-      <PlannerItemFormHeader
-        activeStep={activeStep}
-        closeDisabled={itemMutationPending}
-        editing={Boolean(item)}
-        error={stepError ?? mutationError?.message}
-        label={copy.label}
-        onClose={requestExit}
-        onStepSelect={goToStep}
-        stepIndex={stepIndex}
-        steps={steps}
-      />
-      <div
-        className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain"
-        data-planner-editor-scroll=""
-        ref={setEditorScrollNode}
+      <PlannerEditorPage
+        header={
+          <PlannerItemFormHeader
+            activeStep={activeStep}
+            closeDisabled={itemMutationPending}
+            editing={Boolean(item)}
+            error={stepError ?? mutationError?.message}
+            label={copy.label}
+            onClose={requestExit}
+            onStepSelect={goToStep}
+            stepIndex={stepIndex}
+            steps={steps}
+          />
+        }
+        onScrollNode={setEditorScrollNode}
       >
         <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
           <div className="planner-item-form-card">
@@ -303,7 +301,7 @@ export function PlannerItemForm({
             />
           </div>
         </div>
-      </div>
+      </PlannerEditorPage>
       <AttachmentSessionDiscardDialog
         error={attachmentSession.error}
         onDiscard={attachmentSession.discard}

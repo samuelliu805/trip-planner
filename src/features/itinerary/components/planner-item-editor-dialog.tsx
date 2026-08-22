@@ -2,10 +2,9 @@
 
 import { useRef } from "react";
 
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
+import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
-import { usePlannerEditorViewportLock } from "@/features/itinerary/components/use-planner-editor-viewport-lock";
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 
 /** A dedicated full-screen editor that never shares its viewport with the Matrix. */
@@ -36,7 +35,6 @@ export function PlannerItemEditorDialog({
 }) {
   const closeRequest = useRef(onClose);
   const editorOpen = Boolean(editor);
-  usePlannerEditorViewportLock(editorOpen);
 
   const form = editor ? (
     <PlannerItemForm
@@ -62,15 +60,8 @@ export function PlannerItemEditorDialog({
   ) : null;
 
   return (
-    <Sheet onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
-      <SheetContent
-        className="planner-item-dialog p-0"
-        overlayClassName="bg-background"
-        showCloseButton={false}
-        side="right"
-      >
-        {form}
-      </SheetContent>
-    </Sheet>
+    <PlannerEditorScreen onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
+      {form}
+    </PlannerEditorScreen>
   );
 }

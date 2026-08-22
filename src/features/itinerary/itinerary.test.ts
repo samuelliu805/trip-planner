@@ -429,20 +429,46 @@ test("trip filters, date settlement, and lifecycle toggles stay deterministic", 
 });
 
 test("trip cards expose loading filters, deletion, and the shared settings editor", async () => {
-  const [card, editor, filter, form] = await Promise.all([
+  const [
+    card,
+    deleteDialog,
+    editor,
+    filter,
+    form,
+    itemDialog,
+    itemForm,
+    settingsEditor,
+    tripsPage,
+  ] = await Promise.all([
     readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../trips/components/trip-editor-screen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-status-filter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-editor-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{pending\}/);
   assert.match(filter, /Loading \{tripStatusFilterLabels\[displayedActive\]\} trips/);
-  assert.match(card, /<TripEditorScreen/);
+  assert.match(filter, /items-center justify-between/);
+  assert.match(filter, /bg-muted\/30/);
+  assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
+  assert.match(card, /<TripSettingsEditor/);
   assert.match(card, /<DeleteTripDialog/);
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
-  assert.match(editor, /planner-item-dialog trip-editor-dialog/);
+  assert.match(deleteDialog, /Checking published Share Pages/);
+  assert.match(deleteDialog, /pending \? "Deleting…"/);
+  assert.match(editor, /className="planner-item-dialog p-0"/);
+  assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
+  assert.match(editor, /data-planner-editor-scroll/);
+  assert.match(itemDialog, /<PlannerEditorScreen/);
+  assert.match(itemForm, /<PlannerEditorPage/);
+  assert.match(settingsEditor, /<PlannerEditorScreen/);
+  assert.match(settingsEditor, /<PlannerEditorPage/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
   assert.match(form, />Trip name</);
   assert.match(form, />Duration \(days\)</);
@@ -567,7 +593,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(tripCard, /primary\.name/);
   assert.match(tripCard, /backgroundColor: primary\.color/);
   assert.match(tripCard, /\?share=1/);
-  assert.match(tripCard, /<TripEditorScreen/);
+  assert.match(tripCard, /<TripSettingsEditor/);
   assert.doesNotMatch(tripCard, /\?settings=1/);
   assert.match(page, /initialOpen=\{query\.share === "1"\}/);
   assert.match(page, /initialSettingsOpen=\{query\.settings === "1"\}/);
@@ -2296,6 +2322,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-item-editor-dialog.tsx", import.meta.url),
     "utf8",
   );
+  const editorScreen = await readFile(
+    new URL("./components/planner-editor-screen.tsx", import.meta.url),
+    "utf8",
+  );
   const editorKeyboardScroll = await readFile(
     new URL("./components/use-planner-editor-keyboard-scroll.ts", import.meta.url),
     "utf8",
@@ -2383,7 +2413,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.doesNotMatch(styles, /\.planner-item-dialog \{[\s\S]*?100(?:l)?vh/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
-  assert.match(editorDialog, /usePlannerEditorViewportLock\(editorOpen\)/);
+  assert.match(editorDialog, /<PlannerEditorScreen/);
+  assert.match(editorScreen, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editorViewportLock, /planner-editor-viewport-locked/);
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);

@@ -37,18 +37,15 @@ export default async function TripsPage({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Trips</h1>
-          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-            Create a trip and turn each day into a clear plan.
-          </p>
-        </div>
-        <CreateTripButton />
+      <div className="min-w-0">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Trips</h1>
+        <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+          Create a trip and turn each day into a clear plan.
+        </p>
       </div>
 
       <div className="mt-6">
-        <TripStatusFilterTabs active={filter}>
+        <TripStatusFilterTabs action={<CreateTripButton />} active={filter}>
           <h2 className="sr-only" id="trip-list-title">
             Your trips
           </h2>

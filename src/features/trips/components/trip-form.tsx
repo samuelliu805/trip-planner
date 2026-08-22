@@ -24,7 +24,7 @@ import type { Tables } from "@/types/database";
 const currencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "KRW"];
 const interactiveSelector = "button,a,textarea,[role='button']";
 
-/** Existing-trip settings use their own mutation and the shared editor shell, without steps. */
+/** Existing-trip settings use their own mutation inside the shared editor page, without steps. */
 export function TripForm({
   footer,
   onSaved,

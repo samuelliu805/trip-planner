@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { countActiveSharePages, setTripStatus } from "@/features/trips/actions";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
-import { TripEditorScreen } from "@/features/trips/components/trip-editor-screen";
 import { TripForm } from "@/features/trips/components/trip-form";
+import { TripSettingsEditor } from "@/features/trips/components/trip-settings-editor";
 import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
 import type { TripListEntry } from "@/features/trips/types";
 
@@ -163,7 +163,7 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
         </CardContent>
       </Card>
 
-      <TripEditorScreen
+      <TripSettingsEditor
         description="Rename the trip, change its length, or adjust dates and currency."
         onOpenChange={setEditorOpen}
         open={editorOpen}
@@ -176,7 +176,7 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
           }}
           trip={trip}
         />
-      </TripEditorScreen>
+      </TripSettingsEditor>
       <DeleteTripDialog
         activeSharePageCount={sharePageCount}
         onOpenChange={setDeleteOpen}

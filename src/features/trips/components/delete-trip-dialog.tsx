@@ -17,17 +17,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { deleteTrip } from "@/features/trips/actions";
 
-function DeleteAction() {
+function DeleteAction({ checking }: { checking: boolean }) {
   const { pending } = useFormStatus();
+  const loading = checking || pending;
 
   return (
-    <AlertDialogAction disabled={pending} type="submit">
-      {pending ? (
+    <AlertDialogAction aria-busy={loading} disabled={loading} type="submit">
+      {loading ? (
         <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
       ) : (
         <Trash2 aria-hidden="true" className="size-4" />
       )}
-      {pending ? "Deleting…" : "Delete trip"}
+      {checking ? "Checking…" : pending ? "Deleting…" : "Delete trip"}
     </AlertDialogAction>
   );
 }
@@ -47,6 +48,8 @@ export function DeleteTripDialog({
   title: string;
   tripId: string;
 }) {
+  const checkingSharePages = activeSharePageCount === null;
+
   return (
     <AlertDialog onOpenChange={onOpenChange} open={open}>
       {renderTrigger ? (
@@ -66,7 +69,16 @@ export function DeleteTripDialog({
           <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
             This permanently removes the trip, its routes, and generated trip days. This action
             cannot be undone.
-            {activeSharePageCount ? (
+            {checkingSharePages ? (
+              <span
+                aria-live="polite"
+                className="mt-3 flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-foreground"
+                role="status"
+              >
+                <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
+                Checking published Share Pages…
+              </span>
+            ) : activeSharePageCount ? (
               <span className="mt-3 block border-l-2 border-primary bg-primary/5 px-3 py-2 text-foreground">
                 {activeSharePageCount} published{" "}
                 {activeSharePageCount === 1 ? "Share Page" : "Share Pages"} and their permanent
@@ -80,7 +92,7 @@ export function DeleteTripDialog({
           <input name="trip_id" type="hidden" value={tripId} />
           <AlertDialogFooter>
             <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-            <DeleteAction />
+            <DeleteAction checking={checkingSharePages} />
           </AlertDialogFooter>
         </form>
       </AlertDialogContent>

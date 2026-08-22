@@ -23,7 +23,7 @@ import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import { RouteVariantComparisonSheet } from "@/features/variants/components/route-variant-comparison-sheet";
 import { RouteVariantDecisionSummarySheet } from "@/features/variants/components/route-variant-decision-summary-sheet";
-import { TripEditorScreen } from "@/features/trips/components/trip-editor-screen";
+import { TripSettingsEditor } from "@/features/trips/components/trip-settings-editor";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
@@ -189,14 +189,14 @@ export function PlannerSheets({
           </div>
         </SheetContent>
       </Sheet>
-      <TripEditorScreen
+      <TripSettingsEditor
         description="Rename the trip, change its length, or adjust its dates and currency."
         onOpenChange={onSettingsOpenChange}
         open={settingsOpen}
         title="Trip settings"
       >
         {settings}
-      </TripEditorScreen>
+      </TripSettingsEditor>
       <Sheet onOpenChange={onCopyDaysOpenChange} open={copyDaysOpen}>
         <SheetContent>
           <SheetHeader>

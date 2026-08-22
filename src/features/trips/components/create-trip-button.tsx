@@ -24,7 +24,12 @@ export function CreateTripButton() {
     <form action={action} className="min-w-0 shrink-0">
       <input defaultValue="UTC" name="timezone" ref={timezoneRef} type="hidden" />
       <input defaultValue="" name="today" ref={todayRef} type="hidden" />
-      <Button aria-busy={pending} className="min-h-11 shrink-0" disabled={pending} type="submit">
+      <Button
+        aria-busy={pending}
+        className="h-12 shrink-0 sm:h-[3.25rem]"
+        disabled={pending}
+        type="submit"
+      >
         {pending ? (
           <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
         ) : (

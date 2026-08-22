@@ -16,9 +16,11 @@ export function tripStatusFilterHref(filter: TripStatusFilter) {
 
 export function TripStatusFilterTabs({
   active,
+  action,
   children,
 }: {
   active: TripStatusFilter;
+  action: ReactNode;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -36,27 +38,30 @@ export function TripStatusFilterTabs({
 
   return (
     <>
-      <nav
-        aria-label="Filter trips by status"
-        className="relative z-10 flex w-fit min-w-0 shrink-0 gap-1 rounded-lg border bg-muted/40 p-1"
-      >
-        {tripStatusFilters.map((filter) => (
-          <button
-            aria-controls="trip-list"
-            aria-pressed={filter === displayedActive}
-            className={`flex min-h-11 min-w-16 touch-manipulation select-none items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-              filter === displayedActive
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            key={filter}
-            onClick={() => selectFilter(filter)}
-            type="button"
-          >
-            {tripStatusFilterLabels[filter]}
-          </button>
-        ))}
-      </nav>
+      <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
+        <nav
+          aria-label="Filter trips by status"
+          className="relative z-10 flex min-w-0 flex-1 gap-0.5 rounded-lg bg-muted/30 p-0.5 sm:flex-none sm:gap-1 sm:p-1"
+        >
+          {tripStatusFilters.map((filter) => (
+            <button
+              aria-controls="trip-list"
+              aria-pressed={filter === displayedActive}
+              className={`flex min-h-11 min-w-0 flex-1 touch-manipulation select-none items-center justify-center rounded-md px-1.5 py-2 text-xs font-medium transition-colors sm:min-w-16 sm:flex-none sm:px-3 sm:text-sm ${
+                filter === displayedActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              key={filter}
+              onClick={() => selectFilter(filter)}
+              type="button"
+            >
+              {tripStatusFilterLabels[filter]}
+            </button>
+          ))}
+        </nav>
+        <div className="min-w-0 shrink-0">{action}</div>
+      </div>
 
       <div className="relative mt-6 min-h-52">
         <section
