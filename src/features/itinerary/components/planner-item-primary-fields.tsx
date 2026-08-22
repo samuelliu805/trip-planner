@@ -145,6 +145,7 @@ export function TransportModeField({
 export function ItemTitleField({
   copyLabel,
   copyPlaceholder,
+  creating,
   fieldId,
   place,
   setTitle,
@@ -154,6 +155,7 @@ export function ItemTitleField({
 }: {
   copyLabel: string;
   copyPlaceholder: string;
+  creating: boolean;
   fieldId: string;
   place: PlaceSnapshot | null;
   setTitle: Dispatch<SetStateAction<string>>;
@@ -162,21 +164,24 @@ export function ItemTitleField({
   type: ItineraryItemType;
 }) {
   const named = ["location", "hotel", "meal"].includes(type);
+  const creatingActivity = creating && type === "activity";
   const displayedNameLabel =
     type === "location"
       ? "Displayed city name"
       : type === "hotel"
         ? "Displayed hotel name"
         : "Displayed meal name";
-  const description = named
-    ? place
-      ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
-      : type === "hotel"
-        ? "Use this when an exact map location is unavailable."
-        : type === "meal"
-          ? "Use this when an exact restaurant location is unavailable."
-          : "Choose a city location above."
-    : undefined;
+  const description = creatingActivity
+    ? "Choose a location first and we’ll fill the activity name automatically. You can still edit it."
+    : named
+      ? place
+        ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
+        : type === "hotel"
+          ? "Use this when an exact map location is unavailable."
+          : type === "meal"
+            ? "Use this when an exact restaurant location is unavailable."
+            : "Choose a city location above."
+      : undefined;
 
   return (
     <PlannerEditorTextField
@@ -185,7 +190,11 @@ export function ItemTitleField({
       id={`item-title-${fieldId}-${type}`}
       inputRef={titleRef}
       label={
-        named ? (
+        creatingActivity ? (
+          <>
+            Activity name <span className="text-destructive">*</span>
+          </>
+        ) : named ? (
           <>
             {displayedNameLabel}{" "}
             <span className="font-normal text-muted-foreground">
@@ -209,6 +218,7 @@ export function ItemTitleField({
 }
 
 export function ItemPlaceField({
+  creating,
   item,
   pending,
   place,
@@ -219,6 +229,7 @@ export function ItemPlaceField({
   titleRef,
   type,
 }: {
+  creating: boolean;
   item?: { id: string };
   pending: boolean;
   place: PlaceSnapshot | null;
@@ -239,12 +250,12 @@ export function ItemPlaceField({
           <span className="font-normal text-muted-foreground">
             optional if a {type === "hotel" ? "displayed hotel" : "meal"} name is provided
           </span>
-        ) : (
+        ) : type !== "activity" || !creating ? (
           <span className="font-normal text-muted-foreground">optional</span>
-        )}
+        ) : null}
       </Label>
       <PlaceAutocomplete
-        autoFocus={!item && ["location", "hotel"].includes(type)}
+        autoFocus={!item && ["activity", "location", "hotel"].includes(type)}
         disabled={pending}
         onChange={(nextPlace) => {
           setPlace(nextPlace);

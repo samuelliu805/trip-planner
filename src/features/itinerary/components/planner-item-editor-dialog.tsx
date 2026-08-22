@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
@@ -34,6 +34,7 @@ export function PlannerItemEditorDialog({
   variantId: string;
 }) {
   const closeRequest = useRef(onClose);
+  const [creationSequence, setCreationSequence] = useState(0);
   const editorOpen = Boolean(editor);
 
   const form = editor ? (
@@ -43,12 +44,13 @@ export function PlannerItemEditorDialog({
       dayItems={dayItems}
       defaultCurrency={defaultCurrency}
       item={editor.item}
-      key={`${editor.dayId}:${editor.item?.id ?? "new"}:${editor.type}`}
+      key={`${editor.dayId}:${editor.item?.id ?? `new-${creationSequence}`}:${editor.type}`}
       onCancel={onClose}
       onCloseRequestRegistration={(handler) => {
         closeRequest.current = handler ?? onClose;
       }}
       onError={onError}
+      onCreateAnother={() => setCreationSequence((sequence) => sequence + 1)}
       onDraftChange={editor.item ? onDraftChange : undefined}
       onSaved={onClose}
       shareAttachmentsEnabled={shareAttachmentsEnabled}

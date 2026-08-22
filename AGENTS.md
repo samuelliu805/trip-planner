@@ -19,11 +19,18 @@ These rules apply to all future UI work in this repository.
 - The editor is one progressive modal: a centred Dialog from 640px up, a full-height sheet below it. Do not reintroduce a side sheet for editing, and never show a workspace side panel next to the open editor.
 - The step navigator is numbered circles joined by dotted rules with each label above its own number. Every number is a button; steps must stay reachable directly, not only through Next and Back.
 - The first step carries only what the item needs to exist, so it can be saved without opening the rest. Every step stays at three controls or fewer, and Add and Edit use the same steps.
-- Activities and Meals close with a dedicated Place step; that is the only step whose primary action opens the Day's Activity order. Do not scatter placement across the other steps.
+- Untimed Activities, Meals, and Car rentals show an Order step only when at least two legal positions exist. Entering a time or leaving only one position must remove that step immediately; the default position is after the day's last orderable activity and before a hotel.
+- New Activities and Meals may offer Save and add another. Editing an existing item and every other category keep only the normal Save action.
 - Steps are freely selectable, but leaving a step validates it: a missing required field blocks the switch and says why. Saving validates every step and jumps to the first that fails.
 - The modal keeps one fixed height and Next/Back stay mounted and in place on the first and last step, so repeated clicks never chase a moving button. No step may add explanatory chrome — no shortcut legend, no restated step label, no preview card.
 - Closing a modified editor — overlay click, close button, or Escape — must confirm before discarding.
 - Field grouping and per-step validation live in `planner-item-form-steps.ts`. Cover changes with the step-grouping unit test instead of new source-text assertions.
+
+## Reusable editor forms
+
+- `PlannerEditorScreen`, `PlannerEditorHeader`, `PlannerEditorForm`, `PlannerEditorTextField`, and `PlannerEditorFormActions` are the shared primitives for planner text-input and edit experiences. Trip settings and itinerary items are the reference consumers.
+- Build future editors by composing those primitives and supplying only their copy, fields, optional steps, and save handlers. Extend the shared props when a reusable capability is missing; do not fork the header, scroll shell, form spacing, text-field styling, keyboard behavior, or action layout.
+- A variant may omit step navigation or add an explicit alternate save intent, but it must retain the same single scroller, field treatment, and form action behavior.
 
 ## Workspace clipboard boundary
 

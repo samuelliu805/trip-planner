@@ -28,19 +28,41 @@ export type ItemFormStep = {
 
 type StepInput = {
   carAction: CarRentalDetails["action"];
+  creating?: boolean;
   includeOrder?: boolean;
   transportMode: TransportMode;
   type: ItineraryItemType;
 };
 
+export function plannerItemNeedsOrderStep({
+  availableSlots,
+  endTime,
+  startTime,
+  type,
+}: {
+  availableSlots: number;
+  endTime: string;
+  startTime: string;
+  type: ItineraryItemType;
+}) {
+  return (
+    ["activity", "car_rental", "meal"].includes(type) &&
+    !startTime &&
+    !endTime &&
+    availableSlots > 1
+  );
+}
+
 function basicsBlocks(
   type: ItineraryItemType,
   endpoints: boolean,
   journeySchedule: boolean,
+  creating: boolean,
 ): ItemFormBlock[] {
   if (type === "location") return ["place", "title"];
   if (type === "hotel") return ["place", "title"];
   if (type === "meal") return ["place", "title"];
+  if (type === "activity" && creating) return ["place", "title"];
   if (type === "car_rental") return ["carAction", "place"];
   if (type === "transport")
     return [
@@ -63,6 +85,7 @@ function basicsBlocks(
  */
 export function plannerItemFormSteps({
   carAction,
+  creating = false,
   includeOrder = true,
   transportMode,
   type,
@@ -76,7 +99,7 @@ export function plannerItemFormSteps({
   // Step titles stay one short word so the longest six-step journey still fits a 390px bar.
   const steps: ItemFormStep[] = [
     {
-      blocks: basicsBlocks(type, journey.endpoints, journeySchedule),
+      blocks: basicsBlocks(type, journey.endpoints, journeySchedule, creating),
       id: "basics",
       title: type === "car_rental" ? "Rental" : itemCopy[type].label,
     },

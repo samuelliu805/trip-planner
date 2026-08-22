@@ -31,6 +31,7 @@ import {
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
 import {
   plannerItemFormSteps,
+  plannerItemNeedsOrderStep,
   plannerItemStepError,
 } from "./components/planner-item-form-steps.ts";
 import { itemFormCapabilities } from "./components/planner-item-form-config.ts";
@@ -108,6 +109,7 @@ import { isSameDayOrder, placeDayAtGap, reorderWorkspaceDays } from "./day-order
 import {
   insertActivityAtPlacement,
   itemOrderAnchor,
+  itemOrderSlots,
   isActivityOrderAnchor,
   orderedDayActivities,
   orderedDestinationActivities,
@@ -445,7 +447,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     settingsEditor,
     tripsPage,
   ] = await Promise.all([
-    readFile(new URL("./components/planner-item-form-actions.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-form-actions.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
@@ -2325,7 +2327,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   form += await readFile(
-    new URL("./components/planner-item-form-actions.tsx", import.meta.url),
+    new URL("./components/planner-editor-form-actions.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
@@ -3197,6 +3199,10 @@ test("the item editor groups every type into short steps and gates required fiel
       "order:order",
     ],
   );
+  assert.deepEqual(plannerItemFormSteps({ ...rail, creating: true, type: "activity" })[0].blocks, [
+    "place",
+    "title",
+  ]);
   assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["place", "title"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "meal" }).find(({ id }) => id === "extras"),
@@ -3346,4 +3352,19 @@ test("the editor Order step derives stable anchors for add and edit", () => {
   assert.equal(itemOrderAnchor(items, undefined, "activity"), "rental");
   assert.equal(itemOrderAnchor(items, undefined, "hotel"), "rental");
   assert.equal(itemOrderAnchor(items, "train", "transport"), null);
+  assert.deepEqual(itemOrderSlots([], undefined), [null]);
+  assert.deepEqual(itemOrderSlots([item("hotel", 0, "hotel")], undefined), [null]);
+  assert.deepEqual(itemOrderSlots(items, undefined), [null, "museum", "meal", "rental"]);
+  assert.deepEqual(itemOrderSlots(items, "meal"), [null, "museum", "rental"]);
+});
+
+test("the Order step responds to legal slots and entered times", () => {
+  const base = { availableSlots: 2, endTime: "", startTime: "" };
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "activity" }), true);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "meal" }), true);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "car_rental" }), true);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, availableSlots: 1, type: "activity" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, startTime: "09:00", type: "activity" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, endTime: "10:00", type: "meal" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "hotel" }), false);
 });

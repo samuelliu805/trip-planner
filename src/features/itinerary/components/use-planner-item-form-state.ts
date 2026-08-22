@@ -21,11 +21,13 @@ export function usePlannerItemFormState({
   defaultCurrency,
   item,
   items,
+  type,
 }: {
   dayDate: string;
   defaultCurrency: string;
   item?: ItineraryItem;
   items: ItineraryItem[];
+  type: ItineraryItem["type"];
   unavailableTransportModes: TransportMode[];
 }) {
   const existingCar =
@@ -83,7 +85,7 @@ export function usePlannerItemFormState({
   const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
   const [place, setPlace] = useState<PlaceSnapshot | null>(item?.place ?? null);
   const [insertAfterItemId, setInsertAfterItemId] = useState<string | null>(() =>
-    itemOrderAnchor(items, item?.id, item?.type),
+    itemOrderAnchor(items, item?.id, item?.type ?? type),
   );
   const existingTransportMode = normalizeTransportMode(detailText("mode"));
   // Multiple journeys of the same type are valid (for example two flights on one day), so the
