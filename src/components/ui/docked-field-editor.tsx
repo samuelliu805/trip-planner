@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /**
- * One field, docked at the bottom of what the traveller can see.
+ * One field, docked clear of the software keyboard.
  *
- * It needs no keyboard arithmetic of its own: pinned to `--visual-viewport-top` with
- * `--visual-viewport-height`, the bottom of this surface *is* the top of the keyboard, so the field
- * lands just above it and stays there even if iPadOS moves the page underneath. Guessing the
- * keyboard's height and lifting the bar was tried first and lost the race against focus.
+ * It needs no keyboard arithmetic of its own: the surface spans the window, follows the page with
+ * `--visual-viewport-top`, and holds `--keyboard-inset` of padding at the bottom, so the field
+ * lands just above the keyboard and stays there even if iPadOS moves the page underneath. Guessing
+ * the keyboard's height and lifting the bar was tried first and lost the race against focus.
  */
 export function DockedFieldEditor({
   busy = false,
@@ -45,6 +45,7 @@ export function DockedFieldEditor({
       className="fixed left-0 right-0 z-[110] flex flex-col justify-end"
       style={{
         height: "var(--visual-viewport-height, 100dvh)",
+        paddingBottom: "var(--keyboard-inset, 0px)",
         top: "var(--visual-viewport-top, 0px)",
       }}
     >

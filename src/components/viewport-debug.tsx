@@ -26,6 +26,7 @@ function read(): Reading {
     ["body scroll h", px(document.body.scrollHeight)],
     ["--vv-top", style.getPropertyValue("--visual-viewport-top") || "unset"],
     ["--vv-height", style.getPropertyValue("--visual-viewport-height") || "unset"],
+    ["--kb-inset", style.getPropertyValue("--keyboard-inset") || "unset"],
   ];
 }
 

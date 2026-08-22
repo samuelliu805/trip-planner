@@ -3387,11 +3387,19 @@ test("full-screen surfaces follow the visual viewport instead of the layout view
     vars,
     /setProperty\("--visual-viewport-top", `\$\{Math\.round\(viewport\.offsetTop\)\}px`\)/,
   );
-  assert.match(vars, /setProperty\("--visual-viewport-height", `\$\{Math\.round\(height\)\}px`\)/);
-  // A shortfall smaller than a keyboard is a stale report, and following it stands the surface
-  // short of the screen — which is the strip of blank page under the table.
-  assert.match(vars, /keyboard >= keyboardMinimumPx \? viewport\.height : window\.innerHeight/);
-  assert.match(vars, /keyboardMinimumPx = 120/);
+  // Measured on device: the visual viewport runs ~84px short of the window with no keyboard at
+  // all, and `100dvh` follows it. That shortfall is the strip of blank page under the table, so
+  // the published height is the window's own, held at its tallest reading.
+  assert.match(vars, /baseline = Math\.max\(baseline, window\.innerHeight\)/);
+  assert.match(
+    vars,
+    /setProperty\("--visual-viewport-height", `\$\{Math\.round\(baseline\)\}px`\)/,
+  );
+  assert.match(vars, /keyboardMinimumPx = 160/);
+  // The leftover band is ~195px with the keyboard up: enough for one field, not for a form. So the
+  // keyboard is published as an inset to sit above, never as a height to shrink to.
+  assert.match(vars, /setProperty\("--keyboard-inset", `\$\{Math\.round\(keyboard\)\}px`\)/);
+  assert.match(vars, /const restart = \(\) => \{\s*baseline = 0;/);
   assert.match(vars, /addEventListener\("scroll", schedule\)/);
   // A height of 0 would collapse every surface that follows it; a zoom must not be followed either.
   assert.match(vars, /viewport\.scale > zoomTolerance \|\| viewport\.height <= 0/);
@@ -3426,6 +3434,7 @@ test("renaming a trip docks one field above the keyboard", async () => {
   // The dock is the visible band, so its bottom edge is the top of the keyboard. Guessing the
   // keyboard's height and lifting the bar lost the race against focus and was removed.
   assert.match(dock, /height: "var\(--visual-viewport-height, 100dvh\)"/);
+  assert.match(dock, /paddingBottom: "var\(--keyboard-inset, 0px\)"/);
   assert.match(dock, /top: "var\(--visual-viewport-top, 0px\)"/);
   assert.doesNotMatch(dock, /assumedKeyboardRatio|liftBeforeFocus|translateY/);
   // iPadOS refuses programmatic focus outside a gesture, so the tap must be the traveller's.

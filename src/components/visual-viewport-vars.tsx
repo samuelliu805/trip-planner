@@ -4,21 +4,26 @@ import { useEffect } from "react";
 
 /** A pinch zoom shrinks the visual viewport too, and must never be mistaken for a keyboard. */
 const zoomTolerance = 1.01;
-/** Under this there is no keyboard, and a viewport still reporting less than the window is stale. */
-const keyboardMinimumPx = 120;
+/**
+ * iPad Chrome reports a visual viewport ~84px shorter than the window with no keyboard on screen at
+ * all, so a shortfall has to clear that noise by a wide margin before it counts as one. A real
+ * keyboard takes closer to 400px.
+ */
+const keyboardMinimumPx = 160;
 
 /**
- * Publishes the band the traveller can actually see as CSS variables, so a full-screen surface can
- * be placed against the visual viewport instead of the layout viewport.
+ * Publishes what the traveller can see, measured on device rather than inferred:
  *
- * iPadOS moves the page inside the layout viewport when its keyboard opens, and the offset it
- * leaves behind reports `scrollY` as 0 — nothing can scroll it back. Every attempt to prevent or
- * undo that move failed. Following it does not: a surface pinned to `--visual-viewport-top` with
- * `--visual-viewport-height` stays exactly where the traveller is looking, so its top bar stays at
- * the top and its content stops short of the keyboard, whether or not the page underneath moved.
- *
- * Where the keys are absent — no VisualViewport, or a pinch zoom — every consumer falls back to
- * `100dvh` at the top, which is what these surfaces did before.
+ * - `--visual-viewport-top` follows the page. iPadOS moves the page inside the layout viewport
+ *   while its keyboard is open — `offsetTop` reaches ~111px — which is what carried the app bar out
+ *   of reach. It does return to 0 once the keyboard goes, so the move is only ever transient.
+ * - `--visual-viewport-height` is the window's own height, held at the tallest reading seen. It is
+ *   deliberately *not* `visualViewport.height`: that runs ~84px short even with no keyboard, and
+ *   `100dvh` follows it, which is the strip of blank page under the table. A single transitional
+ *   reading must not be able to shrink it either, hence the high-water mark.
+ * - `--keyboard-inset` is what the keyboard actually covers, for the surfaces that must sit above
+ *   it. Nothing should shrink itself to the leftover band: with the keyboard up that band is about
+ *   195px, which fits one field and no form at all.
  */
 export function VisualViewportVars() {
   useEffect(() => {
@@ -26,28 +31,31 @@ export function VisualViewportVars() {
     if (!viewport) return;
     const root = document.documentElement;
     let frame = 0;
+    let baseline = 0;
 
     const clear = () => {
       root.style.removeProperty("--visual-viewport-top");
       root.style.removeProperty("--visual-viewport-height");
+      root.style.removeProperty("--keyboard-inset");
     };
 
     const publish = () => {
       frame = 0;
       // A viewport that reports nothing — a background tab, a restore, a zoom — must never be
-      // followed: a height of 0 would collapse every surface that tracks it. Clearing the keys
-      // hands those surfaces back their `100dvh` fallback, which is only ever too generous.
-      if (viewport.scale > zoomTolerance || viewport.height <= 0) {
+      // followed: it would collapse every surface that tracks it. Clearing the keys hands those
+      // surfaces back their `100dvh` fallback, which is only ever too generous.
+      if (viewport.scale > zoomTolerance || viewport.height <= 0 || window.innerHeight <= 0) {
         clear();
         return;
       }
-      // Only a keyboard-sized shortfall is worth following. iPadOS also leaves the viewport
-      // reporting a sliver less than the window once its keyboard is gone, and a surface that
-      // believed that stood short of the screen — the strip of blank page under the table.
-      const keyboard = Math.max(0, window.innerHeight - viewport.height);
-      const height = keyboard >= keyboardMinimumPx ? viewport.height : window.innerHeight;
+
+      // The window itself shrinks while the keyboard is up, so only ever let the baseline grow.
+      baseline = Math.max(baseline, window.innerHeight);
+      const shortfall = baseline - viewport.height;
+      const keyboard = shortfall >= keyboardMinimumPx ? shortfall : 0;
       root.style.setProperty("--visual-viewport-top", `${Math.round(viewport.offsetTop)}px`);
-      root.style.setProperty("--visual-viewport-height", `${Math.round(height)}px`);
+      root.style.setProperty("--visual-viewport-height", `${Math.round(baseline)}px`);
+      root.style.setProperty("--keyboard-inset", `${Math.round(keyboard)}px`);
     };
 
     // The pan and the keyboard animation both fire in bursts; one write per frame is enough.
@@ -56,19 +64,23 @@ export function VisualViewportVars() {
       frame = requestAnimationFrame(publish);
     };
 
+    // A rotation is the one time the window legitimately gets shorter, so the mark starts over.
+    const restart = () => {
+      baseline = 0;
+      schedule();
+    };
+
     publish();
-    // A first reading can arrive before the viewport reports anything usable; the window's own
-    // resize is the cheapest way back from that without polling.
     viewport.addEventListener("resize", schedule);
     viewport.addEventListener("scroll", schedule);
     window.addEventListener("resize", schedule);
-    window.addEventListener("orientationchange", schedule);
+    window.addEventListener("orientationchange", restart);
     return () => {
       cancelAnimationFrame(frame);
       viewport.removeEventListener("resize", schedule);
       viewport.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
-      window.removeEventListener("orientationchange", schedule);
+      window.removeEventListener("orientationchange", restart);
       clear();
     };
   }, []);
