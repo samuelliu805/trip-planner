@@ -172,11 +172,13 @@ export function plannerItemFormSteps({
 }
 
 export function plannerItemStepError({
+  creating = false,
   place,
   step,
   title,
   type,
 }: {
+  creating?: boolean;
   place: PlaceSnapshot | null;
   step: ItemFormStep;
   title: string;
@@ -190,6 +192,8 @@ export function plannerItemStepError({
         : "Choose a meal location or enter a displayed meal name.";
   }
   if (step.id !== "basics") return undefined;
+  if (creating && type === "activity" && !title.trim())
+    return "Search for an activity or place, or add a custom activity.";
   if (!["car_rental", "hotel", "location", "meal", "transport"].includes(type) && !title.trim())
     return `${itemCopy[type].label} name is required.`;
   return undefined;

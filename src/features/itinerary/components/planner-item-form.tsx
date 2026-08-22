@@ -138,6 +138,7 @@ export function PlannerItemForm({
   function goToStep(nextStepId: ItemFormStep["id"]) {
     if (nextStepId === activeStep.id) return true;
     const blocking = plannerItemStepError({
+      creating: !item,
       place: state.place,
       step: activeStep,
       title: state.title,
@@ -171,7 +172,13 @@ export function PlannerItemForm({
   async function save(intent: PlannerEditorSaveIntent) {
     const invalid = steps
       .map((step) => ({
-        message: plannerItemStepError({ place: state.place, step, title: state.title, type }),
+        message: plannerItemStepError({
+          creating: !item,
+          place: state.place,
+          step,
+          title: state.title,
+          type,
+        }),
         step,
       }))
       .find(({ message }) => message);

@@ -24,6 +24,7 @@ These rules apply to all future UI work in this repository.
 - When an Order step exists, every earlier Save action becomes Confirm order and may only navigate to that final step. The actual Save and optional Save & create new actions live together there.
 - Creating an Activity, Meal, Car rental, Hotel, or Transport requires confirmation. Report creation success or failure prominently; success must offer a link that closes the editor, selects the new item, scrolls it into view, and focuses it in the Matrix.
 - Do not auto-focus a field when an itinerary editor first opens. Focus may move only after the user acts, such as choosing a place or following a newly-created-item link.
+- New Activity creation begins with one intent-first `Activity or place` search. Keep the blank Activity name hidden until the user chooses a Google Maps result or commits the query as a custom activity; then reveal the shared name field. A place may update a blank or still-system-generated name, but must never overwrite a user-edited name.
 - Steps are freely selectable, but leaving a step validates it: a missing required field blocks the switch and says why. Saving validates every step and jumps to the first that fails.
 - The modal keeps one fixed height and Next/Back stay mounted and in place on the first and last step, so repeated clicks never chase a moving button. No step may add explanatory chrome — no shortcut legend, no restated step label, no preview card.
 - Closing a modified editor — overlay click, close button, or Escape — must confirm before discarding.
@@ -42,6 +43,7 @@ These rules apply to all future UI work in this repository.
 ## Place search field
 
 - The place field owns its own input and suggestion list (`AutocompleteSuggestion.fetchAutocompleteSuggestions`). Do not go back to `PlaceAutocompleteElement`: its closed shadow root cannot be sized and it fills the whole screen on narrow viewports.
+- The shared place search may expose a custom-value option, but that option must remain inside the same keyboard-reachable listbox. Enter commits the custom value only when no suggestion is active; it never submits the surrounding editor.
 - Generate one session token per search session and drop it after `fetchFields`, and keep `includedPrimaryTypes` out of effect dependencies as an array — serialize it, or an inline array restarts the search on every render.
 
 ## Trip app bar
