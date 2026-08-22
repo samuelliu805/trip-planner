@@ -21,6 +21,9 @@ These rules apply to all future UI work in this repository.
 - The first step carries only what the item needs to exist, so it can be saved without opening the rest. Every step stays at three controls or fewer, and Add and Edit use the same steps.
 - Untimed Activities, Meals, and Car rentals show an Order step only when at least two legal positions exist. Entering a time or leaving only one position must remove that step immediately; the default position is after the day's last orderable activity and before a hotel.
 - New Activities and Meals may offer Save and add another. Editing an existing item and every other category keep only the normal Save action.
+- When an Order step exists, every earlier Save action becomes Confirm order and may only navigate to that final step. The actual Save and optional Save & create new actions live together there.
+- Creating an Activity, Meal, Car rental, Hotel, or Transport requires confirmation. Report creation success or failure prominently; success must offer a link that closes the editor, selects the new item, scrolls it into view, and focuses it in the Matrix.
+- Do not auto-focus a field when an itinerary editor first opens. Focus may move only after the user acts, such as choosing a place or following a newly-created-item link.
 - Steps are freely selectable, but leaving a step validates it: a missing required field blocks the switch and says why. Saving validates every step and jumps to the first that fails.
 - The modal keeps one fixed height and Next/Back stay mounted and in place on the first and last step, so repeated clicks never chase a moving button. No step may add explanatory chrome — no shortcut legend, no restated step label, no preview card.
 - Closing a modified editor — overlay click, close button, or Escape — must confirm before discarding.

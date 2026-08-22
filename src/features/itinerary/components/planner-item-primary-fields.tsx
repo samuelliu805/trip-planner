@@ -219,7 +219,6 @@ export function ItemTitleField({
 
 export function ItemPlaceField({
   creating,
-  item,
   pending,
   place,
   placeLabel,
@@ -230,7 +229,6 @@ export function ItemPlaceField({
   type,
 }: {
   creating: boolean;
-  item?: { id: string };
   pending: boolean;
   place: PlaceSnapshot | null;
   placeLabel: string;
@@ -255,7 +253,6 @@ export function ItemPlaceField({
         ) : null}
       </Label>
       <PlaceAutocomplete
-        autoFocus={!item && ["activity", "location", "hotel"].includes(type)}
         disabled={pending}
         onChange={(nextPlace) => {
           setPlace(nextPlace);

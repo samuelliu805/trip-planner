@@ -142,7 +142,6 @@ export function PlannerItemStepFields({
         return (
           <ItemPlaceField
             creating={!item}
-            item={item}
             pending={pending}
             place={state.place}
             placeLabel={placeLabel}

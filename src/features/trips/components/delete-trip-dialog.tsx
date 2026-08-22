@@ -1,6 +1,7 @@
 "use client";
 
 import { LoaderCircle, Trash2 } from "lucide-react";
+import { useEffect } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -17,9 +18,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { deleteTrip } from "@/features/trips/actions";
 
-function DeleteAction({ checking }: { checking: boolean }) {
+function DeleteAction({
+  checking,
+  onPendingChange,
+}: {
+  checking: boolean;
+  onPendingChange?: (pending: boolean) => void;
+}) {
   const { pending } = useFormStatus();
   const loading = checking || pending;
+
+  useEffect(() => onPendingChange?.(pending), [onPendingChange, pending]);
+  useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
   return (
     <AlertDialogAction aria-busy={loading} disabled={loading} type="submit">
@@ -36,6 +46,7 @@ function DeleteAction({ checking }: { checking: boolean }) {
 export function DeleteTripDialog({
   activeSharePageCount,
   onOpenChange,
+  onPendingChange,
   open,
   renderTrigger = true,
   title,
@@ -43,6 +54,7 @@ export function DeleteTripDialog({
 }: {
   activeSharePageCount: number | null;
   onOpenChange?: (open: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
   open?: boolean;
   renderTrigger?: boolean;
   title: string;
@@ -92,7 +104,7 @@ export function DeleteTripDialog({
           <input name="trip_id" type="hidden" value={tripId} />
           <AlertDialogFooter>
             <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-            <DeleteAction checking={checkingSharePages} />
+            <DeleteAction checking={checkingSharePages} onPendingChange={onPendingChange} />
           </AlertDialogFooter>
         </form>
       </AlertDialogContent>

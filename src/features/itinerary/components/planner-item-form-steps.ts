@@ -53,6 +53,16 @@ export function plannerItemNeedsOrderStep({
   );
 }
 
+export function plannerItemSaveAction({
+  activeStepId,
+  includeOrder,
+}: {
+  activeStepId: ItemFormStep["id"];
+  includeOrder: boolean;
+}) {
+  return includeOrder && activeStepId !== "order" ? "confirm-order" : "save";
+}
+
 function basicsBlocks(
   type: ItineraryItemType,
   endpoints: boolean,

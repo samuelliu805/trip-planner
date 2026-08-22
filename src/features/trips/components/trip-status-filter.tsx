@@ -2,13 +2,27 @@
 
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 
 import {
   tripStatusFilterLabels,
   tripStatusFilters,
   type TripStatusFilter,
 } from "@/features/trips/status";
+
+type TripListLoadingSetter = (message?: string) => void;
+const TripListLoadingContext = createContext<TripListLoadingSetter>(() => undefined);
+
+export function useTripListLoading() {
+  return useContext(TripListLoadingContext);
+}
 
 export function tripStatusFilterHref(filter: TripStatusFilter) {
   return filter === "open" ? "/trips" : `/trips?status=${filter}`;
@@ -25,8 +39,11 @@ export function TripStatusFilterTabs({
 }) {
   const router = useRouter();
   const [pendingFilter, setPendingFilter] = useState<TripStatusFilter | null>(null);
+  const [operationLabel, setOperationLabel] = useState<string>();
   const [pending, startFilterChange] = useTransition();
   const displayedActive = pending && pendingFilter ? pendingFilter : active;
+  const loading = pending || Boolean(operationLabel);
+  const setListLoading = useCallback((message?: string) => setOperationLabel(message), []);
 
   function selectFilter(filter: TripStatusFilter) {
     if (filter === displayedActive) return;
@@ -37,7 +54,7 @@ export function TripStatusFilterTabs({
   }
 
   return (
-    <>
+    <TripListLoadingContext.Provider value={setListLoading}>
       <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
         <nav
           aria-label="Filter trips by status"
@@ -53,6 +70,7 @@ export function TripStatusFilterTabs({
                   : "text-muted-foreground hover:text-foreground"
               }`}
               key={filter}
+              disabled={Boolean(operationLabel)}
               onClick={() => selectFilter(filter)}
               type="button"
             >
@@ -65,14 +83,14 @@ export function TripStatusFilterTabs({
 
       <div className="relative mt-6 min-h-52">
         <section
-          aria-busy={pending}
+          aria-busy={loading}
           aria-labelledby="trip-list-title"
-          className={pending ? "pointer-events-none invisible" : undefined}
+          className={loading ? "pointer-events-none invisible" : undefined}
           id="trip-list"
         >
           {children}
         </section>
-        {pending ? (
+        {loading ? (
           <div
             aria-live="polite"
             className="absolute inset-0 flex min-h-52 items-center justify-center rounded-xl border bg-card"
@@ -80,11 +98,11 @@ export function TripStatusFilterTabs({
           >
             <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
               <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
-              Loading {tripStatusFilterLabels[displayedActive]} trips…
+              {operationLabel ?? `Loading ${tripStatusFilterLabels[displayedActive]} trips…`}
             </div>
           </div>
         ) : null}
       </div>
-    </>
+    </TripListLoadingContext.Provider>
   );
 }

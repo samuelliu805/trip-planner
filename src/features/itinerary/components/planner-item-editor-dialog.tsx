@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
+import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/planner-item-save-feedback";
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
 
 /** A dedicated full-screen editor that never shares its viewport with the Matrix. */
@@ -16,6 +17,7 @@ export function PlannerItemEditorDialog({
   onClose,
   onDraftChange,
   onError,
+  onSaveFeedback,
   shareAttachmentsEnabled,
   tripId,
   unavailableTransportModes,
@@ -28,6 +30,7 @@ export function PlannerItemEditorDialog({
   onClose: () => void;
   onDraftChange: (item: ItineraryItem | null) => void;
   onError: (message?: string) => void;
+  onSaveFeedback: (feedback?: PlannerItemSaveFeedback) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;
   unavailableTransportModes: TransportMode[];
@@ -52,6 +55,7 @@ export function PlannerItemEditorDialog({
       onError={onError}
       onCreateAnother={() => setCreationSequence((sequence) => sequence + 1)}
       onDraftChange={editor.item ? onDraftChange : undefined}
+      onSaveFeedback={onSaveFeedback}
       onSaved={onClose}
       shareAttachmentsEnabled={shareAttachmentsEnabled}
       tripId={tripId}
