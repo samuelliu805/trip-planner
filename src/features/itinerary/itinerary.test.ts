@@ -3369,6 +3369,42 @@ test("the Order step only appears when the day offers another position", async (
   assert.match(state, /itemOrderAnchor\(items, item\?\.id, item\?\.type\)/);
 });
 
+test("renaming a trip docks one field above the keyboard", async () => {
+  const [actions, dock, menu, appBar, toolbar, renameDock] = await Promise.all([
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../components/ui/docked-field-editor.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-app-bar-menu.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-app-bar.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-rename-dock.tsx", import.meta.url), "utf8"),
+  ]);
+
+  // The lift has to land before focus: that is when the browser decides whether to move the page.
+  assert.match(dock, /onPointerDown=\{liftBeforeFocus\}/);
+  assert.match(dock, /assumedKeyboardRatio = 0\.55/);
+  assert.match(
+    dock,
+    /Math\.max\(current, Math\.round\(window\.innerHeight \* assumedKeyboardRatio\)\)/,
+  );
+  assert.match(dock, /window\.innerHeight - viewport\.height - viewport\.offsetTop/);
+  assert.match(
+    dock,
+    /addEventListener\("resize", track\)[\s\S]*addEventListener\("scroll", track\)/,
+  );
+  // iPadOS refuses programmatic focus outside a gesture, so the tap must be the traveller's.
+  assert.doesNotMatch(dock, /\.focus\(\)|autoFocus/);
+  // A form is what put the field mid-screen in the first place.
+  assert.doesNotMatch(renameDock, /TripEditorScreen|TripForm/);
+  assert.match(renameDock, /renameTrip\(\{ title: next, tripId \}\)/);
+
+  assert.match(menu, /Rename trip/);
+  assert.match(appBar, /onRenameTrip=\{onRenameTrip\}/);
+  assert.match(toolbar, /onRenameTrip=\{\(\) => setRenameOpen\(true\)\}/);
+  assert.match(toolbar, /<TripRenameDock/);
+  assert.match(actions, /export async function renameTrip/);
+  assert.match(actions, /\.update\(\{ title: parsed\.data\.title \}\)/);
+});
+
 test("deleting a trip is reachable from the list and confirms what stays online", async () => {
   const [actions, card, dialog] = await Promise.all([
     readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),

@@ -38,6 +38,12 @@ export const updateTripSchema = z
     path: ["endDate"],
   });
 
+/** Renaming is its own action so the docked field never has to carry the rest of the trip. */
+export const renameTripSchema = z.object({
+  title: z.string().trim().min(1, "Enter a trip name.").max(120),
+  tripId: z.uuid(),
+});
+
 export const tripIdSchema = z.uuid();
 
 export const setTripStatusSchema = z.object({

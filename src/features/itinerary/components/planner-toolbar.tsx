@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDown, ArrowUp, Copy } from "lucide-react";
+import { useState } from "react";
 
 import { PlannerContextActions } from "@/features/itinerary/components/planner-context-bar";
 import {
@@ -10,8 +11,11 @@ import {
 import { PlannerStatus } from "@/features/itinerary/components/planner-layout-elements";
 import type { PlannerToolbarProps } from "@/features/itinerary/components/planner-toolbar-types";
 import { TripAppBar } from "@/features/trips/components/trip-app-bar";
+import { TripRenameDock } from "@/features/trips/components/trip-rename-dock";
 
 export function PlannerToolbar(props: PlannerToolbarProps) {
+  const [renameOpen, setRenameOpen] = useState(false);
+
   return (
     <>
       <TripAppBar
@@ -47,6 +51,7 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
           },
         ]}
         mutating={props.mutating}
+        onRenameTrip={() => setRenameOpen(true)}
         onTripSettings={() => props.setSettingsOpen(true)}
         shareControls={props.shareControls}
         title={props.trip.title}
@@ -64,6 +69,13 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         onDismissError={() => props.setInteractionError(undefined)}
         workspaceError={props.workspaceError}
       />
+      {renameOpen ? (
+        <TripRenameDock
+          onClose={() => setRenameOpen(false)}
+          title={props.trip.title}
+          tripId={props.trip.id}
+        />
+      ) : null}
     </>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from "@/features/trips/create-defaults";
 import {
   createTripSchema,
+  renameTripSchema,
   setTripStatusSchema,
   tripIdSchema,
   updateTripSchema,
@@ -86,6 +87,32 @@ export async function updateTrip(
   revalidatePath("/trips");
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { success: "Trip settings saved." };
+}
+
+/**
+ * The trip name on its own. A whole settings form is a tall surface with the field somewhere in the
+ * middle of it, which is exactly what the iPadOS keyboard moves the page to reveal.
+ */
+export async function renameTrip(input: {
+  title: string;
+  tripId: string;
+}): Promise<TripActionState> {
+  const parsed = renameTripSchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("trips")
+    .update({ title: parsed.data.title })
+    .eq("id", parsed.data.tripId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data)
+    return { error: error?.message ?? "You do not have permission to rename this trip." };
+  revalidatePath("/trips");
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return { success: "Trip renamed." };
 }
 
 /** Completing a trip only moves it out of the default list; nothing about the plan changes. */

@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, MoreHorizontal, Settings2, Share2 } from "lucide-react";
+import { LogOut, MoreHorizontal, PencilLine, Settings2, Share2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ export function TripBarMenu({
   extraItems,
   mobileMenuItems,
   mobileQuickActions = [],
+  onRenameTrip,
   onShareTrip,
   onTripSettings,
 }: {
@@ -38,6 +39,7 @@ export function TripBarMenu({
   extraItems?: ReactNode;
   mobileMenuItems?: (runAction: RunMobileAction) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
+  onRenameTrip?: () => void;
   onShareTrip?: () => void;
   onTripSettings?: () => void;
 }) {
@@ -73,7 +75,14 @@ export function TripBarMenu({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             {extraItems ? <>{extraItems}</> : null}
-            {extraItems && (onShareTrip || onTripSettings) ? <DropdownMenuSeparator /> : null}
+            {extraItems && (onRenameTrip || onShareTrip || onTripSettings) ? (
+              <DropdownMenuSeparator />
+            ) : null}
+            {onRenameTrip ? (
+              <DropdownMenuItem onSelect={onRenameTrip}>
+                <PencilLine aria-hidden="true" className="size-4" /> Rename trip
+              </DropdownMenuItem>
+            ) : null}
             {onShareTrip ? (
               <DropdownMenuItem onSelect={onShareTrip}>
                 <Share2 aria-hidden="true" className="size-4" /> Share trip
@@ -147,6 +156,15 @@ export function TripBarMenu({
             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Trip
             </p>
+            {onRenameTrip ? (
+              <Button
+                className="min-h-11 w-full justify-start px-3 font-normal"
+                onClick={() => runMobileAction(onRenameTrip)}
+                variant="ghost"
+              >
+                <PencilLine aria-hidden="true" className="size-4" /> Rename trip
+              </Button>
+            ) : null}
             {onTripSettings ? (
               <Button
                 className="min-h-11 w-full justify-start px-3 font-normal"

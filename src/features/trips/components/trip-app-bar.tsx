@@ -52,6 +52,7 @@ export type TripAppBarProps = {
   mobileMenuItems?: (runAction: (action: () => void) => void) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
   mutating?: boolean;
+  onRenameTrip?: () => void;
   onTripSettings?: () => void;
   researchCategory?: ResearchCategory;
   shareControls?: ReactNode;
@@ -73,6 +74,7 @@ export function TripAppBar({
   mobileMenuItems,
   mobileQuickActions,
   mutating = false,
+  onRenameTrip,
   onTripSettings,
   researchCategory,
   shareControls,
@@ -139,6 +141,7 @@ export function TripAppBar({
             extraItems={menuItems}
             mobileMenuItems={mobileMenuItems}
             mobileQuickActions={mobileQuickActions}
+            onRenameTrip={onRenameTrip}
             onShareTrip={
               shareControls
                 ? () => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
