@@ -41,6 +41,16 @@ export function orderedDestinationActivities(items: ItineraryItem[]) {
   return items.filter(isDestinationActivity).sort(compareActivityOrder);
 }
 
+/**
+ * Every position the Order step can offer: the gap before the first activity, then one after each
+ * activity that may be followed. Hotels close the day, so nothing follows them. A day with one
+ * position has no ordering decision to make, and the step is not worth a tap.
+ */
+export function activityOrderAnchors(items: ItineraryItem[], itemId?: string) {
+  const remaining = orderedDestinationActivities(items).filter(({ id }) => id !== itemId);
+  return [null, ...remaining.filter(({ type }) => type !== "hotel").map(({ id }) => id)];
+}
+
 export function isActivityOrderAnchor(item: ItineraryItem) {
   return item.type === "hotel" || Boolean(item.start_time || item.end_time);
 }

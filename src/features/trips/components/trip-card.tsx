@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Share2,
   SquareArrowOutUpRight,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { setTripStatus } from "@/features/trips/actions";
+import { countActiveSharePages, setTripStatus } from "@/features/trips/actions";
+import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripEditorScreen } from "@/features/trips/components/trip-editor-screen";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { TripShareLauncher } from "@/features/trips/components/trip-share-launcher";
@@ -57,6 +59,8 @@ export function TripCard({ siteUrl, trip }: { siteUrl: string; trip: TripListEnt
   const router = useRouter();
   const [editorOpen, setEditorOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [sharePageCount, setSharePageCount] = useState<number | null>(null);
   const [statusPending, startStatusChange] = useTransition();
   const status = tripStatusOf(trip);
   const toggle = tripStatusToggle(status);
@@ -64,6 +68,13 @@ export function TripCard({ siteUrl, trip }: { siteUrl: string; trip: TripListEnt
   /** A menu item that opens an overlay has to let the menu finish closing first. */
   function afterMenu(open: () => void) {
     window.setTimeout(open, 0);
+  }
+
+  /** The count only matters inside the confirmation, so it is fetched as that opens. */
+  function confirmDelete() {
+    setSharePageCount(null);
+    setDeleteOpen(true);
+    void countActiveSharePages(trip.id).then(setSharePageCount);
   }
 
   function changeStatus() {
@@ -129,6 +140,13 @@ export function TripCard({ siteUrl, trip }: { siteUrl: string; trip: TripListEnt
                 )}
                 {toggle.label}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onSelect={() => afterMenu(confirmDelete)}
+              >
+                <Trash2 aria-hidden="true" className="size-4" /> Delete trip
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
@@ -165,6 +183,14 @@ export function TripCard({ siteUrl, trip }: { siteUrl: string; trip: TripListEnt
       {shareOpen ? (
         <TripShareLauncher onOpenChange={setShareOpen} siteUrl={siteUrl} trip={trip} />
       ) : null}
+      <DeleteTripDialog
+        activeSharePageCount={sharePageCount}
+        onOpenChange={setDeleteOpen}
+        open={deleteOpen}
+        renderTrigger={false}
+        title={trip.title}
+        tripId={trip.id}
+      />
     </>
   );
 }

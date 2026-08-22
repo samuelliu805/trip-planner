@@ -19,7 +19,8 @@ These rules apply to all future UI work in this repository.
 - The editor is one progressive modal: a centred Dialog from 640px up, a full-height sheet below it. Do not reintroduce a side sheet for editing, and never show a workspace side panel next to the open editor.
 - The step navigator is numbered circles joined by dotted rules with each label above its own number. Every number is a button; steps must stay reachable directly, not only through Next and Back.
 - The first step carries only what the item needs to exist, so it can be saved without opening the rest. Every step stays at three controls or fewer, and Add and Edit use the same steps.
-- Activities and Meals close with a dedicated Place step; that is the only step whose primary action opens the Day's Activity order. Do not scatter placement across the other steps.
+- Placement lives in one Order step and nowhere else. Do not scatter it across the other steps.
+- The position always starts at the day's last activity, which is where a new item almost always belongs, and it is never a prerequisite for saving. The Order step therefore only appears when the day offers somewhere else to put the item — a day's first activity has exactly one position, so the step would be a tap that decides nothing.
 - Steps are freely selectable, but leaving a step validates it: a missing required field blocks the switch and says why. Saving validates every step and jumps to the first that fails.
 - The modal keeps one fixed height and Next/Back stay mounted and in place on the first and last step, so repeated clicks never chase a moving button. No step may add explanatory chrome — no shortcut legend, no restated step label, no preview card.
 - Closing a modified editor — overlay click, close button, or Escape — must confirm before discarding.
@@ -39,6 +40,7 @@ These rules apply to all future UI work in this repository.
 - Trip settings edit an existing trip only. `TripForm` therefore requires its `trip`, and `createTrip` takes no user input beyond what the browser knows.
 - The screen has no steps and no Previous/Next: Trip name and Days lead, everything optional stays inside one collapsed More settings disclosure, and one Save action commits.
 - Timezone is neither asked for nor displayed. It is carried in a hidden field so existing trips keep theirs and new trips adopt the browser's.
+- Deleting a trip is reachable from the Trips list menu and from Trip settings. Both confirm first, and both say what published Share Pages the delete leaves online: settings already knows the count, the list asks for it as the confirmation opens.
 - Dates and length describe the same trip. Committing either — on blur, not on every keystroke — settles the other, so a save can never be rejected for a range that disagrees with its length.
 
 ## Workspace clipboard boundary

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
+import { listPublicItineraryLinks } from "@/features/sharing/data";
 import {
   defaultTripCurrency,
   defaultTripDayCount,
@@ -110,6 +111,17 @@ export async function setTripStatus(input: {
   return {
     success: parsed.data.status === "done" ? "Trip marked complete." : "Trip moved to Active.",
   };
+}
+
+/**
+ * What deleting from the Trips list would leave online. The list itself carries no share data, so
+ * it asks for this only when a delete confirmation opens rather than for every card it renders.
+ */
+export async function countActiveSharePages(tripId: string) {
+  const parsed = tripIdSchema.safeParse(tripId);
+  if (!parsed.success) return 0;
+  const { data } = await listPublicItineraryLinks(parsed.data);
+  return data.length;
 }
 
 export async function deleteTrip(formData: FormData) {

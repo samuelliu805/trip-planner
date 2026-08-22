@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
+import { activityOrderAnchors } from "@/features/itinerary/activity-order";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
 import { PlannerItemFormActions } from "@/features/itinerary/components/planner-item-form-actions";
@@ -68,12 +69,16 @@ export function PlannerItemForm({
   const pendingLabel = attachmentSession.attachmentPending ? "Updating attachments…" : "Saving…";
   const mutationError = createMutation.error ?? updateMutation.error;
   const supportsManualOrder = ["activity", "car_rental", "meal"].includes(type);
-  const [orderRequested, setOrderRequested] = useState(
-    Boolean(item && supportsManualOrder && !item.start_time && !item.end_time),
+  const orderPositions = useMemo(
+    () => (supportsManualOrder ? activityOrderAnchors(dayItems, item?.id).length : 0),
+    [dayItems, item?.id, supportsManualOrder],
   );
-  const [orderConfirmed, setOrderConfirmed] = useState(Boolean(item));
-  const manualOrderNeeded = supportsManualOrder && !state.startTime && !state.arrivalTime;
-  const includeOrder = manualOrderNeeded && (Boolean(item) || orderRequested);
+  /**
+   * The position already defaults to after the day's last activity, so ordering is only ever a
+   * step when the day offers somewhere else to put the item.
+   */
+  const includeOrder =
+    supportsManualOrder && !state.startTime && !state.arrivalTime && orderPositions > 1;
   const steps = useMemo(
     () =>
       plannerItemFormSteps({
@@ -139,12 +144,7 @@ export function PlannerItemForm({
 
   function moveStep(offset: number) {
     const next = steps[stepIndex + offset];
-    if (next) return goToStep(next.id);
-    if (offset > 0 && manualOrderNeeded && !includeOrder) {
-      setOrderRequested(true);
-      return goToStep("order");
-    }
-    return false;
+    return next ? goToStep(next.id) : false;
   }
 
   const { gestureSurfaceRef, motionSurfaceRef } = usePlannerItemStepSwipe((offset) =>
@@ -184,16 +184,6 @@ export function PlannerItemForm({
     if (invalid?.message) {
       setStepId(invalid.step.id);
       setStepError(invalid.message);
-      return;
-    }
-    if (manualOrderNeeded && !orderConfirmed) {
-      if (includeOrder && activeStep.id === "order") {
-        setStepError("Choose this item’s position before saving.");
-      } else {
-        setOrderRequested(true);
-        setStepId("order");
-        setStepError(undefined);
-      }
       return;
     }
     setStepError(undefined);
@@ -291,10 +281,8 @@ export function PlannerItemForm({
                 item={item}
                 onOrderChange={(nextItemId) => {
                   state.setInsertAfterItemId(nextItemId);
-                  setOrderConfirmed(true);
                   setStepError(undefined);
                 }}
-                orderConfirmed={orderConfirmed}
                 pending={pending}
                 state={state}
                 titleRef={titleRef}
@@ -303,7 +291,7 @@ export function PlannerItemForm({
             </div>
             <PlannerItemFormActions
               firstStep={stepIndex === 0}
-              lastStep={stepIndex === steps.length - 1 && !(manualOrderNeeded && !includeOrder)}
+              lastStep={stepIndex === steps.length - 1}
               onBack={() => moveStep(-1)}
               onNext={() => moveStep(1)}
               pending={pending}

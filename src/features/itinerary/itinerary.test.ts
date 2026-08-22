@@ -103,6 +103,7 @@ import {
 import { isSameDayOrder, placeDayAtGap, reorderWorkspaceDays } from "./day-order.ts";
 import {
   insertActivityAtPlacement,
+  activityOrderAnchors,
   itemOrderAnchor,
   isActivityOrderAnchor,
   orderedDayActivities,
@@ -3334,4 +3335,55 @@ test("the editor Order step derives stable anchors for add and edit", () => {
   assert.equal(itemOrderAnchor(items, undefined, "activity"), "rental");
   assert.equal(itemOrderAnchor(items, undefined, "hotel"), "rental");
   assert.equal(itemOrderAnchor(items, "train", "transport"), null);
+
+  // Nothing may follow a hotel, so it never adds a position.
+  assert.deepEqual(activityOrderAnchors(items), [null, "museum", "meal", "rental"]);
+  assert.deepEqual(activityOrderAnchors(items, "meal"), [null, "museum", "rental"]);
+  // A day's first activity has one position, which is no decision at all.
+  assert.deepEqual(activityOrderAnchors([]), [null]);
+  assert.deepEqual(activityOrderAnchors([item("hotel", 0, "hotel")]), [null]);
+  assert.deepEqual(activityOrderAnchors([item("museum", 0)], "museum"), [null]);
+  assert.deepEqual(activityOrderAnchors([item("train", 0, "transport")]), [null]);
+});
+
+test("the Order step only appears when the day offers another position", async () => {
+  const form = await readFile(
+    new URL("./components/planner-item-form.tsx", import.meta.url),
+    "utf8",
+  );
+  const orderField = await readFile(
+    new URL("./components/planner-item-order-field.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(form, /activityOrderAnchors\(dayItems, item\?\.id\)\.length/);
+  assert.match(form, /orderPositions > 1/);
+  // The default position stands on its own; saving must never wait for a placement tap.
+  assert.doesNotMatch(form, /orderConfirmed|orderRequested|position before saving/);
+  assert.match(orderField, /active=\{insertAfterItemId === null\}/);
+  assert.doesNotMatch(orderField, /confirmed/);
+  const state = await readFile(
+    new URL("./components/use-planner-item-form-state.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(state, /itemOrderAnchor\(items, item\?\.id, item\?\.type\)/);
+});
+
+test("deleting a trip is reachable from the list and confirms what stays online", async () => {
+  const [actions, card, dialog] = await Promise.all([
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(card, /Delete trip/);
+  assert.match(card, /onSelect=\{\(\) => afterMenu\(confirmDelete\)\}/);
+  assert.match(card, /<DeleteTripDialog[\s\S]*renderTrigger=\{false\}/);
+  assert.match(card, /countActiveSharePages\(trip\.id\)\.then\(setSharePageCount\)/);
+  // The list carries no share data, so an unknown count must not claim nothing is published.
+  assert.match(dialog, /activeSharePageCount: number \| null;/);
+  assert.match(dialog, /\{activeSharePageCount \? \(/);
+  assert.match(dialog, /renderTrigger \? \(/);
+  assert.match(actions, /export async function countActiveSharePages/);
+  assert.match(actions, /export async function deleteTrip/);
 });
