@@ -4,10 +4,9 @@
   inset: 0 !important;
   display: flex;
   width: 100% !important;
-  height: 100vh !important;
-  height: 100lvh !important;
+  height: 100dvh !important;
   max-width: none !important;
-  max-height: none !important;
+  max-height: 100dvh !important;
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;

@@ -21,9 +21,7 @@ export function PlannerEditorField({
     <div className="min-w-0 space-y-2" data-planner-focus-region={focusRegion}>
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {description ? (
-        <p className="text-xs leading-5 text-muted-foreground">{description}</p>
-      ) : null}
+      {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
     </div>
   );
 }

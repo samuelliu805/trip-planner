@@ -16,12 +16,10 @@ import {
 import {
   CarActionField,
   CarProviderField,
-  TransportModeField,
-} from "@/features/itinerary/components/planner-item-primary-fields";
-import {
   ItemPlaceField,
   ItemTitleField,
-} from "@/features/itinerary/components/planner-item-place-fields";
+  TransportModeField,
+} from "@/features/itinerary/components/planner-item-primary-fields";
 import {
   ItemLinksField,
   ItemNotesField,

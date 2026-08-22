@@ -35,6 +35,8 @@ These rules apply to all future UI work in this repository.
 - `PlannerEditorScreen`, `PlannerEditorHeader`, `PlannerEditorForm`, `PlannerEditorTextField`, and `PlannerEditorFormActions` are the shared primitives for planner text-input and edit experiences. Trip settings and itinerary items are the reference consumers.
 - Build future editors by composing those primitives and supplying only their copy, fields, optional steps, and save handlers. Extend the shared props when a reusable capability is missing; do not fork the header, scroll shell, form spacing, text-field styling, keyboard behavior, or action layout.
 - A variant may omit step navigation or add an explicit alternate save intent, but it must retain the same single scroller, field treatment, and form action behavior.
+- The production Itinerary editor is the frozen visual baseline for both Itinerary items and Trip settings. Flow work may change copy, conditional field visibility, field order, button labels, button order/layout, and handlers; it must not replace, split, or restyle the shared shell, header, card, field spacing, or text controls.
+- Keep Activity title and place behavior in `planner-item-primary-fields.tsx`. Do not move those fields into a replacement component as part of a flow change.
 
 ## Workspace clipboard boundary
 

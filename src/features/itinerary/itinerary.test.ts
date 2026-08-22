@@ -463,7 +463,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-editor-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
-    readFile(new URL("./components/planner-item-place-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-primary-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
@@ -503,8 +503,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorForm, /<PlannerEditorFormActions/);
   assert.match(editorForm, /planner-item-form-fields planner-item-step-fields/);
   assert.match(editorHeader, /navigation\?: ReactNode/);
+  assert.match(editorHeader, /planner-item-form-header border-b px-5 pb-5 pt-4 sm:px-6/);
   assert.match(editorFields, /export function PlannerEditorTextField/);
   assert.match(primaryFields, /<PlannerEditorTextField/);
+  assert.match(primaryFields, /export function ItemPlaceField/);
   assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
@@ -2350,10 +2352,6 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   form += await readFile(
-    new URL("./components/planner-item-place-fields.tsx", import.meta.url),
-    "utf8",
-  );
-  form += await readFile(
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
   );
@@ -2458,8 +2456,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
-  assert.doesNotMatch(plannerDialogRule, /100dvh/);
+  assert.match(plannerDialogRule, /height: 100dvh[\s\S]*max-height: 100dvh/);
+  assert.doesNotMatch(plannerDialogRule, /100(?:l)?vh/);
   assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
@@ -3032,7 +3030,7 @@ test("address and location controls use normalized map places", async () => {
     "utf8",
   );
   form += await readFile(
-    new URL("./components/planner-item-place-fields.tsx", import.meta.url),
+    new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
