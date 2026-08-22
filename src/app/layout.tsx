@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Mali, Nunito } from "next/font/google";
 
 import { QueryProvider } from "@/components/query-provider";
+import { VisualViewportVars } from "@/components/visual-viewport-vars";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getSiteUrl } from "@/features/sharing/site-url";
 
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={`${journalSans.variable} ${journalHand.variable}`}>
+        <VisualViewportVars />
         <QueryProvider>
           <TooltipProvider delayDuration={350}>{children}</TooltipProvider>
         </QueryProvider>

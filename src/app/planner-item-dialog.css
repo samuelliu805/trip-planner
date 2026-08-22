@@ -5,15 +5,18 @@
  */
 .planner-item-dialog {
   position: fixed !important;
-  inset: 0 !important;
+  top: var(--visual-viewport-top, 0px) !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: 0 !important;
   display: flex;
   width: 100% !important;
-  height: 100vh !important;
   /* Dynamic, not large, viewport units: `lvh` reaches under the mobile browser toolbar, so the
-     scroller's last screenful — the Previous/Save/Next row — could never be scrolled into reach. */
-  height: 100dvh !important;
+     scroller's last screenful — the Previous/Save/Next row — could never be scrolled into reach.
+     `--visual-viewport-height` narrows that further to what the keyboard leaves visible. */
+  height: var(--visual-viewport-height, 100dvh) !important;
   max-width: none !important;
-  max-height: 100dvh !important;
+  max-height: var(--visual-viewport-height, 100dvh) !important;
   flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;

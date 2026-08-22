@@ -31,7 +31,9 @@ These rules apply to all future UI work in this repository.
 
 - `.planner-item-dialog` is the shared shell for full-screen editors — the itinerary item editor and the trip editor both wear it. Size it in dynamic viewport units only. `vh` and `lvh` reach under the mobile browser toolbar, which repeatedly left the editor's bottom action row unscrollable and untappable.
 - The shell owns exactly one vertical scroller. A pinned header must be a non-scrolling flex sibling of it, never a sticky child.
-- The iPadOS software keyboard can leave the page panned inside the layout viewport, which the next screen inherits as a top bar scrolled out of reach and a strip of blank space under the table. `window.scrollY` reads 0 throughout, so document-scroll resets, rAF settle loops, and root-height clamps do not repair it — five commits proved that. Reduce the number of surfaces that open the keyboard instead, and verify any keyboard change on a real iPad: a desktop browser at iPad size has no software keyboard and cannot reproduce it.
+- Full-screen surfaces are placed against the _visual_ viewport: `top: var(--visual-viewport-top, 0px)` and `height: var(--visual-viewport-height, 100dvh)`, published by `VisualViewportVars` in the root layout. Never pin one with `inset: 0` or a bare `100dvh` again.
+- That is a deliberate surrender. iPadOS moves the page inside the layout viewport when its keyboard opens — even when the focused field is already visible — and the offset it leaves reports `window.scrollY` as 0. Preventing it and undoing it were both tried and both failed: document-scroll resets, rAF settle loops, root-height clamps, `interactive-widget=resizes-content` (iPad Chrome ignores the key), and a composer that lifted itself above the keyboard before focus. Following the offset is what works, because the surface then stays where the traveller is looking whether or not the page moved.
+- Verify any keyboard change on a real iPad. A desktop browser at iPad size has no software keyboard and cannot reproduce any of this.
 
 ## Trip editor
 

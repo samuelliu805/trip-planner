@@ -1,30 +1,19 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-/** What the keyboard is assumed to cover until it reports its real height. Never assume less. */
-const assumedKeyboardRatio = 0.55;
-
-/** How much of the layout viewport sits outside what the user can see — the keyboard, in practice. */
-function keyboardInset() {
-  const viewport = window.visualViewport;
-  if (!viewport) return 0;
-  return Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
-}
-
 /**
- * One field, docked above the software keyboard the way a chat composer is.
+ * One field, docked at the bottom of what the traveller can see.
  *
- * iPadOS reveals a focused field the keyboard would cover by moving the whole page inside the
- * layout viewport, and the offset it leaves behind reports `scrollY` as 0 — nothing can scroll it
- * back, and the next screen inherits it. A field that is never covered gives it nothing to reveal.
- * So this lifts itself clear of the keyboard *before* the input takes focus, then tracks
- * VisualViewport for the real height. Overshooting the lift is harmless; falling short is not.
+ * It needs no keyboard arithmetic of its own: pinned to `--visual-viewport-top` with
+ * `--visual-viewport-height`, the bottom of this surface *is* the top of the keyboard, so the field
+ * lands just above it and stays there even if iPadOS moves the page underneath. Guessing the
+ * keyboard's height and lifting the bar was tried first and lost the race against focus.
  */
 export function DockedFieldEditor({
   busy = false,
@@ -47,34 +36,18 @@ export function DockedFieldEditor({
 }) {
   const fieldId = useId();
   const [draft, setDraft] = useState(value);
-  const [lift, setLift] = useState(0);
-
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    if (!viewport) return;
-    const track = () => setLift(keyboardInset());
-    viewport.addEventListener("resize", track);
-    viewport.addEventListener("scroll", track);
-    return () => {
-      viewport.removeEventListener("resize", track);
-      viewport.removeEventListener("scroll", track);
-    };
-  }, []);
-
-  /**
-   * Pointer down runs before focus, which is the last moment the page can be kept still. iPadOS
-   * blocks programmatic focus outside a gesture anyway, so the traveller's own tap is what opens
-   * the keyboard — and this rides ahead of it.
-   */
-  const liftBeforeFocus = useCallback(() => {
-    setLift((current) => Math.max(current, Math.round(window.innerHeight * assumedKeyboardRatio)));
-  }, []);
 
   // The dock only ever renders from a tap, so this guard is for the render pass, not for hydration.
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[110] flex flex-col justify-end">
+    <div
+      className="fixed left-0 right-0 z-[110] flex flex-col justify-end"
+      style={{
+        height: "var(--visual-viewport-height, 100dvh)",
+        top: "var(--visual-viewport-top, 0px)",
+      }}
+    >
       <button
         aria-label="Cancel"
         className="min-h-0 flex-1 bg-black/20"
@@ -82,10 +55,7 @@ export function DockedFieldEditor({
         tabIndex={-1}
         type="button"
       />
-      <div
-        className="border-t bg-background px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgb(15_23_42/12%)] transition-transform duration-150 motion-reduce:transition-none"
-        style={{ transform: `translateY(-${lift}px)` }}
-      >
+      <div className="border-t bg-background px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgb(15_23_42/12%)]">
         <form
           className="mx-auto min-w-0 max-w-[52rem]"
           onKeyDown={(event) => {
@@ -111,7 +81,6 @@ export function DockedFieldEditor({
               id={fieldId}
               maxLength={maxLength}
               onChange={(event) => setDraft(event.currentTarget.value)}
-              onPointerDown={liftBeforeFocus}
               value={draft}
             />
             <Button className="min-h-12 shrink-0" disabled={busy || !draft.trim()} type="submit">

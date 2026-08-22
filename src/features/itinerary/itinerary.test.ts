@@ -2422,10 +2422,12 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
+  // The shell is placed against the visual viewport, so the keyboard cannot leave it half off screen.
   assert.match(
     styles,
-    /planner-item-dialog[\s\S]*height: 100dvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
+    /planner-item-dialog[\s\S]*height: var\(--visual-viewport-height, 100dvh\)[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
   );
+  assert.match(styles, /\.planner-item-dialog \{[\s\S]*top: var\(--visual-viewport-top, 0px\)/);
   // `lvh` reaches under the mobile browser toolbar, which puts the editor's action row out of reach.
   assert.doesNotMatch(styles, /\.planner-item-dialog \{[\s\S]*?100lvh/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
@@ -3369,6 +3371,43 @@ test("the Order step only appears when the day offers another position", async (
   assert.match(state, /itemOrderAnchor\(items, item\?\.id, item\?\.type\)/);
 });
 
+test("full-screen surfaces follow the visual viewport instead of the layout viewport", async () => {
+  const [layout, vars, styles] = await Promise.all([
+    readFile(new URL("../../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../components/visual-viewport-vars.tsx", import.meta.url), "utf8"),
+    readAppStyles(),
+  ]);
+
+  assert.match(layout, /<VisualViewportVars \/>/);
+  assert.match(
+    vars,
+    /setProperty\("--visual-viewport-top", `\$\{Math\.round\(viewport\.offsetTop\)\}px`\)/,
+  );
+  assert.match(
+    vars,
+    /setProperty\("--visual-viewport-height", `\$\{Math\.round\(viewport\.height\)\}px`\)/,
+  );
+  assert.match(vars, /addEventListener\("scroll", schedule\)/);
+  // A height of 0 would collapse every surface that follows it; a zoom must not be followed either.
+  assert.match(vars, /viewport\.scale > zoomTolerance \|\| viewport\.height <= 0/);
+  // A pinch zoom shrinks the visual viewport too; the surfaces must fall back, not follow it.
+  assert.match(vars, /clear\(\);\s*return;/);
+  // One write per frame: the pan and the keyboard animation both fire in bursts.
+  assert.match(vars, /if \(frame\) return;\s*frame = requestAnimationFrame\(publish\)/);
+
+  // Every surface that used to be pinned to the layout viewport now tracks the visible band.
+  assert.match(styles, /\.trip-planner-page \{[\s\S]*top: var\(--visual-viewport-top, 0px\)/);
+  assert.match(
+    styles,
+    /\.trip-planner-page \{[\s\S]*height: var\(--visual-viewport-height, 100dvh\)/,
+  );
+  assert.match(styles, /\.planner-map-sheet \{[\s\S]*top: var\(--visual-viewport-top, 0px\)/);
+  // `inset: 0` would pin them back to the layout viewport the keyboard moves. Match inside the
+  // one rule only — `[^}]` stops the search at its closing brace.
+  assert.doesNotMatch(styles, /\.trip-planner-page \{[^}]*inset: 0/);
+  assert.doesNotMatch(styles, /\.planner-item-dialog \{[^}]*inset: 0/);
+});
+
 test("renaming a trip docks one field above the keyboard", async () => {
   const [actions, dock, menu, appBar, toolbar, renameDock] = await Promise.all([
     readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
@@ -3379,18 +3418,11 @@ test("renaming a trip docks one field above the keyboard", async () => {
     readFile(new URL("../trips/components/trip-rename-dock.tsx", import.meta.url), "utf8"),
   ]);
 
-  // The lift has to land before focus: that is when the browser decides whether to move the page.
-  assert.match(dock, /onPointerDown=\{liftBeforeFocus\}/);
-  assert.match(dock, /assumedKeyboardRatio = 0\.55/);
-  assert.match(
-    dock,
-    /Math\.max\(current, Math\.round\(window\.innerHeight \* assumedKeyboardRatio\)\)/,
-  );
-  assert.match(dock, /window\.innerHeight - viewport\.height - viewport\.offsetTop/);
-  assert.match(
-    dock,
-    /addEventListener\("resize", track\)[\s\S]*addEventListener\("scroll", track\)/,
-  );
+  // The dock is the visible band, so its bottom edge is the top of the keyboard. Guessing the
+  // keyboard's height and lifting the bar lost the race against focus and was removed.
+  assert.match(dock, /height: "var\(--visual-viewport-height, 100dvh\)"/);
+  assert.match(dock, /top: "var\(--visual-viewport-top, 0px\)"/);
+  assert.doesNotMatch(dock, /assumedKeyboardRatio|liftBeforeFocus|translateY/);
   // iPadOS refuses programmatic focus outside a gesture, so the tap must be the traveller's.
   assert.doesNotMatch(dock, /\.focus\(\)|autoFocus/);
   // A form is what put the field mid-screen in the first place.

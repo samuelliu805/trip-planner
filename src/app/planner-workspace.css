@@ -19,12 +19,21 @@ body:has(.planner-map-sheet) {
   overscroll-behavior: none;
 }
 
+/*
+ * Placed against the visual viewport, not the layout viewport. iPadOS moves the page inside the
+ * layout viewport for its keyboard and leaves the offset behind, which took the app bar out of
+ * reach and left a strip of blank space under the table. Following the offset keeps the workspace
+ * where the traveller is looking; `--visual-viewport-*` is published by `VisualViewportVars`.
+ */
 .trip-planner-page {
   position: fixed;
-  inset: 0;
+  top: var(--visual-viewport-top, 0px);
+  right: 0;
+  bottom: auto;
+  left: 0;
   width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: var(--visual-viewport-height, 100dvh);
+  max-height: var(--visual-viewport-height, 100dvh);
 }
 
 .trips-global-header,
@@ -261,17 +270,20 @@ body:has(.planner-map-sheet) {
   }
 
   .planner-map-sheet {
-    height: 100dvh !important;
+    height: var(--visual-viewport-height, 100dvh) !important;
     padding-bottom: env(safe-area-inset-bottom) !important;
   }
 }
 
 .planner-map-sheet {
-  inset: 0 !important;
+  top: var(--visual-viewport-top, 0px) !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: 0 !important;
   width: 100% !important;
-  height: 100dvh !important;
+  height: var(--visual-viewport-height, 100dvh) !important;
   max-width: none !important;
-  max-height: 100dvh !important;
+  max-height: var(--visual-viewport-height, 100dvh) !important;
   border: 0 !important;
   border-radius: 0 !important;
   overscroll-behavior: none !important;
