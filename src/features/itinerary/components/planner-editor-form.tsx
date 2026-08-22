@@ -3,15 +3,18 @@
 import { useCallback, type ComponentProps, type ReactNode, type Ref } from "react";
 
 import { PlannerEditorPage } from "@/features/itinerary/components/planner-editor-screen";
-import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-item-form-actions";
+import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-editor-form-actions";
 import { usePlannerEditorKeyboardScroll } from "@/features/itinerary/components/use-planner-editor-keyboard-scroll";
 
 const enterCommitSelector =
   "button,a,textarea,select,[role='button'],[role='combobox'],[contenteditable='true']";
 
+export type PlannerEditorSaveIntent = "save" | "save-and-create-another";
+
 /** The one form, scrolling, keyboard, field, and action frame used by every planner editor. */
 export function PlannerEditorForm({
   after,
+  alternateSaveLabel,
   backDisabled = false,
   children,
   fieldsRef,
@@ -29,6 +32,7 @@ export function PlannerEditorForm({
   pendingLabel,
 }: {
   after?: ReactNode;
+  alternateSaveLabel?: string;
   backDisabled?: boolean;
   children: ReactNode;
   fieldsRef?: Ref<HTMLDivElement>;
@@ -40,7 +44,7 @@ export function PlannerEditorForm({
   onBack?: () => void;
   onClose: () => void;
   onNext?: () => void;
-  onSave?: () => void | Promise<void>;
+  onSave?: (intent: PlannerEditorSaveIntent) => void | Promise<void>;
   onScrollNode?: (node: HTMLDivElement | null) => void;
   pending: boolean;
   pendingLabel: string;
@@ -90,7 +94,12 @@ export function PlannerEditorForm({
         onSave
           ? (event) => {
               event.preventDefault();
-              if (!pending) void onSave();
+              const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+              const intent =
+                submitter?.dataset.plannerSaveIntent === "save-and-create-another"
+                  ? "save-and-create-another"
+                  : "save";
+              if (!pending) void onSave(intent);
             }
           : undefined
       }
@@ -106,6 +115,7 @@ export function PlannerEditorForm({
               {children}
             </div>
             <PlannerEditorFormActions
+              alternateSaveLabel={alternateSaveLabel}
               backDisabled={backDisabled}
               nextDisabled={nextDisabled}
               onBack={onBack}
