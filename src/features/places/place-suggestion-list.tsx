@@ -1,7 +1,7 @@
 /// <reference types="google.maps" />
 "use client";
 
-import { MapPin } from "lucide-react";
+import { MapPin, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 export type PlaceSuggestion = {
@@ -14,19 +14,21 @@ export type PlaceSuggestion = {
 /** Anchored under the field and scrolled into view, so a modal scroller never clips it. */
 export function PlaceSuggestionList({
   activeIndex,
+  customOption,
   listId,
   onChoose,
   onHighlight,
   suggestions,
 }: {
   activeIndex: number;
+  customOption?: { label: string; onChoose: () => void };
   listId: string;
   onChoose: (suggestion: PlaceSuggestion) => void;
   onHighlight: (index: number) => void;
   suggestions: PlaceSuggestion[];
 }) {
   const listRef = useRef<HTMLUListElement>(null);
-  const count = suggestions.length;
+  const count = suggestions.length + (customOption ? 1 : 0);
 
   useEffect(() => {
     if (count) listRef.current?.scrollIntoView({ block: "nearest" });
@@ -66,6 +68,24 @@ export function PlaceSuggestionList({
           </span>
         </li>
       ))}
+      {customOption ? (
+        <li
+          aria-selected={activeIndex === suggestions.length}
+          className={`flex min-h-11 cursor-pointer items-start gap-2 px-3 py-2 text-left ${
+            activeIndex === suggestions.length ? "bg-accent text-accent-foreground" : ""
+          }`}
+          id={`${listId}-${suggestions.length}`}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            customOption.onChoose();
+          }}
+          onMouseEnter={() => onHighlight(suggestions.length)}
+          role="option"
+        >
+          <Plus aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
+          <span className="min-w-0 break-words text-sm font-medium">{customOption.label}</span>
+        </li>
+      ) : null}
     </ul>
   );
 }

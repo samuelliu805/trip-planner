@@ -17,22 +17,28 @@ import { PlaceSuggestionList, type PlaceSuggestion } from "./place-suggestion-li
  * the whole screen on narrow viewports and its closed shadow root cannot be sized or restyled.
  */
 export function PlaceAutocomplete({
+  ariaDescribedBy,
   ariaLabel,
   autoFocus = false,
+  customValueLabel,
   disabled,
   includedPrimaryTypes,
   initialQuery = "",
   onChange,
+  onCustomValue,
   onSelected,
   placeholder = "Search Google Maps",
   value,
 }: {
+  ariaDescribedBy?: string;
   ariaLabel?: string;
   autoFocus?: boolean;
+  customValueLabel?: string;
   disabled?: boolean;
   includedPrimaryTypes?: string[];
   initialQuery?: string;
   onChange: (place: PlaceSnapshot | null) => void;
+  onCustomValue?: (value: string) => void;
   onSelected?: () => void;
   placeholder?: string;
   value?: PlaceSnapshot | null;
@@ -45,16 +51,23 @@ export function PlaceAutocomplete({
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [optionsDismissed, setOptionsDismissed] = useState(false);
   const [searching, setSearching] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string>();
+  const customQuery = query.trim();
+  const hasCustomOption = Boolean(onCustomValue && customQuery && !optionsDismissed);
+  const customOptionLabel = hasCustomOption
+    ? `Use “${customQuery}” as ${customValueLabel ?? "a custom entry"}`
+    : undefined;
+  const optionCount = suggestions.length + (hasCustomOption ? 1 : 0);
 
   // Serialised so an inline includedPrimaryTypes array cannot restart the search every render.
   const typesKey = includedPrimaryTypes?.length ? includedPrimaryTypes.join(",") : "";
 
   useEffect(() => {
     const input = query.trim();
-    if (!places || !input) return;
+    if (optionsDismissed || !places || !input) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       setSearching(true);
@@ -93,7 +106,7 @@ export function PlaceAutocomplete({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [places, query, typesKey]);
+  }, [optionsDismissed, places, query, typesKey]);
 
   async function choose(suggestion: PlaceSuggestion) {
     if (resolving) return;
@@ -123,6 +136,16 @@ export function PlaceAutocomplete({
     }
   }
 
+  function chooseCustomValue() {
+    if (!onCustomValue || !customQuery || resolving) return;
+    sessionToken.current = null;
+    setSuggestions([]);
+    setActiveIndex(-1);
+    setQuery("");
+    onCustomValue(customQuery);
+    onSelected?.();
+  }
+
   return (
     <div className="planner-place-autocomplete min-w-0 max-w-full space-y-2">
       <div className="relative min-w-0">
@@ -131,34 +154,43 @@ export function PlaceAutocomplete({
           className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         />
         <Input
+          aria-describedby={ariaDescribedBy}
           aria-label={ariaLabel}
           aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
           aria-autocomplete="list"
           aria-controls={listId}
-          aria-expanded={suggestions.length > 0}
+          aria-expanded={optionCount > 0}
           autoComplete="off"
           autoFocus={autoFocus}
           className="pl-9 pr-9"
-          disabled={disabled || !places}
+          disabled={disabled || (!places && !onCustomValue)}
           onChange={(event) => {
             setQuery(event.target.value);
+            setActiveIndex(-1);
+            setOptionsDismissed(false);
             if (!event.target.value.trim()) setSuggestions([]);
           }}
           onKeyDown={(event) => {
-            if (!suggestions.length) return;
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              if (!optionCount) return;
               event.preventDefault();
               setActiveIndex((current) => {
                 const next = current + (event.key === "ArrowDown" ? 1 : -1);
-                return (next + suggestions.length) % suggestions.length;
+                return (next + optionCount) % optionCount;
               });
             }
             if (event.key === "Enter" && activeIndex >= 0) {
               event.preventDefault();
-              void choose(suggestions[activeIndex]);
+              if (activeIndex < suggestions.length) void choose(suggestions[activeIndex]);
+              else chooseCustomValue();
+            } else if (event.key === "Enter" && hasCustomOption) {
+              event.preventDefault();
+              chooseCustomValue();
             }
             if (event.key === "Escape") {
               event.stopPropagation();
+              setActiveIndex(-1);
+              setOptionsDismissed(true);
               setSuggestions([]);
             }
           }}
@@ -176,6 +208,11 @@ export function PlaceAutocomplete({
         ) : null}
         <PlaceSuggestionList
           activeIndex={activeIndex}
+          customOption={
+            customOptionLabel
+              ? { label: customOptionLabel, onChoose: chooseCustomValue }
+              : undefined
+          }
           listId={listId}
           onChoose={choose}
           onHighlight={setActiveIndex}
@@ -211,7 +248,9 @@ export function PlaceAutocomplete({
       ) : null}
       {!places ? (
         <p className="mt-1 text-xs text-muted-foreground">
-          Places search loads when Google Maps is configured.
+          {onCustomValue
+            ? `Google Maps suggestions are unavailable, but you can still add ${customValueLabel ?? "a custom entry"}.`
+            : "Places search loads when Google Maps is configured."}
         </p>
       ) : null}
       {error ? (

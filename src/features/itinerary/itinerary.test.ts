@@ -29,6 +29,7 @@ import {
   selectionContains,
 } from "./grid-interactions.ts";
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
+import { plannerItemTitleAfterPlaceSelection } from "./planner-item-title-autofill.ts";
 import {
   plannerItemFormSteps,
   plannerItemNeedsOrderStep,
@@ -462,14 +463,17 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-editor-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
-    readFile(new URL("./components/planner-item-primary-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-place-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{loading\}/);
-  assert.match(filter, /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/);
+  assert.match(
+    filter,
+    /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/,
+  );
   assert.match(filter, /items-center justify-between/);
   assert.match(filter, /bg-muted\/30/);
   assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
@@ -2346,6 +2350,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   form += await readFile(
+    new URL("./components/planner-item-place-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
   );
@@ -3024,7 +3032,7 @@ test("address and location controls use normalized map places", async () => {
     "utf8",
   );
   form += await readFile(
-    new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
+    new URL("./components/planner-item-place-fields.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
@@ -3338,8 +3346,45 @@ test("the item editor groups every type into short steps and gates required fiel
     "Activity name is required.",
   );
   assert.equal(
+    plannerItemStepError({
+      creating: true,
+      place: null,
+      step: activity[0],
+      title: "",
+      type: "activity",
+    }),
+    "Search for an activity or place, or add a custom activity.",
+  );
+  assert.equal(
     plannerItemStepError({ place: null, step: activity[3], title: "", type: "activity" }),
     undefined,
+  );
+});
+
+test("activity place selection updates only names that are still system-generated", () => {
+  assert.deepEqual(
+    plannerItemTitleAfterPlaceSelection({
+      autoFilledTitle: null,
+      placeTitle: "Louvre Museum",
+      title: "",
+    }),
+    { autoFilledTitle: "Louvre Museum", title: "Louvre Museum" },
+  );
+  assert.deepEqual(
+    plannerItemTitleAfterPlaceSelection({
+      autoFilledTitle: "Louvre Museum",
+      placeTitle: "Musée de l’Orangerie",
+      title: "Louvre Museum",
+    }),
+    { autoFilledTitle: "Musée de l’Orangerie", title: "Musée de l’Orangerie" },
+  );
+  assert.deepEqual(
+    plannerItemTitleAfterPlaceSelection({
+      autoFilledTitle: null,
+      placeTitle: "Louvre Museum",
+      title: "See the Mona Lisa",
+    }),
+    { autoFilledTitle: null, title: "See the Mona Lisa" },
   );
 });
 

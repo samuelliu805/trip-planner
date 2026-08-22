@@ -16,10 +16,12 @@ import {
 import {
   CarActionField,
   CarProviderField,
-  ItemPlaceField,
-  ItemTitleField,
   TransportModeField,
 } from "@/features/itinerary/components/planner-item-primary-fields";
+import {
+  ItemPlaceField,
+  ItemTitleField,
+} from "@/features/itinerary/components/planner-item-place-fields";
 import {
   ItemLinksField,
   ItemNotesField,
@@ -147,6 +149,7 @@ export function PlannerItemStepFields({
             placeLabel={placeLabel}
             setPlace={state.setPlace}
             setTitle={state.setTitle}
+            setTitleFromPlace={state.setTitleFromPlace}
             title={state.title}
             titleRef={titleRef}
             type={type}

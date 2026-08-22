@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { normalizedActionLabel } from "./planner-item-form-config";
 import { itemOrderAnchor } from "../activity-order";
+import { plannerItemTitleAfterPlaceSelection } from "../planner-item-title-autofill";
 import {
   normalizeTransportMode,
   transportModes,
@@ -37,12 +38,15 @@ export function usePlannerItemFormState({
     typeof existingDetails[key] === "string" ? (existingDetails[key] as string) : "";
   const existingOriginPlace = placeSnapshotFromJson(existingDetails.originPlace);
   const existingDestinationPlace = placeSnapshotFromJson(existingDetails.destinationPlace);
-  const [title, setTitle] = useState(
+  const initialTitle =
     item &&
-      ["location", "hotel", "meal"].includes(item.type) &&
-      item.place?.displayName === item.title
+    ["location", "hotel", "meal"].includes(item.type) &&
+    item.place?.displayName === item.title
       ? ""
-      : (item?.title ?? ""),
+      : (item?.title ?? "");
+  const [title, setTitleState] = useState(initialTitle);
+  const [autoFilledTitle, setAutoFilledTitle] = useState<string | null>(() =>
+    item?.place?.displayName === initialTitle ? initialTitle : null,
   );
   const [startTime, setStartTime] = useState(item?.start_time?.slice(0, 5) ?? "");
   const [arrivalTime, setArrivalTime] = useState(
@@ -93,6 +97,17 @@ export function usePlannerItemFormState({
   const [transportMode, setTransportMode] = useState<TransportMode>(
     item?.type === "transport" ? existingTransportMode : (allTransportModes[0] ?? "train"),
   );
+
+  function setTitle(nextTitle: string) {
+    setAutoFilledTitle(null);
+    setTitleState(nextTitle);
+  }
+
+  function setTitleFromPlace(placeTitle: string) {
+    const next = plannerItemTitleAfterPlaceSelection({ autoFilledTitle, placeTitle, title });
+    setAutoFilledTitle(next.autoFilledTitle);
+    setTitleState(next.title);
+  }
 
   // One serialized snapshot answers "has anything changed?" for the exit confirmation.
   const snapshot = JSON.stringify([
@@ -156,6 +171,7 @@ export function usePlannerItemFormState({
     setServiceNumber,
     setStartTime,
     setTitle,
+    setTitleFromPlace,
     setTransportMode,
     startTime,
     title,

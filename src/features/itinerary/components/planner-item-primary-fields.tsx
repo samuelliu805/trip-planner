@@ -13,7 +13,7 @@ import {
   TramFront,
   type LucideIcon,
 } from "lucide-react";
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,15 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PlannerEditorTextField } from "@/features/itinerary/components/planner-editor-fields";
-import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
 import {
   transportModeLabels,
   type CarRentalDetails,
-  type ItineraryItemType,
   type TransportMode,
 } from "@/features/itinerary/types";
-import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 const transportModeIcons: Partial<Record<TransportMode, LucideIcon>> = {
   bike: Bike,
@@ -138,143 +134,6 @@ export function TransportModeField({
           })}
         </SelectContent>
       </Select>
-    </div>
-  );
-}
-
-export function ItemTitleField({
-  copyLabel,
-  copyPlaceholder,
-  creating,
-  fieldId,
-  place,
-  setTitle,
-  title,
-  titleRef,
-  type,
-}: {
-  copyLabel: string;
-  copyPlaceholder: string;
-  creating: boolean;
-  fieldId: string;
-  place: PlaceSnapshot | null;
-  setTitle: Dispatch<SetStateAction<string>>;
-  title: string;
-  titleRef: RefObject<HTMLInputElement | null>;
-  type: ItineraryItemType;
-}) {
-  const named = ["location", "hotel", "meal"].includes(type);
-  const creatingActivity = creating && type === "activity";
-  const displayedNameLabel =
-    type === "location"
-      ? "Displayed city name"
-      : type === "hotel"
-        ? "Displayed hotel name"
-        : "Displayed meal name";
-  const description = creatingActivity
-    ? "Choose a location first and we’ll fill the activity name automatically. You can still edit it."
-    : named
-      ? place
-        ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
-        : type === "hotel"
-          ? "Use this when an exact map location is unavailable."
-          : type === "meal"
-            ? "Use this when an exact restaurant location is unavailable."
-            : "Choose a city location above."
-      : undefined;
-
-  return (
-    <PlannerEditorTextField
-      description={description}
-      focusRegion="title"
-      id={`item-title-${fieldId}-${type}`}
-      inputRef={titleRef}
-      label={
-        creatingActivity ? (
-          <>
-            Activity name <span className="text-destructive">*</span>
-          </>
-        ) : named ? (
-          <>
-            {displayedNameLabel}{" "}
-            <span className="font-normal text-muted-foreground">
-              {type !== "location" && !place ? "required without a location" : "optional"}
-            </span>
-          </>
-        ) : (
-          copyLabel
-        )
-      }
-      onChange={(event) => setTitle(event.target.value)}
-      placeholder={
-        named
-          ? (place?.displayName ??
-            `Enter a ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"} name`)
-          : copyPlaceholder
-      }
-      value={title}
-    />
-  );
-}
-
-export function ItemPlaceField({
-  creating,
-  pending,
-  place,
-  placeLabel,
-  setPlace,
-  setTitle,
-  title,
-  titleRef,
-  type,
-}: {
-  creating: boolean;
-  pending: boolean;
-  place: PlaceSnapshot | null;
-  placeLabel: string;
-  setPlace: Dispatch<SetStateAction<PlaceSnapshot | null>>;
-  setTitle: Dispatch<SetStateAction<string>>;
-  title: string;
-  titleRef: RefObject<HTMLInputElement | null>;
-  type: ItineraryItemType;
-}) {
-  return (
-    <div className="space-y-2" data-planner-focus-region="place">
-      <Label>
-        {placeLabel}{" "}
-        {type === "location" ? (
-          <span className="text-destructive">*</span>
-        ) : type === "hotel" || type === "meal" ? (
-          <span className="font-normal text-muted-foreground">
-            optional if a {type === "hotel" ? "displayed hotel" : "meal"} name is provided
-          </span>
-        ) : type !== "activity" || !creating ? (
-          <span className="font-normal text-muted-foreground">optional</span>
-        ) : null}
-      </Label>
-      <PlaceAutocomplete
-        disabled={pending}
-        onChange={(nextPlace) => {
-          setPlace(nextPlace);
-          if (!nextPlace) return;
-          if (
-            !title.trim() &&
-            type !== "location" &&
-            type !== "hotel" &&
-            type !== "meal" &&
-            type !== "car_rental" &&
-            type !== "transport"
-          )
-            setTitle(nextPlace.displayName);
-        }}
-        onSelected={() => {
-          // On touch keyboards, keeping focus in search avoids a second native viewport jump after
-          // the selected-place card mounts. Desktop users can continue directly into the title.
-          if (navigator.maxTouchPoints > 0) return;
-          requestAnimationFrame(() => titleRef.current?.focus());
-        }}
-        value={place}
-      />
     </div>
   );
 }
