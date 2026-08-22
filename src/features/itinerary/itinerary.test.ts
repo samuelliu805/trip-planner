@@ -3383,10 +3383,11 @@ test("full-screen surfaces follow the visual viewport instead of the layout view
     vars,
     /setProperty\("--visual-viewport-top", `\$\{Math\.round\(viewport\.offsetTop\)\}px`\)/,
   );
-  assert.match(
-    vars,
-    /setProperty\("--visual-viewport-height", `\$\{Math\.round\(viewport\.height\)\}px`\)/,
-  );
+  assert.match(vars, /setProperty\("--visual-viewport-height", `\$\{Math\.round\(height\)\}px`\)/);
+  // A shortfall smaller than a keyboard is a stale report, and following it stands the surface
+  // short of the screen — which is the strip of blank page under the table.
+  assert.match(vars, /keyboard >= keyboardMinimumPx \? viewport\.height : window\.innerHeight/);
+  assert.match(vars, /keyboardMinimumPx = 120/);
   assert.match(vars, /addEventListener\("scroll", schedule\)/);
   // A height of 0 would collapse every surface that follows it; a zoom must not be followed either.
   assert.match(vars, /viewport\.scale > zoomTolerance \|\| viewport\.height <= 0/);

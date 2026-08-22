@@ -4,6 +4,8 @@ import { useEffect } from "react";
 
 /** A pinch zoom shrinks the visual viewport too, and must never be mistaken for a keyboard. */
 const zoomTolerance = 1.01;
+/** Under this there is no keyboard, and a viewport still reporting less than the window is stale. */
+const keyboardMinimumPx = 120;
 
 /**
  * Publishes the band the traveller can actually see as CSS variables, so a full-screen surface can
@@ -39,8 +41,13 @@ export function VisualViewportVars() {
         clear();
         return;
       }
+      // Only a keyboard-sized shortfall is worth following. iPadOS also leaves the viewport
+      // reporting a sliver less than the window once its keyboard is gone, and a surface that
+      // believed that stood short of the screen — the strip of blank page under the table.
+      const keyboard = Math.max(0, window.innerHeight - viewport.height);
+      const height = keyboard >= keyboardMinimumPx ? viewport.height : window.innerHeight;
       root.style.setProperty("--visual-viewport-top", `${Math.round(viewport.offsetTop)}px`);
-      root.style.setProperty("--visual-viewport-height", `${Math.round(viewport.height)}px`);
+      root.style.setProperty("--visual-viewport-height", `${Math.round(height)}px`);
     };
 
     // The pan and the keyboard animation both fire in bursts; one write per frame is enough.
