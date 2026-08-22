@@ -34,24 +34,32 @@ function DeleteAction() {
 
 export function DeleteTripDialog({
   activeSharePageCount,
+  onOpenChange,
+  open,
+  renderTrigger = true,
   title,
   tripId,
 }: {
-  activeSharePageCount: number;
+  activeSharePageCount: number | null;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+  renderTrigger?: boolean;
   title: string;
   tripId: string;
 }) {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          <Trash2 aria-hidden="true" className="size-4" /> Delete Trip
-        </Button>
-      </AlertDialogTrigger>
+    <AlertDialog onOpenChange={onOpenChange} open={open}>
+      {renderTrigger ? (
+        <AlertDialogTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 aria-hidden="true" className="size-4" /> Delete Trip
+          </Button>
+        </AlertDialogTrigger>
+      ) : null}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="text-xl font-semibold">Delete “{title}”?</AlertDialogTitle>

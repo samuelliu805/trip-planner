@@ -38,6 +38,20 @@ import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import {
+  defaultTripCurrency,
+  defaultTripDayCount,
+  defaultTripTitle,
+  isDefaultTripTitle,
+  tripDateInZone,
+  tripTitleFromPlace,
+} from "../trips/create-defaults.ts";
+import { sanitizeTripDayCountInput, settleTripDateFields } from "../trips/date-fields.ts";
+import {
+  resolveTripStatusFilter,
+  tripStatusFilterLabels,
+  tripStatusToggle,
+} from "../trips/status.ts";
+import {
   buildOverviewRouteLines,
   deriveOverviewStages,
   isOverviewRouteLeg,
@@ -355,6 +369,88 @@ test("Phase 5A migration owns atomic lifecycle, isolation, primary, and grant co
   assert.match(migration, /revoke insert, update, delete[\s\S]*trip_days from anon, authenticated/);
 });
 
+test("trip creation uses the old branch defaults and opens the planner directly", async () => {
+  const [actions, createButton, migration] = await Promise.all([
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/create-trip-button.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../../../supabase/migrations/20260821120000_trip_open_done_status.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+
+  assert.equal(defaultTripCurrency, "USD");
+  assert.equal(defaultTripDayCount, 1);
+  const created = new Date("2026-08-22T05:30:00Z");
+  assert.equal(tripDateInZone("Asia/Shanghai", created), "2026-08-22");
+  assert.equal(tripDateInZone("America/Los_Angeles", created), "2026-08-21");
+  assert.equal(defaultTripTitle("2026-08-21"), "New trip 2026-08-21");
+  assert.equal(isDefaultTripTitle("New trip 2026-08-21"), true);
+  assert.equal(isDefaultTripTitle("Kyoto"), false);
+  assert.equal(
+    tripTitleFromPlace({ displayName: "Fushimi Inari Taisha", localityName: "Kyoto" }),
+    "Kyoto",
+  );
+
+  assert.match(createButton, /<form action=\{action\}/);
+  assert.doesNotMatch(createButton, /Dialog|TripForm|href="\/trips\/new"/);
+  assert.match(actions, /trip_title: defaultTripTitle\(today\)/);
+  assert.match(actions, /redirect\(`\/trips\/\$\{data\}`\)/);
+  assert.match(migration, /status text not null default 'open'/);
+});
+
+test("trip filters, date settlement, and lifecycle toggles stay deterministic", () => {
+  assert.deepEqual(tripStatusFilterLabels, {
+    all: "All",
+    done: "Completed",
+    open: "Active",
+  });
+  assert.equal(resolveTripStatusFilter(undefined), "open");
+  assert.equal(resolveTripStatusFilter("all"), "all");
+  assert.equal(resolveTripStatusFilter("invalid"), "open");
+  assert.deepEqual(tripStatusToggle("open"), { label: "Mark complete", next: "done" });
+  assert.deepEqual(tripStatusToggle("done"), { label: "Move to Active", next: "open" });
+
+  assert.deepEqual(
+    settleTripDateFields({ dayCount: "5", endDate: "", startDate: "2026-08-20" }, "startDate"),
+    { dayCount: "5", endDate: "2026-08-24", startDate: "2026-08-20" },
+  );
+  assert.deepEqual(
+    settleTripDateFields(
+      { dayCount: "", endDate: "2026-08-25", startDate: "2026-08-20" },
+      "endDate",
+    ),
+    { dayCount: "6", endDate: "2026-08-25", startDate: "2026-08-20" },
+  );
+  assert.equal(sanitizeTripDayCountInput("days: 005"), "5");
+});
+
+test("trip cards expose loading filters, deletion, and the shared settings editor", async () => {
+  const [card, editor, filter, form] = await Promise.all([
+    readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-editor-screen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-status-filter.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(filter, /useTransition\(\)/);
+  assert.match(filter, /aria-busy=\{pending\}/);
+  assert.match(filter, /Loading \{tripStatusFilterLabels\[displayedActive\]\} trips/);
+  assert.match(card, /<TripEditorScreen/);
+  assert.match(card, /<DeleteTripDialog/);
+  assert.match(card, /countActiveSharePages\(trip\.id\)/);
+  assert.match(editor, /planner-item-dialog trip-editor-dialog/);
+  assert.match(form, /useActionState\(updateTrip, \{\}\)/);
+  assert.match(form, />Trip name</);
+  assert.match(form, />Duration \(days\)</);
+  assert.equal(form.match(/planner-native-datetime-input/g)?.length, 2);
+  assert.match(form, />Currency</);
+  assert.doesNotMatch(form, /Timezone|Previous|Next|planner-item-step/);
+});
+
 test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-aware", async () => {
   const page = await readFile(
     new URL("../../app/trips/[tripId]/page.tsx", import.meta.url),
@@ -424,6 +520,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   );
   const itineraryActions = await readItineraryItemActions();
   const tripsPage = await readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8");
+  const tripCard = await readFile(
+    new URL("../trips/components/trip-card.tsx", import.meta.url),
+    "utf8",
+  );
   const tripsData = await readFile(new URL("../trips/data.ts", import.meta.url), "utf8");
 
   assert.match(page, /resolveActiveVariant\(variantsResult\.data, query\.variant\)/);
@@ -464,10 +564,11 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   );
   assert.match(tripsData, /route_variants\(id, name, color, is_primary\)/);
   assert.match(tripsData, /\.eq\("route_variants\.is_primary", true\)/);
-  assert.match(tripsPage, /primaryVariant\.name/);
-  assert.match(tripsPage, /backgroundColor: primaryVariant\.color/);
-  assert.match(tripsPage, /\?share=1/);
-  assert.match(tripsPage, /\?settings=1/);
+  assert.match(tripCard, /primary\.name/);
+  assert.match(tripCard, /backgroundColor: primary\.color/);
+  assert.match(tripCard, /\?share=1/);
+  assert.match(tripCard, /<TripEditorScreen/);
+  assert.doesNotMatch(tripCard, /\?settings=1/);
   assert.match(page, /initialOpen=\{query\.share === "1"\}/);
   assert.match(page, /initialSettingsOpen=\{query\.settings === "1"\}/);
   assert.doesNotMatch(tripsPage, />\s*Route A\s*</);
@@ -2199,6 +2300,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/use-planner-editor-keyboard-scroll.ts", import.meta.url),
     "utf8",
   );
+  const editorViewportLock = await readFile(
+    new URL("./components/use-planner-editor-viewport-lock.ts", import.meta.url),
+    "utf8",
+  );
   const styles = await readAppStyles();
   const queries = await readItineraryQueryModules();
   assert.match(workspace, /Arrange Activities/);
@@ -2273,11 +2378,13 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(
     styles,
-    /planner-item-dialog[\s\S]*height: 100lvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
+    /planner-item-dialog[\s\S]*height: 100dvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
   );
+  assert.doesNotMatch(styles, /\.planner-item-dialog \{[\s\S]*?100(?:l)?vh/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
-  assert.match(editorDialog, /planner-editor-viewport-locked/);
+  assert.match(editorDialog, /usePlannerEditorViewportLock\(editorOpen\)/);
+  assert.match(editorViewportLock, /planner-editor-viewport-locked/);
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);

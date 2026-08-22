@@ -242,22 +242,22 @@ export function PlannerItemForm({
         void save();
       }}
     >
+      <PlannerItemFormHeader
+        activeStep={activeStep}
+        closeDisabled={itemMutationPending}
+        editing={Boolean(item)}
+        error={stepError ?? mutationError?.message}
+        label={copy.label}
+        onClose={requestExit}
+        onStepSelect={goToStep}
+        stepIndex={stepIndex}
+        steps={steps}
+      />
       <div
         className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain"
         data-planner-editor-scroll=""
         ref={setEditorScrollNode}
       >
-        <PlannerItemFormHeader
-          activeStep={activeStep}
-          closeDisabled={itemMutationPending}
-          editing={Boolean(item)}
-          error={stepError ?? mutationError?.message}
-          label={copy.label}
-          onClose={requestExit}
-          onStepSelect={goToStep}
-          stepIndex={stepIndex}
-          steps={steps}
-        />
         <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
           <div className="planner-item-form-card">
             <div className="planner-item-form-fields" ref={motionSurfaceRef}>
