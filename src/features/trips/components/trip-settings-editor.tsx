@@ -9,6 +9,7 @@ import {
   PlannerEditorPage,
   PlannerEditorScreen,
 } from "@/features/itinerary/components/planner-editor-screen";
+import { usePlannerEditorKeyboardScroll } from "@/features/itinerary/components/use-planner-editor-keyboard-scroll";
 
 function TripSettingsHeader({
   description,
@@ -42,6 +43,31 @@ function TripSettingsHeader({
   );
 }
 
+function TripSettingsPage({
+  children,
+  description,
+  onClose,
+  title,
+}: {
+  children: ReactNode;
+  description: string;
+  onClose: () => void;
+  title: string;
+}) {
+  const editorScrollRef = usePlannerEditorKeyboardScroll();
+
+  return (
+    <PlannerEditorPage
+      header={<TripSettingsHeader description={description} onClose={onClose} title={title} />}
+      scrollRef={editorScrollRef}
+    >
+      <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
+        <div className="planner-item-form-card">{children}</div>
+      </div>
+    </PlannerEditorPage>
+  );
+}
+
 /** Trip settings provide different fields inside the exact editor screen and page used by cells. */
 export function TripSettingsEditor({
   children,
@@ -58,19 +84,9 @@ export function TripSettingsEditor({
 }) {
   return (
     <PlannerEditorScreen onOpenChange={onOpenChange} open={open}>
-      <PlannerEditorPage
-        header={
-          <TripSettingsHeader
-            description={description}
-            onClose={() => onOpenChange(false)}
-            title={title}
-          />
-        }
-      >
-        <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
-          <div className="planner-item-form-card">{children}</div>
-        </div>
-      </PlannerEditorPage>
+      <TripSettingsPage description={description} onClose={() => onOpenChange(false)} title={title}>
+        {children}
+      </TripSettingsPage>
     </PlannerEditorScreen>
   );
 }

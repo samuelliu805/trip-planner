@@ -20,6 +20,7 @@ import { useAttachmentEditSession } from "@/features/itinerary/components/use-at
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
+import { usePlannerEditorKeyboardScroll } from "@/features/itinerary/components/use-planner-editor-keyboard-scroll";
 import {
   useCreateItineraryItem,
   useUpdateItineraryItem,
@@ -148,11 +149,13 @@ export function PlannerItemForm({
   const { gestureSurfaceRef, motionSurfaceRef } = usePlannerItemStepSwipe((offset) =>
     moveStep(offset),
   );
+  const editorScrollRef = usePlannerEditorKeyboardScroll();
   const setEditorScrollNode = useCallback(
     (node: HTMLDivElement | null) => {
+      editorScrollRef.current = node;
       gestureSurfaceRef.current = node;
     },
-    [gestureSurfaceRef],
+    [editorScrollRef, gestureSurfaceRef],
   );
 
   useEffect(() => {
@@ -241,6 +244,7 @@ export function PlannerItemForm({
       }}
     >
       <PlannerEditorPage
+        headerScrolls
         header={
           <PlannerItemFormHeader
             activeStep={activeStep}
@@ -254,7 +258,7 @@ export function PlannerItemForm({
             steps={steps}
           />
         }
-        onScrollNode={setEditorScrollNode}
+        scrollRef={setEditorScrollNode}
       >
         <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
           <div className="planner-item-form-card">

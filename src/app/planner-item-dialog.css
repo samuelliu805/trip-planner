@@ -17,6 +17,13 @@
   touch-action: pan-y;
 }
 
+/* Match the current production itinerary-item viewport without changing trip settings. */
+.planner-item-dialog-production-item {
+  height: 100vh !important;
+  height: 100lvh !important;
+  max-height: none !important;
+}
+
 html.planner-editor-viewport-locked,
 body.planner-editor-viewport-locked {
   position: fixed !important;

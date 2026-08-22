@@ -462,13 +462,16 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
-  assert.match(editor, /className="planner-item-dialog p-0"/);
+  assert.match(editor, /planner-item-dialog-production-item/);
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editor, /data-planner-editor-scroll/);
-  assert.match(itemDialog, /<PlannerEditorScreen/);
-  assert.match(itemForm, /<PlannerEditorPage/);
+  assert.match(itemDialog, /itemViewportMatchesProduction/);
+  assert.match(itemForm, /<PlannerEditorPage[\s\S]*headerScrolls/);
+  assert.match(itemForm, /usePlannerEditorKeyboardScroll\(\)/);
   assert.match(settingsEditor, /<PlannerEditorScreen/);
   assert.match(settingsEditor, /<PlannerEditorPage/);
+  assert.match(settingsEditor, /usePlannerEditorKeyboardScroll\(\)/);
+  assert.doesNotMatch(settingsEditor, /headerScrolls|itemViewportMatchesProduction/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
   assert.match(form, />Trip name</);
   assert.match(form, />Duration \(days\)</);
@@ -2410,7 +2413,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     styles,
     /planner-item-dialog[\s\S]*height: 100dvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
   );
-  assert.doesNotMatch(styles, /\.planner-item-dialog \{[\s\S]*?100(?:l)?vh/);
+  assert.match(
+    styles,
+    /\.planner-item-dialog-production-item \{[\s\S]*height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/,
+  );
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /<PlannerEditorScreen/);
