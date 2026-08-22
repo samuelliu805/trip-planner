@@ -57,13 +57,17 @@ export function VisualViewportVars() {
     };
 
     publish();
+    // A first reading can arrive before the viewport reports anything usable; the window's own
+    // resize is the cheapest way back from that without polling.
     viewport.addEventListener("resize", schedule);
     viewport.addEventListener("scroll", schedule);
+    window.addEventListener("resize", schedule);
     window.addEventListener("orientationchange", schedule);
     return () => {
       cancelAnimationFrame(frame);
       viewport.removeEventListener("resize", schedule);
       viewport.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
       window.removeEventListener("orientationchange", schedule);
       clear();
     };
