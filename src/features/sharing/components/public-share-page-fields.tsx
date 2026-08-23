@@ -18,10 +18,7 @@ export function PublicSharePageFields({
   suggestedTitle: string;
 }) {
   return (
-    <ShareSettingSection
-      description="Choose the first view visitors land on and the text that introduces the page."
-      title="Landing view and text"
-    >
+    <ShareSettingSection title="Landing view and text">
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">Opens on</legend>
         <div className="grid grid-cols-3 border">
@@ -39,7 +36,7 @@ export function PublicSharePageFields({
         </div>
       </fieldset>
 
-      <div className="space-y-3 border-t pt-4">
+      <div className="space-y-3">
         <p className="text-sm font-medium">
           Shareable page text <span className="font-normal text-muted-foreground">(optional)</span>
         </p>

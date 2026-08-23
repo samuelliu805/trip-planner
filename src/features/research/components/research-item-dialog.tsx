@@ -52,6 +52,7 @@ export function ResearchItemDialog({
         </Button>
       )}
       <PlannerEditorScreen
+        editorKind="research"
         onOpenChange={(nextOpen) => !nextOpen && closeRequest.current()}
         open={open}
       >

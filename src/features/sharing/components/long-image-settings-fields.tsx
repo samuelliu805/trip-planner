@@ -21,10 +21,7 @@ export function LongImageSettingsFields({
   sharePages: PublicItineraryLink[];
 }) {
   return (
-    <ShareSettingSection
-      description="Choose where the QR code on generated trip images opens."
-      title="Image QR code"
-    >
+    <ShareSettingSection title="Image QR code">
       <div className="min-w-0 space-y-1.5">
         <Label htmlFor="long-image-qr-destination">QR code opens</Label>
         <Select
@@ -56,9 +53,6 @@ export function LongImageSettingsFields({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Each permanent image keeps the QR destination used when it was first generated.
-        </p>
       </div>
     </ShareSettingSection>
   );

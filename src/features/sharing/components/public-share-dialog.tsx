@@ -165,7 +165,7 @@ export function PublicShareDialog({
         </div>
         <DialogHeader className="shrink-0">
           <DialogTitle>Share trip</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="sr-only">
             Pick a route and a style to publish. Advanced settings stay optional.
           </DialogDescription>
         </DialogHeader>

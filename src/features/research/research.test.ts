@@ -13,7 +13,7 @@ import {
   sortResearchItems,
 } from "./money.ts";
 import { parseEcbReferenceRates } from "./exchange-rate-parser.ts";
-import { addIsoDateDays } from "./date-range.ts";
+import { addIsoDateDays, firstPresentIsoDate } from "./date-range.ts";
 import { rentalReturnsToPickup } from "./rental-return.ts";
 import { deriveOptionImpact } from "./option-impact.ts";
 import {
@@ -125,12 +125,11 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
   );
 });
 
-test("research editors keep optional schedules off the first page and price first on page two", () => {
+test("all research editors use two pages with scheduling first and price on Details", () => {
   assert.deepEqual(
     researchItemFormSteps("flight").map(({ id, title }) => [id, title]),
     [
       ["primary", "Flight"],
-      ["schedule", "Price & time"],
       ["details", "Details"],
     ],
   );
@@ -143,10 +142,17 @@ test("research editors keep optional schedules off the first page and price firs
   );
   assert.equal(researchItemFormSteps("stay")[0].title, "Hotel");
   assert.equal(researchItemFormSteps("rental")[0].title, "Rental car");
-  assert.equal(researchItemPriceStep("flight"), "schedule");
-  assert.equal(researchItemPriceStep("train"), "schedule");
-  assert.equal(researchItemPriceStep("rental"), "schedule");
+  assert.equal(researchItemFormSteps("train").length, 2);
+  assert.equal(researchItemFormSteps("rental").length, 2);
+  assert.equal(researchItemPriceStep("flight"), "details");
+  assert.equal(researchItemPriceStep("train"), "details");
+  assert.equal(researchItemPriceStep("rental"), "details");
   assert.equal(researchItemPriceStep("stay"), "details");
+});
+
+test("route-only journey drafts normalize blank dates before ISO validation", () => {
+  assert.equal(firstPresentIsoDate("", undefined, null), null);
+  assert.equal(firstPresentIsoDate("", "2026-10-04"), "2026-10-04");
 });
 
 test("each journey segment keeps its own carrier", () => {
@@ -852,6 +858,7 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
     segmentDetails,
     commonFields,
     dateRange,
+    editorStyles,
     actions,
     migration,
   ] = await Promise.all([
@@ -871,6 +878,7 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
     readFile(new URL("./components/research-segment-detail-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/research-item-common-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/date-range-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../app/planner-item-dialog.css", import.meta.url), "utf8"),
     readFile(new URL("./components/research-plan-actions.tsx", import.meta.url), "utf8"),
     readFile(
       new URL(
@@ -892,6 +900,7 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.match(fields, /name="returnToPickup"/);
   assert.match(values, /returnToPickup[\s\S]*originPlaceId[\s\S]*destinationPlaceId/);
   assert.match(dialog, /<PlannerEditorScreen/);
+  assert.match(dialog, /editorKind="research"/);
   assert.match(form, /<PlannerEditorForm/);
   assert.match(form, /<PlannerEditorHeader/);
   assert.match(form, /<PlannerItemStepNav/);
@@ -899,12 +908,19 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.doesNotMatch(journey + multiCity + commonFields, /<details|Add times \(optional\)/);
   assert.match(schedule, /label="Departure"[\s\S]*label="Arrival"/);
   assert.match(schedule, /planner-editor-compound-field/);
-  assert.match(segmentDetails, /label="Airline & flight number"/);
-  assert.match(segmentDetails, /aria-label="Airline"/);
-  assert.match(segmentDetails, /aria-label="Flight number"/);
+  assert.match(journey, /Airline & flight number/);
+  assert.match(segmentDetails, /placeholder="Airline"/);
+  assert.match(segmentDetails, /placeholder="Flight number"/);
+  assert.doesNotMatch(segmentDetails, /operating airline|rounded-xl border/);
   assert.doesNotMatch(journey, /Flight \{index \+ 1\}/);
   assert.match(dateRange, /showPicker/);
   assert.match(dateRange, /openDatePicker\(endRef\.current\)/);
+  assert.match(editorStyles, /data-editor-kind="research"[\s\S]*height: 100dvh !important/);
+  assert.match(editorStyles, /data-editor-kind="research"[\s\S]*position: sticky/);
+  assert.match(
+    editorStyles,
+    /data-editor-kind="research"[\s\S]*4rem \+ env\(safe-area-inset-bottom\)/,
+  );
   assert.doesNotMatch(actions, /clearResearchSelection|Remove selection|<X/);
   assert.match(planMenu, /sourceItem=\{researchSourceItem\}/);
   assert.match(migration, /alter column source_research_item_id drop not null/);

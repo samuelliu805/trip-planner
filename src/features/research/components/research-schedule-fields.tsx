@@ -74,19 +74,19 @@ export function ResearchSegmentScheduleFields({
   }
 
   return (
-    <section className="min-w-0 space-y-4" aria-label="Departure and arrival">
+    <section className="min-w-0 space-y-6" aria-label="Departure and arrival">
       {segments.map((segment, index) => {
         const route =
           segment.origin || segment.destination
             ? `${segment.origin || "From"} → ${segment.destination || "To"}`
             : `${category === "flight" ? "Flight" : "Train"} ${index + 1}`;
         return (
-          <fieldset
-            className="min-w-0 space-y-4 rounded-xl border p-4"
+          <div
+            className="min-w-0 space-y-3"
             key={`${index}-${segment.origin}-${segment.destination}`}
           >
             {segments.length > 1 ? (
-              <legend className="max-w-full truncate px-1 text-sm font-semibold">{route}</legend>
+              <p className="max-w-full truncate text-sm font-semibold">{route}</p>
             ) : null}
             <div className="grid min-w-0 gap-4 sm:grid-cols-2">
               <ResearchDateTimeField
@@ -105,7 +105,7 @@ export function ResearchSegmentScheduleFields({
                 time={segment.arrivalTime ?? ""}
               />
             </div>
-          </fieldset>
+          </div>
         );
       })}
     </section>

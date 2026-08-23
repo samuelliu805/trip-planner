@@ -3,6 +3,7 @@ import type { z } from "zod";
 import { placeSnapshotSchema } from "@/features/itinerary/item-schema";
 
 import { parseResearchLinks } from "./links";
+import { firstPresentIsoDate } from "./date-range";
 import type { ResearchCategory, ResearchItem } from "./types";
 
 type GooglePlaceSnapshot = z.input<typeof placeSnapshotSchema>;
@@ -67,6 +68,11 @@ export function researchItemInputFromForm({
   );
   const firstSegment = rawSegments[0];
   const lastSegment = rawSegments.at(-1);
+  const firstDepartureDate = firstPresentIsoDate(
+    firstSegment?.departureDate,
+    optional(form, "startDate"),
+  );
+  const lastJourneyDate = firstPresentIsoDate(lastSegment?.arrivalDate, lastSegment?.departureDate);
   const journeyType = optional(form, "journeyType") as
     "one_way" | "round_trip" | "multi_city" | null;
   const originText = firstSegment?.origin ?? optional(form, "originText");
@@ -99,7 +105,7 @@ export function researchItemInputFromForm({
     destinationText,
     endDate:
       journeyType && journeyType !== "one_way" && rawSegments.length >= 2
-        ? (lastSegment?.arrivalDate ?? lastSegment?.departureDate ?? null)
+        ? lastJourneyDate
         : optional(form, "endDate"),
     endTime: firstSegment?.arrivalTime ?? optional(form, "endTime"),
     itemId: item?.itinerary_item_id ?? context?.itemId,
@@ -114,7 +120,7 @@ export function researchItemInputFromForm({
     originText,
     segments,
     sourceUrl: optional(form, "sourceUrl"),
-    startDate: firstSegment?.departureDate ?? optional(form, "startDate"),
+    startDate: firstDepartureDate,
     startTime: firstSegment?.departureTime ?? optional(form, "startTime"),
     title: optional(form, "title") ?? automaticTitle,
     totalPriceAmount: hasPrice ? Number(price) : null,

@@ -40,6 +40,10 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
   background: var(--muted);
 }
 
+.planner-item-dialog[data-editor-kind="research"] {
+  height: 100dvh !important;
+}
+
 .planner-item-dialog [data-planner-editor-scroll] {
   width: 100%;
   max-width: 100%;
@@ -60,6 +64,20 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
 .planner-item-dialog .planner-item-form-header-inner {
   width: min(52rem, 100%);
   margin-inline: auto;
+}
+
+.planner-item-dialog[data-editor-kind="research"] .planner-item-form-header {
+  position: sticky;
+  z-index: 20;
+  top: 0;
+  border-bottom-width: 0;
+}
+
+.planner-item-dialog[data-editor-kind="research"]
+  [data-research-item-fields]
+  section[aria-labelledby="attachments-heading"] {
+  padding-top: 0;
+  border-top-width: 0;
 }
 
 .planner-item-dialog .planner-item-form-content {
@@ -205,6 +223,12 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
 }
 
 @media (max-width: 639px) {
+  .planner-item-dialog[data-editor-kind="research"] .planner-item-form-content {
+    padding-bottom: calc(
+      4rem + env(safe-area-inset-bottom) + var(--planner-editor-keyboard-space, 0px)
+    );
+  }
+
   .planner-item-dialog[data-editor-kind="trip-settings"] {
     height: 100dvh !important;
   }

@@ -145,20 +145,25 @@ export function ResearchJourneyDetailFields({
   }
 
   return (
-    <section className="min-w-0 space-y-3" aria-label="Carrier and service details">
-      {segments.map((segment, index) => (
-        <ResearchSegmentDetailFields
-          category={category}
-          key={index}
-          label={
-            segments.length > 1
-              ? `${segment.origin || "Segment"} → ${segment.destination || index + 1}`
-              : undefined
-          }
-          onChange={(values) => update(index, values)}
-          segment={segment}
-        />
-      ))}
+    <section className="min-w-0 space-y-4" aria-label="Carrier and service details">
+      <h3 className="text-base font-bold">
+        {category === "flight" ? "Airline & flight number" : "Train number"}
+      </h3>
+      <div className="min-w-0 space-y-5">
+        {segments.map((segment, index) => (
+          <ResearchSegmentDetailFields
+            category={category}
+            key={index}
+            label={
+              segments.length > 1
+                ? `${segment.origin || "Segment"} → ${segment.destination || index + 1}`
+                : undefined
+            }
+            onChange={(values) => update(index, values)}
+            segment={segment}
+          />
+        ))}
+      </div>
     </section>
   );
 }

@@ -90,7 +90,7 @@ function RentalFieldPages({
             />
           ) : null}
         </div>
-        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center gap-3 px-1 text-sm">
           <Checkbox
             checked={returnToPickup}
             onCheckedChange={(checked) => setReturnToPickup(checked === true)}
@@ -101,7 +101,7 @@ function RentalFieldPages({
       <section
         aria-label="Pick-up and return"
         className="grid min-w-0 gap-4 sm:grid-cols-2"
-        hidden={activeStepId !== "schedule"}
+        hidden={activeStepId !== "primary"}
       >
         <ResearchDateTimeField
           date={startDate}
@@ -161,7 +161,11 @@ function JourneyFieldPages({
         value={category === "flight" ? journeyType : "one_way"}
       />
       <input name="segments" type="hidden" value={JSON.stringify(segments)} />
-      <div data-research-journey-page="primary" hidden={activeStepId !== "primary"}>
+      <div
+        className="min-w-0 space-y-6"
+        data-research-journey-page="primary"
+        hidden={activeStepId !== "primary"}
+      >
         <ResearchJourneyFields
           category={category}
           initialDestinationPlace={item?.destination_place}
@@ -173,13 +177,13 @@ function JourneyFieldPages({
           onSegmentsChange={setSegments}
           segments={segments}
         />
-      </div>
-      <div data-research-journey-page="schedule" hidden={activeStepId !== "schedule"}>
-        <ResearchSegmentScheduleFields
-          category={category}
-          onSegmentsChange={setSegments}
-          segments={segments}
-        />
+        {journeyType !== "multi_city" ? (
+          <ResearchSegmentScheduleFields
+            category={category}
+            onSegmentsChange={setSegments}
+            segments={segments}
+          />
+        ) : null}
       </div>
       <div data-research-journey-page="details" hidden={activeStepId !== "details"}>
         <ResearchJourneyDetailFields
@@ -208,7 +212,7 @@ export function ResearchItemFields({
   const priceStep = researchItemPriceStep(category);
   const journey = category === "flight" || category === "train";
   return (
-    <div className="min-w-0 space-y-8">
+    <div className="min-w-0 space-y-8" data-research-item-fields="">
       <div className="min-w-0" hidden={activeStepId !== priceStep}>
         <section className="min-w-0 space-y-3" aria-label="Price">
           <ResearchPriceFields defaultCurrency={defaultCurrency} item={item} />
