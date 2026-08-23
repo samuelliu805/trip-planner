@@ -469,7 +469,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{loading\}/);
-  assert.match(filter, /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/);
+  assert.match(
+    filter,
+    /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/,
+  );
   assert.match(filter, /items-center justify-between/);
   assert.match(filter, /bg-muted\/30/);
   assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
