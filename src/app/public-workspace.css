@@ -12,6 +12,7 @@
 @import "../features/sharing/templates/builtins/neon/index.css";
 @import "../features/sharing/templates/builtins/traverse/index.css";
 @import "./public-workspace-tablet.css";
+@import "./public-sharing-content-safety.css";
 
 html:has(.public-itinerary-shell),
 body:has(.public-itinerary-shell) {

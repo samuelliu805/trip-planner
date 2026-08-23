@@ -82,6 +82,23 @@
     inset 0 0 0 1px rgb(85 247 161 / 52%);
 }
 
+.public-template-neon .overview-item-card-v4.activity.has-media {
+  border-color: transparent;
+  background:
+    linear-gradient(135deg, rgb(8 14 30 / 97%), rgb(15 13 31 / 94%)) padding-box,
+    linear-gradient(
+        120deg,
+        rgb(66 221 255 / 92%),
+        rgb(102 151 255 / 68%) 48%,
+        rgb(251 67 228 / 88%)
+      )
+      border-box;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 4%),
+    0 0 26px rgb(41 204 255 / 13%),
+    0 0 30px rgb(251 67 228 / 8%);
+}
+
 .public-template-neon .overview-item-icon-v4,
 .public-template-neon .overview-transport-icon-v4,
 .public-template-neon .timeline-node-dot-v4 {

@@ -12,6 +12,7 @@ import {
   publicRentalItemLabel,
   publicTransferItemLabel,
   publicTransportRouteLabel,
+  publicTransportShortLabel,
   safeExternalUrl,
 } from "./presentation.ts";
 import {
@@ -83,6 +84,7 @@ async function readAppStyles() {
         "../../app/public-sharing-media.css",
         "../../app/public-sharing-overview.css",
         "../../app/public-sharing-overview-transport.css",
+        "../../app/public-sharing-content-safety.css",
         "../../app/public-sharing-table.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
@@ -694,6 +696,19 @@ test("read-only travel text separates transfers from concise rental actions", ()
   } satisfies PublicItineraryItem;
   assert.equal(publicTransportRouteLabel(flight), "San Francisco SFO → Tokyo HND");
   assert.equal(publicTransferItemLabel(flight), "NH 7 · San Francisco SFO → Tokyo HND · NH7");
+  assert.equal(publicTransportShortLabel(flight), "Flight");
+  assert.equal(
+    publicTransportShortLabel({ ...flight, title: "Airport train", type: "train" }),
+    "Train",
+  );
+  assert.equal(
+    publicTransportShortLabel({ ...flight, title: "Drive", type: "transport" }),
+    "Drive",
+  );
+  assert.equal(
+    publicTransportShortLabel({ ...flight, title: "Long custom transfer", type: "transport" }),
+    "Transport",
+  );
 });
 
 test("public Days and Overview retain intermediate locality clusters", () => {
@@ -1347,6 +1362,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.doesNotMatch(overviewTransport, /data-public-item-ref|onClick|aria-current/);
   assert.match(overviewTransport, /data-public-transport/);
   assert.match(overviewTransport, /publicItemTypeLabels/);
+  assert.match(overviewTransport, /publicTransportShortLabel/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
   assert.match(overviewCard, /data-public-item-category=\{publicItemTypeLabels\[item\.type\]\}/);
@@ -1359,6 +1375,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(timelineSources, /PublicTimelineNode/);
   assert.match(timelineDay, /\[data-public-transport\]/);
   assert.match(timelineTransport, /data-public-transport/);
+  assert.match(timelineTransport, /publicTransportShortLabel/);
   assert.match(
     timelineDay,
     /addEventListener\("wheel", handleWheel, \{ capture: true, passive: false \}\)/,
@@ -1452,6 +1469,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(
     styles,
     /\.public-template-neon \.timeline-node-list-v4::before \{[\s\S]*var\(--neon-cyan\)[\s\S]*var\(--neon-magenta\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-neon \.overview-item-card-v4\.activity\.has-media \{[^}]*border-color: transparent;[^}]*linear-gradient\([\s\S]*border-box;[\s\S]*box-shadow:/,
   );
   assert.doesNotMatch(styles, /content:\s*["']FIELD["']/i);
   assert.match(
@@ -1562,6 +1583,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
   assert.match(shareSettings, /--dialog-viewport-height/);
+  assert.doesNotMatch(
+    shareSettings,
+    /<Button[^>]*onClick=\{\(\) => setOpen\(false\)\}[\s\S]*?>\s*Close\s*<\/Button>/,
+  );
   assert.ok(
     shareSettings.indexOf('aria-live="polite"') <
       shareSettings.indexOf("min-h-0 flex-1 touch-pan-y"),
@@ -1883,7 +1908,21 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(presentation, /"car_rental"/);
   assert.match(presentation, /\.filter\(isPublicTransfer\)/);
   assert.doesNotMatch(timelineTransport, /border bg-|rounded-xl|shadow/);
+  assert.match(timelineTransport, /const shortTitle = publicTransportShortLabel\(item\)/);
   const styles = await readAppStyles();
+  assert.match(
+    styles,
+    /\.public-itinerary-shell\[data-public-template-key\] \.overview-transport-list-v4 \{[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(15rem, 100%\), 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-itinerary-shell\[data-public-template-key\] \.timeline-transport-items-v4 \{[^}]*display: grid;[^}]*min-width: 0;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(15rem, 100%\), 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-itinerary-shell\[data-public-template-key\] \.timeline-transport-meta-v4 \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
+  );
+  assert.match(styles, /@container public-content \(max-width: 34rem\)/);
   assert.match(styles, /\.timeline-transport-list-v4 \{[\s\S]*align-items: center/);
   assert.doesNotMatch(styles, /\.timeline-transport-list-v4 \{[^}]*flex-direction: column/);
   assert.match(

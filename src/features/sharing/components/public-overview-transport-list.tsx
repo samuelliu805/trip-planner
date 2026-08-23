@@ -1,5 +1,5 @@
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
-import { publicTransportRouteLabel } from "../presentation";
+import { publicTransportRouteLabel, publicTransportShortLabel } from "../presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
 import { PublicItemMediaGallery } from "./public-item-media";
 import { PublicQuickActions } from "./public-quick-actions";
@@ -22,7 +22,14 @@ export function PublicOverviewTransportList({
         const place = item.place?.localityName ?? item.place?.displayName;
         const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
         const route = publicTransportRouteLabel(item);
-        const routeDetail = [route, item.transport?.serviceNumber].filter(Boolean).join(" · ");
+        const shortTitle = publicTransportShortLabel(item);
+        const routeDetail = [
+          item.title.trim() === shortTitle ? "" : item.title,
+          route,
+          item.transport?.serviceNumber,
+        ]
+          .filter((value, index, values) => Boolean(value && values.indexOf(value) === index))
+          .join(" · ");
         const scheduleDetail = [schedule, place].filter(Boolean).join(" · ");
 
         return (
@@ -35,7 +42,7 @@ export function PublicOverviewTransportList({
                 <span className="overview-transport-kind-v4">
                   {publicItemTypeLabels[item.type]}
                 </span>
-                <span className="overview-transport-title-v4">{item.title}</span>
+                <span className="overview-transport-title-v4">{shortTitle}</span>
                 {routeDetail || scheduleDetail || item.notes ? (
                   <span className="overview-transport-details-v4">
                     {routeDetail ? (

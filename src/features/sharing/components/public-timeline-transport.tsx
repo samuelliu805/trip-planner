@@ -4,6 +4,7 @@ import { PublicQuickActions } from "./public-quick-actions";
 import type { PublicItineraryItem } from "../types";
 import { orderedPublicItemMedia } from "../public-media-presentation";
 import { publicTimelineTransportMeta } from "../public-timeline-presentation";
+import { publicTransportShortLabel } from "../presentation";
 
 export function PublicTimelineTransport({
   item,
@@ -12,15 +13,20 @@ export function PublicTimelineTransport({
   item: PublicItineraryItem;
   label: string;
 }) {
-  const meta = publicTimelineTransportMeta(item) || (label !== item.title ? label : "");
+  const shortTitle = publicTransportShortLabel(item);
+  const structuredMeta = publicTimelineTransportMeta(item);
+  const meta =
+    [item.title.trim() === shortTitle ? "" : item.title, structuredMeta]
+      .filter((value, index, values) => Boolean(value && values.indexOf(value) === index))
+      .join(" · ") || (label !== item.title ? label : "");
   return (
     <div className={`timeline-transport-inline-v4 ${item.type}`} data-public-transport="">
       <span className="timeline-transport-icon-v4">
         <PublicItemIcon type={item.type} />
       </span>
       <div className="timeline-transport-copy-v4">
-        <span className="timeline-transport-title-v4" title={item.title}>
-          {item.title}
+        <span className="timeline-transport-title-v4" title={shortTitle}>
+          {shortTitle}
         </span>
         {meta ? (
           <span className="timeline-transport-meta-v4" title={meta}>

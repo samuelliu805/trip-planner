@@ -1,4 +1,5 @@
 import type { PublicItineraryDay, PublicItineraryItem } from "./types";
+import { transportModeLabels } from "../itinerary/types.ts";
 
 export function orderedPublicItems(day: PublicItineraryDay) {
   return day.items.slice().sort((left, right) => left.sortOrder - right.sortOrder);
@@ -42,6 +43,18 @@ export function publicTransportRouteLabel(item: PublicItineraryItem) {
   if (origin) return `From ${origin}`;
   if (destination) return `To ${destination}`;
   return "";
+}
+
+export function publicTransportShortLabel(item: PublicItineraryItem) {
+  if (item.type === "flight") return "Flight";
+  if (item.type === "train") return "Train";
+
+  const normalizedTitle = item.title.trim().toLocaleLowerCase();
+  return (
+    Object.values(transportModeLabels).find(
+      (label) => label.toLocaleLowerCase() === normalizedTitle,
+    ) ?? "Transport"
+  );
 }
 
 export function publicRentalItemLabel(item: PublicItineraryItem) {
