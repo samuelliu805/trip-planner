@@ -37,7 +37,7 @@ export function PlaceSuggestionList({
   if (!count) return null;
   return (
     <ul
-      className="absolute left-0 right-0 top-full z-[120] mt-1 max-h-56 min-w-0 overflow-y-auto overscroll-contain rounded-md border bg-popover py-1 shadow-lg"
+      className="absolute left-0 right-0 top-full z-[120] mt-1 max-h-56 min-w-0 overflow-y-auto rounded-md border bg-popover py-1 shadow-lg"
       id={listId}
       ref={listRef}
       role="listbox"

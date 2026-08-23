@@ -439,7 +439,9 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   const [
     actions,
     card,
+    compareRoute,
     deleteDialog,
+    detailRoute,
     editor,
     editorFields,
     editorForm,
@@ -449,12 +451,15 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     itemDialog,
     itemForm,
     primaryFields,
+    suggestionList,
     settingsEditor,
     tripsPage,
   ] = await Promise.all([
     readFile(new URL("./components/planner-editor-form-actions.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../research/compare-route.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../app/trips/[tripId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-form.tsx", import.meta.url), "utf8"),
@@ -464,6 +469,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     readFile(new URL("./components/planner-item-editor-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-place-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../places/place-suggestion-list.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
@@ -482,6 +488,8 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
   assert.match(card, /useTripListLoading\(\)/);
   assert.match(card, /Deleting “\$\{trip\.title\}”/);
+  assert.doesNotMatch(compareRoute, /DeleteTripDialog/);
+  assert.doesNotMatch(detailRoute, /DeleteTripDialog/);
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
@@ -506,6 +514,9 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorFields, /export function PlannerEditorTextField/);
   assert.match(primaryFields, /<PlannerEditorTextField/);
   assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
+  assert.doesNotMatch(form, /\bfooter\b/);
+  assert.match(suggestionList, /overflow-y-auto/);
+  assert.doesNotMatch(suggestionList, /overscroll-contain/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
