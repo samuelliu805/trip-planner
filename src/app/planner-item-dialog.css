@@ -66,13 +66,6 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
   margin-inline: auto;
 }
 
-.planner-item-dialog[data-editor-kind="research"] .planner-item-form-header {
-  position: sticky;
-  z-index: 20;
-  top: 0;
-  border-bottom-width: 0;
-}
-
 .planner-item-dialog[data-editor-kind="research"]
   [data-research-item-fields]
   section[aria-labelledby="attachments-heading"] {

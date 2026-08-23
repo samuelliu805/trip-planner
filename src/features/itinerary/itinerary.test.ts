@@ -2571,8 +2571,6 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);
-  assert.match(editorKeyboardScroll, /getComputedStyle\(editorHeader\)\.position === "sticky"/);
-  assert.match(editorKeyboardScroll, /editorHeader\.getBoundingClientRect\(\)\.bottom/);
   assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);

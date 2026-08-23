@@ -918,7 +918,7 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.match(dateRange, /showPicker/);
   assert.match(dateRange, /openDatePicker\(endRef\.current\)/);
   assert.match(editorStyles, /data-editor-kind="research"[\s\S]*height: 100dvh !important/);
-  assert.match(editorStyles, /data-editor-kind="research"[\s\S]*position: sticky/);
+  assert.doesNotMatch(editorStyles, /data-editor-kind="research"\] \.planner-item-form-header/);
   assert.match(
     editorStyles,
     /data-editor-kind="research"[\s\S]*4rem \+ env\(safe-area-inset-bottom\)/,

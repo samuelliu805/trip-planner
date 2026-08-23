@@ -27,7 +27,6 @@ export function usePlannerEditorKeyboardScroll() {
     if (!currentSurface) return;
     const surface: HTMLDivElement = currentSurface;
     const editorForm = surface.closest("form") ?? surface.querySelector("form");
-    const editorHeader = surface.querySelector<HTMLElement>(".planner-item-form-header");
     let firstFrame = 0;
     let secondFrame = 0;
     let observedRegion: Element | null = null;
@@ -65,14 +64,7 @@ export function usePlannerEditorKeyboardScroll() {
           observeFocusedRegion(active);
           const topClearance = keyboardOpen ? 20 : 12;
           const bottomClearance = keyboardOpen ? keyboardEdgeClearance : 20;
-          const stickyHeaderBottom =
-            editorHeader && window.getComputedStyle(editorHeader).position === "sticky"
-              ? editorHeader.getBoundingClientRect().bottom
-              : viewportTop;
-          const visibleTop = Math.max(
-            viewportTop + topClearance,
-            stickyHeaderBottom + topClearance,
-          );
+          const visibleTop = viewportTop + topClearance;
           const visibleBottom = viewportTop + currentViewportHeight - bottomClearance;
           const region = active.closest<HTMLElement>("[data-planner-focus-region]");
           const target =
