@@ -1,28 +1,28 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  PlannerEditorField,
+  PlannerEditorTextField,
+} from "@/features/itinerary/components/planner-editor-fields";
 import { BookingPriceFields } from "@/features/itinerary/components/booking-price-fields";
 
-import { ResearchField } from "./form-controls";
 import type { ResearchCategory, ResearchItem } from "../types";
 
 const nameLabels: Record<ResearchCategory, string> = {
-  flight: "Airline or option name",
-  rental: "Rental company or car",
-  stay: "Name shown in the list",
-  train: "Operator or train name",
+  flight: "Option name",
+  rental: "Rental company",
+  stay: "Stay name",
+  train: "Option name",
 };
 
-export function ResearchItemCommonFields({
-  category,
+export function ResearchPriceFields({
   defaultCurrency,
   item,
 }: {
-  category: ResearchCategory;
   defaultCurrency: string;
   item?: ResearchItem;
 }) {
@@ -33,52 +33,85 @@ export function ResearchItemCommonFields({
   );
   const [currency, setCurrency] = useState(item?.currency ?? defaultCurrency);
   return (
-    <>
-      <section className="min-w-0 space-y-3" aria-label="Price and booking">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Price &amp; booking
-        </p>
-        <BookingPriceFields
-          amount={amount}
-          amountName="totalPriceAmount"
-          currency={currency}
-          currencyName="currency"
-          defaultCurrency={defaultCurrency}
-          idPrefix={`research-${item?.id ?? category}`}
-          onAmountChange={setAmount}
-          onCurrencyChange={setCurrency}
+    <BookingPriceFields
+      amount={amount}
+      amountName="totalPriceAmount"
+      currency={currency}
+      currencyName="currency"
+      defaultCurrency={defaultCurrency}
+      idPrefix={`research-${item?.id ?? "new"}`}
+      onAmountChange={setAmount}
+      onCurrencyChange={setCurrency}
+    />
+  );
+}
+
+export function ResearchItemDetailFields({
+  attachments,
+  category,
+  item,
+}: {
+  attachments?: ReactNode;
+  category: ResearchCategory;
+  item?: ResearchItem;
+}) {
+  const idPrefix = `research-${item?.id ?? category}`;
+  const booking = (
+    <section className="min-w-0 space-y-4" aria-label="Booking records">
+      <PlannerEditorTextField
+        defaultValue={item?.source_url ?? ""}
+        id={`${idPrefix}-booking-link`}
+        inputMode="url"
+        label="Booking link (optional)"
+        maxLength={2048}
+        name="sourceUrl"
+        placeholder="https://…"
+        type="url"
+      />
+      {attachments}
+    </section>
+  );
+  const name = (
+    <PlannerEditorTextField
+      defaultValue={item?.title ?? ""}
+      description="Optional. We’ll create a clear route or place label when this is blank."
+      id={`${idPrefix}-name`}
+      label={nameLabels[category]}
+      maxLength={300}
+      name="title"
+    />
+  );
+  const note = (
+    <PlannerEditorField id={`${idPrefix}-note`} label="Note (optional)">
+      <Textarea
+        defaultValue={item?.note ?? ""}
+        id={`${idPrefix}-note`}
+        maxLength={5000}
+        name="note"
+        rows={3}
+      />
+    </PlannerEditorField>
+  );
+
+  const fields = (
+    <div className="min-w-0 space-y-6">
+      {category === "rental" ? name : booking}
+      {category === "rental" ? note : name}
+      {category === "rental" ? booking : note}
+    </div>
+  );
+
+  if (category !== "flight" && category !== "train") return fields;
+  return (
+    <details className="group min-w-0 rounded-xl border bg-muted/20">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        Booking, name &amp; note (optional)
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 transition-transform group-open:rotate-180"
         />
-        <ResearchField label="Booking link (optional)">
-          <Input
-            defaultValue={item?.source_url ?? ""}
-            inputMode="url"
-            maxLength={2048}
-            name="sourceUrl"
-            placeholder="https://…"
-            type="url"
-          />
-        </ResearchField>
-      </section>
-      <details className="group min-w-0 rounded-xl border bg-muted/20">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-          More details
-          <ChevronDown
-            aria-hidden="true"
-            className="size-4 shrink-0 transition-transform group-open:rotate-180"
-          />
-        </summary>
-        <div className="min-w-0 space-y-4 border-t px-3 py-4">
-          <ResearchField
-            hint="Optional. We create a useful route or place label if this is left blank."
-            label={nameLabels[category]}
-          >
-            <Input defaultValue={item?.title ?? ""} maxLength={300} name="title" />
-          </ResearchField>
-          <ResearchField label="Note (optional)">
-            <Textarea defaultValue={item?.note ?? ""} maxLength={5000} name="note" rows={3} />
-          </ResearchField>
-        </div>
-      </details>
-    </>
+      </summary>
+      <div className="min-w-0 border-t p-3">{fields}</div>
+    </details>
   );
 }

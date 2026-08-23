@@ -24,6 +24,7 @@ import {
   stayPerNightPrice,
 } from "./readiness.ts";
 import { createResearchItemSchema } from "./schema.ts";
+import { researchItemFormSteps, researchItemPriceStep } from "./research-item-form-steps.ts";
 import type { ResearchItem, ResearchPlanSnapshot } from "./types.ts";
 import {
   compareHrefForPlanContext,
@@ -121,6 +122,36 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
       tripId: ids.trip,
     }).segments,
     [],
+  );
+});
+
+test("research editors keep two short category pages and put Flight price on Details", () => {
+  assert.deepEqual(
+    researchItemFormSteps("flight").map(({ id, title }) => [id, title]),
+    [
+      ["primary", "Flight"],
+      ["details", "Details"],
+    ],
+  );
+  assert.equal(researchItemFormSteps("stay")[0].title, "Hotel");
+  assert.equal(researchItemFormSteps("rental")[0].title, "Rental car");
+  assert.equal(researchItemPriceStep("flight"), "details");
+  assert.equal(researchItemPriceStep("train"), "primary");
+});
+
+test("each journey segment keeps its own carrier", () => {
+  const parsed = createResearchItemSchema.parse({
+    category: "flight",
+    segments: [
+      { carrier: "ANA", departureDate: "2026-10-04", destination: "NRT", origin: "SFO" },
+      { carrier: "United", departureDate: "2026-10-12", destination: "SFO", origin: "NRT" },
+    ],
+    title: "Round trip",
+    tripId: ids.trip,
+  });
+  assert.deepEqual(
+    parsed.segments.map(({ carrier }) => carrier),
+    ["ANA", "United"],
   );
 });
 
@@ -796,28 +827,43 @@ test("Compare keeps one responsive inline filter row below the Trip App Bar", as
   assert.match(dialog, /hidden sm:inline[\s\S]*Add price or idea/);
 });
 
-test("mobile Research chrome stays on one row and add forms progressively disclose details", async () => {
-  const [workspace, planContext, planMenu, fields, dialog, journey, dateRange, actions, migration] =
-    await Promise.all([
-      readFile(new URL("./components/compare-workspace.tsx", import.meta.url), "utf8"),
-      readFile(new URL("../itinerary/components/planner-context-bar.tsx", import.meta.url), "utf8"),
-      readFile(
-        new URL("../itinerary/components/planner-context-menu-items.tsx", import.meta.url),
-        "utf8",
+test("mobile Research chrome stays on one row and add forms use the shared progressive editor", async () => {
+  const [
+    workspace,
+    planContext,
+    planMenu,
+    fields,
+    dialog,
+    form,
+    values,
+    journey,
+    segmentDetails,
+    dateRange,
+    actions,
+    migration,
+  ] = await Promise.all([
+    readFile(new URL("./components/compare-workspace.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../itinerary/components/planner-context-bar.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../itinerary/components/planner-context-menu-items.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("./components/research-item-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-item-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-item-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./research-item-form-values.ts", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-journey-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-segment-detail-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/date-range-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-plan-actions.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../../../supabase/migrations/20260811121345_detach_deleted_research_history.sql",
+        import.meta.url,
       ),
-      readFile(new URL("./components/research-item-fields.tsx", import.meta.url), "utf8"),
-      readFile(new URL("./components/research-item-dialog.tsx", import.meta.url), "utf8"),
-      readFile(new URL("./components/research-journey-fields.tsx", import.meta.url), "utf8"),
-      readFile(new URL("./components/date-range-fields.tsx", import.meta.url), "utf8"),
-      readFile(new URL("./components/research-plan-actions.tsx", import.meta.url), "utf8"),
-      readFile(
-        new URL(
-          "../../../supabase/migrations/20260811121345_detach_deleted_research_history.sql",
-          import.meta.url,
-        ),
-        "utf8",
-      ),
-    ]);
+      "utf8",
+    ),
+  ]);
   assert.match(workspace, /items-center justify-between gap-3/);
   assert.doesNotMatch(workspace, /KnownCost|PlanCostBreakdown/);
   assert.doesNotMatch(planContext, /Known Cost ·/);
@@ -828,9 +874,15 @@ test("mobile Research chrome stays on one row and add forms progressively disclo
   assert.match(fields, /startLabel="Check-in"/);
   assert.match(fields, /Return to the pick-up location/);
   assert.match(fields, /name="returnToPickup"/);
-  assert.match(dialog, /returnToPickup[\s\S]*originPlaceId[\s\S]*destinationPlaceId/);
-  assert.match(journey, /Times &amp;[\s\S]*number/);
+  assert.match(values, /returnToPickup[\s\S]*originPlaceId[\s\S]*destinationPlaceId/);
+  assert.match(dialog, /<PlannerEditorScreen/);
+  assert.match(form, /<PlannerEditorForm/);
+  assert.match(form, /<PlannerEditorHeader/);
+  assert.match(form, /<PlannerItemStepNav/);
+  assert.match(journey, /Add times \(optional\)/);
   assert.match(journey, /label="From"[\s\S]*label="To"/);
+  assert.match(segmentDetails, /label="Airline"/);
+  assert.match(segmentDetails, /Flight number/);
   assert.doesNotMatch(journey, /Flight \{index \+ 1\}/);
   assert.match(dateRange, /showPicker/);
   assert.match(dateRange, /openDatePicker\(endRef\.current\)/);
@@ -860,6 +912,36 @@ test("contextual Save captures canonical booking fields, places, prices, and eve
   assert.match(capture, /addIsoDateDays\(checkInDate, 1\)/);
   assert.match(migration, /add column links jsonb not null default '\[\]'/);
   assert.match(migration, /jsonb_typeof\(links\) = 'array'/);
+});
+
+test("research attachments use draft sessions and transfer through Apply and Revert", async () => {
+  const [form, attachments, uploadClient, migration] = await Promise.all([
+    readFile(new URL("./components/research-item-form.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../attachments/components/research-attachments-section.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../attachments/upload-client.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../../../supabase/migrations/20260823120000_research_item_attachments_and_segment_carriers.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+  assert.match(form, /useAttachmentEditSession/);
+  assert.match(form, /targetKind: "research"/);
+  assert.match(attachments, /researchItemId: item\.id/);
+  assert.match(uploadClient, /research\/\$\{researchItemId\}/);
+  assert.match(
+    migration,
+    /num_nonnulls\(itinerary_item_id, research_item_id, research_application_id\) = 1/,
+  );
+  assert.match(migration, /copy_research_assets_to_items_v1/);
+  assert.match(migration, /applied_from_research_application_id/);
+  assert.match(migration, /Private Apply-time attachment snapshot/);
+  assert.match(migration, /revert_research_plan_application_phase_attachment_transfer/);
 });
 
 test("Applied is a one-time Plan snapshot refreshed after canonical mutations", async () => {

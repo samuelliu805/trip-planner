@@ -49,3 +49,25 @@ export async function detachAttachment(rawInput: z.input<typeof attachmentMutati
   revalidatePath(`/trips/${input.data.tripId}`);
   return { data: { publicRef: input.data.publicRef } };
 }
+
+export async function detachResearchAttachment(rawInput: {
+  publicRef: string;
+  researchItemId: string;
+  tripId: string;
+}) {
+  const input = attachmentMutationSchema
+    .omit({ itemId: true })
+    .extend({ researchItemId: z.uuid() })
+    .safeParse(rawInput);
+  if (!input.success) return { error: "The attachment request is invalid." };
+  const supabase = await createClient();
+  const result = await supabase.rpc("detach_research_asset_v1", {
+    requested_public_ref: input.data.publicRef,
+    target_research_item_id: input.data.researchItemId,
+    target_trip_id: input.data.tripId,
+  });
+  if (result.error) return { error: attachmentError(result.error.message) };
+  await drainAssetDeletionQueue(10);
+  revalidatePath(`/trips/${input.data.tripId}/compare`);
+  return { data: { publicRef: input.data.publicRef } };
+}

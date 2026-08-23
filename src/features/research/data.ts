@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  ownerAttachmentsFromRows,
+  type OwnerAttachmentRow,
+} from "@/features/attachments/owner-attachment-records";
 
 import type {
   PlanResearchItem,
@@ -7,6 +11,15 @@ import type {
   ResearchPlanSnapshot,
   VariantResearchSelection,
 } from "./types";
+
+export const researchItemSelection =
+  "*, attachments:asset_links!asset_links_research_trip_fkey(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)), location_place:places!research_items_location_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), origin_place:places!research_items_origin_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), destination_place:places!research_items_destination_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)";
+
+export function researchItemFromRow<Row extends { attachments?: OwnerAttachmentRow[] | null }>(
+  row: Row,
+) {
+  return { ...row, attachments: ownerAttachmentsFromRows(row.attachments) };
+}
 
 export async function getResearchPlanSnapshot(tripId: string, variantId: string) {
   const supabase = await createClient();
@@ -57,12 +70,13 @@ export async function getCompareItems(tripId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("research_items")
-    .select(
-      "*, location_place:places!research_items_location_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), origin_place:places!research_items_origin_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), destination_place:places!research_items_destination_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)",
-    )
+    .select(researchItemSelection)
     .eq("trip_id", tripId)
     .order("observed_at", { ascending: false });
-  return { data: (data ?? []) as PlanResearchItem[], error: error?.message ?? null };
+  return {
+    data: (data ?? []).map((row) => researchItemFromRow(row)) as PlanResearchItem[],
+    error: error?.message ?? null,
+  };
 }
 
 export async function getPlanResearchItems(tripId: string) {

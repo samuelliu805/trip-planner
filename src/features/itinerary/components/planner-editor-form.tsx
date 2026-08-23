@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, type ComponentProps, type ReactNode, type Ref } from "react";
+import {
+  useCallback,
+  type ComponentProps,
+  type FormEventHandler,
+  type ReactNode,
+  type Ref,
+} from "react";
 
 import { PlannerEditorPage } from "@/features/itinerary/components/planner-editor-screen";
 import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-editor-form-actions";
@@ -22,12 +28,14 @@ export function PlannerEditorForm({
   fieldsRef,
   footer,
   formAction,
+  formRef,
   header,
   hiddenFields,
   nextDisabled = false,
   onBack,
   onCancel,
   onClose,
+  onFormChange,
   onNext,
   onSave,
   onScrollNode,
@@ -45,12 +53,14 @@ export function PlannerEditorForm({
   fieldsRef?: Ref<HTMLDivElement>;
   footer?: ReactNode;
   formAction?: ComponentProps<"form">["action"];
+  formRef?: Ref<HTMLFormElement>;
   header: ReactNode;
   hiddenFields?: ReactNode;
   nextDisabled?: boolean;
   onBack?: () => void;
   onCancel?: () => void;
   onClose: () => void;
+  onFormChange?: FormEventHandler<HTMLFormElement>;
   onNext?: () => void;
   onSave?: (intent: PlannerEditorSaveIntent) => void | Promise<void>;
   onScrollNode?: (node: HTMLDivElement | null) => void;
@@ -73,6 +83,7 @@ export function PlannerEditorForm({
       action={formAction}
       className="planner-item-form flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
       data-compact-actions={compactActions ? "" : undefined}
+      onChange={onFormChange}
       onKeyDown={(event) => {
         if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.defaultPrevented) return;
@@ -114,6 +125,7 @@ export function PlannerEditorForm({
             }
           : undefined
       }
+      ref={formRef}
     >
       {hiddenFields}
       <PlannerEditorPage header={header} scrollRef={setEditorScrollNode}>

@@ -6,12 +6,10 @@ import { ResearchField } from "./form-controls";
 import type { ResearchSegment } from "../types";
 
 export function ResearchOptionalSegmentFields({
-  category,
   label,
   onChange,
   segment,
 }: {
-  category: "flight" | "train";
   label?: string;
   onChange: (values: Partial<ResearchSegment>) => void;
   segment: ResearchSegment;
@@ -35,23 +33,14 @@ export function ResearchOptionalSegmentFields({
           />
         </ResearchField>
       </div>
-      <div className="grid min-w-0 gap-3 min-[430px]:grid-cols-2">
-        <ResearchField label="Arrival date">
-          <Input
-            min={segment.departureDate || undefined}
-            onChange={(event) => onChange({ arrivalDate: event.target.value })}
-            type="date"
-            value={segment.arrivalDate ?? ""}
-          />
-        </ResearchField>
-        <ResearchField label={category === "flight" ? "Flight number" : "Train number"}>
-          <Input
-            maxLength={80}
-            onChange={(event) => onChange({ serviceNumber: event.target.value })}
-            value={segment.serviceNumber ?? ""}
-          />
-        </ResearchField>
-      </div>
+      <ResearchField label="Arrival date">
+        <Input
+          min={segment.departureDate || undefined}
+          onChange={(event) => onChange({ arrivalDate: event.target.value })}
+          type="date"
+          value={segment.arrivalDate ?? ""}
+        />
+      </ResearchField>
     </div>
   );
 }

@@ -16,7 +16,13 @@ import {
   type CreateResearchItemInput,
   type UpdateResearchItemInput,
 } from "./schema";
-import { getCompareItems, getResearchPlanSnapshot, getResearchPlanState } from "./data";
+import {
+  getCompareItems,
+  getResearchPlanSnapshot,
+  getResearchPlanState,
+  researchItemFromRow,
+  researchItemSelection,
+} from "./data";
 import type { ResearchItem, ResearchMutationResult, ResearchWorkspaceSnapshot } from "./types";
 
 export async function loadResearchWorkspace(input: {
@@ -60,11 +66,11 @@ export async function createResearchItem(
   const { data, error } = await supabase
     .from("research_items")
     .insert(researchItemValues(parsed.data, places))
-    .select("*")
+    .select(researchItemSelection)
     .maybeSingle();
   if (error || !data) return { error: error?.message ?? "The candidate could not be saved." };
   revalidateResearch(parsed.data.tripId);
-  return { data };
+  return { data: researchItemFromRow(data) as ResearchItem };
 }
 
 export async function updateResearchItem(
@@ -87,11 +93,11 @@ export async function updateResearchItem(
     .update(researchItemValues(values, places))
     .eq("id", id)
     .eq("trip_id", values.tripId)
-    .select("*")
+    .select(researchItemSelection)
     .maybeSingle();
   if (error || !data) return { error: error?.message ?? "The candidate could not be updated." };
   revalidateResearch(values.tripId);
-  return { data };
+  return { data: researchItemFromRow(data) as ResearchItem };
 }
 
 export async function deleteResearchItem(input: {

@@ -1,5 +1,6 @@
 import type { Tables } from "@/types/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
+import type { OwnerAttachment } from "@/features/attachments/schema";
 
 export const researchCategories = ["flight", "stay", "train", "rental"] as const;
 
@@ -20,6 +21,7 @@ type StoredResearchPlace = Pick<
   | "source"
 >;
 export type ResearchItem = Tables<"research_items"> & {
+  attachments?: OwnerAttachment[];
   destination_place?: StoredResearchPlace | null;
   location_place?: StoredResearchPlace | null;
   origin_place?: StoredResearchPlace | null;
@@ -28,6 +30,7 @@ export type ResearchJourneyType = "one_way" | "round_trip" | "multi_city";
 export type ResearchSegment = {
   arrivalDate?: string | null;
   arrivalTime?: string | null;
+  carrier?: string | null;
   departureDate: string;
   departureTime?: string | null;
   destination: string;

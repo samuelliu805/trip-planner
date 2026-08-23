@@ -5,15 +5,17 @@ import {
   finalizeAttachmentUpload,
 } from "@/features/attachments/finalize-route.server";
 
-const paramsSchema = z.object({ assetId: z.uuid(), itemId: z.uuid(), tripId: z.uuid() });
+const paramsSchema = z.object({ assetId: z.uuid(), researchItemId: z.uuid(), tripId: z.uuid() });
 
-async function routeParams(params: Promise<{ assetId: string; itemId: string; tripId: string }>) {
+async function routeParams(
+  params: Promise<{ assetId: string; researchItemId: string; tripId: string }>,
+) {
   return paramsSchema.safeParse(await params);
 }
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: Promise<{ assetId: string; itemId: string; tripId: string }> },
+  { params }: { params: Promise<{ assetId: string; researchItemId: string; tripId: string }> },
 ) {
   const route = await routeParams(params);
   if (!route.success) return new Response(null, { status: 404 });
@@ -22,7 +24,7 @@ export async function DELETE(
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ assetId: string; itemId: string; tripId: string }> },
+  { params }: { params: Promise<{ assetId: string; researchItemId: string; tripId: string }> },
 ) {
   const route = await routeParams(params);
   if (!route.success)

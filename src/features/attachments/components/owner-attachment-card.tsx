@@ -52,6 +52,7 @@ export function OwnerAttachmentCard({
   onDelete,
   onOpen,
   onShareChange,
+  showShareControl = true,
   shareAttachmentsEnabled,
   tripId,
 }: {
@@ -61,6 +62,7 @@ export function OwnerAttachmentCard({
   onOpen: (trigger: HTMLElement) => void;
   onShareChange: (checked: boolean) => void;
   shareAttachmentsEnabled: boolean;
+  showShareControl?: boolean;
   tripId: string;
 }) {
   return (
@@ -119,16 +121,18 @@ export function OwnerAttachmentCard({
           </div>
         </div>
       </div>
-      <div className="mt-3 border-t pt-2">
-        <Label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 text-sm">
-          <Checkbox
-            checked={attachment.includeInShare}
-            disabled={disabled || attachment.status !== "ready"}
-            onCheckedChange={(checked) => onShareChange(checked === true)}
-          />
-          <span className="min-w-0">Share file</span>
-        </Label>
-      </div>
+      {showShareControl ? (
+        <div className="mt-3 border-t pt-2">
+          <Label className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 text-sm">
+            <Checkbox
+              checked={attachment.includeInShare}
+              disabled={disabled || attachment.status !== "ready"}
+              onCheckedChange={(checked) => onShareChange(checked === true)}
+            />
+            <span className="min-w-0">Share file</span>
+          </Label>
+        </div>
+      ) : null}
     </article>
   );
 }

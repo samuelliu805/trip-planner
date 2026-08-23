@@ -116,12 +116,11 @@ export const assetAccessSchema = z
   .strict();
 
 export function attachmentError(message?: string) {
-  if (message?.includes("ATTACHMENT_DUPLICATE"))
-    return "This file is already attached to this itinerary item.";
+  if (message?.includes("ATTACHMENT_DUPLICATE")) return "This file is already attached here.";
   if (message?.includes("ATTACHMENT_COUNT_LIMIT"))
-    return "This itinerary item already has five attachments.";
+    return "This saved item already has five attachments.";
   if (message?.includes("ATTACHMENT_ITEM_BYTES_LIMIT"))
-    return "This itinerary item would exceed its 50 MB attachment limit.";
+    return "This saved item would exceed its 50 MB attachment limit.";
   if (message?.includes("ATTACHMENT_OWNER_BYTES_LIMIT"))
     return "Your stored trip attachments would exceed the 250 MB account limit.";
   if (message?.includes("ATTACHMENT_TYPE_UNSUPPORTED"))

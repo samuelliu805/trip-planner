@@ -1,5 +1,3 @@
-import type { PlaceSnapshot } from "@/lib/providers/places/types";
-
 export const defaultTripCurrency = "USD";
 export const defaultTripDayCount = 1;
 const placeTitleLimit = 32;
@@ -29,7 +27,7 @@ export function isDefaultTripTitle(title: string) {
 }
 
 /** Prefer a concise locality for the first place-derived trip name. */
-export function tripTitleFromPlace(place: Pick<PlaceSnapshot, "displayName" | "localityName">) {
+export function tripTitleFromPlace(place: { displayName: string; localityName?: string | null }) {
   const name = ((place.localityName ?? "").trim() || place.displayName.trim()).replace(/\s+/g, " ");
   if (!name) return "";
   const baseLimit = placeTitleLimit - placeTitleSuffix.length;

@@ -98,6 +98,7 @@ const transportDetailsSchema = z
     ]),
     origin: optionalText(200),
     originPlace: placeSnapshotSchema.optional().nullable(),
+    provider: optionalText(120),
     researchSourceId: z.uuid().optional(),
     segmentIndex: z.number().int().min(0).max(11).optional(),
     serviceNumber: optionalText(80),

@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import type { ResearchSegment } from "../types";
 const blankSegment = (): ResearchSegment => ({
   arrivalDate: "",
   arrivalTime: "",
+  carrier: "",
   departureDate: "",
   departureTime: "",
   destination: "",
@@ -60,11 +61,21 @@ export function ResearchMultiCityFields({
               value={segment.departureDate}
             />
           </ResearchField>
-          <ResearchOptionalSegmentFields
-            category="flight"
-            onChange={(values) => update(index, values)}
-            segment={segment}
-          />
+          <details className="group min-w-0 rounded-xl border bg-muted/20">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              Add times (optional)
+              <ChevronDown
+                aria-hidden="true"
+                className="size-4 shrink-0 transition-transform group-open:rotate-180"
+              />
+            </summary>
+            <div className="min-w-0 border-t p-3">
+              <ResearchOptionalSegmentFields
+                onChange={(values) => update(index, values)}
+                segment={segment}
+              />
+            </div>
+          </details>
           {segments.length > 2 ? (
             <div className="flex justify-end">
               <Button

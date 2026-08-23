@@ -27,8 +27,9 @@ export type AttachmentUploadProgress = {
 
 type UploadOptions = {
   file: File;
-  itemId: string;
+  itemId?: string;
   onProgress: (progress: AttachmentUploadProgress) => void;
+  researchItemId?: string;
   signal: AbortSignal;
   tripId: string;
   uploadSessionId: string;
@@ -185,10 +186,17 @@ export async function uploadFileAttachment({
   file,
   itemId,
   onProgress,
+  researchItemId,
   signal,
   tripId,
   uploadSessionId,
 }: UploadOptions): Promise<OwnerAttachment> {
+  const targetPath = researchItemId
+    ? `research/${researchItemId}`
+    : itemId
+      ? `items/${itemId}`
+      : null;
+  if (!targetPath) throw new Error("The attachment target is unavailable.");
   onProgress({ percent: 3, stage: "hashing" });
   const bytes = new Uint8Array(await file.arrayBuffer());
   const detected = detectAttachmentType(bytes);
@@ -208,7 +216,7 @@ export async function uploadFileAttachment({
   ).join("");
 
   onProgress({ percent: 10, stage: "preparing" });
-  const prepareResponse = await fetch(`/api/trips/${tripId}/items/${itemId}/attachments/prepare`, {
+  const prepareResponse = await fetch(`/api/trips/${tripId}/${targetPath}/attachments/prepare`, {
     body: JSON.stringify({
       byteSize: file.size,
       fileName: file.name,
@@ -232,7 +240,7 @@ export async function uploadFileAttachment({
   }
   if (!prepared.data.upload) throw new Error("The private upload authorization is missing.");
 
-  const lifecycleUrl = `/api/trips/${tripId}/items/${itemId}/attachments/${prepared.data.assetId}/finalize`;
+  const lifecycleUrl = `/api/trips/${tripId}/${targetPath}/attachments/${prepared.data.assetId}/finalize`;
   try {
     const normalizedFile = new File([file], file.name, {
       lastModified: file.lastModified,
@@ -300,18 +308,27 @@ export async function uploadFileAttachment({
 
 function attachmentSessionUrl({
   itemId,
+  researchItemId,
   tripId,
   uploadSessionId,
 }: {
-  itemId: string;
+  itemId?: string;
+  researchItemId?: string;
   tripId: string;
   uploadSessionId: string;
 }) {
-  return `/api/trips/${tripId}/items/${itemId}/attachments/session/${uploadSessionId}`;
+  const targetPath = researchItemId
+    ? `research/${researchItemId}`
+    : itemId
+      ? `items/${itemId}`
+      : null;
+  if (!targetPath) throw new Error("The attachment target is unavailable.");
+  return `/api/trips/${tripId}/${targetPath}/attachments/session/${uploadSessionId}`;
 }
 
 export async function commitAttachmentUploadSession(input: {
-  itemId: string;
+  itemId?: string;
+  researchItemId?: string;
   tripId: string;
   uploadSessionId: string;
 }) {
@@ -325,7 +342,7 @@ export async function commitAttachmentUploadSession(input: {
 }
 
 export async function discardAttachmentUploadSession(
-  input: { itemId: string; tripId: string; uploadSessionId: string },
+  input: { itemId?: string; researchItemId?: string; tripId: string; uploadSessionId: string },
   keepalive = false,
 ) {
   const response = await fetch(attachmentSessionUrl(input), { keepalive, method: "DELETE" });
