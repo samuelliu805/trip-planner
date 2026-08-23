@@ -39,6 +39,7 @@ export function TripSettingsEditor({
 
   return (
     <PlannerEditorScreen
+      editorKind="trip-settings"
       initialFocusSelector="[data-trip-settings-title]"
       onOpenChange={onOpenChange}
       open={open}

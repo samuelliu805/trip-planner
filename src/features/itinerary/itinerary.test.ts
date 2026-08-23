@@ -484,6 +484,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     new URL("../places/place-autocomplete.tsx", import.meta.url),
     "utf8",
   );
+  const editorStyles = await readAppStyles();
   const [
     itemSaveConfirmation,
     itemSaveFeedback,
@@ -538,7 +539,9 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(itemForm, /<PlannerItemStepNav/);
   assert.doesNotMatch(itemForm, /usePlannerEditorKeyboardScroll\(\)/);
   assert.match(settingsEditor, /<PlannerEditorScreen/);
+  assert.match(settingsEditor, /editorKind="trip-settings"/);
   assert.match(settingsEditor, /initialFocusSelector="\[data-trip-settings-title\]"/);
+  assert.match(editor, /data-editor-kind=\{editorKind\}/);
   assert.doesNotMatch(settingsEditor, /TripSettingsHeader|TripSettingsPage|PlannerEditorPage/);
   assert.match(form, /<PlannerEditorForm/);
   assert.doesNotMatch(form, /<PlannerEditorHeader/);
@@ -547,6 +550,16 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(form, /<SheetTitle[\s\S]*\{editor\.title\}[\s\S]*<SheetDescription/);
   assert.match(form, /<Settings2/);
   assert.match(form, /onCancel=\{editor\.onClose\}/);
+  assert.match(form, /gap-3 border-b pb-4 sm:gap-4 sm:pb-6/);
+  assert.match(editorForm, /compactActions \? "space-y-6 sm:space-y-10" : "space-y-10"/);
+  assert.match(
+    editorStyles,
+    /max-width: 639px[\s\S]*data-editor-kind="trip-settings"[\s\S]*height: 100dvh !important/,
+  );
+  assert.match(
+    editorStyles,
+    /data-editor-kind="trip-settings"[\s\S]*font-size: 1rem[\s\S]*min-width: 640px[\s\S]*max-width: 1199px[\s\S]*min-height: 3rem/,
+  );
   assert.doesNotMatch(form, /PlannerItemStepNav|usePlannerEditorKeyboardScroll\(\)/);
   assert.match(editorForm, /<PlannerEditorPage/);
   assert.match(editorForm, /usePlannerEditorKeyboardScroll\(\)/);

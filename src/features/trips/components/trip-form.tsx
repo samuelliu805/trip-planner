@@ -75,22 +75,24 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
       pending={pending}
       pendingLabel="Saving…"
     >
-      <div className="flex min-w-0 items-start gap-4 border-b pb-6">
+      <div className="flex min-w-0 items-start gap-3 border-b pb-4 sm:gap-4 sm:pb-6">
         <span
           aria-hidden="true"
-          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+          className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary sm:size-12 sm:rounded-2xl"
         >
-          <Settings2 className="size-5" />
+          <Settings2 className="size-4 sm:size-5" />
         </span>
         <div className="min-w-0 pt-0.5">
           <SheetTitle
-            className="text-xl font-extrabold tracking-tight outline-none"
+            className="text-lg font-extrabold tracking-tight outline-none sm:text-xl"
             data-trip-settings-title=""
             tabIndex={-1}
           >
             {editor.title}
           </SheetTitle>
-          <SheetDescription className="mt-1 max-w-prose">{editor.description}</SheetDescription>
+          <SheetDescription className="mt-0.5 max-w-prose text-sm leading-5 sm:mt-1">
+            {editor.description}
+          </SheetDescription>
           {state.error ? (
             <p className="mt-2 text-sm font-medium text-destructive" role="alert">
               {state.error}

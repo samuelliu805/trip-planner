@@ -125,7 +125,7 @@ export function PlannerEditorForm({
               disabled={pending}
             >
               <div
-                className="planner-item-form-fields planner-item-step-fields min-w-0 space-y-10"
+                className={`planner-item-form-fields planner-item-step-fields min-w-0 ${compactActions ? "space-y-6 sm:space-y-10" : "space-y-10"}`}
                 ref={fieldsRef}
               >
                 {children}
