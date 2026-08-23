@@ -504,9 +504,15 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(itemForm, /<PlannerItemStepNav/);
   assert.doesNotMatch(itemForm, /usePlannerEditorKeyboardScroll\(\)/);
   assert.match(settingsEditor, /<PlannerEditorScreen/);
+  assert.match(settingsEditor, /initialFocusSelector="\[data-trip-settings-title\]"/);
   assert.doesNotMatch(settingsEditor, /TripSettingsHeader|TripSettingsPage|PlannerEditorPage/);
   assert.match(form, /<PlannerEditorForm/);
-  assert.match(form, /<PlannerEditorHeader/);
+  assert.doesNotMatch(form, /<PlannerEditorHeader/);
+  assert.match(form, /header=\{null\}/);
+  assert.match(form, /<SheetTitle[\s\S]*data-trip-settings-title[\s\S]*tabIndex=\{-1\}/);
+  assert.match(form, /<SheetTitle[\s\S]*\{editor\.title\}[\s\S]*<SheetDescription/);
+  assert.match(form, /<Settings2/);
+  assert.match(form, /onCancel=\{editor\.onClose\}/);
   assert.doesNotMatch(form, /PlannerItemStepNav|usePlannerEditorKeyboardScroll\(\)/);
   assert.match(editorForm, /<PlannerEditorPage/);
   assert.match(editorForm, /usePlannerEditorKeyboardScroll\(\)/);
@@ -514,6 +520,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorForm, /saveDisabled/);
   assert.match(editorForm, /planner-item-form-fields planner-item-step-fields/);
   assert.match(editorHeader, /navigation\?: ReactNode/);
+  assert.match(editor, /onOpenAutoFocus[\s\S]*initialFocusSelector[\s\S]*preventScroll: true/);
   assert.match(editorFields, /export function PlannerEditorTextField/);
   assert.match(primaryFields, /<PlannerEditorTextField/);
   assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
@@ -528,6 +535,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     /headerScrolls|itemViewportMatchesProduction/,
   );
   assert.match(actions, /onBack \?[\s\S]*Previous[\s\S]*Save[\s\S]*onNext \?[\s\S]*Next/);
+  assert.match(actions, /splitCancelAndSave[\s\S]*justify-between[\s\S]*\{cancelLabel\}/);
   assert.match(actions, /pending \|\| saveDisabled/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
   assert.match(form, /label="Trip name"/);

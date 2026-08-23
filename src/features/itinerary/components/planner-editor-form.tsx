@@ -16,6 +16,7 @@ export function PlannerEditorForm({
   after,
   alternateSaveLabel,
   backDisabled = false,
+  cancelLabel,
   children,
   compactActions = false,
   fieldsRef,
@@ -25,6 +26,7 @@ export function PlannerEditorForm({
   hiddenFields,
   nextDisabled = false,
   onBack,
+  onCancel,
   onClose,
   onNext,
   onSave,
@@ -37,6 +39,7 @@ export function PlannerEditorForm({
   after?: ReactNode;
   alternateSaveLabel?: string;
   backDisabled?: boolean;
+  cancelLabel?: string;
   children: ReactNode;
   compactActions?: boolean;
   fieldsRef?: Ref<HTMLDivElement>;
@@ -46,6 +49,7 @@ export function PlannerEditorForm({
   hiddenFields?: ReactNode;
   nextDisabled?: boolean;
   onBack?: () => void;
+  onCancel?: () => void;
   onClose: () => void;
   onNext?: () => void;
   onSave?: (intent: PlannerEditorSaveIntent) => void | Promise<void>;
@@ -124,9 +128,11 @@ export function PlannerEditorForm({
             <PlannerEditorFormActions
               alternateSaveLabel={alternateSaveLabel}
               backDisabled={backDisabled}
+              cancelLabel={cancelLabel}
               compactActions={compactActions}
               nextDisabled={nextDisabled}
               onBack={onBack}
+              onCancel={onCancel}
               onNext={onNext}
               pending={pending}
               pendingLabel={pendingLabel}

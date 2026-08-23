@@ -1,5 +1,6 @@
 "use client";
 
+import { Settings2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -10,12 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
   PlannerEditorField,
   PlannerEditorTextField,
 } from "@/features/itinerary/components/planner-editor-fields";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
-import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
 import { updateTrip } from "@/features/trips/actions";
 import { useTripSettingsEditorContext } from "@/features/trips/components/trip-settings-editor";
 import {
@@ -59,15 +60,7 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
     <PlannerEditorForm
       compactActions
       formAction={action}
-      header={
-        <PlannerEditorHeader
-          closeDisabled={pending}
-          description={editor.description}
-          error={state.error}
-          onClose={editor.onClose}
-          title={editor.title}
-        />
-      }
+      header={null}
       hiddenFields={
         <>
           <input name="trip_id" type="hidden" value={trip.id} />
@@ -77,10 +70,35 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
           <input name="currency" type="hidden" value={currency} />
         </>
       }
+      onCancel={editor.onClose}
       onClose={editor.onClose}
       pending={pending}
       pendingLabel="Saving…"
     >
+      <div className="flex min-w-0 items-start gap-4 border-b pb-6">
+        <span
+          aria-hidden="true"
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+        >
+          <Settings2 className="size-5" />
+        </span>
+        <div className="min-w-0 pt-0.5">
+          <SheetTitle
+            className="text-xl font-extrabold tracking-tight outline-none"
+            data-trip-settings-title=""
+            tabIndex={-1}
+          >
+            {editor.title}
+          </SheetTitle>
+          <SheetDescription className="mt-1 max-w-prose">{editor.description}</SheetDescription>
+          {state.error ? (
+            <p className="mt-2 text-sm font-medium text-destructive" role="alert">
+              {state.error}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
       <PlannerEditorTextField
         autoComplete="off"
         defaultValue={trip.title}

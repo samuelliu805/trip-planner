@@ -8,10 +8,12 @@ import { usePlannerEditorViewportLock } from "@/features/itinerary/components/us
 /** The one full-screen editor surface shared by itinerary cells and trip settings. */
 export function PlannerEditorScreen({
   children,
+  initialFocusSelector,
   onOpenChange,
   open,
 }: {
   children: ReactNode;
+  initialFocusSelector?: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
@@ -21,6 +23,16 @@ export function PlannerEditorScreen({
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent
         className="planner-item-dialog p-0"
+        onOpenAutoFocus={
+          initialFocusSelector
+            ? (event) => {
+                event.preventDefault();
+                (event.currentTarget as HTMLElement)
+                  .querySelector<HTMLElement>(initialFocusSelector)
+                  ?.focus({ preventScroll: true });
+              }
+            : undefined
+        }
         overlayClassName="bg-background"
         showCloseButton={false}
         side="right"
