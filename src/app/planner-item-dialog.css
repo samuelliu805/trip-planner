@@ -143,6 +143,30 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
   contain: inline-size;
 }
 
+.planner-item-dialog .planner-editor-compound-field {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 3.75rem;
+  contain: inline-size;
+}
+
+.planner-item-dialog .planner-editor-compound-field input {
+  min-height: 3.625rem !important;
+  border-width: 0;
+  border-radius: 0 !important;
+  box-shadow: none;
+}
+
+.planner-item-dialog .planner-editor-compound-field input + input {
+  border-left-width: 1px;
+}
+
+.planner-item-dialog .planner-editor-compound-field input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .planner-item-dialog .planner-native-currency-select {
   height: 3.75rem !important;
   min-height: 3.75rem !important;

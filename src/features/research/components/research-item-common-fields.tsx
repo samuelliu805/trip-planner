@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Textarea } from "@/components/ui/textarea";
@@ -93,25 +92,11 @@ export function ResearchItemDetailFields({
     </PlannerEditorField>
   );
 
-  const fields = (
+  return (
     <div className="min-w-0 space-y-6">
       {category === "rental" ? name : booking}
       {category === "rental" ? note : name}
       {category === "rental" ? booking : note}
     </div>
-  );
-
-  if (category !== "flight" && category !== "train") return fields;
-  return (
-    <details className="group min-w-0 rounded-xl border bg-muted/20">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-        Booking, name &amp; note (optional)
-        <ChevronDown
-          aria-hidden="true"
-          className="size-4 shrink-0 transition-transform group-open:rotate-180"
-        />
-      </summary>
-      <div className="min-w-0 border-t p-3">{fields}</div>
-    </details>
   );
 }

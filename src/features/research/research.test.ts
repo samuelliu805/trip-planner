@@ -125,18 +125,28 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
   );
 });
 
-test("research editors keep two short category pages and put Flight price on Details", () => {
+test("research editors keep optional schedules off the first page and price first on page two", () => {
   assert.deepEqual(
     researchItemFormSteps("flight").map(({ id, title }) => [id, title]),
     [
       ["primary", "Flight"],
+      ["schedule", "Price & time"],
+      ["details", "Details"],
+    ],
+  );
+  assert.deepEqual(
+    researchItemFormSteps("stay").map(({ id, title }) => [id, title]),
+    [
+      ["primary", "Hotel"],
       ["details", "Details"],
     ],
   );
   assert.equal(researchItemFormSteps("stay")[0].title, "Hotel");
   assert.equal(researchItemFormSteps("rental")[0].title, "Rental car");
-  assert.equal(researchItemPriceStep("flight"), "details");
-  assert.equal(researchItemPriceStep("train"), "primary");
+  assert.equal(researchItemPriceStep("flight"), "schedule");
+  assert.equal(researchItemPriceStep("train"), "schedule");
+  assert.equal(researchItemPriceStep("rental"), "schedule");
+  assert.equal(researchItemPriceStep("stay"), "details");
 });
 
 test("each journey segment keeps its own carrier", () => {
@@ -837,7 +847,10 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
     form,
     values,
     journey,
+    multiCity,
+    schedule,
     segmentDetails,
+    commonFields,
     dateRange,
     actions,
     migration,
@@ -853,7 +866,10 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
     readFile(new URL("./components/research-item-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./research-item-form-values.ts", import.meta.url), "utf8"),
     readFile(new URL("./components/research-journey-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-multi-city-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-schedule-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/research-segment-detail-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/research-item-common-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/date-range-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/research-plan-actions.tsx", import.meta.url), "utf8"),
     readFile(
@@ -879,10 +895,13 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.match(form, /<PlannerEditorForm/);
   assert.match(form, /<PlannerEditorHeader/);
   assert.match(form, /<PlannerItemStepNav/);
-  assert.match(journey, /Add times \(optional\)/);
   assert.match(journey, /label="From"[\s\S]*label="To"/);
-  assert.match(segmentDetails, /label="Airline"/);
-  assert.match(segmentDetails, /Flight number/);
+  assert.doesNotMatch(journey + multiCity + commonFields, /<details|Add times \(optional\)/);
+  assert.match(schedule, /label="Departure"[\s\S]*label="Arrival"/);
+  assert.match(schedule, /planner-editor-compound-field/);
+  assert.match(segmentDetails, /label="Airline & flight number"/);
+  assert.match(segmentDetails, /aria-label="Airline"/);
+  assert.match(segmentDetails, /aria-label="Flight number"/);
   assert.doesNotMatch(journey, /Flight \{index \+ 1\}/);
   assert.match(dateRange, /showPicker/);
   assert.match(dateRange, /openDatePicker\(endRef\.current\)/);

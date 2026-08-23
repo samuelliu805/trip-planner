@@ -1558,10 +1558,15 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
       shareSettings.indexOf("min-h-0 flex-1 touch-pan-y"),
     "save status stays outside the settings scroller",
   );
-  assert.match(shareVisibilityFields, /Select everything you want people with the link to see/);
+  assert.match(shareVisibilityFields, /Choose the itinerary content included/);
   assert.match(shareVisibilityFields, /ShareSettingOption/);
+  assert.match(shareVisibilityFields, /Page content/);
+  assert.match(shareVisibilityFields, /Trip details/);
+  assert.match(shareVisibilityFields, /Visitor tools/);
   assert.match(shareVisibilityFields, /Image downloads/);
   assert.match(shareVisibilityFields, /allowLongImageDownload/);
+  assert.doesNotMatch(shareVisibilityFields, /<details|More controls|ChevronDown/);
+  assert.match(shareSettingsFields, /ShareSettingDisclosure title="Advanced settings"/);
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
   assert.match(shareSettingsFields, /LongImageSettingsFields/);

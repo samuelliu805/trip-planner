@@ -42,9 +42,10 @@ export function DateRangeFields({
   const minimumEnd = addIsoDateDays(startValue, minimumNights) ?? startValue;
 
   return (
-    <div className="grid min-w-0 gap-3 min-[430px]:grid-cols-2">
+    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
       <ResearchField label={startLabel}>
         <Input
+          className="planner-native-datetime-input block min-w-0 max-w-full"
           name={startName}
           onChange={(event) => {
             const value = event.target.value;
@@ -60,6 +61,7 @@ export function DateRangeFields({
       </ResearchField>
       <ResearchField label={endLabel}>
         <Input
+          className="planner-native-datetime-input block min-w-0 max-w-full"
           min={minimumEnd || undefined}
           name={endName}
           onChange={(event) => onEndChange(event.target.value)}
