@@ -3230,6 +3230,8 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(workspace, /selectedItemId/);
   assert.match(workspace, /setSelectedItemId\(item\.id\)/);
   assert.match(mapShell, /entry\.dayLabel/);
+  assert.match(mapShell, /\? formatMoney\(item\.price_amount, item\.price_currency\)/);
+  assert.doesNotMatch(mapShell, /`\$\{item\.price_currency\}/);
   assert.doesNotMatch(workspace, /Map preview · P3|P4/);
   assert.match(map, /AdvancedMarker/);
   assert.match(map, /anchorLeft=\{comparison \? "-50%" : undefined\}/);

@@ -1,14 +1,9 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
-
-import { Input } from "@/components/ui/input";
-
-import { DateRangeFields } from "./date-range-fields";
 import { nativeSelectClass, ResearchField } from "./form-controls";
 import { ResearchPlaceField } from "./research-place-field";
 import { ResearchMultiCityFields } from "./research-multi-city-fields";
-import { ResearchOptionalSegmentFields } from "./research-optional-segment-fields";
+import { ResearchSegmentDetailFields } from "./research-segment-detail-fields";
 import type { ResearchItem, ResearchJourneyType, ResearchSegment } from "../types";
 
 const airportOrCityTypes = ["airport", "international_airport", "locality"];
@@ -17,6 +12,7 @@ const trainStationOrCityTypes = ["train_station", "transit_station", "locality"]
 const blankSegment = (origin = "", destination = ""): ResearchSegment => ({
   arrivalDate: "",
   arrivalTime: "",
+  carrier: "",
   departureDate: "",
   departureTime: "",
   destination,
@@ -123,60 +119,51 @@ export function ResearchJourneyFields({
               textName="destinationText"
             />
           </div>
-          {journeyType === "round_trip" ? (
-            <DateRangeFields
-              endLabel="Return"
-              endValue={returned.departureDate}
-              onEndChange={(departureDate) =>
-                onSegmentsChange([
-                  first,
-                  {
-                    ...returned,
-                    departureDate,
-                    origin: first.destination,
-                    destination: first.origin,
-                  },
-                ])
-              }
-              onStartChange={(departureDate) => update(0, { departureDate })}
-              startLabel="Departure"
-              startValue={first.departureDate}
-            />
-          ) : (
-            <ResearchField label={category === "flight" ? "Departure" : "Travel date"}>
-              <Input
-                onChange={(event) => update(0, { departureDate: event.target.value })}
-                type="date"
-                value={first.departureDate}
-              />
-            </ResearchField>
-          )}
-          <details className="group min-w-0 rounded-xl border bg-muted/20">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-              Times &amp; {category === "flight" ? "flight" : "train"} number
-              <ChevronDown className="size-4 group-open:rotate-180" />
-            </summary>
-            <div className="min-w-0 space-y-3 border-t p-3">
-              <ResearchOptionalSegmentFields
-                category={category}
-                label={journeyType === "round_trip" ? "Outbound" : undefined}
-                onChange={(values) => update(0, values)}
-                segment={first}
-              />
-              {journeyType === "round_trip" ? (
-                <ResearchOptionalSegmentFields
-                  category={category}
-                  label="Return"
-                  onChange={(values) => update(1, values)}
-                  segment={returned}
-                />
-              ) : null}
-            </div>
-          </details>
         </>
       ) : (
         <ResearchMultiCityFields onSegmentsChange={onSegmentsChange} segments={segments} />
       )}
     </div>
+  );
+}
+
+export function ResearchJourneyDetailFields({
+  category,
+  onSegmentsChange,
+  segments,
+}: {
+  category: "flight" | "train";
+  onSegmentsChange: (segments: ResearchSegment[]) => void;
+  segments: ResearchSegment[];
+}) {
+  function update(index: number, values: Partial<ResearchSegment>) {
+    onSegmentsChange(
+      segments.map((segment, position) =>
+        position === index ? { ...segment, ...values } : segment,
+      ),
+    );
+  }
+
+  return (
+    <section className="min-w-0 space-y-4" aria-label="Carrier and service details">
+      <h3 className="text-base font-bold">
+        {category === "flight" ? "Airline & flight number" : "Train number"}
+      </h3>
+      <div className="min-w-0 space-y-5">
+        {segments.map((segment, index) => (
+          <ResearchSegmentDetailFields
+            category={category}
+            key={index}
+            label={
+              segments.length > 1
+                ? `${segment.origin || "Segment"} → ${segment.destination || index + 1}`
+                : undefined
+            }
+            onChange={(values) => update(index, values)}
+            segment={segment}
+          />
+        ))}
+      </div>
+    </section>
   );
 }

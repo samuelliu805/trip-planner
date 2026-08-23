@@ -5,3 +5,7 @@ export function addIsoDateDays(value: string | null | undefined, days: number) {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
+
+export function firstPresentIsoDate(...values: Array<string | null | undefined>) {
+  return values.find((value): value is string => Boolean(value)) ?? null;
+}

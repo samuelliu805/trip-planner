@@ -1,17 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   commitAttachmentUploadSession,
   discardAttachmentUploadSession,
 } from "@/features/attachments/upload-client";
-import type { ItineraryItem } from "@/features/itinerary/types";
+import type { OwnerAttachment } from "@/features/attachments/schema";
 
 type AttachmentEditSessionOptions = {
-  item?: ItineraryItem;
+  item?: { id: string };
   itemMutationPending: boolean;
   onCancel: () => void;
+  targetKind?: "item" | "research";
   tripId: string;
 };
 
@@ -19,6 +20,7 @@ export function useAttachmentEditSession({
   item,
   itemMutationPending,
   onCancel,
+  targetKind = "item",
   tripId,
 }: AttachmentEditSessionOptions) {
   const [attachmentPending, setAttachmentPendingState] = useState(false);
@@ -34,6 +36,10 @@ export function useAttachmentEditSession({
   const sessionHandled = useRef(false);
   const shouldDiscardSession = useRef(false);
   const itemId = item?.id;
+  const target = useMemo(
+    () => (itemId ? (targetKind === "research" ? { researchItemId: itemId } : { itemId }) : {}),
+    [itemId, targetKind],
+  );
   const hasUncommittedAttachments = Boolean(itemId && (attachmentPending || draftCount > 0));
 
   const setAttachmentPending = useCallback(
@@ -81,30 +87,30 @@ export function useAttachmentEditSession({
     () => () => {
       if (!itemId || !shouldDiscardSession.current) return;
       abortControllerRef.current.abort();
-      void discardAttachmentUploadSession({ itemId, tripId, uploadSessionId }, true).catch(
+      void discardAttachmentUploadSession({ ...target, tripId, uploadSessionId }, true).catch(
         () => undefined,
       );
     },
-    [itemId, tripId, uploadSessionId],
+    [itemId, target, tripId, uploadSessionId],
   );
 
   const commit = useCallback(
-    async (savedItem: ItineraryItem) => {
+    async <SavedItem extends { id: string }>(savedItem: SavedItem) => {
       if (!itemId || draftCount === 0) {
         sessionHandled.current = true;
         shouldDiscardSession.current = false;
         return savedItem;
       }
       const attachments = await commitAttachmentUploadSession({
-        itemId,
+        ...target,
         tripId,
         uploadSessionId,
       });
       sessionHandled.current = true;
       shouldDiscardSession.current = false;
-      return { ...savedItem, attachments };
+      return { ...savedItem, attachments } as SavedItem & { attachments: OwnerAttachment[] };
     },
-    [draftCount, itemId, tripId, uploadSessionId],
+    [draftCount, itemId, target, tripId, uploadSessionId],
   );
 
   const markHandled = useCallback(() => {
@@ -119,7 +125,7 @@ export function useAttachmentEditSession({
     abortController.abort();
     try {
       await discardAttachmentUploadSession({
-        itemId,
+        ...target,
         tripId,
         uploadSessionId,
       });
@@ -139,7 +145,7 @@ export function useAttachmentEditSession({
     } finally {
       setDiscardPending(false);
     }
-  }, [abortController, itemId, onCancel, tripId, uploadSessionId]);
+  }, [abortController, itemId, onCancel, target, tripId, uploadSessionId]);
 
   return {
     attachmentPending,

@@ -14,7 +14,7 @@ export function PlannerEditorScreen({
   open,
 }: {
   children: ReactNode;
-  editorKind?: "trip-settings";
+  editorKind?: "research" | "trip-settings";
   initialFocusSelector?: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;

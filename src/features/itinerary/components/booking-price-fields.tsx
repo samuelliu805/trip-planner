@@ -31,7 +31,7 @@ export function BookingPriceFields({
     : [defaultCurrency, ...commonBookingCurrencies];
 
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_7rem] gap-5">
+    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
       <div className="min-w-0 space-y-2">
         <Label htmlFor={`${idPrefix}-amount`}>Price</Label>
         <Input

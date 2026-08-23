@@ -4,6 +4,7 @@ function blankSegment(origin = "", destination = ""): ResearchSegment {
   return {
     arrivalDate: "",
     arrivalTime: "",
+    carrier: "",
     departureDate: "",
     departureTime: "",
     destination,

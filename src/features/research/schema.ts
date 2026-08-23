@@ -34,6 +34,7 @@ const optionalTime = z
 export const researchSegmentSchema = z.object({
   arrivalDate: z.iso.date().optional().nullable(),
   arrivalTime: optionalTime,
+  carrier: optionalText(120),
   departureDate: z.iso.date(),
   departureTime: optionalTime,
   destination: z.string().trim().min(1, "Add the segment destination.").max(200),

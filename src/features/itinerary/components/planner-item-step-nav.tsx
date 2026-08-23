@@ -2,20 +2,20 @@
 
 import { Check } from "lucide-react";
 
-import type { ItemFormStep } from "@/features/itinerary/components/planner-item-form-steps";
+type EditorStep = { id: string; title: string };
 
 /**
  * Numbered circles joined by dotted rules, each label above its own number. Every number is a
  * button, so any step can be opened directly instead of only through Next and Back.
  */
-export function PlannerItemStepNav({
+export function PlannerItemStepNav<Step extends EditorStep>({
   activeStepId,
   onSelect,
   steps,
 }: {
-  activeStepId: ItemFormStep["id"];
-  onSelect: (stepId: ItemFormStep["id"]) => void;
-  steps: ItemFormStep[];
+  activeStepId: Step["id"];
+  onSelect: (stepId: Step["id"]) => void;
+  steps: Step[];
 }) {
   const activeIndex = steps.findIndex(({ id }) => id === activeStepId);
   const interval = steps.length > 1 ? 100 / (steps.length - 1) : 0;

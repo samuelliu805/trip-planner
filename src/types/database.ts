@@ -55,6 +55,7 @@ export type Database = {
       }
       asset_links: {
         Row: {
+          applied_from_research_application_id: string | null
           asset_id: string
           created_at: string
           display_filename: string
@@ -62,14 +63,17 @@ export type Database = {
           draft_session_id: string | null
           id: string
           include_in_share: boolean
-          itinerary_item_id: string
+          itinerary_item_id: string | null
           owner_id: string
           public_ref: string
+          research_application_id: string | null
+          research_item_id: string | null
           sort_order: number
           trip_id: string
           updated_at: string
         }
         Insert: {
+          applied_from_research_application_id?: string | null
           asset_id: string
           created_at?: string
           display_filename: string
@@ -77,14 +81,17 @@ export type Database = {
           draft_session_id?: string | null
           id?: string
           include_in_share?: boolean
-          itinerary_item_id: string
+          itinerary_item_id?: string | null
           owner_id: string
           public_ref?: string
+          research_application_id?: string | null
+          research_item_id?: string | null
           sort_order?: number
           trip_id: string
           updated_at?: string
         }
         Update: {
+          applied_from_research_application_id?: string | null
           asset_id?: string
           created_at?: string
           display_filename?: string
@@ -92,14 +99,23 @@ export type Database = {
           draft_session_id?: string | null
           id?: string
           include_in_share?: boolean
-          itinerary_item_id?: string
+          itinerary_item_id?: string | null
           owner_id?: string
           public_ref?: string
+          research_application_id?: string | null
+          research_item_id?: string | null
           sort_order?: number
           trip_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "asset_links_applied_research_application_fkey"
+            columns: ["applied_from_research_application_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_plan_applications"
+            referencedColumns: ["id", "trip_id"]
+          },
           {
             foreignKeyName: "asset_links_asset_owner_fkey"
             columns: ["asset_id", "owner_id"]
@@ -112,6 +128,20 @@ export type Database = {
             columns: ["itinerary_item_id", "trip_id"]
             isOneToOne: false
             referencedRelation: "itinerary_items"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "asset_links_research_application_trip_fkey"
+            columns: ["research_application_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_plan_applications"
+            referencedColumns: ["id", "trip_id"]
+          },
+          {
+            foreignKeyName: "asset_links_research_trip_fkey"
+            columns: ["research_item_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "research_items"
             referencedColumns: ["id", "trip_id"]
           },
           {
@@ -1735,6 +1765,23 @@ export type Database = {
         }
         Returns: Json
       }
+      commit_research_asset_session_v1: {
+        Args: {
+          requested_draft_session_id: string
+          target_research_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
+      copy_research_assets_to_items_v1: {
+        Args: {
+          target_application_id: string
+          target_item_ids: string[]
+          target_research_item_id: string
+          target_trip_id: string
+        }
+        Returns: undefined
+      }
       copy_itinerary_items_to_days: {
         Args: { source_item_ids: string[]; target_day_ids: string[] }
         Returns: number
@@ -1939,10 +1986,26 @@ export type Database = {
         }
         Returns: string
       }
+      detach_research_asset_v1: {
+        Args: {
+          requested_public_ref: string
+          target_research_item_id: string
+          target_trip_id: string
+        }
+        Returns: string
+      }
       discard_item_asset_session_v1: {
         Args: {
           requested_draft_session_id: string
           target_item_id: string
+          target_trip_id: string
+        }
+        Returns: number
+      }
+      discard_research_asset_session_v1: {
+        Args: {
+          requested_draft_session_id: string
+          target_research_item_id: string
           target_trip_id: string
         }
         Returns: number
@@ -1995,6 +2058,20 @@ export type Database = {
         Returns: Json
       }
       finalize_item_asset_v2: {
+        Args: {
+          target_asset_id: string
+          thumbnail_ready?: boolean
+          verified_byte_size: number
+          verified_duration_seconds?: number
+          verified_height?: number
+          verified_media_kind: Database["public"]["Enums"]["asset_media_kind"]
+          verified_mime_type: string
+          verified_sha256: string
+          verified_width?: number
+        }
+        Returns: Json
+      }
+      finalize_research_asset_v1: {
         Args: {
           target_asset_id: string
           thumbnail_ready?: boolean
@@ -2129,6 +2206,19 @@ export type Database = {
           requested_mime_type: string
           requested_sha256: string
           target_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
+      prepare_research_asset_v1: {
+        Args: {
+          requested_byte_size: number
+          requested_draft_session_id: string
+          requested_filename: string
+          requested_media_kind: Database["public"]["Enums"]["asset_media_kind"]
+          requested_mime_type: string
+          requested_sha256: string
+          target_research_item_id: string
           target_trip_id: string
         }
         Returns: Json

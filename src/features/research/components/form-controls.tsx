@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+"use client";
 
-import { Label } from "@/components/ui/label";
+import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode } from "react";
+
+import { PlannerEditorField } from "@/features/itinerary/components/planner-editor-fields";
 
 export const nativeSelectClass =
   "h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-base shadow-sm outline-none focus:ring-2 focus:ring-ring sm:text-sm";
@@ -14,13 +16,14 @@ export function ResearchField({
   hint?: string;
   label: string;
 }) {
+  const generatedId = useId();
+  const element = isValidElement(children)
+    ? (children as ReactElement<{ id?: string }>)
+    : undefined;
+  const id = element?.props.id ?? generatedId;
   return (
-    <label className="block min-w-0 space-y-2">
-      <Label asChild>
-        <span>{label}</span>
-      </Label>
-      {children}
-      {hint ? <span className="block text-xs leading-4 text-muted-foreground">{hint}</span> : null}
-    </label>
+    <PlannerEditorField description={hint} id={id} label={label}>
+      {element ? cloneElement(element, { id }) : children}
+    </PlannerEditorField>
   );
 }

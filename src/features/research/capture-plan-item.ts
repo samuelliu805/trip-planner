@@ -70,6 +70,7 @@ function journeyCapture(items: ItineraryItem[], days: PlannerDay[]) {
       {
         arrivalDate: text(value.arrivalDate),
         arrivalTime: text(value.arrivalTime) ?? candidate.end_time,
+        carrier: text(value.provider),
         departureDate,
         departureTime: candidate.start_time,
         destination,

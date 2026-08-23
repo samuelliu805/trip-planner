@@ -49,6 +49,7 @@ export type TransportDetails = {
   mode: TransportMode;
   origin?: string;
   originPlace?: PlaceSnapshot;
+  provider?: string;
   researchSourceId?: string;
   segmentIndex?: number;
   serviceNumber?: string;

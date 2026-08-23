@@ -6,12 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 import { ResearchField } from "./form-controls";
-import { ResearchOptionalSegmentFields } from "./research-optional-segment-fields";
+import { ResearchDateTimeField } from "./research-schedule-fields";
 import type { ResearchSegment } from "../types";
 
 const blankSegment = (): ResearchSegment => ({
   arrivalDate: "",
   arrivalTime: "",
+  carrier: "",
   departureDate: "",
   departureTime: "",
   destination: "",
@@ -33,10 +34,10 @@ export function ResearchMultiCityFields({
       ),
     );
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {segments.map((segment, index) => (
-        <fieldset className="min-w-0 space-y-3 rounded-xl border p-3" key={index}>
-          <legend className="px-1 text-xs font-semibold text-muted-foreground">
+        <fieldset className="min-w-0 space-y-3" key={index}>
+          <legend className="text-sm font-semibold text-muted-foreground">
             Flight {index + 1}
           </legend>
           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
@@ -53,18 +54,23 @@ export function ResearchMultiCityFields({
               />
             </ResearchField>
           </div>
-          <ResearchField label="Departure">
-            <Input
-              onChange={(event) => update(index, { departureDate: event.target.value })}
-              type="date"
-              value={segment.departureDate}
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <ResearchDateTimeField
+              date={segment.departureDate}
+              label="Departure"
+              onDateChange={(departureDate) => update(index, { departureDate })}
+              onTimeChange={(departureTime) => update(index, { departureTime })}
+              time={segment.departureTime ?? ""}
             />
-          </ResearchField>
-          <ResearchOptionalSegmentFields
-            category="flight"
-            onChange={(values) => update(index, values)}
-            segment={segment}
-          />
+            <ResearchDateTimeField
+              date={segment.arrivalDate ?? ""}
+              label="Arrival"
+              minDate={segment.departureDate}
+              onDateChange={(arrivalDate) => update(index, { arrivalDate })}
+              onTimeChange={(arrivalTime) => update(index, { arrivalTime })}
+              time={segment.arrivalTime ?? ""}
+            />
+          </div>
           {segments.length > 2 ? (
             <div className="flex justify-end">
               <Button
