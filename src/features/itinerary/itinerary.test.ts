@@ -2456,8 +2456,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(plannerDialogRule, /height: 100dvh[\s\S]*max-height: 100dvh/);
-  assert.doesNotMatch(plannerDialogRule, /100(?:l)?vh/);
+  assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
+  assert.doesNotMatch(plannerDialogRule, /100dvh/);
   assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
