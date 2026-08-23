@@ -1076,6 +1076,7 @@ test("public and owner Matrix use the same canonical category columns", async ()
     /addEventListener\("touchmove", handleTouchMove, \{ passive: false \}\)/,
   );
   assert.match(publicTableContainment, /boundaryBlocked && event\.cancelable/);
+  assert.match(publicTableContainment, /useInitialMatrixScrollPosition<HTMLElement>\(\)/);
   assert.doesNotMatch(publicTable, /public-item-focus border-b/);
   assert.match(matrixPresentation, /matrix-grid-header sticky top-0 z-\[70\]/);
   assert.match(
@@ -1403,6 +1404,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(styles, /\.public-matrix \{[\s\S]*overflow-anchor: none/);
   assert.match(styles, /\.public-matrix \{[\s\S]*touch-action: pan-x pan-y/);
   assert.match(styles, /\.public-matrix \.matrix-grid-header \{[\s\S]*z-index: 70/);
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-grid-header \{[\s\S]*position: -webkit-sticky;[\s\S]*position: sticky;[\s\S]*top: 0;/,
+  );
   assert.match(
     styles,
     /\.public-matrix \.matrix-grid-header \.matrix-date-column \{[\s\S]*z-index: 80/,

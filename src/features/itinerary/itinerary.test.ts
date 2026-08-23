@@ -474,6 +474,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
+  const placeAutocomplete = await readFile(
+    new URL("../places/place-autocomplete.tsx", import.meta.url),
+    "utf8",
+  );
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{loading\}/);
@@ -530,6 +534,13 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.doesNotMatch(suggestionList, /overscroll-contain/);
   assert.match(suggestionList, /onClick=/);
   assert.doesNotMatch(suggestionList, /onMouseDown=/);
+  assert.match(suggestionList, /Google Maps places/);
+  assert.match(suggestionList, /<button[\s\S]*onClick=\{customOption\.onChoose\}/);
+  assert.doesNotMatch(suggestionList, /activeIndex === suggestions\.length/);
+  assert.match(placeAutocomplete, /const requestGeneration = useRef\(0\)/);
+  assert.match(placeAutocomplete, /generation !== requestGeneration\.current/);
+  assert.match(placeAutocomplete, /label: `Create \$\{customValueLabel/);
+  assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
@@ -2472,7 +2483,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
-  assert.match(styles, /\.planner-matrix \.matrix-grid-header \{\s*z-index: 70;/);
+  assert.match(styles, /\.planner-matrix \.matrix-grid-header \{[\s\S]*?z-index: 70;/);
   assert.match(workspace, /Insert day above/);
   assert.match(workspace, /Insert day below/);
   assert.match(workspace, /Remove Day/);
@@ -2558,6 +2569,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
     new URL("./hooks/use-planner-viewport-containment.ts", import.meta.url),
     "utf8",
   );
+  const initialMatrixScroll = await readFile(
+    new URL("./hooks/use-initial-matrix-scroll-position.ts", import.meta.url),
+    "utf8",
+  );
   const secondaryFields = await readFile(
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
@@ -2599,6 +2614,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
     styles,
     /\.planner-matrix \.matrix-grid-header,[\s\S]*backface-visibility: hidden[\s\S]*translateZ\(0\)/,
   );
+  assert.match(
+    styles,
+    /\.planner-matrix \.matrix-grid-header \{[\s\S]*position: -webkit-sticky;[\s\S]*position: sticky;[\s\S]*top: 0;/,
+  );
   assert.match(styles, /planner-mobile-map-fab[\s\S]*display: inline-flex/);
   assert.match(
     styles,
@@ -2611,6 +2630,11 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(tripsLayout, /trips-global-header sticky top-0 z-\[80\]/);
   assert.match(workspace, /TripAppBar/);
   assert.match(workspace, /usePlannerViewportContainment/);
+  assert.match(workspace, /useInitialMatrixScrollPosition<HTMLElement>\(\)/);
+  assert.match(workspace, /ref=\{matrixRef\}/);
+  assert.match(initialMatrixScroll, /min-width: 640px[\s\S]*max-width: 1199px/);
+  assert.match(initialMatrixScroll, /matrix\.scrollTo\(\{ behavior: "auto", left: 0, top: 0 \}\)/);
+  assert.match(initialMatrixScroll, /requestAnimationFrame\(reset\)/);
   assert.match(viewportContainment, /visualViewport/);
   assert.match(viewportContainment, /focusout/);
   assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);

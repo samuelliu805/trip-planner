@@ -78,7 +78,15 @@ body:has(.planner-map-sheet) {
   touch-action: pan-x pan-y;
 }
 
+.planner-matrix > [role="grid"] {
+  position: relative;
+  overflow: visible;
+}
+
 .planner-matrix .matrix-grid-header {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
   z-index: 70;
 }
 

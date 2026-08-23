@@ -22,6 +22,8 @@
 }
 
 .public-matrix .matrix-grid-header {
+  position: -webkit-sticky;
+  position: sticky;
   top: 0;
   z-index: 70;
   -webkit-backface-visibility: hidden;

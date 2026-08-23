@@ -147,7 +147,7 @@ export function ItemPlaceField({
       <PlaceAutocomplete
         ariaDescribedBy={creatingActivity ? activityDescriptionId : undefined}
         ariaLabel={creatingActivity ? "Activity or place" : placeLabel}
-        customValueLabel={creatingActivity ? "a custom activity" : undefined}
+        customValueLabel={creatingActivity ? "custom activity" : undefined}
         disabled={pending}
         onChange={selectPlace}
         onCustomValue={

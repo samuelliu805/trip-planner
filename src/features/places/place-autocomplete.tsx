@@ -47,6 +47,7 @@ export function PlaceAutocomplete({
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken>(null);
+  const requestGeneration = useRef(0);
   const selectedValue = value ?? null;
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
@@ -57,10 +58,8 @@ export function PlaceAutocomplete({
   const [error, setError] = useState<string>();
   const customQuery = query.trim();
   const hasCustomOption = Boolean(onCustomValue && customQuery && !optionsDismissed);
-  const customOptionLabel = hasCustomOption
-    ? `Use “${customQuery}” as ${customValueLabel ?? "a custom entry"}`
-    : undefined;
-  const optionCount = suggestions.length + (hasCustomOption ? 1 : 0);
+  const optionCount = suggestions.length;
+  const popupOpen = optionCount > 0 || hasCustomOption;
 
   // Serialised so an inline includedPrimaryTypes array cannot restart the search every render.
   const typesKey = includedPrimaryTypes?.length ? includedPrimaryTypes.join(",") : "";
@@ -68,8 +67,10 @@ export function PlaceAutocomplete({
   useEffect(() => {
     const input = query.trim();
     if (optionsDismissed || !places || !input) return;
+    const generation = requestGeneration.current;
     let cancelled = false;
     const timer = setTimeout(async () => {
+      if (generation !== requestGeneration.current) return;
       setSearching(true);
       try {
         sessionToken.current ??= new places.AutocompleteSessionToken();
@@ -79,7 +80,7 @@ export function PlaceAutocomplete({
             sessionToken: sessionToken.current,
             ...(typesKey ? { includedPrimaryTypes: typesKey.split(",") } : null),
           });
-        if (cancelled) return;
+        if (cancelled || generation !== requestGeneration.current) return;
         setError(undefined);
         setActiveIndex(-1);
         setSuggestions(
@@ -97,9 +98,10 @@ export function PlaceAutocomplete({
           ),
         );
       } catch {
-        if (!cancelled) setError("Places search is unavailable right now.");
+        if (!cancelled && generation === requestGeneration.current)
+          setError("Places search is unavailable right now.");
       } finally {
-        if (!cancelled) setSearching(false);
+        if (!cancelled && generation === requestGeneration.current) setSearching(false);
       }
     }, 250);
     return () => {
@@ -122,8 +124,10 @@ export function PlaceAutocomplete({
         location: place.location,
       });
       // fetchFields ends the billed session, so the next search needs a fresh token.
+      requestGeneration.current += 1;
       sessionToken.current = null;
       setSuggestions([]);
+      setSearching(false);
       setQuery("");
       onChange(normalized);
       if (navigator.maxTouchPoints > 0)
@@ -138,9 +142,12 @@ export function PlaceAutocomplete({
 
   function chooseCustomValue() {
     if (!onCustomValue || !customQuery || resolving) return;
+    requestGeneration.current += 1;
     sessionToken.current = null;
     setSuggestions([]);
     setActiveIndex(-1);
+    setError(undefined);
+    setSearching(false);
     setQuery("");
     onCustomValue(customQuery);
     onSelected?.();
@@ -158,17 +165,19 @@ export function PlaceAutocomplete({
           aria-label={ariaLabel}
           aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
           aria-autocomplete="list"
-          aria-controls={listId}
-          aria-expanded={optionCount > 0}
+          aria-controls={`${listId}-panel`}
+          aria-expanded={popupOpen}
           autoComplete="off"
           autoFocus={autoFocus}
           className="pl-9 pr-9"
           disabled={disabled || (!places && !onCustomValue)}
           onChange={(event) => {
+            requestGeneration.current += 1;
             setQuery(event.target.value);
             setActiveIndex(-1);
             setOptionsDismissed(false);
-            if (!event.target.value.trim()) setSuggestions([]);
+            setSearching(false);
+            setSuggestions([]);
           }}
           onKeyDown={(event) => {
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -181,16 +190,17 @@ export function PlaceAutocomplete({
             }
             if (event.key === "Enter" && activeIndex >= 0) {
               event.preventDefault();
-              if (activeIndex < suggestions.length) void choose(suggestions[activeIndex]);
-              else chooseCustomValue();
-            } else if (event.key === "Enter" && hasCustomOption) {
+              const suggestion = suggestions[activeIndex];
+              if (suggestion) void choose(suggestion);
+            } else if (event.key === "Enter") {
               event.preventDefault();
-              chooseCustomValue();
             }
             if (event.key === "Escape") {
               event.stopPropagation();
+              requestGeneration.current += 1;
               setActiveIndex(-1);
               setOptionsDismissed(true);
+              setSearching(false);
               setSuggestions([]);
             }
           }}
@@ -209,8 +219,12 @@ export function PlaceAutocomplete({
         <PlaceSuggestionList
           activeIndex={activeIndex}
           customOption={
-            customOptionLabel
-              ? { label: customOptionLabel, onChoose: chooseCustomValue }
+            hasCustomOption
+              ? {
+                  description: `Use “${customQuery}” without a Google Maps place.`,
+                  label: `Create ${customValueLabel ?? "custom entry"}`,
+                  onChoose: chooseCustomValue,
+                }
               : undefined
           }
           listId={listId}
@@ -249,7 +263,7 @@ export function PlaceAutocomplete({
       {!places ? (
         <p className="mt-1 text-xs text-muted-foreground">
           {onCustomValue
-            ? `Google Maps suggestions are unavailable, but you can still add ${customValueLabel ?? "a custom entry"}.`
+            ? `Google Maps suggestions are unavailable, but you can still create a ${customValueLabel ?? "custom entry"}.`
             : "Places search loads when Google Maps is configured."}
         </p>
       ) : null}
