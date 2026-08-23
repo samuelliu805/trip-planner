@@ -10,7 +10,8 @@
   max-height: none !important;
   flex-direction: column;
   overflow: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
   border: 0 !important;
   border-radius: 0 !important;
   background: var(--muted);
@@ -26,7 +27,8 @@ body.planner-editor-viewport-locked {
   height: 100% !important;
   max-height: 100% !important;
   overflow: hidden !important;
-  overscroll-behavior: none !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: auto !important;
 }
 
 body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
@@ -42,7 +44,8 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
   width: 100%;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
   scroll-padding-block: 2rem;
   touch-action: pan-y;
 }
@@ -65,6 +68,12 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
     2rem + env(safe-area-inset-bottom) + var(--planner-editor-keyboard-space, 0px)
   );
   padding-left: max(1.25rem, env(safe-area-inset-left));
+}
+
+.planner-item-dialog .planner-item-form[data-compact-actions] .planner-item-form-content {
+  padding-bottom: calc(
+    1.25rem + env(safe-area-inset-bottom) + var(--planner-editor-keyboard-space, 0px)
+  );
 }
 
 .planner-item-dialog .planner-item-form-card {
@@ -164,5 +173,9 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
     border-radius: 1rem;
     background: var(--background);
     box-shadow: 0 12px 34px rgb(15 23 42 / 8%);
+  }
+
+  .planner-item-dialog .planner-item-form[data-compact-actions] .planner-item-form-card {
+    padding-bottom: 1.5rem;
   }
 }

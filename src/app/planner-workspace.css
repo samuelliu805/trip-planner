@@ -1,5 +1,15 @@
 html:has(.trip-planner-page),
-body:has(.trip-planner-page),
+body:has(.trip-planner-page) {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
+}
+
 html:has(.planner-map-sheet),
 body:has(.planner-map-sheet) {
   position: fixed;
@@ -16,7 +26,8 @@ body:has(.planner-map-sheet) {
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
 }
 
 .trip-planner-page {
@@ -38,7 +49,8 @@ body:has(.planner-map-sheet) {
 .trip-planner-page,
 .planner-workspace,
 .planner-layout {
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
 }
 
 .planner-layout {
@@ -59,7 +71,8 @@ body:has(.planner-map-sheet) {
 
 .planner-matrix {
   isolation: isolate;
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
   overflow-anchor: none;
   scrollbar-gutter: stable;
   touch-action: pan-x pan-y;

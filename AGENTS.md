@@ -22,6 +22,8 @@ These rules apply to all future UI work in this repository.
 - Untimed Activities, Meals, and Car rentals show an Order step only when at least two legal positions exist. Entering a time or leaving only one position must remove that step immediately; the default position is after the day's last orderable activity and before a hotel.
 - New Activities and Meals may offer Save and add another. Editing an existing item and every other category keep only the normal Save action.
 - When an Order step exists, every earlier Save action becomes Confirm order and may only navigate to that final step. The actual Save and optional Save & create new actions live together there.
+- Save, Confirm order, and Save & create new remain disabled while any required field is missing. Keep the click-time validation as a fallback, but do not make an invalid form look actionable.
+- Freeze the Order preview to the items present when the editor opens. An optimistic create must never appear as both the moving item and another row with a misleading Move here action before the editor closes.
 - Creating an Activity, Meal, Car rental, Hotel, or Transport requires confirmation. Report creation success or failure prominently; success must offer a link that closes the editor, selects the new item, scrolls it into view, and focuses it in the Matrix.
 - Do not auto-focus a field when an itinerary editor first opens. Focus may move only after the user acts, such as choosing a place or following a newly-created-item link.
 - New Activity creation begins with one intent-first `Activity or place` search. Keep the blank Activity name hidden until the user chooses a Google Maps result or commits the query as a custom activity; then reveal the shared name field. A place may update a blank or still-system-generated name, but must never overwrite a user-edited name.
@@ -44,6 +46,7 @@ These rules apply to all future UI work in this repository.
 
 - The place field owns its own input and suggestion list (`AutocompleteSuggestion.fetchAutocompleteSuggestions`). Do not go back to `PlaceAutocompleteElement`: its closed shadow root cannot be sized and it fills the whole screen on narrow viewports.
 - The shared place search may expose a custom-value option, but that option must remain inside the same keyboard-reachable listbox. Enter commits the custom value only when no suggestion is active; it never submits the surrounding editor.
+- Every Google or custom suggestion must select with one click or tap. Use click semantics that survive the search input losing focus; do not require a preliminary focus tap.
 - Generate one session token per search session and drop it after `fetchFields`, and keep `includedPrimaryTypes` out of effect dependencies as an array — serialize it, or an inline array restarts the search on every render.
 
 ## Trip app bar
@@ -66,7 +69,7 @@ These rules apply to all future UI work in this repository.
 - Trip planner detail routes must occupy exactly one visual viewport. Keep the global header and planner toolbar pinned, prevent document-level vertical or horizontal scrolling, and let only the intended Matrix, panel, or overlay scroller move.
 - Lock the owner planner route to the viewport at the root (`html`, `body`, trips shell, and planner page) instead of relying on a sticky toolbar inside a document scroller. The app bar and context bar must remain non-scrolling flex siblings of the workspace content.
 - Every flex/grid child that owns the Matrix or map height must use `min-height: 0`; map panes must clip their contents. Do not fix bottom gaps with compensating margins, padding, or viewport-height guesses.
-- Apply scroll containment and Safari compositing safeguards to the Matrix at every breakpoint. At a scroll boundary, continued touch movement must not rubber-band the frozen header, date/day columns, workspace shell, or expose blank space beyond the workspace.
+- Apply Safari compositing safeguards to the Matrix at every breakpoint. Horizontal overscroll stays contained, but vertical scrolling at the Matrix or editor top boundary must hand off to the page/visual viewport so a keyboard-panned app bar can be restored from the main content area. The shell must still settle without exposing a persistent blank strip.
 - Verify owner planner behavior at 768px, 820px, and 1024px widths in both relevant orientations. Assert that `documentElement` and `body` do not exceed `innerHeight`, a forced `window.scrollTo` leaves `scrollY` at 0, the table/map reaches the viewport bottom (or the mobile tab bar top), and the app bar remains at top 0 while the Matrix scrolls in either axis.
 
 ## Recurring tablet table regressions (release-blocking)
@@ -74,7 +77,7 @@ These rules apply to all future UI work in this repository.
 - Treat any blank strip between an editable or read-only table and its bottom boundary as a regression. Bottom navigation that is already a flex sibling must not be compensated for with Matrix padding, spacer rows, margins, or viewport-height arithmetic.
 - On tablet, a short table must fill the Matrix to its bottom boundary: distribute spare height across data rows instead of leaving an empty strip after the final row.
 - Mobile and tablet bottom view navigation must span the full shell width as a non-scrolling flex sibling, not an overlay on the Table. At maximum Matrix scroll, the final row must terminate directly above it without padding, a blank strip, or a hidden overlap.
-- The app bar/header and bottom navigation must be non-scrolling siblings of the table workspace. At tablet widths, only the Matrix may scroll; `window.scrollY`, the app bar top, and the table workspace bottom must remain fixed while the Matrix is forced to every scroll boundary.
+- The app bar/header and bottom navigation must be non-scrolling siblings of the table workspace. At tablet widths, only the Matrix owns content scrolling; a top-boundary gesture may recover a keyboard-panned visual viewport, after which `window.scrollY`, the app bar top, and the table workspace bottom must settle back to their fixed positions.
 - A table header must meet the first data row with no spacer or unused row height. Assert that the first row's top equals the header's bottom within 1px in both editable and read-only tables.
 - Frozen header cells and their body columns must share one explicit width and left offset. At 768px, 820px, and 1024px, assert that the first header cell and first body cell have matching `left`, `right`, and `width` values after horizontal scrolling.
 - Verify these contracts on both the authenticated owner planner and a public read-only Table. For public pages, also open the Share dialog after every template-root positioning change; portal content must remain fixed, visible, and above all frozen layers.

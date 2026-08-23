@@ -57,6 +57,7 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
 
   return (
     <PlannerEditorForm
+      compactActions
       formAction={action}
       header={
         <PlannerEditorHeader

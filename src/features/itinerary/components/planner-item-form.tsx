@@ -9,6 +9,7 @@ import {
 import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import {
+  plannerItemFormError,
   plannerItemFormSteps,
   plannerItemNeedsOrderStep,
   plannerItemSaveAction,
@@ -46,11 +47,14 @@ export function PlannerItemForm({
   unavailableTransportModes = [],
   variantId,
 }: PlannerItemFormProps) {
+  // Keep the Order preview on the items that existed when this editor opened. An optimistic create
+  // must not appear both as the moving item and as a newly-placeable row before the editor closes.
+  const [orderPreviewItems] = useState(() => dayItems);
   const state = usePlannerItemFormState({
     dayDate,
     defaultCurrency,
     item,
-    items: dayItems,
+    items: orderPreviewItems,
     type,
     unavailableTransportModes,
   });
@@ -80,7 +84,10 @@ export function PlannerItemForm({
     requestSave,
     saveConfirmation,
   } = saveFlow;
-  const orderSlots = useMemo(() => itemOrderSlots(dayItems, item?.id), [dayItems, item?.id]);
+  const orderSlots = useMemo(
+    () => itemOrderSlots(orderPreviewItems, item?.id),
+    [item?.id, orderPreviewItems],
+  );
   const includeOrder = plannerItemNeedsOrderStep({
     availableSlots: orderSlots.length,
     endTime: state.arrivalTime,
@@ -104,6 +111,13 @@ export function PlannerItemForm({
   const activeStep = steps.find(({ id }) => id === stepId) ?? steps[0];
   const stepIndex = steps.indexOf(activeStep);
   const saveAction = plannerItemSaveAction({ activeStepId: activeStep.id, includeOrder });
+  const formError = plannerItemFormError({
+    creating: !item,
+    place: state.place,
+    steps,
+    title: state.title,
+    type,
+  });
   const { requestCancel } = attachmentSession;
 
   usePlannerItemDraft({
@@ -170,21 +184,9 @@ export function PlannerItemForm({
   );
 
   async function save(intent: PlannerEditorSaveIntent) {
-    const invalid = steps
-      .map((step) => ({
-        message: plannerItemStepError({
-          creating: !item,
-          place: state.place,
-          step,
-          title: state.title,
-          type,
-        }),
-        step,
-      }))
-      .find(({ message }) => message);
-    if (invalid?.message) {
-      setStepId(invalid.step.id);
-      setStepError(invalid.message);
+    if (formError) {
+      setStepId(formError.step.id);
+      setStepError(formError.message);
       return;
     }
     setStepError(undefined);
@@ -244,6 +246,7 @@ export function PlannerItemForm({
       onScrollNode={setGestureSurfaceNode}
       pending={pending}
       pendingLabel={pendingLabel}
+      saveDisabled={Boolean(formError)}
       saveLabel={saveAction === "confirm-order" ? "Confirm order" : "Save"}
     >
       <PlannerItemStepFields
@@ -260,7 +263,7 @@ export function PlannerItemForm({
           />
         }
         blocks={activeStep.blocks}
-        dayItems={dayItems}
+        dayItems={orderPreviewItems}
         dayId={dayId}
         defaultCurrency={defaultCurrency}
         item={item}

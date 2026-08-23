@@ -744,7 +744,10 @@ test("Trip detail shell contains document scrolling separately from Matrix rules
   );
   assert.match(styles, /body:has\(\.trip-detail-page\)[\s\S]*overflow: hidden/);
   assert.match(styles, /trip-detail-scroller[\s\S]*overflow-anchor: none/);
-  assert.match(plannerStyles, /planner-matrix[\s\S]*overscroll-behavior: none/);
+  assert.match(
+    plannerStyles,
+    /planner-matrix[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/,
+  );
 });
 
 test("Compare keeps one responsive inline filter row below the Trip App Bar", async () => {

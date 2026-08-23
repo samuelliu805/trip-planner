@@ -6,27 +6,31 @@ import { Button } from "@/components/ui/button";
 export function PlannerEditorFormActions({
   alternateSaveLabel,
   backDisabled = false,
+  compactActions = false,
   onBack,
   onNext,
   nextDisabled = false,
   pending,
   pendingLabel,
+  saveDisabled = false,
   saveLabel = "Save",
 }: {
   alternateSaveLabel?: string;
   backDisabled?: boolean;
+  compactActions?: boolean;
   nextDisabled?: boolean;
   onBack?: () => void;
   onNext?: () => void;
   pending: boolean;
   pendingLabel: string;
+  saveDisabled?: boolean;
   saveLabel?: string;
 }) {
   const saveButton = (
     <Button
       aria-busy={pending}
       className="min-h-11 min-w-0 font-semibold shadow-sm"
-      disabled={pending}
+      disabled={pending || saveDisabled}
       size="sm"
       type="submit"
     >
@@ -36,7 +40,9 @@ export function PlannerEditorFormActions({
   );
 
   return (
-    <div className="planner-item-form-actions mt-10 min-w-0 space-y-3 border-t pt-6">
+    <div
+      className={`planner-item-form-actions min-w-0 space-y-3 border-t ${compactActions ? "mt-6 pt-4" : "mt-10 pt-6"}`}
+    >
       <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] items-center gap-3">
         {onBack ? (
           <Button
@@ -74,7 +80,7 @@ export function PlannerEditorFormActions({
           <Button
             className="min-h-11 min-w-0 whitespace-normal"
             data-planner-save-intent="save-and-create-another"
-            disabled={pending}
+            disabled={pending || saveDisabled}
             type="submit"
             variant="outline"
           >

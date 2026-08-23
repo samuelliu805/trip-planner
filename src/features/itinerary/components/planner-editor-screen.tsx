@@ -43,7 +43,7 @@ export function PlannerEditorPage({
 }) {
   return (
     <div
-      className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain"
+      className="min-h-0 min-w-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto"
       data-planner-editor-scroll=""
       ref={scrollRef}
     >

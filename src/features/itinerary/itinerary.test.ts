@@ -31,6 +31,7 @@ import {
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
 import { plannerItemTitleAfterPlaceSelection } from "./planner-item-title-autofill.ts";
 import {
+  plannerItemFormError,
   plannerItemFormSteps,
   plannerItemNeedsOrderStep,
   plannerItemSaveAction,
@@ -496,6 +497,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editor, /className="planner-item-dialog p-0"/);
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
+  assert.doesNotMatch(editor, /overscroll-contain/);
   assert.match(itemDialog, /<PlannerEditorScreen/);
   assert.match(itemForm, /<PlannerEditorForm/);
   assert.match(itemForm, /<PlannerEditorHeader/);
@@ -509,19 +511,24 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorForm, /<PlannerEditorPage/);
   assert.match(editorForm, /usePlannerEditorKeyboardScroll\(\)/);
   assert.match(editorForm, /<PlannerEditorFormActions/);
+  assert.match(editorForm, /saveDisabled/);
   assert.match(editorForm, /planner-item-form-fields planner-item-step-fields/);
   assert.match(editorHeader, /navigation\?: ReactNode/);
   assert.match(editorFields, /export function PlannerEditorTextField/);
   assert.match(primaryFields, /<PlannerEditorTextField/);
   assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
+  assert.match(form, /compactActions/);
   assert.doesNotMatch(form, /\bfooter\b/);
   assert.match(suggestionList, /overflow-y-auto/);
   assert.doesNotMatch(suggestionList, /overscroll-contain/);
+  assert.match(suggestionList, /onClick=/);
+  assert.doesNotMatch(suggestionList, /onMouseDown=/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
   );
   assert.match(actions, /onBack \?[\s\S]*Previous[\s\S]*Save[\s\S]*onNext \?[\s\S]*Next/);
+  assert.match(actions, /pending \|\| saveDisabled/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
   assert.match(form, /label="Trip name"/);
   assert.match(form, /label="Duration \(days\)"/);
@@ -2441,6 +2448,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     /oneCell &&[\s\S]*!props\.selectedItem &&[\s\S]*!props\.activeCellAtCapacity/,
   );
   assert.match(form, /insertAfterItemId/);
+  assert.match(form, /const \[orderPreviewItems\] = useState\(\(\) => dayItems\)/);
+  assert.match(form, /saveDisabled=\{Boolean\(formError\)\}/);
   assert.doesNotMatch(form, /"Place item"/);
   assert.match(form, /Step \$\{stepIndex \+ 1\} of \$\{steps\.length\}/);
   assert.match(workspace, /Click to place/);
@@ -2470,7 +2479,9 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
+  assert.match(plannerDialogRule, /overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/);
   assert.doesNotMatch(plannerDialogRule, /100dvh/);
+  assert.match(styles, /data-compact-actions[\s\S]*padding-bottom: calc/);
   assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
@@ -2554,7 +2565,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /planner-item-dialog[\s\S]*input,[\s\S]*font-size: 1\.125rem/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: 100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
-  assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
+  assert.match(
+    styles,
+    /planner-matrix[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/,
+  );
   assert.match(styles, /html:has\(\.trip-planner-page\),[\s\S]*overflow: hidden/);
   assert.match(styles, /body:has\(\.trip-planner-page\)[\s\S]*position: fixed;[\s\S]*inset: 0;/);
   assert.match(
@@ -2570,7 +2584,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.ok(tripShellRule);
   assert.match(tripShellRule, /height: 100dvh/);
   assert.match(tripShellRule, /overflow: hidden/);
-  assert.match(tripShellRule, /overscroll-behavior: none/);
+  assert.match(tripShellRule, /overscroll-behavior-y: auto/);
   assert.doesNotMatch(tripShellRule, /display: none/);
   assert.match(styles, /\.trips-global-header,[\s\S]*\.trip-app-bar[\s\S]*touch-action: pan-x/);
   assert.match(
@@ -3368,6 +3382,26 @@ test("the item editor groups every type into short steps and gates required fiel
   );
   assert.equal(
     plannerItemStepError({ place: null, step: activity[3], title: "", type: "activity" }),
+    undefined,
+  );
+  assert.equal(
+    plannerItemFormError({
+      creating: true,
+      place: null,
+      steps: activity,
+      title: "",
+      type: "activity",
+    })?.step.id,
+    "basics",
+  );
+  assert.equal(
+    plannerItemFormError({
+      creating: true,
+      place: null,
+      steps: activity,
+      title: "Museum visit",
+      type: "activity",
+    }),
     undefined,
   );
 });

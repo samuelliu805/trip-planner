@@ -45,15 +45,12 @@ export function PlaceSuggestionList({
       {suggestions.map((suggestion, index) => (
         <li
           aria-selected={index === activeIndex}
-          className={`flex min-h-11 cursor-pointer items-start gap-2 px-3 py-2 text-left ${
+          className={`flex min-h-11 touch-manipulation cursor-pointer items-start gap-2 px-3 py-2 text-left ${
             index === activeIndex ? "bg-accent text-accent-foreground" : ""
           }`}
           id={`${listId}-${index}`}
           key={suggestion.id}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            onChoose(suggestion);
-          }}
+          onClick={() => onChoose(suggestion)}
           onMouseEnter={() => onHighlight(index)}
           role="option"
         >
@@ -71,14 +68,11 @@ export function PlaceSuggestionList({
       {customOption ? (
         <li
           aria-selected={activeIndex === suggestions.length}
-          className={`flex min-h-11 cursor-pointer items-start gap-2 px-3 py-2 text-left ${
+          className={`flex min-h-11 touch-manipulation cursor-pointer items-start gap-2 px-3 py-2 text-left ${
             activeIndex === suggestions.length ? "bg-accent text-accent-foreground" : ""
           }`}
           id={`${listId}-${suggestions.length}`}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            customOption.onChoose();
-          }}
+          onClick={customOption.onChoose}
           onMouseEnter={() => onHighlight(suggestions.length)}
           role="option"
         >

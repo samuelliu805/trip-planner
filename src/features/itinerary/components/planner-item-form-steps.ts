@@ -198,3 +198,23 @@ export function plannerItemStepError({
     return `${itemCopy[type].label} name is required.`;
   return undefined;
 }
+
+export function plannerItemFormError({
+  creating = false,
+  place,
+  steps,
+  title,
+  type,
+}: {
+  creating?: boolean;
+  place: PlaceSnapshot | null;
+  steps: ItemFormStep[];
+  title: string;
+  type: ItineraryItemType;
+}) {
+  for (const step of steps) {
+    const message = plannerItemStepError({ creating, place, step, title, type });
+    if (message) return { message, step };
+  }
+  return undefined;
+}

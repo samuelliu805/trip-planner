@@ -331,7 +331,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.doesNotMatch(itemForm + plannerForm, /data-planner-editor-actions/);
   assert.match(
     plannerStyles,
-    /\.planner-item-dialog \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior: none[\s\S]*touch-action: pan-y/,
+    /\.planner-item-dialog \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto[\s\S]*touch-action: pan-y/,
   );
   assert.equal(
     publicViews.every((source) => /PublicItemMediaGallery/.test(source)),

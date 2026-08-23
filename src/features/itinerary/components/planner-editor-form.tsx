@@ -17,6 +17,7 @@ export function PlannerEditorForm({
   alternateSaveLabel,
   backDisabled = false,
   children,
+  compactActions = false,
   fieldsRef,
   footer,
   formAction,
@@ -30,12 +31,14 @@ export function PlannerEditorForm({
   onScrollNode,
   pending,
   pendingLabel,
+  saveDisabled = false,
   saveLabel,
 }: {
   after?: ReactNode;
   alternateSaveLabel?: string;
   backDisabled?: boolean;
   children: ReactNode;
+  compactActions?: boolean;
   fieldsRef?: Ref<HTMLDivElement>;
   footer?: ReactNode;
   formAction?: ComponentProps<"form">["action"];
@@ -49,6 +52,7 @@ export function PlannerEditorForm({
   onScrollNode?: (node: HTMLDivElement | null) => void;
   pending: boolean;
   pendingLabel: string;
+  saveDisabled?: boolean;
   saveLabel?: string;
 }) {
   const editorScrollRef = usePlannerEditorKeyboardScroll();
@@ -64,6 +68,7 @@ export function PlannerEditorForm({
     <form
       action={formAction}
       className="planner-item-form flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      data-compact-actions={compactActions ? "" : undefined}
       onKeyDown={(event) => {
         if ((event.target as Element).closest("[data-attachment-overlay]")) return;
         if (event.defaultPrevented) return;
@@ -75,7 +80,7 @@ export function PlannerEditorForm({
         if (event.key === "Enter") {
           if (event.metaKey || event.ctrlKey) {
             event.preventDefault();
-            if (!pending) event.currentTarget.requestSubmit();
+            if (!pending && !saveDisabled) event.currentTarget.requestSubmit();
             return;
           }
           if ((event.target as Element).closest(enterCommitSelector)) return;
@@ -101,7 +106,7 @@ export function PlannerEditorForm({
                 submitter?.dataset.plannerSaveIntent === "save-and-create-another"
                   ? "save-and-create-another"
                   : "save";
-              if (!pending) void onSave(intent);
+              if (!pending && !saveDisabled) void onSave(intent);
             }
           : undefined
       }
@@ -119,11 +124,13 @@ export function PlannerEditorForm({
             <PlannerEditorFormActions
               alternateSaveLabel={alternateSaveLabel}
               backDisabled={backDisabled}
+              compactActions={compactActions}
               nextDisabled={nextDisabled}
               onBack={onBack}
               onNext={onNext}
               pending={pending}
               pendingLabel={pendingLabel}
+              saveDisabled={saveDisabled}
               saveLabel={saveLabel}
             />
             {footer ? <div className="min-w-0 pt-8">{footer}</div> : null}
