@@ -225,8 +225,8 @@ const providerLeg = (mode: DayRouteDraft["legModes"][number] = "walk"): RouteLeg
   position: 1,
 });
 
-test("planner initially selects the first City cell", () => {
-  assert.deepEqual(initialPlannerSelection(3, 0), { column: 0, row: 0 });
+test("planner initially selects the first Activity cell", () => {
+  assert.deepEqual(initialPlannerSelection(3, 1), { column: 1, row: 0 });
   assert.deepEqual(initialPlannerSelection(0, 0), { column: -1, row: -1 });
   assert.deepEqual(initialPlannerSelection(3, -1), { column: -1, row: -1 });
 });
@@ -400,8 +400,14 @@ test("trip creation uses the old branch defaults and opens the planner directly"
   assert.equal(isDefaultTripTitle("Kyoto"), false);
   assert.equal(
     tripTitleFromPlace({ displayName: "Fushimi Inari Taisha", localityName: "Kyoto" }),
-    "Kyoto",
+    "Kyoto Trip",
   );
+  const longPlaceTitle = tripTitleFromPlace({
+    displayName: "A very long place name that needs shortening",
+    localityName: null,
+  });
+  assert.equal(longPlaceTitle.endsWith(" Trip"), true);
+  assert.ok(longPlaceTitle.length <= 32);
 
   assert.match(createButton, /<form action=\{action\}/);
   assert.doesNotMatch(createButton, /Dialog|TripForm|href="\/trips\/new"/);
@@ -559,10 +565,16 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.doesNotMatch(suggestionList, /onMouseDown=/);
   assert.match(suggestionList, /Google Maps places/);
   assert.match(suggestionList, /<button[\s\S]*onClick=\{customOption\.onChoose\}/);
+  assert.doesNotMatch(suggestionList, /customOption\.description/);
   assert.doesNotMatch(suggestionList, /activeIndex === suggestions\.length/);
+  assert.match(primaryFields, /customValueLabel=\{creatingActivity \? "activity name"/);
+  assert.match(primaryFields, /Search Maps or type a name/);
+  assert.match(primaryFields, /scrollIntoView[\s\S]*focus\(\{ preventScroll: true \}\)/);
+  assert.doesNotMatch(primaryFields, /custom activity|Custom activity added|Choose a Google Maps/);
   assert.match(placeAutocomplete, /const requestGeneration = useRef\(0\)/);
   assert.match(placeAutocomplete, /generation !== requestGeneration\.current/);
-  assert.match(placeAutocomplete, /label: `Create \$\{customValueLabel/);
+  assert.match(placeAutocomplete, /`Use “\$\{customQuery\}” as \$\{customValueLabel\}`/);
+  assert.match(placeAutocomplete, /Loading place details…/);
   assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
   assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
   assert.match(itemSaveFeedback, /success && feedback\.showViewLink/);
@@ -572,7 +584,9 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
   );
-  assert.match(actions, /onBack \?[\s\S]*Previous[\s\S]*Save[\s\S]*onNext \?[\s\S]*Next/);
+  assert.match(actions, /aria-label="Previous step"[\s\S]*hidden sm:inline">Previous/);
+  assert.match(actions, /aria-label="Next step"[\s\S]*hidden sm:inline">Next/);
+  assert.match(actions, /grid-cols-2[\s\S]*Save \+ another[\s\S]*row-start-2/);
   assert.match(actions, /splitCancelAndSave[\s\S]*justify-between[\s\S]*\{cancelLabel\}/);
   assert.match(actions, /pending \|\| saveDisabled/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
@@ -2468,7 +2482,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /if \(!moved\) setSelectionAnchor\(\{ column, row \}\)/);
   assert.match(
     workspace,
-    /initialPlannerSelection\([\s\S]*initialWorkspace\.days\.length[\s\S]*id === "city"/,
+    /initialPlannerSelection\([\s\S]*initialWorkspace\.days\.length[\s\S]*id === "activities"/,
   );
   assert.match(workspace, /useState<GridCoordinate>\(\(\) => initialSelection\)/);
   assert.match(workspace, /window\.addEventListener\("pointermove", move\)/);
@@ -2558,7 +2572,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(form, /event\.key === "Escape"/);
   assert.match(form, /Clear time/);
   assert.doesNotMatch(form, /End time|Clear end time|item-end-|setEndTime/);
-  assert.match(form, /requestAnimationFrame\(\(\) => titleRef\.current\?\.focus\(\)\)/);
+  assert.match(form, /requestAnimationFrame[\s\S]*scrollIntoView[\s\S]*preventScroll: true/);
   assert.match(queries, /useCopyItineraryItems[\s\S]*onMutate/);
   assert.match(queries, /onError:[\s\S]*context\?\.previous/);
 });
@@ -3456,7 +3470,7 @@ test("the item editor groups every type into short steps and gates required fiel
       title: "",
       type: "activity",
     }),
-    "Search for an activity or place, or add a custom activity.",
+    "Search Google Maps or enter an activity name.",
   );
   assert.equal(
     plannerItemStepError({ place: null, step: activity[3], title: "", type: "activity" }),

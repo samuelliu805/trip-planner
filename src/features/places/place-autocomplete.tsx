@@ -59,7 +59,7 @@ export function PlaceAutocomplete({
   const customQuery = query.trim();
   const hasCustomOption = Boolean(onCustomValue && customQuery && !optionsDismissed);
   const optionCount = suggestions.length;
-  const popupOpen = optionCount > 0 || hasCustomOption;
+  const popupOpen = !resolving && (optionCount > 0 || hasCustomOption);
 
   // Serialised so an inline includedPrimaryTypes array cannot restart the search every render.
   const typesKey = includedPrimaryTypes?.length ? includedPrimaryTypes.join(",") : "";
@@ -130,7 +130,7 @@ export function PlaceAutocomplete({
       setSearching(false);
       setQuery("");
       onChange(normalized);
-      if (navigator.maxTouchPoints > 0)
+      if (navigator.maxTouchPoints > 0 && !onSelected)
         requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
       onSelected?.();
     } catch (cause) {
@@ -163,14 +163,17 @@ export function PlaceAutocomplete({
         <Input
           aria-describedby={ariaDescribedBy}
           aria-label={ariaLabel}
-          aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
+          aria-activedescendant={
+            !resolving && activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined
+          }
           aria-autocomplete="list"
+          aria-busy={searching || resolving}
           aria-controls={`${listId}-panel`}
           aria-expanded={popupOpen}
           autoComplete="off"
           autoFocus={autoFocus}
           className="pl-9 pr-9"
-          disabled={disabled || (!places && !onCustomValue)}
+          disabled={disabled || resolving || (!places && !onCustomValue)}
           onChange={(event) => {
             requestGeneration.current += 1;
             setQuery(event.target.value);
@@ -216,23 +219,36 @@ export function PlaceAutocomplete({
             className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
           />
         ) : null}
-        <PlaceSuggestionList
-          activeIndex={activeIndex}
-          customOption={
-            hasCustomOption
-              ? {
-                  description: `Use “${customQuery}” without a Google Maps place.`,
-                  label: `Create ${customValueLabel ?? "custom entry"}`,
-                  onChoose: chooseCustomValue,
-                }
-              : undefined
-          }
-          listId={listId}
-          onChoose={choose}
-          onHighlight={setActiveIndex}
-          suggestions={suggestions}
-        />
+        {!resolving ? (
+          <PlaceSuggestionList
+            activeIndex={activeIndex}
+            customOption={
+              hasCustomOption
+                ? {
+                    label: customValueLabel
+                      ? `Use “${customQuery}” as ${customValueLabel}`
+                      : `Use “${customQuery}”`,
+                    onChoose: chooseCustomValue,
+                  }
+                : undefined
+            }
+            listId={listId}
+            onChoose={choose}
+            onHighlight={setActiveIndex}
+            suggestions={suggestions}
+          />
+        ) : null}
       </div>
+      {resolving ? (
+        <p
+          aria-live="polite"
+          className="flex items-center gap-2 text-xs font-medium text-muted-foreground"
+          role="status"
+        >
+          <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
+          Loading place details…
+        </p>
+      ) : null}
       {selectedValue ? (
         <div className="w-full min-w-0 overflow-hidden rounded-md border bg-muted/30 p-3">
           <div className="flex items-start gap-2">
@@ -263,7 +279,7 @@ export function PlaceAutocomplete({
       {!places ? (
         <p className="mt-1 text-xs text-muted-foreground">
           {onCustomValue
-            ? `Google Maps suggestions are unavailable, but you can still create a ${customValueLabel ?? "custom entry"}.`
+            ? `Google Maps is unavailable. You can still use a typed ${customValueLabel ?? "entry"}.`
             : "Places search loads when Google Maps is configured."}
         </p>
       ) : null}

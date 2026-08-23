@@ -21,7 +21,7 @@ export function PlaceSuggestionList({
   suggestions,
 }: {
   activeIndex: number;
-  customOption?: { description: string; label: string; onChoose: () => void };
+  customOption?: { label: string; onChoose: () => void };
   listId: string;
   onChoose: (suggestion: PlaceSuggestion) => void;
   onHighlight: (index: number) => void;
@@ -86,9 +86,6 @@ export function PlaceSuggestionList({
             <Plus aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
             <span className="min-w-0">
               <span className="block break-words text-sm font-semibold">{customOption.label}</span>
-              <span className="block break-words text-xs leading-5 text-muted-foreground">
-                {customOption.description}
-              </span>
             </span>
           </button>
         </div>

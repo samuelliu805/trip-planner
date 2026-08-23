@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type Dispatch, type RefObject, type SetStateAction } from "react";
+import type { Dispatch, RefObject, SetStateAction } from "react";
 
 import { Label } from "@/components/ui/label";
 import { PlannerEditorTextField } from "@/features/itinerary/components/planner-editor-fields";
@@ -40,7 +40,9 @@ export function ItemTitleField({
         ? "Displayed hotel name"
         : "Displayed meal name";
   const description = creatingActivity
-    ? "This is the name shown in the itinerary. Editing it won’t change the selected place."
+    ? place
+      ? "Filled from Google Maps. Edit if needed."
+      : undefined
     : named
       ? place
         ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
@@ -109,7 +111,6 @@ export function ItemPlaceField({
   type: ItineraryItemType;
 }) {
   const creatingActivity = creating && type === "activity";
-  const activityDescriptionId = useId();
 
   function selectPlace(nextPlace: PlaceSnapshot | null) {
     setPlace(nextPlace);
@@ -118,17 +119,19 @@ export function ItemPlaceField({
   }
 
   function continueToTitle() {
-    // On touch keyboards, keeping focus in search avoids a second native viewport jump after the
-    // selected-place card mounts. Desktop users can continue directly into the title.
-    if (navigator.maxTouchPoints > 0) return;
-    requestAnimationFrame(() => titleRef.current?.focus());
+    requestAnimationFrame(() => {
+      const titleInput = titleRef.current;
+      if (!titleInput) return;
+      titleInput.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      titleInput.focus({ preventScroll: true });
+    });
   }
 
   return (
     <div className="space-y-2" data-planner-focus-region="place">
       <Label>
         {creatingActivity ? (
-          "Activity or place"
+          "Place or activity name"
         ) : (
           <>
             {placeLabel}{" "}
@@ -145,9 +148,8 @@ export function ItemPlaceField({
         )}
       </Label>
       <PlaceAutocomplete
-        ariaDescribedBy={creatingActivity ? activityDescriptionId : undefined}
-        ariaLabel={creatingActivity ? "Activity or place" : placeLabel}
-        customValueLabel={creatingActivity ? "custom activity" : undefined}
+        ariaLabel={creatingActivity ? "Place or activity name" : placeLabel}
+        customValueLabel={creatingActivity ? "activity name" : undefined}
         disabled={pending}
         onChange={selectPlace}
         onCustomValue={
@@ -159,17 +161,17 @@ export function ItemPlaceField({
             : undefined
         }
         onSelected={continueToTitle}
-        placeholder={creatingActivity ? "Search for an activity or place" : undefined}
+        placeholder={creatingActivity ? "Search Maps or type a name" : undefined}
         value={place}
       />
       {creatingActivity ? (
-        <p className="text-xs leading-5 text-muted-foreground" id={activityDescriptionId}>
+        <span aria-live="polite" className="sr-only">
           {place
-            ? "Place selected. The activity name below stays editable."
+            ? "Place selected. Activity name filled below."
             : title.trim()
-              ? "Custom activity added. Search above if you want to attach a Google Maps place."
-              : "Choose a Google Maps result to fill the activity name, or use your search as a custom activity."}
-        </p>
+              ? "Activity name ready below."
+              : null}
+        </span>
       ) : null}
     </div>
   );

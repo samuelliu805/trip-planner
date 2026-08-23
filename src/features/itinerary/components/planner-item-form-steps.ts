@@ -193,7 +193,7 @@ export function plannerItemStepError({
   }
   if (step.id !== "basics") return undefined;
   if (creating && type === "activity" && !title.trim())
-    return "Search for an activity or place, or add a custom activity.";
+    return "Search Google Maps or enter an activity name.";
   if (!["car_rental", "hotel", "location", "meal", "transport"].includes(type) && !title.trim())
     return `${itemCopy[type].label} name is required.`;
   return undefined;
