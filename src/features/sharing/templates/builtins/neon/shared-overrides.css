@@ -1,0 +1,122 @@
+.public-template-neon .overview-transport-list-v4 {
+  margin: -0.125rem 0 0.5rem;
+  border-color: #203553;
+  background: #0a0f1f;
+}
+
+.public-template-neon .overview-transport-item-v4 {
+  background: transparent;
+  padding: 0;
+}
+
+.public-template-neon .overview-transport-item-v4.is-selected {
+  color: #f6f8ff;
+}
+
+.public-template-neon .overview-transport-button-v4 {
+  min-height: 2.25rem;
+  grid-template-columns: 1.375rem minmax(0, 1fr);
+  gap: 0.375rem;
+  padding: 0 0.125rem;
+}
+
+.public-template-neon .overview-transport-icon-v4 {
+  width: 1.375rem;
+  height: 1.375rem;
+  color: #42ddff;
+}
+
+.public-template-neon .overview-transport-title-v4 {
+  color: #dce7ff;
+  font-size: 0.65625rem;
+  font-weight: 500;
+}
+
+.public-template-neon .overview-transport-meta-v4,
+.public-template-neon .overview-transport-notes-v4,
+.public-template-neon .overview-transport-route-v4 {
+  color: #8795b5;
+  font-size: 0.46875rem;
+}
+
+.public-template-neon .overview-transport-item-v4 .public-quick-actions a,
+.public-template-neon .overview-transport-item-v4 .public-quick-actions summary {
+  min-height: 2.25rem;
+  padding: 0 0.375rem;
+  font-size: 0.5rem;
+  text-transform: none;
+}
+
+.public-template-neon .public-matrix {
+  border-color: #263f64;
+  background: #0a0f1f;
+  color: #f6f8ff;
+}
+
+.public-template-neon .public-matrix > [role="grid"] {
+  overflow: visible;
+  border: 0 solid #263f64;
+  border-right-width: 1px;
+  border-bottom-width: 1px;
+  border-left-width: 1px;
+  border-radius: 0 0 0.8125rem 0.8125rem;
+  background: #0a0f1f;
+}
+
+.public-template-neon .public-matrix [role="row"] {
+  border-color: #203553;
+  background: #0a0f1f;
+}
+
+.public-template-neon .public-matrix [role="columnheader"] {
+  border-color: #203553;
+  background: #0c1730;
+  color: #b8c8e5;
+}
+
+.public-template-neon .public-matrix [role="gridcell"],
+.public-template-neon .public-matrix [role="rowheader"] {
+  border-color: #203553;
+}
+
+.public-template-neon .public-matrix .matrix-date-column,
+.public-template-neon .public-matrix .matrix-day-column {
+  background: #0b152b;
+  box-shadow: 1px 0 #344f73;
+}
+
+.public-template-neon .public-matrix .matrix-grid-header .matrix-date-column,
+.public-template-neon .public-matrix .matrix-grid-header .matrix-day-column {
+  background: #121c38;
+}
+
+.public-template-neon .public-matrix .public-item-focus {
+  margin-bottom: 0.3125rem;
+  border: 1px solid #243b5b;
+  border-radius: 0.5rem;
+  background: #0e1930;
+}
+
+.public-template-neon .public-matrix .public-table-cell-items.is-transport {
+  border-color: #35527b;
+}
+
+.public-template-neon .public-matrix .public-table-cell-items.is-transport > .public-item-focus {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (max-width: 899px) {
+  .public-template-neon .overview-transport-button-v4,
+  .public-template-neon .overview-transport-item-v4 .public-quick-actions a,
+  .public-template-neon .overview-transport-item-v4 .public-quick-actions summary {
+    min-height: 2.75rem;
+  }
+
+  .public-template-neon .public-matrix > [role="grid"] {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}

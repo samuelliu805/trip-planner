@@ -59,7 +59,7 @@ import { longImageScopeSchema } from "./long-image/schema.ts";
 import { scopePublicItinerary } from "./long-image/scope.ts";
 
 async function readAppStyles() {
-  const templateStyleDirectories = ["bento", "ethereal", "journal", "traverse"].map(
+  const templateStyleDirectories = ["bento", "ethereal", "journal", "neon", "traverse"].map(
     (template) => new URL(`./templates/builtins/${template}/`, import.meta.url),
   );
   const templateStyles = (
@@ -1444,6 +1444,15 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     /\.public-template-journal \.timeline-node-list-v4 \{[\s\S]*scroll-snap-type: none/,
   );
   assert.match(styles, /\.public-template-traverse \.public-itinerary-header/);
+  assert.match(styles, /\.public-template-neon \.public-itinerary-header/);
+  assert.match(
+    styles,
+    /\.public-template-neon \.overview-day-heading-v4,[\s\S]*linear-gradient\([\s\S]*var\(--neon-magenta\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-neon \.timeline-node-list-v4::before \{[\s\S]*var\(--neon-cyan\)[\s\S]*var\(--neon-magenta\)/,
+  );
   assert.doesNotMatch(styles, /content:\s*["']FIELD["']/i);
   assert.match(
     styles,
@@ -1698,6 +1707,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
     transportMigration,
     sharePageMigration,
     imageRangeMigration,
+    neonMigration,
     databaseTypes,
   ] = await Promise.all(
     [
@@ -1711,6 +1721,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
       "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
       "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
+      "../../../supabase/migrations/20260823184500_add_neon_public_template.sql",
       "../../types/database.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
@@ -1773,6 +1784,9 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(imageRangeMigration, /long_image_start_day_number integer/);
   assert.match(imageRangeMigration, /create function public\.create_share_page_v2/);
   assert.match(imageRangeMigration, /create function public\.update_share_page_v2/);
+  assert.match(neonMigration, /requested_template_id = 'neon'/);
+  assert.match(neonMigration, /requested_template_version = 1/);
+  assert.match(neonMigration, /raise exception 'PUBLIC_TEMPLATE_UNAVAILABLE'/);
   assert.match(imageRangeMigration, /create function public\.prepare_share_image_version_v2/);
   assert.match(imageRangeMigration, /security definer[\s\S]*set search_path = ''/);
 });
