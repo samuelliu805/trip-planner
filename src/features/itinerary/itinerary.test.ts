@@ -524,6 +524,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
+  assert.match(deleteDialog, /const \[, action, pending\] = useActionState\(deleteTrip, \{\}\)/);
+  assert.match(deleteDialog, /<form action=\{action\}>/);
+  assert.doesNotMatch(tripBarMenu, /emphasis|bg-primary text-primary-foreground/);
+  assert.match(tripBarMenu, /focusPanelOnOpen/);
   assert.match(editor, /className="planner-item-dialog p-0"/);
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
@@ -2368,6 +2372,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-grid-elements.tsx", import.meta.url),
     "utf8",
   );
+  workspace += await readFile(new URL("./components/insert-row-icon.tsx", import.meta.url), "utf8");
   workspace += await readFile(
     new URL("./components/planner-item-row.tsx", import.meta.url),
     "utf8",
@@ -2497,6 +2502,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /pointer-events-none/);
   assert.match(workspace, /M12 3V9M9 6H15/);
   assert.match(workspace, /M12 15V21M9 18H15/);
+  assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="above"/);
+  assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="below"/);
   assert.match(workspace, />Add day before</);
   assert.match(workspace, />Add day after</);
   assert.match(workspace, /insertIcon\("up"\)/);

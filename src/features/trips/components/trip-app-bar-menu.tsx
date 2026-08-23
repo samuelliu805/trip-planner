@@ -16,7 +16,6 @@ import { logout } from "@/features/auth/actions";
 
 export type TripMobileQuickAction = {
   disabled?: boolean;
-  emphasis?: "primary";
   icon: ReactNode;
   id: string;
   label: string;
@@ -53,7 +52,6 @@ export function TripBarMenu({
             icon: <Share2 aria-hidden="true" className="size-5" />,
             id: "share",
             label: "Share",
-            emphasis: "primary" as const,
             onSelect: onShareTrip,
           },
         ]
@@ -126,6 +124,7 @@ export function TripBarMenu({
         <MoreHorizontal aria-hidden="true" className="size-5" />
       </Button>
       <PullUpPanel
+        focusPanelOnOpen
         id="trip-actions"
         onOpenChange={setPanelOpen}
         open={panelOpen}
@@ -141,15 +140,13 @@ export function TripBarMenu({
             >
               {quickActions.slice(0, 4).map((action) => (
                 <button
-                  className={`flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl px-2 py-3 text-center text-xs font-semibold disabled:opacity-40 ${action.emphasis === "primary" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/70 text-foreground"}`}
+                  className="flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-muted/70 px-2 py-3 text-center text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-40"
                   disabled={action.disabled}
                   key={action.id}
                   onClick={() => runMobileAction(action.onSelect)}
                   type="button"
                 >
-                  <span
-                    className={`flex size-9 items-center justify-center rounded-full shadow-sm ${action.emphasis === "primary" ? "bg-primary-foreground/15 text-primary-foreground" : "bg-background text-foreground"}`}
-                  >
+                  <span className="flex size-9 items-center justify-center rounded-full bg-background text-foreground shadow-sm">
                     {action.icon}
                   </span>
                   <span className="line-clamp-2">{action.label}</span>

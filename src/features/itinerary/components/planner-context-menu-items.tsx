@@ -102,8 +102,9 @@ export function PlannerMobileMenuItems({
         </p>
         <div className="space-y-1 rounded-xl border bg-muted/20 p-1">
           <Button
-            className="min-h-11 w-full justify-start px-3 font-semibold shadow-sm"
+            className={rowClass}
             onClick={() => runAction(() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT)))}
+            variant="ghost"
           >
             <ReceiptText className="size-4" /> Plan cost
           </Button>

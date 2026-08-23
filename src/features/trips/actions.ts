@@ -129,9 +129,12 @@ export async function countActiveSharePages(tripId: string) {
   return data.length;
 }
 
-export async function deleteTrip(formData: FormData) {
+export async function deleteTrip(
+  _state: TripActionState,
+  formData: FormData,
+): Promise<TripActionState> {
   const parsed = tripIdSchema.safeParse(formData.get("trip_id"));
-  if (!parsed.success) return;
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const auth = await authenticatedClient();
   if (!auth) redirect("/login");

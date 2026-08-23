@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { InsertRowIcon } from "@/features/itinerary/components/insert-row-icon";
 import type { PlannerCategory } from "@/features/itinerary/components/planner-config";
 import type { PlannerDay } from "@/features/itinerary/types";
 
@@ -55,32 +56,6 @@ export function AddItemButton({
       </TooltipTrigger>
       <TooltipContent>{`Add another ${category.label.toLowerCase()}`}</TooltipContent>
     </Tooltip>
-  );
-}
-
-function InsertRowIcon({ direction }: { direction: "above" | "below" }) {
-  return direction === "above" ? (
-    <svg
-      aria-hidden="true"
-      className="size-4 shrink-0 sm:size-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M12 3V9M9 6H15" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-      <path d="M5 13H19M5 17H19" stroke="currentColor" strokeLinecap="round" strokeWidth="1.75" />
-    </svg>
-  ) : (
-    <svg
-      aria-hidden="true"
-      className="size-4 shrink-0 sm:size-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path d="M5 7H19M5 11H19" stroke="currentColor" strokeLinecap="round" strokeWidth="1.75" />
-      <path d="M12 15V21M9 18H15" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
-    </svg>
   );
 }
 

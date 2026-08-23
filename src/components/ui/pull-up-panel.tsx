@@ -72,6 +72,7 @@ export function PullUpPanel({
   className,
   description,
   dragMode = "all",
+  focusPanelOnOpen = false,
   id,
   onOpenChange,
   open,
@@ -82,12 +83,14 @@ export function PullUpPanel({
   className?: string;
   description?: string;
   dragMode?: "all" | "mobile";
+  focusPanelOnOpen?: boolean;
   id: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   overlayClassName?: string;
   title: string;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
   useExclusivePullUpPanel(id, open, onOpenChange);
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
@@ -97,7 +100,14 @@ export function PullUpPanel({
           className,
         )}
         overlayClassName={overlayClassName}
+        onOpenAutoFocus={(event) => {
+          if (!focusPanelOnOpen) return;
+          event.preventDefault();
+          panelRef.current?.focus({ preventScroll: true });
+        }}
+        ref={panelRef}
         side="bottom"
+        tabIndex={focusPanelOnOpen ? -1 : undefined}
       >
         <PullUpPanelHandle
           className={dragMode === "mobile" ? "sm:hidden" : undefined}
