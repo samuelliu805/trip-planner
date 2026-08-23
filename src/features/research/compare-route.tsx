@@ -4,7 +4,6 @@ import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { PublicShareDialog } from "@/features/sharing/components/public-share-dialog";
 import { listPublicItineraryLinks } from "@/features/sharing/data";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
-import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { TripSettingsAppBar } from "@/features/trips/components/trip-settings-app-bar";
 import { RouteVariantControls } from "@/features/variants/components/route-variant-controls";
@@ -105,18 +104,7 @@ export async function ResearchCompareRoute({
             />
           }
           variantId={resolution.activeVariant.id}
-          settings={
-            <TripForm
-              footer={
-                <DeleteTripDialog
-                  activeSharePageCount={shareLinks.data.length}
-                  title={trip.title}
-                  tripId={trip.id}
-                />
-              }
-              trip={trip}
-            />
-          }
+          settings={<TripForm trip={trip} />}
         />
       }
     >

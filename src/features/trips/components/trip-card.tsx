@@ -9,11 +9,10 @@ import {
   RotateCcw,
   Share2,
   SquareArrowOutUpRight,
-  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +23,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { countActiveSharePages, setTripStatus } from "@/features/trips/actions";
-import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
+import { setTripStatus } from "@/features/trips/actions";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { TripSettingsEditor } from "@/features/trips/components/trip-settings-editor";
-import { useTripListLoading } from "@/features/trips/components/trip-status-filter";
 import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
 import type { TripListEntry } from "@/features/trips/types";
 
@@ -58,25 +55,12 @@ function PrimaryRouteSummary({ trip }: { trip: TripListEntry }) {
 export function TripCard({ trip }: { trip: TripListEntry }) {
   const router = useRouter();
   const [editorOpen, setEditorOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [sharePageCount, setSharePageCount] = useState<number | null>(null);
   const [statusPending, startStatusChange] = useTransition();
-  const setTripListLoading = useTripListLoading();
   const status = tripStatusOf(trip);
   const toggle = tripStatusToggle(status);
-  const onDeletePendingChange = useCallback(
-    (pending: boolean) => setTripListLoading(pending ? `Deleting “${trip.title}”…` : undefined),
-    [setTripListLoading, trip.title],
-  );
 
   function afterMenu(open: () => void) {
     window.setTimeout(open, 0);
-  }
-
-  function confirmDelete() {
-    setSharePageCount(null);
-    setDeleteOpen(true);
-    void countActiveSharePages(trip.id).then(setSharePageCount, () => setSharePageCount(0));
   }
 
   function changeStatus() {
@@ -143,13 +127,6 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
                 )}
                 {toggle.label}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                onSelect={() => afterMenu(confirmDelete)}
-              >
-                <Trash2 aria-hidden="true" className="size-4" /> Delete trip
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
@@ -183,15 +160,6 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
           trip={trip}
         />
       </TripSettingsEditor>
-      <DeleteTripDialog
-        activeSharePageCount={sharePageCount}
-        onOpenChange={setDeleteOpen}
-        onPendingChange={onDeletePendingChange}
-        open={deleteOpen}
-        renderTrigger={false}
-        title={trip.title}
-        tripId={trip.id}
-      />
     </>
   );
 }

@@ -55,7 +55,6 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         variantId={props.variantId}
       />
       <PlannerStatus
-        deleteError={props.deleteError}
         fillLabel={props.fillLabel}
         fillThroughDay={props.fillThroughDay}
         interactionError={props.interactionError}

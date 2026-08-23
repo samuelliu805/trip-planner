@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -28,15 +28,7 @@ import type { Tables } from "@/types/database";
 const currencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "KRW"];
 
 /** Trip settings supply their fields and server action to the shared planner editor form. */
-export function TripForm({
-  footer,
-  onSaved,
-  trip,
-}: {
-  footer?: ReactNode;
-  onSaved?: () => void;
-  trip: Tables<"trips">;
-}) {
+export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables<"trips"> }) {
   const [state, action, pending] = useActionState(updateTrip, {});
   const [dayCount, setDayCount] = useState(String(trip.day_count));
   const [startDate, setStartDate] = useState(trip.start_date ?? "");
@@ -65,7 +57,6 @@ export function TripForm({
 
   return (
     <PlannerEditorForm
-      footer={footer}
       formAction={action}
       header={
         <PlannerEditorHeader

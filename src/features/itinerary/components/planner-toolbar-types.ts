@@ -20,7 +20,6 @@ export type PlannerToolbarProps = {
   copyPreviousDay: () => Promise<void>;
   copySelectionToClipboard: () => Promise<void>;
   dayMutationPending: boolean;
-  deleteError: boolean;
   fillLabel: string;
   fillThroughDay?: number;
   insertDay: (position: number) => Promise<void>;

@@ -1,7 +1,10 @@
 /* Shared full-screen shell for itinerary-item and trip-settings editors. */
 .planner-item-dialog {
   position: fixed !important;
-  inset: 0 !important;
+  top: var(--planner-editor-viewport-top, 0px) !important;
+  right: 0 !important;
+  bottom: auto !important;
+  left: 0 !important;
   display: flex;
   width: 100% !important;
   height: 100vh !important;
@@ -19,14 +22,17 @@
 }
 
 html.planner-editor-viewport-locked,
-body.planner-editor-viewport-locked {
+body.planner-editor-viewport-locked,
+body.planner-editor-viewport-locked[data-scroll-locked] {
   position: fixed !important;
   inset: 0 !important;
   width: 100% !important;
-  height: 100% !important;
-  max-height: 100% !important;
+  height: 100vh !important;
+  height: 100lvh !important;
+  max-height: none !important;
   overflow: hidden !important;
   overscroll-behavior: none !important;
+  background: var(--muted);
 }
 
 body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {

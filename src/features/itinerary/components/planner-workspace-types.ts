@@ -10,7 +10,6 @@ import type { Tables } from "../../../types/database";
 
 export type PlannerWorkspaceProps = {
   accountEmail: string;
-  deleteError: boolean;
   exchangeRates: ExchangeRateTable | null;
   initialResearchItems: PlanResearchItem[];
   initialResearchSelections: VariantResearchSelection[];

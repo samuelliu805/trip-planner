@@ -435,11 +435,11 @@ test("trip filters, date settlement, and lifecycle toggles stay deterministic", 
   assert.equal(sanitizeTripDayCountInput("days: 005"), "5");
 });
 
-test("trip cards expose loading filters, deletion, and the shared settings editor", async () => {
+test("trip cards expose loading filters and the shared settings editor without trip deletion", async () => {
   const [
     actions,
     card,
-    deleteDialog,
+    compareRoute,
     editor,
     editorFields,
     editorForm,
@@ -450,11 +450,13 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     itemForm,
     primaryFields,
     settingsEditor,
+    tripActions,
+    tripDetailPage,
     tripsPage,
   ] = await Promise.all([
     readFile(new URL("./components/planner-editor-form-actions.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../research/compare-route.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-form.tsx", import.meta.url), "utf8"),
@@ -465,6 +467,8 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-primary-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../app/trips/[tripId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
 
@@ -478,13 +482,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(filter, /bg-muted\/30/);
   assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
   assert.match(card, /<TripSettingsEditor/);
-  assert.match(card, /<DeleteTripDialog/);
-  assert.match(card, /countActiveSharePages\(trip\.id\)/);
-  assert.match(card, /useTripListLoading\(\)/);
-  assert.match(card, /Deleting “\$\{trip\.title\}”/);
-  assert.match(deleteDialog, /Checking published Share Pages/);
-  assert.match(deleteDialog, /pending \? "Deleting…"/);
-  assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
+  assert.doesNotMatch(
+    card + compareRoute + tripActions + tripDetailPage,
+    /DeleteTripDialog|Delete trip|Delete Trip|countActiveSharePages|function deleteTrip/,
+  );
   assert.match(editor, /className="planner-item-dialog p-0"/);
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
@@ -2458,15 +2459,26 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
   assert.doesNotMatch(plannerDialogRule, /100dvh/);
+  assert.match(plannerDialogRule, /top: var\(--planner-editor-viewport-top, 0px\)/);
+  assert.match(
+    styles,
+    /html\.planner-editor-viewport-locked[\s\S]*height: 100vh[\s\S]*height: 100lvh[\s\S]*background: var\(--muted\)/,
+  );
   assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /<PlannerEditorScreen/);
   assert.match(editorScreen, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editorViewportLock, /planner-editor-viewport-locked/);
+  assert.match(editorViewportLock, /visualViewport\.offsetTop/);
+  assert.match(editorViewportLock, /--planner-editor-viewport-top/);
+  assert.match(editorViewportLock, /viewportSettleDelays = \[0, 80, 240, 500\]/);
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);
+  assert.match(editorKeyboardScroll, /focusSessionScrollTop/);
+  assert.match(editorKeyboardScroll, /keyboardSettleDelays = \[0, 80, 240, 500\]/);
+  assert.match(editorKeyboardScroll, /restoreFocusSessionScroll/);
   assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);

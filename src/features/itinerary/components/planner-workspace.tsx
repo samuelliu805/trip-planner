@@ -95,7 +95,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         copyPreviousDay={c.clipboard.copyPreviousDay}
         copySelectionToClipboard={c.clipboard.copySelectionToClipboard}
         dayMutationPending={c.dayMutationPending}
-        deleteError={props.deleteError}
         fillLabel={c.fillLabel}
         fillThroughDay={c.workspace.days[c.selectionEnd.row]?.day_number}
         insertDay={c.insertDay}

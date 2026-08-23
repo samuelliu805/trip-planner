@@ -6,7 +6,6 @@ import { PublicShareDialog } from "@/features/sharing/components/public-share-di
 import { listPublicItineraryLinks } from "@/features/sharing/data";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { getPlannerVariants, getPlannerWorkspace } from "@/features/itinerary/data";
-import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
@@ -17,7 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
-  searchParams: Promise<{ error?: string; settings?: string; share?: string; variant?: string }>;
+  searchParams: Promise<{ settings?: string; share?: string; variant?: string }>;
 };
 
 export default async function TripPage({ params, searchParams }: TripPageProps) {
@@ -65,7 +64,6 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             initialVariants={variantsResult.data}
             initialWorkspace={workspace}
             trip={trip}
-            deleteError={query.error === "delete"}
             shareControls={
               owner ? (
                 <PublicShareDialog
@@ -80,18 +78,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                 />
               ) : null
             }
-            settings={
-              <TripForm
-                footer={
-                  <DeleteTripDialog
-                    activeSharePageCount={shareLinks.data.length}
-                    title={trip.title}
-                    tripId={trip.id}
-                  />
-                }
-                trip={trip}
-              />
-            }
+            settings={<TripForm trip={trip} />}
             shareAttachmentsEnabled={shareLinks.data.some(
               (link) => link.variantId === workspace.variant.id && link.showAttachments,
             )}
