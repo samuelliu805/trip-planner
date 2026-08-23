@@ -29,14 +29,35 @@ import {
   selectionContains,
 } from "./grid-interactions.ts";
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
+import { plannerItemTitleAfterPlaceSelection } from "./planner-item-title-autofill.ts";
 import {
+  plannerItemFormError,
   plannerItemFormSteps,
+  plannerItemNeedsOrderStep,
+  plannerItemSaveAction,
   plannerItemStepError,
 } from "./components/planner-item-form-steps.ts";
-import { itemFormCapabilities } from "./components/planner-item-form-config.ts";
+import {
+  itemFormCapabilities,
+  plannerItemCreationNeedsConfirmation,
+} from "./components/planner-item-form-config.ts";
 import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
+import {
+  defaultTripCurrency,
+  defaultTripDayCount,
+  defaultTripTitle,
+  isDefaultTripTitle,
+  tripDateInZone,
+  tripTitleFromPlace,
+} from "../trips/create-defaults.ts";
+import { sanitizeTripDayCountInput, settleTripDateFields } from "../trips/date-fields.ts";
+import {
+  resolveTripStatusFilter,
+  tripStatusFilterLabels,
+  tripStatusToggle,
+} from "../trips/status.ts";
 import {
   buildOverviewRouteLines,
   deriveOverviewStages,
@@ -94,6 +115,7 @@ import { isSameDayOrder, placeDayAtGap, reorderWorkspaceDays } from "./day-order
 import {
   insertActivityAtPlacement,
   itemOrderAnchor,
+  itemOrderSlots,
   isActivityOrderAnchor,
   orderedDayActivities,
   orderedDestinationActivities,
@@ -203,8 +225,8 @@ const providerLeg = (mode: DayRouteDraft["legModes"][number] = "walk"): RouteLeg
   position: 1,
 });
 
-test("planner initially selects the first City cell", () => {
-  assert.deepEqual(initialPlannerSelection(3, 0), { column: 0, row: 0 });
+test("planner initially selects the first Activity cell", () => {
+  assert.deepEqual(initialPlannerSelection(3, 1), { column: 1, row: 0 });
   assert.deepEqual(initialPlannerSelection(0, 0), { column: -1, row: -1 });
   assert.deepEqual(initialPlannerSelection(3, -1), { column: -1, row: -1 });
 });
@@ -355,6 +377,243 @@ test("Phase 5A migration owns atomic lifecycle, isolation, primary, and grant co
   assert.match(migration, /revoke insert, update, delete[\s\S]*trip_days from anon, authenticated/);
 });
 
+test("trip creation uses the old branch defaults and opens the planner directly", async () => {
+  const [actions, createButton, migration] = await Promise.all([
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/create-trip-button.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../../../supabase/migrations/20260821120000_trip_open_done_status.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  ]);
+
+  assert.equal(defaultTripCurrency, "USD");
+  assert.equal(defaultTripDayCount, 1);
+  const created = new Date("2026-08-22T05:30:00Z");
+  assert.equal(tripDateInZone("Asia/Shanghai", created), "2026-08-22");
+  assert.equal(tripDateInZone("America/Los_Angeles", created), "2026-08-21");
+  assert.equal(defaultTripTitle("2026-08-21"), "New trip 2026-08-21");
+  assert.equal(isDefaultTripTitle("New trip 2026-08-21"), true);
+  assert.equal(isDefaultTripTitle("Kyoto"), false);
+  assert.equal(
+    tripTitleFromPlace({ displayName: "Fushimi Inari Taisha", localityName: "Kyoto" }),
+    "Kyoto Trip",
+  );
+  const longPlaceTitle = tripTitleFromPlace({
+    displayName: "A very long place name that needs shortening",
+    localityName: null,
+  });
+  assert.equal(longPlaceTitle.endsWith(" Trip"), true);
+  assert.ok(longPlaceTitle.length <= 32);
+
+  assert.match(createButton, /<form action=\{action\}/);
+  assert.doesNotMatch(createButton, /Dialog|TripForm|href="\/trips\/new"/);
+  assert.match(actions, /trip_title: defaultTripTitle\(today\)/);
+  assert.match(actions, /redirect\(`\/trips\/\$\{data\}`\)/);
+  assert.match(migration, /status text not null default 'open'/);
+});
+
+test("trip filters, date settlement, and lifecycle toggles stay deterministic", () => {
+  assert.deepEqual(tripStatusFilterLabels, {
+    all: "All",
+    done: "Completed",
+    open: "Active",
+  });
+  assert.equal(resolveTripStatusFilter(undefined), "open");
+  assert.equal(resolveTripStatusFilter("all"), "all");
+  assert.equal(resolveTripStatusFilter("invalid"), "open");
+  assert.deepEqual(tripStatusToggle("open"), { label: "Mark complete", next: "done" });
+  assert.deepEqual(tripStatusToggle("done"), { label: "Move to Active", next: "open" });
+
+  assert.deepEqual(
+    settleTripDateFields({ dayCount: "5", endDate: "", startDate: "2026-08-20" }, "startDate"),
+    { dayCount: "5", endDate: "2026-08-24", startDate: "2026-08-20" },
+  );
+  assert.deepEqual(
+    settleTripDateFields(
+      { dayCount: "", endDate: "2026-08-25", startDate: "2026-08-20" },
+      "endDate",
+    ),
+    { dayCount: "6", endDate: "2026-08-25", startDate: "2026-08-20" },
+  );
+  assert.equal(sanitizeTripDayCountInput("days: 005"), "5");
+});
+
+test("trip cards expose loading filters, deletion, and the shared settings editor", async () => {
+  const [
+    actions,
+    card,
+    compareRoute,
+    deleteDialog,
+    detailRoute,
+    editor,
+    editorFields,
+    editorForm,
+    editorHeader,
+    filter,
+    form,
+    itemDialog,
+    itemForm,
+    primaryFields,
+    suggestionList,
+    settingsEditor,
+    tripsPage,
+  ] = await Promise.all([
+    readFile(new URL("./components/planner-editor-form-actions.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../research/compare-route.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../app/trips/[tripId]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-editor-header.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-status-filter.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-editor-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-place-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../places/place-suggestion-list.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
+  ]);
+  const placeAutocomplete = await readFile(
+    new URL("../places/place-autocomplete.tsx", import.meta.url),
+    "utf8",
+  );
+  const editorStyles = await readAppStyles();
+  const [
+    itemSaveConfirmation,
+    itemSaveFeedback,
+    itemSaveFlow,
+    tripActions,
+    tripAppBar,
+    tripBarMenu,
+  ] = await Promise.all([
+    readFile(new URL("./components/planner-item-save-confirmation.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-save-feedback.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/use-planner-item-save-flow.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-app-bar.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-app-bar-menu.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(filter, /useTransition\(\)/);
+  assert.match(filter, /aria-busy=\{loading\}/);
+  assert.match(
+    filter,
+    /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/,
+  );
+  assert.match(filter, /items-center justify-between/);
+  assert.match(filter, /bg-muted\/30/);
+  assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
+  assert.match(card, /<TripSettingsEditor/);
+  assert.match(card, /<DeleteTripDialog/);
+  assert.match(card, /countActiveSharePages\(trip\.id\)/);
+  assert.match(card, /useTripListLoading\(\)/);
+  assert.match(card, /Deleting “\$\{trip\.title\}”/);
+  assert.match(tripAppBar, /<DeleteTripDialog/);
+  assert.match(tripAppBar, /countActiveSharePages\(tripId\)/);
+  assert.match(tripAppBar, /Deleting “\{title\}”…/);
+  assert.match(tripBarMenu, /onDeleteTrip/);
+  assert.equal(tripBarMenu.match(/Delete trip/g)?.length, 2);
+  assert.match(tripActions, /deleteTrip[\s\S]*redirect\("\/trips"\)/);
+  assert.doesNotMatch(compareRoute + detailRoute, /DeleteTripDialog/);
+  assert.match(deleteDialog, /Checking published Share Pages/);
+  assert.match(deleteDialog, /pending \? "Deleting…"/);
+  assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
+  assert.match(deleteDialog, /const \[, action, pending\] = useActionState\(deleteTrip, \{\}\)/);
+  assert.match(deleteDialog, /<form action=\{action\}>/);
+  assert.doesNotMatch(tripBarMenu, /emphasis|bg-primary text-primary-foreground/);
+  assert.match(tripBarMenu, /focusPanelOnOpen/);
+  assert.match(editor, /className="planner-item-dialog p-0"/);
+  assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
+  assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
+  assert.doesNotMatch(editor, /overscroll-contain/);
+  assert.match(itemDialog, /<PlannerEditorScreen/);
+  assert.match(itemForm, /<PlannerEditorForm/);
+  assert.match(itemForm, /<PlannerEditorHeader/);
+  assert.match(itemForm, /<PlannerItemStepNav/);
+  assert.doesNotMatch(itemForm, /usePlannerEditorKeyboardScroll\(\)/);
+  assert.match(settingsEditor, /<PlannerEditorScreen/);
+  assert.match(settingsEditor, /editorKind="trip-settings"/);
+  assert.match(settingsEditor, /initialFocusSelector="\[data-trip-settings-title\]"/);
+  assert.match(editor, /data-editor-kind=\{editorKind\}/);
+  assert.doesNotMatch(settingsEditor, /TripSettingsHeader|TripSettingsPage|PlannerEditorPage/);
+  assert.match(form, /<PlannerEditorForm/);
+  assert.doesNotMatch(form, /<PlannerEditorHeader/);
+  assert.match(form, /header=\{null\}/);
+  assert.match(form, /<SheetTitle[\s\S]*data-trip-settings-title[\s\S]*tabIndex=\{-1\}/);
+  assert.match(form, /<SheetTitle[\s\S]*\{editor\.title\}[\s\S]*<SheetDescription/);
+  assert.match(form, /<Settings2/);
+  assert.match(form, /onCancel=\{editor\.onClose\}/);
+  assert.match(form, /gap-3 border-b pb-4 sm:gap-4 sm:pb-6/);
+  assert.match(editorForm, /compactActions \? "space-y-6 sm:space-y-10" : "space-y-10"/);
+  assert.match(
+    editorStyles,
+    /max-width: 639px[\s\S]*data-editor-kind="trip-settings"[\s\S]*height: 100dvh !important/,
+  );
+  assert.match(
+    editorStyles,
+    /data-editor-kind="trip-settings"[\s\S]*font-size: 1rem[\s\S]*min-width: 640px[\s\S]*max-width: 1199px[\s\S]*min-height: 3rem/,
+  );
+  assert.doesNotMatch(form, /PlannerItemStepNav|usePlannerEditorKeyboardScroll\(\)/);
+  assert.match(editorForm, /<PlannerEditorPage/);
+  assert.match(editorForm, /usePlannerEditorKeyboardScroll\(\)/);
+  assert.match(editorForm, /<PlannerEditorFormActions/);
+  assert.match(editorForm, /saveDisabled/);
+  assert.match(
+    editorForm,
+    /<fieldset[\s\S]*aria-busy=\{pending\}[\s\S]*disabled=\{pending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
+  );
+  assert.match(editorHeader, /navigation\?: ReactNode/);
+  assert.match(editor, /onOpenAutoFocus[\s\S]*initialFocusSelector[\s\S]*preventScroll: true/);
+  assert.match(editorFields, /export function PlannerEditorTextField/);
+  assert.match(primaryFields, /<PlannerEditorTextField/);
+  assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
+  assert.match(form, /compactActions/);
+  assert.doesNotMatch(form, /\bfooter\b/);
+  assert.match(suggestionList, /overflow-y-auto/);
+  assert.doesNotMatch(suggestionList, /overscroll-contain/);
+  assert.match(suggestionList, /onClick=/);
+  assert.doesNotMatch(suggestionList, /onMouseDown=/);
+  assert.match(suggestionList, /Google Maps places/);
+  assert.match(suggestionList, /<button[\s\S]*onClick=\{customOption\.onChoose\}/);
+  assert.doesNotMatch(suggestionList, /customOption\.description/);
+  assert.doesNotMatch(suggestionList, /activeIndex === suggestions\.length/);
+  assert.match(primaryFields, /customValueLabel=\{creatingActivity \? "activity name"/);
+  assert.match(primaryFields, /Search Maps or type a name/);
+  assert.match(primaryFields, /scrollIntoView[\s\S]*focus\(\{ preventScroll: true \}\)/);
+  assert.doesNotMatch(primaryFields, /custom activity|Custom activity added|Choose a Google Maps/);
+  assert.match(placeAutocomplete, /const requestGeneration = useRef\(0\)/);
+  assert.match(placeAutocomplete, /generation !== requestGeneration\.current/);
+  assert.match(placeAutocomplete, /`Use “\$\{customQuery\}” as \$\{customValueLabel\}`/);
+  assert.match(placeAutocomplete, /Loading place details…/);
+  assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
+  assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
+  assert.match(itemSaveFeedback, /success && feedback\.showViewLink/);
+  assert.match(itemSaveConfirmation, /createAnother[\s\S]*success message will include a link/);
+  assert.doesNotMatch(itemSaveConfirmation, /a link will take you directly/);
+  assert.doesNotMatch(
+    editor + itemDialog + settingsEditor,
+    /headerScrolls|itemViewportMatchesProduction/,
+  );
+  assert.match(actions, /aria-label="Previous step"[\s\S]*hidden sm:inline">Previous/);
+  assert.match(actions, /aria-label="Next step"[\s\S]*hidden sm:inline">Next/);
+  assert.match(actions, /grid-cols-2[\s\S]*Save \+ another[\s\S]*row-start-2/);
+  assert.match(actions, /splitCancelAndSave[\s\S]*justify-between[\s\S]*\{cancelLabel\}/);
+  assert.match(actions, /pending \|\| saveDisabled/);
+  assert.match(form, /useActionState\(updateTrip, \{\}\)/);
+  assert.match(form, /label="Trip name"/);
+  assert.match(form, /label="Duration \(days\)"/);
+  assert.equal(form.match(/planner-native-datetime-input/g)?.length, 2);
+  assert.match(form, /label="Currency"/);
+  assert.doesNotMatch(form, /Timezone|Previous|Next|planner-item-step/);
+});
+
 test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-aware", async () => {
   const page = await readFile(
     new URL("../../app/trips/[tripId]/page.tsx", import.meta.url),
@@ -424,6 +683,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   );
   const itineraryActions = await readItineraryItemActions();
   const tripsPage = await readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8");
+  const tripCard = await readFile(
+    new URL("../trips/components/trip-card.tsx", import.meta.url),
+    "utf8",
+  );
   const tripsData = await readFile(new URL("../trips/data.ts", import.meta.url), "utf8");
 
   assert.match(page, /resolveActiveVariant\(variantsResult\.data, query\.variant\)/);
@@ -464,10 +727,11 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   );
   assert.match(tripsData, /route_variants\(id, name, color, is_primary\)/);
   assert.match(tripsData, /\.eq\("route_variants\.is_primary", true\)/);
-  assert.match(tripsPage, /primaryVariant\.name/);
-  assert.match(tripsPage, /backgroundColor: primaryVariant\.color/);
-  assert.match(tripsPage, /\?share=1/);
-  assert.match(tripsPage, /\?settings=1/);
+  assert.match(tripCard, /primary\.name/);
+  assert.match(tripCard, /backgroundColor: primary\.color/);
+  assert.match(tripCard, /\?share=1/);
+  assert.match(tripCard, /<TripSettingsEditor/);
+  assert.doesNotMatch(tripCard, /\?settings=1/);
   assert.match(page, /initialOpen=\{query\.share === "1"\}/);
   assert.match(page, /initialSettingsOpen=\{query\.settings === "1"\}/);
   assert.doesNotMatch(tripsPage, />\s*Route A\s*</);
@@ -2121,6 +2385,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-grid-elements.tsx", import.meta.url),
     "utf8",
   );
+  workspace += await readFile(new URL("./components/insert-row-icon.tsx", import.meta.url), "utf8");
   workspace += await readFile(
     new URL("./components/planner-item-row.tsx", import.meta.url),
     "utf8",
@@ -2160,11 +2425,16 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     workspace += await readFile(new URL(file, import.meta.url), "utf8");
   let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
   form += await readFile(
-    new URL("./components/planner-item-form-header.tsx", import.meta.url),
+    new URL("./components/planner-editor-header.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(new URL("./components/planner-editor-form.tsx", import.meta.url), "utf8");
+  form += await readFile(
+    new URL("./components/planner-editor-fields.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
-    new URL("./components/planner-item-form-actions.tsx", import.meta.url),
+    new URL("./components/planner-editor-form-actions.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
@@ -2173,6 +2443,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   );
   form += await readFile(
     new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
+    "utf8",
+  );
+  form += await readFile(
+    new URL("./components/planner-item-place-fields.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
@@ -2195,11 +2469,20 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-item-editor-dialog.tsx", import.meta.url),
     "utf8",
   );
+  const editorScreen = await readFile(
+    new URL("./components/planner-editor-screen.tsx", import.meta.url),
+    "utf8",
+  );
   const editorKeyboardScroll = await readFile(
     new URL("./components/use-planner-editor-keyboard-scroll.ts", import.meta.url),
     "utf8",
   );
+  const editorViewportLock = await readFile(
+    new URL("./components/use-planner-editor-viewport-lock.ts", import.meta.url),
+    "utf8",
+  );
   const styles = await readAppStyles();
+  const plannerDialogRule = styles.match(/\.planner-item-dialog \{([\s\S]*?)\n\}/)?.[1] ?? "";
   const queries = await readItineraryQueryModules();
   assert.match(workspace, /Arrange Activities/);
   assert.doesNotMatch(workspace, /Arrange Days/);
@@ -2217,7 +2500,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /if \(!moved\) setSelectionAnchor\(\{ column, row \}\)/);
   assert.match(
     workspace,
-    /initialPlannerSelection\([\s\S]*initialWorkspace\.days\.length[\s\S]*id === "city"/,
+    /initialPlannerSelection\([\s\S]*initialWorkspace\.days\.length[\s\S]*id === "activities"/,
   );
   assert.match(workspace, /useState<GridCoordinate>\(\(\) => initialSelection\)/);
   assert.match(workspace, /window\.addEventListener\("pointermove", move\)/);
@@ -2232,6 +2515,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /pointer-events-none/);
   assert.match(workspace, /M12 3V9M9 6H15/);
   assert.match(workspace, /M12 15V21M9 18H15/);
+  assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="above"/);
+  assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="below"/);
   assert.match(workspace, />Add day before</);
   assert.match(workspace, />Add day after</);
   assert.match(workspace, /insertIcon\("up"\)/);
@@ -2243,8 +2528,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     /oneCell &&[\s\S]*!props\.selectedItem &&[\s\S]*!props\.activeCellAtCapacity/,
   );
   assert.match(form, /insertAfterItemId/);
+  assert.match(form, /const \[orderPreviewItems\] = useState\(\(\) => dayItems\)/);
+  assert.match(form, /saveDisabled=\{Boolean\(formError\)\}/);
   assert.doesNotMatch(form, /"Place item"/);
-  assert.match(form, /Step \{stepIndex \+ 1\} of \{steps\.length\}/);
+  assert.match(form, /Step \$\{stepIndex \+ 1\} of \$\{steps\.length\}/);
   assert.match(workspace, /Click to place/);
   assert.doesNotMatch(workspace, /onPlaceItem/);
   assert.match(workspace, /initialMovingItemId/);
@@ -2257,7 +2544,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
-  assert.match(styles, /\.planner-matrix \.matrix-grid-header \{\s*z-index: 70;/);
+  assert.match(styles, /\.planner-matrix \.matrix-grid-header \{[\s\S]*?z-index: 70;/);
   assert.match(workspace, /Insert day above/);
   assert.match(workspace, /Insert day below/);
   assert.match(workspace, /Remove Day/);
@@ -2271,13 +2558,16 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(
-    styles,
-    /planner-item-dialog[\s\S]*height: 100lvh[\s\S]*planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/,
-  );
+  assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
+  assert.match(plannerDialogRule, /overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/);
+  assert.doesNotMatch(plannerDialogRule, /100dvh/);
+  assert.match(styles, /data-compact-actions[\s\S]*padding-bottom: calc/);
+  assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
-  assert.match(editorDialog, /planner-editor-viewport-locked/);
+  assert.match(editorDialog, /<PlannerEditorScreen/);
+  assert.match(editorScreen, /usePlannerEditorViewportLock\(open\)/);
+  assert.match(editorViewportLock, /planner-editor-viewport-locked/);
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);
@@ -2302,7 +2592,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(form, /event\.key === "Escape"/);
   assert.match(form, /Clear time/);
   assert.doesNotMatch(form, /End time|Clear end time|item-end-|setEndTime/);
-  assert.match(form, /requestAnimationFrame\(\(\) => titleRef\.current\?\.focus\(\)\)/);
+  assert.match(form, /requestAnimationFrame[\s\S]*scrollIntoView[\s\S]*preventScroll: true/);
   assert.match(queries, /useCopyItineraryItems[\s\S]*onMutate/);
   assert.match(queries, /onError:[\s\S]*context\?\.previous/);
 });
@@ -2340,6 +2630,14 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
     new URL("./hooks/use-planner-viewport-containment.ts", import.meta.url),
     "utf8",
   );
+  const initialMatrixScroll = await readFile(
+    new URL("./hooks/use-initial-matrix-scroll-position.ts", import.meta.url),
+    "utf8",
+  );
+  const mobileMatrixContainment = await readFile(
+    new URL("./hooks/use-mobile-matrix-top-containment.ts", import.meta.url),
+    "utf8",
+  );
   const secondaryFields = await readFile(
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
@@ -2355,7 +2653,14 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /planner-item-dialog[\s\S]*input,[\s\S]*font-size: 1\.125rem/);
   assert.match(styles, /planner-map-sheet[\s\S]*height: 100dvh/);
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
-  assert.match(styles, /planner-matrix[\s\S]*overscroll-behavior: none/);
+  assert.match(
+    styles,
+    /planner-matrix[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 639px\)[\s\S]*?\.planner-matrix \{[\s\S]*?overscroll-behavior-y: none;/,
+  );
   assert.match(styles, /html:has\(\.trip-planner-page\),[\s\S]*overflow: hidden/);
   assert.match(styles, /body:has\(\.trip-planner-page\)[\s\S]*position: fixed;[\s\S]*inset: 0;/);
   assert.match(
@@ -2371,12 +2676,16 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.ok(tripShellRule);
   assert.match(tripShellRule, /height: 100dvh/);
   assert.match(tripShellRule, /overflow: hidden/);
-  assert.match(tripShellRule, /overscroll-behavior: none/);
+  assert.match(tripShellRule, /overscroll-behavior-y: auto/);
   assert.doesNotMatch(tripShellRule, /display: none/);
   assert.match(styles, /\.trips-global-header,[\s\S]*\.trip-app-bar[\s\S]*touch-action: pan-x/);
   assert.match(
     styles,
     /\.planner-matrix \.matrix-grid-header,[\s\S]*backface-visibility: hidden[\s\S]*translateZ\(0\)/,
+  );
+  assert.match(
+    styles,
+    /\.planner-matrix \.matrix-grid-header \{[\s\S]*position: -webkit-sticky;[\s\S]*position: sticky;[\s\S]*top: 0;/,
   );
   assert.match(styles, /planner-mobile-map-fab[\s\S]*display: inline-flex/);
   assert.match(
@@ -2390,6 +2699,22 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(tripsLayout, /trips-global-header sticky top-0 z-\[80\]/);
   assert.match(workspace, /TripAppBar/);
   assert.match(workspace, /usePlannerViewportContainment/);
+  assert.match(workspace, /useInitialMatrixScrollPosition<HTMLElement>\(\)/);
+  assert.match(workspace, /useMobileMatrixTopContainment\(matrixRef\)/);
+  assert.match(workspace, /ref=\{matrixRef\}/);
+  assert.match(initialMatrixScroll, /min-width: 640px[\s\S]*max-width: 1199px/);
+  assert.match(initialMatrixScroll, /matrix\.scrollTo\(\{ behavior: "auto", left: 0, top: 0 \}\)/);
+  assert.match(initialMatrixScroll, /requestAnimationFrame\(reset\)/);
+  assert.match(mobileMatrixContainment, /max-width: 639px/);
+  assert.match(mobileMatrixContainment, /matrix\.scrollTop <= 1/);
+  assert.match(
+    mobileMatrixContainment,
+    /addEventListener\("touchmove", containTopPull, \{ passive: false \}\)/,
+  );
+  assert.match(mobileMatrixContainment, /mobile\.addEventListener\("change"/);
+  assert.match(mobileMatrixContainment, /else stopListening\(\)/);
+  assert.match(mobileMatrixContainment, /event\.preventDefault\(\)/);
+  assert.doesNotMatch(mobileMatrixContainment, /min-width: 640px/);
   assert.match(viewportContainment, /visualViewport/);
   assert.match(viewportContainment, /focusout/);
   assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);
@@ -2844,7 +3169,7 @@ test("address and location controls use normalized map places", async () => {
     "utf8",
   );
   form += await readFile(
-    new URL("./components/planner-item-primary-fields.tsx", import.meta.url),
+    new URL("./components/planner-item-place-fields.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
@@ -3026,6 +3351,10 @@ test("the item editor groups every type into short steps and gates required fiel
       "order:order",
     ],
   );
+  assert.deepEqual(plannerItemFormSteps({ ...rail, creating: true, type: "activity" })[0].blocks, [
+    "place",
+    "title",
+  ]);
   assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["place", "title"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "meal" }).find(({ id }) => id === "extras"),
@@ -3154,8 +3483,65 @@ test("the item editor groups every type into short steps and gates required fiel
     "Activity name is required.",
   );
   assert.equal(
+    plannerItemStepError({
+      creating: true,
+      place: null,
+      step: activity[0],
+      title: "",
+      type: "activity",
+    }),
+    "Search Google Maps or enter an activity name.",
+  );
+  assert.equal(
     plannerItemStepError({ place: null, step: activity[3], title: "", type: "activity" }),
     undefined,
+  );
+  assert.equal(
+    plannerItemFormError({
+      creating: true,
+      place: null,
+      steps: activity,
+      title: "",
+      type: "activity",
+    })?.step.id,
+    "basics",
+  );
+  assert.equal(
+    plannerItemFormError({
+      creating: true,
+      place: null,
+      steps: activity,
+      title: "Museum visit",
+      type: "activity",
+    }),
+    undefined,
+  );
+});
+
+test("activity place selection updates only names that are still system-generated", () => {
+  assert.deepEqual(
+    plannerItemTitleAfterPlaceSelection({
+      autoFilledTitle: null,
+      placeTitle: "Louvre Museum",
+      title: "",
+    }),
+    { autoFilledTitle: "Louvre Museum", title: "Louvre Museum" },
+  );
+  assert.deepEqual(
+    plannerItemTitleAfterPlaceSelection({
+      autoFilledTitle: "Louvre Museum",
+      placeTitle: "Musée de l’Orangerie",
+      title: "Louvre Museum",
+    }),
+    { autoFilledTitle: "Musée de l’Orangerie", title: "Musée de l’Orangerie" },
+  );
+  assert.deepEqual(
+    plannerItemTitleAfterPlaceSelection({
+      autoFilledTitle: null,
+      placeTitle: "Louvre Museum",
+      title: "See the Mona Lisa",
+    }),
+    { autoFilledTitle: null, title: "See the Mona Lisa" },
   );
 });
 
@@ -3175,4 +3561,42 @@ test("the editor Order step derives stable anchors for add and edit", () => {
   assert.equal(itemOrderAnchor(items, undefined, "activity"), "rental");
   assert.equal(itemOrderAnchor(items, undefined, "hotel"), "rental");
   assert.equal(itemOrderAnchor(items, "train", "transport"), null);
+  assert.deepEqual(itemOrderSlots([], undefined), [null]);
+  assert.deepEqual(itemOrderSlots([item("hotel", 0, "hotel")], undefined), [null]);
+  assert.deepEqual(itemOrderSlots(items, undefined), [null, "museum", "meal", "rental"]);
+  assert.deepEqual(itemOrderSlots(items, "meal"), [null, "museum", "rental"]);
+});
+
+test("the Order step responds to legal slots and entered times", () => {
+  const base = { availableSlots: 2, endTime: "", startTime: "" };
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "activity" }), true);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "meal" }), true);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "car_rental" }), true);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, availableSlots: 1, type: "activity" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, startTime: "09:00", type: "activity" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, endTime: "10:00", type: "meal" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "hotel" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "transport" }), false);
+});
+
+test("saving routes through Order and confirms deliberate item creation", () => {
+  assert.equal(
+    plannerItemSaveAction({ activeStepId: "basics", includeOrder: true }),
+    "confirm-order",
+  );
+  assert.equal(plannerItemSaveAction({ activeStepId: "order", includeOrder: true }), "save");
+  assert.equal(plannerItemSaveAction({ activeStepId: "basics", includeOrder: false }), "save");
+
+  for (const type of [
+    "activity",
+    "car_rental",
+    "flight",
+    "hotel",
+    "meal",
+    "train",
+    "transport",
+  ] as const)
+    assert.equal(plannerItemCreationNeedsConfirmation(type), true, `${type} confirms creation`);
+  assert.equal(plannerItemCreationNeedsConfirmation("location"), false);
+  assert.equal(plannerItemCreationNeedsConfirmation("note"), false);
 });

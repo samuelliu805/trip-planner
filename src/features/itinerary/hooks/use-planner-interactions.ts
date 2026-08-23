@@ -14,6 +14,7 @@ import {
 } from "@/features/itinerary/grid-interactions";
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import { focusPlannerSavedItem } from "@/features/itinerary/planner-saved-item-focus";
 
 type Ref<T> = MutableRefObject<T>;
 type SetCoordinate = (coordinate: GridCoordinate) => void;
@@ -135,6 +136,19 @@ export function usePlannerInteractions({
       return;
     }
     setSelectedMapItemId(undefined);
+  }
+
+  function focusSavedItem(item: ItineraryItem) {
+    focusPlannerSavedItem(item, {
+      setInteractionError,
+      setMapMode,
+      setSelectedDayRow,
+      setSelectedItemId,
+      setSelectedMapItemId,
+      setSelectionAnchor,
+      setSelectionEnd,
+      workspace,
+    });
   }
 
   function startRangeSelection(event: React.PointerEvent<HTMLDivElement>) {
@@ -273,6 +287,7 @@ export function usePlannerInteractions({
 
   return {
     focusCell,
+    focusSavedItem,
     handleCellKey,
     openEditorFromDoubleClick,
     selectItem,

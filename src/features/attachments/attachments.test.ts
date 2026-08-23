@@ -202,8 +202,20 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     new URL("../itinerary/components/planner-item-form.tsx", import.meta.url),
     "utf8",
   );
+  const itemSaveFlow = await readFile(
+    new URL("../itinerary/components/use-planner-item-save-flow.ts", import.meta.url),
+    "utf8",
+  );
+  const plannerForm = await readFile(
+    new URL("../itinerary/components/planner-editor-form.tsx", import.meta.url),
+    "utf8",
+  );
   const plannerSheets = await readFile(
     new URL("../itinerary/components/planner-item-editor-dialog.tsx", import.meta.url),
+    "utf8",
+  );
+  const plannerEditor = await readFile(
+    new URL("../itinerary/components/planner-editor-screen.tsx", import.meta.url),
     "utf8",
   );
   const plannerStyles = await readFile(
@@ -307,17 +319,19 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(itemAction, /ownerAttachmentsFromRows\(attachmentRows\)/);
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
   assert.match(attachmentSection, /ShareAttachmentsCallout/);
-  assert.match(itemForm, /attachmentSession\.attachmentPending \? "Updating attachments…"/);
-  assert.match(itemForm, /min-w-0 flex-1 flex-col overflow-hidden/);
+  assert.match(itemSaveFlow, /attachmentSession\.attachmentPending \? "Updating attachments…"/);
+  assert.match(plannerForm, /min-w-0 flex-1 flex-col overflow-hidden/);
+  assert.match(plannerForm, /<PlannerEditorPage/);
   assert.match(
-    itemForm,
+    plannerEditor,
     /overflow-x-hidden[\s\S]*overflow-y-auto[\s\S]*data-planner-editor-scroll/,
   );
-  assert.match(plannerSheets, /planner-item-dialog/);
-  assert.doesNotMatch(itemForm, /data-planner-editor-actions/);
+  assert.match(plannerSheets, /<PlannerEditorScreen/);
+  assert.match(plannerEditor, /planner-item-dialog/);
+  assert.doesNotMatch(itemForm + plannerForm, /data-planner-editor-actions/);
   assert.match(
     plannerStyles,
-    /\.planner-item-dialog \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior: none[\s\S]*touch-action: pan-y/,
+    /\.planner-item-dialog \{[\s\S]*overflow: hidden[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto[\s\S]*touch-action: pan-y/,
   );
   assert.equal(
     publicViews.every((source) => /PublicItemMediaGallery/.test(source)),

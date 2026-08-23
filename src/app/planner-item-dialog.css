@@ -1,3 +1,4 @@
+/* Shared full-screen shell for itinerary-item and trip-settings editors. */
 .planner-item-dialog {
   position: fixed !important;
   inset: 0 !important;
@@ -9,7 +10,8 @@
   max-height: none !important;
   flex-direction: column;
   overflow: hidden;
-  overscroll-behavior: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
   border: 0 !important;
   border-radius: 0 !important;
   background: var(--muted);
@@ -25,7 +27,8 @@ body.planner-editor-viewport-locked {
   height: 100% !important;
   max-height: 100% !important;
   overflow: hidden !important;
-  overscroll-behavior: none !important;
+  overscroll-behavior-x: none !important;
+  overscroll-behavior-y: auto !important;
 }
 
 body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
@@ -41,7 +44,8 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
   width: 100%;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior-x: none;
+  overscroll-behavior-y: auto;
   scroll-padding-block: 2rem;
   touch-action: pan-y;
 }
@@ -64,6 +68,12 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
     2rem + env(safe-area-inset-bottom) + var(--planner-editor-keyboard-space, 0px)
   );
   padding-left: max(1.25rem, env(safe-area-inset-left));
+}
+
+.planner-item-dialog .planner-item-form[data-compact-actions] .planner-item-form-content {
+  padding-bottom: calc(
+    1.25rem + env(safe-area-inset-bottom) + var(--planner-editor-keyboard-space, 0px)
+  );
 }
 
 .planner-item-dialog .planner-item-form-card {
@@ -163,5 +173,61 @@ body:has(.planner-item-dialog[data-state="open"]) .trip-planner-page {
     border-radius: 1rem;
     background: var(--background);
     box-shadow: 0 12px 34px rgb(15 23 42 / 8%);
+  }
+
+  .planner-item-dialog .planner-item-form[data-compact-actions] .planner-item-form-card {
+    padding-bottom: 1.5rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .planner-item-dialog[data-editor-kind="trip-settings"] {
+    height: 100dvh !important;
+  }
+
+  .planner-item-dialog[data-editor-kind="trip-settings"] [data-planner-editor-scroll] {
+    scroll-padding-block: 1rem;
+  }
+
+  .planner-item-dialog[data-editor-kind="trip-settings"]
+    .planner-item-form[data-compact-actions]
+    .planner-item-form-content {
+    padding-top: 1rem;
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: calc(
+      0.75rem + env(safe-area-inset-bottom) + var(--planner-editor-keyboard-space, 0px)
+    );
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .planner-item-dialog[data-editor-kind="trip-settings"] [data-planner-editor-scroll] label,
+  .planner-item-dialog[data-editor-kind="trip-settings"] [data-planner-editor-scroll] legend {
+    font-size: 0.875rem;
+  }
+
+  .planner-item-dialog[data-editor-kind="trip-settings"] [data-planner-editor-scroll] input,
+  .planner-item-dialog[data-editor-kind="trip-settings"] [data-planner-editor-scroll] select,
+  .planner-item-dialog[data-editor-kind="trip-settings"] [data-planner-editor-scroll] textarea,
+  .planner-item-dialog[data-editor-kind="trip-settings"]
+    [data-planner-editor-scroll]
+    [role="combobox"] {
+    min-height: 3rem;
+    border-radius: 0.625rem;
+    font-size: 1rem;
+  }
+
+  .planner-item-dialog[data-editor-kind="trip-settings"]
+    .planner-item-form[data-compact-actions]
+    .planner-item-form-actions {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1199px) {
+  .planner-item-dialog[data-editor-kind="trip-settings"] .planner-item-form-actions button {
+    min-height: 3rem;
+    padding-inline: 1.5rem;
+    font-size: 1rem;
   }
 }

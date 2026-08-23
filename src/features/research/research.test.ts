@@ -632,7 +632,10 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
   assert.match(barMenu, /Log out/);
   assert.match(barMenu, /Trip settings/);
   assert.match(barMenu, /Share trip/);
-  assert.match(barMenu, /extraItems && \(onShareTrip \|\| onTripSettings\)/);
+  assert.match(barMenu, /Delete trip/);
+  assert.match(barMenu, /extraItems && \(onShareTrip \|\| onTripSettings \|\| onDeleteTrip\)/);
+  assert.match(appBar, /<DeleteTripDialog/);
+  assert.match(appBar, /countActiveSharePages\(tripId\)/);
   assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
   assert.match(appBar, /Saving/);
   assert.doesNotMatch(appBar, />Saved</);
@@ -744,7 +747,10 @@ test("Trip detail shell contains document scrolling separately from Matrix rules
   );
   assert.match(styles, /body:has\(\.trip-detail-page\)[\s\S]*overflow: hidden/);
   assert.match(styles, /trip-detail-scroller[\s\S]*overflow-anchor: none/);
-  assert.match(plannerStyles, /planner-matrix[\s\S]*overscroll-behavior: none/);
+  assert.match(
+    plannerStyles,
+    /planner-matrix[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/,
+  );
 });
 
 test("Compare keeps one responsive inline filter row below the Trip App Bar", async () => {

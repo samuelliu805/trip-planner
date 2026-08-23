@@ -16,10 +16,12 @@ import {
 import {
   CarActionField,
   CarProviderField,
-  ItemPlaceField,
-  ItemTitleField,
   TransportModeField,
 } from "@/features/itinerary/components/planner-item-primary-fields";
+import {
+  ItemPlaceField,
+  ItemTitleField,
+} from "@/features/itinerary/components/planner-item-place-fields";
 import {
   ItemLinksField,
   ItemNotesField,
@@ -38,7 +40,6 @@ export function PlannerItemStepFields({
   defaultCurrency,
   item,
   onOrderChange,
-  orderConfirmed,
   pending,
   state,
   titleRef,
@@ -51,7 +52,6 @@ export function PlannerItemStepFields({
   defaultCurrency: string;
   item?: ItineraryItem;
   onOrderChange: (itemId: string | null) => void;
-  orderConfirmed: boolean;
   pending: boolean;
   state: PlannerItemFormState;
   titleRef: RefObject<HTMLInputElement | null>;
@@ -131,7 +131,6 @@ export function PlannerItemStepFields({
         return (
           <PlannerItemOrderField
             carAction={state.carAction}
-            confirmed={orderConfirmed}
             insertAfterItemId={state.insertAfterItemId}
             item={item}
             items={dayItems}
@@ -144,12 +143,13 @@ export function PlannerItemStepFields({
       case "place":
         return (
           <ItemPlaceField
-            item={item}
+            creating={!item}
             pending={pending}
             place={state.place}
             placeLabel={placeLabel}
             setPlace={state.setPlace}
             setTitle={state.setTitle}
+            setTitleFromPlace={state.setTitleFromPlace}
             title={state.title}
             titleRef={titleRef}
             type={type}
@@ -208,6 +208,7 @@ export function PlannerItemStepFields({
           <ItemTitleField
             copyLabel={copy.label}
             copyPlaceholder={copy.placeholder}
+            creating={!item}
             fieldId={fieldId}
             place={state.place}
             setTitle={state.setTitle}
@@ -229,7 +230,7 @@ export function PlannerItemStepFields({
   }
 
   return (
-    <div className="planner-item-step-fields min-w-0 space-y-10">
+    <>
       {blocks.map((name) => (
         <Fragment key={name}>{block(name)}</Fragment>
       ))}
@@ -243,6 +244,6 @@ export function PlannerItemStepFields({
           Rental price is stored once on the matching pick-up item.
         </p>
       ) : null}
-    </div>
+    </>
   );
 }

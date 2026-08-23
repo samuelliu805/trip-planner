@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemEditorDialog } from "@/features/itinerary/components/planner-item-editor-dialog";
+import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/planner-item-save-feedback";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
@@ -23,7 +24,7 @@ import type { OverviewRouteUi } from "@/features/routes/use-overview-route";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import { RouteVariantComparisonSheet } from "@/features/variants/components/route-variant-comparison-sheet";
 import { RouteVariantDecisionSummarySheet } from "@/features/variants/components/route-variant-decision-summary-sheet";
-import { TripSettingsSheet } from "@/features/trips/components/trip-settings-sheet";
+import { TripSettingsEditor } from "@/features/trips/components/trip-settings-editor";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
@@ -57,6 +58,7 @@ type PlannerSheetsProps = {
   onEditorDraftChange: (item: ItineraryItem | null) => void;
   onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
+  onItemSaveFeedback: (feedback?: PlannerItemSaveFeedback) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
@@ -106,6 +108,7 @@ export function PlannerSheets({
   onEditorDraftChange,
   onEditMapItem,
   onInteractionError,
+  onItemSaveFeedback,
   onMapExpandedChange,
   onMarkerClick,
   onMapModeChange,
@@ -145,6 +148,7 @@ export function PlannerSheets({
         onClose={onEditorClose}
         onDraftChange={onEditorDraftChange}
         onError={onInteractionError}
+        onSaveFeedback={onItemSaveFeedback}
         shareAttachmentsEnabled={shareAttachmentsEnabled}
         tripId={tripId}
         unavailableTransportModes={unavailableTransportModes}
@@ -189,9 +193,14 @@ export function PlannerSheets({
           </div>
         </SheetContent>
       </Sheet>
-      <TripSettingsSheet onOpenChange={onSettingsOpenChange} open={settingsOpen}>
+      <TripSettingsEditor
+        description="Rename the trip, change its length, or adjust its dates and currency."
+        onOpenChange={onSettingsOpenChange}
+        open={settingsOpen}
+        title="Trip settings"
+      >
         {settings}
-      </TripSettingsSheet>
+      </TripSettingsEditor>
       <Sheet onOpenChange={onCopyDaysOpenChange} open={copyDaysOpen}>
         <SheetContent>
           <SheetHeader>

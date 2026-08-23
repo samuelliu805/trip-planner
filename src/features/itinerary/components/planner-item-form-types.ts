@@ -1,4 +1,5 @@
 import type { ItineraryItem, ItineraryItemType, TransportMode } from "../types";
+import type { PlannerItemSaveFeedback } from "./planner-item-save-feedback";
 
 export type PlannerItemFormProps = {
   dayDate: string;
@@ -10,6 +11,8 @@ export type PlannerItemFormProps = {
   onCloseRequestRegistration?: (handler: (() => void) | null) => void;
   onDraftChange?: (item: ItineraryItem | null) => void;
   onError: (message: string) => void;
+  onCreateAnother?: (item: ItineraryItem) => void;
+  onSaveFeedback: (feedback?: PlannerItemSaveFeedback) => void;
   onSaved: (item: ItineraryItem) => void;
   shareAttachmentsEnabled: boolean;
   tripId: string;

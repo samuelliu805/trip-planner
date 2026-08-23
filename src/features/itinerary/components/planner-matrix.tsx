@@ -15,6 +15,8 @@ import {
 import { categories } from "@/features/itinerary/components/planner-config";
 import type { PlannerMatrixProps } from "@/features/itinerary/components/planner-matrix-types";
 import { selectionContains } from "@/features/itinerary/grid-interactions";
+import { useInitialMatrixScrollPosition } from "@/features/itinerary/hooks/use-initial-matrix-scroll-position";
+import { useMobileMatrixTopContainment } from "@/features/itinerary/hooks/use-mobile-matrix-top-containment";
 import { deriveDayLocality, formatDayLocalitySummary } from "@/features/itinerary/locality";
 
 export function PlannerMatrix({
@@ -76,6 +78,9 @@ export function PlannerMatrix({
   visibleSelectionBounds,
   workspace,
 }: PlannerMatrixProps) {
+  const matrixRef = useInitialMatrixScrollPosition<HTMLElement>();
+  useMobileMatrixTopContainment(matrixRef);
+
   return (
     <div
       className="planner-layout grid min-h-0 flex-1 overflow-hidden"
@@ -85,6 +90,7 @@ export function PlannerMatrix({
       <section
         aria-label="Editable trip planning matrix"
         className="planner-matrix min-w-0 overflow-auto bg-background"
+        ref={matrixRef}
       >
         <div
           className="min-w-max select-none"

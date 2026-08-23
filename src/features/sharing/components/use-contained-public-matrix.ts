@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+
+import { useInitialMatrixScrollPosition } from "@/features/itinerary/hooks/use-initial-matrix-scroll-position";
 
 type TouchPoint = { x: number; y: number };
 
 export function useContainedPublicMatrix() {
-  const matrixRef = useRef<HTMLElement>(null);
+  const matrixRef = useInitialMatrixScrollPosition<HTMLElement>();
 
   useEffect(() => {
     const matrix = matrixRef.current;
@@ -56,7 +58,7 @@ export function useContainedPublicMatrix() {
       scrollContainer.removeEventListener("touchend", rememberTouch);
       scrollContainer.removeEventListener("touchcancel", rememberTouch);
     };
-  }, []);
+  }, [matrixRef]);
 
   return matrixRef;
 }

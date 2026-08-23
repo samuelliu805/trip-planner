@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Copy } from "lucide-react";
+import { Copy } from "lucide-react";
 
+import { InsertRowIcon } from "@/features/itinerary/components/insert-row-icon";
 import { PlannerContextActions } from "@/features/itinerary/components/planner-context-bar";
 import {
   PlannerContextMenuItems,
@@ -32,14 +33,14 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
           },
           {
             disabled: !props.activeDay || props.dayMutationPending,
-            icon: <ArrowUp aria-hidden="true" className="size-5" />,
+            icon: <InsertRowIcon className="size-5 shrink-0" direction="above" />,
             id: "day-before",
             label: "Add day before",
             onSelect: () => void (props.activeDay && props.insertDay(props.activeDay.day_number)),
           },
           {
             disabled: !props.activeDay || props.dayMutationPending,
-            icon: <ArrowDown aria-hidden="true" className="size-5" />,
+            icon: <InsertRowIcon className="size-5 shrink-0" direction="below" />,
             id: "day-after",
             label: "Add day after",
             onSelect: () =>

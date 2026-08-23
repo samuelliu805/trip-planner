@@ -1,4 +1,5 @@
 import type { ItineraryItem } from "@/features/itinerary/types";
+import { nameTripAfterFirstPlace } from "@/features/trips/auto-title";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -37,6 +38,7 @@ export async function persistPlaceSnapshot(
   });
   if (error || !data)
     throw new Error(mutationError(error?.message ?? "The map place could not be saved."));
+  await nameTripAfterFirstPlace(supabase, tripId, snapshot);
   return data;
 }
 

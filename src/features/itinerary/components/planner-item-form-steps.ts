@@ -28,19 +28,51 @@ export type ItemFormStep = {
 
 type StepInput = {
   carAction: CarRentalDetails["action"];
+  creating?: boolean;
   includeOrder?: boolean;
   transportMode: TransportMode;
   type: ItineraryItemType;
 };
 
+export function plannerItemNeedsOrderStep({
+  availableSlots,
+  endTime,
+  startTime,
+  type,
+}: {
+  availableSlots: number;
+  endTime: string;
+  startTime: string;
+  type: ItineraryItemType;
+}) {
+  return (
+    ["activity", "car_rental", "meal"].includes(type) &&
+    !startTime &&
+    !endTime &&
+    availableSlots > 1
+  );
+}
+
+export function plannerItemSaveAction({
+  activeStepId,
+  includeOrder,
+}: {
+  activeStepId: ItemFormStep["id"];
+  includeOrder: boolean;
+}) {
+  return includeOrder && activeStepId !== "order" ? "confirm-order" : "save";
+}
+
 function basicsBlocks(
   type: ItineraryItemType,
   endpoints: boolean,
   journeySchedule: boolean,
+  creating: boolean,
 ): ItemFormBlock[] {
   if (type === "location") return ["place", "title"];
   if (type === "hotel") return ["place", "title"];
   if (type === "meal") return ["place", "title"];
+  if (type === "activity" && creating) return ["place", "title"];
   if (type === "car_rental") return ["carAction", "place"];
   if (type === "transport")
     return [
@@ -63,6 +95,7 @@ function basicsBlocks(
  */
 export function plannerItemFormSteps({
   carAction,
+  creating = false,
   includeOrder = true,
   transportMode,
   type,
@@ -76,7 +109,7 @@ export function plannerItemFormSteps({
   // Step titles stay one short word so the longest six-step journey still fits a 390px bar.
   const steps: ItemFormStep[] = [
     {
-      blocks: basicsBlocks(type, journey.endpoints, journeySchedule),
+      blocks: basicsBlocks(type, journey.endpoints, journeySchedule, creating),
       id: "basics",
       title: type === "car_rental" ? "Rental" : itemCopy[type].label,
     },
@@ -139,11 +172,13 @@ export function plannerItemFormSteps({
 }
 
 export function plannerItemStepError({
+  creating = false,
   place,
   step,
   title,
   type,
 }: {
+  creating?: boolean;
   place: PlaceSnapshot | null;
   step: ItemFormStep;
   title: string;
@@ -157,7 +192,29 @@ export function plannerItemStepError({
         : "Choose a meal location or enter a displayed meal name.";
   }
   if (step.id !== "basics") return undefined;
+  if (creating && type === "activity" && !title.trim())
+    return "Search Google Maps or enter an activity name.";
   if (!["car_rental", "hotel", "location", "meal", "transport"].includes(type) && !title.trim())
     return `${itemCopy[type].label} name is required.`;
+  return undefined;
+}
+
+export function plannerItemFormError({
+  creating = false,
+  place,
+  steps,
+  title,
+  type,
+}: {
+  creating?: boolean;
+  place: PlaceSnapshot | null;
+  steps: ItemFormStep[];
+  title: string;
+  type: ItineraryItemType;
+}) {
+  for (const step of steps) {
+    const message = plannerItemStepError({ creating, place, step, title, type });
+    if (message) return { message, step };
+  }
   return undefined;
 }

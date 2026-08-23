@@ -2,12 +2,14 @@
 
 import { ArrowLeft, Lightbulb, LoaderCircle, Table2 } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { AppBottomNavigation } from "@/components/navigation/app-bottom-navigation";
 import { Button } from "@/components/ui/button";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ResearchCategory } from "@/features/research/types";
+import { countActiveSharePages } from "@/features/trips/actions";
+import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { tripSectionHref, type TripSection } from "@/features/research/urls";
 
 import { TripBarMenu, type TripMobileQuickAction } from "./trip-app-bar-menu";
@@ -81,74 +83,112 @@ export function TripAppBar({
   variantControls,
   variantId,
 }: TripAppBarProps) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
+  const [sharePageCount, setSharePageCount] = useState<number | null>(null);
+
+  function requestTripDelete() {
+    setSharePageCount(null);
+    setDeleteOpen(true);
+    void countActiveSharePages(tripId).then(setSharePageCount, () => setSharePageCount(0));
+  }
+
   return (
-    <header className="trip-app-bar z-[70] shrink-0 border-b bg-background/95 backdrop-blur">
-      <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-          <Button asChild className="-ml-1 size-11 shrink-0 p-0" variant="ghost">
-            <Link aria-label="Back to Trips" href="/trips">
-              <ArrowLeft aria-hidden="true" className="size-4" />
-            </Link>
-          </Button>
-          <div className="min-w-0 flex-1" title={title}>
-            <h1 className="sr-only">{title}</h1>
-            {variantControls}
+    <>
+      <header
+        aria-busy={deletePending}
+        className="trip-app-bar z-[70] shrink-0 border-b bg-background/95 backdrop-blur"
+      >
+        <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+            <Button asChild className="-ml-1 size-11 shrink-0 p-0" variant="ghost">
+              <Link aria-label="Back to Trips" href="/trips">
+                <ArrowLeft aria-hidden="true" className="size-4" />
+              </Link>
+            </Button>
+            <div className="min-w-0 flex-1" title={title}>
+              <h1 className="sr-only">{title}</h1>
+              {variantControls}
+            </div>
+          </div>
+
+          <nav
+            aria-label="Trip sections"
+            className="hidden items-center rounded-lg bg-muted p-1 sm:flex"
+          >
+            {sections.map((section) => {
+              const Icon = section.id === "plan" ? Table2 : Lightbulb;
+              return (
+                <Button
+                  asChild
+                  className="h-9 min-h-9 gap-1.5 px-3 text-xs"
+                  key={section.id}
+                  size="sm"
+                  variant={section.id === active ? "default" : "ghost"}
+                >
+                  <Link
+                    aria-current={section.id === active ? "page" : undefined}
+                    href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
+                    prefetch
+                  >
+                    <Icon aria-hidden="true" className="size-3.5" />
+                    {section.label}
+                  </Link>
+                </Button>
+              );
+            })}
+          </nav>
+
+          <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:ml-0 sm:gap-1.5">
+            {mutating ? (
+              <span
+                aria-live="polite"
+                className="hidden items-center gap-1 text-xs text-muted-foreground lg:flex"
+                role="status"
+              >
+                <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> Saving
+              </span>
+            ) : null}
+            {actions}
+            <TripBarMenu
+              accountEmail={accountEmail}
+              deletePending={deletePending}
+              extraItems={menuItems}
+              mobileMenuItems={mobileMenuItems}
+              mobileQuickActions={mobileQuickActions}
+              onDeleteTrip={requestTripDelete}
+              onShareTrip={
+                shareControls
+                  ? () => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
+                  : undefined
+              }
+              onTripSettings={onTripSettings}
+            />
+          </div>
+          <div className="contents">{shareControls}</div>
+        </div>
+      </header>
+      <DeleteTripDialog
+        activeSharePageCount={sharePageCount}
+        onOpenChange={setDeleteOpen}
+        onPendingChange={setDeletePending}
+        open={deleteOpen}
+        renderTrigger={false}
+        title={title}
+        tripId={tripId}
+      />
+      {deletePending ? (
+        <div
+          aria-live="assertive"
+          className="fixed inset-0 z-[125] flex items-center justify-center bg-background/70 backdrop-blur-[1px]"
+          role="status"
+        >
+          <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-semibold shadow-lg">
+            <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-destructive" />
+            Deleting “{title}”…
           </div>
         </div>
-
-        <nav
-          aria-label="Trip sections"
-          className="hidden items-center rounded-lg bg-muted p-1 sm:flex"
-        >
-          {sections.map((section) => {
-            const Icon = section.id === "plan" ? Table2 : Lightbulb;
-            return (
-              <Button
-                asChild
-                className="h-9 min-h-9 gap-1.5 px-3 text-xs"
-                key={section.id}
-                size="sm"
-                variant={section.id === active ? "default" : "ghost"}
-              >
-                <Link
-                  aria-current={section.id === active ? "page" : undefined}
-                  href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
-                  prefetch
-                >
-                  <Icon aria-hidden="true" className="size-3.5" />
-                  {section.label}
-                </Link>
-              </Button>
-            );
-          })}
-        </nav>
-
-        <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:ml-0 sm:gap-1.5">
-          {mutating ? (
-            <span
-              aria-live="polite"
-              className="hidden items-center gap-1 text-xs text-muted-foreground lg:flex"
-              role="status"
-            >
-              <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> Saving
-            </span>
-          ) : null}
-          {actions}
-          <TripBarMenu
-            accountEmail={accountEmail}
-            extraItems={menuItems}
-            mobileMenuItems={mobileMenuItems}
-            mobileQuickActions={mobileQuickActions}
-            onShareTrip={
-              shareControls
-                ? () => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
-                : undefined
-            }
-            onTripSettings={onTripSettings}
-          />
-        </div>
-        <div className="contents">{shareControls}</div>
-      </div>
-    </header>
+      ) : null}
+    </>
   );
 }

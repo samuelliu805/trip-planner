@@ -26,6 +26,7 @@ export function usePlannerEditorKeyboardScroll() {
     const currentSurface = scrollRef.current;
     if (!currentSurface) return;
     const surface: HTMLDivElement = currentSurface;
+    const editorForm = surface.closest("form") ?? surface.querySelector("form");
     let firstFrame = 0;
     let secondFrame = 0;
     let observedRegion: Element | null = null;
@@ -43,7 +44,7 @@ export function usePlannerEditorKeyboardScroll() {
       const viewport = window.visualViewport;
       const viewportHeight = viewport?.height ?? window.innerHeight;
       const keyboardOpen = surface.clientHeight - viewportHeight >= keyboardThreshold;
-      surface.closest("form")?.toggleAttribute("data-editor-keyboard-open", keyboardOpen);
+      editorForm?.toggleAttribute("data-editor-keyboard-open", keyboardOpen);
 
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
@@ -87,7 +88,7 @@ export function usePlannerEditorKeyboardScroll() {
       cancelAnimationFrame(firstFrame);
       cancelAnimationFrame(secondFrame);
       regionObserver.disconnect();
-      surface.closest("form")?.removeAttribute("data-editor-keyboard-open");
+      editorForm?.removeAttribute("data-editor-keyboard-open");
       surface.style.removeProperty("--planner-editor-keyboard-space");
       surface.removeEventListener("focusin", revealFocusedControl);
       window.removeEventListener("resize", revealFocusedControl);

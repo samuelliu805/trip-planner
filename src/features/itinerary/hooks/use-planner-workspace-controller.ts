@@ -43,7 +43,7 @@ export function usePlannerWorkspaceController({
   const { data: variants = initialVariants } = useRouteVariants(trip.id, initialVariants);
   const initialSelection = initialPlannerSelection(
     initialWorkspace.days.length,
-    categories.findIndex(({ id }) => id === "city"),
+    categories.findIndex(({ id }) => id === "activities"),
   );
   const [split, setSplit] = useState(58);
   const [selectionAnchor, setSelectionAnchor] = useState<GridCoordinate>(() => initialSelection);

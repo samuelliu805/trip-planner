@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, MoreHorizontal, Settings2, Share2 } from "lucide-react";
+import { LogOut, MoreHorizontal, Settings2, Share2, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,6 @@ import { logout } from "@/features/auth/actions";
 
 export type TripMobileQuickAction = {
   disabled?: boolean;
-  emphasis?: "primary";
   icon: ReactNode;
   id: string;
   label: string;
@@ -28,16 +27,20 @@ type RunMobileAction = (action: () => void) => void;
 /** Desktop keeps a compact dropdown; touch widths use the same pull-up pattern as Plans. */
 export function TripBarMenu({
   accountEmail,
+  deletePending = false,
   extraItems,
   mobileMenuItems,
   mobileQuickActions = [],
+  onDeleteTrip,
   onShareTrip,
   onTripSettings,
 }: {
   accountEmail: string;
+  deletePending?: boolean;
   extraItems?: ReactNode;
   mobileMenuItems?: (runAction: RunMobileAction) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
+  onDeleteTrip?: () => void;
   onShareTrip?: () => void;
   onTripSettings?: () => void;
 }) {
@@ -49,7 +52,6 @@ export function TripBarMenu({
             icon: <Share2 aria-hidden="true" className="size-5" />,
             id: "share",
             label: "Share",
-            emphasis: "primary" as const,
             onSelect: onShareTrip,
           },
         ]
@@ -73,7 +75,9 @@ export function TripBarMenu({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             {extraItems ? <>{extraItems}</> : null}
-            {extraItems && (onShareTrip || onTripSettings) ? <DropdownMenuSeparator /> : null}
+            {extraItems && (onShareTrip || onTripSettings || onDeleteTrip) ? (
+              <DropdownMenuSeparator />
+            ) : null}
             {onShareTrip ? (
               <DropdownMenuItem onSelect={onShareTrip}>
                 <Share2 aria-hidden="true" className="size-4" /> Share trip
@@ -83,6 +87,18 @@ export function TripBarMenu({
               <DropdownMenuItem onSelect={onTripSettings}>
                 <Settings2 aria-hidden="true" className="size-4" /> Trip settings
               </DropdownMenuItem>
+            ) : null}
+            {onDeleteTrip ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  disabled={deletePending}
+                  onSelect={() => window.setTimeout(onDeleteTrip, 0)}
+                >
+                  <Trash2 aria-hidden="true" className="size-4" /> Delete trip
+                </DropdownMenuItem>
+              </>
             ) : null}
             <DropdownMenuSeparator />
             <p className="truncate px-2 py-1.5 text-xs text-muted-foreground" title={accountEmail}>
@@ -108,6 +124,7 @@ export function TripBarMenu({
         <MoreHorizontal aria-hidden="true" className="size-5" />
       </Button>
       <PullUpPanel
+        focusPanelOnOpen
         id="trip-actions"
         onOpenChange={setPanelOpen}
         open={panelOpen}
@@ -123,15 +140,13 @@ export function TripBarMenu({
             >
               {quickActions.slice(0, 4).map((action) => (
                 <button
-                  className={`flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl px-2 py-3 text-center text-xs font-semibold disabled:opacity-40 ${action.emphasis === "primary" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted/70 text-foreground"}`}
+                  className="flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-muted/70 px-2 py-3 text-center text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-40"
                   disabled={action.disabled}
                   key={action.id}
                   onClick={() => runMobileAction(action.onSelect)}
                   type="button"
                 >
-                  <span
-                    className={`flex size-9 items-center justify-center rounded-full shadow-sm ${action.emphasis === "primary" ? "bg-primary-foreground/15 text-primary-foreground" : "bg-background text-foreground"}`}
-                  >
+                  <span className="flex size-9 items-center justify-center rounded-full bg-background text-foreground shadow-sm">
                     {action.icon}
                   </span>
                   <span className="line-clamp-2">{action.label}</span>
@@ -154,6 +169,16 @@ export function TripBarMenu({
                 variant="ghost"
               >
                 <Settings2 aria-hidden="true" className="size-4" /> Trip settings
+              </Button>
+            ) : null}
+            {onDeleteTrip ? (
+              <Button
+                className="min-h-11 w-full justify-start px-3 font-normal text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={deletePending}
+                onClick={() => runMobileAction(onDeleteTrip)}
+                variant="ghost"
+              >
+                <Trash2 aria-hidden="true" className="size-4" /> Delete trip
               </Button>
             ) : null}
             <p
