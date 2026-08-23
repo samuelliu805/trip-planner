@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/sheet";
 import type { EditorState } from "@/features/itinerary/components/planner-config";
 import { PlannerItemEditorDialog } from "@/features/itinerary/components/planner-item-editor-dialog";
-import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/planner-item-save-feedback";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
@@ -58,7 +57,6 @@ type PlannerSheetsProps = {
   onEditorDraftChange: (item: ItineraryItem | null) => void;
   onEditMapItem: (itemId: string) => void;
   onInteractionError: (message?: string) => void;
-  onItemSaveFeedback: (feedback?: PlannerItemSaveFeedback) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id?: string) => void;
   onMapModeChange: (mode: PlannerMapMode) => void;
@@ -108,7 +106,6 @@ export function PlannerSheets({
   onEditorDraftChange,
   onEditMapItem,
   onInteractionError,
-  onItemSaveFeedback,
   onMapExpandedChange,
   onMarkerClick,
   onMapModeChange,
@@ -148,7 +145,6 @@ export function PlannerSheets({
         onClose={onEditorClose}
         onDraftChange={onEditorDraftChange}
         onError={onInteractionError}
-        onSaveFeedback={onItemSaveFeedback}
         shareAttachmentsEnabled={shareAttachmentsEnabled}
         tripId={tripId}
         unavailableTransportModes={unavailableTransportModes}

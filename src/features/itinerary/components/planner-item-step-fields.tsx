@@ -38,6 +38,7 @@ export function PlannerItemStepFields({
   defaultCurrency,
   item,
   onOrderChange,
+  orderConfirmed,
   pending,
   state,
   titleRef,
@@ -50,6 +51,7 @@ export function PlannerItemStepFields({
   defaultCurrency: string;
   item?: ItineraryItem;
   onOrderChange: (itemId: string | null) => void;
+  orderConfirmed: boolean;
   pending: boolean;
   state: PlannerItemFormState;
   titleRef: RefObject<HTMLInputElement | null>;
@@ -129,6 +131,7 @@ export function PlannerItemStepFields({
         return (
           <PlannerItemOrderField
             carAction={state.carAction}
+            confirmed={orderConfirmed}
             insertAfterItemId={state.insertAfterItemId}
             item={item}
             items={dayItems}
@@ -141,13 +144,12 @@ export function PlannerItemStepFields({
       case "place":
         return (
           <ItemPlaceField
-            creating={!item}
+            item={item}
             pending={pending}
             place={state.place}
             placeLabel={placeLabel}
             setPlace={state.setPlace}
             setTitle={state.setTitle}
-            setTitleFromPlace={state.setTitleFromPlace}
             title={state.title}
             titleRef={titleRef}
             type={type}
@@ -206,7 +208,6 @@ export function PlannerItemStepFields({
           <ItemTitleField
             copyLabel={copy.label}
             copyPlaceholder={copy.placeholder}
-            creating={!item}
             fieldId={fieldId}
             place={state.place}
             setTitle={state.setTitle}

@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Share2,
   SquareArrowOutUpRight,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { setTripStatus } from "@/features/trips/actions";
+import { countActiveSharePages, setTripStatus } from "@/features/trips/actions";
+import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { TripSettingsEditor } from "@/features/trips/components/trip-settings-editor";
 import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
@@ -55,12 +57,20 @@ function PrimaryRouteSummary({ trip }: { trip: TripListEntry }) {
 export function TripCard({ trip }: { trip: TripListEntry }) {
   const router = useRouter();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [sharePageCount, setSharePageCount] = useState<number | null>(null);
   const [statusPending, startStatusChange] = useTransition();
   const status = tripStatusOf(trip);
   const toggle = tripStatusToggle(status);
 
   function afterMenu(open: () => void) {
     window.setTimeout(open, 0);
+  }
+
+  function confirmDelete() {
+    setSharePageCount(null);
+    setDeleteOpen(true);
+    void countActiveSharePages(trip.id).then(setSharePageCount, () => setSharePageCount(0));
   }
 
   function changeStatus() {
@@ -127,6 +137,13 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
                 )}
                 {toggle.label}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onSelect={() => afterMenu(confirmDelete)}
+              >
+                <Trash2 aria-hidden="true" className="size-4" /> Delete trip
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
@@ -160,6 +177,14 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
           trip={trip}
         />
       </TripSettingsEditor>
+      <DeleteTripDialog
+        activeSharePageCount={sharePageCount}
+        onOpenChange={setDeleteOpen}
+        open={deleteOpen}
+        renderTrigger={false}
+        title={trip.title}
+        tripId={trip.id}
+      />
     </>
   );
 }

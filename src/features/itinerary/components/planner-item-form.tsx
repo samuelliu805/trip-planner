@@ -2,30 +2,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
-import {
-  PlannerEditorForm,
-  type PlannerEditorSaveIntent,
-} from "@/features/itinerary/components/planner-editor-form";
+import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
+import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
+import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
 import { itemCopy } from "@/features/itinerary/components/planner-item-form-config";
 import {
   plannerItemFormSteps,
-  plannerItemNeedsOrderStep,
-  plannerItemSaveAction,
   plannerItemStepError,
   type ItemFormStep,
 } from "@/features/itinerary/components/planner-item-form-steps";
-import { PlannerItemFormDialogs } from "@/features/itinerary/components/planner-item-form-dialogs";
 import { PlannerItemStepNav } from "@/features/itinerary/components/planner-item-step-nav";
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { plannerItemSaveValues } from "@/features/itinerary/components/planner-item-save-values";
 import { PlannerItemStepFields } from "@/features/itinerary/components/planner-item-step-fields";
+import { useAttachmentEditSession } from "@/features/itinerary/components/use-attachment-edit-session";
 import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner-item-draft";
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
-import { usePlannerItemSaveFlow } from "@/features/itinerary/components/use-planner-item-save-flow";
 import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
-import { itemOrderSlots } from "@/features/itinerary/activity-order";
+import {
+  useCreateItineraryItem,
+  useUpdateItineraryItem,
+} from "@/features/itinerary/item-mutations";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
+
+const stepFieldSelector = "input:not([type='hidden']),textarea,[role='combobox']";
 
 export function PlannerItemForm({
   dayDate,
@@ -35,10 +36,8 @@ export function PlannerItemForm({
   item,
   onCancel,
   onCloseRequestRegistration,
-  onCreateAnother,
   onError,
   onDraftChange,
-  onSaveFeedback,
   onSaved,
   shareAttachmentsEnabled,
   tripId,
@@ -51,59 +50,43 @@ export function PlannerItemForm({
     defaultCurrency,
     item,
     items: dayItems,
-    type,
     unavailableTransportModes,
   });
+  const createMutation = useCreateItineraryItem(tripId, variantId);
+  const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const titleRef = useRef<HTMLInputElement>(null);
-  const copy = itemCopy[type];
-  const saveFlow = usePlannerItemSaveFlow({
-    dayId,
+  const itemMutationPending = createMutation.isPending || updateMutation.isPending;
+  const attachmentSession = useAttachmentEditSession({
     item,
-    onCancel,
-    onCreateAnother,
-    onError,
-    onSaveFeedback,
-    onSaved,
-    tripId,
-    type,
-    variantId,
-  });
-  const {
-    attachmentSession,
-    canCreateAnother,
-    confirmSave,
-    dismissSaveConfirmation,
     itemMutationPending,
-    mutationError,
-    pending,
-    pendingLabel,
-    requestSave,
-    saveConfirmation,
-  } = saveFlow;
-  const orderSlots = useMemo(() => itemOrderSlots(dayItems, item?.id), [dayItems, item?.id]);
-  const includeOrder = plannerItemNeedsOrderStep({
-    availableSlots: orderSlots.length,
-    endTime: state.arrivalTime,
-    startTime: state.startTime,
-    type,
+    onCancel,
+    tripId,
   });
+  const pending = itemMutationPending || attachmentSession.attachmentPending;
+  const pendingLabel = attachmentSession.attachmentPending ? "Updating attachments…" : "Saving…";
+  const mutationError = createMutation.error ?? updateMutation.error;
+  const supportsManualOrder = ["activity", "car_rental", "meal"].includes(type);
+  const [orderRequested, setOrderRequested] = useState(
+    Boolean(item && supportsManualOrder && !item.start_time && !item.end_time),
+  );
+  const [orderConfirmed, setOrderConfirmed] = useState(Boolean(item));
+  const manualOrderNeeded = supportsManualOrder && !state.startTime && !state.arrivalTime;
+  const includeOrder = manualOrderNeeded && (Boolean(item) || orderRequested);
   const steps = useMemo(
     () =>
       plannerItemFormSteps({
         carAction: state.carAction,
-        creating: !item,
         includeOrder,
         transportMode: state.transportMode,
         type,
       }),
-    [includeOrder, item, state.carAction, state.transportMode, type],
+    [includeOrder, state.carAction, state.transportMode, type],
   );
   const [stepId, setStepId] = useState<ItemFormStep["id"]>("basics");
   const [stepError, setStepError] = useState<string>();
   const [exitOpen, setExitOpen] = useState(false);
   const activeStep = steps.find(({ id }) => id === stepId) ?? steps[0];
   const stepIndex = steps.indexOf(activeStep);
-  const saveAction = plannerItemSaveAction({ activeStepId: activeStep.id, includeOrder });
   const { requestCancel } = attachmentSession;
 
   usePlannerItemDraft({
@@ -138,7 +121,6 @@ export function PlannerItemForm({
   function goToStep(nextStepId: ItemFormStep["id"]) {
     if (nextStepId === activeStep.id) return true;
     const blocking = plannerItemStepError({
-      creating: !item,
       place: state.place,
       step: activeStep,
       title: state.title,
@@ -156,6 +138,10 @@ export function PlannerItemForm({
   function moveStep(offset: number) {
     const next = steps[stepIndex + offset];
     if (next) return goToStep(next.id);
+    if (offset > 0 && manualOrderNeeded && !includeOrder) {
+      setOrderRequested(true);
+      return goToStep("order");
+    }
     return false;
   }
 
@@ -169,16 +155,25 @@ export function PlannerItemForm({
     [gestureSurfaceRef],
   );
 
-  async function save(intent: PlannerEditorSaveIntent) {
+  useEffect(() => {
+    if (navigator.maxTouchPoints > 0) return;
+    const frame = requestAnimationFrame(() => {
+      if (
+        activeStep.blocks.includes("place") &&
+        !item &&
+        ["location", "hotel", "meal"].includes(type)
+      )
+        return;
+      const fallback = motionSurfaceRef.current?.querySelector<HTMLElement>(stepFieldSelector);
+      (titleRef.current ?? fallback)?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeStep, item, motionSurfaceRef, type]);
+
+  async function save() {
     const invalid = steps
       .map((step) => ({
-        message: plannerItemStepError({
-          creating: !item,
-          place: state.place,
-          step,
-          title: state.title,
-          type,
-        }),
+        message: plannerItemStepError({ place: state.place, step, title: state.title, type }),
         step,
       }))
       .find(({ message }) => message);
@@ -187,47 +182,60 @@ export function PlannerItemForm({
       setStepError(invalid.message);
       return;
     }
-    setStepError(undefined);
-    if (saveAction === "confirm-order") {
-      setStepId("order");
+    if (manualOrderNeeded && !orderConfirmed) {
+      if (includeOrder && activeStep.id === "order") {
+        setStepError("Choose this item’s position before saving.");
+      } else {
+        setOrderRequested(true);
+        setStepId("order");
+        setStepError(undefined);
+      }
       return;
     }
+    setStepError(undefined);
     const values = plannerItemSaveValues({ item, state, tripId, type, variantId });
     if (pending || !values) return;
-    await requestSave(intent, values);
+    try {
+      const savedItem = item
+        ? await updateMutation.mutateAsync({ ...values, id: item.id })
+        : await createMutation.mutateAsync({ ...values, dayId });
+      onSaved(await attachmentSession.commit(savedItem));
+    } catch (mutationFailure) {
+      onError(
+        mutationFailure instanceof Error
+          ? mutationFailure.message
+          : "The itinerary item could not be saved.",
+      );
+    }
   }
 
+  const copy = itemCopy[type];
   return (
     <PlannerEditorForm
       after={
-        <PlannerItemFormDialogs
-          attachmentSession={attachmentSession}
-          editing={Boolean(item)}
-          exitOpen={exitOpen}
-          itemLabel={copy.label}
-          itemTitle={saveConfirmation?.values.title ?? copy.label}
-          onExit={requestCancel}
-          onExitOpenChange={setExitOpen}
-          onSaveConfirm={confirmSave}
-          onSaveConfirmationOpenChange={(open) => !open && dismissSaveConfirmation()}
-          saveIntent={saveConfirmation?.intent ?? null}
-        />
-      }
-      alternateSaveLabel={
-        canCreateAnother && onCreateAnother && (!includeOrder || activeStep.id === "order")
-          ? "Save & create new"
-          : undefined
+        <>
+          <AttachmentSessionDiscardDialog
+            error={attachmentSession.error}
+            onDiscard={attachmentSession.discard}
+            onOpenChange={attachmentSession.setDiscardDialogOpen}
+            open={attachmentSession.discardDialogOpen}
+            pending={attachmentSession.discardPending}
+            uploadPending={attachmentSession.attachmentPending}
+          />
+          <PlannerItemExitDialog
+            editing={Boolean(item)}
+            onDiscard={requestCancel}
+            onOpenChange={setExitOpen}
+            open={exitOpen}
+          />
+        </>
       }
       backDisabled={stepIndex === 0}
       fieldsRef={motionSurfaceRef}
       header={
         <PlannerEditorHeader
           closeDisabled={itemMutationPending}
-          description={`Step ${stepIndex + 1} of ${steps.length}: ${activeStep.title}. ${
-            includeOrder
-              ? "Confirm the Order step before saving."
-              : "The item can be saved from any step."
-          }`}
+          description={`Step ${stepIndex + 1} of ${steps.length}: ${activeStep.title}. The item can be saved from any step.`}
           error={stepError ?? mutationError?.message}
           navigation={
             <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
@@ -236,7 +244,7 @@ export function PlannerItemForm({
           title={`${item ? "Edit" : "Add"} ${copy.label.toLowerCase()}`}
         />
       }
-      nextDisabled={stepIndex === steps.length - 1}
+      nextDisabled={stepIndex === steps.length - 1 && !(manualOrderNeeded && !includeOrder)}
       onBack={() => moveStep(-1)}
       onClose={requestExit}
       onNext={() => moveStep(1)}
@@ -244,7 +252,6 @@ export function PlannerItemForm({
       onScrollNode={setGestureSurfaceNode}
       pending={pending}
       pendingLabel={pendingLabel}
-      saveLabel={saveAction === "confirm-order" ? "Confirm order" : "Save"}
     >
       <PlannerItemStepFields
         attachments={
@@ -266,8 +273,10 @@ export function PlannerItemForm({
         item={item}
         onOrderChange={(nextItemId) => {
           state.setInsertAfterItemId(nextItemId);
+          setOrderConfirmed(true);
           setStepError(undefined);
         }}
+        orderConfirmed={orderConfirmed}
         pending={pending}
         state={state}
         titleRef={titleRef}

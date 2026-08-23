@@ -3,13 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
+import { listPublicItineraryLinks } from "@/features/sharing/data";
 import {
   defaultTripCurrency,
   defaultTripDayCount,
   defaultTripTitle,
   tripDateInZone,
 } from "@/features/trips/create-defaults";
-import { createTripSchema, setTripStatusSchema, updateTripSchema } from "@/features/trips/schema";
+import {
+  createTripSchema,
+  setTripStatusSchema,
+  tripIdSchema,
+  updateTripSchema,
+} from "@/features/trips/schema";
 import type { TripStatus } from "@/features/trips/status";
 import type { TripActionState } from "@/features/trips/types";
 import { createClient } from "@/lib/supabase/server";
@@ -111,4 +118,32 @@ export async function setTripStatus(input: {
   return {
     success: parsed.data.status === "done" ? "Trip marked complete." : "Trip moved to Active.",
   };
+}
+
+/** Load share impact only when a list-card delete confirmation is opened. */
+export async function countActiveSharePages(tripId: string) {
+  const parsed = tripIdSchema.safeParse(tripId);
+  if (!parsed.success) return 0;
+  if (!(await authenticatedClient())) return 0;
+  const { data } = await listPublicItineraryLinks(parsed.data);
+  return data.length;
+}
+
+export async function deleteTrip(formData: FormData) {
+  const parsed = tripIdSchema.safeParse(formData.get("trip_id"));
+  if (!parsed.success) return;
+
+  const auth = await authenticatedClient();
+  if (!auth) redirect("/login");
+  const { supabase, userId } = auth;
+  const { data, error } = await supabase
+    .from("trips")
+    .delete()
+    .eq("id", parsed.data)
+    .eq("owner_id", userId)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) redirect(`/trips/${parsed.data}?error=delete`);
+  await drainAssetDeletionQueue(100);
+  redirect("/trips");
 }

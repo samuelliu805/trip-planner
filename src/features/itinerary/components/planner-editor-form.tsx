@@ -3,18 +3,15 @@
 import { useCallback, type ComponentProps, type ReactNode, type Ref } from "react";
 
 import { PlannerEditorPage } from "@/features/itinerary/components/planner-editor-screen";
-import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-editor-form-actions";
+import { PlannerEditorFormActions } from "@/features/itinerary/components/planner-item-form-actions";
 import { usePlannerEditorKeyboardScroll } from "@/features/itinerary/components/use-planner-editor-keyboard-scroll";
 
 const enterCommitSelector =
   "button,a,textarea,select,[role='button'],[role='combobox'],[contenteditable='true']";
 
-export type PlannerEditorSaveIntent = "save" | "save-and-create-another";
-
 /** The one form, scrolling, keyboard, field, and action frame used by every planner editor. */
 export function PlannerEditorForm({
   after,
-  alternateSaveLabel,
   backDisabled = false,
   children,
   fieldsRef,
@@ -30,10 +27,8 @@ export function PlannerEditorForm({
   onScrollNode,
   pending,
   pendingLabel,
-  saveLabel,
 }: {
   after?: ReactNode;
-  alternateSaveLabel?: string;
   backDisabled?: boolean;
   children: ReactNode;
   fieldsRef?: Ref<HTMLDivElement>;
@@ -45,11 +40,10 @@ export function PlannerEditorForm({
   onBack?: () => void;
   onClose: () => void;
   onNext?: () => void;
-  onSave?: (intent: PlannerEditorSaveIntent) => void | Promise<void>;
+  onSave?: () => void | Promise<void>;
   onScrollNode?: (node: HTMLDivElement | null) => void;
   pending: boolean;
   pendingLabel: string;
-  saveLabel?: string;
 }) {
   const editorScrollRef = usePlannerEditorKeyboardScroll();
   const setEditorScrollNode = useCallback(
@@ -96,12 +90,7 @@ export function PlannerEditorForm({
         onSave
           ? (event) => {
               event.preventDefault();
-              const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
-              const intent =
-                submitter?.dataset.plannerSaveIntent === "save-and-create-another"
-                  ? "save-and-create-another"
-                  : "save";
-              if (!pending) void onSave(intent);
+              if (!pending) void onSave();
             }
           : undefined
       }
@@ -117,14 +106,12 @@ export function PlannerEditorForm({
               {children}
             </div>
             <PlannerEditorFormActions
-              alternateSaveLabel={alternateSaveLabel}
               backDisabled={backDisabled}
               nextDisabled={nextDisabled}
               onBack={onBack}
               onNext={onNext}
               pending={pending}
               pendingLabel={pendingLabel}
-              saveLabel={saveLabel}
             />
             {footer ? <div className="min-w-0 pt-8">{footer}</div> : null}
           </div>

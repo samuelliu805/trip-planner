@@ -18,21 +18,13 @@ export function orderedDayActivities(items: ItineraryItem[]) {
   return items.filter(({ type }) => type !== "location").sort(compareActivityOrder);
 }
 
-/** Every legal gap for an untimed destination item, excluding the item currently being edited. */
-export function itemOrderSlots(items: ItineraryItem[], itemId?: string) {
-  const ordered = orderedDestinationActivities(items).filter(({ id }) => id !== itemId);
-  return [null, ...ordered.filter(({ type }) => type !== "hotel").map(({ id }) => id)] as (
-    string | null
-  )[];
-}
-
 /** The insertion anchor used by the editor's Order step. Hotels remain the final day item. */
 export function itemOrderAnchor(
   items: ItineraryItem[],
-  itemId: string | undefined,
-  itemType: ItineraryItem["type"],
+  itemId?: string,
+  itemType?: ItineraryItem["type"],
 ) {
-  if (!isDestinationActivity({ type: itemType })) return null;
+  if (!itemType || !isDestinationActivity({ type: itemType })) return null;
   const ordered = orderedDestinationActivities(items);
   const existingIndex = itemId ? ordered.findIndex(({ id }) => id === itemId) : -1;
   if (existingIndex >= 0) return existingIndex === 0 ? null : ordered[existingIndex - 1].id;

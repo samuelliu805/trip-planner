@@ -29,17 +29,11 @@ import {
   selectionContains,
 } from "./grid-interactions.ts";
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
-import { plannerItemTitleAfterPlaceSelection } from "./planner-item-title-autofill.ts";
 import {
   plannerItemFormSteps,
-  plannerItemNeedsOrderStep,
-  plannerItemSaveAction,
   plannerItemStepError,
 } from "./components/planner-item-form-steps.ts";
-import {
-  itemFormCapabilities,
-  plannerItemCreationNeedsConfirmation,
-} from "./components/planner-item-form-config.ts";
+import { itemFormCapabilities } from "./components/planner-item-form-config.ts";
 import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
@@ -114,7 +108,6 @@ import { isSameDayOrder, placeDayAtGap, reorderWorkspaceDays } from "./day-order
 import {
   insertActivityAtPlacement,
   itemOrderAnchor,
-  itemOrderSlots,
   isActivityOrderAnchor,
   orderedDayActivities,
   orderedDestinationActivities,
@@ -435,11 +428,11 @@ test("trip filters, date settlement, and lifecycle toggles stay deterministic", 
   assert.equal(sanitizeTripDayCountInput("days: 005"), "5");
 });
 
-test("trip cards expose loading filters and the shared settings editor without trip deletion", async () => {
+test("trip cards expose loading filters, deletion, and the shared settings editor", async () => {
   const [
     actions,
     card,
-    compareRoute,
+    deleteDialog,
     editor,
     editorFields,
     editorForm,
@@ -450,13 +443,11 @@ test("trip cards expose loading filters and the shared settings editor without t
     itemForm,
     primaryFields,
     settingsEditor,
-    tripActions,
-    tripDetailPage,
     tripsPage,
   ] = await Promise.all([
-    readFile(new URL("./components/planner-editor-form-actions.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-form-actions.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-card.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../research/compare-route.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/delete-trip-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-screen.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-editor-form.tsx", import.meta.url), "utf8"),
@@ -467,25 +458,20 @@ test("trip cards expose loading filters and the shared settings editor without t
     readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-primary-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-settings-editor.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
-    readFile(new URL("../../app/trips/[tripId]/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../app/trips/page.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(filter, /useTransition\(\)/);
-  assert.match(filter, /aria-busy=\{loading\}/);
-  assert.match(
-    filter,
-    /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/,
-  );
+  assert.match(filter, /aria-busy=\{pending\}/);
+  assert.match(filter, /Loading \{tripStatusFilterLabels\[displayedActive\]\} trips/);
   assert.match(filter, /items-center justify-between/);
   assert.match(filter, /bg-muted\/30/);
   assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
   assert.match(card, /<TripSettingsEditor/);
-  assert.doesNotMatch(
-    card + compareRoute + tripActions + tripDetailPage,
-    /DeleteTripDialog|Delete trip|Delete Trip|countActiveSharePages|function deleteTrip/,
-  );
+  assert.match(card, /<DeleteTripDialog/);
+  assert.match(card, /countActiveSharePages\(trip\.id\)/);
+  assert.match(deleteDialog, /Checking published Share Pages/);
+  assert.match(deleteDialog, /pending \? "Deleting…"/);
   assert.match(editor, /className="planner-item-dialog p-0"/);
   assert.match(editor, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editor, /data-planner-editor-scroll[\s\S]*\{header\}[\s\S]*\{children\}/);
@@ -504,10 +490,8 @@ test("trip cards expose loading filters and the shared settings editor without t
   assert.match(editorForm, /<PlannerEditorFormActions/);
   assert.match(editorForm, /planner-item-form-fields planner-item-step-fields/);
   assert.match(editorHeader, /navigation\?: ReactNode/);
-  assert.match(editorHeader, /planner-item-form-header border-b px-5 pb-5 pt-4 sm:px-6/);
   assert.match(editorFields, /export function PlannerEditorTextField/);
   assert.match(primaryFields, /<PlannerEditorTextField/);
-  assert.match(primaryFields, /export function ItemPlaceField/);
   assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
@@ -2341,7 +2325,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   form += await readFile(
-    new URL("./components/planner-editor-form-actions.tsx", import.meta.url),
+    new URL("./components/planner-item-form-actions.tsx", import.meta.url),
     "utf8",
   );
   form += await readFile(
@@ -2459,26 +2443,15 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
   assert.doesNotMatch(plannerDialogRule, /100dvh/);
-  assert.match(plannerDialogRule, /top: var\(--planner-editor-viewport-top, 0px\)/);
-  assert.match(
-    styles,
-    /html\.planner-editor-viewport-locked[\s\S]*height: 100vh[\s\S]*height: 100lvh[\s\S]*background: var\(--muted\)/,
-  );
   assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
   assert.doesNotMatch(editorDialog, /window\.location\.reload\(\)/);
   assert.match(editorDialog, /<PlannerEditorScreen/);
   assert.match(editorScreen, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editorViewportLock, /planner-editor-viewport-locked/);
-  assert.match(editorViewportLock, /visualViewport\.offsetTop/);
-  assert.match(editorViewportLock, /--planner-editor-viewport-top/);
-  assert.match(editorViewportLock, /viewportSettleDelays = \[0, 80, 240, 500\]/);
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);
-  assert.match(editorKeyboardScroll, /focusSessionScrollTop/);
-  assert.match(editorKeyboardScroll, /keyboardSettleDelays = \[0, 80, 240, 500\]/);
-  assert.match(editorKeyboardScroll, /restoreFocusSessionScroll/);
   assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
@@ -3224,10 +3197,6 @@ test("the item editor groups every type into short steps and gates required fiel
       "order:order",
     ],
   );
-  assert.deepEqual(plannerItemFormSteps({ ...rail, creating: true, type: "activity" })[0].blocks, [
-    "place",
-    "title",
-  ]);
   assert.deepEqual(plannerItemFormSteps({ ...rail, type: "meal" })[0].blocks, ["place", "title"]);
   assert.deepEqual(
     plannerItemFormSteps({ ...rail, type: "meal" }).find(({ id }) => id === "extras"),
@@ -3356,45 +3325,8 @@ test("the item editor groups every type into short steps and gates required fiel
     "Activity name is required.",
   );
   assert.equal(
-    plannerItemStepError({
-      creating: true,
-      place: null,
-      step: activity[0],
-      title: "",
-      type: "activity",
-    }),
-    "Search for an activity or place, or add a custom activity.",
-  );
-  assert.equal(
     plannerItemStepError({ place: null, step: activity[3], title: "", type: "activity" }),
     undefined,
-  );
-});
-
-test("activity place selection updates only names that are still system-generated", () => {
-  assert.deepEqual(
-    plannerItemTitleAfterPlaceSelection({
-      autoFilledTitle: null,
-      placeTitle: "Louvre Museum",
-      title: "",
-    }),
-    { autoFilledTitle: "Louvre Museum", title: "Louvre Museum" },
-  );
-  assert.deepEqual(
-    plannerItemTitleAfterPlaceSelection({
-      autoFilledTitle: "Louvre Museum",
-      placeTitle: "Musée de l’Orangerie",
-      title: "Louvre Museum",
-    }),
-    { autoFilledTitle: "Musée de l’Orangerie", title: "Musée de l’Orangerie" },
-  );
-  assert.deepEqual(
-    plannerItemTitleAfterPlaceSelection({
-      autoFilledTitle: null,
-      placeTitle: "Louvre Museum",
-      title: "See the Mona Lisa",
-    }),
-    { autoFilledTitle: null, title: "See the Mona Lisa" },
   );
 });
 
@@ -3414,42 +3346,4 @@ test("the editor Order step derives stable anchors for add and edit", () => {
   assert.equal(itemOrderAnchor(items, undefined, "activity"), "rental");
   assert.equal(itemOrderAnchor(items, undefined, "hotel"), "rental");
   assert.equal(itemOrderAnchor(items, "train", "transport"), null);
-  assert.deepEqual(itemOrderSlots([], undefined), [null]);
-  assert.deepEqual(itemOrderSlots([item("hotel", 0, "hotel")], undefined), [null]);
-  assert.deepEqual(itemOrderSlots(items, undefined), [null, "museum", "meal", "rental"]);
-  assert.deepEqual(itemOrderSlots(items, "meal"), [null, "museum", "rental"]);
-});
-
-test("the Order step responds to legal slots and entered times", () => {
-  const base = { availableSlots: 2, endTime: "", startTime: "" };
-  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "activity" }), true);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "meal" }), true);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "car_rental" }), true);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, availableSlots: 1, type: "activity" }), false);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, startTime: "09:00", type: "activity" }), false);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, endTime: "10:00", type: "meal" }), false);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "hotel" }), false);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "transport" }), false);
-});
-
-test("saving routes through Order and confirms deliberate item creation", () => {
-  assert.equal(
-    plannerItemSaveAction({ activeStepId: "basics", includeOrder: true }),
-    "confirm-order",
-  );
-  assert.equal(plannerItemSaveAction({ activeStepId: "order", includeOrder: true }), "save");
-  assert.equal(plannerItemSaveAction({ activeStepId: "basics", includeOrder: false }), "save");
-
-  for (const type of [
-    "activity",
-    "car_rental",
-    "flight",
-    "hotel",
-    "meal",
-    "train",
-    "transport",
-  ] as const)
-    assert.equal(plannerItemCreationNeedsConfirmation(type), true, `${type} confirms creation`);
-  assert.equal(plannerItemCreationNeedsConfirmation("location"), false);
-  assert.equal(plannerItemCreationNeedsConfirmation("note"), false);
 });

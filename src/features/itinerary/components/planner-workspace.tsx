@@ -1,15 +1,11 @@
 "use client";
 
 import { LoaderCircle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { ArrangeActivitiesSheet } from "./arrange-activities-sheet";
 import { PlannerClearCellsDialog } from "./planner-clear-cells-dialog";
 import { PlannerMatrix } from "./planner-matrix";
-import {
-  PlannerItemSaveFeedbackAlert,
-  type PlannerItemSaveFeedback,
-} from "./planner-item-save-feedback";
 import { PlannerSheets } from "./planner-sheets";
 import { PlannerToolbar } from "./planner-toolbar";
 import { PlannerWorkspaceEventBoundary } from "./planner-workspace-event-boundary";
@@ -28,7 +24,6 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
 function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
   usePlannerViewportContainment();
   const c = usePlannerWorkspaceController(props);
-  const [itemSaveFeedback, setItemSaveFeedback] = useState<PlannerItemSaveFeedback>();
   const activeItem =
     c.selectedItem ??
     (c.selectedCount === 1 && c.selectedItems.length === 1 ? c.selectedItems[0] : undefined);
@@ -76,16 +71,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
           </div>
         </div>
       ) : null}
-      <PlannerItemSaveFeedbackAlert
-        feedback={itemSaveFeedback}
-        onDismiss={() => setItemSaveFeedback(undefined)}
-        onView={(item) => {
-          setItemSaveFeedback(undefined);
-          c.setEditor(null);
-          c.setDraftItem(null);
-          c.interactions.focusSavedItem(item);
-        }}
-      />
       <PlannerToolbar
         activeCategory={c.activeCategory}
         activeCellAtCapacity={c.activeCellAtCapacity}
@@ -95,6 +80,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         copyPreviousDay={c.clipboard.copyPreviousDay}
         copySelectionToClipboard={c.clipboard.copySelectionToClipboard}
         dayMutationPending={c.dayMutationPending}
+        deleteError={props.deleteError}
         fillLabel={c.fillLabel}
         fillThroughDay={c.workspace.days[c.selectionEnd.row]?.day_number}
         insertDay={c.insertDay}
@@ -239,7 +225,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         }}
         onEditorDraftChange={c.setDraftItem}
         onInteractionError={c.setInteractionError}
-        onItemSaveFeedback={setItemSaveFeedback}
         onMapExpandedChange={(open) => {
           c.setMapExpanded(open);
           if (

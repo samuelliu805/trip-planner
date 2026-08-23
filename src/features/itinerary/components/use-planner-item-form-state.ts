@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import { normalizedActionLabel } from "./planner-item-form-config";
 import { itemOrderAnchor } from "../activity-order";
-import { plannerItemTitleAfterPlaceSelection } from "../planner-item-title-autofill";
 import {
   normalizeTransportMode,
   transportModes,
@@ -22,13 +21,11 @@ export function usePlannerItemFormState({
   defaultCurrency,
   item,
   items,
-  type,
 }: {
   dayDate: string;
   defaultCurrency: string;
   item?: ItineraryItem;
   items: ItineraryItem[];
-  type: ItineraryItem["type"];
   unavailableTransportModes: TransportMode[];
 }) {
   const existingCar =
@@ -38,15 +35,12 @@ export function usePlannerItemFormState({
     typeof existingDetails[key] === "string" ? (existingDetails[key] as string) : "";
   const existingOriginPlace = placeSnapshotFromJson(existingDetails.originPlace);
   const existingDestinationPlace = placeSnapshotFromJson(existingDetails.destinationPlace);
-  const initialTitle =
+  const [title, setTitle] = useState(
     item &&
-    ["location", "hotel", "meal"].includes(item.type) &&
-    item.place?.displayName === item.title
+      ["location", "hotel", "meal"].includes(item.type) &&
+      item.place?.displayName === item.title
       ? ""
-      : (item?.title ?? "");
-  const [title, setTitleState] = useState(initialTitle);
-  const [autoFilledTitle, setAutoFilledTitle] = useState<string | null>(() =>
-    item?.place?.displayName === initialTitle ? initialTitle : null,
+      : (item?.title ?? ""),
   );
   const [startTime, setStartTime] = useState(item?.start_time?.slice(0, 5) ?? "");
   const [arrivalTime, setArrivalTime] = useState(
@@ -89,7 +83,7 @@ export function usePlannerItemFormState({
   const [carProvider, setCarProvider] = useState(existingCar.provider ?? "");
   const [place, setPlace] = useState<PlaceSnapshot | null>(item?.place ?? null);
   const [insertAfterItemId, setInsertAfterItemId] = useState<string | null>(() =>
-    itemOrderAnchor(items, item?.id, item?.type ?? type),
+    itemOrderAnchor(items, item?.id, item?.type),
   );
   const existingTransportMode = normalizeTransportMode(detailText("mode"));
   // Multiple journeys of the same type are valid (for example two flights on one day), so the
@@ -97,17 +91,6 @@ export function usePlannerItemFormState({
   const [transportMode, setTransportMode] = useState<TransportMode>(
     item?.type === "transport" ? existingTransportMode : (allTransportModes[0] ?? "train"),
   );
-
-  function setTitle(nextTitle: string) {
-    setAutoFilledTitle(null);
-    setTitleState(nextTitle);
-  }
-
-  function setTitleFromPlace(placeTitle: string) {
-    const next = plannerItemTitleAfterPlaceSelection({ autoFilledTitle, placeTitle, title });
-    setAutoFilledTitle(next.autoFilledTitle);
-    setTitleState(next.title);
-  }
 
   // One serialized snapshot answers "has anything changed?" for the exit confirmation.
   const snapshot = JSON.stringify([
@@ -171,7 +154,6 @@ export function usePlannerItemFormState({
     setServiceNumber,
     setStartTime,
     setTitle,
-    setTitleFromPlace,
     setTransportMode,
     startTime,
     title,

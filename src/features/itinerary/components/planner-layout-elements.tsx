@@ -13,6 +13,7 @@ import type { VariantComparisonUi } from "@/features/variants/use-variant-compar
 import type { VariantDecisionSummaryUi } from "@/features/variants/use-variant-decision-summary";
 
 export function PlannerStatus({
+  deleteError,
   fillLabel,
   fillThroughDay,
   interactionError,
@@ -21,6 +22,7 @@ export function PlannerStatus({
   onDismissError,
   workspaceError,
 }: {
+  deleteError: boolean;
   fillLabel: string;
   fillThroughDay?: number;
   interactionError?: string;
@@ -45,6 +47,11 @@ export function PlannerStatus({
       {workspaceError ? (
         <p className="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive" role="alert">
           The planner could not refresh. Your last loaded data remains visible.
+        </p>
+      ) : null}
+      {deleteError ? (
+        <p className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
+          The trip could not be deleted.
         </p>
       ) : null}
       {isEmpty ? (
