@@ -662,6 +662,8 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
   assert.match(appBar, /aria-current/);
   assert.match(appBar, /label: "Plan"/);
   assert.match(appBar, /label: "Ideas & Options"/);
+  assert.match(appBar, /useLinkStatus/);
+  assert.match(appBar, /Opening \{label\}/);
   assert.match(planToolbar, /<TripAppBar[\s\S]*actions=\{<PlannerContextActions/);
   assert.match(planToolbar, /menuItems=\{<PlannerContextMenuItems/);
   assert.match(compareWorkspace, /aria-label="Ideas filters"/);

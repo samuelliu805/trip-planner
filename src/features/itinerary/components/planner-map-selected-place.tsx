@@ -95,7 +95,7 @@ export function PlannerMapSelectedPlace({
   const firstStay = hotelStay?.ranges[0];
   const price =
     item?.price_amount !== null && item?.price_amount !== undefined && item.price_currency
-      ? `${item.price_currency} ${formatMoney(item.price_amount, item.price_currency)}`
+      ? formatMoney(item.price_amount, item.price_currency)
       : null;
   const dateRanges = mergeMarkerDateRanges(marker.entries);
   const dayCount = new Set(marker.entries.map(({ dayNumber }) => dayNumber)).size;

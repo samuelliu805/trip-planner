@@ -1,7 +1,7 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
+import { LoaderCircle, type LucideIcon } from "lucide-react";
+import Link, { useLinkStatus } from "next/link";
 
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,32 @@ export type AppBottomNavigationItem = {
   id: string;
   label: string;
 };
+
+function NavigationLinkContent({
+  active,
+  item,
+}: {
+  active: boolean;
+  item: AppBottomNavigationItem;
+}) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      {pending ? (
+        <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
+      ) : (
+        <item.Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={active ? 2.5 : 2} />
+      )}
+      <span className="truncate">{item.label}</span>
+      {pending ? (
+        <span className="sr-only" role="status">
+          Opening {item.label}
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 export function AppBottomNavigation({
   activeId,
@@ -78,7 +104,7 @@ export function AppBottomNavigation({
           key={item.id}
           prefetch
         >
-          {content}
+          <NavigationLinkContent active={active} item={item} />
         </Link>
       );
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Lightbulb, LoaderCircle, Table2 } from "lucide-react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { useState, type ReactNode } from "react";
 
 import { AppBottomNavigation } from "@/components/navigation/app-bottom-navigation";
@@ -18,6 +18,26 @@ const sections: Array<{ id: TripSection; label: string }> = [
   { id: "plan", label: "Plan" },
   { id: "compare", label: "Ideas & Options" },
 ];
+
+function TripSectionLinkContent({ Icon, label }: { Icon: typeof Table2; label: string }) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      {pending ? (
+        <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
+      ) : (
+        <Icon aria-hidden="true" className="size-3.5" />
+      )}
+      {label}
+      {pending ? (
+        <span className="sr-only" role="status">
+          Opening {label}
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 export function TripMobileTabBar({
   active,
@@ -131,8 +151,7 @@ export function TripAppBar({
                     href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
                     prefetch
                   >
-                    <Icon aria-hidden="true" className="size-3.5" />
-                    {section.label}
+                    <TripSectionLinkContent Icon={Icon} label={section.label} />
                   </Link>
                 </Button>
               );

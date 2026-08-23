@@ -2571,6 +2571,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);
+  assert.match(editorKeyboardScroll, /getComputedStyle\(editorHeader\)\.position === "sticky"/);
+  assert.match(editorKeyboardScroll, /editorHeader\.getBoundingClientRect\(\)\.bottom/);
   assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
@@ -3230,6 +3232,8 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(workspace, /selectedItemId/);
   assert.match(workspace, /setSelectedItemId\(item\.id\)/);
   assert.match(mapShell, /entry\.dayLabel/);
+  assert.match(mapShell, /\? formatMoney\(item\.price_amount, item\.price_currency\)/);
+  assert.doesNotMatch(mapShell, /`\$\{item\.price_currency\}/);
   assert.doesNotMatch(workspace, /Map preview · P3|P4/);
   assert.match(map, /AdvancedMarker/);
   assert.match(map, /anchorLeft=\{comparison \? "-50%" : undefined\}/);
