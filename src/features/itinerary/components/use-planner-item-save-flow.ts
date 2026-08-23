@@ -66,7 +66,12 @@ export function usePlannerItemSaveFlow({
         : await createMutation.mutateAsync({ ...values, dayId });
       const committedItem = await attachmentSession.commit(savedItem);
       if (creationNeedsConfirmation)
-        onSaveFeedback({ item: committedItem, itemLabel: itemCopy[type].label, status: "created" });
+        onSaveFeedback({
+          item: committedItem,
+          itemLabel: itemCopy[type].label,
+          showViewLink: intent === "save-and-create-another",
+          status: "created",
+        });
       if (intent === "save-and-create-another" && canCreateAnother && onCreateAnother)
         onCreateAnother(committedItem);
       else onSaved(committedItem);

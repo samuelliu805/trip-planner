@@ -40,8 +40,9 @@ export function PlannerItemSaveConfirmation({
               : `Create this ${lowerLabel}?`}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            “{itemTitle}” will be added to the itinerary. After it is created, a link will take you
-            directly to the new item in the planner.
+            {createAnother
+              ? `“${itemTitle}” will be added to the itinerary. The success message will include a link back to it while you start the next ${lowerLabel}.`
+              : `“${itemTitle}” will be added to the itinerary.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

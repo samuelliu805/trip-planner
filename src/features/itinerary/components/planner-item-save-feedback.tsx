@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import type { ItineraryItem } from "@/features/itinerary/types";
 
 export type PlannerItemSaveFeedback =
-  | { item: ItineraryItem; itemLabel: string; status: "created" }
+  | { item: ItineraryItem; itemLabel: string; showViewLink: boolean; status: "created" }
   | { itemLabel: string; itemTitle: string; message: string; status: "error" };
 
 export function PlannerItemSaveFeedbackAlert({
@@ -42,7 +42,7 @@ export function PlannerItemSaveFeedbackAlert({
                 ? `${feedback.itemLabel} “${feedback.item.title}” was created.`
                 : `${feedback.itemLabel} “${feedback.itemTitle}” was not created.`}
             </p>
-            {success ? (
+            {success && feedback.showViewLink ? (
               <button
                 className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-md font-semibold text-primary underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => onView(feedback.item)}
@@ -50,9 +50,9 @@ export function PlannerItemSaveFeedbackAlert({
               >
                 View and focus in planner <ArrowUpRight aria-hidden="true" className="size-4" />
               </button>
-            ) : (
+            ) : !success ? (
               <p className="mt-1 text-sm text-destructive">{feedback.message}</p>
-            )}
+            ) : null}
           </div>
           <button
             aria-label="Dismiss message"

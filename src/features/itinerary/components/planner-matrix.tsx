@@ -16,6 +16,7 @@ import { categories } from "@/features/itinerary/components/planner-config";
 import type { PlannerMatrixProps } from "@/features/itinerary/components/planner-matrix-types";
 import { selectionContains } from "@/features/itinerary/grid-interactions";
 import { useInitialMatrixScrollPosition } from "@/features/itinerary/hooks/use-initial-matrix-scroll-position";
+import { useMobileMatrixTopContainment } from "@/features/itinerary/hooks/use-mobile-matrix-top-containment";
 import { deriveDayLocality, formatDayLocalitySummary } from "@/features/itinerary/locality";
 
 export function PlannerMatrix({
@@ -78,6 +79,7 @@ export function PlannerMatrix({
   workspace,
 }: PlannerMatrixProps) {
   const matrixRef = useInitialMatrixScrollPosition<HTMLElement>();
+  useMobileMatrixTopContainment(matrixRef);
 
   return (
     <div

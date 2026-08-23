@@ -281,6 +281,10 @@ body:has(.planner-map-sheet) {
     padding-left: max(8px, env(safe-area-inset-left));
   }
 
+  .planner-matrix {
+    overscroll-behavior-y: none;
+  }
+
   .planner-map-sheet {
     height: 100dvh !important;
     padding-bottom: env(safe-area-inset-bottom) !important;

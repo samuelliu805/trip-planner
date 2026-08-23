@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, MoreHorizontal, Settings2, Share2 } from "lucide-react";
+import { LogOut, MoreHorizontal, Settings2, Share2, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -28,16 +28,20 @@ type RunMobileAction = (action: () => void) => void;
 /** Desktop keeps a compact dropdown; touch widths use the same pull-up pattern as Plans. */
 export function TripBarMenu({
   accountEmail,
+  deletePending = false,
   extraItems,
   mobileMenuItems,
   mobileQuickActions = [],
+  onDeleteTrip,
   onShareTrip,
   onTripSettings,
 }: {
   accountEmail: string;
+  deletePending?: boolean;
   extraItems?: ReactNode;
   mobileMenuItems?: (runAction: RunMobileAction) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
+  onDeleteTrip?: () => void;
   onShareTrip?: () => void;
   onTripSettings?: () => void;
 }) {
@@ -73,7 +77,9 @@ export function TripBarMenu({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
             {extraItems ? <>{extraItems}</> : null}
-            {extraItems && (onShareTrip || onTripSettings) ? <DropdownMenuSeparator /> : null}
+            {extraItems && (onShareTrip || onTripSettings || onDeleteTrip) ? (
+              <DropdownMenuSeparator />
+            ) : null}
             {onShareTrip ? (
               <DropdownMenuItem onSelect={onShareTrip}>
                 <Share2 aria-hidden="true" className="size-4" /> Share trip
@@ -83,6 +89,18 @@ export function TripBarMenu({
               <DropdownMenuItem onSelect={onTripSettings}>
                 <Settings2 aria-hidden="true" className="size-4" /> Trip settings
               </DropdownMenuItem>
+            ) : null}
+            {onDeleteTrip ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  disabled={deletePending}
+                  onSelect={() => window.setTimeout(onDeleteTrip, 0)}
+                >
+                  <Trash2 aria-hidden="true" className="size-4" /> Delete trip
+                </DropdownMenuItem>
+              </>
             ) : null}
             <DropdownMenuSeparator />
             <p className="truncate px-2 py-1.5 text-xs text-muted-foreground" title={accountEmail}>
@@ -154,6 +172,16 @@ export function TripBarMenu({
                 variant="ghost"
               >
                 <Settings2 aria-hidden="true" className="size-4" /> Trip settings
+              </Button>
+            ) : null}
+            {onDeleteTrip ? (
+              <Button
+                className="min-h-11 w-full justify-start px-3 font-normal text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={deletePending}
+                onClick={() => runMobileAction(onDeleteTrip)}
+                variant="ghost"
+              >
+                <Trash2 aria-hidden="true" className="size-4" /> Delete trip
               </Button>
             ) : null}
             <p

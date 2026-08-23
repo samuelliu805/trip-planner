@@ -119,12 +119,18 @@ export function PlannerEditorForm({
       <PlannerEditorPage header={header} scrollRef={setEditorScrollNode}>
         <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
           <div className="planner-item-form-card">
-            <div
-              className="planner-item-form-fields planner-item-step-fields min-w-0 space-y-10"
-              ref={fieldsRef}
+            <fieldset
+              aria-busy={pending}
+              className="min-w-0 border-0 p-0 disabled:pointer-events-none"
+              disabled={pending}
             >
-              {children}
-            </div>
+              <div
+                className="planner-item-form-fields planner-item-step-fields min-w-0 space-y-10"
+                ref={fieldsRef}
+              >
+                {children}
+              </div>
+            </fieldset>
             <PlannerEditorFormActions
               alternateSaveLabel={alternateSaveLabel}
               backDisabled={backDisabled}

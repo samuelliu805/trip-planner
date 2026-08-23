@@ -478,6 +478,21 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     new URL("../places/place-autocomplete.tsx", import.meta.url),
     "utf8",
   );
+  const [
+    itemSaveConfirmation,
+    itemSaveFeedback,
+    itemSaveFlow,
+    tripActions,
+    tripAppBar,
+    tripBarMenu,
+  ] = await Promise.all([
+    readFile(new URL("./components/planner-item-save-confirmation.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-item-save-feedback.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/use-planner-item-save-flow.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-app-bar.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-app-bar-menu.tsx", import.meta.url), "utf8"),
+  ]);
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{loading\}/);
@@ -493,8 +508,13 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
   assert.match(card, /useTripListLoading\(\)/);
   assert.match(card, /Deleting “\$\{trip\.title\}”/);
-  assert.doesNotMatch(compareRoute, /DeleteTripDialog/);
-  assert.doesNotMatch(detailRoute, /DeleteTripDialog/);
+  assert.match(tripAppBar, /<DeleteTripDialog/);
+  assert.match(tripAppBar, /countActiveSharePages\(tripId\)/);
+  assert.match(tripAppBar, /Deleting “\{title\}”…/);
+  assert.match(tripBarMenu, /onDeleteTrip/);
+  assert.equal(tripBarMenu.match(/Delete trip/g)?.length, 2);
+  assert.match(tripActions, /deleteTrip[\s\S]*redirect\("\/trips"\)/);
+  assert.doesNotMatch(compareRoute + detailRoute, /DeleteTripDialog/);
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
@@ -522,7 +542,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorForm, /usePlannerEditorKeyboardScroll\(\)/);
   assert.match(editorForm, /<PlannerEditorFormActions/);
   assert.match(editorForm, /saveDisabled/);
-  assert.match(editorForm, /planner-item-form-fields planner-item-step-fields/);
+  assert.match(
+    editorForm,
+    /<fieldset[\s\S]*aria-busy=\{pending\}[\s\S]*disabled=\{pending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
+  );
   assert.match(editorHeader, /navigation\?: ReactNode/);
   assert.match(editor, /onOpenAutoFocus[\s\S]*initialFocusSelector[\s\S]*preventScroll: true/);
   assert.match(editorFields, /export function PlannerEditorTextField/);
@@ -541,6 +564,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(placeAutocomplete, /generation !== requestGeneration\.current/);
   assert.match(placeAutocomplete, /label: `Create \$\{customValueLabel/);
   assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
+  assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
+  assert.match(itemSaveFeedback, /success && feedback\.showViewLink/);
+  assert.match(itemSaveConfirmation, /createAnother[\s\S]*success message will include a link/);
+  assert.doesNotMatch(itemSaveConfirmation, /a link will take you directly/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
@@ -2573,6 +2600,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
     new URL("./hooks/use-initial-matrix-scroll-position.ts", import.meta.url),
     "utf8",
   );
+  const mobileMatrixContainment = await readFile(
+    new URL("./hooks/use-mobile-matrix-top-containment.ts", import.meta.url),
+    "utf8",
+  );
   const secondaryFields = await readFile(
     new URL("./components/planner-item-secondary-fields.tsx", import.meta.url),
     "utf8",
@@ -2591,6 +2622,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(
     styles,
     /planner-matrix[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 639px\)[\s\S]*?\.planner-matrix \{[\s\S]*?overscroll-behavior-y: none;/,
   );
   assert.match(styles, /html:has\(\.trip-planner-page\),[\s\S]*overflow: hidden/);
   assert.match(styles, /body:has\(\.trip-planner-page\)[\s\S]*position: fixed;[\s\S]*inset: 0;/);
@@ -2631,10 +2666,21 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(workspace, /TripAppBar/);
   assert.match(workspace, /usePlannerViewportContainment/);
   assert.match(workspace, /useInitialMatrixScrollPosition<HTMLElement>\(\)/);
+  assert.match(workspace, /useMobileMatrixTopContainment\(matrixRef\)/);
   assert.match(workspace, /ref=\{matrixRef\}/);
   assert.match(initialMatrixScroll, /min-width: 640px[\s\S]*max-width: 1199px/);
   assert.match(initialMatrixScroll, /matrix\.scrollTo\(\{ behavior: "auto", left: 0, top: 0 \}\)/);
   assert.match(initialMatrixScroll, /requestAnimationFrame\(reset\)/);
+  assert.match(mobileMatrixContainment, /max-width: 639px/);
+  assert.match(mobileMatrixContainment, /matrix\.scrollTop <= 1/);
+  assert.match(
+    mobileMatrixContainment,
+    /addEventListener\("touchmove", containTopPull, \{ passive: false \}\)/,
+  );
+  assert.match(mobileMatrixContainment, /mobile\.addEventListener\("change"/);
+  assert.match(mobileMatrixContainment, /else stopListening\(\)/);
+  assert.match(mobileMatrixContainment, /event\.preventDefault\(\)/);
+  assert.doesNotMatch(mobileMatrixContainment, /min-width: 640px/);
   assert.match(viewportContainment, /visualViewport/);
   assert.match(viewportContainment, /focusout/);
   assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);

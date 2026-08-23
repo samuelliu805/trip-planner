@@ -32,7 +32,12 @@ function DeleteAction({
   useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
   return (
-    <AlertDialogAction aria-busy={loading} disabled={loading} type="submit">
+    <AlertDialogAction
+      aria-busy={loading}
+      disabled={loading}
+      onClick={() => onPendingChange?.(true)}
+      type="submit"
+    >
       {loading ? (
         <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
       ) : (
