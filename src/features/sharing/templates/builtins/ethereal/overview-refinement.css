@@ -42,6 +42,14 @@
   border-left: 1px solid rgb(50 51 47 / 10%);
 }
 
+.public-template-ethereal .overview-transport-item-v4:first-child {
+  padding-left: 0;
+}
+
+.public-template-ethereal .overview-transport-item-v4:last-child {
+  padding-right: 0;
+}
+
 .public-template-ethereal .overview-transport-title-v4 {
   color: #191a18;
   font-weight: 500;
@@ -129,6 +137,26 @@
 .public-template-ethereal .overview-item-card-v4.has-media .media-thumb-v4 {
   height: 100%;
   max-height: none;
+}
+
+.public-template-ethereal
+  .overview-item-card-v4
+  .public-quick-actions:not(.is-compact)
+  .public-resource-button {
+  min-height: 2.75rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.25rem;
+}
+
+.public-template-ethereal
+  .overview-item-card-v4
+  .public-quick-actions:not(.is-compact)
+  .public-resource-button
+  .public-attachment-visual
+  > svg {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .public-template-ethereal .overview-item-card-v4.is-selected {

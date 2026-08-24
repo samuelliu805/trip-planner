@@ -1485,6 +1485,22 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
+    /\.public-template-ethereal \.overview-transport-item-v4:first-child \{[^}]*padding-left: 0/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-transport-item-v4:last-child \{[^}]*padding-right: 0/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal[\s\S]*\.public-quick-actions:not\(\.is-compact\)[\s\S]*\.public-resource-button \{[^}]*min-height: 2\.75rem;[^}]*grid-template-columns: 2\.25rem minmax\(0, 1fr\);[^}]*gap: 0\.5rem;[^}]*padding: 0\.25rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal[\s\S]*\.public-resource-button[\s\S]*\.public-attachment-visual\s*> svg \{[^}]*width: 1\.25rem;[^}]*height: 1\.25rem/,
+  );
+  assert.match(
+    styles,
     /\.public-template-journal \.overview-item-footer-v4 > span:first-child \{[^}]*order: 2/,
   );
   assert.match(
