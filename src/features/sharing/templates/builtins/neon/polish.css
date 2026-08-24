@@ -70,6 +70,22 @@
     inset 0 0 30px rgb(109 73 210 / 4%);
 }
 
+.public-template-neon[data-public-template-key="neon@1"] .overview-transport-list-v4 {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(135deg, rgb(8 18 38 / 97%), rgb(12 17 36 / 95%)) padding-box,
+    linear-gradient(
+        120deg,
+        rgb(66 221 255 / 62%),
+        rgb(102 151 255 / 42%) 48%,
+        rgb(251 67 228 / 58%)
+      )
+      border-box;
+  box-shadow:
+    0 0 22px rgb(41 204 255 / 8%),
+    inset 0 0 26px rgb(109 73 210 / 4%);
+}
+
 .public-template-neon .overview-day-heading-v4 {
   border-radius: 1.125rem;
   padding: 0.75rem 0.875rem;

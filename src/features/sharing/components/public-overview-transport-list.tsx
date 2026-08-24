@@ -1,6 +1,10 @@
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
-import { publicTransportRouteLabel, publicTransportShortLabel } from "../presentation";
-import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
+import {
+  publicTransportRouteLabel,
+  publicTransportShortLabel,
+  publicTransportSupportingTitle,
+} from "../presentation";
+import { PublicItemIcon } from "./public-item-icon";
 import { PublicItemMediaGallery } from "./public-item-media";
 import { PublicQuickActions } from "./public-quick-actions";
 
@@ -24,7 +28,7 @@ export function PublicOverviewTransportList({
         const route = publicTransportRouteLabel(item);
         const shortTitle = publicTransportShortLabel(item);
         const routeDetail = [
-          item.title.trim() === shortTitle ? "" : item.title,
+          publicTransportSupportingTitle(item),
           route,
           item.transport?.serviceNumber,
         ]
@@ -39,9 +43,7 @@ export function PublicOverviewTransportList({
                 <PublicItemIcon className="size-3.5" type={item.type} />
               </span>
               <span className="overview-transport-copy-v4">
-                <span className="overview-transport-kind-v4">
-                  {publicItemTypeLabels[item.type]}
-                </span>
+                <span className="overview-transport-kind-v4">Transport</span>
                 <span className="overview-transport-title-v4">{shortTitle}</span>
                 {routeDetail || scheduleDetail || item.notes ? (
                   <span className="overview-transport-details-v4">

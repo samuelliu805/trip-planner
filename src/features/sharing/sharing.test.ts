@@ -13,6 +13,7 @@ import {
   publicTransferItemLabel,
   publicTransportRouteLabel,
   publicTransportShortLabel,
+  publicTransportSupportingTitle,
   safeExternalUrl,
 } from "./presentation.ts";
 import {
@@ -697,6 +698,20 @@ test("read-only travel text separates transfers from concise rental actions", ()
   assert.equal(publicTransportRouteLabel(flight), "San Francisco SFO → Tokyo HND");
   assert.equal(publicTransferItemLabel(flight), "NH 7 · San Francisco SFO → Tokyo HND · NH7");
   assert.equal(publicTransportShortLabel(flight), "Flight");
+  const generatedFlight = {
+    ...flight,
+    title: "PVG → NRT · Shanghai Pudong International Airport → Narita International Airport",
+    transport: {
+      destination: "Narita International Airport",
+      origin: "Shanghai Pudong International Airport",
+    },
+  };
+  assert.equal(publicTransportSupportingTitle(generatedFlight), "");
+  assert.equal(
+    publicTransferItemLabel(generatedFlight),
+    "Flight · Shanghai Pudong International Airport → Narita International Airport",
+  );
+  assert.equal(publicTransportSupportingTitle(flight), "NH 7");
   assert.equal(
     publicTransportShortLabel({ ...flight, title: "Airport train", type: "train" }),
     "Train",
@@ -1361,7 +1376,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(overview, /\[data-public-transport\]/);
   assert.doesNotMatch(overviewTransport, /data-public-item-ref|onClick|aria-current/);
   assert.match(overviewTransport, /data-public-transport/);
-  assert.match(overviewTransport, /publicItemTypeLabels/);
+  assert.match(overviewTransport, /overview-transport-kind-v4[\s\S]*Transport/);
   assert.match(overviewTransport, /publicTransportShortLabel/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
@@ -1730,6 +1745,8 @@ test("public template route, hydration, persistence, and rollback contracts stay
     baseMigration,
     templateMigration,
     transportMigration,
+    canonicalTransportMigration,
+    transportSnapshotMigration,
     sharePageMigration,
     imageRangeMigration,
     neonMigration,
@@ -1744,6 +1761,8 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260814133837_public_template_architecture_v1.sql",
       "../../../supabase/migrations/20260814175111_add_ethereal_and_journal_public_templates.sql",
       "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
+      "../../../supabase/migrations/20260823220000_canonical_research_transport_titles.sql",
+      "../../../supabase/migrations/20260823221500_refresh_research_transport_snapshots.sql",
       "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
       "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
       "../../../supabase/migrations/20260823184500_add_neon_public_template.sql",
@@ -1786,6 +1805,17 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.doesNotMatch(transportMigration, /researchSourceId|booking|price|created_by/);
   assert.match(transportMigration, /revoke all[\s\S]*from public, anon, authenticated/);
   assert.match(transportMigration, /grant execute[\s\S]*to anon, authenticated/);
+  assert.match(
+    canonicalTransportMigration,
+    /when 'flight' then jsonb_build_object\('type', 'flight'\)/,
+  );
+  assert.match(
+    canonicalTransportMigration,
+    /when 'train' then jsonb_build_object\('type', 'train'\)/,
+  );
+  assert.match(transportSnapshotMigration, /then coalesce\(\(\s*select current_item\.value/);
+  assert.match(transportSnapshotMigration, /snapshot_hash = encode/);
+  assert.match(transportSnapshotMigration, /published_item\.value ->> 'ref'/);
   assert.match(baseMigration, /revoke all on function public\.get_public_itinerary_v4/);
   assert.match(
     baseMigration,

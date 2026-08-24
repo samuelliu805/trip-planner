@@ -29,7 +29,7 @@ export function publicTransferItemLabel(item: PublicItineraryItem) {
   const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   return uniqueLabelParts([
     time,
-    item.title,
+    publicTransportSupportingTitle(item) || publicTransportShortLabel(item),
     publicTransportRouteLabel(item),
     item.transport?.serviceNumber,
     item.place?.displayName,
@@ -55,6 +55,27 @@ export function publicTransportShortLabel(item: PublicItineraryItem) {
       (label) => label.toLocaleLowerCase() === normalizedTitle,
     ) ?? "Transport"
   );
+}
+
+function normalizedTransportText(value: string) {
+  return value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+}
+
+export function publicTransportSupportingTitle(item: PublicItineraryItem) {
+  const title = item.title.trim();
+  if (normalizedTransportText(title) === normalizedTransportText(publicTransportShortLabel(item))) {
+    return "";
+  }
+
+  const origin = item.transport?.origin?.trim();
+  const destination = item.transport?.destination?.trim();
+  const normalizedTitle = normalizedTransportText(title);
+  const repeatsStructuredRoute =
+    origin &&
+    destination &&
+    normalizedTitle.includes(normalizedTransportText(origin)) &&
+    normalizedTitle.includes(normalizedTransportText(destination));
+  return repeatsStructuredRoute ? "" : title;
 }
 
 export function publicRentalItemLabel(item: PublicItineraryItem) {
