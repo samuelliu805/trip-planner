@@ -228,9 +228,6 @@ export function PublicShareDialog({
           </div>
         </div>
         <DialogFooter className="shrink-0 [&>*]:w-full sm:[&>*]:w-auto">
-          <Button onClick={() => setOpen(false)} type="button" variant="outline">
-            Close
-          </Button>
           {unchanged ? (
             <Button asChild>
               <a href={publicUrl} rel="noopener noreferrer" target="_blank">

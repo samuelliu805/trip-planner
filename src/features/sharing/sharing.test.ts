@@ -12,6 +12,8 @@ import {
   publicRentalItemLabel,
   publicTransferItemLabel,
   publicTransportRouteLabel,
+  publicTransportShortLabel,
+  publicTransportSupportingTitle,
   safeExternalUrl,
 } from "./presentation.ts";
 import {
@@ -59,7 +61,7 @@ import { longImageScopeSchema } from "./long-image/schema.ts";
 import { scopePublicItinerary } from "./long-image/scope.ts";
 
 async function readAppStyles() {
-  const templateStyleDirectories = ["bento", "ethereal", "journal", "traverse"].map(
+  const templateStyleDirectories = ["bento", "ethereal", "journal", "neon", "traverse"].map(
     (template) => new URL(`./templates/builtins/${template}/`, import.meta.url),
   );
   const templateStyles = (
@@ -83,6 +85,7 @@ async function readAppStyles() {
         "../../app/public-sharing-media.css",
         "../../app/public-sharing-overview.css",
         "../../app/public-sharing-overview-transport.css",
+        "../../app/public-sharing-content-safety.css",
         "../../app/public-sharing-table.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
@@ -694,6 +697,33 @@ test("read-only travel text separates transfers from concise rental actions", ()
   } satisfies PublicItineraryItem;
   assert.equal(publicTransportRouteLabel(flight), "San Francisco SFO → Tokyo HND");
   assert.equal(publicTransferItemLabel(flight), "NH 7 · San Francisco SFO → Tokyo HND · NH7");
+  assert.equal(publicTransportShortLabel(flight), "Flight");
+  const generatedFlight = {
+    ...flight,
+    title: "PVG → NRT · Shanghai Pudong International Airport → Narita International Airport",
+    transport: {
+      destination: "Narita International Airport",
+      origin: "Shanghai Pudong International Airport",
+    },
+  };
+  assert.equal(publicTransportSupportingTitle(generatedFlight), "");
+  assert.equal(
+    publicTransferItemLabel(generatedFlight),
+    "Flight · Shanghai Pudong International Airport → Narita International Airport",
+  );
+  assert.equal(publicTransportSupportingTitle(flight), "NH 7");
+  assert.equal(
+    publicTransportShortLabel({ ...flight, title: "Airport train", type: "train" }),
+    "Train",
+  );
+  assert.equal(
+    publicTransportShortLabel({ ...flight, title: "Drive", type: "transport" }),
+    "Drive",
+  );
+  assert.equal(
+    publicTransportShortLabel({ ...flight, title: "Long custom transfer", type: "transport" }),
+    "Transport",
+  );
 });
 
 test("public Days and Overview retain intermediate locality clusters", () => {
@@ -1346,7 +1376,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(overview, /\[data-public-transport\]/);
   assert.doesNotMatch(overviewTransport, /data-public-item-ref|onClick|aria-current/);
   assert.match(overviewTransport, /data-public-transport/);
-  assert.match(overviewTransport, /publicItemTypeLabels/);
+  assert.match(overviewTransport, /overview-transport-kind-v4[\s\S]*Transport/);
+  assert.match(overviewTransport, /publicTransportShortLabel/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
   assert.match(overviewCard, /data-public-item-category=\{publicItemTypeLabels\[item\.type\]\}/);
@@ -1359,6 +1390,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(timelineSources, /PublicTimelineNode/);
   assert.match(timelineDay, /\[data-public-transport\]/);
   assert.match(timelineTransport, /data-public-transport/);
+  assert.match(timelineTransport, /publicTransportShortLabel/);
   assert.match(
     timelineDay,
     /addEventListener\("wheel", handleWheel, \{ capture: true, passive: false \}\)/,
@@ -1437,13 +1469,62 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
-    /\.public-template-ethereal \.overview-day-v4 \+ \.overview-day-v4 \{[\s\S]*margin-top: 0;[\s\S]*padding-top: 1\.75rem/,
+    /\.public-template-ethereal \.overview-day-v4,\s*\.public-template-ethereal \.overview-day-v4 \+ \.overview-day-v4 \{[^}]*padding-top: 1\.375rem;[^}]*padding-bottom: 1\.625rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-item-card-v4\.has-media \{[^}]*grid-template-areas:[^}]*"heading place"[^}]*"attachments place"[^}]*"footer place"[^}]*row-gap: 0\.625rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-item-card-v4\.has-media > \.public-item-media \{[^}]*grid-area: place/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal\[data-public-template-key="ethereal@1"\][\s\S]*\.overview-transport-list-v4:has\(> :nth-child\(3\)\) \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-transport-item-v4:first-child \{[^}]*padding-left: 0/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-transport-item-v4:last-child \{[^}]*padding-right: 0/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal[\s\S]*\.public-quick-actions:not\(\.is-compact\)[\s\S]*\.public-resource-button \{[^}]*min-height: 2\.75rem;[^}]*grid-template-columns: 2\.25rem minmax\(0, 1fr\);[^}]*gap: 0\.5rem;[^}]*padding: 0\.25rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal[\s\S]*\.public-resource-button[\s\S]*\.public-attachment-visual\s*> svg \{[^}]*width: 1\.25rem;[^}]*height: 1\.25rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.overview-item-footer-v4 > span:first-child \{[^}]*order: 2/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.overview-item-footer-v4 > \.public-quick-actions \{[^}]*order: 1/,
   );
   assert.match(
     styles,
     /\.public-template-journal \.timeline-node-list-v4 \{[\s\S]*scroll-snap-type: none/,
   );
   assert.match(styles, /\.public-template-traverse \.public-itinerary-header/);
+  assert.match(styles, /\.public-template-neon \.public-itinerary-header/);
+  assert.match(
+    styles,
+    /\.public-template-neon \.overview-day-heading-v4,[\s\S]*linear-gradient\([\s\S]*var\(--neon-magenta\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-neon \.timeline-node-list-v4::before \{[\s\S]*var\(--neon-cyan\)[\s\S]*var\(--neon-magenta\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-neon \.overview-item-card-v4\.activity\.has-media \{[^}]*border-color: transparent;[^}]*linear-gradient\([\s\S]*border-box;[\s\S]*box-shadow:/,
+  );
   assert.doesNotMatch(styles, /content:\s*["']FIELD["']/i);
   assert.match(
     styles,
@@ -1553,6 +1634,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(shareSettings, /public-share-settings-dialog[\s\S]*overflow-x-hidden/);
   assert.match(shareSettings, /--dialog-viewport-height/);
+  assert.doesNotMatch(
+    shareSettings,
+    /<Button[^>]*onClick=\{\(\) => setOpen\(false\)\}[\s\S]*?>\s*Close\s*<\/Button>/,
+  );
   assert.ok(
     shareSettings.indexOf('aria-live="polite"') <
       shareSettings.indexOf("min-h-0 flex-1 touch-pan-y"),
@@ -1696,8 +1781,11 @@ test("public template route, hydration, persistence, and rollback contracts stay
     baseMigration,
     templateMigration,
     transportMigration,
+    canonicalTransportMigration,
+    transportSnapshotMigration,
     sharePageMigration,
     imageRangeMigration,
+    neonMigration,
     databaseTypes,
   ] = await Promise.all(
     [
@@ -1709,8 +1797,11 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260814133837_public_template_architecture_v1.sql",
       "../../../supabase/migrations/20260814175111_add_ethereal_and_journal_public_templates.sql",
       "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
+      "../../../supabase/migrations/20260823220000_canonical_research_transport_titles.sql",
+      "../../../supabase/migrations/20260823221500_refresh_research_transport_snapshots.sql",
       "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
       "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
+      "../../../supabase/migrations/20260823184500_add_neon_public_template.sql",
       "../../types/database.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
@@ -1750,6 +1841,17 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.doesNotMatch(transportMigration, /researchSourceId|booking|price|created_by/);
   assert.match(transportMigration, /revoke all[\s\S]*from public, anon, authenticated/);
   assert.match(transportMigration, /grant execute[\s\S]*to anon, authenticated/);
+  assert.match(
+    canonicalTransportMigration,
+    /when 'flight' then jsonb_build_object\('type', 'flight'\)/,
+  );
+  assert.match(
+    canonicalTransportMigration,
+    /when 'train' then jsonb_build_object\('type', 'train'\)/,
+  );
+  assert.match(transportSnapshotMigration, /then coalesce\(\(\s*select current_item\.value/);
+  assert.match(transportSnapshotMigration, /snapshot_hash = encode/);
+  assert.match(transportSnapshotMigration, /published_item\.value ->> 'ref'/);
   assert.match(baseMigration, /revoke all on function public\.get_public_itinerary_v4/);
   assert.match(
     baseMigration,
@@ -1773,6 +1875,9 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(imageRangeMigration, /long_image_start_day_number integer/);
   assert.match(imageRangeMigration, /create function public\.create_share_page_v2/);
   assert.match(imageRangeMigration, /create function public\.update_share_page_v2/);
+  assert.match(neonMigration, /requested_template_id = 'neon'/);
+  assert.match(neonMigration, /requested_template_version = 1/);
+  assert.match(neonMigration, /raise exception 'PUBLIC_TEMPLATE_UNAVAILABLE'/);
   assert.match(imageRangeMigration, /create function public\.prepare_share_image_version_v2/);
   assert.match(imageRangeMigration, /security definer[\s\S]*set search_path = ''/);
 });
@@ -1869,7 +1974,21 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(presentation, /"car_rental"/);
   assert.match(presentation, /\.filter\(isPublicTransfer\)/);
   assert.doesNotMatch(timelineTransport, /border bg-|rounded-xl|shadow/);
+  assert.match(timelineTransport, /const shortTitle = publicTransportShortLabel\(item\)/);
   const styles = await readAppStyles();
+  assert.match(
+    styles,
+    /\.public-itinerary-shell\[data-public-template-key\] \.overview-transport-list-v4 \{[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(15rem, 100%\), 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-itinerary-shell\[data-public-template-key\] \.timeline-transport-items-v4 \{[^}]*display: grid;[^}]*min-width: 0;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(15rem, 100%\), 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-itinerary-shell\[data-public-template-key\] \.timeline-transport-meta-v4 \{[^}]*overflow: hidden;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
+  );
+  assert.match(styles, /@container public-content \(max-width: 34rem\)/);
   assert.match(styles, /\.timeline-transport-list-v4 \{[\s\S]*align-items: center/);
   assert.doesNotMatch(styles, /\.timeline-transport-list-v4 \{[^}]*flex-direction: column/);
   assert.match(

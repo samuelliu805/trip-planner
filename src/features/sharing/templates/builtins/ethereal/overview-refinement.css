@@ -1,0 +1,205 @@
+.public-template-ethereal .overview-v4 {
+  padding: 0.75rem 1.5rem 5.5rem;
+}
+
+.public-template-ethereal .overview-day-v4,
+.public-template-ethereal .overview-day-v4 + .overview-day-v4 {
+  padding-top: 1.375rem;
+  padding-bottom: 1.625rem;
+}
+
+.public-template-ethereal .overview-day-heading-v4 {
+  margin-bottom: 1rem;
+}
+
+.public-template-ethereal .overview-day-title-v4 > span:last-child {
+  margin-top: 0.4375rem;
+  color: #171815;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+}
+
+.public-template-ethereal .overview-day-v4::after {
+  top: 0.4375rem;
+  color: rgb(50 51 47 / 3.6%);
+  font-size: 6.75rem;
+}
+
+.public-template-ethereal .overview-transport-list-v4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr));
+  margin-bottom: 0.625rem;
+}
+
+.public-template-ethereal .overview-transport-item-v4,
+.public-template-ethereal .overview-transport-item-v4 + .overview-transport-item-v4 {
+  align-content: start;
+  padding: 0.8125rem 0.75rem;
+}
+
+.public-template-ethereal .overview-transport-item-v4 + .overview-transport-item-v4 {
+  border-left: 1px solid rgb(50 51 47 / 10%);
+}
+
+.public-template-ethereal .overview-transport-item-v4:first-child {
+  padding-left: 0;
+}
+
+.public-template-ethereal .overview-transport-item-v4:last-child {
+  padding-right: 0;
+}
+
+.public-template-ethereal .overview-transport-title-v4 {
+  color: #191a18;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.public-template-ethereal .overview-item-card-v4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.public-template-ethereal .overview-item-top-v4 {
+  min-height: 0;
+}
+
+.public-template-ethereal .overview-item-title-v4 {
+  color: #141512;
+  font-weight: 500;
+  line-height: 1.28;
+  letter-spacing: -0.016em;
+}
+
+.public-template-ethereal .overview-item-meta-v4,
+.public-template-ethereal .overview-item-notes-v4,
+.public-template-ethereal .overview-transport-meta-v4,
+.public-template-ethereal .overview-transport-notes-v4 {
+  color: #686962;
+  line-height: 1.5;
+}
+
+.public-template-ethereal .overview-order-v4 {
+  color: #8f8c83;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media {
+  grid-template-areas:
+    "heading place"
+    "attachments place"
+    "notes place"
+    "footer place";
+  grid-template-columns: minmax(0, 1.5fr) minmax(11.5rem, 0.9fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  column-gap: 1.5rem;
+  row-gap: 0.625rem;
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media > .overview-item-top-v4 {
+  grid-area: heading;
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media > .public-item-attachments {
+  grid-area: attachments;
+  align-self: start;
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media > .overview-item-notes-v4 {
+  grid-area: notes;
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media > .overview-item-footer-v4 {
+  grid-area: footer;
+  align-self: end;
+  padding-top: 0;
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media > .public-item-media {
+  min-height: 12rem;
+  align-self: stretch;
+  grid-area: place;
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media .media-grid-v4 {
+  min-height: 12rem;
+  border: 1px solid rgb(50 51 47 / 11%);
+  background: #fffefa;
+  padding: 0.25rem;
+  box-shadow: 0 12px 30px rgb(62 61 56 / 8%);
+}
+
+.public-template-ethereal .overview-item-card-v4.has-media .public-media-gallery,
+.public-template-ethereal .overview-item-card-v4.has-media .public-media-entry,
+.public-template-ethereal .overview-item-card-v4.has-media .media-thumb-v4 {
+  height: 100%;
+  max-height: none;
+}
+
+.public-template-ethereal
+  .overview-item-card-v4
+  .public-quick-actions:not(.is-compact)
+  .public-resource-button {
+  min-height: 2.75rem;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.25rem;
+}
+
+.public-template-ethereal
+  .overview-item-card-v4
+  .public-quick-actions:not(.is-compact)
+  .public-resource-button
+  .public-attachment-visual
+  > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.public-template-ethereal .overview-item-card-v4.is-selected {
+  background: linear-gradient(90deg, rgb(102 113 105 / 9%), rgb(102 113 105 / 3%) 72%);
+  box-shadow: inset 2px 0 rgb(166 141 98 / 52%);
+}
+
+@media (min-width: 900px) {
+  .public-template-ethereal[data-public-template-key="ethereal@1"]
+    .overview-transport-list-v4:has(> :nth-child(3)) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .public-template-ethereal .overview-item-title-v4 {
+    font-size: 1.3125rem;
+  }
+
+  .public-template-ethereal .overview-transport-title-v4 {
+    font-size: 1.0625rem;
+  }
+}
+
+@media (max-width: 899px) {
+  .public-template-ethereal .overview-v4 {
+    padding: 0.5rem 0.875rem 7rem;
+  }
+
+  .public-template-ethereal .overview-day-v4,
+  .public-template-ethereal .overview-day-v4 + .overview-day-v4 {
+    padding-top: 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .public-template-ethereal .overview-day-heading-v4 {
+    margin-bottom: 1rem;
+  }
+
+  .public-template-ethereal .overview-item-card-v4.has-media {
+    display: block;
+  }
+
+  .public-template-ethereal .overview-item-card-v4.has-media > .public-item-media {
+    min-height: 0;
+    margin-top: 0.75rem;
+  }
+}

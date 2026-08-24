@@ -97,6 +97,10 @@
     background: #0b1710;
   }
 
+  .public-itinerary-shell.public-template-neon .timeline-section-header-v4 {
+    background: #0a0f1f;
+  }
+
   .public-itinerary-shell.public-template-traverse .timeline-section-header-v4 {
     background: #d3e0e1;
   }

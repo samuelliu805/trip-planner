@@ -981,6 +981,22 @@ test("research attachments use draft sessions and transfer through Apply and Rev
   assert.match(migration, /revert_research_plan_application_phase_attachment_transfer/);
 });
 
+test("Research journey Apply keeps canonical semantic titles and complete snapshots", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20260823220000_canonical_research_transport_titles.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /apply_research_item_to_variant_v2_phase_canonical_transport_titles/);
+  assert.match(migration, /set title = canonical_title/);
+  assert.match(migration, /jsonb_set\(entry\.value, '\{after,title\}'/);
+  assert.match(migration, /after_snapshot =/);
+  assert.match(migration, /item\.details ->> 'mode' = source_category/);
+  assert.match(migration, /source\.category in \('flight', 'train'\)/);
+});
+
 test("Applied is a one-time Plan snapshot refreshed after canonical mutations", async () => {
   const [migration, itemMutations, dayMutations, query] = await Promise.all([
     readFile(

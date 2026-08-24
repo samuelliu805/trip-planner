@@ -1,0 +1,93 @@
+@media (max-width: 899px) {
+  .public-template-neon[data-public-template-key="neon@1"] .overview-item-card-v4 {
+    padding: 1rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .overview-item-title-v4,
+  .public-template-neon[data-public-template-key="neon@1"] .overview-transport-title-v4,
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-node-title-v4 {
+    font-size: 1.0625rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .overview-item-meta-v4,
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-node-meta-v4 {
+    font-size: 0.75rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .overview-item-footer-v4,
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-node-type-v4 {
+    font-size: 0.625rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-transport-title-v4 {
+    flex: 0 0 auto;
+    overflow: visible;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+    overflow-wrap: normal;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-transport-copy-v4 {
+    gap: 0.5rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .overview-transport-item-v4 {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .overview-transport-title-v4 {
+    overflow: visible;
+    overflow-wrap: normal;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .overview-transport-meta-v4,
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-transport-meta-v4 {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-transport-meta-v4 {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-day-copy-v4 strong {
+    font-size: 1.125rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-day-copy-v4 span,
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-node-meta-v4 {
+    font-size: 0.8125rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-day-count-v4,
+  .public-template-neon[data-public-template-key="neon@1"] .timeline-node-type-v4 {
+    font-size: 0.625rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"]
+    .timeline-node-content-v4
+    .public-quick-actions
+    a,
+  .public-template-neon[data-public-template-key="neon@1"]
+    .timeline-node-content-v4
+    .public-quick-actions
+    summary {
+    font-size: 0.75rem;
+  }
+
+  .public-template-neon[data-public-template-key="neon@1"] .public-matrix [role="gridcell"],
+  .public-template-neon[data-public-template-key="neon@1"] .public-matrix [role="rowheader"] {
+    font-size: 0.8125rem;
+  }
+}

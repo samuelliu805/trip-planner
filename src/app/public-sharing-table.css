@@ -17,7 +17,8 @@
 }
 
 .public-template-standard .public-matrix > [role="grid"],
-.public-template-bento .public-matrix > [role="grid"] {
+.public-template-bento .public-matrix > [role="grid"],
+.public-template-neon .public-matrix > [role="grid"] {
   padding-bottom: 5rem;
 }
 
