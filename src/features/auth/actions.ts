@@ -1,10 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import type { AuthActionState } from "@/features/auth/types";
+import { siteUrlFromHeaders } from "@/features/sharing/site-url";
 
 const credentialsSchema = z.object({
   email: z.email("Enter a valid email address."),
@@ -21,6 +23,18 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: "Email or password is incorrect." };
   redirect("/trips");
+}
+
+export async function continueWithGoogle() {
+  const supabase = await createClient();
+  const siteUrl = siteUrlFromHeaders(await headers());
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${siteUrl}/auth/callback` },
+  });
+
+  if (error || !data.url) redirect("/login?error=google");
+  redirect(data.url);
 }
 
 export async function signup(
