@@ -124,10 +124,15 @@
 }
 
 .public-template-journal .overview-item-footer-v4 > span:first-child {
+  order: 2;
   color: rgb(73 99 79 / 78%);
   font: 600 0.625rem/1.2 var(--journal-hand);
   letter-spacing: 0.02em;
   text-transform: capitalize;
+}
+
+.public-template-journal .overview-item-footer-v4 > .public-quick-actions {
+  order: 1;
 }
 
 .public-template-journal .overview-transport-list-v4 {

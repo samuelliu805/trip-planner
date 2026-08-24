@@ -1469,7 +1469,27 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
-    /\.public-template-ethereal \.overview-day-v4 \+ \.overview-day-v4 \{[\s\S]*margin-top: 0;[\s\S]*padding-top: 1\.75rem/,
+    /\.public-template-ethereal \.overview-day-v4,\s*\.public-template-ethereal \.overview-day-v4 \+ \.overview-day-v4 \{[^}]*padding-top: 1\.375rem;[^}]*padding-bottom: 1\.625rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-item-card-v4\.has-media \{[^}]*grid-template-areas:[^}]*"heading place"[^}]*"attachments place"[^}]*"footer place"[^}]*row-gap: 0\.625rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.overview-item-card-v4\.has-media > \.public-item-media \{[^}]*grid-area: place/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal\[data-public-template-key="ethereal@1"\][\s\S]*\.overview-transport-list-v4:has\(> :nth-child\(3\)\) \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.overview-item-footer-v4 > span:first-child \{[^}]*order: 2/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.overview-item-footer-v4 > \.public-quick-actions \{[^}]*order: 1/,
   );
   assert.match(
     styles,
