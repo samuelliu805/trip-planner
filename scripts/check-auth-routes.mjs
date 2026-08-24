@@ -2,12 +2,16 @@ const baseUrl = new URL(process.argv[2] ?? process.env.APP_URL ?? "http://localh
 
 const routes = [
   { markers: ["Welcome back", "Continue with Google"], pathname: "/login" },
-  { markers: ["Create your account", "Continue with Google"], pathname: "/signup" },
+  {
+    absentMarkers: ["Email address", "Create a password"],
+    markers: ["Create your account", "Continue with Google"],
+    pathname: "/signup",
+  },
 ];
 
 const failures = [];
 
-for (const { markers, pathname } of routes) {
+for (const { absentMarkers = [], markers, pathname } of routes) {
   const url = new URL(pathname, baseUrl);
 
   try {
@@ -17,9 +21,17 @@ for (const { markers, pathname } of routes) {
     });
     const body = await response.text();
 
-    if (response.status !== 200 || markers.some((marker) => !body.includes(marker))) {
+    if (
+      response.status !== 200 ||
+      markers.some((marker) => !body.includes(marker)) ||
+      absentMarkers.some((marker) => body.includes(marker))
+    ) {
       failures.push(
-        `${pathname}: expected 200 with ${markers.map(JSON.stringify).join(" and ")}, received ${response.status}`,
+        `${pathname}: expected 200 with ${markers.map(JSON.stringify).join(" and ")}` +
+          (absentMarkers.length > 0
+            ? ` and without ${absentMarkers.map(JSON.stringify).join(" or ")}`
+            : "") +
+          `, received ${response.status}`,
       );
       continue;
     }

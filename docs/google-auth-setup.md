@@ -27,6 +27,10 @@ Only request the `openid`, `email`, and `profile` scopes for sign-in.
      - `http://localhost:3000/**`
      - `https://*-shus-projects-f7d1dcd0.vercel.app/**`
 4. Leave **OAuth Server** disabled. It is for making Trip Planner an identity provider for other apps.
+5. Under **Authentication → Sign In / Providers → Email**, turn off email signup while the public
+   email signup form is deferred. Keep the project-level **Allow new users to sign up** setting on,
+   because Supabase needs it to create first-time Google users. Existing password users can still use
+   `/login`.
 
 The Vercel wildcard belongs only in Supabase. Google does not accept wildcards for OAuth redirect
 URIs, and it does not need every Preview URL: Google always returns to the one fixed Supabase
@@ -40,6 +44,16 @@ Supabase automatically links a Google identity to an existing confirmed account 
 An account created with Google can add password login later from an authenticated account-settings
 flow; submitting the public signup form again does not add a password to that account.
 
+The public `/signup` route currently offers Google only, and its server action also rejects email
+signup requests. `EMAIL_SIGNUP_ENABLED` in `src/features/auth/config.ts` is the application-side
+switch to restore the form later. Google OAuth sends `prompt=select_account`, so every new login lets
+the user choose among their active Google accounts. Switching accounts is: log out of Trip Planner,
+select **Continue with Google**, then choose another account. Different Google email addresses remain
+different Trip Planner users; identical verified email addresses are linked automatically.
+
+If security notification emails are enabled under **Authentication → Emails**, disable the
+**Identity linked** notification during this email-free phase as well. Custom SMTP can remain off.
+
 ## Verification
 
 1. Open `/login` and select **Continue with Google**.
@@ -49,3 +63,4 @@ flow; submitting the public signup form again does not add a password to that ac
 5. Sign out and repeat from `/signup`; the same Google account must return to the same user.
 6. For a confirmed password account with the same email, Google login must add a Google identity to
    that existing user rather than create another user.
+7. Sign out, select **Continue with Google** again, and confirm Google displays its account chooser.
