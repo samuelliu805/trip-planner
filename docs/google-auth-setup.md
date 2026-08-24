@@ -25,7 +25,7 @@ Only request the `openid`, `email`, and `profile` scopes for sign-in.
    - Redirect URLs:
      - `https://trip-planner-ivory-one.vercel.app/auth/callback`
      - `http://localhost:3000/**`
-     - `https://*-<vercel-team-or-account-slug>.vercel.app/**`
+     - `https://*-shus-projects-f7d1dcd0.vercel.app/**`
 4. Leave **OAuth Server** disabled. It is for making Trip Planner an identity provider for other apps.
 
 The Vercel wildcard belongs only in Supabase. Google does not accept wildcards for OAuth redirect
@@ -33,9 +33,8 @@ URIs, and it does not need every Preview URL: Google always returns to the one f
 callback URL. Trip Planner then asks Supabase to return to the origin that started the sign-in, which
 allows the current Preview URL to receive the completed session.
 
-Find `<vercel-team-or-account-slug>` at the end of a generated Preview URL. For example, a Preview
-URL ending in `-acme.vercel.app` uses `acme` as the slug. Keep the production callback exact even
-when the Preview wildcard is present.
+The Preview wildcard uses the current Vercel account slug from Trip Planner deployment URLs. Keep
+the production callback exact even when the Preview wildcard is present.
 
 Supabase automatically links a Google identity to an existing confirmed account with the same email.
 An account created with Google can add password login later from an authenticated account-settings
