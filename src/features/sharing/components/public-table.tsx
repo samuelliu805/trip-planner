@@ -1,6 +1,8 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { format, parseISO } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
 import {
   MatrixGridHeader,
@@ -42,6 +44,7 @@ export function PublicTable({
   selectedItemRef?: string;
 }) {
   const matrixRef = useContainedPublicMatrix();
+  const { locale, t } = useI18n();
   const columns = itinerary.settings.showNotes
     ? matrixCategoryColumns
     : matrixCategoryColumns.filter(({ id }) => id !== "notes");
@@ -49,6 +52,7 @@ export function PublicTable({
   return (
     <section
       aria-label="Read-only itinerary matrix"
+      data-i18n-aria-label={"Read-only itinerary matrix"}
       className="public-matrix h-full min-w-0 overflow-auto border-y bg-background outline-none"
       ref={matrixRef}
       role="region"
@@ -56,7 +60,7 @@ export function PublicTable({
     >
       <div
         aria-colcount={columns.length + 2}
-        aria-label={`${itinerary.trip.title} read-only itinerary matrix`}
+        aria-label={t("{title} read-only itinerary matrix", { title: itinerary.trip.title })}
         aria-rowcount={itinerary.days.length + 1}
         className="min-w-max"
         role="grid"
@@ -78,14 +82,20 @@ export function PublicTable({
                 role="rowheader"
               >
                 <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
-                  Day {day.dayNumber}
+                  <T message={"Day {day}"} values={{ day: day.dayNumber }} />
                 </span>
                 <span className="block font-mono text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
-                  {day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}
+                  {day.date
+                    ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                        locale: locale === "zh-CN" ? zhCN : undefined,
+                      })
+                    : t("Date TBD")}
                 </span>
                 {day.date ? (
                   <span className="block text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
-                    {format(parseISO(day.date), "EEE")}
+                    {format(parseISO(day.date), "EEE", {
+                      locale: locale === "zh-CN" ? zhCN : undefined,
+                    })}
                   </span>
                 ) : null}
               </div>
@@ -119,7 +129,7 @@ export function PublicTable({
                             title={
                               day.localities?.join(" · ") ||
                               day.primaryLocality ||
-                              "City / town unavailable"
+                              t("City / town unavailable")
                             }
                             type="location"
                           />

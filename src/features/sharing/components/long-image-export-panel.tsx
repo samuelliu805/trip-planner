@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 
 import {
   longImageScopeFromPage,
@@ -40,12 +41,14 @@ export function LongImageExportPanel({
   sharePage: PublicItineraryLink;
   siteUrl: string;
 }) {
+  const { locale, t } = useI18n();
   const controller = useLongImageExport({ imageState, onImageStateChange, sharePage, siteUrl });
   const configuredScope = longImageScopeFromPage(sharePage);
   const generatedScope = imageState?.renderConfig.scope ?? configuredScope;
   const [scope, setScope] = useState(generatedScope);
   const snapshotChanged = imageState
-    ? sharePage.snapshotHash !== imageState.sourceSnapshotHash
+    ? sharePage.snapshotHash !== imageState.sourceSnapshotHash ||
+      imageState.renderConfig.locale !== locale
     : false;
   const canDownloadCurrent = Boolean(
     imageState && !snapshotChanged && sameLongImageScope(scope, generatedScope),
@@ -61,14 +64,14 @@ export function LongImageExportPanel({
       />
       {snapshotChanged ? (
         <p className="border-l-2 border-primary bg-primary/5 px-3 py-2 text-xs">
-          Trip updated. A new image will use the latest content.
+          <T message="Trip or language updated. A new image will use the latest content." />
         </p>
       ) : null}
       {canDownloadCurrent ? (
         <>
           <Button asChild className="min-h-11 w-full min-[1200px]:hidden" size="sm">
             <a href={controller.permanentUrl} rel="noopener noreferrer" target="_blank">
-              <ExternalLink aria-hidden="true" className="size-4" /> Open image
+              <ExternalLink aria-hidden="true" className="size-4" /> <T message="Open image" />
             </a>
           </Button>
           <Button
@@ -76,7 +79,7 @@ export function LongImageExportPanel({
             onClick={controller.downloadCurrent}
             size="sm"
           >
-            <Download className="size-4" /> Download image
+            <Download className="size-4" /> <T message="Download image" />
           </Button>
         </>
       ) : (
@@ -95,11 +98,15 @@ export function LongImageExportPanel({
             </>
           )}
           {controller.pending ? (
-            "Creating image…"
+            t("Creating image…")
           ) : (
             <>
-              <span className="min-[1200px]:hidden">Create image</span>
-              <span className="hidden min-[1200px]:inline">Create image &amp; download</span>
+              <span className="min-[1200px]:hidden">
+                <T message="Create image" />
+              </span>
+              <span className="hidden min-[1200px]:inline">
+                <T message="Create image & download" />
+              </span>
             </>
           )}
         </Button>
@@ -108,7 +115,9 @@ export function LongImageExportPanel({
         <details className="group border-t pt-3">
           <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium [&::-webkit-details-marker]:hidden">
             <Settings2 aria-hidden="true" className="size-4" />
-            <span className="min-w-0 flex-1">Manage image link</span>
+            <span className="min-w-0 flex-1">
+              <T message="Manage image link" />
+            </span>
             <ChevronDown
               aria-hidden="true"
               className="size-4 shrink-0 transition-transform group-open:rotate-180"
@@ -116,17 +125,17 @@ export function LongImageExportPanel({
           </summary>
           <div className="grid grid-cols-2 gap-2 pt-2">
             <p className="col-span-2 text-xs text-muted-foreground">
-              {longImageScopeLabel(generatedScope)} · Available until{" "}
-              {formatShareImageExpiry(imageState.expiresAt)}
+              {longImageScopeLabel(generatedScope, locale)} · <T message="Available until" />{" "}
+              {formatShareImageExpiry(imageState.expiresAt, locale)}
             </p>
             <Button asChild className="min-h-11 min-w-0" size="sm" variant="outline">
               <a
-                aria-label="Open image page"
+                aria-label={t("Open image page")}
                 href={controller.permanentUrl}
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                <ExternalLink aria-hidden="true" className="size-4" /> Open page
+                <ExternalLink aria-hidden="true" className="size-4" /> <T message="Open page" />
               </a>
             </Button>
             <Button
@@ -140,7 +149,7 @@ export function LongImageExportPanel({
               ) : (
                 <Copy aria-hidden="true" className="size-4" />
               )}
-              {controller.copied ? "Copied" : "Copy link"}
+              <T message={controller.copied ? "Copied" : "Copy link"} />
             </Button>
             <Button
               className="col-span-2 min-h-11"
@@ -148,7 +157,7 @@ export function LongImageExportPanel({
               size="sm"
               variant="outline"
             >
-              <Share2 className="size-4" /> Share image
+              <Share2 className="size-4" /> <T message="Share image" />
             </Button>
             <LongImageRegenerateDialog
               onGenerate={(mode) => controller.generate(mode, scope)}

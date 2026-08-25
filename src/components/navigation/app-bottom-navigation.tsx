@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, type LucideIcon } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 
@@ -30,10 +31,13 @@ function NavigationLinkContent({
       ) : (
         <item.Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={active ? 2.5 : 2} />
       )}
-      <span className="truncate">{item.label}</span>
+      <span className="truncate">
+        <Localized value={item.label} />
+      </span>
       {pending ? (
         <span className="sr-only" role="status">
-          Opening {item.label}
+          <T message={" Opening "} />
+          <Localized value={item.label} />
         </span>
       ) : null}
     </>
@@ -55,6 +59,7 @@ export function AppBottomNavigation({
   items: AppBottomNavigationItem[];
   onSelect?: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const tabs = Boolean(onSelect);
 
   function handleKey(event: React.KeyboardEvent<HTMLButtonElement>, currentId: string) {
@@ -84,7 +89,9 @@ export function AppBottomNavigation({
     const content = (
       <>
         <item.Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={active ? 2.5 : 2} />
-        <span className="truncate">{item.label}</span>
+        <span className="truncate">
+          <Localized value={item.label} />
+        </span>
       </>
     );
     const itemClasses = cn(
@@ -128,14 +135,14 @@ export function AppBottomNavigation({
 
   return (
     <nav
-      aria-label={ariaLabel}
+      aria-label={t(ariaLabel)}
       className={cn(
         "app-bottom-navigation grid gap-1 rounded-2xl border bg-background/95 p-1 shadow-xl backdrop-blur-xl",
         className,
       )}
     >
       {tabs ? (
-        <div aria-label={ariaLabel} className="contents" role="tablist">
+        <div aria-label={t(ariaLabel)} className="contents" role="tablist">
           {links}
         </div>
       ) : (

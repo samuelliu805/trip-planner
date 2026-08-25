@@ -1,3 +1,4 @@
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import {
   Bike,
   BusFront,
@@ -55,16 +56,21 @@ export function PublicOverviewRoutePanel({
   pending: boolean;
   stops: OverviewStop[];
 }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-sm font-semibold">
         <Route aria-hidden="true" className="size-4 text-primary" />
-        Overview connections
+        <T message={" Overview connections "} />
       </div>
       {calculation ? (
         <PublicRouteLegDetails labels={stops.map(({ title }) => title)} legs={calculation.legs} />
       ) : stops.length > 1 ? (
-        <ol aria-label="Whole-trip stage connections" className="divide-y border">
+        <ol
+          aria-label="Whole-trip stage connections"
+          data-i18n-aria-label={"Whole-trip stage connections"}
+          className="divide-y border"
+        >
           {stops.slice(0, -1).map((stop, index) => {
             const next = stops[index + 1];
             const mode = modes[index] ?? "self_driving";
@@ -84,24 +90,29 @@ export function PublicOverviewRoutePanel({
                     value={mode}
                   >
                     <SelectTrigger
-                      aria-label={`Travel from ${stop.title} to ${next.title}`}
+                      aria-label={t("Travel from {from} to {to}", {
+                        from: stop.title,
+                        to: next.title,
+                      })}
                       className="h-9"
                     >
                       <span className="flex items-center gap-1.5 truncate text-xs">
                         <ModeIcon aria-hidden="true" className="size-3.5 shrink-0" />
-                        {overviewModeLabels[mode]}
+                        <Localized value={overviewModeLabels[mode]} />
                       </span>
                     </SelectTrigger>
                     <SelectContent>
                       {overviewRouteModes.map((option) => (
                         <SelectItem key={option} value={option}>
-                          {overviewModeLabels[option]}
+                          <Localized value={overviewModeLabels[option]} />
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <span className="text-right text-xs text-muted-foreground">Preview</span>
+                  <span className="text-right text-xs text-muted-foreground">
+                    <T message={"Preview"} />
+                  </span>
                 )}
               </li>
             );
@@ -109,19 +120,19 @@ export function PublicOverviewRoutePanel({
         </ol>
       ) : (
         <p className="py-2 text-xs text-muted-foreground">
-          Add usable Activity places in at least two stages to show a route.
+          <T message={" Add usable Activity places in at least two stages to show a route. "} />
         </p>
       )}
       {error ? (
         <p aria-live="polite" className="text-xs text-destructive">
-          {error}
+          <Localized value={error} />
         </p>
       ) : null}
       {allowExplore ? (
         <div className="flex gap-2">
           {calculation ? (
             <Button className="min-h-11 flex-1" onClick={onReset} type="button" variant="outline">
-              Edit route
+              <T message={" Edit route "} />
             </Button>
           ) : (
             <Button
@@ -136,12 +147,14 @@ export function PublicOverviewRoutePanel({
               ) : (
                 <Calculator className="size-4" />
               )}
-              {pending ? "Calculating…" : "Calculate whole trip"}
+              <Localized value={pending ? "Calculating…" : "Calculate whole trip"} />
             </Button>
           )}
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground">Route calculation is disabled by the owner.</p>
+        <p className="text-xs text-muted-foreground">
+          <T message={"Route calculation is disabled by the owner."} />
+        </p>
       )}
     </div>
   );

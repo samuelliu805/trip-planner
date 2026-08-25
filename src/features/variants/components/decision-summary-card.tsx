@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ChevronDown, CircleDot, Route } from "lucide-react";
 
 import { DecisionSummaryMetric } from "@/features/variants/components/decision-summary-card-elements";
@@ -22,13 +23,14 @@ export function DecisionSummaryCard({
   summary: VariantDecisionSummary;
   visibility: DecisionSummaryMetricVisibility;
 }) {
+  const { t } = useI18n();
   const isActive = activeVariantId === summary.variantId;
   return (
     <article
       aria-label={
         summary.name +
-        (summary.isPrimary ? ", Primary baseline" : "") +
-        (isActive ? ", Editing" : ", Read only")
+        (summary.isPrimary ? t(", Primary baseline") : "") +
+        (isActive ? t(", Editing") : t(", Read only"))
       }
       className="min-w-0 rounded-lg border bg-background p-3 shadow-sm"
     >
@@ -45,16 +47,18 @@ export function DecisionSummaryCard({
           <div className="mt-1 flex flex-wrap gap-1">
             {summary.isPrimary ? (
               <span className="rounded-full border px-2 py-0.5 text-[10px] font-medium">
-                Primary · baseline
+                <T message={" Primary · baseline "} />
               </span>
             ) : null}
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {isActive ? "Editing" : "Read only"}
+              <Localized value={isActive ? "Editing" : "Read only"} />
             </span>
           </div>
         </div>
         {!summary.isPrimary ? (
-          <span className="shrink-0 text-[10px] font-medium text-muted-foreground">vs Primary</span>
+          <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
+            <T message={"vs Primary"} />
+          </span>
         ) : null}
       </header>
 
@@ -68,7 +72,7 @@ export function DecisionSummaryCard({
           delta={summary.deltas?.days}
           deltaKind="planning day"
           label="Days"
-          value={summary.dayCount + (summary.dayCount === 1 ? " day" : " days")}
+          value={t("{count} day(s)", { count: summary.dayCount })}
         />
         {visibility.nights ? (
           <DecisionSummaryMetric
@@ -79,7 +83,7 @@ export function DecisionSummaryCard({
             value={
               summary.nightCount === null
                 ? "Unknown"
-                : summary.nightCount + (summary.nightCount === 1 ? " night" : " nights")
+                : t("{count} night(s)", { count: summary.nightCount })
             }
           />
         ) : null}
@@ -91,12 +95,12 @@ export function DecisionSummaryCard({
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <span className="flex items-center gap-2">
               <Route aria-hidden="true" className="size-4 text-muted-foreground" />
-              Route details
+              <T message={" Route details "} />
             </span>
             <span className="flex items-center gap-2 text-[10px] font-normal text-muted-foreground">
               {summary.routeCoverage.totalSavedPlans
-                ? `${summary.routeCoverage.totalSavedPlans} saved`
-                : "No saved Day routes"}
+                ? t("{count} saved", { count: summary.routeCoverage.totalSavedPlans })
+                : t("No saved Day routes")}
               <ChevronDown
                 aria-hidden="true"
                 className="size-4 transition-transform group-open:rotate-180"

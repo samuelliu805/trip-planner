@@ -933,7 +933,7 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
   assert.doesNotMatch(ui, /Known Cost/);
   assert.match(ui, /Route details/);
   assert.match(ui, /Current saved route distance by mode/);
-  assert.match(ui, /Walk distance|\{label\} distance/);
+  assert.match(ui, /Localized value=\{label\}[\s\S]*message=\{" distance"\}/);
   assert.doesNotMatch(ui, /Known day-route distance|Known duration|Nights unknown/);
   assert.match(ui, /Excluded from totals|excluded from totals/);
   assert.match(ui, /Retry summary/);

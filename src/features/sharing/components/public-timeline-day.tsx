@@ -1,6 +1,8 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { format, parseISO } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import { NotebookText } from "lucide-react";
 import { useEffect, useRef } from "react";
 
@@ -83,6 +85,7 @@ export function PublicTimelineDay({
   const { nodes, notes, transfers } = publicTimelineDayPresentation(day);
   const planCount = nodes.length + notes.length;
   const { railRef: timelineRailRef, sectionRef: timelineSectionRef } = useTimelineRailWheel();
+  const { locale, t } = useI18n();
 
   return (
     <article
@@ -103,19 +106,31 @@ export function PublicTimelineDay({
       tabIndex={-1}
     >
       <header className="timeline-section-header-v4">
-        <span className="timeline-day-index-v4">D{day.dayNumber}</span>
+        <span className="timeline-day-index-v4">{t("D{day}", { day: day.dayNumber })}</span>
         <div className="timeline-day-copy-v4">
-          <strong>{day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}</strong>
+          <strong>
+            {day.date
+              ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                  locale: locale === "zh-CN" ? zhCN : undefined,
+                })
+              : t("Date TBD")}
+          </strong>
           {locality ? <span>{locality}</span> : null}
         </div>
         <span className="timeline-day-count-v4">
-          {planCount} {planCount === 1 ? "plan" : "plans"}
+          {locale === "zh-CN"
+            ? `${planCount} 项安排`
+            : `${planCount} ${planCount === 1 ? "plan" : "plans"}`}
         </span>
 
         {transfers.length ? (
-          <section aria-label="Major transport" className="timeline-transport-list-v4">
+          <section
+            aria-label="Major transport"
+            data-i18n-aria-label={"Major transport"}
+            className="timeline-transport-list-v4"
+          >
             <span aria-hidden="true" className="timeline-transport-label-v4">
-              Transport
+              <T message={" Transport "} />
             </span>
             <div className="timeline-transport-items-v4">
               {transfers.map(({ item, label }) => (
@@ -138,11 +153,17 @@ export function PublicTimelineDay({
           ))}
         </ol>
       ) : transfers.length || notes.length || day.notes ? null : (
-        <p className="public-timeline-empty">No shared plans for this day.</p>
+        <p className="public-timeline-empty">
+          <T message={"No shared plans for this day."} />
+        </p>
       )}
 
       {notes.length ? (
-        <section aria-label="Shared notes" className="public-timeline-notes">
+        <section
+          aria-label="Shared notes"
+          data-i18n-aria-label={"Shared notes"}
+          className="public-timeline-notes"
+        >
           {notes.map((item) => (
             <div
               aria-current={selectedItemRef === item.ref ? "true" : undefined}

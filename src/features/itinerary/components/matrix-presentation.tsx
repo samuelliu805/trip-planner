@@ -1,3 +1,4 @@
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import {
   Bike,
   BusFront,
@@ -71,7 +72,7 @@ export function MatrixItemSummary({
                 : "truncate text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
           }
         >
-          {transportMode ? transportModeLabels[transportMode] : title}
+          {transportMode ? <Localized value={transportModeLabels[transportMode]} /> : title}
         </span>
       </span>
       {subtitle ? (
@@ -105,17 +106,19 @@ export function MatrixGridHeader({
         {mobileDateLabel ? (
           <>
             <span className="sm:hidden">{mobileDateLabel}</span>
-            <span className="hidden sm:inline">Date</span>
+            <span className="hidden sm:inline">
+              <T message={"Date"} />
+            </span>
           </>
         ) : (
-          "Date"
+          <T message="Date" />
         )}
       </div>
       <div
         className="matrix-day-column sticky left-24 z-10 flex w-16 shrink-0 items-center border-r bg-muted px-2"
         role="columnheader"
       >
-        Day
+        <T message={" Day "} />
       </div>
       {columns.map((column) => (
         <div
@@ -123,7 +126,7 @@ export function MatrixGridHeader({
           key={column.id}
           role="columnheader"
         >
-          {column.label}
+          <Localized value={column.label} />
         </div>
       ))}
     </div>

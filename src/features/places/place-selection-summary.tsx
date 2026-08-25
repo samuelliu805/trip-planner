@@ -28,6 +28,7 @@ export function PlaceSelectionSummary({
         </div>
         <Button
           aria-label="Clear map place"
+          data-i18n-aria-label={"Clear map place"}
           className="size-11 p-0"
           disabled={disabled}
           onClick={onClear}

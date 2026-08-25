@@ -1,3 +1,6 @@
+"use client";
+
+import { Localized } from "@/features/i18n/i18n-provider";
 import { Check } from "lucide-react";
 
 export function PlannerSaveStatus({ mutating }: { mutating: boolean }) {
@@ -8,7 +11,9 @@ export function PlannerSaveStatus({ mutating }: { mutating: boolean }) {
       ) : (
         <Check className="size-3.5 text-primary" />
       )}
-      <span>{mutating ? "Saving…" : "Saved"}</span>
+      <span>
+        <Localized value={mutating ? "Saving…" : "Saved"} />
+      </span>
     </span>
   );
 }

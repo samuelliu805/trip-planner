@@ -1,3 +1,6 @@
+"use client";
+
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { ChevronDown, ExternalLink } from "lucide-react";
 
 import { actionLabel, safeExternalUrl } from "../presentation";
@@ -12,6 +15,7 @@ export function PublicQuickActions({
   item: PublicItineraryItem;
   quiet?: boolean;
 }) {
+  const { t } = useI18n();
   const links = (item.links ?? []).flatMap((link) => {
     const url = safeExternalUrl(link.url);
     return url ? [{ ...link, label: actionLabel(link.label), url }] : [];
@@ -24,7 +28,7 @@ export function PublicQuickActions({
       className={`public-quick-actions ${quiet ? "is-quiet" : ""} ${compact ? "is-compact shrink-0" : ""}`}
     >
       <a
-        aria-label={`Open website ${primary.label}`}
+        aria-label={t("Open website {label}", { label: primary.label })}
         className="public-resource-button touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         href={primary.url}
         rel="noopener noreferrer"
@@ -35,21 +39,27 @@ export function PublicQuickActions({
         </span>
         <span className="public-attachment-copy">
           <span className="public-attachment-name">{primary.label}</span>
-          <span className="public-attachment-meta">Website</span>
+          <span className="public-attachment-meta">
+            <T message={"Website"} />
+          </span>
         </span>
       </a>
       {secondary.length ? (
         <details className="relative">
           <summary
-            aria-label={`Show ${secondary.length} more ${secondary.length === 1 ? "link" : "links"}`}
+            aria-label={t("Show {count} more link(s)", { count: secondary.length })}
             className="public-resource-button touch-manipulation cursor-pointer list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="public-attachment-visual" aria-hidden="true">
               <ChevronDown className="size-4" />
             </span>
             <span className="public-attachment-copy">
-              <span className="public-attachment-name">More links</span>
-              <span className="public-attachment-meta">{secondary.length} more</span>
+              <span className="public-attachment-name">
+                <T message={"More links"} />
+              </span>
+              <span className="public-attachment-meta">
+                {t("{count} more link(s)", { count: secondary.length })}
+              </span>
             </span>
           </summary>
           <div className="absolute right-0 top-full z-[120] mt-1 min-w-36 border bg-background p-1 shadow-lg">

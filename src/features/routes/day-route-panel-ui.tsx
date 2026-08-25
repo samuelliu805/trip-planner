@@ -1,3 +1,6 @@
+"use client";
+
+import { Localized } from "@/features/i18n/i18n-provider";
 import type { ReactNode } from "react";
 
 import type { DayRouteUi } from "./use-day-route";
@@ -13,9 +16,10 @@ const statusLabels = {
 export const formatRouteDistance = (meters: number) =>
   meters >= 1_000 ? `${(meters / 1_000).toFixed(1)} km` : `${Math.round(meters)} m`;
 
-export const formatRouteDuration = (seconds: number) => {
+export const formatRouteDuration = (seconds: number, locale: "en" | "zh-CN" = "en") => {
   const minutes = Math.round(seconds / 60);
   const hours = Math.floor(minutes / 60);
+  if (locale === "zh-CN") return hours ? `${hours} 小时 ${minutes % 60} 分钟` : `${minutes} 分钟`;
   return hours ? `${hours}h ${minutes % 60}m` : `${minutes} min`;
 };
 
@@ -25,7 +29,7 @@ export function DayRouteStatusBadge({ route }: { route: DayRouteUi }) {
     <span
       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${route.status === "current" ? "bg-primary/15 text-primary" : "bg-amber-100 text-amber-900"}`}
     >
-      {statusLabels[route.status]}
+      <Localized value={statusLabels[route.status]} />
     </span>
   );
 }

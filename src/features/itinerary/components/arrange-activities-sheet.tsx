@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Undo2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -41,6 +42,7 @@ export function ArrangeActivitiesSheet({
   open: boolean;
   pending: boolean;
 }) {
+  const { t } = useI18n();
   const [movingItemId, setMovingItemId] = useState<string | undefined>(initialMovingItemId);
   const [undoOrder, setUndoOrder] = useState<string[]>();
   const [announcement, setAnnouncement] = useState("");
@@ -70,30 +72,31 @@ export function ArrangeActivitiesSheet({
         return;
       }
       setMovingItemId(undefined);
-      setAnnouncement("Activity move cancelled");
+      setAnnouncement(t("Activity move cancelled"));
     };
     window.addEventListener("keydown", cancel);
     return () => window.removeEventListener("keydown", cancel);
-  }, [initialMovingItemId, movingItemId, onInitialPlacementComplete]);
+  }, [initialMovingItemId, movingItemId, onInitialPlacementComplete, t]);
 
   async function place(index: number) {
     if (!day || !movingItemId || pending) return;
     const before = canonicalActivityOrderIds(day.items);
     const next = placeActivityAtGap(day.items, movingItemId, index, initialPlacementActive);
     if (sameActivityOrder(before, next)) {
-      if (initialPlacementActive) finishInitialPlacement("Activity kept in its current position");
+      if (initialPlacementActive)
+        finishInitialPlacement(t("Activity kept in its current position"));
       else {
         setMovingItemId(undefined);
-        setAnnouncement("Activity already in that position");
+        setAnnouncement(t("Activity already in that position"));
       }
       return;
     }
     if (!(await onCommit(day, next))) return;
     setUndoOrder(before);
-    if (initialPlacementActive) finishInitialPlacement("Activity placed");
+    if (initialPlacementActive) finishInitialPlacement(t("Activity placed"));
     else {
       setMovingItemId(undefined);
-      setAnnouncement("Activity moved");
+      setAnnouncement(t("Activity moved"));
     }
   }
 
@@ -101,7 +104,7 @@ export function ArrangeActivitiesSheet({
     if (!day || !undoOrder || pending) return;
     if (await onCommit(day, undoOrder)) {
       setUndoOrder(undefined);
-      setAnnouncement("Activity move undone");
+      setAnnouncement(t("Activity move undone"));
     }
   }
 
@@ -121,14 +124,23 @@ export function ArrangeActivitiesSheet({
         <SheetHeader>
           <SheetTitle>
             {initialPlacementActive && movingItem
-              ? `Click to place ${movingItem.title}`
-              : `Arrange Day ${day?.day_number ?? ""} Activities`}
+              ? t("Click to place {title}", { title: movingItem.title })
+              : t("Arrange Day {day} Activities", { day: day?.day_number ?? "" })}
           </SheetTitle>
           <SheetDescription>
             {initialPlacementActive
-              ? `Choose this new item’s position in Day ${day?.day_number ?? ""}. Click a gap, or use Arrow keys to move between gaps and Enter to place.`
-              : "Select an untimed Activity, then click a gap. Use Arrow keys to move between gaps and Enter to place."}{" "}
-            Timed items stay anchored and Hotel stays last. Transport stays in its separate section.
+              ? t(
+                  "Choose this new item’s position in Day {day}. Click a gap, or use Arrow keys to move between gaps and Enter to place.",
+                  { day: day?.day_number ?? "" },
+                )
+              : t(
+                  "Select an untimed Activity, then click a gap. Use Arrow keys to move between gaps and Enter to place.",
+                )}{" "}
+            <T
+              message={
+                " Timed items stay anchored and Hotel stays last. Transport stays in its separate section. "
+              }
+            />
           </SheetDescription>
         </SheetHeader>
 
@@ -136,24 +148,27 @@ export function ArrangeActivitiesSheet({
           <div className="sticky top-0 z-20 border-y bg-background/95 px-4 py-3 backdrop-blur">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">Moving {movingItem.title}</p>
+                <p className="truncate text-sm font-semibold">
+                  <T message={"Moving "} />
+                  {movingItem.title}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Click a gap to place it · swipe or scroll safely
+                  <T message={" Click a gap to place it · swipe or scroll safely "} />
                 </p>
               </div>
               <Button
                 className="min-h-11 shrink-0 xl:min-h-9"
                 onClick={() => {
                   if (initialPlacementActive)
-                    finishInitialPlacement("Activity kept in its current position");
+                    finishInitialPlacement(t("Activity kept in its current position"));
                   else {
                     setMovingItemId(undefined);
-                    setAnnouncement("Activity move cancelled");
+                    setAnnouncement(t("Activity move cancelled"));
                   }
                 }}
                 variant="ghost"
               >
-                {initialPlacementActive ? "Keep current" : "Cancel"}
+                <Localized value={initialPlacementActive ? "Keep current" : "Cancel"} />
               </Button>
             </div>
           </div>
@@ -196,7 +211,9 @@ export function ArrangeActivitiesSheet({
                     key={item.id}
                   >
                     <ActivityIdentity item={item} />
-                    <span className="text-xs font-medium text-muted-foreground">Fixed</span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      <T message={"Fixed"} />
+                    </span>
                   </div>
                 ) : (
                   <button
@@ -206,23 +223,29 @@ export function ArrangeActivitiesSheet({
                     onClick={() => {
                       setMovingItemId(item.id);
                       setUndoOrder(undefined);
-                      setAnnouncement(`Moving ${item.title}. Click a gap to place it.`);
+                      setAnnouncement(
+                        t("Moving {title}. Click a gap to place it.", { title: item.title }),
+                      );
                     }}
                     type="button"
                   >
                     <ActivityIdentity item={item} />
-                    <span className="text-xs font-medium text-primary">Choose position</span>
+                    <span className="text-xs font-medium text-primary">
+                      <T message={"Choose position"} />
+                    </span>
                   </button>
                 );
               })}
               {!movableCount ? (
                 <p className="px-1 pt-2 text-sm text-muted-foreground">
-                  Add an untimed Activity or Meal to choose a manual position.
+                  <T message={" Add an untimed Activity or Meal to choose a manual position. "} />
                 </p>
               ) : null}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Add Activities to this Day first.</p>
+            <p className="text-sm text-muted-foreground">
+              <T message={"Add Activities to this Day first."} />
+            </p>
           )}
         </div>
 
@@ -232,7 +255,7 @@ export function ArrangeActivitiesSheet({
           </p>
           {undoOrder ? (
             <Button disabled={pending} onClick={() => void undo()} variant="ghost">
-              <Undo2 aria-hidden="true" className="size-4" /> Undo
+              <Undo2 aria-hidden="true" className="size-4" /> <T message={" Undo "} />
             </Button>
           ) : null}
         </div>

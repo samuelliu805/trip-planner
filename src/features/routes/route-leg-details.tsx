@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/features/i18n/i18n-provider";
 import { ChevronDown, Clock3, MapPinned, Route } from "lucide-react";
 import { useState } from "react";
 
@@ -9,16 +10,21 @@ import { routeLegExplanation, type RouteLegDetail } from "./route-leg-presentati
 export type { RouteLegDetail } from "./route-leg-presentation";
 
 function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
+  const { locale, t } = useI18n();
   return (
-    <ol aria-label="Route leg details" className="divide-y">
+    <ol
+      aria-label="Route leg details"
+      data-i18n-aria-label={"Route leg details"}
+      className="divide-y"
+    >
       {legs
         .slice()
         .sort((left, right) => left.position - right.position)
         .map((leg) => {
           const duration =
             leg.durationSeconds === null || leg.durationSeconds === undefined
-              ? "Time unavailable"
-              : formatRouteDuration(leg.durationSeconds);
+              ? t("Time unavailable")
+              : formatRouteDuration(leg.durationSeconds, locale);
           const distance =
             leg.distanceMeters === null || leg.distanceMeters === undefined
               ? null
@@ -35,10 +41,10 @@ function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
                 <span className="block truncate text-xs font-medium">
                   {leg.fromLabel && leg.toLabel
                     ? `${leg.fromLabel} → ${leg.toLabel}`
-                    : `Leg ${leg.position}`}
+                    : t("Leg {position}", { position: leg.position })}
                 </span>
                 <span className="block truncate text-[10px] text-muted-foreground">
-                  {routeLegExplanation(leg)}
+                  {routeLegExplanation(leg, t)}
                 </span>
               </span>
               <span className="text-right text-[10px] text-muted-foreground">
@@ -61,6 +67,7 @@ export function RouteLegDetails({
   defaultOpen?: boolean;
   legs: RouteLegDetail[];
 }) {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(defaultOpen);
   if (!legs.length) return null;
   const knownDuration = legs.every(
@@ -83,13 +90,11 @@ export function RouteLegDetails({
         type="button"
       >
         <Route aria-hidden="true" className="size-3.5 text-primary" />
-        <span>
-          {legs.length} {legs.length === 1 ? "leg" : "legs"}
-        </span>
+        <span>{t("{count} leg(s)", { count: legs.length })}</span>
         {knownDuration !== null ? (
           <span className="flex items-center gap-1 font-normal text-muted-foreground">
             <Clock3 aria-hidden="true" className="size-3" />
-            {formatRouteDuration(knownDuration)}
+            {formatRouteDuration(knownDuration, locale)}
           </span>
         ) : null}
         {knownDistance !== null ? (

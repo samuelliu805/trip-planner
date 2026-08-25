@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -44,6 +45,7 @@ export function TripStatusFilterTabs({
   const displayedActive = pending && pendingFilter ? pendingFilter : active;
   const loading = pending || Boolean(operationLabel);
   const setListLoading = useCallback((message?: string) => setOperationLabel(message), []);
+  const { t } = useI18n();
 
   function selectFilter(filter: TripStatusFilter) {
     if (filter === displayedActive) return;
@@ -58,6 +60,7 @@ export function TripStatusFilterTabs({
       <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
         <nav
           aria-label="Filter trips by status"
+          data-i18n-aria-label={"Filter trips by status"}
           className="relative z-10 flex min-w-0 flex-1 gap-0.5 rounded-lg bg-muted/30 p-0.5 sm:flex-none sm:gap-1 sm:p-1"
         >
           {tripStatusFilters.map((filter) => (
@@ -74,7 +77,7 @@ export function TripStatusFilterTabs({
               onClick={() => selectFilter(filter)}
               type="button"
             >
-              {tripStatusFilterLabels[filter]}
+              <Localized value={tripStatusFilterLabels[filter]} />
             </button>
           ))}
         </nav>
@@ -98,7 +101,13 @@ export function TripStatusFilterTabs({
           >
             <div className="flex items-center gap-3 text-sm font-medium text-muted-foreground">
               <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
-              {operationLabel ?? `Loading ${tripStatusFilterLabels[displayedActive]} trips…`}
+              {operationLabel ? (
+                <Localized value={operationLabel} />
+              ) : (
+                t("Loading {status} trips…", {
+                  status: t(tripStatusFilterLabels[displayedActive]),
+                })
+              )}
             </div>
           </div>
         ) : null}

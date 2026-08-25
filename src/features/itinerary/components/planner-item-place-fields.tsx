@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 
 import { Label } from "@/components/ui/label";
@@ -29,28 +30,30 @@ export function ItemTitleField({
   titleRef: RefObject<HTMLInputElement | null>;
   type: ItineraryItemType;
 }) {
+  const { t } = useI18n();
   const named = ["location", "hotel", "meal"].includes(type);
   const creatingActivity = creating && type === "activity";
   if (creatingActivity && !place && !title.trim()) return null;
 
-  const displayedNameLabel =
+  const displayedNameLabel = t(
     type === "location"
       ? "Displayed city name"
       : type === "hotel"
         ? "Displayed hotel name"
-        : "Displayed meal name";
+        : "Displayed meal name",
+  );
   const description = creatingActivity
     ? place
-      ? "Filled from Google Maps. Edit if needed."
+      ? t("Filled from Google Maps. Edit if needed.")
       : undefined
     : named
       ? place
-        ? `Leave blank to display the selected ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"}’s Google Maps name.`
+        ? t("Leave blank to display the selected place’s Google Maps name.")
         : type === "hotel"
-          ? "Use this when an exact map location is unavailable."
+          ? t("Use this when an exact map location is unavailable.")
           : type === "meal"
-            ? "Use this when an exact restaurant location is unavailable."
-            : "Choose a city location above."
+            ? t("Use this when an exact restaurant location is unavailable.")
+            : t("Choose a city location above.")
       : undefined;
 
   return (
@@ -62,13 +65,16 @@ export function ItemTitleField({
       label={
         creatingActivity ? (
           <>
-            Activity name <span className="text-destructive">*</span>
+            <T message={" Activity name "} />
+            <span className="text-destructive">*</span>
           </>
         ) : named ? (
           <>
             {displayedNameLabel}{" "}
             <span className="font-normal text-muted-foreground">
-              {type !== "location" && !place ? "required without a location" : "optional"}
+              <Localized
+                value={type !== "location" && !place ? "required without a location" : "optional"}
+              />
             </span>
           </>
         ) : (
@@ -79,7 +85,13 @@ export function ItemTitleField({
       placeholder={
         named
           ? (place?.displayName ??
-            `Enter a ${type === "location" ? "city" : type === "hotel" ? "hotel" : "meal"} name`)
+            t(
+              type === "location"
+                ? "Enter a city name"
+                : type === "hotel"
+                  ? "Enter a hotel name"
+                  : "Enter a meal name",
+            ))
           : copyPlaceholder
       }
       value={title}
@@ -110,6 +122,7 @@ export function ItemPlaceField({
   titleRef: RefObject<HTMLInputElement | null>;
   type: ItineraryItemType;
 }) {
+  const { t } = useI18n();
   const creatingActivity = creating && type === "activity";
 
   function selectPlace(nextPlace: PlaceSnapshot | null) {
@@ -131,25 +144,33 @@ export function ItemPlaceField({
     <div className="space-y-2" data-planner-focus-region="place">
       <Label>
         {creatingActivity ? (
-          "Place or activity name"
+          <T message="Place or activity name" />
         ) : (
           <>
-            {placeLabel}{" "}
+            <Localized value={placeLabel} />{" "}
             {type === "location" ? (
               <span className="text-destructive">*</span>
             ) : type === "hotel" || type === "meal" ? (
               <span className="font-normal text-muted-foreground">
-                optional if a {type === "hotel" ? "displayed hotel" : "meal"} name is provided
+                <T
+                  message={
+                    type === "hotel"
+                      ? "optional if a displayed hotel name is provided"
+                      : "optional if a meal name is provided"
+                  }
+                />
               </span>
             ) : (
-              <span className="font-normal text-muted-foreground">optional</span>
+              <span className="font-normal text-muted-foreground">
+                <T message={"optional"} />
+              </span>
             )}
           </>
         )}
       </Label>
       <PlaceAutocomplete
-        ariaLabel={creatingActivity ? "Place or activity name" : placeLabel}
-        customValueLabel={creatingActivity ? "activity name" : undefined}
+        ariaLabel={t(creatingActivity ? "Place or activity name" : placeLabel)}
+        customValueLabel={creatingActivity ? t("activity name") : undefined}
         disabled={pending}
         onChange={selectPlace}
         onCustomValue={
@@ -161,15 +182,15 @@ export function ItemPlaceField({
             : undefined
         }
         onSelected={continueToTitle}
-        placeholder={creatingActivity ? "Search Maps or type a name" : undefined}
+        placeholder={creatingActivity ? t("Search Maps or type a name") : undefined}
         value={place}
       />
       {creatingActivity ? (
         <span aria-live="polite" className="sr-only">
           {place
-            ? "Place selected. Activity name filled below."
+            ? t("Place selected. Activity name filled below.")
             : title.trim()
-              ? "Activity name ready below."
+              ? t("Activity name ready below.")
               : null}
         </span>
       ) : null}

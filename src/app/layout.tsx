@@ -3,6 +3,8 @@ import { Mali, Nunito } from "next/font/google";
 
 import { QueryProvider } from "@/components/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { I18nProvider } from "@/features/i18n/i18n-provider";
+import { getRequestLocale } from "@/features/i18n/server";
 import { getSiteUrl } from "@/features/sharing/site-url";
 
 import "./globals.css";
@@ -20,22 +22,29 @@ const journalHand = Mali({
   weight: ["400", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(getSiteUrl()),
-  title: {
-    default: "Trip Planner",
-    template: "%s | Trip Planner",
-  },
-  description: "A modern workspace for planning complex trips.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const siteName = locale === "zh-CN" ? "行程规划" : "Trip Planner";
+  return {
+    metadataBase: new URL(getSiteUrl()),
+    title: { default: siteName, template: `%s | ${siteName}` },
+    description:
+      locale === "zh-CN"
+        ? "一个清晰高效的复杂行程规划空间。"
+        : "A modern workspace for planning complex trips.",
+  };
+}
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getRequestLocale();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={`${journalSans.variable} ${journalHand.variable}`}>
-        <QueryProvider>
-          <TooltipProvider delayDuration={350}>{children}</TooltipProvider>
-        </QueryProvider>
+        <I18nProvider initialLocale={locale}>
+          <QueryProvider>
+            <TooltipProvider delayDuration={350}>{children}</TooltipProvider>
+          </QueryProvider>
+        </I18nProvider>
       </body>
     </html>
   );

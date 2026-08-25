@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { useI18n } from "@/features/i18n/i18n-provider";
 import { createClient } from "@/lib/supabase/client";
 
 import {
@@ -32,6 +33,7 @@ export function useLongImageExport({
   sharePage: PublicItineraryLink;
   siteUrl: string;
 }) {
+  const { locale, t } = useI18n();
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState<string>();
   const [copied, setCopied] = useState(false);
@@ -41,26 +43,28 @@ export function useLongImageExport({
   function generate(mode: GenerateMode, scope?: LongImageScope) {
     setError(undefined);
     setCopied(false);
-    setProgress("Preparing snapshot…");
+    setProgress(t("Preparing snapshot…"));
     startTransition(async () => {
       const uploadedPaths: string[] = [];
       let versionId: string | undefined;
       try {
         const prepared = await prepareShareImageVersion({
           exportId: mode === "replace_existing" ? (imageState?.exportId ?? null) : null,
+          locale,
           mode,
           sharePageId: sharePage.id,
           scope,
         });
         if ("error" in prepared) throw new Error(prepared.error);
         versionId = prepared.data.versionId;
-        setProgress("Rendering the published Timeline…");
+        setProgress(t("Rendering the published Timeline…"));
 
         const { renderTimelineExport, sha256 } = await import("../long-image/dom-renderer");
         const parts = await renderTimelineExport({
           destinationUrl: prepared.data.qrDestinationUrl,
           destinationType: prepared.data.qrDestinationType,
           itinerary: prepared.data.sourceSnapshot,
+          locale,
           templateId: sharePage.templateId,
           templateVersion: sharePage.templateVersion,
         });
@@ -70,7 +74,9 @@ export function useLongImageExport({
         for (const [index, rendered] of parts.entries()) {
           const storagePath = `${prepared.data.uploadPathPrefix}/part-${index + 1}.jpg`;
           const checksum = await sha256(rendered.blob);
-          setProgress(`Uploading part ${index + 1} of ${parts.length}…`);
+          setProgress(
+            t("Uploading part {part} of {total}…", { part: index + 1, total: parts.length }),
+          );
           const { error: uploadError } = await supabase.storage
             .from("share-images")
             .upload(storagePath, rendered.blob, {
@@ -91,7 +97,7 @@ export function useLongImageExport({
           });
         }
 
-        setProgress("Publishing permanent image link…");
+        setProgress(t("Publishing permanent image link…"));
         const finalized = await finalizeShareImageVersion({ parts: metadata, versionId });
         if ("error" in finalized) throw new Error(finalized.error);
         const now = new Date().toISOString();
@@ -109,12 +115,14 @@ export function useLongImageExport({
         if (window.matchMedia("(min-width: 1200px)").matches) {
           setProgress(
             finalized.data.partCount === 1
-              ? "Image ready. Download started."
-              : `Image ready. Downloading ${finalized.data.partCount} files.`,
+              ? t("Image ready. Download started.")
+              : t("Image ready. Downloading {count} files.", {
+                  count: finalized.data.partCount,
+                }),
           );
           downloadShareImageParts(finalized.data.permanentSlug, finalized.data.partCount);
         } else {
-          setProgress("Image ready. Open it from this panel.");
+          setProgress(t("Image ready. Open it from this panel."));
         }
       } catch (caught) {
         if (uploadedPaths.length)
@@ -125,7 +133,7 @@ export function useLongImageExport({
             caught instanceof Error ? caught.message : "Timeline export failed",
           );
         setProgress(undefined);
-        setError(caught instanceof Error ? caught.message : "Timeline export failed.");
+        setError(t(caught instanceof Error ? caught.message : "Timeline export failed."));
       }
     });
   }
@@ -135,8 +143,8 @@ export function useLongImageExport({
     downloadShareImageParts(imageState.permanentSlug, imageState.partCount);
     setProgress(
       imageState.partCount === 1
-        ? "Download started."
-        : `Downloading ${imageState.partCount} image files.`,
+        ? t("Download started.")
+        : t("Downloading {count} image files.", { count: imageState.partCount }),
     );
   }
 
@@ -146,7 +154,7 @@ export function useLongImageExport({
       await copyTextToClipboard(permanentUrl);
       setCopied(true);
     } catch {
-      setError("Copy was unavailable. Open the image page and copy its URL.");
+      setError(t("Copy was unavailable. Open the image page and copy its URL."));
     }
   }
 
@@ -156,7 +164,7 @@ export function useLongImageExport({
     try {
       if (navigator.share) {
         await navigator.share({
-          title: sharePage.shareTitle ?? "Shared itinerary",
+          title: sharePage.shareTitle ?? t("Shared itinerary"),
           url: permanentUrl,
         });
         return;
@@ -164,7 +172,7 @@ export function useLongImageExport({
       window.open(permanentUrl, "_blank", "noopener,noreferrer");
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
-      setError("Sharing was unavailable. Open the image page instead.");
+      setError(t("Sharing was unavailable. Open the image page instead."));
     }
   }
 
@@ -177,7 +185,7 @@ export function useLongImageExport({
         setError(result.error);
         return;
       }
-      setProgress("Permanent image link revoked.");
+      setProgress(t("Permanent image link revoked."));
       onImageStateChange(null);
     });
   }

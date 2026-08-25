@@ -1,3 +1,6 @@
+import type { Locale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
+
 import { haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
 import type { PlannerMapLine } from "../maps/planner-map-model.ts";
 import type { OverviewRouteMode } from "../routes/types.ts";
@@ -125,7 +128,7 @@ function publicDayClusters(itinerary: PublicItinerary, day: PublicItineraryDay) 
   return clusters;
 }
 
-export function derivePublicOverviewStages(itinerary: PublicItinerary) {
+export function derivePublicOverviewStages(itinerary: PublicItinerary, locale: Locale = "en") {
   const stages: Array<{
     anchor: PublicAnchor | null;
     dayLabel: string;
@@ -144,12 +147,17 @@ export function derivePublicOverviewStages(itinerary: PublicItinerary) {
         if (!previous.dayNumbers.includes(day.dayNumber)) previous.dayNumbers.push(day.dayNumber);
         const first = previous.dayNumbers[0];
         previous.dayLabel =
-          first === day.dayNumber ? `Day ${first}` : `Days ${first}–${day.dayNumber}`;
+          first === day.dayNumber
+            ? translateMessage(locale, "Day {day}", { day: first })
+            : translateMessage(locale, "Days {first}–{last}", {
+                first,
+                last: day.dayNumber,
+              });
         return;
       }
       stages.push({
         anchor: cluster.anchor,
-        dayLabel: `Day ${day.dayNumber}`,
+        dayLabel: translateMessage(locale, "Day {day}", { day: day.dayNumber }),
         dayNumbers: [day.dayNumber],
         ref: cluster.ref,
         title: cluster.title,

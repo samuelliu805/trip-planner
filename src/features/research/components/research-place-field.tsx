@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { MapPin, TextCursorInput } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -82,6 +83,7 @@ export function ResearchPlaceField({
   const [placeId, setPlaceId] = useState(initialPlaceId ?? "");
   const [text, setText] = useState(initialText ?? stored?.displayName ?? "");
   const labelId = useId();
+  const { t } = useI18n();
 
   function useManualEntry() {
     setManual(true);
@@ -97,7 +99,9 @@ export function ResearchPlaceField({
   return (
     <div aria-labelledby={labelId} className="block min-w-0 space-y-2" role="group">
       <Label asChild>
-        <span id={labelId}>{label}</span>
+        <span id={labelId}>
+          <Localized value={label} />
+        </span>
       </Label>
       <input name={placeIdName} type="hidden" value={placeId} />
       <input name={snapshotName} type="hidden" value={place ? JSON.stringify(place) : ""} />
@@ -105,15 +109,15 @@ export function ResearchPlaceField({
       {manual ? (
         <div className="flex min-w-0 gap-2">
           <Input
-            aria-label={`${label}, entered manually`}
+            aria-label={t("{label}, entered manually", { label: t(label) })}
             className="min-w-0"
             maxLength={200}
             onChange={(event) => changeText(event.target.value)}
-            placeholder={placeholder ?? "Enter a name or area"}
+            placeholder={t(placeholder ?? "Enter a name or area")}
             value={text}
           />
           <Button
-            aria-label={`Search Google Maps for ${label.toLowerCase()}`}
+            aria-label={t("Search Google Maps for {label}", { label: t(label) })}
             className="size-11 shrink-0 p-0"
             onClick={() => setManual(false)}
             type="button"
@@ -131,7 +135,7 @@ export function ResearchPlaceField({
               setPlaceId("");
               changeText(next?.displayName ?? "");
             }}
-            placeholder={placeholder}
+            placeholder={placeholder ? t(placeholder) : undefined}
             value={place}
           />
           {!place ? (
@@ -141,7 +145,8 @@ export function ResearchPlaceField({
               type="button"
               variant="ghost"
             >
-              <TextCursorInput aria-hidden="true" className="size-4" /> Enter without Maps
+              <TextCursorInput aria-hidden="true" className="size-4" />{" "}
+              <T message={" Enter without Maps "} />
             </Button>
           ) : null}
         </div>

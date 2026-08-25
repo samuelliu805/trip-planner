@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import Image from "next/image";
 import { FileImage, FileText, Film, Play } from "lucide-react";
 import { useState } from "react";
@@ -28,10 +29,11 @@ function viewerAttachment(media: AttachmentMedia): ViewerAttachment {
 }
 
 function GoogleImage({ media, prioritize }: { media: GoogleMedia; prioritize: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="media-thumb-v4">
       <Image
-        alt={media.alt ?? "Itinerary place"}
+        alt={media.alt ?? t("Itinerary place")}
         className="object-cover"
         fill
         fetchPriority={prioritize ? "high" : undefined}
@@ -93,12 +95,18 @@ function AttachmentButtons({
   onOpen: (attachment: AttachmentMedia, trigger: HTMLButtonElement) => void;
   variant: "overview" | "table" | "timeline" | "transport";
 }) {
+  const { t } = useI18n();
   if (!attachments.length) return null;
   return (
-    <div aria-label="Attachments" className={`public-attachment-grid ${variant}`} role="group">
+    <div
+      aria-label="Attachments"
+      data-i18n-aria-label={"Attachments"}
+      className={`public-attachment-grid ${variant}`}
+      role="group"
+    >
       {attachments.map((attachment) => (
         <button
-          aria-label={`Open attachment ${attachment.label}`}
+          aria-label={t("Open attachment {file}", { file: attachment.label })}
           className="public-attachment-button"
           key={attachment.id}
           onClick={(event) => {
@@ -168,7 +176,7 @@ export function PublicItemMediaGallery({
             <span key={`${entry.id}:attribution`}>
               {entry.attribution ? (
                 <>
-                  Photo by{" "}
+                  <T message={" Photo by"} />{" "}
                   {entry.attribution.url ? (
                     <a
                       className="underline underline-offset-2 hover:text-foreground"
@@ -191,10 +199,10 @@ export function PublicItemMediaGallery({
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  Google Maps
+                  <T message={" Google Maps "} />
                 </a>
               ) : (
-                "Google Maps"
+                <T message="Google Maps" />
               )}
             </span>
           ))}

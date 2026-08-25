@@ -308,7 +308,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(publicMediaStyles, /\.public-attachment-button \{[\s\S]*min-height: 2\.75rem/);
   assert.match(publicMediaStyles, /grid-template-columns: repeat\(auto-fill/);
   assert.match(publicMediaStyles, /minmax\(min\(100%, 9\.5rem\), min\(100%, 12\.5rem\)\)/);
-  assert.match(ownerAttachment, /> Preview/);
+  assert.match(ownerAttachment, /message=\{" Preview "\}/);
   assert.match(viewerStyles, /\.attachment-viewer \{[\s\S]*height: 100dvh/);
   assert.match(viewerStyles, /\.app-dialog-close[\s\S]*width: 2\.75rem[\s\S]*color: white/);
   assert.match(

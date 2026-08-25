@@ -1204,10 +1204,10 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(exportDialogs, /QR\s+destination remains unchanged/);
   assert.match(exportDialogs, /Revoke image link/);
   assert.match(exportDialogs, /renews it for 30 days/);
-  assert.match(exportPanel, /Trip updated/);
-  assert.match(exportPanel, /Create image &amp; download/);
-  assert.match(exportPanel, /min-\[1200px\]:hidden">Create image/);
-  assert.match(exportPanel, /min-\[1200px\]:hidden[\s\S]*Open image/);
+  assert.match(exportPanel, /Trip or language updated/);
+  assert.match(exportPanel, /Create image & download/);
+  assert.match(exportPanel, /min-\[1200px\]:hidden[\s\S]*message="Create image"/);
+  assert.match(exportPanel, /min-\[1200px\]:hidden[\s\S]*message="Open image"/);
   assert.match(exportPanel, /hidden min-h-11 w-full min-\[1200px\]:inline-flex/);
   assert.match(exportPanel, /Manage image link/);
   assert.match(exportPanel, /Open page/);
@@ -1808,8 +1808,8 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.match(routeSources, /defaultStops/);
   assert.match(routeSources, /No map location/);
   assert.match(routeSources, /publicDayCityLabel/);
-  assert.match(routeSources, /Move \$\{item\.title\} earlier/);
-  assert.match(routeSources, /Move \$\{item\.title\} later/);
+  assert.match(routeSources, /Move \{item\} earlier/);
+  assert.match(routeSources, /Move \{item\} later/);
   assert.doesNotMatch(routeSources, /drag|DndContext|useSortable|Set up route/);
   assert.doesNotMatch(routeSources, /aria-label="Reset temporary route"/);
   assert.doesNotMatch(

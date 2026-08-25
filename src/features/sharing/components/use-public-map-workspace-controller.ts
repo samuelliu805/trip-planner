@@ -1,5 +1,6 @@
 import { useMemo, useState, useTransition } from "react";
 
+import { useI18n } from "@/features/i18n/i18n-provider";
 import type { OverviewRouteMode, RouteLegMode } from "@/features/routes/types";
 
 import { calculatePublicOverviewRoute, calculatePublicRoute } from "../actions";
@@ -33,6 +34,7 @@ export function usePublicMapWorkspaceController({
   templateId,
   token,
 }: PublicMapWorkspaceProps) {
+  const { locale } = useI18n();
   const defaultDayRef =
     selectedDayRef ?? itinerary.savedRoutes[0]?.dayRef ?? itinerary.days[0]?.ref ?? "";
   const [routeScopeOverride, setRouteScopeOverride] = useState<{
@@ -54,7 +56,10 @@ export function usePublicMapWorkspaceController({
 
   const mapTheme = publicMapThemes[templateId as keyof typeof publicMapThemes];
   const routeColor = mapTheme?.color ?? itinerary.variant.color;
-  const markers = useMemo(() => buildPublicMarkers(itinerary, mapTheme), [itinerary, mapTheme]);
+  const markers = useMemo(
+    () => buildPublicMarkers(itinerary, mapTheme, locale),
+    [itinerary, locale, mapTheme],
+  );
   const overviewStops = useMemo(() => publicOverviewStops(itinerary), [itinerary]);
   const straightOverviewLines = useMemo(
     () => buildPublicOverviewLines(itinerary, routeColor),

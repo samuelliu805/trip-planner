@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { MoreHorizontal, Paperclip, Trash2 } from "lucide-react";
 
 import {
@@ -33,6 +34,7 @@ export function PlannerItemRow({
   onSelect: (item: ItineraryItem) => void;
   selected: boolean;
 }) {
+  const { t } = useI18n();
   const start = item.start_time ? item.start_time.slice(0, 5) : null;
   const details = item.details as Record<string, string | undefined>;
   const mode =
@@ -91,9 +93,13 @@ export function PlannerItemRow({
       </button>
       {item.attachments?.some(({ status }) => status === "ready") ? (
         <span
-          aria-label={`${item.attachments.filter(({ status }) => status === "ready").length} attachments`}
+          aria-label={t("{count} attachment(s)", {
+            count: item.attachments.filter(({ status }) => status === "ready").length,
+          })}
           className="mr-0.5 inline-flex h-8 shrink-0 items-center gap-0.5 self-center text-[10px] leading-none text-muted-foreground"
-          title={`${item.attachments.filter(({ status }) => status === "ready").length} attachments`}
+          title={t("{count} attachment(s)", {
+            count: item.attachments.filter(({ status }) => status === "ready").length,
+          })}
         >
           <Paperclip aria-hidden="true" className="size-3" />
           {item.attachments.filter(({ status }) => status === "ready").length}
@@ -103,7 +109,7 @@ export function PlannerItemRow({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              aria-label={`Actions for ${title}`}
+              aria-label={t("Actions for {title}", { title })}
               className="flex size-8 shrink-0 items-center justify-center self-center rounded hover:bg-background"
               onClick={(event) => event.stopPropagation()}
               type="button"
@@ -112,14 +118,16 @@ export function PlannerItemRow({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => onEdit(item)}>Edit item</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onEdit(item)}>
+              <T message={"Edit item"} />
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"
               onSelect={() => onDelete(item)}
             >
               <Trash2 className="size-4" />
-              Delete item
+              <T message={" Delete item "} />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import {
   CarFront,
   Check,
@@ -40,25 +41,35 @@ export function MobileCategoryPicker({
   hrefs: Record<ResearchCategory, string>;
   onNavigate: (category: ResearchCategory) => void;
 }) {
+  const { t } = useI18n();
   return (
     <Sheet>
       <SheetTrigger asChild>
         <Button
-          aria-label={`Price category: ${researchCategoryLabels[active]}`}
+          aria-label={t("Price category: {category}", {
+            category: t(researchCategoryLabels[active]),
+          })}
           className="h-11 w-[7.5rem] min-w-0 justify-between px-3 sm:hidden"
           variant="outline"
         >
-          <span className="truncate">{researchCategoryLabels[active]}</span>
+          <span className="truncate">
+            <Localized value={researchCategoryLabels[active]} />
+          </span>
           <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
         </Button>
       </SheetTrigger>
       <SheetContent className="p-0" side="bottom">
         <SheetHeader className="py-4">
-          <SheetTitle>Choose category</SheetTitle>
-          <SheetDescription>Switch the prices and ideas you are comparing.</SheetDescription>
+          <SheetTitle>
+            <T message={"Choose category"} />
+          </SheetTitle>
+          <SheetDescription>
+            <T message={"Switch the prices and ideas you are comparing."} />
+          </SheetDescription>
         </SheetHeader>
         <nav
           aria-label="Mobile price categories"
+          data-i18n-aria-label={"Mobile price categories"}
           className="min-h-0 overflow-y-auto px-4 py-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
         >
           <div className="grid gap-2">
@@ -96,10 +107,10 @@ export function MobileCategoryPicker({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold">
-                        {researchCategoryLabels[category]}
+                        <Localized value={researchCategoryLabels[category]} />
                       </span>
                       <span className="block truncate text-sm text-muted-foreground">
-                        {description}
+                        <Localized value={description} />
                       </span>
                     </span>
                     <Check

@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { X } from "lucide-react";
 
 import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
@@ -24,18 +25,26 @@ export function RouteVariantDecisionSummaryPanel({
   return (
     <aside
       aria-label="Route variant decision summary"
+      data-i18n-aria-label="Route variant decision summary"
       className="map-bottom-panel mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-2xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
       <PullUpPanelHandle className="sm:hidden" onClose={onCollapse} />
       <header className="flex min-h-11 items-center justify-between gap-4 border-b px-4 py-2">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold">Decision summary</h2>
+          <h2 className="text-sm font-semibold">
+            <T message={"Decision summary"} />
+          </h2>
           <p className="truncate text-[11px] text-muted-foreground">
-            Factual saved data · neutral differences vs Primary · no route calculation
+            <T
+              message={
+                " Factual saved data · neutral differences vs Primary · no route calculation "
+              }
+            />
           </p>
         </div>
         <button
           aria-label="Close decision summary"
+          data-i18n-aria-label={"Close decision summary"}
           className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onCollapse}
           type="button"

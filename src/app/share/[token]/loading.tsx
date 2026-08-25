@@ -1,3 +1,4 @@
+import { T } from "@/features/i18n/i18n-provider";
 export default function PublicShareLoading() {
   return (
     <main aria-busy="true" className="min-h-dvh bg-background" role="status">
@@ -13,7 +14,9 @@ export default function PublicShareLoading() {
         </div>
         <div className="hidden animate-pulse border-l bg-muted/50 motion-reduce:animate-none md:block" />
       </div>
-      <span className="sr-only">Loading public itinerary</span>
+      <span className="sr-only">
+        <T message={"Loading public itinerary"} />
+      </span>
     </main>
   );
 }

@@ -1,3 +1,7 @@
+"use client";
+
+import { Localized, useI18n } from "@/features/i18n/i18n-provider";
+
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
 import { PublicItemMediaGallery } from "./public-item-media";
@@ -16,6 +20,7 @@ export function PublicOverviewCard({
   prioritizeMedia: boolean;
   selected: boolean;
 }) {
+  const { t } = useI18n();
   const { item, media } = presentation;
   const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const place = item.place?.localityName ?? item.place?.displayName;
@@ -36,7 +41,7 @@ export function PublicOverviewCard({
     >
       <button
         aria-current={selected ? "true" : undefined}
-        aria-label={`Focus map on ${item.title}`}
+        aria-label={t("Focus map on {item}", { item: item.title })}
         className="public-item-focus overview-item-top-v4"
         data-public-item-ref={item.ref}
         onClick={onSelect}
@@ -72,7 +77,9 @@ export function PublicOverviewCard({
         </button>
       ) : null}
       <footer className="overview-item-footer-v4">
-        <span>{publicItemTypeLabels[item.type]}</span>
+        <span>
+          <Localized value={publicItemTypeLabels[item.type]} />
+        </span>
         <PublicQuickActions item={item} quiet />
       </footer>
     </article>

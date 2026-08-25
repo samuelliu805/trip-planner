@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import { categories } from "@/features/itinerary/components/planner-config";
@@ -31,6 +32,7 @@ export function PlannerStatus({
   onDismissError: () => void;
   workspaceError: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <>
       {interactionError ? (
@@ -38,25 +40,27 @@ export function PlannerStatus({
           className="flex items-center justify-between border-b bg-destructive/10 px-4 py-1.5 text-xs text-destructive"
           role="alert"
         >
-          <span>{interactionError}</span>
+          <span>
+            <Localized value={interactionError} />
+          </span>
           <button className="underline" onClick={onDismissError} type="button">
-            Dismiss
+            <T message={" Dismiss "} />
           </button>
         </div>
       ) : null}
       {workspaceError ? (
         <p className="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive" role="alert">
-          The planner could not refresh. Your last loaded data remains visible.
+          <T message={" The planner could not refresh. Your last loaded data remains visible. "} />
         </p>
       ) : null}
       {deleteError ? (
         <p className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
-          The trip could not be deleted.
+          <T message={" The trip could not be deleted. "} />
         </p>
       ) : null}
       {isEmpty ? (
         <p className="border-b bg-primary/5 px-4 py-2 text-xs text-muted-foreground" role="status">
-          This itinerary is empty. Select a category cell, then choose Add item.
+          <T message={" This itinerary is empty. Select a category cell, then choose Add item. "} />
         </p>
       ) : null}
       {isFillDragging ? (
@@ -64,8 +68,11 @@ export function PlannerStatus({
           className="pointer-events-none fixed left-1/2 top-28 z-50 -translate-x-1/2 rounded-full border bg-background/95 px-4 py-2 text-xs font-medium shadow-lg backdrop-blur"
           role="status"
         >
-          Release to copy {fillLabel} through Day {fillThroughDay ?? ""}. Only this column will
-          change.
+          <T message={" Release to copy "} />
+          {t("{label} through Day {day}. Only this column will change.", {
+            day: fillThroughDay ?? "",
+            label: t(fillLabel),
+          })}
         </div>
       ) : null}
     </>
@@ -184,6 +191,7 @@ export function PlannerDivider({
   return (
     <div
       aria-label="Resize matrix and map"
+      data-i18n-aria-label={"Resize matrix and map"}
       aria-orientation="vertical"
       aria-valuemax={68}
       aria-valuemin={45}

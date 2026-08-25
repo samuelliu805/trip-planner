@@ -48,6 +48,11 @@
   clip-path: polygon(0 0, 100% 0, 100% 72%, 72% 100%, 0 100%);
 }
 
+:lang(zh-CN) .public-template-traverse .overview-day-v4::before {
+  content: "第" attr(data-day-number) "天";
+  letter-spacing: 0;
+}
+
 .public-template-traverse .overview-day-v4::after {
   position: absolute;
   top: 3.75rem;

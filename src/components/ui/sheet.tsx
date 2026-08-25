@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { X } from "lucide-react";
 import { Dialog as SheetPrimitive } from "radix-ui";
 import * as React from "react";
@@ -48,7 +49,9 @@ function SheetContent({
             data-sheet-close=""
           >
             <X className="size-4" aria-hidden="true" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">
+              <T message={"Close"} />
+            </span>
           </SheetPrimitive.Close>
         ) : null}
       </SheetPrimitive.Content>

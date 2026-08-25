@@ -56,7 +56,11 @@ export function ResearchItemDetailFields({
 }) {
   const idPrefix = `research-${item?.id ?? category}`;
   const booking = (
-    <section className="min-w-0 space-y-4" aria-label="Booking records">
+    <section
+      className="min-w-0 space-y-4"
+      aria-label="Booking records"
+      data-i18n-aria-label={"Booking records"}
+    >
       <PlannerEditorTextField
         defaultValue={item?.source_url ?? ""}
         id={`${idPrefix}-booking-link`}

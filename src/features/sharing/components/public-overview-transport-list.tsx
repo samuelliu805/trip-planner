@@ -1,3 +1,4 @@
+import { T } from "@/features/i18n/i18n-provider";
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
 import {
   publicTransportRouteLabel,
@@ -18,6 +19,7 @@ export function PublicOverviewTransportList({
   return (
     <div
       aria-label="Transport"
+      data-i18n-aria-label={"Transport"}
       className="overview-transport-list-v4"
       data-public-transport=""
       role="list"
@@ -43,7 +45,9 @@ export function PublicOverviewTransportList({
                 <PublicItemIcon className="size-3.5" type={item.type} />
               </span>
               <span className="overview-transport-copy-v4">
-                <span className="overview-transport-kind-v4">Transport</span>
+                <span className="overview-transport-kind-v4">
+                  <T message={"Transport"} />
+                </span>
                 <span className="overview-transport-title-v4">{shortTitle}</span>
                 {routeDetail || scheduleDetail || item.notes ? (
                   <span className="overview-transport-details-v4">

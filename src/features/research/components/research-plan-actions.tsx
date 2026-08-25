@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Check, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -132,7 +133,8 @@ export function ResearchPlanActions({
         {application ? (
           <>
             <span className="inline-flex min-h-8 items-center gap-1 rounded-full bg-blue-100 px-2.5 text-xs font-semibold text-blue-800">
-              <Check aria-hidden="true" className="size-3.5" /> Applied to {variantName}
+              <Check aria-hidden="true" className="size-3.5" /> <T message={" Applied to "} />
+              {variantName}
             </span>
             <Button
               className="min-h-11 px-3 text-xs"
@@ -140,7 +142,7 @@ export function ResearchPlanActions({
               size="sm"
               variant="outline"
             >
-              View changes
+              <T message={" View changes "} />
             </Button>
           </>
         ) : (
@@ -153,14 +155,14 @@ export function ResearchPlanActions({
               variant="default"
             >
               {pending ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin" /> : null}
-              {pending ? "Applying…" : "Apply to Plan"}
+              <Localized value={pending ? "Applying…" : "Apply to Plan"} />
             </Button>
           </>
         )}
       </div>
       {error ? (
         <p className="mt-1 text-right text-xs text-destructive" role="alert">
-          {error}
+          <Localized value={error} />
         </p>
       ) : null}
 

@@ -193,11 +193,12 @@ export function formatDistance(meters?: number | null) {
   return meters < 1_000 ? `${Math.round(meters)} m` : `${(meters / 1_000).toFixed(1)} km`;
 }
 
-export function formatDuration(seconds?: number | null) {
+export function formatDuration(seconds?: number | null, locale: "en" | "zh-CN" = "en") {
   if (seconds === null || seconds === undefined) return null;
   const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return locale === "zh-CN" ? `${minutes} 分钟` : `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   const remainder = minutes % 60;
+  if (locale === "zh-CN") return remainder ? `${hours} 小时 ${remainder} 分钟` : `${hours} 小时`;
   return remainder ? `${hours} hr ${remainder} min` : `${hours} hr`;
 }

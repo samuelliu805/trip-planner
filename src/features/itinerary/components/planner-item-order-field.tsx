@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Check, ListOrdered } from "lucide-react";
 
 import { compareActivityOrder, isDestinationActivity } from "@/features/itinerary/activity-order";
@@ -33,7 +34,7 @@ function OrderGap({
         className={`relative flex items-center gap-1 rounded-full px-2.5 py-1 ${active ? "bg-primary text-primary-foreground" : "bg-background group-hover:text-primary"}`}
       >
         {active ? <Check aria-hidden="true" className="size-3" /> : null}
-        {active ? activeLabel : "Move here"}
+        {active ? activeLabel : <T message="Move here" />}
       </span>
     </button>
   );
@@ -58,12 +59,19 @@ export function PlannerItemOrderField({
   title: string;
   type: ItineraryItemType;
 }) {
+  const { t } = useI18n();
   const ordered = items
     .filter((entry) => entry.id !== item?.id && isDestinationActivity(entry))
     .sort(compareActivityOrder);
   const displayName =
-    title.trim() || placeName || item?.title || `New ${itemCopy[type].label.toLowerCase()}`;
-  const selectedPositionLabel = type === "car_rental" ? `Rental ${carAction}` : displayName;
+    title.trim() ||
+    placeName ||
+    item?.title ||
+    t("New {item}", { item: t(itemCopy[type].label.toLowerCase()) });
+  const selectedPositionLabel =
+    type === "car_rental"
+      ? t("Rental {action}", { action: t(carAction === "pickup" ? "Pick-up" : "Return") })
+      : displayName;
   const label = type === "car_rental" ? selectedPositionLabel : displayName;
 
   if (type === "hotel")
@@ -75,7 +83,9 @@ export function PlannerItemOrderField({
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{label}</p>
-            <p className="text-xs text-muted-foreground">Hotels stay at the end of the day.</p>
+            <p className="text-xs text-muted-foreground">
+              <T message={"Hotels stay at the end of the day."} />
+            </p>
           </div>
         </div>
       </div>
@@ -87,7 +97,10 @@ export function PlannerItemOrderField({
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
           <ListOrdered aria-hidden="true" className="size-4" />
         </span>
-        <p className="min-w-0 truncate text-sm font-semibold">Moving {label}</p>
+        <p className="min-w-0 truncate text-sm font-semibold">
+          <T message={"Moving "} />
+          {label}
+        </p>
       </div>
       <div className="rounded-md border bg-background px-2 py-1">
         <OrderGap
@@ -102,7 +115,7 @@ export function PlannerItemOrderField({
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{entry.title}</p>
                 <p className="text-xs capitalize text-muted-foreground">
-                  {itemCopy[entry.type].label}
+                  <Localized value={itemCopy[entry.type].label} />
                 </p>
               </div>
             </div>

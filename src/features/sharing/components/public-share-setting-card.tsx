@@ -5,6 +5,7 @@ import { useId, type ReactNode } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Localized } from "@/features/i18n/i18n-provider";
 
 /** Keeps the first decision short: everything optional stays folded until it is wanted. */
 export function ShareSettingDisclosure({
@@ -17,7 +18,9 @@ export function ShareSettingDisclosure({
   return (
     <details className="group min-w-0">
       <summary className="flex min-h-11 min-w-0 cursor-pointer list-none items-center gap-2 text-sm font-semibold marker:hidden">
-        <span>{title}</span>
+        <span>
+          <Localized value={title} />
+        </span>
         <ChevronDown
           aria-hidden="true"
           className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none"
@@ -31,7 +34,9 @@ export function ShareSettingDisclosure({
 export function ShareSettingSection({ children, title }: { children: ReactNode; title: string }) {
   return (
     <section className="min-w-0 space-y-3">
-      <h3 className="text-sm font-semibold">{title}</h3>
+      <h3 className="text-sm font-semibold">
+        <Localized value={title} />
+      </h3>
       {children}
     </section>
   );
@@ -60,7 +65,9 @@ export function ShareSettingOption({
         onClick={() => onCheckedChange(!checked)}
         type="button"
       >
-        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-sm font-medium">
+          <Localized value={label} />
+        </span>
       </button>
       <div className="hidden min-h-11 min-w-0 items-center gap-2 min-[1200px]:flex">
         <Checkbox
@@ -69,7 +76,7 @@ export function ShareSettingOption({
           onCheckedChange={(value) => onCheckedChange(value === true)}
         />
         <Label className="min-w-0 cursor-pointer leading-5" htmlFor={checkboxId}>
-          {label}
+          <Localized value={label} />
         </Label>
       </div>
     </>

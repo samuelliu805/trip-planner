@@ -1,10 +1,11 @@
+import { T } from "@/features/i18n/i18n-provider";
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { cn } from "@/lib/utils";
 
 function PrimaryBadge() {
   return (
     <span className="rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground">
-      Primary
+      <T message={" Primary "} />
     </span>
   );
 }

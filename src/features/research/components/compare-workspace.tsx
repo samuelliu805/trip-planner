@@ -129,6 +129,7 @@ export function CompareWorkspace({
         <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
           <div
             aria-label="Ideas filters"
+            data-i18n-aria-label={"Ideas filters"}
             className="flex min-w-0 items-center justify-between gap-3"
             role="region"
           >

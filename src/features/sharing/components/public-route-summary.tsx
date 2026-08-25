@@ -1,3 +1,4 @@
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Compass, MapPinned, Route } from "lucide-react";
 
 import { RouteLegDetails, type RouteLegDetail } from "@/features/routes/route-leg-details";
@@ -5,15 +6,16 @@ import { formatDistance, formatDuration } from "../presentation";
 import type { PublicRouteCalculation } from "../types";
 
 export function RouteTotals({ calculation }: { calculation: PublicRouteCalculation }) {
+  const { locale, t } = useI18n();
   return (
     <p className="flex min-h-9 items-center gap-2 border px-2.5 text-xs text-muted-foreground">
       <MapPinned aria-hidden="true" className="size-4 shrink-0" />
       {[
         formatDistance(calculation.totalDistanceMeters),
-        formatDuration(calculation.totalDurationSeconds),
+        formatDuration(calculation.totalDurationSeconds, locale),
       ]
         .filter(Boolean)
-        .join(" · ") || "Route calculated"}
+        .join(" · ") || t("Route calculated")}
     </p>
   );
 }
@@ -43,14 +45,19 @@ export function RouteScopePicker({
   scope: "day" | "overview";
 }) {
   return (
-    <div aria-label="Route scope" className="mb-2 grid grid-cols-2 border" role="group">
+    <div
+      aria-label="Route scope"
+      data-i18n-aria-label={"Route scope"}
+      className="mb-2 grid grid-cols-2 border"
+      role="group"
+    >
       <button
         aria-pressed={scope === "overview"}
         className="flex min-h-11 items-center justify-center gap-2 border-r px-3 text-xs font-semibold aria-pressed:bg-primary aria-pressed:text-primary-foreground"
         onClick={() => onSelect("overview")}
         type="button"
       >
-        <Compass aria-hidden="true" className="size-4" /> Whole trip
+        <Compass aria-hidden="true" className="size-4" /> <T message={" Whole trip "} />
       </button>
       <button
         aria-pressed={scope === "day"}
@@ -58,7 +65,7 @@ export function RouteScopePicker({
         onClick={() => onSelect("day")}
         type="button"
       >
-        <Route aria-hidden="true" className="size-4" /> Day route
+        <Route aria-hidden="true" className="size-4" /> <T message={" Day route "} />
       </button>
     </div>
   );

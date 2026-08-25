@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import {
   Bike,
   BusFront,
@@ -58,7 +59,9 @@ export function CarActionField({
 }) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={`car-action-${fieldId}`}>Pickup or return</Label>
+      <Label htmlFor={`car-action-${fieldId}`}>
+        <T message={"Pickup or return"} />
+      </Label>
       <Select
         onValueChange={(value) => setCarAction(value as CarRentalDetails["action"])}
         value={carAction}
@@ -67,8 +70,12 @@ export function CarActionField({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="pickup">Pickup</SelectItem>
-          <SelectItem value="return">Return</SelectItem>
+          <SelectItem value="pickup">
+            <T message={"Pickup"} />
+          </SelectItem>
+          <SelectItem value="return">
+            <T message={"Return"} />
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -87,12 +94,16 @@ export function CarProviderField({
   return (
     <div className="space-y-2">
       <Label htmlFor={`car-provider-${fieldId}`}>
-        Rental company <span className="font-normal text-muted-foreground">optional</span>
+        <T message={" Rental company "} />
+        <span className="font-normal text-muted-foreground">
+          <T message={"optional"} />
+        </span>
       </Label>
       <Input
         id={`car-provider-${fieldId}`}
         onChange={(event) => setCarProvider(event.target.value)}
         placeholder="e.g. Sixt"
+        data-i18n-placeholder={"e.g. Sixt"}
         value={carProvider}
       />
     </div>
@@ -112,7 +123,9 @@ export function TransportModeField({
 }) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={`transport-mode-${fieldId}`}>Transport</Label>
+      <Label htmlFor={`transport-mode-${fieldId}`}>
+        <T message={"Transport"} />
+      </Label>
       <Select
         onValueChange={(value) => setTransportMode(value as TransportMode)}
         value={transportMode}
@@ -127,7 +140,7 @@ export function TransportModeField({
               <SelectItem key={mode} value={mode}>
                 <span className="flex items-center gap-2">
                   <ModeIcon className="size-4 text-muted-foreground" />
-                  {transportModeLabels[mode]}
+                  <Localized value={transportModeLabels[mode]} />
                 </span>
               </SelectItem>
             );

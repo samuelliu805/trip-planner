@@ -1,5 +1,8 @@
+"use client";
+
 import type { ComponentProps } from "react";
 
+import { useI18n } from "@/features/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type RouteIconButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
@@ -22,15 +25,16 @@ export function RouteIconButton({
   label: string;
   variant?: RouteIconButtonVariant;
 }) {
+  const { t } = useI18n();
   return (
     <button
-      aria-label={label}
+      aria-label={t(label)}
       className={cn(
         "flex size-11 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         variantClasses[variant],
         className,
       )}
-      title={title}
+      title={typeof title === "string" ? t(title) : title}
       type="button"
       {...props}
     >

@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ExternalLink, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -47,20 +48,28 @@ function sourceLabel(sourceUrl: string) {
   }
 }
 
-function freshness(observedAt: string) {
+function freshness(
+  observedAt: string,
+  t: (message: string, values?: Record<string, number | string>) => string,
+) {
   const days = Math.max(0, Math.floor((Date.now() - Date.parse(observedAt)) / 86_400_000));
-  return days === 0 ? "Saved today" : days === 1 ? "Checked yesterday" : `Checked ${days} days ago`;
+  return days === 0
+    ? t("Saved today")
+    : days === 1
+      ? t("Checked yesterday")
+      : t("Checked {count} days ago", { count: days });
 }
 
-function dateSummary(item: ResearchItem) {
+function dateSummary(item: ResearchItem, locale: "en" | "zh-CN") {
   if (!item.start_date) return null;
-  const start = new Date(`${item.start_date}T00:00:00Z`).toLocaleDateString(undefined, {
+  const dateLocale = locale === "zh-CN" ? "zh-CN" : "en-US";
+  const start = new Date(`${item.start_date}T00:00:00Z`).toLocaleDateString(dateLocale, {
     month: "short",
     day: "numeric",
     timeZone: "UTC",
   });
   if (!item.end_date) return start;
-  const end = new Date(`${item.end_date}T00:00:00Z`).toLocaleDateString(undefined, {
+  const end = new Date(`${item.end_date}T00:00:00Z`).toLocaleDateString(dateLocale, {
     month: "short",
     day: "numeric",
     timeZone: "UTC",
@@ -93,14 +102,15 @@ export function ResearchItemRow({
   selection?: VariantResearchSelection;
   variantName: string;
 }) {
+  const { locale, t } = useI18n();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string>();
   const ready = isReadyToCompare(item);
   const missing = missingComparisonFields(item);
   const nights = stayNightCount(item);
   const perNight = stayPerNightPrice(item);
-  const title = item.title ?? (item.source_url ? sourceLabel(item.source_url) : item.note);
-  const dates = dateSummary(item);
+  const title = item.title ?? (item.source_url ? t(sourceLabel(item.source_url)) : item.note);
+  const dates = dateSummary(item, locale);
   const links = researchLinksWithSource(item.links, item.source_url);
 
   return (
@@ -110,16 +120,16 @@ export function ResearchItemRow({
           <h3 className="research-safe-wrap text-sm font-semibold">{title}</h3>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              Saved
+              <T message={" Saved "} />
             </span>
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
             >
-              {ready ? "Ready to compare" : "Idea"}
+              <Localized value={ready ? "Ready to compare" : "Idea"} />
             </span>
             {selection ? (
               <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
-                Selected
+                <T message={" Selected "} />
               </span>
             ) : null}
           </div>
@@ -132,21 +142,32 @@ export function ResearchItemRow({
               </p>
               {nights && perNight !== null ? (
                 <p className="text-xs text-muted-foreground">
-                  {formatMoney(perNight, item.currency)}/night · {nights} nights
+                  {formatMoney(perNight, item.currency)}
+                  <T message={"/night · "} />
+                  {nights} <T message={" nights "} />
                 </p>
               ) : (
-                <p className="text-xs text-muted-foreground">Total price</p>
+                <p className="text-xs text-muted-foreground">
+                  <T message={"Total price"} />
+                </p>
               )}
             </>
           ) : (
-            <p className="text-xs font-medium text-muted-foreground sm:text-sm">No price</p>
+            <p className="text-xs font-medium text-muted-foreground sm:text-sm">
+              <T message={"No price"} />
+            </p>
           )}
         </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
         {dates ? <span>{dates}</span> : null}
-        {!ready ? <span>Missing {missing.join(" · ")}</span> : null}
-        <span>{freshness(item.observed_at)}</span>
+        {!ready ? (
+          <span>
+            <T message={"Missing "} />
+            {missing.map((field) => t(field)).join(" · ")}
+          </span>
+        ) : null}
+        <span>{freshness(item.observed_at, t)}</span>
       </div>
       {item.note && item.note !== title ? (
         <p className="research-safe-wrap mt-2 line-clamp-2 text-xs text-muted-foreground">
@@ -177,7 +198,7 @@ export function ResearchItemRow({
             tripId={item.trip_id}
           />
           <Button
-            aria-label={`Delete ${title}`}
+            aria-label={t("Delete {item}", { item: title ?? t("idea") })}
             className="size-11 p-0"
             onClick={() => setConfirmOpen(true)}
             size="sm"
@@ -200,19 +221,25 @@ export function ResearchItemRow({
       </div>
       {error ? (
         <p className="mt-2 text-xs text-destructive" role="alert">
-          {error}
+          <Localized value={error} />
         </p>
       ) : null}
       <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this saved candidate?</AlertDialogTitle>
+            <AlertDialogTitle>
+              <T message={"Delete this saved candidate?"} />
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This removes it only from Ideas & Options. Your Plan stays unchanged.
+              <T
+                message={" This removes it only from Ideas & Options. Your Plan stays unchanged. "}
+              />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogCancel>
+              <T message={"Keep it"} />
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
                 const result = await deleteResearchItem({ id: item.id, tripId: item.trip_id });
@@ -220,7 +247,7 @@ export function ResearchItemRow({
                 else onDeleted(item.id);
               }}
             >
-              Delete
+              <T message={" Delete "} />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -439,7 +439,7 @@ test("Account and Ideas share supported currencies while email remains plain tex
   const supportedCurrencies: readonly string[] = tripCurrencyCodes;
   for (const currency of ["CNY", "HKD", "JPY"]) assert.ok(supportedCurrencies.includes(currency));
   assert.doesNotMatch(accountEditor, /PlannerEditorTextField[\s\S]*label="Email"/);
-  assert.match(accountEditor, /<p[^>]*>Email<\/p>[\s\S]*\{email\}<\/p>/);
+  assert.match(accountEditor, /message=(?:\{" Email "\}|"Email")[\s\S]*\{email\}<\/p>/);
   assert.match(bookingPriceFields, /commonBookingCurrencies[^=]*= tripCurrencyCodes/);
   assert.match(plannerResearchActions, /currencies[^=]*= tripCurrencyCodes/);
 });
@@ -531,10 +531,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{loading\}/);
-  assert.match(
-    filter,
-    /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/,
-  );
+  assert.match(filter, /operationLabel[\s\S]*Loading \{status\} trips/);
   assert.match(filter, /items-center justify-between/);
   assert.match(filter, /bg-muted\/30/);
   assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
@@ -542,10 +539,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(card, /<DeleteTripDialog/);
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
   assert.match(card, /useTripListLoading\(\)/);
-  assert.match(card, /Deleting “\$\{trip\.title\}”/);
+  assert.match(card, /Deleting/);
   assert.match(tripAppBar, /<DeleteTripDialog/);
   assert.match(tripAppBar, /countActiveSharePages\(tripId\)/);
-  assert.match(tripAppBar, /Deleting “\{title\}”…/);
+  assert.match(tripAppBar, /Deleting/);
   assert.match(tripBarMenu, /onDeleteTrip/);
   assert.equal(tripBarMenu.match(/Delete trip/g)?.length, 2);
   assert.match(tripActions, /deleteTrip[\s\S]*redirect\("\/trips"\)/);
@@ -612,13 +609,13 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(suggestionList, /<button[\s\S]*onClick=\{customOption\.onChoose\}/);
   assert.doesNotMatch(suggestionList, /customOption\.description/);
   assert.doesNotMatch(suggestionList, /activeIndex === suggestions\.length/);
-  assert.match(primaryFields, /customValueLabel=\{creatingActivity \? "activity name"/);
+  assert.match(primaryFields, /customValueLabel=\{creatingActivity \? t\("activity name"\)/);
   assert.match(primaryFields, /Search Maps or type a name/);
   assert.match(primaryFields, /scrollIntoView[\s\S]*focus\(\{ preventScroll: true \}\)/);
   assert.doesNotMatch(primaryFields, /custom activity|Custom activity added|Choose a Google Maps/);
   assert.match(placeAutocomplete, /const requestGeneration = useRef\(0\)/);
   assert.match(placeAutocomplete, /generation !== requestGeneration\.current/);
-  assert.match(placeAutocomplete, /`Use “\$\{customQuery\}” as \$\{customValueLabel\}`/);
+  assert.match(placeAutocomplete, /t\("Use “\{query\}” as \{label\}"/);
   assert.match(placeAutocomplete, /Loading place details…/);
   assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
   assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
@@ -629,8 +626,8 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
   );
-  assert.match(actions, /aria-label="Previous step"[\s\S]*hidden sm:inline">Previous/);
-  assert.match(actions, /aria-label="Next step"[\s\S]*hidden sm:inline">Next/);
+  assert.match(actions, /aria-label="Previous step"[\s\S]*message=\{"Previous"\}/);
+  assert.match(actions, /aria-label="Next step"[\s\S]*message=\{"Next"\}/);
   assert.match(actions, /grid-cols-2[\s\S]*Save \+ another[\s\S]*row-start-2/);
   assert.match(actions, /splitCancelAndSave[\s\S]*justify-between[\s\S]*\{cancelLabel\}/);
   assert.match(actions, /pending \|\| saveDisabled/);
@@ -733,7 +730,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(controls, /router\.push\(tripSectionHref/);
   assert.match(variantUi, /<PullUpPanel/);
   assert.match(variantUi, /PrimaryBadge/);
-  assert.match(variantUi, />\s*Primary\s*</);
+  assert.match(variantUi, /message=\{"? ?Primary ?"?\}/);
   assert.match(variantUi, /Maximum of three variants reached/);
   assert.match(variantUi, /<AlertDialog/);
   assert.doesNotMatch(variantUi, /window\.confirm/);
@@ -746,7 +743,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(workspaceEvents, /event\.key === "Backspace"/);
   assert.match(clearDialog, /<AlertDialog/);
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
-  assert.match(toolbar, />\s*Clear selected cells\s*</);
+  assert.match(toolbar, /Clear selected cells/);
   assert.match(toolbar, /Trip Planner \/|Back to Trips/);
   assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
   assert.match(
@@ -2018,7 +2015,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(routeUi, /destructive: "text-destructive hover:bg-destructive\/10"/);
   assert.match(routeUi, /useState\(true\)/);
   assert.match(routeUi, /aria-expanded=\{unplannedOpen\}/);
-  assert.match(routeUi, /Add \$\{item\.title\} to route/);
+  assert.match(routeUi, /Add \{item\} to route/);
   assert.doesNotMatch(routeUi, /View route|requestFit/);
   assert.match(routeUi, /Manual order is used/);
   assert.match(routeUi, /Save & calculate/);
@@ -2545,8 +2542,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /M12 15V21M9 18H15/);
   assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="above"/);
   assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="below"/);
-  assert.match(workspace, />Add day before</);
-  assert.match(workspace, />Add day after</);
+  assert.match(workspace, /Add day before/);
+  assert.match(workspace, /Add day after/);
   assert.match(workspace, /insertIcon\("up"\)/);
   assert.match(workspace, /insertIcon\("down"\)/);
   assert.match(workspace, /min-w-max select-none/);
@@ -2559,7 +2556,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(form, /const \[orderPreviewItems\] = useState\(\(\) => dayItems\)/);
   assert.match(form, /saveDisabled=\{Boolean\(formError\)\}/);
   assert.doesNotMatch(form, /"Place item"/);
-  assert.match(form, /Step \$\{stepIndex \+ 1\} of \$\{steps\.length\}/);
+  assert.match(form, /Step \{current\} of \{total\}: \{step\}/);
   assert.match(workspace, /Click to place/);
   assert.doesNotMatch(workspace, /onPlaceItem/);
   assert.match(workspace, /initialMovingItemId/);
@@ -2567,8 +2564,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /const active =\s*selectedCount === 1/);
   assert.match(workspace, /lastSelected &&\s*selectionAnchor\.row === selectionEnd\.row/);
   assert.match(workspace, /selectedDayRow/);
-  assert.match(workspace, />Edit item</);
-  assert.match(workspace, />\s*Delete item\s*</);
+  assert.match(workspace, /Edit item/);
+  assert.match(workspace, /Delete item/);
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);

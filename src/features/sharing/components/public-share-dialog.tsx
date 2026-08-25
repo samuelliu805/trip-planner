@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ExternalLink, LoaderCircle, Plus, Share2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
@@ -31,6 +32,7 @@ import {
   updatePublicItineraryLink,
 } from "../actions";
 import { OPEN_SHARE_SETTINGS_EVENT } from "../events";
+import { publicItineraryDescription } from "../public-copy";
 import type { PublicItineraryLink } from "../types";
 import { PublicShareSettingsFields } from "./public-share-settings-fields";
 import {
@@ -58,6 +60,7 @@ export function PublicShareDialog({
   trip: Tables<"trips">;
   variants: PlannerVariant[];
 }) {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(initialOpen);
   const [links, setLinks] = useState(initialLinks);
   const [variantId, setVariantId] = useState(activeVariantId);
@@ -70,7 +73,7 @@ export function PublicShareDialog({
   const variant = variants.find(({ id }) => id === variantId) ?? variants[0];
   const activeLink = links.find((link) => link.id === selectedPageId);
   const suggestedTitle = `${trip.title} · ${variant?.name ?? "Route"}`;
-  const suggestedDescription = `${trip.day_count}-day itinerary · View plans, tickets and routes`;
+  const suggestedDescription = publicItineraryDescription(locale, trip.day_count);
   const activeSiteUrl = open && typeof window !== "undefined" ? window.location.origin : siteUrl;
   const publicUrl = activeLink ? `${activeSiteUrl}/share/${activeLink.publicToken}` : "";
   const unchanged =
@@ -153,9 +156,16 @@ export function PublicShareDialog({
     <Dialog onOpenChange={setOpen} open={open}>
       {renderTrigger ? (
         <DialogTrigger asChild>
-          <Button aria-label="Share trip" className="h-11 min-w-11 px-3 xl:h-9" variant="outline">
+          <Button
+            aria-label="Share trip"
+            data-i18n-aria-label={"Share trip"}
+            className="h-11 min-w-11 px-3 xl:h-9"
+            variant="outline"
+          >
             <Share2 aria-hidden="true" className="size-4" />
-            <span className="hidden lg:inline">Share</span>
+            <span className="hidden lg:inline">
+              <T message={"Share"} />
+            </span>
           </Button>
         </DialogTrigger>
       ) : null}
@@ -164,9 +174,13 @@ export function PublicShareDialog({
           <PullUpPanelHandle onClose={() => setOpen(false)} />
         </div>
         <DialogHeader className="shrink-0">
-          <DialogTitle>Share trip</DialogTitle>
+          <DialogTitle>
+            <T message={"Share trip"} />
+          </DialogTitle>
           <DialogDescription className="sr-only">
-            Pick a route and a style to publish. Advanced settings stay optional.
+            <T
+              message={" Pick a route and a style to publish. Advanced settings stay optional. "}
+            />
           </DialogDescription>
         </DialogHeader>
 
@@ -175,7 +189,7 @@ export function PublicShareDialog({
             aria-live="polite"
             className={`mx-4 shrink-0 border-l-2 px-3 py-2 text-sm sm:mx-6 ${error ? "border-destructive bg-destructive/5 text-destructive" : "border-primary bg-primary/5"}`}
           >
-            {error ?? notice}
+            <Localized value={error ?? notice} />
           </p>
         ) : null}
 
@@ -189,7 +203,9 @@ export function PublicShareDialog({
             />
             <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <div className="min-w-0 space-y-1.5">
-                <Label htmlFor="share-page-picker">Shareable page</Label>
+                <Label htmlFor="share-page-picker">
+                  <T message={"Shareable page"} />
+                </Label>
                 <Select onValueChange={choosePage} value={selectedPageId}>
                   <SelectTrigger className="min-h-11 min-w-0" id="share-page-picker">
                     <SelectValue />
@@ -197,11 +213,13 @@ export function PublicShareDialog({
                   <SelectContent>
                     {links.map((page, index) => (
                       <SelectItem key={page.id} value={page.id}>
-                        {page.shareTitle || `Shareable page ${index + 1}`} ·{" "}
-                        {variants.find(({ id }) => id === page.variantId)?.name ?? "Saved route"}
+                        {page.shareTitle || t("Shareable page {number}", { number: index + 1 })} ·{" "}
+                        {variants.find(({ id }) => id === page.variantId)?.name ?? t("Saved route")}
                       </SelectItem>
                     ))}
-                    <SelectItem value="new">New shareable page</SelectItem>
+                    <SelectItem value="new">
+                      <T message={"New shareable page"} />
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -211,7 +229,7 @@ export function PublicShareDialog({
                 type="button"
                 variant="outline"
               >
-                <Plus className="size-4" /> New shareable page
+                <Plus className="size-4" /> <T message={" New shareable page "} />
               </Button>
             </div>
             <PublicShareSettingsFields
@@ -231,13 +249,17 @@ export function PublicShareDialog({
           {unchanged ? (
             <Button asChild>
               <a href={publicUrl} rel="noopener noreferrer" target="_blank">
-                <ExternalLink className="size-4" /> Open page
+                <ExternalLink className="size-4" /> <T message={" Open page "} />
               </a>
             </Button>
           ) : (
             <Button aria-busy={pending} disabled={pending} onClick={save} type="button">
               {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-              {pending ? "Publishing…" : activeLink ? "Publish changes" : "Create and publish"}
+              <Localized
+                value={
+                  pending ? "Publishing…" : activeLink ? "Publish changes" : "Create and publish"
+                }
+              />
             </Button>
           )}
         </DialogFooter>

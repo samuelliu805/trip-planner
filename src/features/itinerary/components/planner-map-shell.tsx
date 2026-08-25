@@ -138,6 +138,7 @@ export function PlannerMapShell({
   return (
     <section
       aria-label="Itinerary map"
+      data-i18n-aria-label={"Itinerary map"}
       className="relative h-full min-w-0 overflow-hidden bg-muted/40"
     >
       <PlannerMapCanvas

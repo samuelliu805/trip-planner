@@ -1,3 +1,4 @@
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +21,9 @@ export function PublicSharePageFields({
   return (
     <ShareSettingSection title="Landing view and text">
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Opens on</legend>
+        <legend className="text-sm font-medium">
+          <T message={"Opens on"} />
+        </legend>
         <div className="grid grid-cols-3 border">
           {canonicalPublicViews.map((view) => (
             <button
@@ -30,7 +33,7 @@ export function PublicSharePageFields({
               onClick={() => onSettingChange("defaultView", view)}
               type="button"
             >
-              {publicViewLabels[view]}
+              <Localized value={publicViewLabels[view]} />
             </button>
           ))}
         </div>
@@ -38,10 +41,15 @@ export function PublicSharePageFields({
 
       <div className="space-y-3">
         <p className="text-sm font-medium">
-          Shareable page text <span className="font-normal text-muted-foreground">(optional)</span>
+          <T message={" Shareable page text "} />
+          <span className="font-normal text-muted-foreground">
+            <T message={"(optional)"} />
+          </span>
         </p>
         <div className="space-y-1.5">
-          <Label htmlFor="share-title">Title</Label>
+          <Label htmlFor="share-title">
+            <T message={"Title"} />
+          </Label>
           <Input
             id="share-title"
             maxLength={160}
@@ -51,7 +59,9 @@ export function PublicSharePageFields({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="share-description">Description</Label>
+          <Label htmlFor="share-description">
+            <T message={"Description"} />
+          </Label>
           <Textarea
             id="share-description"
             maxLength={500}

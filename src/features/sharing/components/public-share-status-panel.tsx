@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Check, CheckCircle2, Copy, ShieldCheck, Trash2 } from "lucide-react";
 import { useState } from "react";
 
@@ -31,6 +32,7 @@ export function PublicShareStatusPanel({
   pending: boolean;
   publicUrl: string;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   if (!activeLink)
@@ -39,10 +41,15 @@ export function PublicShareStatusPanel({
         <div className="flex items-start gap-2">
           <ShieldCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold">Ready to publish</h3>
+            <h3 className="text-sm font-semibold">
+              <T message={"Ready to publish"} />
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pick a route and a style, then publish. Everything else is optional and can change
-              later.
+              <T
+                message={
+                  " Pick a route and a style, then publish. Everything else is optional and can change later. "
+                }
+              />
             </p>
           </div>
         </div>
@@ -52,13 +59,18 @@ export function PublicShareStatusPanel({
   return (
     <section
       aria-label="Published shareable page"
+      data-i18n-aria-label={"Published shareable page"}
       className="min-w-0 space-y-3 border bg-muted/20 p-4"
     >
       <div className="flex items-start gap-2">
         <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold">Published shareable page</h3>
-          <p className="text-xs text-muted-foreground">Public snapshot · No sign-in required</p>
+          <h3 className="text-sm font-semibold">
+            <T message={"Published shareable page"} />
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            <T message={"Public snapshot · No sign-in required"} />
+          </p>
         </div>
       </div>
       <div className="flex min-w-0 items-stretch border bg-background">
@@ -76,7 +88,7 @@ export function PublicShareStatusPanel({
           <span className="block min-w-0 truncate">{publicUrl}</span>
         </Button>
         <Button
-          aria-label={copied ? "Link copied" : "Copy shareable page URL"}
+          aria-label={t(copied ? "Link copied" : "Copy shareable page URL")}
           className="min-h-11 w-11 shrink-0 rounded-none border-l p-0"
           onClick={() => {
             void copyTextToClipboard(publicUrl).then(() => {
@@ -94,19 +106,29 @@ export function PublicShareStatusPanel({
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button className="min-h-11" disabled={pending} size="sm" variant="ghost">
-              <Trash2 className="size-4" /> Revoke
+              <Trash2 className="size-4" /> <T message={" Revoke "} />
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Revoke public access?</AlertDialogTitle>
+              <AlertDialogTitle>
+                <T message={"Revoke public access?"} />
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This URL will become unavailable immediately. Your trip and route remain unchanged.
+                <T
+                  message={
+                    " This URL will become unavailable immediately. Your trip and route remain unchanged. "
+                  }
+                />
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={onRevoke}>Revoke link</AlertDialogAction>
+              <AlertDialogCancel>
+                <T message={"Cancel"} />
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={onRevoke}>
+                <T message={"Revoke link"} />
+              </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

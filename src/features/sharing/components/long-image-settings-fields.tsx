@@ -1,3 +1,4 @@
+import { T } from "@/features/i18n/i18n-provider";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -23,7 +24,9 @@ export function LongImageSettingsFields({
   return (
     <ShareSettingSection title="Image QR code">
       <div className="min-w-0 space-y-1.5">
-        <Label htmlFor="long-image-qr-destination">QR code opens</Label>
+        <Label htmlFor="long-image-qr-destination">
+          <T message={"QR code opens"} />
+        </Label>
         <Select
           onValueChange={(value) => {
             if (value === "homepage" || value === "current_share_page") {
@@ -44,11 +47,16 @@ export function LongImageSettingsFields({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="current_share_page">This shareable page</SelectItem>
-            <SelectItem value="homepage">Trip Planner home — no itinerary shared</SelectItem>
+            <SelectItem value="current_share_page">
+              <T message={"This shareable page"} />
+            </SelectItem>
+            <SelectItem value="homepage">
+              <T message={"Trip Planner home — no itinerary shared"} />
+            </SelectItem>
             {sharePages.map((page) => (
               <SelectItem key={page.id} value={`share_page:${page.id}`}>
-                Another shareable page — {page.shareTitle || page.templateId}
+                <T message={" Another shareable page — "} />
+                {page.shareTitle || page.templateId}
               </SelectItem>
             ))}
           </SelectContent>

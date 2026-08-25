@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized } from "@/features/i18n/i18n-provider";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -27,10 +28,11 @@ export function PlannerEditorHeader({
       <div className="planner-item-form-header-inner space-y-4">
         <div className="flex min-h-11 flex-wrap items-center gap-3">
           <SheetTitle className="mr-auto min-w-0 truncate text-xl font-extrabold tracking-tight">
-            {title}
+            <Localized value={title} />
           </SheetTitle>
           <Button
             aria-label="Close editor"
+            data-i18n-aria-label={"Close editor"}
             className="size-11 shrink-0 p-0"
             disabled={closeDisabled}
             onClick={onClose}
@@ -40,11 +42,13 @@ export function PlannerEditorHeader({
             <X aria-hidden="true" className="size-5" />
           </Button>
         </div>
-        <SheetDescription className="sr-only">{description}</SheetDescription>
+        <SheetDescription className="sr-only">
+          <Localized value={description} />
+        </SheetDescription>
         {navigation}
         {error ? (
           <p className="text-sm font-medium text-destructive" role="alert">
-            {error}
+            <Localized value={error} />
           </p>
         ) : null}
       </div>

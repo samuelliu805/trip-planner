@@ -1,3 +1,5 @@
+import type { Locale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
 import type { PlannerMapLine } from "@/features/maps/planner-map-model";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { PlannerDay } from "@/features/itinerary/types";
@@ -56,12 +58,12 @@ export function deriveOverviewStagesFromOccurrences(
 }
 
 /** Builds mappable stages from ordered Days and their canonical Activity places. */
-export function deriveOverviewStages(days: PlannerDay[]): OverviewStage[] {
+export function deriveOverviewStages(days: PlannerDay[], locale: Locale = "en"): OverviewStage[] {
   const stages: OverviewStage[] = [];
   [...days].sort(compareManualDayOrder).forEach((day) => {
     deriveDayOverviewClusters(day).forEach((cluster, clusterIndex) => {
       if (!cluster.anchor) return;
-      const dayLabel = `Day ${day.day_number}`;
+      const dayLabel = translateMessage(locale, "Day {day}", { day: day.day_number });
       const previous = stages.at(-1);
       if (
         previous?.placeKey === cluster.locality.key &&
@@ -76,7 +78,12 @@ export function deriveOverviewStages(days: PlannerDay[]): OverviewStage[] {
           });
         const first = previous.entries[0].dayNumber;
         previous.dayRangeLabel =
-          first === day.day_number ? `Day ${first}` : `Days ${first}–${day.day_number}`;
+          first === day.day_number
+            ? translateMessage(locale, "Day {day}", { day: first })
+            : translateMessage(locale, "Days {first}–{last}", {
+                first,
+                last: day.day_number,
+              });
         return;
       }
       stages.push({

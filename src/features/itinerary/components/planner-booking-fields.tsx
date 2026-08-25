@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import type { Dispatch, SetStateAction } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,9 @@ export function JourneyEndpointFields({
   return (
     <div className="grid min-w-0 gap-5 sm:grid-cols-2">
       <div className="min-w-0 space-y-2">
-        <Label>From</Label>
+        <Label>
+          <T message={"From"} />
+        </Label>
         <PlaceAutocomplete
           ariaLabel="From"
           initialQuery={originPlace ? "" : origin}
@@ -45,7 +48,9 @@ export function JourneyEndpointFields({
         />
       </div>
       <div className="min-w-0 space-y-2">
-        <Label>To</Label>
+        <Label>
+          <T message={"To"} />
+        </Label>
         <PlaceAutocomplete
           ariaLabel="To"
           initialQuery={destinationPlace ? "" : destination}
@@ -109,8 +114,12 @@ export function JourneyScheduleFields({
       {showDeparture ? (
         <div className="planner-native-control-frame min-w-0 max-w-full space-y-2">
           <Label htmlFor={`journey-departure-${fieldId}`}>
-            {["taxi", "rideshare"].includes(transportMode) ? "Pick-up" : "Departure"}{" "}
-            <span className="font-normal text-muted-foreground">optional</span>
+            <Localized
+              value={["taxi", "rideshare"].includes(transportMode) ? "Pick-up" : "Departure"}
+            />{" "}
+            <span className="font-normal text-muted-foreground">
+              <T message={"optional"} />
+            </span>
           </Label>
           <Input
             className="planner-native-datetime-input block min-w-0 max-w-full"
@@ -127,7 +136,10 @@ export function JourneyScheduleFields({
       {showArrival ? (
         <div className="planner-native-control-frame min-w-0 max-w-full space-y-2">
           <Label htmlFor={`journey-arrival-${fieldId}`}>
-            Arrival <span className="font-normal text-muted-foreground">optional</span>
+            <T message={" Arrival "} />
+            <span className="font-normal text-muted-foreground">
+              <T message={"optional"} />
+            </span>
           </Label>
           <Input
             className="planner-native-datetime-input block min-w-0 max-w-full"
@@ -162,18 +174,25 @@ export function ServiceNumberField({
   return (
     <div className="min-w-0 space-y-2">
       <Label htmlFor={`journey-service-${fieldId}`}>
-        {type === "flight" || transportMode === "flight"
-          ? "Flight number"
-          : type === "train" || transportMode === "train"
-            ? "Train number"
-            : "Service or route"}{" "}
-        <span className="font-normal text-muted-foreground">optional</span>
+        <Localized
+          value={
+            type === "flight" || transportMode === "flight"
+              ? "Flight number"
+              : type === "train" || transportMode === "train"
+                ? "Train number"
+                : "Service or route"
+          }
+        />{" "}
+        <span className="font-normal text-muted-foreground">
+          <T message={"optional"} />
+        </span>
       </Label>
       <Input
         id={`journey-service-${fieldId}`}
         maxLength={80}
         onChange={(event) => setServiceNumber(event.target.value)}
         placeholder="Optional"
+        data-i18n-placeholder={"Optional"}
         value={serviceNumber}
       />
     </div>

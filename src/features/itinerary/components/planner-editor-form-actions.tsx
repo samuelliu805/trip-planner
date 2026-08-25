@@ -1,3 +1,4 @@
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,13 +40,14 @@ export function PlannerEditorFormActions({
       type="submit"
     >
       {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-      {pending ? pendingLabel : saveLabel}
+      <Localized value={pending ? pendingLabel : saveLabel} />
     </Button>
   );
   const splitCancelAndSave = Boolean(onCancel && !onBack && !onNext && !alternateSaveLabel);
   const backButton = onBack ? (
     <Button
       aria-label="Previous step"
+      data-i18n-aria-label={"Previous step"}
       className="size-11 shrink-0 gap-0 p-0 sm:w-auto sm:gap-2 sm:px-3"
       disabled={backDisabled}
       onClick={onBack}
@@ -54,7 +56,9 @@ export function PlannerEditorFormActions({
       variant="ghost"
     >
       <ChevronLeft className="size-4" />
-      <span className="hidden sm:inline">Previous</span>
+      <span className="hidden sm:inline">
+        <T message={"Previous"} />
+      </span>
     </Button>
   ) : (
     <span aria-hidden="true" className="block size-11" />
@@ -62,6 +66,7 @@ export function PlannerEditorFormActions({
   const nextButton = onNext ? (
     <Button
       aria-label="Next step"
+      data-i18n-aria-label={"Next step"}
       className="size-11 shrink-0 gap-0 p-0 sm:w-auto sm:gap-2 sm:px-3"
       disabled={nextDisabled}
       onClick={onNext}
@@ -69,7 +74,9 @@ export function PlannerEditorFormActions({
       type="button"
       variant="outline"
     >
-      <span className="hidden sm:inline">Next</span>
+      <span className="hidden sm:inline">
+        <T message={"Next"} />
+      </span>
       <ChevronRight className="size-4" />
     </Button>
   ) : (
@@ -90,7 +97,7 @@ export function PlannerEditorFormActions({
             type="button"
             variant="ghost"
           >
-            {cancelLabel}
+            <Localized value={cancelLabel} />
           </Button>
           {saveButton}
         </div>
@@ -105,8 +112,12 @@ export function PlannerEditorFormActions({
               type="submit"
               variant="outline"
             >
-              <span className="sm:hidden">Save + another</span>
-              <span className="hidden sm:inline">{alternateSaveLabel}</span>
+              <span className="sm:hidden">
+                <T message={"Save + another"} />
+              </span>
+              <span className="hidden sm:inline">
+                <Localized value={alternateSaveLabel} />
+              </span>
             </Button>
           </div>
           <div className="col-start-1 row-start-2 justify-self-start sm:row-start-1">

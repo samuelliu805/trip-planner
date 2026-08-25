@@ -1,6 +1,7 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import {
   Building2,
   CalendarDays,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { deriveHotelStaySummary } from "@/features/itinerary/hotel-stay-summary";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
 import type { PlannerMapMarker } from "@/features/maps/planner-map-model";
@@ -39,25 +41,39 @@ function timeLabel(item?: ItineraryItem) {
   return item.end_time ? `${start}–${item.end_time.slice(0, 5)}` : start;
 }
 
-function stayRangeLabel(checkInDate: string, checkOutDate: string) {
+function stayRangeLabel(checkInDate: string, checkOutDate: string, locale: "en" | "zh-CN") {
   const checkIn = parseISO(checkInDate);
   const checkOut = parseISO(checkOutDate);
   const sameYear = checkIn.getFullYear() === checkOut.getFullYear();
-  return `${format(checkIn, sameYear ? "MMM d" : "MMM d, yyyy")} → ${format(checkOut, "MMM d, yyyy")}`;
+  const dateLocale = locale === "zh-CN" ? zhCN : undefined;
+  return `${format(
+    checkIn,
+    locale === "zh-CN"
+      ? sameYear
+        ? "M月d日"
+        : "yyyy年M月d日"
+      : sameYear
+        ? "MMM d"
+        : "MMM d, yyyy",
+    { locale: dateLocale },
+  )} → ${format(checkOut, locale === "zh-CN" ? "yyyy年M月d日" : "MMM d, yyyy", {
+    locale: dateLocale,
+  })}`;
 }
 
 type CompactFact = { icon: LucideIcon; label: string; value: string };
 
 function CompactFacts({ facts }: { facts: CompactFact[] }) {
+  const { t } = useI18n();
   if (!facts.length) return null;
   return (
     <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
       {facts.map(({ icon: Icon, label, value }) => (
         <span
-          aria-label={`${label}: ${value}`}
+          aria-label={t("{label}: {value}", { label: t(label), value })}
           className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-full bg-muted px-2.5 text-xs text-muted-foreground"
           key={`${label}-${value}`}
-          title={`${label}: ${value}`}
+          title={t("{label}: {value}", { label: t(label), value })}
         >
           <Icon aria-hidden="true" className="size-3.5 shrink-0" />
           <span className="truncate text-foreground">{value}</span>
@@ -88,6 +104,7 @@ export function PlannerMapSelectedPlace({
   onMarkerClick: (id?: string) => void;
   selectedId: string;
 }) {
+  const { locale, t } = useI18n();
   const entry = marker.entries.find(({ itemId }) => itemId === selectedId);
   if (!entry) return null;
   const details = itemDetails(item);
@@ -103,7 +120,7 @@ export function PlannerMapSelectedPlace({
     entry.kind === "city"
       ? dateRanges
       : firstStay?.checkInDate && firstStay.checkOutDate
-        ? stayRangeLabel(firstStay.checkInDate, firstStay.checkOutDate)
+        ? stayRangeLabel(firstStay.checkInDate, firstStay.checkOutDate, locale)
         : entry.dayLabel;
   const time = timeLabel(item);
   const facts: CompactFact[] = [
@@ -126,12 +143,14 @@ export function PlannerMapSelectedPlace({
   const eligibleDayStop = ["activity", "hotel", "meal"].includes(entry.kind);
   const repeatedLabel =
     entry.kind === "city"
-      ? `${dayCount} ${dayCount === 1 ? "day" : "days"} in this city`
+      ? t("{count} day(s) in this city", { count: dayCount })
       : entry.kind === "hotel"
-        ? `${hotelStay?.totalDays ?? dayCount} ${(hotelStay?.totalDays ?? dayCount) === 1 ? "day" : "days"}`
+        ? t("{count} day(s)", { count: hotelStay?.totalDays ?? dayCount })
         : entry.kind === "carRental"
-          ? `${marker.entries.length} rental events`
-          : `${marker.entries.length} ${entry.kind === "meal" ? "meals" : "activities"}`;
+          ? t("{count} rental event(s)", { count: marker.entries.length })
+          : t(entry.kind === "meal" ? "{count} meal(s)" : "{count} activity/activity(s)", {
+              count: marker.entries.length,
+            });
 
   return (
     <article aria-live="polite" className="min-w-0">
@@ -146,7 +165,7 @@ export function PlannerMapSelectedPlace({
           ) : null}
         </div>
         <RouteIconButton
-          label={`Edit ${entry.title}`}
+          label={t("Edit {item}", { item: entry.title })}
           onClick={() => onEditMapItem(entry.itemId)}
           title="Edit item"
         >
@@ -158,7 +177,7 @@ export function PlannerMapSelectedPlace({
         {mapMode === "day_route" && eligibleDayStop && dayRoute.editing ? (
           dayRoute.draft?.itemIds.includes(entry.itemId) ? (
             <RouteIconButton
-              label={`Remove ${entry.title} from route`}
+              label={t("Remove {item} from route", { item: entry.title })}
               onClick={() => dayRoute.removeItem(entry.itemId)}
               title="Remove from route"
               variant="destructive"
@@ -167,7 +186,7 @@ export function PlannerMapSelectedPlace({
             </RouteIconButton>
           ) : (
             <RouteIconButton
-              label={`Add ${entry.title} to route`}
+              label={t("Add {item} to route", { item: entry.title })}
               onClick={() => dayRoute.addStop(entry.itemId)}
               title="Add to route"
               variant="secondary"
@@ -220,7 +239,7 @@ export function PlannerMapSelectedPlace({
           )}
           {links.map((link) => (
             <a
-              aria-label={`Open ${link.label}`}
+              aria-label={t("Open {link}", { link: link.label })}
               className="flex size-11 shrink-0 items-center justify-center rounded-md border bg-background hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               href={link.url}
               key={link.id}

@@ -1,0 +1,63 @@
+export const tripsZhCN: Record<string, string> = {
+  "A modern workspace for planning complex trips.": "一个清晰高效的复杂行程规划空间。",
+  "A structured, reliable blueprint for complex itineraries. Architect your journey with precision and keep every plan in one calm workspace.":
+    "为复杂行程建立清晰可靠的蓝图，细致安排每段旅途，把所有计划安心收在一处。",
+  All: "全部",
+  Active: "进行中",
+  Completed: "已完成",
+  "Create a trip and turn each day into a clear plan.": "创建行程，把每一天安排得清清楚楚。",
+  "Create a trip, or switch to Completed to revisit a finished one.":
+    "创建新行程，或切换到“已完成”查看过往旅程。",
+  "Create trip": "创建行程",
+  "Create your first trip to generate its dates and default route.":
+    "创建第一段行程，系统会自动生成日期和默认方案。",
+  "Data-driven itinerary": "数据化行程",
+  "Ideas & Options": "灵感与备选",
+  "My trips": "我的行程",
+  "No active trips": "暂无进行中的行程",
+  "No completed trips yet": "暂无已完成的行程",
+  "No trips yet": "还没有行程",
+  Plan: "行程",
+  "Primary navigation": "主导航",
+  "Real-time mapping": "实时地图",
+  "Shared blueprints": "协同行程蓝图",
+  "Start planning": "开始规划",
+  Trips: "行程",
+  "Trips you complete collect here, out of the way but never deleted.":
+    "完成的行程会收在这里，不打扰当前计划，也不会被删除。",
+  "Visualize locations and transit routes as your itinerary evolves.":
+    "行程调整时，地点与交通路线会同步呈现在地图上。",
+  "Coordinate plans with co-travelers in one structured workspace.":
+    "与同行伙伴在同一个井然有序的空间里协调计划。",
+  "Connect bookings, reservations, and timings into a cohesive timeline.":
+    "把预订、预约和时间安排串成一条完整时间线。",
+  "Your trips": "你的行程",
+  "Your whole trip, beyond the spreadsheet.": "不止表格，完整规划整段旅程。",
+  "Checking published Share Pages…": "正在检查已发布的分享页面…",
+  "Delete Trip": "删除行程",
+  "Delete trip": "删除行程",
+  "Deleting “": "正在删除“",
+  "Edit trip": "编辑行程",
+  "End date": "结束日期",
+  "New trip": "新建行程",
+  "Open planner": "打开行程表",
+  "Primary unavailable": "主方案不可用",
+  "Share settings": "分享设置",
+  "Start date": "开始日期",
+  Trip: "行程",
+  "We could not load your trips. Try refreshing the page.": "无法加载行程，请刷新页面后重试。",
+  "This permanently removes the trip, its routes, and generated trip days. This action cannot be undone.":
+    "这会永久删除该行程、相关路线和已生成的行程日，且无法撤销。",
+  published: "个已发布页面",
+  "and their permanent images will remain online as independent snapshots. They will no longer be updateable from this trip. Revoke them before deleting if they should stop working.":
+    "及其永久长图会作为独立快照继续在线，但之后无法再从本行程更新。如需让链接失效，请先撤销再删除行程。",
+  "Trip menu": "行程菜单",
+  "Back to Trips": "返回行程列表",
+  "Trip sections": "行程区域",
+  "Filter trips by status": "按状态筛选行程",
+  "Loading {status} trips…": "正在加载{status}行程…",
+  "Actions for {title}": "{title}的操作",
+  "Deleting “{title}”…": "正在删除“{title}”…",
+  "Mark complete": "标记为已完成",
+  "Move to Active": "移回进行中",
+};

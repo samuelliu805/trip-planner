@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Localized } from "@/features/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 import { usePullUpPanelDrag } from "./use-pull-up-panel-drag";
@@ -114,8 +115,14 @@ export function PullUpPanel({
           onClose={() => onOpenChange(false)}
         />
         <SheetHeader className="shrink-0 border-b-0 pb-3 pt-3">
-          <SheetTitle>{title}</SheetTitle>
-          {description ? <SheetDescription>{description}</SheetDescription> : null}
+          <SheetTitle>
+            <Localized value={title} />
+          </SheetTitle>
+          {description ? (
+            <SheetDescription>
+              <Localized value={description} />
+            </SheetDescription>
+          ) : null}
         </SheetHeader>
         {children}
       </SheetContent>

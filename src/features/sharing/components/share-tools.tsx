@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Check, Copy, LoaderCircle, MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
@@ -12,6 +13,7 @@ const isWechatBrowser = () => /MicroMessenger/i.test(window.navigator.userAgent)
 const isWechatServer = () => false;
 
 export function ShareQrCode({ label, url }: { label: string; url: string }) {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState(false);
   const [pending, setPending] = useState(true);
@@ -35,7 +37,11 @@ export function ShareQrCode({ label, url }: { label: string; url: string }) {
   }, [url]);
 
   if (error)
-    return <p className="text-xs text-destructive">QR code unavailable. Copy the link instead.</p>;
+    return (
+      <p className="text-xs text-destructive">
+        <T message={"QR code unavailable. Copy the link instead."} />
+      </p>
+    );
 
   return (
     <figure
@@ -44,7 +50,7 @@ export function ShareQrCode({ label, url }: { label: string; url: string }) {
     >
       <div className="relative size-36 shrink-0">
         <canvas
-          aria-label={`${label} QR code`}
+          aria-label={t("{label} QR code", { label: t(label) })}
           className={`block size-36 max-w-full border bg-white p-1 ${pending ? "opacity-20" : ""}`}
           ref={canvasRef}
           role="img"
@@ -52,11 +58,15 @@ export function ShareQrCode({ label, url }: { label: string; url: string }) {
         {pending ? (
           <span className="absolute inset-0 flex items-center justify-center text-primary">
             <LoaderCircle aria-hidden="true" className="size-6 animate-spin" />
-            <span className="sr-only">Generating QR code</span>
+            <span className="sr-only">
+              <T message={"Generating QR code"} />
+            </span>
           </span>
         ) : null}
       </div>
-      <figcaption className="text-xs font-medium text-muted-foreground">{label}</figcaption>
+      <figcaption className="text-xs font-medium text-muted-foreground">
+        <Localized value={label} />
+      </figcaption>
     </figure>
   );
 }
@@ -133,7 +143,7 @@ export function ShareLinkActions({
           ) : (
             <Share2 aria-hidden="true" className="size-4" />
           )}
-          {sharing ? "Sharing…" : "Share"}
+          <Localized value={sharing ? "Sharing…" : "Share"} />
         </Button>
         <Button
           className="min-h-11 w-full sm:w-auto"
@@ -149,7 +159,7 @@ export function ShareLinkActions({
           ) : (
             <Copy aria-hidden="true" className="size-4" />
           )}
-          {copying ? "Copying…" : "Copy link"}
+          <Localized value={copying ? "Copying…" : "Copy link"} />
         </Button>
         <Button
           aria-expanded={qrExpanded}
@@ -161,12 +171,12 @@ export function ShareLinkActions({
           type="button"
           variant="outline"
         >
-          <MessageCircle aria-hidden="true" className="size-4" /> WeChat
+          <MessageCircle aria-hidden="true" className="size-4" /> <T message={" WeChat "} />
         </Button>
       </div>
       {status ? (
         <p aria-live="polite" className="text-xs text-muted-foreground">
-          {status}
+          <Localized value={status} />
         </p>
       ) : null}
     </div>

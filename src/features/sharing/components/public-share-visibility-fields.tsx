@@ -13,6 +13,7 @@ export function PublicShareVisibilityFields({
       <ShareSettingSection title="Page content">
         <div
           aria-label="Content included in the shareable page"
+          data-i18n-aria-label={"Content included in the shareable page"}
           className="grid min-w-0 gap-2 sm:grid-cols-2"
           role="group"
         >

@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Pencil, Plus, Route, X } from "lucide-react";
 
 import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
@@ -25,9 +26,12 @@ function DayRouteSummary({
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
+  const { locale, t } = useI18n();
   const calculation = route.plan?.calculation;
   const stops = route.plan?.stops.length ?? 0;
-  const modes = [...new Set(route.plan?.legs.map(({ mode }) => transportModeLabels[mode]) ?? [])];
+  const modes = [
+    ...new Set(route.plan?.legs.map(({ mode }) => t(transportModeLabels[mode])) ?? []),
+  ];
   const missingDurations = calculation?.calculatedLegs
     .filter(({ durationSeconds }) => durationSeconds === null)
     .map(({ position }) => position);
@@ -61,19 +65,22 @@ function DayRouteSummary({
           <div className="flex items-center gap-2">
             <Route className="size-4 text-primary" />
             <p className="truncate text-sm font-semibold">
-              Day {route.activeDay?.day_number} · Route A
+              {route.activeDay ? (
+                <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />
+              ) : null}{" "}
+              <T message={" · Route A "} />
             </p>
             <DayRouteStatusBadge route={route} />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {stops} stops
+            {stops} <T message={" stops "} />
             {calculation ? ` · ${formatRouteDistance(calculation.total_distance_meters)}` : ""}
             {calculation?.total_duration_seconds !== null &&
             calculation?.total_duration_seconds !== undefined
-              ? ` · ${formatRouteDuration(calculation.total_duration_seconds)}`
+              ? ` · ${formatRouteDuration(calculation.total_duration_seconds, locale)}`
               : calculation
-                ? " · Duration incomplete"
-                : " · Not calculated"}
+                ? ` · ${t("Duration incomplete")}`
+                : ` · ${t("Not calculated")}`}
             {modes.length ? ` · ${modes.join(", ")}` : ""}
           </p>
         </div>
@@ -91,17 +98,24 @@ function DayRouteSummary({
       </div>
       {missingDurations?.length ? (
         <p className="px-3 text-[11px] text-muted-foreground">
-          Duration unknown for {missingDurations.map((position) => `leg ${position}`).join(", ")}.
+          <T message={" Duration unknown for "} />
+          {missingDurations.map((position) => `leg ${position}`).join(", ")}.
         </p>
       ) : null}
       {transitEstimate ? (
         <p className="px-3 text-[11px] text-muted-foreground">
-          Transit is an approximate current-service estimate, not an itinerary-time calculation.
+          <T
+            message={
+              " Transit is an approximate current-service estimate, not an itinerary-time calculation. "
+            }
+          />
         </p>
       ) : null}
       {warnings.length ? (
         <details className="px-3 text-[11px] text-amber-900">
-          <summary className="cursor-pointer">{warnings.length} route warning(s)</summary>
+          <summary className="cursor-pointer">
+            {warnings.length} <T message={" route warning(s)"} />
+          </summary>
           <ul className="mt-1 list-disc pl-4">
             {warnings.map((warning) => (
               <li key={warning}>{warning}</li>
@@ -115,7 +129,7 @@ function DayRouteSummary({
           className="m-3 mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
           role="alert"
         >
-          {route.error}
+          <Localized value={route.error} />
         </p>
       ) : null}
     </section>
@@ -143,9 +157,11 @@ export function DayRouteOverlay({
         >
           <X className="size-4" />
         </RouteIconButton>
-        <p className="text-sm font-semibold">Select a day</p>
+        <p className="text-sm font-semibold">
+          <T message={"Select a day"} />
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Choose a matrix day to view its eligible places.
+          <T message={" Choose a matrix day to view its eligible places. "} />
         </p>
       </section>
     );
@@ -161,9 +177,16 @@ export function DayRouteOverlay({
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
         <div className="min-w-0">
-          <p className="text-sm font-semibold">Day {route.activeDay.day_number} · No day route</p>
+          <p className="text-sm font-semibold">
+            <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />{" "}
+            <T message={" · No day route"} />
+          </p>
           <p className="text-xs text-muted-foreground">
-            Eligible saved places are shown in gray. Nothing is routed until you save.
+            <T
+              message={
+                " Eligible saved places are shown in gray. Nothing is routed until you save. "
+              }
+            />
           </p>
         </div>
         <RouteIconButton

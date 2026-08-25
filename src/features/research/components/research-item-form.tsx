@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ResearchAttachments } from "@/features/attachments/components/research-attachments";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import { AttachmentSessionDiscardDialog } from "@/features/itinerary/components/attachment-session-discard-dialog";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
@@ -39,6 +40,7 @@ export function ResearchItemForm({
   onSaved: (item: ResearchItem) => void;
   tripId: string;
 }) {
+  const { t } = useI18n();
   const steps = researchItemFormSteps(category);
   const [stepId, setStepId] = useState<ResearchItemFormStep["id"]>("primary");
   const [mutationPending, setMutationPending] = useState(false);
@@ -167,13 +169,16 @@ export function ResearchItemForm({
       formRef={formRef}
       header={
         <PlannerEditorHeader
-          description={`Step ${activeIndex + 1} of ${steps.length}. ${researchItemStepDescription(category, stepId)}`}
+          description={`${t("Step {current} of {total}.", {
+            current: activeIndex + 1,
+            total: steps.length,
+          })} ${t(researchItemStepDescription(category, stepId))}`}
           error={error}
           navigation={
             <PlannerItemStepNav activeStepId={stepId} onSelect={selectStep} steps={steps} />
           }
           onClose={requestExit}
-          title={`${item ? "Edit" : "Add"} ${label.toLowerCase()}`}
+          title={t(item ? "Edit {item}" : "Add {item}", { item: t(label) })}
         />
       }
       nextDisabled={activeIndex === steps.length - 1}

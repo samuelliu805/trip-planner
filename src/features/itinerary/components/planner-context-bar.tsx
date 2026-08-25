@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Copy, LoaderCircle, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ export function PlannerContextActions(props: PlannerContextProps) {
         <Button
           aria-busy={props.requestPending}
           aria-label="Copy selected cells"
+          data-i18n-aria-label={"Copy selected cells"}
           className="h-11 px-2.5"
           disabled={props.requestPending}
           onClick={props.copySelectionToClipboard}
@@ -75,13 +77,17 @@ export function PlannerContextActions(props: PlannerContextProps) {
           ) : (
             <Copy className="size-4" />
           )}
-          <span className="hidden sm:inline">Copy</span>
+          <span className="hidden sm:inline">
+            <T message={"Copy"} />
+          </span>
         </Button>
       ) : null}
       {oneCell && (canAdd || props.selectedItem) ? (
         <Button className="h-11 px-3" onClick={openEditor} size="sm">
           {props.selectedItem ? <Pencil className="size-4" /> : <Plus className="size-4" />}
-          <span className="hidden min-[430px]:inline">{props.selectedItem ? "Edit" : "Add"}</span>
+          <span className="hidden min-[430px]:inline">
+            <Localized value={props.selectedItem ? "Edit" : "Add"} />
+          </span>
         </Button>
       ) : null}
     </>

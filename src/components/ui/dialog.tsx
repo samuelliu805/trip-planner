@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import * as React from "react";
@@ -103,7 +104,9 @@ function DialogContent({
             data-dialog-close=""
           >
             <X aria-hidden="true" className="size-5" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">
+              <T message={"Close"} />
+            </span>
           </DialogPrimitive.Close>
         ) : null}
       </DialogPrimitive.Content>

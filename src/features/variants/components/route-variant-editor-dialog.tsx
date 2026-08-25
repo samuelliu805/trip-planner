@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Check, LoaderCircle } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -30,11 +31,17 @@ import { variantColorPalette } from "../schema";
 export type VariantEditorMode = "blank" | "duplicate" | "metadata";
 
 function ColorPalette({ color, onChange }: { color: string; onChange: (color: string) => void }) {
+  const { t } = useI18n();
   return (
-    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Plan color">
+    <div
+      className="grid grid-cols-5 gap-2"
+      role="group"
+      aria-label="Plan color"
+      data-i18n-aria-label={"Plan color"}
+    >
       {variantColorPalette.map((option) => (
         <button
-          aria-label={`${option.label}${color === option.value ? ", selected" : ""}`}
+          aria-label={`${t(option.label)}${color === option.value ? t(", selected") : ""}`}
           aria-pressed={color === option.value}
           className={cn(
             "flex min-h-11 items-center justify-center rounded-md border-2 bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -50,7 +57,9 @@ function ColorPalette({ color, onChange }: { color: string; onChange: (color: st
           >
             {color === option.value ? <Check className="size-4" /> : null}
           </span>
-          <span className="sr-only">{option.label}</span>
+          <span className="sr-only">
+            <Localized value={option.label} />
+          </span>
         </button>
       ))}
     </div>
@@ -86,6 +95,7 @@ export function RouteVariantEditorDialog({
   tripId: string;
   variants: PlannerVariant[];
 }) {
+  const { t } = useI18n();
   const [initialValues] = useState(() =>
     mode === "metadata"
       ? { color: activeVariant.color.toLowerCase(), name: activeVariant.name }
@@ -139,19 +149,27 @@ export function RouteVariantEditorDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>
+            <Localized value={title} />
+          </DialogTitle>
           <DialogDescription>
-            {mode === "blank"
-              ? "Creates the same planning days with no itinerary items or saved routes."
-              : mode === "duplicate"
-                ? "Copies days, items, links, saved stops, and leg modes. Route calculations are not copied."
-                : "The Plan name and color identify this version throughout the planner."}
+            <Localized
+              value={
+                mode === "blank"
+                  ? "Creates the same planning days with no itinerary items or saved routes."
+                  : mode === "duplicate"
+                    ? "Copies days, items, links, saved stops, and leg modes. Route calculations are not copied."
+                    : "The Plan name and color identify this version throughout the planner."
+              }
+            />
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5 px-5 py-5 sm:px-6">
           {mode === "duplicate" ? (
             <div className="space-y-2">
-              <Label htmlFor={`${nameId}-source`}>Copy from</Label>
+              <Label htmlFor={`${nameId}-source`}>
+                <T message={"Copy from"} />
+              </Label>
               <Select onValueChange={setSourceVariantId} value={sourceVariantId}>
                 <SelectTrigger id={`${nameId}-source`}>
                   <SelectValue />
@@ -160,7 +178,7 @@ export function RouteVariantEditorDialog({
                   {variants.map((variant) => (
                     <SelectItem key={variant.id} value={variant.id}>
                       {variant.name}
-                      {variant.is_primary ? " · Primary" : ""}
+                      {variant.is_primary ? ` · ${t("Primary")}` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -168,7 +186,9 @@ export function RouteVariantEditorDialog({
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor={nameId}>Plan name</Label>
+            <Label htmlFor={nameId}>
+              <T message={"Plan name"} />
+            </Label>
             <Input
               autoComplete="off"
               id={nameId}
@@ -178,15 +198,17 @@ export function RouteVariantEditorDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Plan color</Label>
+            <Label>
+              <T message={"Plan color"} />
+            </Label>
             <ColorPalette color={color} onChange={setColor} />
             <p className="text-xs text-muted-foreground">
-              Color is paired with the Plan name and never used alone.
+              <T message={" Color is paired with the Plan name and never used alone. "} />
             </p>
           </div>
           {error ? (
             <p className="text-sm text-destructive" role="alert">
-              {error}
+              <Localized value={error} />
             </p>
           ) : null}
         </div>
@@ -197,7 +219,7 @@ export function RouteVariantEditorDialog({
             type="button"
             variant="ghost"
           >
-            Cancel
+            <T message={" Cancel "} />
           </Button>
           <Button
             aria-busy={pending}
@@ -206,13 +228,17 @@ export function RouteVariantEditorDialog({
             type="button"
           >
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            {pending
-              ? "Saving…"
-              : mode === "blank"
-                ? "Create Plan"
-                : mode === "duplicate"
-                  ? "Duplicate Plan"
-                  : "Save changes"}
+            <Localized
+              value={
+                pending
+                  ? "Saving…"
+                  : mode === "blank"
+                    ? "Create Plan"
+                    : mode === "duplicate"
+                      ? "Duplicate Plan"
+                      : "Save changes"
+              }
+            />
           </Button>
         </DialogFooter>
       </DialogContent>

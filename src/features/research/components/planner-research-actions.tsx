@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Lightbulb, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -46,6 +47,7 @@ export function PlannerResearchActions({
   sourceItem?: ItineraryItem;
   tripId: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(context.itemId ? context.label : "");
   const [price, setPrice] = useState("");
@@ -112,7 +114,7 @@ export function PlannerResearchActions({
           ) : (
             <Lightbulb aria-hidden="true" className="size-3.5" />
           )}{" "}
-          {pending ? "Saving…" : "Save idea"}
+          <Localized value={pending ? "Saving…" : "Save idea"} />
         </Button>
         <Button
           asChild
@@ -121,9 +123,7 @@ export function PlannerResearchActions({
           variant="ghost"
         >
           <Link href={compareHrefForPlanContext(tripId, context)}>
-            {count
-              ? `See ${count} ${count === 1 ? "alternative" : "alternatives"}`
-              : "Compare prices"}
+            {count ? t("See {count} alternative(s)", { count }) : t("Compare prices")}
           </Link>
         </Button>
       </div>
@@ -133,7 +133,7 @@ export function PlannerResearchActions({
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[80] -translate-x-1/2 rounded-full border bg-background px-4 py-2 text-xs font-medium shadow-lg"
           role="status"
         >
-          {feedback}
+          <Localized value={feedback} />
         </div>
       ) : null}
       {error && !open ? (
@@ -142,16 +142,18 @@ export function PlannerResearchActions({
           className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[80] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full border border-destructive/30 bg-background px-4 py-2 text-xs font-medium text-destructive shadow-lg"
           role="alert"
         >
-          {error}
+          <Localized value={error} />
         </div>
       ) : null}
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogContent>
           <form onSubmit={save}>
             <DialogHeader>
-              <DialogTitle>Save idea</DialogTitle>
+              <DialogTitle>
+                <T message={"Save idea"} />
+              </DialogTitle>
               <DialogDescription>
-                {context.label} · Add details later. Your Plan will not change.
+                {context.label} <T message={" · Add details later. Your Plan will not change. "} />
               </DialogDescription>
             </DialogHeader>
             <div className="research-form-grid space-y-4 px-5 py-5 sm:px-6">
@@ -161,6 +163,7 @@ export function PlannerResearchActions({
                   maxLength={5000}
                   onChange={(event) => setText(event.target.value)}
                   placeholder="Hilton member rate…"
+                  data-i18n-placeholder={"Hilton member rate…"}
                   value={text}
                 />
               </ResearchField>
@@ -194,7 +197,7 @@ export function PlannerResearchActions({
               </div>
               {error ? (
                 <p className="text-sm text-destructive" role="alert">
-                  {error}
+                  <Localized value={error} />
                 </p>
               ) : null}
             </div>
@@ -205,13 +208,13 @@ export function PlannerResearchActions({
                 type="button"
                 variant="ghost"
               >
-                Cancel
+                <T message={" Cancel "} />
               </Button>
               <Button aria-busy={pending} disabled={!text.trim() || pending} type="submit">
                 {pending ? (
                   <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
                 ) : null}{" "}
-                {pending ? "Saving…" : "Save"}
+                <Localized value={pending ? "Saving…" : "Save"} />
               </Button>
             </DialogFooter>
           </form>

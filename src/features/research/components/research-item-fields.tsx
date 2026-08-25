@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { useState, type ReactNode } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +24,11 @@ function StayFields({ item }: { item?: ResearchItem }) {
   const [startDate, setStartDate] = useState(item?.start_date ?? "");
   const [endDate, setEndDate] = useState(item?.end_date ?? "");
   return (
-    <section className="min-w-0 space-y-6" aria-label="Hotel and dates">
+    <section
+      className="min-w-0 space-y-6"
+      aria-label="Hotel and dates"
+      data-i18n-aria-label={"Hotel and dates"}
+    >
       <ResearchPlaceField
         initialPlace={item?.location_place}
         initialPlaceId={item?.location_place_id}
@@ -65,6 +70,7 @@ function RentalFieldPages({
       <input name="returnToPickup" type="hidden" value={returnToPickup ? "true" : ""} />
       <section
         aria-label="Rental locations"
+        data-i18n-aria-label={"Rental locations"}
         className="min-w-0 space-y-6"
         hidden={activeStepId !== "primary"}
       >
@@ -95,11 +101,12 @@ function RentalFieldPages({
             checked={returnToPickup}
             onCheckedChange={(checked) => setReturnToPickup(checked === true)}
           />
-          Return to the pick-up location
+          <T message={" Return to the pick-up location "} />
         </label>
       </section>
       <section
         aria-label="Pick-up and return"
+        data-i18n-aria-label={"Pick-up and return"}
         className="grid min-w-0 gap-4 sm:grid-cols-2"
         hidden={activeStepId !== "primary"}
       >
@@ -214,7 +221,7 @@ export function ResearchItemFields({
   return (
     <div className="min-w-0 space-y-8" data-research-item-fields="">
       <div className="min-w-0" hidden={activeStepId !== priceStep}>
-        <section className="min-w-0 space-y-3" aria-label="Price">
+        <section className="min-w-0 space-y-3" aria-label="Price" data-i18n-aria-label={"Price"}>
           <ResearchPriceFields defaultCurrency={defaultCurrency} item={item} />
         </section>
       </div>

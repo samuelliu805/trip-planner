@@ -4,6 +4,8 @@
 import { MapPin, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
 
+import { T } from "@/features/i18n/i18n-provider";
+
 export type PlaceSuggestion = {
   id: string;
   prediction: google.maps.places.PlacePrediction;
@@ -44,7 +46,7 @@ export function PlaceSuggestionList({
       {suggestions.length ? (
         <>
           <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Google Maps places
+            <T message={" Google Maps places "} />
           </p>
           <ul className="max-h-40 min-w-0 overflow-y-auto pb-1" id={listId} role="listbox">
             {suggestions.map((suggestion, index) => (

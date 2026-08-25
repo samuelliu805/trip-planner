@@ -551,8 +551,8 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
   assert.match(comparisonHook, /variants\.length >= 2/);
   assert.match(comparisonHook, /Discard or save the open Day route draft/);
   assert.match(comparisonHook, /variantId === activeVariantId \|\|/);
-  assert.match(comparisonUi, /Matrix: \{active\.name\} · Map: read only/);
-  assert.match(comparisonUi, /Routes \{comparison\.visiblePresentations\.length\}\//);
+  assert.match(comparisonUi, /Matrix:[\s\S]*\{active\.name\}[\s\S]*Map: read only/);
+  assert.match(comparisonUi, /Routes[\s\S]*comparison\.visiblePresentations\.length/);
   assert.match(comparisonUi, /Read only/);
   assert.match(comparisonUi, /min-h-11/);
   assert.match(comparisonUi, /min-\[900px\]:hidden/);

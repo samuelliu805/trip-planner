@@ -1,3 +1,4 @@
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Download, Eye, FileText, Play, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -65,11 +66,12 @@ export function OwnerAttachmentCard({
   showShareControl?: boolean;
   tripId: string;
 }) {
+  const { t } = useI18n();
   return (
     <article className="min-w-0 rounded-md border p-3">
       <div className="flex min-w-0 items-start gap-3">
         <button
-          aria-label={`Open ${attachment.fileName}`}
+          aria-label={t("Open {file}", { file: attachment.fileName })}
           className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={(event) => onOpen(event.currentTarget)}
           type="button"
@@ -82,13 +84,17 @@ export function OwnerAttachmentCard({
             {ownerAttachmentType(attachment)} · {formatBytes(attachment.byteSize)}
           </p>
           <p className="mt-1 text-xs font-medium">
-            {attachment.draft
-              ? "Not saved yet"
-              : attachment.includeInShare
-                ? shareAttachmentsEnabled
-                  ? "Shared"
-                  : "Share page attachments off"
-                : "Private"}
+            <Localized
+              value={
+                attachment.draft
+                  ? "Not saved yet"
+                  : attachment.includeInShare
+                    ? shareAttachmentsEnabled
+                      ? "Shared"
+                      : "Share page attachments off"
+                    : "Private"
+              }
+            />
           </p>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
             <Button
@@ -98,18 +104,18 @@ export function OwnerAttachmentCard({
               type="button"
               variant="ghost"
             >
-              <Eye aria-hidden="true" className="size-4 shrink-0" /> Preview
+              <Eye aria-hidden="true" className="size-4 shrink-0" /> <T message={" Preview "} />
             </Button>
             <Button asChild className="size-11 shrink-0 p-0" variant="ghost">
               <a
-                aria-label={`Download ${attachment.fileName}`}
+                aria-label={t("Download {file}", { file: attachment.fileName })}
                 href={`${ownerAttachmentUrl(tripId, attachment.publicRef)}?download=1`}
               >
                 <Download aria-hidden="true" className="size-4" />
               </a>
             </Button>
             <Button
-              aria-label={`Delete ${attachment.fileName}`}
+              aria-label={t("Delete {file}", { file: attachment.fileName })}
               className="size-11 shrink-0 p-0 text-destructive"
               disabled={disabled}
               onClick={onDelete}
@@ -129,7 +135,9 @@ export function OwnerAttachmentCard({
               disabled={disabled || attachment.status !== "ready"}
               onCheckedChange={(checked) => onShareChange(checked === true)}
             />
-            <span className="min-w-0">Share file</span>
+            <span className="min-w-0">
+              <T message={"Share file"} />
+            </span>
           </Label>
         </div>
       ) : null}

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import {
   PlannerEditorForm,
   type PlannerEditorSaveIntent,
@@ -47,6 +48,7 @@ export function PlannerItemForm({
   unavailableTransportModes = [],
   variantId,
 }: PlannerItemFormProps) {
+  const { t } = useI18n();
   // Keep the Order preview on the items that existed when this editor opened. An optimistic create
   // must not appear both as the moving item and as a newly-placeable row before the editor closes.
   const [orderPreviewItems] = useState(() => dayItems);
@@ -225,17 +227,21 @@ export function PlannerItemForm({
       header={
         <PlannerEditorHeader
           closeDisabled={itemMutationPending}
-          description={`Step ${stepIndex + 1} of ${steps.length}: ${activeStep.title}. ${
+          description={`${t("Step {current} of {total}: {step}.", {
+            current: stepIndex + 1,
+            step: t(activeStep.title),
+            total: steps.length,
+          })} ${t(
             includeOrder
               ? "Confirm the Order step before saving."
-              : "The item can be saved from any step."
-          }`}
+              : "The item can be saved from any step.",
+          )}`}
           error={stepError ?? mutationError?.message}
           navigation={
             <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
           }
           onClose={requestExit}
-          title={`${item ? "Edit" : "Add"} ${copy.label.toLowerCase()}`}
+          title={t(item ? "Edit {item}" : "Add {item}", { item: t(copy.label) })}
         />
       }
       nextDisabled={stepIndex === steps.length - 1}

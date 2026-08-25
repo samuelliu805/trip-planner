@@ -1,4 +1,5 @@
 import type { LongImageScope, PublicItinerary, PublicItineraryLink } from "../types";
+import type { Locale } from "../../i18n/config.ts";
 
 export function longImageScopeFromPage(
   page: Pick<PublicItineraryLink, "longImageEndDayNumber" | "longImageStartDayNumber">,
@@ -53,11 +54,16 @@ export function scopePublicItinerary(
   };
 }
 
-export function longImageScopeLabel(scope: LongImageScope, dayCount?: number) {
+export function longImageScopeLabel(scope: LongImageScope, locale: Locale, dayCount?: number) {
   if (scope.mode === "entire_trip") {
+    if (locale === "zh-CN") return dayCount ? `整个行程 · ${dayCount} 天` : "整个行程";
     if (!dayCount) return "Entire trip";
     return `Entire trip · ${dayCount} ${dayCount === 1 ? "day" : "days"}`;
   }
+  if (locale === "zh-CN")
+    return scope.startDayNumber === scope.endDayNumber
+      ? `第 ${scope.startDayNumber} 天`
+      : `第 ${scope.startDayNumber}–${scope.endDayNumber} 天`;
   return scope.startDayNumber === scope.endDayNumber
     ? `Day ${scope.startDayNumber}`
     : `Days ${scope.startDayNumber}–${scope.endDayNumber}`;

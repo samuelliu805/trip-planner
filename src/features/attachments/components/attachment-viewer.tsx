@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ChevronLeft, ChevronRight, Download, ExternalLink, RotateCw, ZoomIn } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
@@ -42,6 +43,7 @@ function AttachmentViewerDialog({
   onOpenChange: (open: boolean) => void;
   trigger?: HTMLElement | null;
 }) {
+  const { t } = useI18n();
   const selectedIndex = Math.max(
     0,
     attachments.findIndex(({ id }) => id === initialId),
@@ -100,7 +102,12 @@ function AttachmentViewerDialog({
           <DialogTitle className="truncate text-base text-white">{attachment.fileName}</DialogTitle>
           <DialogDescription className="text-xs text-white/65">
             {attachment.mimeType} · {formatBytes(attachment.byteSize)}
-            {attachments.length > 1 ? ` · ${index + 1} of ${attachments.length}` : ""}
+            {attachments.length > 1
+              ? ` · ${t("{current} of {total}", {
+                  current: index + 1,
+                  total: attachments.length,
+                })}`
+              : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -124,7 +131,7 @@ function AttachmentViewerDialog({
           }}
         >
           <div
-            aria-label={isPdf ? "PDF pages" : "Attachment preview"}
+            aria-label={t(isPdf ? "PDF pages" : "Attachment preview")}
             className={
               isPdf
                 ? "h-full min-h-0 w-full touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain p-3 sm:p-6"
@@ -161,12 +168,16 @@ function AttachmentViewerDialog({
                   preload="metadata"
                   src={sourceUrl}
                 >
-                  Your browser cannot preview this video.
+                  <T message={" Your browser cannot preview this video. "} />
                 </video>
               ) : (
                 <div className="max-w-md space-y-4 px-6 text-center">
                   <p className="text-sm text-white/80">
-                    This browser could not preview the file or its short authorization expired.
+                    <T
+                      message={
+                        " This browser could not preview the file or its short authorization expired. "
+                      }
+                    />
                   </p>
                   <Button
                     className="min-h-11 border-white/30 bg-white/10 text-white hover:bg-white/20"
@@ -177,7 +188,7 @@ function AttachmentViewerDialog({
                     type="button"
                     variant="outline"
                   >
-                    <RotateCw className="size-4" /> Refresh preview
+                    <RotateCw className="size-4" /> <T message={" Refresh preview "} />
                   </Button>
                 </div>
               )}
@@ -187,6 +198,7 @@ function AttachmentViewerDialog({
             <>
               <button
                 aria-label="Previous attachment"
+                data-i18n-aria-label={"Previous attachment"}
                 className="absolute left-2 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white hover:bg-black/85"
                 onClick={() => move(-1)}
                 type="button"
@@ -195,6 +207,7 @@ function AttachmentViewerDialog({
               </button>
               <button
                 aria-label="Next attachment"
+                data-i18n-aria-label={"Next attachment"}
                 className="absolute right-2 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/65 text-white hover:bg-black/85"
                 onClick={() => move(1)}
                 type="button"
@@ -210,21 +223,24 @@ function AttachmentViewerDialog({
             <>
               <Button
                 aria-label="Previous attachment"
+                data-i18n-aria-label={"Previous attachment"}
                 className="min-h-11 border-white/30 bg-white/10 text-white hover:bg-white/20"
                 onClick={() => move(-1)}
                 type="button"
                 variant="outline"
               >
-                <ChevronLeft className="size-4" /> Previous
+                <ChevronLeft className="size-4" /> <T message={" Previous "} />
               </Button>
               <Button
                 aria-label="Next attachment"
+                data-i18n-aria-label={"Next attachment"}
                 className="min-h-11 border-white/30 bg-white/10 text-white hover:bg-white/20"
                 onClick={() => move(1)}
                 type="button"
                 variant="outline"
               >
-                Next <ChevronRight className="size-4" />
+                <T message={" Next "} />
+                <ChevronRight className="size-4" />
               </Button>
             </>
           ) : null}
@@ -235,7 +251,8 @@ function AttachmentViewerDialog({
               type="button"
               variant="outline"
             >
-              <ZoomIn className="size-4" /> {zoomed ? "Fit image" : "Zoom image"}
+              <ZoomIn className="size-4" />
+              <Localized value={zoomed ? "Fit image" : "Zoom image"} />
             </Button>
           ) : null}
           <Button
@@ -244,7 +261,7 @@ function AttachmentViewerDialog({
             variant="outline"
           >
             <a href={sourceUrl} rel="noopener noreferrer" target="_blank">
-              <ExternalLink className="size-4" /> Open
+              <ExternalLink className="size-4" /> <T message={" Open "} />
             </a>
           </Button>
           <Button
@@ -253,7 +270,7 @@ function AttachmentViewerDialog({
             variant="outline"
           >
             <a href={`${attachment.url}${attachment.url.includes("?") ? "&" : "?"}download=1`}>
-              <Download className="size-4" /> Download
+              <Download className="size-4" /> <T message={" Download "} />
             </a>
           </Button>
         </footer>

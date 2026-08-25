@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { ExternalLink, ImageDown, Share2 } from "lucide-react";
 import { useState } from "react";
 
@@ -22,6 +23,7 @@ import type {
   ShareImageManifest,
 } from "../types";
 import { formatShareImageExpiry } from "../long-image/expiration";
+import { localizeGeneratedPublicDescription } from "../public-copy";
 import { LongImageExportPanel } from "./long-image-export-panel";
 import { downloadShareImageParts } from "./share-image-download";
 import { ShareLinkActions, ShareQrCode } from "./share-tools";
@@ -41,6 +43,7 @@ export function PublicViewerShareDialog({
   template: CompiledPublicTemplateV1;
   url: string;
 }) {
+  const { locale } = useI18n();
   const [currentImageState, setCurrentImageState] = useState(ownerImageState);
   const [open, setOpen] = useState(false);
   const [showWechatQr, setShowWechatQr] = useState(false);
@@ -55,10 +58,14 @@ export function PublicViewerShareDialog({
       <DialogTrigger asChild>
         <Button
           aria-label="Share itinerary"
+          data-i18n-aria-label={"Share itinerary"}
           className="public-header-button public-share-button"
           variant="outline"
         >
-          <Share2 className="size-4" /> <span className="sr-only">Share</span>
+          <Share2 className="size-4" />{" "}
+          <span className="sr-only">
+            <T message={"Share"} />
+          </span>
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -69,16 +76,23 @@ export function PublicViewerShareDialog({
           <PullUpPanelHandle onClose={() => onOpenChange(false)} />
         </div>
         <DialogHeader className="shrink-0">
-          <DialogTitle>Share itinerary</DialogTitle>
-          <DialogDescription>Send a link or save an image.</DialogDescription>
+          <DialogTitle>
+            <T message={"Share itinerary"} />
+          </DialogTitle>
+          <DialogDescription>
+            <T message={"Send a link or save an image."} />
+          </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 touch-pan-y space-y-6 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
           <section className="space-y-3" aria-labelledby="share-link-heading">
             <h3 className="text-sm font-semibold" id="share-link-heading">
-              Share link
+              <T message={" Share link "} />
             </h3>
             <ShareLinkActions
-              description={itinerary.metadata.description}
+              description={localizeGeneratedPublicDescription(
+                itinerary.metadata.description,
+                locale,
+              )}
               onWechatToggle={() => setShowWechatQr((visible) => !visible)}
               qrExpanded={showWechatQr}
               title={itinerary.metadata.title}
@@ -93,7 +107,7 @@ export function PublicViewerShareDialog({
           {ownerSharePage || shareImage ? (
             <section className="space-y-3 border-t pt-5" aria-labelledby="trip-image-heading">
               <h3 className="text-sm font-semibold" id="trip-image-heading">
-                Trip image
+                <T message={" Trip image "} />
               </h3>
               {ownerSharePage ? (
                 <div className="border bg-muted/30 p-4">
@@ -114,7 +128,8 @@ export function PublicViewerShareDialog({
                       rel="noopener noreferrer"
                       target="_blank"
                     >
-                      <ExternalLink aria-hidden="true" className="size-4" /> Open image
+                      <ExternalLink aria-hidden="true" className="size-4" />{" "}
+                      <T message={" Open image "} />
                     </a>
                   </Button>
                   <Button
@@ -123,11 +138,12 @@ export function PublicViewerShareDialog({
                       downloadShareImageParts(shareImage.permanentSlug, shareImage.parts.length)
                     }
                   >
-                    <ImageDown className="size-4" /> Download image
+                    <ImageDown className="size-4" /> <T message={" Download image "} />
                   </Button>
                   {shareImage.expiresAt ? (
                     <p className="text-center text-xs text-muted-foreground">
-                      Available until {formatShareImageExpiry(shareImage.expiresAt)}
+                      <T message={" Available until "} />
+                      {formatShareImageExpiry(shareImage.expiresAt, locale)}
                     </p>
                   ) : null}
                 </div>

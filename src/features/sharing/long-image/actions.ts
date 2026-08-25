@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { supportedLocales } from "@/features/i18n/config";
 import { createClient } from "@/lib/supabase/server";
 
 import { getPublicItinerary } from "../data";
@@ -19,6 +20,7 @@ import { longImageScopeFromPage, scopePublicItinerary } from "./scope";
 const prepareImageInputSchema = z
   .object({
     exportId: z.uuid().nullable(),
+    locale: z.enum(supportedLocales),
     mode: z.enum(["new_export", "replace_existing"]),
     sharePageId: z.uuid(),
     scope: longImageScopeSchema.optional(),
@@ -65,6 +67,7 @@ export async function prepareShareImageVersion(
       ? `${siteUrl}/?utm_source=shared_image&utm_medium=qr`
       : `${siteUrl}/share/${destinationPage.publicToken}`;
   const renderConfig = {
+    locale: input.data.locale,
     renderer: "timeline" as const,
     scope: input.data.scope ?? longImageScopeFromPage(page.data),
     version: 1 as const,

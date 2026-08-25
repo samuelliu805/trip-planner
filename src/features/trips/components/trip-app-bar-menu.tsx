@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { LogOut, MoreHorizontal, Settings2, Share2, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { PullUpPanel } from "@/components/ui/pull-up-panel";
 import { logout } from "@/features/auth/actions";
+import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 
 export type TripMobileQuickAction = {
   disabled?: boolean;
@@ -70,7 +72,12 @@ export function TripBarMenu({
       <div className="hidden min-[960px]:block">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button aria-label="Trip menu" className="size-11 shrink-0 p-0" variant="ghost">
+            <Button
+              aria-label="Trip menu"
+              data-i18n-aria-label={"Trip menu"}
+              className="size-11 shrink-0 p-0"
+              variant="ghost"
+            >
               <MoreHorizontal aria-hidden="true" className="size-5" />
             </Button>
           </DropdownMenuTrigger>
@@ -81,12 +88,13 @@ export function TripBarMenu({
             ) : null}
             {onShareTrip ? (
               <DropdownMenuItem onSelect={onShareTrip}>
-                <Share2 aria-hidden="true" className="size-4" /> Share trip
+                <Share2 aria-hidden="true" className="size-4" /> <T message={" Share trip "} />
               </DropdownMenuItem>
             ) : null}
             {onTripSettings ? (
               <DropdownMenuItem onSelect={onTripSettings}>
-                <Settings2 aria-hidden="true" className="size-4" /> Trip settings
+                <Settings2 aria-hidden="true" className="size-4" />{" "}
+                <T message={" Trip settings "} />
               </DropdownMenuItem>
             ) : null}
             {onDeleteTrip ? (
@@ -97,23 +105,26 @@ export function TripBarMenu({
                   disabled={deletePending}
                   onSelect={() => window.setTimeout(onDeleteTrip, 0)}
                 >
-                  <Trash2 aria-hidden="true" className="size-4" /> Delete trip
+                  <Trash2 aria-hidden="true" className="size-4" /> <T message={" Delete trip "} />
                 </DropdownMenuItem>
               </>
             ) : null}
             <DropdownMenuSeparator />
+            <div className="px-1 py-1">
+              <LanguageSwitcher className="w-full justify-start" expanded />
+            </div>
             <p className="truncate px-2 py-1.5 text-xs text-muted-foreground" title={accountEmail}>
               {accountEmail}
             </p>
             <DropdownMenuItem asChild>
               <Link href="/account">
-                <UserRound aria-hidden="true" className="size-4" /> Account
+                <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
               </Link>
             </DropdownMenuItem>
             <form action={logout}>
               <DropdownMenuItem asChild>
                 <button className="w-full" type="submit">
-                  <LogOut aria-hidden="true" className="size-4" /> Log out
+                  <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
                 </button>
               </DropdownMenuItem>
             </form>
@@ -123,6 +134,7 @@ export function TripBarMenu({
 
       <Button
         aria-label="Trip menu"
+        data-i18n-aria-label={"Trip menu"}
         className="size-11 shrink-0 p-0 min-[960px]:hidden"
         onClick={() => setPanelOpen(true)}
         variant="ghost"
@@ -166,7 +178,7 @@ export function TripBarMenu({
           ) : null}
           <div className="space-y-1 pt-3">
             <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Trip
+              <T message={" Trip "} />
             </p>
             {onTripSettings ? (
               <Button
@@ -174,7 +186,8 @@ export function TripBarMenu({
                 onClick={() => runMobileAction(onTripSettings)}
                 variant="ghost"
               >
-                <Settings2 aria-hidden="true" className="size-4" /> Trip settings
+                <Settings2 aria-hidden="true" className="size-4" />{" "}
+                <T message={" Trip settings "} />
               </Button>
             ) : null}
             {onDeleteTrip ? (
@@ -184,9 +197,10 @@ export function TripBarMenu({
                 onClick={() => runMobileAction(onDeleteTrip)}
                 variant="ghost"
               >
-                <Trash2 aria-hidden="true" className="size-4" /> Delete trip
+                <Trash2 aria-hidden="true" className="size-4" /> <T message={" Delete trip "} />
               </Button>
             ) : null}
+            <LanguageSwitcher expanded />
             <p
               className="truncate px-3 pb-1 pt-2 text-xs text-muted-foreground"
               title={accountEmail}
@@ -199,7 +213,7 @@ export function TripBarMenu({
               variant="ghost"
             >
               <Link href="/account" onClick={() => setPanelOpen(false)}>
-                <UserRound aria-hidden="true" className="size-4" /> Account
+                <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
               </Link>
             </Button>
             <form action={logout}>
@@ -208,7 +222,7 @@ export function TripBarMenu({
                 type="submit"
                 variant="ghost"
               >
-                <LogOut aria-hidden="true" className="size-4" /> Log out
+                <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
               </Button>
             </form>
           </div>

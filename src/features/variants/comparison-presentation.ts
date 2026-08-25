@@ -1,5 +1,8 @@
 import { format, parseISO } from "date-fns";
+import { zhCN } from "date-fns/locale";
 
+import type { Locale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
 import { orderedCityOccurrencesFromDays, type OrderedCitySourceDay } from "../routes/city-order.ts";
@@ -16,7 +19,10 @@ import type {
   VariantComparisonRouteStop,
 } from "./comparison-types";
 
-function comparisonSourceDays(projection: VariantComparisonProjection): OrderedCitySourceDay[] {
+function comparisonSourceDays(
+  projection: VariantComparisonProjection,
+  locale: Locale,
+): OrderedCitySourceDay[] {
   return projection.days.map((day) => ({
     cities: day.cities.map((city) => ({
       address: city.formattedAddress,
@@ -29,14 +35,21 @@ function comparisonSourceDays(projection: VariantComparisonProjection): OrderedC
       title: city.title,
     })),
     dayId: day.id,
-    dayLabel: day.date ? format(parseISO(day.date), "MMM d") : `Day ${day.dayNumber}`,
+    dayLabel: day.date
+      ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+          locale: locale === "zh-CN" ? zhCN : undefined,
+        })
+      : translateMessage(locale, "Day {day}", { day: day.dayNumber }),
     dayNumber: day.dayNumber,
   }));
 }
 
-export function deriveComparisonStages(projection: VariantComparisonProjection): OverviewStage[] {
+export function deriveComparisonStages(
+  projection: VariantComparisonProjection,
+  locale: Locale = "en",
+): OverviewStage[] {
   const raw = deriveOverviewStagesFromOccurrences(
-    orderedCityOccurrencesFromDays(comparisonSourceDays(projection)),
+    orderedCityOccurrencesFromDays(comparisonSourceDays(projection, locale)),
     (entry, position) => `comparison:${projection.variantId}:stage:${position}:${entry.itemId}`,
   );
   return raw.reduce<OverviewStage[]>((stages, stage) => {
@@ -51,29 +64,39 @@ export function deriveComparisonStages(projection: VariantComparisonProjection):
   }, []);
 }
 
-export function formatCitySequence(stages: OverviewStage[]) {
+export function formatCitySequence(stages: OverviewStage[], locale: Locale = "en") {
   return stages.length
     ? stages
         .filter((stage, index) => index === 0 || stages[index - 1].placeKey !== stage.placeKey)
         .map(({ entries }) => entries[0].title)
         .join(" → ")
-    : "No city/town stages";
+    : translateMessage(locale, "No city/town stages");
 }
 
 export function deriveVariantComparisonPresentation(
   projection: VariantComparisonProjection,
   activeVariantId: string,
   dayNumber?: number,
+  locale: Locale = "en",
 ): VariantComparisonPresentation {
   const active = projection.variantId === activeVariantId;
   if (dayNumber !== undefined) {
-    return deriveDayRouteComparisonPresentation(projection, active, dayNumber);
+    return deriveDayRouteComparisonPresentation(projection, active, dayNumber, locale);
   }
-  const stages = deriveComparisonStages(projection);
+  const stages = deriveComparisonStages(projection, locale);
   const markers: PlannerMapMarker[] = stages.map((stage) => {
     const entry = stage.entries[0];
     return {
-      accessibleLabel: `${projection.name}, ${entry.title}, locality stage ${stage.position}, ${entry.dayLabel}, read-only route comparison`,
+      accessibleLabel: translateMessage(
+        locale,
+        "{plan}, {place}, locality stage {stage}, {day}, read-only route comparison",
+        {
+          day: entry.dayLabel,
+          place: entry.title,
+          plan: projection.name,
+          stage: stage.position,
+        },
+      ),
       address: stage.address,
       appearance: active ? "comparison-active" : "comparison-inactive",
       entries: [{ ...entry, kind: "city" }],
@@ -85,7 +108,11 @@ export function deriveVariantComparisonPresentation(
       readOnly: true,
       selectable: false,
       stageNumber: stage.position,
-      summary: `${projection.name} · locality stage ${stage.position} · ${entry.dayLabel}`,
+      summary: translateMessage(locale, "{plan} · locality stage {stage} · {day}", {
+        day: entry.dayLabel,
+        plan: projection.name,
+        stage: stage.position,
+      }),
       variantColor: projection.color,
       variantId: projection.variantId,
       variantName: projection.name,
@@ -116,7 +143,7 @@ export function deriveVariantComparisonPresentation(
     ];
   });
   return {
-    citySequence: formatCitySequence(stages),
+    citySequence: formatCitySequence(stages, locale),
     color: projection.color,
     isActive: active,
     isPrimary: projection.isPrimary,
@@ -138,12 +165,13 @@ function dayRouteComparisonMarkers(
   active: boolean,
   dayNumber: number,
   route: VariantComparisonDayRoute,
+  locale: Locale,
 ) {
   const grouped = new Map<string, PlannerMapMarker>();
   route.stops.forEach((stop, index) => {
     const position = index + 1;
     const entry = {
-      dayLabel: `Day ${dayNumber}`,
+      dayLabel: translateMessage(locale, "Day {day}", { day: dayNumber }),
       dayNumber,
       itemId: stop.itemId,
       kind: routeStopKind(stop.type),
@@ -157,7 +185,16 @@ function dayRouteComparisonMarkers(
       return;
     }
     grouped.set(stop.placeId, {
-      accessibleLabel: `${projection.name}, Day ${dayNumber}, route stop ${position}, ${stop.title}, read-only comparison`,
+      accessibleLabel: translateMessage(
+        locale,
+        "{plan}, Day {day}, route stop {position}, {place}, read-only comparison",
+        {
+          day: dayNumber,
+          place: stop.title,
+          plan: projection.name,
+          position,
+        },
+      ),
       address: stop.formattedAddress,
       appearance: active ? "comparison-active" : "comparison-inactive",
       entries: [entry],
@@ -168,7 +205,11 @@ function dayRouteComparisonMarkers(
       longitude: stop.longitude,
       readOnly: true,
       selectable: false,
-      summary: `${projection.name} · Day ${dayNumber} route stop ${position}`,
+      summary: translateMessage(locale, "{plan} · Day {day} route stop {position}", {
+        day: dayNumber,
+        plan: projection.name,
+        position,
+      }),
       variantColor: projection.color,
       variantId: projection.variantId,
       variantName: projection.name,
@@ -256,6 +297,7 @@ function deriveDayRouteComparisonPresentation(
   projection: VariantComparisonProjection,
   active: boolean,
   dayNumber: number,
+  locale: Locale,
 ): VariantComparisonPresentation {
   const day = projection.days.find((candidate) => candidate.dayNumber === dayNumber);
   const route = day?.route ?? { calculatedLegs: [], saved: false, stops: [] };
@@ -263,7 +305,7 @@ function deriveDayRouteComparisonPresentation(
   return {
     citySequence: route.stops.length
       ? route.stops.map(({ title }) => title).join(" → ")
-      : `No Day ${dayNumber} route stops`,
+      : translateMessage(locale, "No Day {day} route stops", { day: dayNumber }),
     color: projection.color,
     isActive: active,
     isPrimary: projection.isPrimary,
@@ -271,7 +313,7 @@ function deriveDayRouteComparisonPresentation(
     lines: calculatedLines.length
       ? calculatedLines
       : previewDayRouteComparisonLines(projection, active, dayNumber, route),
-    markers: dayRouteComparisonMarkers(projection, active, dayNumber, route),
+    markers: dayRouteComparisonMarkers(projection, active, dayNumber, route, locale),
     name: projection.name,
     stages: [],
     variantId: projection.variantId,

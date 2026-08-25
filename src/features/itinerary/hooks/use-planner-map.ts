@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { categories } from "@/features/itinerary/components/planner-config";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
 import type { GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { PlannerVariant, PlannerWorkspace } from "@/features/itinerary/types";
@@ -24,6 +25,7 @@ export function usePlannerMap(
   dayRoute: DayRouteUi,
   variants: PlannerVariant[],
 ) {
+  const { locale, t } = useI18n();
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
   const [comparisonDayNumber, setComparisonDayNumber] = useState<number>();
   const [comparisonReturnMode, setComparisonReturnMode] =
@@ -57,7 +59,10 @@ export function usePlannerMap(
         : undefined,
     [selectedItemId, workspace.days],
   );
-  const overviewStages = useMemo(() => deriveOverviewStages(workspace.days), [workspace.days]);
+  const overviewStages = useMemo(
+    () => deriveOverviewStages(workspace.days, locale),
+    [locale, workspace.days],
+  );
   const overviewDefaultModes = useMemo(
     () => deriveOverviewDefaultModes(workspace.days, overviewStages),
     [overviewStages, workspace.days],
@@ -79,9 +84,12 @@ export function usePlannerMap(
         label: stage.firstDayLabel,
         latitude: stage.latitude,
         longitude: stage.longitude,
-        summary: `${stage.dayRangeLabel} · City/town stage ${stage.position}`,
+        summary: t("{range} · City/town stage {position}", {
+          position: stage.position,
+          range: stage.dayRangeLabel,
+        }),
       })),
-    [overviewStages],
+    [overviewStages, t],
   );
   const overviewLines = useMemo<PlannerMapLine[]>(
     () => buildOverviewRouteLines(overviewStages, overviewRoute.calculatedLegs),
@@ -98,8 +106,8 @@ export function usePlannerMap(
     [dayRoute.draft?.itemIds, dayRoute.editing, dayRoute.plan?.stops],
   );
   const dayRouteMarkers = useMemo(
-    () => buildDayRouteMarkers(dayRoute.activeDay, routeStopIds, dayRoute.previousDay),
-    [dayRoute.activeDay, dayRoute.previousDay, routeStopIds],
+    () => buildDayRouteMarkers(dayRoute.activeDay, routeStopIds, dayRoute.previousDay, locale),
+    [dayRoute.activeDay, dayRoute.previousDay, locale, routeStopIds],
   );
   const dayRouteLines = useMemo(
     () => buildDayRouteLines(dayRoute.plan?.calculation ?? null),

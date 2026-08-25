@@ -607,6 +607,7 @@ export type Database = {
           display_name: string | null
           home_city: string | null
           id: string
+          preferred_locale: string
           username: string | null
         }
         Insert: {
@@ -617,6 +618,7 @@ export type Database = {
           display_name?: string | null
           home_city?: string | null
           id: string
+          preferred_locale?: string
           username?: string | null
         }
         Update: {
@@ -627,6 +629,7 @@ export type Database = {
           display_name?: string | null
           home_city?: string | null
           id?: string
+          preferred_locale?: string
           username?: string | null
         }
         Relationships: []

@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import Link from "next/link";
 import { AlertCircle, Eye, EyeOff, Info, LoaderCircle, MailCheck } from "lucide-react";
 import { useActionState, useState } from "react";
@@ -64,7 +65,7 @@ function GoogleAuthButton() {
       ) : (
         <GoogleMark />
       )}
-      {pending ? "Connecting to Google…" : "Continue with Google"}
+      <T message={pending ? "Connecting to Google…" : "Continue with Google"} />
     </Button>
   );
 }
@@ -83,6 +84,7 @@ export function AuthForm({
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
   const [showPassword, setShowPassword] = useState(false);
+  const { t } = useI18n();
 
   if (state.success) {
     return (
@@ -91,12 +93,16 @@ export function AuthForm({
           <div className="flex size-12 items-center justify-center rounded-full bg-accent text-primary">
             <MailCheck aria-hidden="true" className="size-6" />
           </div>
-          <h1 className="mt-5 text-2xl font-semibold">Confirm your email</h1>
+          <h1 className="mt-5 text-2xl font-semibold">
+            <T message={"Confirm your email"} />
+          </h1>
           <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground" role="status">
-            {state.success}
+            <Localized value={state.success} />
           </p>
           <Button asChild className="mt-6 min-h-11 w-full">
-            <Link href="/login">Return to log in</Link>
+            <Link href="/login">
+              <T message={"Return to log in"} />
+            </Link>
           </Button>
         </CardContent>
       </Card>
@@ -107,10 +113,14 @@ export function AuthForm({
     <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-card sm:shadow-sm">
       <CardHeader className="space-y-2 px-0 pt-2 text-left sm:px-8 sm:pt-7 sm:text-center">
         <Link className="mb-2 text-2xl font-bold text-primary" href="/">
-          Trip Planner
+          <T message={" Trip Planner "} />
         </Link>
-        <CardTitle className="text-2xl sm:text-[28px]">{heading}</CardTitle>
-        <CardDescription className="text-sm">{description}</CardDescription>
+        <CardTitle className="text-2xl sm:text-[28px]">
+          <Localized value={heading} />
+        </CardTitle>
+        <CardDescription className="text-sm">
+          <Localized value={description} />
+        </CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-7 sm:px-8">
         {errorMessage ? (
@@ -119,7 +129,9 @@ export function AuthForm({
             role="alert"
           >
             <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-            <p>{errorMessage}</p>
+            <p>
+              <Localized value={errorMessage} />
+            </p>
           </div>
         ) : null}
         <form action={oauthAction}>
@@ -128,7 +140,7 @@ export function AuthForm({
         <div className="my-5 flex items-center gap-3" role="separator">
           <span className="h-px flex-1 bg-border" />
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Or continue with email
+            <T message={" Or continue with email "} />
           </span>
           <span className="h-px flex-1 bg-border" />
         </div>
@@ -139,23 +151,30 @@ export function AuthForm({
               role="alert"
             >
               <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-              <p>{state.error}</p>
+              <p>
+                <Localized value={state.error} />
+              </p>
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+            <Label htmlFor="email">
+              <T message={"Email address"} />
+            </Label>
             <Input
               autoComplete="email"
               className="h-11 text-base"
               id="email"
               name="email"
               placeholder="name@example.com"
+              data-i18n-placeholder={"name@example.com"}
               required
               type="email"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">
+              <T message={"Password"} />
+            </Label>
             <div className="relative">
               <Input
                 autoComplete={mode === "signup" ? "new-password" : "current-password"}
@@ -163,12 +182,12 @@ export function AuthForm({
                 id="password"
                 minLength={8}
                 name="password"
-                placeholder={mode === "signup" ? "Create a password" : "Enter your password"}
+                placeholder={t(mode === "signup" ? "Create a password" : "Enter your password")}
                 required
                 type={showPassword ? "text" : "password"}
               />
               <button
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={t(showPassword ? "Hide password" : "Show password")}
                 className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => setShowPassword((visible) => !visible)}
                 type="button"
@@ -182,7 +201,8 @@ export function AuthForm({
             </div>
             {mode === "signup" ? (
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Info aria-hidden="true" className="size-4" /> At least 8 characters
+                <Info aria-hidden="true" className="size-4" />{" "}
+                <T message={" At least 8 characters "} />
               </p>
             ) : null}
           </div>
@@ -190,16 +210,16 @@ export function AuthForm({
             {pending ? (
               <>
                 <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
-                {mode === "login" ? "Logging in…" : "Creating account…"}
+                <T message={mode === "login" ? "Logging in…" : "Creating account…"} />
               </>
             ) : (
-              submitLabel
+              <Localized value={submitLabel} />
             )}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
-            {alternateLead}{" "}
+            <Localized value={alternateLead} />{" "}
             <Link className="font-semibold text-primary hover:underline" href={alternateHref}>
-              {alternateLabel}
+              <Localized value={alternateLabel} />
             </Link>
           </p>
         </form>

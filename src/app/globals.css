@@ -66,6 +66,25 @@ body {
   @apply bg-background text-foreground antialiased;
 }
 
+html[lang="zh-CN"] body {
+  font-family:
+    "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", Arial, sans-serif;
+}
+
+html[lang="zh-CN"] :where(.uppercase) {
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+html[lang="zh-CN"] :is(.public-itinerary-shell, [data-timeline-export-root]) :where(*) {
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+
+html[lang="zh-CN"] .public-header-actions {
+  min-width: 0;
+}
+
 .planner-place-autocomplete {
   width: 100%;
 }

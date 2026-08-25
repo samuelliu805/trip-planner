@@ -1,3 +1,7 @@
+"use client";
+
+import { Localized, useI18n } from "@/features/i18n/i18n-provider";
+
 import type { PublicTimelineNodePresentation } from "../public-timeline-presentation";
 import { PublicItemIcon, publicItemTypeLabels } from "./public-item-icon";
 import { PublicItemMediaGallery } from "./public-item-media";
@@ -12,6 +16,7 @@ export function PublicTimelineNode({
   onSelect: () => void;
   selected: boolean;
 }) {
+  const { t } = useI18n();
   const { item } = node;
   const schedule =
     item.scheduleLabel ??
@@ -35,7 +40,7 @@ export function PublicTimelineNode({
         <div className={`timeline-node-content-v4 ${selected ? "is-selected" : ""}`}>
           <button
             aria-current={selected ? "true" : undefined}
-            aria-label={`Focus map on ${item.title}`}
+            aria-label={t("Focus map on {item}", { item: item.title })}
             className="public-item-focus timeline-node-topline-v4"
             data-public-item-ref={item.ref}
             onClick={onSelect}
@@ -54,7 +59,9 @@ export function PublicTimelineNode({
                 </span>
               ) : null}
             </span>
-            <span className="timeline-node-type-v4">{publicItemTypeLabels[item.type]}</span>
+            <span className="timeline-node-type-v4">
+              <Localized value={publicItemTypeLabels[item.type]} />
+            </span>
           </button>
           <PublicItemMediaGallery media={node.media} variant="timeline" />
           <PublicQuickActions item={item} quiet />

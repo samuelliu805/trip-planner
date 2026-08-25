@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { Fragment, type ReactNode, type RefObject } from "react";
 
 import {
@@ -236,12 +237,16 @@ export function PlannerItemStepFields({
       ))}
       {blocks.includes("carAction") && !item ? (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-          Pickup and return are saved as separate items so each keeps its own day and time.
+          <T
+            message={
+              " Pickup and return are saved as separate items so each keeps its own day and time. "
+            }
+          />
         </p>
       ) : null}
       {blocks.includes("notes") && rentalReturn ? (
         <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-          Rental price is stored once on the matching pick-up item.
+          <T message={" Rental price is stored once on the matching pick-up item. "} />
         </p>
       ) : null}
     </>
