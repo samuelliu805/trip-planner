@@ -29,17 +29,12 @@ export default function Home() {
           <Link className="text-xl font-bold text-primary sm:text-2xl" href="/">
             Trip Planner
           </Link>
-          <div className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-            <a href="#overview">Overview</a>
-            <a href="#features">Features</a>
-            <a href="#pricing">Pricing</a>
-          </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Button asChild className="min-h-11 px-3" variant="ghost">
-              <Link href="/login">Log in</Link>
+              <Link href="/signup">Sign up</Link>
             </Button>
             <Button asChild className="min-h-11 px-3 sm:px-4">
-              <Link href="/signup">Start planning</Link>
+              <Link href="/login">Log in</Link>
             </Button>
           </div>
         </div>
@@ -60,10 +55,10 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-col gap-3 min-[420px]:flex-row">
             <Button asChild className="min-h-12 px-6 text-base">
-              <Link href="/signup">Start planning</Link>
+              <Link href="/login">Log in</Link>
             </Button>
             <Button asChild className="min-h-12 px-6 text-base" variant="outline">
-              <Link href="/login">Log in</Link>
+              <Link href="/signup">Sign up</Link>
             </Button>
           </div>
         </div>
