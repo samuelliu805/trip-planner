@@ -25,6 +25,7 @@ export function PlannerEditorForm({
   cancelLabel,
   children,
   compactActions = false,
+  denseFields = false,
   fieldsRef,
   footer,
   formAction,
@@ -50,6 +51,7 @@ export function PlannerEditorForm({
   cancelLabel?: string;
   children: ReactNode;
   compactActions?: boolean;
+  denseFields?: boolean;
   fieldsRef?: Ref<HTMLDivElement>;
   footer?: ReactNode;
   formAction?: ComponentProps<"form">["action"];
@@ -137,7 +139,7 @@ export function PlannerEditorForm({
               disabled={pending}
             >
               <div
-                className={`planner-item-form-fields planner-item-step-fields min-w-0 ${compactActions ? "space-y-6 sm:space-y-10" : "space-y-10"}`}
+                className={`planner-item-form-fields planner-item-step-fields min-w-0 ${denseFields ? "space-y-5 sm:space-y-6" : compactActions ? "space-y-6 sm:space-y-10" : "space-y-10"}`}
                 ref={fieldsRef}
               >
                 {children}

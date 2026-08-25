@@ -58,7 +58,7 @@
   }
 
   .public-template-ethereal .timeline-node-v4,
-  .public-template-ethereal .timeline-node-v4:has(.public-item-media, .public-item-attachments) {
+  .public-template-ethereal .timeline-node-v4:has(.public-item-media) {
     display: grid;
     min-height: 5.5rem;
     grid-template-columns: minmax(0, 1fr);

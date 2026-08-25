@@ -2,14 +2,14 @@
 "use client";
 
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
-import { LoaderCircle, MapPin, Search, X } from "lucide-react";
+import { LoaderCircle, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { normalizeGooglePlace } from "@/lib/providers/places/normalize";
 import { placeFields, type PlaceSnapshot } from "@/lib/providers/places/types";
 
+import { PlaceSelectionSummary } from "./place-selection-summary";
 import { PlaceSuggestionList, type PlaceSuggestion } from "./place-suggestion-list";
 
 /**
@@ -22,12 +22,16 @@ export function PlaceAutocomplete({
   autoFocus = false,
   customValueLabel,
   disabled,
+  id,
   includedPrimaryTypes,
+  initialOptionsDismissed = false,
   initialQuery = "",
   onChange,
   onCustomValue,
+  onQueryChange,
   onSelected,
   placeholder = "Search Google Maps",
+  showAvailabilityMessage = true,
   value,
 }: {
   ariaDescribedBy?: string;
@@ -35,12 +39,16 @@ export function PlaceAutocomplete({
   autoFocus?: boolean;
   customValueLabel?: string;
   disabled?: boolean;
+  id?: string;
   includedPrimaryTypes?: string[];
+  initialOptionsDismissed?: boolean;
   initialQuery?: string;
   onChange: (place: PlaceSnapshot | null) => void;
   onCustomValue?: (value: string) => void;
+  onQueryChange?: (value: string) => void;
   onSelected?: () => void;
   placeholder?: string;
+  showAvailabilityMessage?: boolean;
   value?: PlaceSnapshot | null;
 }) {
   const places = useMapsLibrary("places");
@@ -52,7 +60,7 @@ export function PlaceAutocomplete({
   const [query, setQuery] = useState(initialQuery);
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [optionsDismissed, setOptionsDismissed] = useState(false);
+  const [optionsDismissed, setOptionsDismissed] = useState(initialOptionsDismissed);
   const [searching, setSearching] = useState(false);
   const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string>();
@@ -174,9 +182,12 @@ export function PlaceAutocomplete({
           autoFocus={autoFocus}
           className="pl-9 pr-9"
           disabled={disabled || resolving || (!places && !onCustomValue)}
+          id={id}
           onChange={(event) => {
+            const nextQuery = event.target.value;
             requestGeneration.current += 1;
-            setQuery(event.target.value);
+            setQuery(nextQuery);
+            onQueryChange?.(nextQuery);
             setActiveIndex(-1);
             setOptionsDismissed(false);
             setSearching(false);
@@ -250,33 +261,13 @@ export function PlaceAutocomplete({
         </p>
       ) : null}
       {selectedValue ? (
-        <div className="w-full min-w-0 overflow-hidden rounded-md border bg-muted/30 p-3">
-          <div className="flex items-start gap-2">
-            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{selectedValue.displayName}</p>
-              {selectedValue.formattedAddress ? (
-                <p className="break-words text-xs leading-5 text-muted-foreground">
-                  {selectedValue.formattedAddress}
-                </p>
-              ) : null}
-            </div>
-            <Button
-              aria-label="Clear map place"
-              className="size-11 p-0"
-              disabled={disabled}
-              onClick={() => {
-                onChange(null);
-              }}
-              type="button"
-              variant="ghost"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        </div>
+        <PlaceSelectionSummary
+          disabled={disabled}
+          onClear={() => onChange(null)}
+          value={selectedValue}
+        />
       ) : null}
-      {!places ? (
+      {!places && showAvailabilityMessage ? (
         <p className="mt-1 text-xs text-muted-foreground">
           {onCustomValue
             ? `Google Maps is unavailable. You can still use a typed ${customValueLabel ?? "entry"}.`

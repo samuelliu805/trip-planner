@@ -55,8 +55,7 @@
 }
 
 .timeline-export-document.public-template-ethereal .timeline-node-v4,
-.timeline-export-document.public-template-ethereal
-  .timeline-node-v4:has(.public-item-media, .public-item-attachments) {
+.timeline-export-document.public-template-ethereal .timeline-node-v4:has(.public-item-media) {
   display: grid;
   width: auto;
   min-width: 0;

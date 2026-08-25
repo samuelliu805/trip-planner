@@ -29,14 +29,9 @@ export default function Home() {
           <Link className="text-xl font-bold text-primary sm:text-2xl" href="/">
             Trip Planner
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Button asChild className="min-h-11 px-3" variant="ghost">
-              <Link href="/signup">Sign up</Link>
-            </Button>
-            <Button asChild className="min-h-11 px-3 sm:px-4">
-              <Link href="/login">Log in</Link>
-            </Button>
-          </div>
+          <Button asChild className="min-h-11 px-3 sm:px-4">
+            <Link href="/login">Start planning</Link>
+          </Button>
         </div>
       </nav>
 
@@ -53,12 +48,9 @@ export default function Home() {
             A structured, reliable blueprint for complex itineraries. Architect your journey with
             precision and keep every plan in one calm workspace.
           </p>
-          <div className="mt-8 flex flex-col gap-3 min-[420px]:flex-row">
+          <div className="mt-8">
             <Button asChild className="min-h-12 px-6 text-base">
-              <Link href="/login">Log in</Link>
-            </Button>
-            <Button asChild className="min-h-12 px-6 text-base" variant="outline">
-              <Link href="/signup">Sign up</Link>
+              <Link href="/login">Start planning</Link>
             </Button>
           </div>
         </div>

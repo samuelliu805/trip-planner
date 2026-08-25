@@ -63,14 +63,9 @@ export default async function HomePage() {
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Button asChild className="min-h-11 px-3" variant="ghost">
-                <Link href="/signup">Sign up</Link>
-              </Button>
-              <Button asChild className="min-h-11 px-3 sm:px-4">
-                <Link href="/login">Log in</Link>
-              </Button>
-            </div>
+            <Button asChild className="min-h-11 px-3 sm:px-4">
+              <Link href="/login">Start planning</Link>
+            </Button>
           )}
         </div>
       </nav>
@@ -87,11 +82,13 @@ export default async function HomePage() {
           </p>
           <div className="mt-8 flex flex-col gap-3 min-[420px]:flex-row">
             <Button asChild className="min-h-12 px-6 text-base">
-              <Link href={user ? "/trips" : "/login"}>{user ? "Start planning" : "Log in"}</Link>
+              <Link href={user ? "/trips" : "/login"}>Start planning</Link>
             </Button>
-            <Button asChild className="min-h-12 px-6 text-base" variant="outline">
-              <Link href={user ? "/account" : "/signup"}>{user ? "Account" : "Sign up"}</Link>
-            </Button>
+            {user ? (
+              <Button asChild className="min-h-12 px-6 text-base" variant="outline">
+                <Link href="/account">Account</Link>
+              </Button>
+            ) : null}
           </div>
         </div>
 
