@@ -1609,6 +1609,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
+    /\.public-template-traverse \.timeline-section-header-v4 \{[^}]*background: var\(--traverse-paper\)/,
+  );
+  assert.match(
+    styles,
     /\.public-template-traverse \.overview-transport-details-v4 \{[^}]*display: flex;[^}]*flex-wrap: wrap/,
   );
   assert.match(
