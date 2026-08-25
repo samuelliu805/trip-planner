@@ -1,13 +1,16 @@
 const baseUrl = new URL(process.argv[2] ?? process.env.APP_URL ?? "http://localhost:3000");
 
 const routes = [
-  { marker: "Welcome back", pathname: "/login" },
-  { marker: "Create your account", pathname: "/signup" },
+  { markers: ["Welcome back", "Continue with Google"], pathname: "/login" },
+  {
+    markers: ["Create your account", "Continue with Google", "Email address"],
+    pathname: "/signup",
+  },
 ];
 
 const failures = [];
 
-for (const { marker, pathname } of routes) {
+for (const { markers, pathname } of routes) {
   const url = new URL(pathname, baseUrl);
 
   try {
@@ -17,14 +20,14 @@ for (const { marker, pathname } of routes) {
     });
     const body = await response.text();
 
-    if (response.status !== 200 || !body.includes(marker)) {
+    if (response.status !== 200 || markers.some((marker) => !body.includes(marker))) {
       failures.push(
-        `${pathname}: expected 200 with ${JSON.stringify(marker)}, received ${response.status}`,
+        `${pathname}: expected 200 with ${markers.map(JSON.stringify).join(" and ")}, received ${response.status}`,
       );
       continue;
     }
 
-    console.log(`${pathname}: 200 (${marker})`);
+    console.log(`${pathname}: 200 (${markers.join(", ")})`);
   } catch (error) {
     failures.push(`${pathname}: ${error instanceof Error ? error.message : String(error)}`);
   }

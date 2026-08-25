@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { signup } from "@/features/auth/actions";
+import { continueWithGoogle, signup } from "@/features/auth/actions";
 import { AuthForm } from "@/features/auth/components/auth-form";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,6 +22,7 @@ export default async function SignupPage() {
       description="Start with your first trip in a few minutes."
       heading="Create your account"
       mode="signup"
+      oauthAction={continueWithGoogle}
       submitLabel="Create account"
     />
   );
