@@ -1,5 +1,10 @@
+"use client";
+
 import { ChevronDown } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 /** Keeps the first decision short: everything optional stays folded until it is wanted. */
 export function ShareSettingDisclosure({
@@ -41,18 +46,32 @@ export function ShareSettingOption({
   label: string;
   onCheckedChange: (checked: boolean) => void;
 }) {
+  const checkboxId = useId();
+
   return (
-    <button
-      aria-pressed={checked}
-      className={`flex min-h-11 min-w-0 items-center border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-        checked
-          ? "border-primary bg-primary text-primary-foreground"
-          : "bg-background hover:bg-muted/50"
-      }`}
-      onClick={() => onCheckedChange(!checked)}
-      type="button"
-    >
-      <span className="block text-sm font-medium">{label}</span>
-    </button>
+    <>
+      <button
+        aria-pressed={checked}
+        className={`flex min-h-11 min-w-0 items-center border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 min-[1200px]:hidden ${
+          checked
+            ? "border-primary bg-primary text-primary-foreground"
+            : "bg-background hover:bg-muted/50"
+        }`}
+        onClick={() => onCheckedChange(!checked)}
+        type="button"
+      >
+        <span className="block text-sm font-medium">{label}</span>
+      </button>
+      <div className="hidden min-h-11 min-w-0 items-center gap-2 min-[1200px]:flex">
+        <Checkbox
+          checked={checked}
+          id={checkboxId}
+          onCheckedChange={(value) => onCheckedChange(value === true)}
+        />
+        <Label className="min-w-0 cursor-pointer leading-5" htmlFor={checkboxId}>
+          {label}
+        </Label>
+      </div>
+    </>
   );
 }

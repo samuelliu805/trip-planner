@@ -15,10 +15,7 @@ import {
 import { SheetTitle } from "@/components/ui/sheet";
 import { updateAccount } from "@/features/account/actions";
 import { logout } from "@/features/auth/actions";
-import {
-  PlannerEditorField,
-  PlannerEditorTextField,
-} from "@/features/itinerary/components/planner-editor-fields";
+import { PlannerEditorField } from "@/features/itinerary/components/planner-editor-fields";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
@@ -136,14 +133,10 @@ function AccountForm({
         </p>
       ) : null}
 
-      <PlannerEditorTextField
-        autoComplete="email"
-        id="account-email"
-        label="Email"
-        name="email"
-        readOnly
-        value={email}
-      />
+      <div className="min-w-0 space-y-2">
+        <p className="text-sm font-medium leading-none">Email</p>
+        <p className="min-w-0 break-all py-1 text-sm leading-6 text-muted-foreground">{email}</p>
+      </div>
 
       <AccountCurrencyField initialCurrency={initialCurrency} key={initialCurrency} />
 

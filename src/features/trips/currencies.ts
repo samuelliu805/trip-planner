@@ -2,11 +2,12 @@ export const tripCurrencyCodes = [
   "USD",
   "EUR",
   "GBP",
+  "CNY",
+  "HKD",
   "JPY",
   "CAD",
   "AUD",
   "CHF",
-  "CNY",
   "INR",
   "KRW",
 ] as const;

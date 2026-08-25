@@ -1329,6 +1329,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./components/public-share-visibility-fields.tsx", import.meta.url),
     "utf8",
   );
+  const shareSettingCard = await readFile(
+    new URL("./components/public-share-setting-card.tsx", import.meta.url),
+    "utf8",
+  );
   const longImageFields = await readFile(
     new URL("./components/long-image-settings-fields.tsx", import.meta.url),
     "utf8",
@@ -1707,6 +1711,9 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareVisibilityFields, /allowLongImageDownload/);
   assert.doesNotMatch(shareVisibilityFields, /description=/);
   assert.doesNotMatch(shareVisibilityFields, /<details|More controls|ChevronDown/);
+  assert.match(shareSettingCard, /min-\[1200px\]:hidden/);
+  assert.match(shareSettingCard, /hidden min-h-11 min-w-0 items-center gap-2 min-\[1200px\]:flex/);
+  assert.match(shareSettingCard, /<Checkbox[\s\S]*onCheckedChange/);
   assert.match(shareSettingsFields, /ShareSettingDisclosure title="Advanced settings"/);
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);

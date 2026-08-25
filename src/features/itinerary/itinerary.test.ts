@@ -53,6 +53,7 @@ import {
   tripDateInZone,
   tripTitleFromPlace,
 } from "../trips/create-defaults.ts";
+import { tripCurrencyCodes } from "../trips/currencies.ts";
 import { sanitizeTripDayCountInput, settleTripDateFields } from "../trips/date-fields.ts";
 import {
   resolveTripStatusFilter,
@@ -423,6 +424,24 @@ test("account home city autofill uses only explicit concise metadata", () => {
   assert.equal(inferredHomeCity({ city: "  Seattle   " }), "Seattle");
   assert.equal(inferredHomeCity({ address: { city: "Tokyo" } }), "Tokyo");
   assert.equal(inferredHomeCity({ base_city: "Paris", city: "Lyon" }), "Paris");
+});
+
+test("Account and Ideas share supported currencies while email remains plain text", async () => {
+  const [accountEditor, bookingPriceFields, plannerResearchActions] = await Promise.all([
+    readFile(new URL("../account/components/account-editor.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/booking-price-fields.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../research/components/planner-research-actions.tsx", import.meta.url),
+      "utf8",
+    ),
+  ]);
+
+  const supportedCurrencies: readonly string[] = tripCurrencyCodes;
+  for (const currency of ["CNY", "HKD", "JPY"]) assert.ok(supportedCurrencies.includes(currency));
+  assert.doesNotMatch(accountEditor, /PlannerEditorTextField[\s\S]*label="Email"/);
+  assert.match(accountEditor, /<p[^>]*>Email<\/p>[\s\S]*\{email\}<\/p>/);
+  assert.match(bookingPriceFields, /commonBookingCurrencies[^=]*= tripCurrencyCodes/);
+  assert.match(plannerResearchActions, /currencies[^=]*= tripCurrencyCodes/);
 });
 
 test("trip filters, date settlement, and lifecycle toggles stay deterministic", () => {
