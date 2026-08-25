@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
-import { EMAIL_SIGNUP_ENABLED } from "@/features/auth/config";
 import type { AuthActionState } from "@/features/auth/types";
 import { siteUrlFromHeaders } from "@/features/sharing/site-url";
 
@@ -45,10 +44,6 @@ export async function signup(
   _state: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
-  if (!EMAIL_SIGNUP_ENABLED) {
-    return { error: "Email signup is temporarily unavailable. Continue with Google." };
-  }
-
   const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid account details." };

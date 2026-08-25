@@ -21,7 +21,6 @@ type AuthFormProps = {
   heading: string;
   mode: "login" | "signup";
   oauthAction: () => Promise<void>;
-  showEmailForm?: boolean;
   submitLabel: string;
 };
 
@@ -80,7 +79,6 @@ export function AuthForm({
   heading,
   mode,
   oauthAction,
-  showEmailForm = true,
   submitLabel,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -127,90 +125,84 @@ export function AuthForm({
         <form action={oauthAction}>
           <GoogleAuthButton />
         </form>
-        {showEmailForm ? (
-          <>
-            <div className="my-5 flex items-center gap-3" role="separator">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Or continue with email
-              </span>
-              <span className="h-px flex-1 bg-border" />
+        <div className="my-5 flex items-center gap-3" role="separator">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Or continue with email
+          </span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <form action={formAction} className="space-y-4" aria-busy={pending}>
+          {state.error ? (
+            <div
+              className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+              role="alert"
+            >
+              <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+              <p>{state.error}</p>
             </div>
-            <form action={formAction} className="space-y-4" aria-busy={pending}>
-              {state.error ? (
-                <div
-                  className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
-                  role="alert"
-                >
-                  <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-                  <p>{state.error}</p>
-                </div>
-              ) : null}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email address</Label>
-                <Input
-                  autoComplete="email"
-                  className="h-11 text-base"
-                  id="email"
-                  name="email"
-                  placeholder="name@example.com"
-                  required
-                  type="email"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                    className="h-11 pr-12 text-base"
-                    id="password"
-                    minLength={8}
-                    name="password"
-                    placeholder={mode === "signup" ? "Create a password" : "Enter your password"}
-                    required
-                    type={showPassword ? "text" : "password"}
-                  />
-                  <button
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => setShowPassword((visible) => !visible)}
-                    type="button"
-                  >
-                    {showPassword ? (
-                      <EyeOff aria-hidden="true" className="size-5" />
-                    ) : (
-                      <Eye aria-hidden="true" className="size-5" />
-                    )}
-                  </button>
-                </div>
-                {mode === "signup" ? (
-                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <Info aria-hidden="true" className="size-4" /> At least 8 characters
-                  </p>
-                ) : null}
-              </div>
-              <Button className="min-h-11 w-full text-base" disabled={pending} type="submit">
-                {pending ? (
-                  <>
-                    <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
-                    {mode === "login" ? "Logging in…" : "Creating account…"}
-                  </>
+          ) : null}
+          <div className="space-y-2">
+            <Label htmlFor="email">Email address</Label>
+            <Input
+              autoComplete="email"
+              className="h-11 text-base"
+              id="email"
+              name="email"
+              placeholder="name@example.com"
+              required
+              type="email"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
+              <Input
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                className="h-11 pr-12 text-base"
+                id="password"
+                minLength={8}
+                name="password"
+                placeholder={mode === "signup" ? "Create a password" : "Enter your password"}
+                required
+                type={showPassword ? "text" : "password"}
+              />
+              <button
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setShowPassword((visible) => !visible)}
+                type="button"
+              >
+                {showPassword ? (
+                  <EyeOff aria-hidden="true" className="size-5" />
                 ) : (
-                  submitLabel
+                  <Eye aria-hidden="true" className="size-5" />
                 )}
-              </Button>
-            </form>
-          </>
-        ) : null}
-        <p
-          className={`text-center text-sm text-muted-foreground ${showEmailForm ? "mt-4" : "mt-6"}`}
-        >
-          {alternateLead}{" "}
-          <Link className="font-semibold text-primary hover:underline" href={alternateHref}>
-            {alternateLabel}
-          </Link>
-        </p>
+              </button>
+            </div>
+            {mode === "signup" ? (
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Info aria-hidden="true" className="size-4" /> At least 8 characters
+              </p>
+            ) : null}
+          </div>
+          <Button className="min-h-11 w-full text-base" disabled={pending} type="submit">
+            {pending ? (
+              <>
+                <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
+                {mode === "login" ? "Logging in…" : "Creating account…"}
+              </>
+            ) : (
+              submitLabel
+            )}
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            {alternateLead}{" "}
+            <Link className="font-semibold text-primary hover:underline" href={alternateHref}>
+              {alternateLabel}
+            </Link>
+          </p>
+        </form>
       </CardContent>
     </Card>
   );
