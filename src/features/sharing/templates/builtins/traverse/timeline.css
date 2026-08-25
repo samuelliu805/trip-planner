@@ -45,7 +45,7 @@
   row-gap: 0.625rem;
   border: 0;
   border-bottom: 2px solid var(--traverse-graphite);
-  background: var(--traverse-paper);
+  background: transparent;
   padding: 0 0 0.875rem;
 }
 

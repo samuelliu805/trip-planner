@@ -1609,8 +1609,9 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
-    /\.public-template-traverse \.timeline-section-header-v4 \{[^}]*background: var\(--traverse-paper\)/,
+    /@media \(max-width: 899px\)[\s\S]*\.public-itinerary-shell\.public-template-traverse \.timeline-section-header-v4 \{[^}]*background: var\(--background\)/,
   );
+  assert.doesNotMatch(styles, /#d3e0e1/);
   assert.match(
     styles,
     /\.public-template-traverse \.overview-transport-details-v4 \{[^}]*display: flex;[^}]*flex-wrap: wrap/,
