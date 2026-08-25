@@ -1,4 +1,5 @@
 import type { PublicItineraryDay, PublicItineraryItem } from "./types";
+import { transportModeLabels } from "../itinerary/types.ts";
 
 export function orderedPublicItems(day: PublicItineraryDay) {
   return day.items.slice().sort((left, right) => left.sortOrder - right.sortOrder);
@@ -28,7 +29,7 @@ export function publicTransferItemLabel(item: PublicItineraryItem) {
   const time = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   return uniqueLabelParts([
     time,
-    item.title,
+    publicTransportSupportingTitle(item) || publicTransportShortLabel(item),
     publicTransportRouteLabel(item),
     item.transport?.serviceNumber,
     item.place?.displayName,
@@ -42,6 +43,39 @@ export function publicTransportRouteLabel(item: PublicItineraryItem) {
   if (origin) return `From ${origin}`;
   if (destination) return `To ${destination}`;
   return "";
+}
+
+export function publicTransportShortLabel(item: PublicItineraryItem) {
+  if (item.type === "flight") return "Flight";
+  if (item.type === "train") return "Train";
+
+  const normalizedTitle = item.title.trim().toLocaleLowerCase();
+  return (
+    Object.values(transportModeLabels).find(
+      (label) => label.toLocaleLowerCase() === normalizedTitle,
+    ) ?? "Transport"
+  );
+}
+
+function normalizedTransportText(value: string) {
+  return value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+}
+
+export function publicTransportSupportingTitle(item: PublicItineraryItem) {
+  const title = item.title.trim();
+  if (normalizedTransportText(title) === normalizedTransportText(publicTransportShortLabel(item))) {
+    return "";
+  }
+
+  const origin = item.transport?.origin?.trim();
+  const destination = item.transport?.destination?.trim();
+  const normalizedTitle = normalizedTransportText(title);
+  const repeatsStructuredRoute =
+    origin &&
+    destination &&
+    normalizedTitle.includes(normalizedTransportText(origin)) &&
+    normalizedTitle.includes(normalizedTransportText(destination));
+  return repeatsStructuredRoute ? "" : title;
 }
 
 export function publicRentalItemLabel(item: PublicItineraryItem) {

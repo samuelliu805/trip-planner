@@ -1,0 +1,195 @@
+.public-template-neon,
+.public-template-neon.public-share-surface {
+  --radius: 0.875rem;
+  --background: #020612;
+  --foreground: #f6f8ff;
+  --card: #0a0f1f;
+  --card-foreground: #f6f8ff;
+  --popover: #10172d;
+  --popover-foreground: #f6f8ff;
+  --primary: #42ddff;
+  --primary-foreground: #020612;
+  --secondary: #111a34;
+  --secondary-foreground: #dce7ff;
+  --muted: #10172d;
+  --muted-foreground: #a8b6d4;
+  --accent: #1c2541;
+  --accent-foreground: #f6f8ff;
+  --border: #263f64;
+  --input: #476b96;
+  --ring: #42ddff;
+  --public-blue: #42ddff;
+  --public-gold: #ffe067;
+  --public-peach: #fb43e4;
+  --public-subtle: #7785a8;
+  color: #f6f8ff;
+  color-scheme: dark;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.public-template-neon .public-itinerary-header {
+  border-color: #263f64;
+  background: rgb(2 6 18 / 95%);
+  backdrop-filter: blur(18px);
+}
+
+.public-template-neon .public-header-row {
+  min-height: 0;
+  gap: 1rem;
+  padding: 0.8125rem 1.125rem 0.625rem;
+}
+
+.public-template-neon .public-brand-kicker {
+  gap: 0.4375rem;
+  color: #42ddff;
+  font: 700 0.625rem var(--font-mono);
+  letter-spacing: 0.16em;
+}
+
+.public-template-neon .public-trip-title {
+  margin-top: 0.4375rem;
+  font-size: 1.25rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.public-template-neon .public-trip-meta {
+  margin-top: 0.375rem;
+  color: #a8b6d4;
+  font-size: 0.75rem;
+}
+
+.public-template-neon .public-header-button {
+  height: 2.5rem;
+  min-height: 2.5rem;
+  border-color: #476b96;
+  border-radius: 0.625rem;
+  background: #0b152b;
+  color: #f6f8ff;
+}
+
+.public-template-neon .public-content-pane {
+  background: #060b18;
+  scrollbar-color: #31577c transparent;
+}
+
+.public-template-neon .public-overview,
+.public-template-neon .public-timeline {
+  background: #060b18;
+}
+
+.public-template-neon .public-split-divider {
+  background: #243b59;
+}
+
+.public-template-neon .public-map-pane,
+.public-template-neon .public-map-workspace,
+.public-template-neon.public-share-surface {
+  background: #030918;
+}
+
+.public-template-neon .public-map-panel {
+  border-color: #263f64;
+  background: rgb(2 6 18 / 97%);
+}
+
+.public-template-neon .public-view-switcher {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  border-color: #34557e;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
+  background: rgb(4 7 17 / 94%);
+  padding: 0.3125rem max(0.75rem, env(safe-area-inset-right))
+    max(0.35rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+  box-shadow: none;
+  backdrop-filter: blur(18px);
+}
+
+.public-template-neon .public-view-switcher .app-bottom-navigation-item {
+  height: 2.625rem;
+  min-height: 2.625rem;
+  border-radius: 0.6875rem;
+  background: transparent;
+  color: #8e99b8;
+  font: 600 0.625rem var(--font-mono);
+  box-shadow: none;
+}
+
+.public-template-neon .public-view-switcher .app-bottom-navigation-item:hover {
+  background: #101a31;
+  color: #dffaff;
+}
+
+.public-template-neon .public-view-switcher .app-bottom-navigation-item.is-active {
+  background: #42ddff;
+  color: #020612;
+  box-shadow: 0 6px 20px rgb(66 221 255 / 18%);
+}
+
+.public-template-neon .public-mobile-map-control {
+  border: 1px solid #6bf1ff;
+  background: #42ddff;
+  color: #020612;
+  box-shadow: 0 0 28px rgb(66 221 255 / 26%);
+  font-weight: 700;
+}
+
+@media (max-width: 899px) {
+  .public-template-neon .public-header-row {
+    padding: 0.6875rem 0.75rem 0.5rem;
+  }
+
+  .public-template-neon .public-brand-kicker {
+    font-size: 0.5625rem;
+  }
+
+  .public-template-neon .public-trip-title {
+    margin-top: 0.3125rem;
+    font-size: 1.125rem;
+  }
+
+  .public-template-neon .public-trip-meta {
+    margin-top: 0.3125rem;
+    font-size: 0.6875rem;
+  }
+
+  .public-template-neon .public-header-button {
+    height: 2.25rem;
+    min-height: 2.25rem;
+    width: 2.25rem;
+  }
+
+  .public-template-neon .public-view-switcher {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 0.25rem max(0.75rem, env(safe-area-inset-right))
+      max(0.35rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+    border-radius: 0;
+  }
+
+  .public-template-neon .public-view-switcher .app-bottom-navigation-item {
+    height: 2.875rem;
+    min-height: 2.875rem;
+    flex-direction: column;
+    gap: 0.125rem;
+    font-size: 0.5rem;
+  }
+
+  .public-template-neon .public-mobile-map-control {
+    bottom: calc(4.625rem + env(safe-area-inset-bottom));
+  }
+}

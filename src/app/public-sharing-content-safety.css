@@ -1,0 +1,137 @@
+.public-itinerary-shell[data-public-template-key]
+  :is(
+    .public-brand-area,
+    .public-trip-title,
+    .public-trip-meta,
+    .public-trip-meta-copy,
+    .overview-title-row-v4 > *,
+    .overview-day-heading-v4 > *,
+    .overview-day-title-v4,
+    .overview-board-v4 > *,
+    .overview-item-top-v4 > *,
+    .overview-item-copy-v4,
+    .timeline-intro-v4 > *,
+    .timeline-section-header-v4 > *,
+    .timeline-day-copy-v4,
+    .timeline-node-v4 > *,
+    .timeline-node-column-v4,
+    .timeline-node-topline-v4 > *,
+    .timeline-node-copy-v4,
+    .public-item-media,
+    .public-item-attachments,
+    .public-attachment-copy,
+    .public-table-cell-items,
+    .matrix-transport-summary
+  ) {
+  min-width: 0;
+}
+
+.public-itinerary-shell[data-public-template-key]
+  :is(
+    .overview-item-title-v4,
+    .overview-item-meta-v4,
+    .overview-item-notes-v4,
+    .timeline-node-title-v4,
+    .timeline-node-meta-v4,
+    .public-timeline-note,
+    .public-timeline-day-notes,
+    .public-media-attribution
+  ) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.public-itinerary-shell[data-public-template-key] .overview-transport-list-v4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+}
+
+.public-itinerary-shell[data-public-template-key] .overview-transport-item-v4 {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  overflow: hidden;
+}
+
+.public-itinerary-shell[data-public-template-key] .overview-transport-button-v4 {
+  width: 100%;
+  max-width: 100%;
+}
+
+.public-itinerary-shell[data-public-template-key]
+  :is(.overview-transport-copy-v4, .overview-transport-details-v4) {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.public-itinerary-shell[data-public-template-key]
+  :is(.overview-transport-kind-v4, .overview-transport-title-v4) {
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: normal;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.public-itinerary-shell[data-public-template-key]
+  :is(.overview-transport-route-v4, .overview-transport-meta-v4, .overview-transport-notes-v4) {
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.public-itinerary-shell[data-public-template-key] .timeline-transport-list-v4 {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.public-itinerary-shell[data-public-template-key] .timeline-transport-items-v4 {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 100%;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+  gap: 0.375rem 0.75rem;
+}
+
+.public-itinerary-shell[data-public-template-key] .timeline-transport-inline-v4 {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.public-itinerary-shell[data-public-template-key] .timeline-transport-copy-v4 {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.public-itinerary-shell[data-public-template-key] .timeline-transport-title-v4 {
+  flex: 0 0 auto;
+  overflow: visible;
+  overflow-wrap: normal;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.public-itinerary-shell[data-public-template-key] .timeline-transport-meta-v4 {
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container public-content (max-width: 34rem) {
+  .public-itinerary-shell[data-public-template-key] .overview-transport-list-v4,
+  .public-itinerary-shell[data-public-template-key] .timeline-transport-items-v4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

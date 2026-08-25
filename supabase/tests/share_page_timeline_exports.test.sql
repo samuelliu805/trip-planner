@@ -95,10 +95,15 @@ select 'page_2', public.create_share_page_v1(
   (select id from share_page_state where key = 'variant'),
   requested_template_id => 'traverse', requested_template_version => 1
 );
+insert into share_page_state (key, payload)
+select 'page_3', public.create_share_page_v1(
+  (select id from share_page_state where key = 'variant'),
+  requested_template_id => 'neon', requested_template_version => 1
+);
 
 select is(
   jsonb_array_length(public.list_share_pages_v1((select id from share_page_state where key = 'trip'))),
-  2,
+  3,
   'one route can publish multiple independent Share Pages'
 );
 select is(

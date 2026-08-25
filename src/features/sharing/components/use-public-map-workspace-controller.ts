@@ -20,6 +20,7 @@ const publicMapThemes = {
   bento: { color: "#58f58b", glyphColor: "#06100a" },
   ethereal: { color: "#667169", glyphColor: "#fffefa" },
   journal: { color: "#df8068", glyphColor: "#fffdf7" },
+  neon: { color: "#42ddff", glyphColor: "#020612" },
 } as const;
 
 export function usePublicMapWorkspaceController({
@@ -230,7 +231,7 @@ export function usePublicMapWorkspaceController({
       routeSetupItems,
     },
     map: {
-      colorScheme: templateId === "bento" ? ("DARK" as const) : undefined,
+      colorScheme: templateId === "bento" || templateId === "neon" ? ("DARK" as const) : undefined,
       lines,
       markers: visibleMarkers,
       onMarkerClick: (itemRef?: string) =>

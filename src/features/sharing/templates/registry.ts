@@ -2,6 +2,7 @@ import { bentoPublicTemplateV1 } from "./generated/bento-v1.ts";
 import { bentoPublicTemplateV2 } from "./generated/bento-v2.ts";
 import { etherealPublicTemplateV1 } from "./generated/ethereal-v1.ts";
 import { journalPublicTemplateV1 } from "./generated/journal-v1.ts";
+import { neonPublicTemplateV1 } from "./generated/neon-v1.ts";
 import { standardPublicTemplateV1 } from "./generated/standard-v1.ts";
 import { traversePublicTemplateV1 } from "./generated/traverse-v1.ts";
 import { resolvePublicTemplateAsset } from "./runtime/assets.ts";
@@ -45,6 +46,12 @@ export const publicTemplateRegistry = {
     label: "Journal",
     selectable: true,
     template: journalPublicTemplateV1,
+  },
+  "neon@1": {
+    enabled: true,
+    label: "Neon",
+    selectable: true,
+    template: neonPublicTemplateV1,
   },
   "standard@1": {
     enabled: true,

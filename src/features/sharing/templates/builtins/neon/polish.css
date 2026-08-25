@@ -1,0 +1,210 @@
+.public-template-neon {
+  --neon-cyan: #42ddff;
+  --neon-blue: #6697ff;
+  --neon-violet: #a971ff;
+  --neon-magenta: #fb43e4;
+  --neon-green: #55f7a1;
+  background:
+    radial-gradient(circle at 83% 14%, rgb(251 67 228 / 19%), transparent 25%),
+    radial-gradient(circle at 12% 32%, rgb(66 221 255 / 15%), transparent 32%),
+    linear-gradient(155deg, #030817 0%, #070916 46%, #02050d 100%);
+}
+
+.public-template-neon .public-itinerary-header {
+  border-bottom-color: rgb(93 163 221 / 30%);
+  background: linear-gradient(180deg, rgb(3 7 18 / 96%), rgb(7 10 22 / 86%));
+  box-shadow: 0 8px 30px rgb(0 0 0 / 24%);
+  backdrop-filter: blur(22px);
+}
+
+.public-template-neon .public-brand-kicker {
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue) 48%, var(--neon-magenta));
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 20px rgb(66 221 255 / 28%);
+}
+
+.public-template-neon .public-trip-title {
+  color: #fbfcff;
+  text-shadow: 0 0 26px rgb(58 202 255 / 18%);
+}
+
+.public-template-neon .public-header-button {
+  border-color: rgb(87 225 255 / 48%);
+  background: rgb(11 21 40 / 74%);
+  color: #d9f9ff;
+  box-shadow:
+    inset 0 0 18px rgb(64 218 255 / 6%),
+    0 0 16px rgb(46 205 255 / 8%);
+}
+
+.public-template-neon .public-header-button:hover {
+  border-color: rgb(251 67 228 / 58%);
+  box-shadow: 0 0 20px rgb(251 67 228 / 18%);
+}
+
+.public-template-neon .public-content-pane,
+.public-template-neon .public-overview,
+.public-template-neon .public-timeline {
+  background:
+    radial-gradient(circle at 86% 12%, rgb(251 67 228 / 10%), transparent 27%),
+    radial-gradient(circle at 10% 38%, rgb(66 221 255 / 8%), transparent 32%),
+    linear-gradient(155deg, #030817, #060b18 52%, #02050d);
+}
+
+.public-template-neon .public-section-label {
+  color: var(--neon-green);
+  text-shadow: 0 0 16px rgb(85 247 161 / 50%);
+}
+
+.public-template-neon .overview-day-heading-v4,
+.public-template-neon .overview-item-card-v4,
+.public-template-neon .timeline-section-v4 {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(135deg, rgb(8 14 30 / 95%), rgb(15 13 31 / 90%)) padding-box,
+    linear-gradient(120deg, var(--neon-cyan), rgb(102 151 255 / 70%) 48%, var(--neon-magenta))
+      border-box;
+  box-shadow:
+    0 0 24px rgb(41 204 255 / 9%),
+    inset 0 0 30px rgb(109 73 210 / 4%);
+}
+
+.public-template-neon[data-public-template-key="neon@1"] .overview-transport-list-v4 {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(135deg, rgb(8 18 38 / 97%), rgb(12 17 36 / 95%)) padding-box,
+    linear-gradient(
+        120deg,
+        rgb(66 221 255 / 62%),
+        rgb(102 151 255 / 42%) 48%,
+        rgb(251 67 228 / 58%)
+      )
+      border-box;
+  box-shadow:
+    0 0 22px rgb(41 204 255 / 8%),
+    inset 0 0 26px rgb(109 73 210 / 4%);
+}
+
+.public-template-neon .overview-day-heading-v4 {
+  border-radius: 1.125rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.public-template-neon .overview-item-card-v4.is-selected,
+.public-template-neon .timeline-section-v4.is-selected {
+  box-shadow:
+    0 0 28px rgb(85 247 161 / 30%),
+    inset 0 0 0 1px rgb(85 247 161 / 52%);
+}
+
+.public-template-neon .overview-item-card-v4.activity.has-media {
+  border-color: transparent;
+  background:
+    linear-gradient(135deg, rgb(8 14 30 / 97%), rgb(15 13 31 / 94%)) padding-box,
+    linear-gradient(
+        120deg,
+        rgb(66 221 255 / 92%),
+        rgb(102 151 255 / 68%) 48%,
+        rgb(251 67 228 / 88%)
+      )
+      border-box;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 4%),
+    0 0 26px rgb(41 204 255 / 13%),
+    0 0 30px rgb(251 67 228 / 8%);
+}
+
+.public-template-neon .overview-item-icon-v4,
+.public-template-neon .overview-transport-icon-v4,
+.public-template-neon .timeline-node-dot-v4 {
+  border: 1px solid rgb(66 221 255 / 55%);
+  background: linear-gradient(#0b1630, #0d1227) padding-box;
+  box-shadow:
+    0 0 17px rgb(55 218 255 / 22%),
+    inset 0 0 14px rgb(48 214 255 / 8%);
+}
+
+.public-template-neon .timeline-node-v4.meal .timeline-node-dot-v4,
+.public-template-neon .overview-item-card-v4.meal .overview-item-icon-v4 {
+  border-color: rgb(251 67 228 / 55%);
+}
+
+.public-template-neon .timeline-node-v4.rental .timeline-node-dot-v4,
+.public-template-neon .overview-item-card-v4.rental .overview-item-icon-v4 {
+  border-color: rgb(255 224 103 / 55%);
+}
+
+.public-template-neon .timeline-node-list-v4::before {
+  background: linear-gradient(var(--neon-cyan), var(--neon-violet) 48%, var(--neon-magenta));
+  box-shadow:
+    0 0 9px var(--neon-cyan),
+    0 0 15px var(--neon-magenta);
+}
+
+.public-template-neon .timeline-node-content-v4:hover,
+.public-template-neon .timeline-node-content-v4.is-selected {
+  background: rgb(20 25 52 / 78%);
+  box-shadow: inset 2px 0 var(--neon-green);
+}
+
+.public-template-neon .public-timeline-empty {
+  padding: 1rem;
+}
+
+.public-template-neon .media-grid-v4 {
+  border: 1px solid transparent;
+  background:
+    #050b19 padding-box,
+    linear-gradient(120deg, var(--neon-cyan), var(--neon-blue), var(--neon-magenta)) border-box;
+  box-shadow:
+    0 0 22px rgb(75 211 255 / 18%),
+    0 0 22px rgb(244 54 219 / 11%);
+}
+
+.public-template-neon .public-matrix {
+  border-color: rgb(74 216 255 / 40%);
+  box-shadow:
+    0 0 24px rgb(50 205 255 / 9%),
+    0 0 36px rgb(251 67 228 / 5%);
+}
+
+.public-template-neon .public-matrix [role="columnheader"] {
+  color: var(--neon-cyan);
+  text-shadow: 0 0 10px rgb(66 221 255 / 26%);
+}
+
+.public-template-neon .public-matrix .public-item-focus[aria-current="true"] {
+  border-color: rgb(251 67 228 / 58%);
+  background: rgb(33 29 68 / 95%);
+  box-shadow: 0 0 18px rgb(251 67 228 / 16%);
+}
+
+.public-template-neon .public-map-pane,
+.public-template-neon .public-map-workspace {
+  background:
+    radial-gradient(circle at 72% 18%, rgb(251 67 228 / 20%), transparent 27%),
+    linear-gradient(rgb(66 221 255 / 6%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(66 221 255 / 6%) 1px, transparent 1px), #030918;
+  background-size:
+    auto,
+    38px 38px,
+    38px 38px,
+    auto;
+}
+
+.public-template-neon .public-view-switcher .app-bottom-navigation-item.is-active,
+.public-template-neon .public-mobile-map-control {
+  background: linear-gradient(110deg, #2adfff, #6d8dff 46%, #f52bdf);
+  color: #ffffff;
+  box-shadow:
+    0 0 25px rgb(48 220 255 / 35%),
+    0 0 25px rgb(242 45 222 / 24%);
+}
+
+@media (max-width: 899px) {
+  .public-template-neon .overview-day-heading-v4 {
+    border-radius: 1rem;
+    padding: 0.6875rem;
+  }
+}
