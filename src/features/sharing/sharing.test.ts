@@ -87,6 +87,7 @@ async function readAppStyles() {
         "../../app/public-sharing-overview-transport.css",
         "../../app/public-sharing-content-safety.css",
         "../../app/public-sharing-table.css",
+        "../../app/public-sharing-table-resources.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
         "../../app/public-sharing-timeline-export.css",
@@ -1361,6 +1362,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./templates/builtins/ethereal/timeline-redesign.css", import.meta.url),
     "utf8",
   );
+  const tableResources = await readFile(
+    new URL("../../app/public-sharing-table-resources.css", import.meta.url),
+    "utf8",
+  );
   assert.match(controller, /useState<PublicView>\(initialView\)/);
   assert.match(controller, /nextParams\.set\("view", nextView\)/);
   assert.match(controller, /params\.delete\("templateVersion"\)/);
@@ -1476,7 +1481,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     etherealTimelineRedesign,
-    /\.public-template-ethereal \.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\) \{[^}]*flex-basis: 23\.5rem/,
+    /\.public-template-ethereal \.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\) \{[^}]*flex-basis: 21\.5rem/,
   );
   assert.match(
     etherealTimelineRedesign,
@@ -1485,6 +1490,18 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(
     etherealTimelineRedesign,
     /\.public-template-ethereal \.timeline-node-type-v4 \{[^}]*display: block;[^}]*order: 1/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-list-v4 \{[^}]*scrollbar-width: none/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-content-v4 \{[^}]*border: 0;[^}]*background: transparent/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-transport-list-v4 \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*background: transparent/,
   );
   assert.match(
     styles,
@@ -1504,11 +1521,19 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     etherealOverviewRedesign,
-    /\.public-template-ethereal \.overview-item-icon-v4::after \{[^}]*content: attr\(data-public-item-category\)/,
+    /\.public-template-ethereal \.overview-board-v4 \{[^}]*display: block;[^}]*border-top: 0/,
   );
   assert.match(
     etherealOverviewRedesign,
     /\.public-template-ethereal \.overview-order-v4 \{[^}]*font-variant-numeric: tabular-nums;[^}]*text-align: right/,
+  );
+  assert.match(
+    tableResources,
+    /\.public-itinerary-shell \.public-matrix \.public-item-attachments\.table,[\s\S]*\.public-quick-actions:not\(\.is-compact\) \{[^}]*margin-top: 0\.25rem/,
+  );
+  assert.match(
+    tableResources,
+    /\.public-itinerary-shell \.public-matrix \.public-attachment-button,[\s\S]*\.public-resource-button \{[^}]*grid-template-columns: 1\.75rem minmax\(0, 1fr\);[^}]*border-radius: 0\.375rem/,
   );
   assert.match(
     styles,

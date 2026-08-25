@@ -13,6 +13,7 @@
 @import "../features/sharing/templates/builtins/traverse/index.css";
 @import "./public-workspace-tablet.css";
 @import "./public-sharing-content-safety.css";
+@import "./public-sharing-table-resources.css";
 
 html:has(.public-itinerary-shell),
 body:has(.public-itinerary-shell) {
