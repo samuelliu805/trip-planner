@@ -19,7 +19,7 @@
 .public-template-ethereal .overview-day-title-v4 > span:last-child {
   margin-top: 0.5rem;
   color: #11120f;
-  font: 600 1.5rem/1.12 var(--ethereal-serif);
+  font: 600 2rem/1.12 var(--ethereal-serif);
   letter-spacing: -0.025em;
 }
 
@@ -128,10 +128,6 @@
 }
 
 @media (max-width: 899px) {
-  .public-template-ethereal .overview-day-title-v4 > span:last-child {
-    font-size: 1.375rem;
-  }
-
   .public-template-ethereal .overview-item-title-v4 {
     font-size: 1.125rem;
   }
