@@ -1,4 +1,4 @@
-import { LogOut } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -20,13 +20,24 @@ export default async function TripsLayout({ children }: { children: React.ReactN
           <Link className="font-semibold tracking-tight" href="/trips">
             Trip Planner
           </Link>
-          <div className="flex items-center gap-3">
-            <span className="hidden max-w-64 truncate text-sm text-muted-foreground sm:block">
-              {user.email}
-            </span>
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2">
+            <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
+              <Link href="/account">
+                <UserRound aria-hidden="true" className="size-4 shrink-0" />
+                <span className="hidden max-w-64 truncate sm:inline">{user.email}</span>
+                <span className="sm:hidden">Account</span>
+              </Link>
+            </Button>
             <form action={logout}>
-              <Button size="sm" type="submit" variant="ghost">
-                <LogOut aria-hidden="true" className="size-4" /> Log out
+              <Button
+                aria-label="Log out"
+                className="size-11 p-0 sm:w-auto sm:px-3"
+                size="sm"
+                type="submit"
+                variant="ghost"
+              >
+                <LogOut aria-hidden="true" className="size-4" />
+                <span className="hidden sm:inline">Log out</span>
               </Button>
             </form>
           </div>

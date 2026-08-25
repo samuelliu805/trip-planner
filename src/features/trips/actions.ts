@@ -43,13 +43,18 @@ export async function createTrip(
 
   const auth = await authenticatedClient();
   if (!auth) return { error: "Sign in to create a trip." };
-  const { supabase } = auth;
+  const { supabase, userId } = auth;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("default_currency")
+    .eq("id", userId)
+    .maybeSingle();
   const today = parsed.data.today || tripDateInZone(parsed.data.timezone, new Date());
   const { data, error } = await supabase.rpc("create_trip", {
     trip_title: defaultTripTitle(today),
     trip_day_count: defaultTripDayCount,
     trip_timezone: parsed.data.timezone,
-    trip_currency: defaultTripCurrency,
+    trip_currency: profile?.default_currency ?? defaultTripCurrency,
   });
 
   if (error || !data) return { error: error?.message ?? "Could not create the trip." };

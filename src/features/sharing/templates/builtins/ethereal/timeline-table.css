@@ -134,8 +134,8 @@
   content: "";
 }
 
-.public-template-ethereal .timeline-node-v4:has(.public-item-media) {
-  flex-basis: 13.5rem;
+.public-template-ethereal .timeline-node-v4:has(.public-item-media, .public-item-attachments) {
+  flex-basis: 21rem;
 }
 
 .public-template-ethereal .timeline-node-key-v4 {
@@ -237,6 +237,48 @@
 .public-template-ethereal .timeline-node-content-v4 .media-thumb-v4 {
   min-height: 5rem;
   max-height: 7.5rem;
+}
+
+@media (min-width: 1200px) {
+  .public-template-ethereal
+    .timeline-node-v4:has(.public-item-media, .public-item-attachments)
+    .timeline-node-content-v4 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 9.5rem;
+    align-items: start;
+    gap: 0.625rem 1rem;
+  }
+
+  .public-template-ethereal
+    .timeline-node-v4:has(.public-item-media, .public-item-attachments)
+    .timeline-node-topline-v4 {
+    grid-column: 1;
+  }
+
+  .public-template-ethereal
+    .timeline-node-v4:has(.public-item-media, .public-item-attachments)
+    :is(.public-item-media, .public-item-attachments) {
+    min-width: 0;
+    grid-row: 1 / span 2;
+    grid-column: 2;
+  }
+
+  .public-template-ethereal
+    .timeline-node-v4:has(.public-item-media, .public-item-attachments)
+    .public-quick-actions {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  .public-template-ethereal .timeline-node-content-v4 .public-attachment-grid.timeline {
+    max-height: 6.125rem;
+    grid-template-columns: minmax(0, 1fr);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+    overscroll-behavior: contain;
+    scrollbar-color: #c6c2b8 transparent;
+  }
 }
 
 .public-template-ethereal .public-timeline-notes,

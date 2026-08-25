@@ -1433,7 +1433,15 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(styles, /\.public-template-ethereal \.timeline-sections-v4 \{[\s\S]*gap: 0\.75rem/);
   assert.match(
     styles,
-    /\.public-template-ethereal[\s\S]*\.timeline-node-v4:has\(\.public-item-media\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 8\.5rem/,
+    /\.public-template-ethereal[\s\S]*\.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 8\.5rem/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-ethereal[\s\S]*\.public-attachment-grid\.timeline \{[\s\S]*max-height: 6\.125rem[\s\S]*overflow-y: auto/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal[\s\S]*\.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\)[\s\S]*flex-basis: 22\.5rem/,
   );
   assert.match(
     styles,

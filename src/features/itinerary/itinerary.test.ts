@@ -44,6 +44,7 @@ import {
 import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
+import { inferredHomeCity } from "../account/profile-defaults.ts";
 import {
   defaultTripCurrency,
   defaultTripDayCount,
@@ -414,6 +415,14 @@ test("trip creation uses the old branch defaults and opens the planner directly"
   assert.match(actions, /trip_title: defaultTripTitle\(today\)/);
   assert.match(actions, /redirect\(`\/trips\/\$\{data\}`\)/);
   assert.match(migration, /status text not null default 'open'/);
+});
+
+test("account home city autofill uses only explicit concise metadata", () => {
+  assert.equal(inferredHomeCity(undefined), "");
+  assert.equal(inferredHomeCity({ timezone: "America/Los_Angeles" }), "");
+  assert.equal(inferredHomeCity({ city: "  Seattle   " }), "Seattle");
+  assert.equal(inferredHomeCity({ address: { city: "Tokyo" } }), "Tokyo");
+  assert.equal(inferredHomeCity({ base_city: "Paris", city: "Lyon" }), "Paris");
 });
 
 test("trip filters, date settlement, and lifecycle toggles stay deterministic", () => {

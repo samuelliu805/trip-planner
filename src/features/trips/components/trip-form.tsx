@@ -19,14 +19,13 @@ import {
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { updateTrip } from "@/features/trips/actions";
 import { useTripSettingsEditorContext } from "@/features/trips/components/trip-settings-editor";
+import { tripCurrencyCodes } from "@/features/trips/currencies";
 import {
   sanitizeTripDayCountInput,
   settleTripDateFields,
   type TripDateField,
 } from "@/features/trips/date-fields";
 import type { Tables } from "@/types/database";
-
-const currencies = ["USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "KRW"];
 
 /** Trip settings supply their fields and server action to the shared planner editor form. */
 export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables<"trips"> }) {
@@ -181,7 +180,7 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
             <SelectValue aria-label={currency}>{currency}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {currencies.map((code) => (
+            {tripCurrencyCodes.map((code) => (
               <SelectItem key={code} value={code}>
                 {code}
               </SelectItem>

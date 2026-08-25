@@ -1,0 +1,43 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+
+import { updateAccountSchema } from "@/features/account/schema";
+import type { AccountActionState } from "@/features/account/types";
+import { createClient } from "@/lib/supabase/server";
+
+export async function updateAccount(
+  _state: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  const parsed = updateAccountSchema.safeParse({
+    currency: formData.get("currency"),
+    homeCity: formData.get("home_city"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in to update your account." };
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert(
+      {
+        default_currency: parsed.data.currency,
+        home_city: parsed.data.homeCity || null,
+        id: user.id,
+      },
+      { onConflict: "id" },
+    )
+    .select("default_currency")
+    .maybeSingle();
+
+  if (error || !data) return { error: error?.message ?? "Could not save your preferences." };
+  revalidatePath("/account");
+  return { success: "Account preferences saved." };
+}

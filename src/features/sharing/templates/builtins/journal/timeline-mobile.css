@@ -66,7 +66,7 @@
   }
 
   .public-template-journal .timeline-node-v4,
-  .public-template-journal .timeline-node-v4:has(.public-item-media) {
+  .public-template-journal .timeline-node-v4:has(.public-item-media, .public-item-attachments) {
     display: grid;
     width: auto;
     min-width: 0;
