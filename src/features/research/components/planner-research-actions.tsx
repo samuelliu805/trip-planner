@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
+import { tripCurrencyCodes } from "@/features/trips/currencies";
 
 import { nativeSelectClass, ResearchField } from "./form-controls";
 import { createResearchItem } from "../actions";
@@ -26,7 +27,7 @@ import {
 } from "../urls";
 import type { PlanResearchItem } from "../types";
 
-const currencies = ["USD", "EUR", "JPY", "GBP", "CAD", "AUD", "CNY", "KRW"];
+const currencies: readonly string[] = tripCurrencyCodes;
 
 export function PlannerResearchActions({
   compact = false,

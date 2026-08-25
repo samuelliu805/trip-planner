@@ -1,6 +1,7 @@
 "use client";
 
-import { LogOut, MoreHorizontal, Settings2, Share2, Trash2 } from "lucide-react";
+import { LogOut, MoreHorizontal, Settings2, Share2, Trash2, UserRound } from "lucide-react";
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,11 @@ export function TripBarMenu({
             <p className="truncate px-2 py-1.5 text-xs text-muted-foreground" title={accountEmail}>
               {accountEmail}
             </p>
+            <DropdownMenuItem asChild>
+              <Link href="/account">
+                <UserRound aria-hidden="true" className="size-4" /> Account
+              </Link>
+            </DropdownMenuItem>
             <form action={logout}>
               <DropdownMenuItem asChild>
                 <button className="w-full" type="submit">
@@ -187,6 +193,15 @@ export function TripBarMenu({
             >
               {accountEmail}
             </p>
+            <Button
+              asChild
+              className="min-h-11 w-full justify-start px-3 font-normal"
+              variant="ghost"
+            >
+              <Link href="/account" onClick={() => setPanelOpen(false)}>
+                <UserRound aria-hidden="true" className="size-4" /> Account
+              </Link>
+            </Button>
             <form action={logout}>
               <Button
                 className="min-h-11 w-full justify-start px-3 font-normal"

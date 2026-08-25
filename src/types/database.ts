@@ -605,6 +605,7 @@ export type Database = {
           default_currency: string
           default_timezone: string | null
           display_name: string | null
+          home_city: string | null
           id: string
           username: string | null
         }
@@ -614,6 +615,7 @@ export type Database = {
           default_currency?: string
           default_timezone?: string | null
           display_name?: string | null
+          home_city?: string | null
           id: string
           username?: string | null
         }
@@ -623,6 +625,7 @@ export type Database = {
           default_currency?: string
           default_timezone?: string | null
           display_name?: string | null
+          home_city?: string | null
           id?: string
           username?: string | null
         }

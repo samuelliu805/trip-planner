@@ -2,8 +2,9 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { tripCurrencyCodes } from "@/features/trips/currencies";
 
-export const commonBookingCurrencies = ["USD", "EUR", "JPY", "GBP", "CAD", "AUD", "CNY", "KRW"];
+export const commonBookingCurrencies: readonly string[] = tripCurrencyCodes;
 
 export function BookingPriceFields({
   amount,

@@ -145,7 +145,7 @@
   width: calc(100% - 1.5rem);
 }
 
-.public-template-journal .timeline-node-v4:has(.public-item-media) {
+.public-template-journal .timeline-node-v4:has(.public-item-media, .public-item-attachments) {
   flex-basis: 22.5rem;
 }
 
@@ -272,6 +272,18 @@
   max-height: 13rem;
 }
 
+@media (min-width: 900px) {
+  .public-template-journal .timeline-node-content-v4 .public-attachment-grid.timeline {
+    max-height: 6.125rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+    overscroll-behavior: contain;
+    scrollbar-color: #c8baa5 transparent;
+  }
+}
+
 .public-template-journal .public-timeline-notes,
 .public-template-journal .public-timeline-day-notes {
   margin-left: 5.125rem;
@@ -289,7 +301,7 @@
     flex-basis: 13.75rem;
   }
 
-  .public-template-journal .timeline-node-v4:has(.public-item-media) {
+  .public-template-journal .timeline-node-v4:has(.public-item-media, .public-item-attachments) {
     flex-basis: 20.625rem;
   }
 }

@@ -87,6 +87,7 @@ async function readAppStyles() {
         "../../app/public-sharing-overview-transport.css",
         "../../app/public-sharing-content-safety.css",
         "../../app/public-sharing-table.css",
+        "../../app/public-sharing-table-resources.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
         "../../app/public-sharing-timeline-export.css",
@@ -1328,6 +1329,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./components/public-share-visibility-fields.tsx", import.meta.url),
     "utf8",
   );
+  const shareSettingCard = await readFile(
+    new URL("./components/public-share-setting-card.tsx", import.meta.url),
+    "utf8",
+  );
   const longImageFields = await readFile(
     new URL("./components/long-image-settings-fields.tsx", import.meta.url),
     "utf8",
@@ -1353,6 +1358,18 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     "utf8",
   );
   const styles = await readAppStyles();
+  const etherealOverviewRedesign = await readFile(
+    new URL("./templates/builtins/ethereal/overview-redesign.css", import.meta.url),
+    "utf8",
+  );
+  const etherealTimelineRedesign = await readFile(
+    new URL("./templates/builtins/ethereal/timeline-redesign.css", import.meta.url),
+    "utf8",
+  );
+  const tableResources = await readFile(
+    new URL("../../app/public-sharing-table-resources.css", import.meta.url),
+    "utf8",
+  );
   assert.match(controller, /useState<PublicView>\(initialView\)/);
   assert.match(controller, /nextParams\.set\("view", nextView\)/);
   assert.match(controller, /params\.delete\("templateVersion"\)/);
@@ -1462,10 +1479,37 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     styles,
     /\.public-template-ethereal \.timeline-node-meta-v4\.line-clamp-2 \{[\s\S]*-webkit-line-clamp: unset/,
   );
-  assert.match(styles, /\.public-template-ethereal \.timeline-sections-v4 \{[\s\S]*gap: 0\.75rem/);
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-sections-v4 \{[^}]*gap: 1\.25rem/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\) \{[^}]*flex-basis: 21\.5rem/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-content-v4 \.public-attachment-grid\.timeline \{[^}]*max-height: none;[^}]*overflow: visible/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-type-v4 \{[^}]*display: block;[^}]*order: 1/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-list-v4 \{[^}]*scrollbar-width: none/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-content-v4 \{[^}]*border: 0;[^}]*background: transparent/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-transport-list-v4 \{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*background: transparent/,
+  );
   assert.match(
     styles,
-    /\.public-template-ethereal[\s\S]*\.timeline-node-v4:has\(\.public-item-media\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 8\.5rem/,
+    /\.public-template-journal[\s\S]*\.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\)[\s\S]*flex-basis: 22\.5rem/,
   );
   assert.match(
     styles,
@@ -1478,6 +1522,22 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(
     styles,
     /\.public-template-ethereal \.overview-item-card-v4\.has-media > \.public-item-media \{[^}]*grid-area: place/,
+  );
+  assert.match(
+    etherealOverviewRedesign,
+    /\.public-template-ethereal \.overview-board-v4 \{[^}]*display: block;[^}]*border-top: 0/,
+  );
+  assert.match(
+    etherealOverviewRedesign,
+    /\.public-template-ethereal \.overview-order-v4 \{[^}]*font-variant-numeric: tabular-nums;[^}]*text-align: right/,
+  );
+  assert.match(
+    tableResources,
+    /\.public-itinerary-shell \.public-matrix \.public-item-attachments\.table,[\s\S]*\.public-quick-actions:not\(\.is-compact\) \{[^}]*margin-top: 0\.25rem/,
+  );
+  assert.match(
+    tableResources,
+    /\.public-itinerary-shell \.public-matrix \.public-attachment-button,[\s\S]*\.public-resource-button \{[^}]*grid-template-columns: 1\.75rem minmax\(0, 1fr\);[^}]*border-radius: 0\.375rem/,
   );
   assert.match(
     styles,
@@ -1547,6 +1607,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     styles,
     /\.public-template-traverse \.timeline-transport-title-v4 \{[^}]*overflow: visible;[^}]*overflow-wrap: normal;[^}]*text-overflow: clip;[^}]*white-space: nowrap/,
   );
+  assert.match(
+    styles,
+    /@media \(max-width: 899px\)[\s\S]*\.public-itinerary-shell\.public-template-traverse \.timeline-section-header-v4 \{[^}]*background: var\(--background\)/,
+  );
+  assert.doesNotMatch(styles, /#d3e0e1/);
   assert.match(
     styles,
     /\.public-template-traverse \.overview-transport-details-v4 \{[^}]*display: flex;[^}]*flex-wrap: wrap/,
@@ -1651,6 +1716,9 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareVisibilityFields, /allowLongImageDownload/);
   assert.doesNotMatch(shareVisibilityFields, /description=/);
   assert.doesNotMatch(shareVisibilityFields, /<details|More controls|ChevronDown/);
+  assert.match(shareSettingCard, /min-\[1200px\]:hidden/);
+  assert.match(shareSettingCard, /hidden min-h-11 min-w-0 items-center gap-2 min-\[1200px\]:flex/);
+  assert.match(shareSettingCard, /<Checkbox[\s\S]*onCheckedChange/);
   assert.match(shareSettingsFields, /ShareSettingDisclosure title="Advanced settings"/);
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
