@@ -269,16 +269,6 @@
     grid-row: 2;
     grid-column: 1;
   }
-
-  .public-template-ethereal .timeline-node-content-v4 .public-attachment-grid.timeline {
-    max-height: 6.125rem;
-    grid-template-columns: minmax(0, 1fr);
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding-right: 0.25rem;
-    overscroll-behavior: contain;
-    scrollbar-color: #c6c2b8 transparent;
-  }
 }
 
 .public-template-ethereal .public-timeline-notes,

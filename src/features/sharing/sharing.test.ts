@@ -1353,6 +1353,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     "utf8",
   );
   const styles = await readAppStyles();
+  const etherealOverviewRedesign = await readFile(
+    new URL("./templates/builtins/ethereal/overview-redesign.css", import.meta.url),
+    "utf8",
+  );
+  const etherealTimelineRedesign = await readFile(
+    new URL("./templates/builtins/ethereal/timeline-redesign.css", import.meta.url),
+    "utf8",
+  );
   assert.match(controller, /useState<PublicView>\(initialView\)/);
   assert.match(controller, /nextParams\.set\("view", nextView\)/);
   assert.match(controller, /params\.delete\("templateVersion"\)/);
@@ -1462,14 +1470,21 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     styles,
     /\.public-template-ethereal \.timeline-node-meta-v4\.line-clamp-2 \{[\s\S]*-webkit-line-clamp: unset/,
   );
-  assert.match(styles, /\.public-template-ethereal \.timeline-sections-v4 \{[\s\S]*gap: 0\.75rem/);
   assert.match(
-    styles,
-    /\.public-template-ethereal[\s\S]*\.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\)[\s\S]*grid-template-columns: minmax\(0, 1fr\) 8\.5rem/,
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-sections-v4 \{[^}]*gap: 1\.25rem/,
   );
   assert.match(
-    styles,
-    /\.public-template-ethereal[\s\S]*\.public-attachment-grid\.timeline \{[\s\S]*max-height: 6\.125rem[\s\S]*overflow-y: auto/,
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\) \{[^}]*flex-basis: 23\.5rem/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-content-v4 \.public-attachment-grid\.timeline \{[^}]*max-height: none;[^}]*overflow: visible/,
+  );
+  assert.match(
+    etherealTimelineRedesign,
+    /\.public-template-ethereal \.timeline-node-type-v4 \{[^}]*display: block;[^}]*order: 1/,
   );
   assert.match(
     styles,
@@ -1486,6 +1501,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(
     styles,
     /\.public-template-ethereal \.overview-item-card-v4\.has-media > \.public-item-media \{[^}]*grid-area: place/,
+  );
+  assert.match(
+    etherealOverviewRedesign,
+    /\.public-template-ethereal \.overview-item-icon-v4::after \{[^}]*content: attr\(data-public-item-category\)/,
+  );
+  assert.match(
+    etherealOverviewRedesign,
+    /\.public-template-ethereal \.overview-order-v4 \{[^}]*font-variant-numeric: tabular-nums;[^}]*text-align: right/,
   );
   assert.match(
     styles,
