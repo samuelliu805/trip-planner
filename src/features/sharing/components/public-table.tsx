@@ -103,7 +103,7 @@ export function PublicTable({
                 className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]"
                 role="rowheader"
               >
-                {day.dayNumber}
+                {locale === "zh-CN" ? t("Day {day}", { day: day.dayNumber }) : day.dayNumber}
               </div>
               {columns.map((column, columnIndex) => {
                 const items = day.items

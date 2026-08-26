@@ -6,6 +6,15 @@ html[lang="zh-CN"] .public-itinerary-shell :is(.timeline-day-index-v4, .overview
   writing-mode: horizontal-tb;
 }
 
+html[lang="zh-CN"] .public-itinerary-shell .public-matrix .matrix-day-column {
+  width: 4.75rem;
+  flex-basis: 4.75rem;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
 html[lang="zh-CN"] .public-template-ethereal .timeline-section-header-v4 {
   grid-template-columns: 5.25rem minmax(0, 1fr) auto;
 }

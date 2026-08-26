@@ -50,6 +50,10 @@
 }
 
 .public-itinerary-shell .public-matrix .public-table-cell-items.is-transport {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  grid-template-columns: none;
   overflow: visible;
   gap: 0;
   border: 0;
@@ -58,6 +62,8 @@
 }
 
 .public-itinerary-shell .public-matrix .public-table-cell-items.is-transport > .public-item-focus {
+  width: 100%;
+  flex: 0 0 auto;
   min-height: 2.75rem;
   margin: 0;
   border: 0;

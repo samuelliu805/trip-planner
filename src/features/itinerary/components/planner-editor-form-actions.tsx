@@ -8,6 +8,8 @@ export function PlannerEditorFormActions({
   alternateSaveLabel,
   backDisabled = false,
   cancelLabel = "Cancel",
+  cancelPending = false,
+  cancelPendingLabel = cancelLabel,
   compactActions = false,
   onCancel,
   onBack,
@@ -21,6 +23,8 @@ export function PlannerEditorFormActions({
   alternateSaveLabel?: string;
   backDisabled?: boolean;
   cancelLabel?: string;
+  cancelPending?: boolean;
+  cancelPendingLabel?: string;
   compactActions?: boolean;
   nextDisabled?: boolean;
   onBack?: () => void;
@@ -35,7 +39,7 @@ export function PlannerEditorFormActions({
     <Button
       aria-busy={pending}
       className="min-h-11 min-w-0 font-semibold shadow-sm"
-      disabled={pending || saveDisabled}
+      disabled={pending || cancelPending || saveDisabled}
       size="sm"
       type="submit"
     >
@@ -49,7 +53,7 @@ export function PlannerEditorFormActions({
       aria-label="Previous step"
       data-i18n-aria-label={"Previous step"}
       className="size-11 shrink-0 gap-0 p-0 sm:w-auto sm:gap-2 sm:px-3"
-      disabled={backDisabled}
+      disabled={backDisabled || pending || cancelPending}
       onClick={onBack}
       size="sm"
       type="button"
@@ -68,7 +72,7 @@ export function PlannerEditorFormActions({
       aria-label="Next step"
       data-i18n-aria-label={"Next step"}
       className="size-11 shrink-0 gap-0 p-0 sm:w-auto sm:gap-2 sm:px-3"
-      disabled={nextDisabled}
+      disabled={nextDisabled || pending || cancelPending}
       onClick={onNext}
       size="sm"
       type="button"
@@ -90,14 +94,16 @@ export function PlannerEditorFormActions({
       {splitCancelAndSave ? (
         <div className="flex min-w-0 items-center justify-between gap-3">
           <Button
+            aria-busy={cancelPending}
             className="min-h-11 shrink-0"
-            disabled={pending}
+            disabled={pending || cancelPending}
             onClick={onCancel}
             size="sm"
             type="button"
             variant="ghost"
           >
-            <Localized value={cancelLabel} />
+            {cancelPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+            <Localized value={cancelPending ? cancelPendingLabel : cancelLabel} />
           </Button>
           {saveButton}
         </div>
@@ -108,7 +114,7 @@ export function PlannerEditorFormActions({
             <Button
               className="min-h-11 min-w-0 whitespace-normal"
               data-planner-save-intent="save-and-create-another"
-              disabled={pending || saveDisabled}
+              disabled={pending || cancelPending || saveDisabled}
               type="submit"
               variant="outline"
             >

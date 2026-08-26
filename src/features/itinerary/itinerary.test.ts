@@ -444,6 +444,10 @@ test("Account and Ideas share supported currencies while email remains plain tex
   assert.match(accountEditor, /message=(?:\{" Email "\}|"Email")[\s\S]*\{email\}<\/p>/);
   assert.match(bookingPriceFields, /commonBookingCurrencies[^=]*= tripCurrencyCodes/);
   assert.match(plannerResearchActions, /currencies[^=]*= tripCurrencyCodes/);
+  assert.match(accountEditor, /router\.prefetch\("\/trips"\)/);
+  assert.match(accountEditor, /cancelPending=\{exiting\}/);
+  assert.match(accountEditor, /cancelPendingLabel=\{t\("Exiting…"\)\}/);
+  assert.match(accountEditor, /LoaderCircle[\s\S]*Logging out…/);
 });
 
 test("browser locale parsing distinguishes an absent preference from default English", () => {
@@ -636,7 +640,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorForm, /saveDisabled/);
   assert.match(
     editorForm,
-    /<fieldset[\s\S]*aria-busy=\{pending\}[\s\S]*disabled=\{pending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
+    /<fieldset[\s\S]*aria-busy=\{pending \|\| cancelPending\}[\s\S]*disabled=\{pending \|\| cancelPending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
   );
   assert.match(editorHeader, /navigation\?: ReactNode/);
   assert.match(editor, /onOpenAutoFocus[\s\S]*initialFocusSelector[\s\S]*preventScroll: true/);
@@ -673,8 +677,11 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(actions, /aria-label="Previous step"[\s\S]*message=\{"Previous"\}/);
   assert.match(actions, /aria-label="Next step"[\s\S]*message=\{"Next"\}/);
   assert.match(actions, /grid-cols-2[\s\S]*Save \+ another[\s\S]*row-start-2/);
-  assert.match(actions, /splitCancelAndSave[\s\S]*justify-between[\s\S]*\{cancelLabel\}/);
-  assert.match(actions, /pending \|\| saveDisabled/);
+  assert.match(
+    actions,
+    /splitCancelAndSave[\s\S]*justify-between[\s\S]*cancelPending \? cancelPendingLabel : cancelLabel/,
+  );
+  assert.match(actions, /pending \|\| cancelPending \|\| saveDisabled/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
   assert.match(form, /label="Trip name"/);
   assert.match(form, /label="Duration \(days\)"/);

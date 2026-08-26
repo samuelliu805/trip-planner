@@ -1,8 +1,8 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LoaderCircle, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -115,30 +115,35 @@ function AccountLanguageField({ initialLocale }: { initialLocale: Locale }) {
 function AccountForm({
   currency: initialCurrency,
   email,
+  exiting,
   homeCity,
   locale,
+  onExit,
 }: {
   currency: string;
   email: string;
+  exiting: boolean;
   homeCity: string;
   locale: Locale;
+  onExit: () => void;
 }) {
   const { t } = useI18n();
-  const router = useRouter();
   const [state, action, pending] = useActionState(updateAccount, {});
-  const exit = () => router.replace("/trips");
+  const [logoutPending, startLogout] = useTransition();
 
   return (
     <PlannerEditorForm
       cancelLabel={t("Exit")}
+      cancelPending={exiting}
+      cancelPendingLabel={t("Exiting…")}
       compactActions
       denseFields
       formAction={action}
       header={null}
-      onCancel={exit}
-      onClose={exit}
-      pending={pending}
-      pendingLabel={t("Saving…")}
+      onCancel={onExit}
+      onClose={onExit}
+      pending={pending || logoutPending}
+      pendingLabel={logoutPending ? t("Logging out…") : t("Saving…")}
       saveLabel={t("Save preferences")}
     >
       <div className="flex min-w-0 items-center justify-between gap-3">
@@ -152,13 +157,23 @@ function AccountForm({
         <div className="flex shrink-0 items-center gap-1">
           <LanguageSwitcher className="px-2" />
           <Button
+            aria-busy={logoutPending}
             className="min-h-11 shrink-0 px-2"
-            formAction={logout}
-            formNoValidate
-            type="submit"
+            disabled={pending || logoutPending || exiting}
+            onClick={() =>
+              startLogout(async () => {
+                await logout();
+              })
+            }
+            type="button"
             variant="ghost"
           >
-            <LogOut aria-hidden="true" className="size-4" /> <T message="Log out" />
+            {logoutPending ? (
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+            ) : (
+              <LogOut aria-hidden="true" className="size-4" />
+            )}{" "}
+            <T message={logoutPending ? "Logging out…" : "Log out"} />
           </Button>
         </div>
       </div>
@@ -203,16 +218,30 @@ export function AccountEditor({
   locale: Locale;
 }) {
   const router = useRouter();
+  const [exiting, startExit] = useTransition();
+  useEffect(() => router.prefetch("/trips"), [router]);
+  const exit = useCallback(() => {
+    if (exiting) return;
+    startExit(() => router.replace("/trips"));
+  }, [exiting, router]);
+
   return (
     <PlannerEditorScreen
       editorKind="trip-settings"
       initialFocusSelector="[data-account-title]"
       onOpenChange={(open) => {
-        if (!open) router.replace("/trips");
+        if (!open) exit();
       }}
       open
     >
-      <AccountForm currency={currency} email={email} homeCity={homeCity} locale={locale} />
+      <AccountForm
+        currency={currency}
+        email={email}
+        exiting={exiting}
+        homeCity={homeCity}
+        locale={locale}
+        onExit={exit}
+      />
     </PlannerEditorScreen>
   );
 }

@@ -1395,6 +1395,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("../../app/public-sharing-table-resources.css", import.meta.url),
     "utf8",
   );
+  const viewportContainment = await readFile(
+    new URL("./hooks/use-public-viewport-containment.ts", import.meta.url),
+    "utf8",
+  );
   assert.match(controller, /useState<PublicView>\(initialView\)/);
   assert.match(controller, /nextParams\.set\("view", nextView\)/);
   assert.match(controller, /params\.delete\("templateVersion"\)/);
@@ -1412,6 +1416,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(bottomNavigation, /ArrowRight/);
   assert.match(bottomNavigation, /event\.key === "Home"/);
   assert.match(bottomNavigation, /event\.key === "End"/);
+  assert.match(
+    publicTable,
+    /locale === "zh-CN" \? t\("Day \{day\}", \{ day: day\.dayNumber \}\) : day\.dayNumber/,
+  );
+  assert.match(
+    styles,
+    /html\[lang="zh-CN"\][\s\S]*\.public-matrix \.matrix-day-column \{[^}]*width: 4\.75rem;[^}]*flex-basis: 4\.75rem;[^}]*white-space: nowrap/,
+  );
   assert.match(overview, /publicOverviewDaySections/);
   assert.match(overview, /PublicOverviewCard/);
   assert.match(overview, /PublicOverviewTransportList[\s\S]*public-overview-board/);
@@ -1565,6 +1577,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     /\.public-itinerary-shell \.public-matrix \.public-attachment-button,[\s\S]*\.public-resource-button \{[^}]*grid-template-columns: 1\.75rem minmax\(0, 1fr\);[^}]*border-radius: 0\.375rem/,
   );
   assert.match(
+    tableResources,
+    /\.public-table-cell-items\.is-transport \{[^}]*display: flex;[^}]*flex-direction: column;[^}]*grid-template-columns: none/,
+  );
+  assert.match(
     styles,
     /\.public-template-ethereal\[data-public-template-key="ethereal@1"\][\s\S]*\.overview-transport-list-v4:has\(> :nth-child\(3\)\) \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
   );
@@ -1655,8 +1671,13 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
   assert.match(
     styles,
-    /\.public-itinerary-shell \{[\s\S]*position: fixed;[\s\S]*inset: 0;[\s\S]*height: auto;/,
+    /\.public-itinerary-shell \{[\s\S]*position: fixed;[\s\S]*height: var\(--public-viewport-height, 100dvh\);/,
   );
+  assert.match(viewportContainment, /visualViewport\?\.height \?\? window\.innerHeight/);
+  assert.match(viewportContainment, /setProperty\("--public-viewport-height"/);
+  assert.match(viewportContainment, /addEventListener\("pageshow", stabilizeViewport\)/);
+  assert.match(viewportContainment, /addEventListener\("visibilitychange"/);
+  assert.match(viewportContainment, /\[100, 350, 1_000\]/);
   assert.match(
     styles,
     /html:has\(\.public-itinerary-shell\),[\s\S]*body:has\(\.public-itinerary-shell\)[\s\S]*position: fixed/,
@@ -1901,6 +1922,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
     canonicalTransportMigration,
     transportSnapshotMigration,
     localitySequenceMigration,
+    localitySnapshotMigration,
     sharePageMigration,
     imageRangeMigration,
     neonMigration,
@@ -1917,7 +1939,8 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
       "../../../supabase/migrations/20260823220000_canonical_research_transport_titles.sql",
       "../../../supabase/migrations/20260823221500_refresh_research_transport_snapshots.sql",
-      "../../../supabase/migrations/20260825214000_public_locality_sequence_includes_rentals.sql",
+      "../../../supabase/migrations/20260826011322_public_locality_sequence_includes_rentals.sql",
+      "../../../supabase/migrations/20260826022659_refresh_public_locality_snapshots.sql",
       "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
       "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
       "../../../supabase/migrations/20260823184500_add_neon_public_template.sql",
@@ -1978,6 +2001,14 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.doesNotMatch(localitySequenceMigration, /source_day\.trip_id/);
   assert.match(localitySequenceMigration, /lag\([\s\S]*previous_key/);
   assert.match(localitySequenceMigration, /previous_key is distinct from ordered\.locality_key/);
+  assert.match(
+    localitySnapshotMigration,
+    /item\.type in \('activity', 'meal', 'car_rental', 'hotel'\)/,
+  );
+  assert.match(localitySnapshotMigration, /partition by day\.id/);
+  assert.match(localitySnapshotMigration, /current_item\.value -> 'place'/);
+  assert.match(localitySnapshotMigration, /current_projection -> 'citySequence'/);
+  assert.match(localitySnapshotMigration, /current_projection #> '\{metadata,coverCities\}'/);
   assert.match(baseMigration, /revoke all on function public\.get_public_itinerary_v4/);
   assert.match(
     baseMigration,
