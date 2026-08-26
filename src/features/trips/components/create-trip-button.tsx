@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, Plus } from "lucide-react";
 import { useActionState, useEffect, useRef } from "react";
 
@@ -35,11 +36,11 @@ export function CreateTripButton() {
         ) : (
           <Plus aria-hidden="true" className="size-4" />
         )}
-        New trip
+        <T message={" New trip "} />
       </Button>
       {state.error ? (
         <p className="mt-2 max-w-64 text-sm font-medium text-destructive" role="alert">
-          {state.error}
+          <Localized value={state.error} />
         </p>
       ) : null}
     </form>

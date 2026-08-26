@@ -1,5 +1,6 @@
 import type { CompiledPublicTemplateV1 } from "../templates/schema";
 import type { PublicItinerary } from "../types";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { PublicTimeline } from "../components/public-timeline";
 import { PublicTripHeader } from "../components/public-trip-header";
 
@@ -22,6 +23,7 @@ export function TimelineExportDocument({
   showIntro: boolean;
   template: CompiledPublicTemplateV1;
 }) {
+  const { t } = useI18n();
   return (
     <main
       className={`timeline-export-document public-template-${template.id}`}
@@ -51,12 +53,16 @@ export function TimelineExportDocument({
       />
       <footer className="timeline-export-footer">
         {/* eslint-disable-next-line @next/next/no-img-element -- generated QR data is already final. */}
-        <img alt="QR code" className="timeline-export-qr" src={qrDataUrl} />
+        <img alt={t("QR code")} className="timeline-export-qr" src={qrDataUrl} />
         <div className="timeline-export-footer-copy">
           <strong>
-            {destinationType === "homepage"
-              ? "Plan your next journey with Trip Planner"
-              : "Scan to explore the full itinerary"}
+            <T
+              message={
+                destinationType === "homepage"
+                  ? "Plan your next journey with Trip Planner"
+                  : "Scan to explore the full itinerary"
+              }
+            />
           </strong>
           <span>{new URL(destinationUrl).hostname}</span>
         </div>

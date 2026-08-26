@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Button } from "@/components/ui/button";
 
 export function TripDetailRouteState({
@@ -29,15 +30,23 @@ export function TripDetailRouteState({
               <div className="size-11 animate-pulse rounded-lg bg-muted" />
             </div>
             <div>
-              <h1 className="font-semibold">{title}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+              <h1 className="font-semibold">
+                <Localized value={title} />
+              </h1>
+              {onRetry ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <Localized value={description} />
+                </p>
+              ) : null}
               {onRetry ? (
                 <Button className="mt-4 min-h-11" onClick={onRetry}>
-                  Try again
+                  <T message={" Try again "} />
                 </Button>
               ) : (
                 <div className="mt-4 h-2 w-32 animate-pulse rounded bg-muted" role="status">
-                  <span className="sr-only">Loading trip section</span>
+                  <span className="sr-only">
+                    <T message={"Loading trip section"} />
+                  </span>
                 </div>
               )}
             </div>

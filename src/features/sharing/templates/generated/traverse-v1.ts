@@ -20,7 +20,7 @@ export const traversePublicTemplateV1 = {
     views: ["overview", "table", "timeline"],
   },
   compilerVersion: "1.0.0",
-  digest: "sha256-b7402fbfaeb70280adfd34a8785697342ea8ebb782ce036a81b4cd16fb5a79cd",
+  digest: "sha256-b6728507733cf4396e6424d10284b6da2d02538b4e59aba2edd3d83a08b0b6e6",
   id: "traverse",
   key: "traverse@1",
   layout: {
@@ -58,16 +58,6 @@ export const traversePublicTemplateV1 = {
       {
         children: [
           {
-            name: "view-switcher",
-            type: "part",
-          },
-        ],
-        name: "view-navigation",
-        type: "region",
-      },
-      {
-        children: [
-          {
             children: [
               {
                 name: "active-view",
@@ -83,6 +73,16 @@ export const traversePublicTemplateV1 = {
           },
         ],
         name: "workspace",
+        type: "region",
+      },
+      {
+        children: [
+          {
+            name: "view-switcher",
+            type: "part",
+          },
+        ],
+        name: "view-navigation",
         type: "region",
       },
       {

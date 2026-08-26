@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Pencil, Plus } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -24,6 +25,7 @@ export function ResearchItemDialog({
   onSaved: (item: ResearchItem) => void;
   tripId: string;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const closeRequest = useRef(() => setOpen(false));
   const label = researchCategorySingularLabels[category];
@@ -32,7 +34,7 @@ export function ResearchItemDialog({
     <>
       {item ? (
         <Button
-          aria-label={`Edit ${item.title ?? label}`}
+          aria-label={t("Edit {item}", { item: item.title ?? t(label) })}
           className="size-11 p-0 xl:size-9"
           onClick={() => setOpen(true)}
           size="sm"
@@ -42,13 +44,15 @@ export function ResearchItemDialog({
         </Button>
       ) : (
         <Button
-          aria-label={`Add ${label.toLowerCase()} price or idea`}
+          aria-label={t("Add {item} price or idea", { item: t(label) })}
           className="size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-4"
           onClick={() => setOpen(true)}
-          title={`Add ${label.toLowerCase()} price or idea`}
+          title={t("Add {item} price or idea", { item: t(label) })}
         >
           <Plus aria-hidden="true" className="size-4" />
-          <span className="hidden sm:inline">Add price or idea</span>
+          <span className="hidden sm:inline">
+            <T message={"Add price or idea"} />
+          </span>
         </Button>
       )}
       <PlannerEditorScreen

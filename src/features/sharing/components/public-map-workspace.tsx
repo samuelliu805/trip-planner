@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, useI18n } from "@/features/i18n/i18n-provider";
 import { ChevronUp, Route, X } from "lucide-react";
 import { useState } from "react";
 
@@ -35,10 +36,15 @@ export function PublicMapWorkspace(props: PublicMapWorkspaceProps) {
 }
 
 function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
+  const { t } = useI18n();
   const controller = usePublicMapWorkspaceController(props);
   const [panelOpen, setPanelOpen] = useState(false);
   return (
-    <section aria-label="Map and routes" className="public-map-workspace relative h-full min-h-0">
+    <section
+      aria-label="Map and routes"
+      data-i18n-aria-label={"Map and routes"}
+      className="public-map-workspace relative h-full min-h-0"
+    >
       <div
         className={`public-map-canvas absolute inset-0 ${panelOpen ? "pb-[min(44%,22rem)]" : "pb-11"}`}
       >
@@ -55,14 +61,18 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
         className={`public-map-panel absolute inset-x-0 bottom-0 overflow-y-auto border-t bg-background/97 backdrop-blur ${panelOpen ? "max-h-[52%]" : "max-h-11 overflow-hidden"}`}
       >
         <button
-          aria-label={panelOpen ? "Close route panel" : "Open route panel"}
+          aria-label={t(panelOpen ? "Close route panel" : "Open route panel")}
           aria-expanded={panelOpen}
           className="public-map-panel-toggle sticky top-0 z-10 flex min-h-11 w-full items-center gap-2 border-b bg-background/97 px-3 text-left text-xs font-semibold backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           onClick={() => setPanelOpen((current) => !current)}
           type="button"
         >
           <Route aria-hidden="true" className="size-4 text-primary" />
-          <span>{controller.routeScope === "overview" ? "Whole trip routes" : "Day route"}</span>
+          <span>
+            <Localized
+              value={controller.routeScope === "overview" ? "Whole trip routes" : "Day route"}
+            />
+          </span>
           {panelOpen ? (
             <X aria-hidden="true" className="ml-auto size-4 text-muted-foreground" />
           ) : (

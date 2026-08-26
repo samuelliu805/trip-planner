@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 
+import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+
 import { publicTemplatePlatformParts } from "../parts/platform-parts";
 import type {
   CompiledPublicTemplateV1,
@@ -51,6 +53,7 @@ function TemplateRegion({
     return (
       <div {...data} className="public-template-region-header-actions public-header-actions">
         {children}
+        <LanguageSwitcher className="public-header-button px-2" />
       </div>
     );
   return (

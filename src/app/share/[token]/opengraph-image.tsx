@@ -1,19 +1,24 @@
 import { ImageResponse } from "next/og";
 import { z } from "zod";
 
+import { getRequestLocale } from "@/features/i18n/server";
+import { translateMessage } from "@/features/i18n/translate";
 import { getPublicItinerary } from "@/features/sharing/data";
+import { localizeGeneratedPublicDescription } from "@/features/sharing/public-copy";
 
-export const alt = "Shared Trip Planner itinerary";
+export const alt = "Trip Planner 行程";
 export const contentType = "image/png";
 export const size = { height: 630, width: 1200 };
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function OpenGraphImage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+  const [{ token }, locale] = await Promise.all([params, getRequestLocale()]);
   const itinerary = z.uuid().safeParse(token).success ? await getPublicItinerary(token) : null;
-  const title = itinerary?.metadata.title ?? "Trip Planner";
-  const description = itinerary?.metadata.description ?? "Shared itinerary";
+  const title = itinerary?.metadata.title ?? translateMessage(locale, "Trip Planner");
+  const description = itinerary
+    ? localizeGeneratedPublicDescription(itinerary.metadata.description, locale)
+    : translateMessage(locale, "Shared itinerary");
   const cities = itinerary?.metadata.coverCities.slice(0, 3).join(" · ") ?? "";
   return new ImageResponse(
     <div
@@ -44,11 +49,11 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ tok
               display: "flex",
               fontSize: 22,
               fontWeight: 700,
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
+              letterSpacing: locale === "zh-CN" ? "0.04em" : "0.16em",
+              textTransform: locale === "zh-CN" ? "none" : "uppercase",
             }}
           >
-            Trip Planner
+            {translateMessage(locale, "Trip Planner")}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 54, fontWeight: 700, lineHeight: 1.08 }}>
@@ -67,7 +72,7 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ tok
             </div>
           </div>
           <div style={{ color: "#166b4f", display: "flex", fontSize: 22, fontWeight: 600 }}>
-            {cities || "Overview · Table · Timeline"}
+            {cities || translateMessage(locale, "Overview · Table · Timeline")}
           </div>
         </div>
       </div>

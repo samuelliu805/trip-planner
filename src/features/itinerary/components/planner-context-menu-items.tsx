@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { ClipboardPaste, Copy, ListOrdered, Plus, ReceiptText, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,14 @@ export function PlannerContextMenuItems(props: PlannerContextProps) {
     : undefined;
   return (
     <>
-      <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">Plan tools</p>
+      <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+        <T message={"Plan tools"} />
+      </p>
       <DropdownMenuItem
         className="bg-primary/10 font-semibold text-primary focus:bg-primary/15 focus:text-primary"
         onSelect={() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT))}
       >
-        <ReceiptText className="size-4" /> Plan cost
+        <ReceiptText className="size-4" /> <T message={" Plan cost "} />
       </DropdownMenuItem>
       {showResearch && props.researchContext ? (
         <>
@@ -45,35 +48,37 @@ export function PlannerContextMenuItems(props: PlannerContextProps) {
         disabled={props.dayMutationPending}
         onSelect={() => void props.insertDay(props.workspaceDayCount + 1)}
       >
-        <Plus className="size-4" /> Add day at end
+        <Plus className="size-4" /> <T message={" Add day at end "} />
       </DropdownMenuItem>
       {props.activeDay ? (
         <DropdownMenuItem onSelect={() => props.onArrangeActivities(props.activeDay!)}>
-          <ListOrdered className="size-4" /> Arrange Activities
+          <ListOrdered className="size-4" /> <T message={" Arrange Activities "} />
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuSeparator />
-      <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">Selection</p>
+      <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+        <T message={"Selection"} />
+      </p>
       <DropdownMenuItem disabled={props.requestPending} onSelect={props.copySelectionToClipboard}>
-        <Copy className="size-4" /> Copy selected cells
+        <Copy className="size-4" /> <T message={" Copy selected cells "} />
       </DropdownMenuItem>
       <DropdownMenuItem disabled={props.requestPending} onSelect={props.pasteAvailableClipboard}>
-        <ClipboardPaste className="size-4" /> Paste
+        <ClipboardPaste className="size-4" /> <T message={" Paste "} />
       </DropdownMenuItem>
       <DropdownMenuItem
         disabled={!props.clearItemCount || props.clearPending}
         onSelect={props.requestClearSelection}
       >
-        <Trash2 className="size-4" /> Clear selected cells
+        <Trash2 className="size-4" /> <T message={" Clear selected cells "} />
       </DropdownMenuItem>
       <DropdownMenuItem
         disabled={props.requestPending}
         onSelect={() => props.setCopyDaysOpen(true)}
       >
-        Copy to days…
+        <T message={" Copy to days… "} />
       </DropdownMenuItem>
       <DropdownMenuItem disabled={props.requestPending} onSelect={props.copyPreviousDay}>
-        Copy previous day
+        <T message={" Copy previous day "} />
       </DropdownMenuItem>
     </>
   );
@@ -98,7 +103,7 @@ export function PlannerMobileMenuItems({
     <div className="space-y-4">
       <section>
         <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Plan tools
+          <T message={" Plan tools "} />
         </p>
         <div className="space-y-1 rounded-xl border bg-muted/20 p-1">
           <Button
@@ -106,7 +111,7 @@ export function PlannerMobileMenuItems({
             onClick={() => runAction(() => window.dispatchEvent(new Event(OPEN_PLAN_COST_EVENT)))}
             variant="ghost"
           >
-            <ReceiptText className="size-4" /> Plan cost
+            <ReceiptText className="size-4" /> <T message={" Plan cost "} />
           </Button>
           {showResearch && props.researchContext ? (
             <div className="pb-2">
@@ -127,7 +132,7 @@ export function PlannerMobileMenuItems({
               onClick={() => runAction(() => props.onArrangeActivities(props.activeDay!))}
               variant="ghost"
             >
-              <ListOrdered className="size-4" /> Arrange Activities
+              <ListOrdered className="size-4" /> <T message={" Arrange Activities "} />
             </Button>
           ) : null}
           <Button
@@ -140,13 +145,13 @@ export function PlannerMobileMenuItems({
             }
             variant="ghost"
           >
-            <Plus className="size-4" /> Add day at end
+            <Plus className="size-4" /> <T message={" Add day at end "} />
           </Button>
         </div>
       </section>
       <section>
         <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Selected cells
+          <T message={" Selected cells "} />
         </p>
         <div className="space-y-1 rounded-xl border bg-muted/20 p-1">
           <Button
@@ -159,7 +164,7 @@ export function PlannerMobileMenuItems({
             }
             variant="ghost"
           >
-            <ClipboardPaste className="size-4" /> Paste
+            <ClipboardPaste className="size-4" /> <T message={" Paste "} />
           </Button>
           <Button
             className={rowClass}
@@ -167,7 +172,7 @@ export function PlannerMobileMenuItems({
             onClick={() => runAction(props.requestClearSelection)}
             variant="ghost"
           >
-            <Trash2 className="size-4" /> Clear selected cells
+            <Trash2 className="size-4" /> <T message={" Clear selected cells "} />
           </Button>
           <Button
             className={rowClass}
@@ -175,7 +180,7 @@ export function PlannerMobileMenuItems({
             onClick={() => runAction(() => props.setCopyDaysOpen(true))}
             variant="ghost"
           >
-            <Copy className="size-4" /> Copy to days…
+            <Copy className="size-4" /> <T message={" Copy to days… "} />
           </Button>
           <Button
             className={rowClass}
@@ -187,7 +192,7 @@ export function PlannerMobileMenuItems({
             }
             variant="ghost"
           >
-            <Copy className="size-4" /> Copy previous day
+            <Copy className="size-4" /> <T message={" Copy previous day "} />
           </Button>
         </div>
       </section>

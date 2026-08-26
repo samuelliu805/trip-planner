@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
@@ -18,6 +19,7 @@ export function ContinuousPdfViewer({
   onError: () => void;
   url: string;
 }) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const [pageCount, setPageCount] = useState(0);
   const [pageWidth, setPageWidth] = useState(320);
@@ -39,14 +41,15 @@ export function ContinuousPdfViewer({
         file={url}
         loading={
           <div className="flex min-h-[50dvh] items-center justify-center text-sm text-white/75">
-            <LoaderCircle aria-hidden="true" className="mr-2 size-4 animate-spin" /> Loading PDF…
+            <LoaderCircle aria-hidden="true" className="mr-2 size-4 animate-spin" />{" "}
+            <T message={" Loading PDF… "} />
           </div>
         }
         onLoadError={onError}
         onLoadSuccess={({ numPages }) => setPageCount(numPages)}
       >
         <div
-          aria-label={`${fileName}, ${pageCount} ${pageCount === 1 ? "page" : "pages"}`}
+          aria-label={t("{file}, {count} page(s)", { count: pageCount, file: fileName })}
           className="flex min-w-0 flex-col items-center gap-4 pb-4"
           data-continuous-pdf=""
         >
@@ -63,7 +66,8 @@ export function ContinuousPdfViewer({
                     className="grid min-h-72 place-items-center bg-white text-sm text-black/60"
                     style={{ width: pageWidth }}
                   >
-                    Loading page {index + 1}…
+                    <T message={" Loading page "} />
+                    {index + 1}…
                   </div>
                 }
                 pageNumber={index + 1}
@@ -72,7 +76,10 @@ export function ContinuousPdfViewer({
                 width={pageWidth}
               />
               <figcaption className="pt-2 text-center text-xs text-white/65">
-                Page {index + 1} of {pageCount}
+                <T
+                  message={"Page {current} of {total}"}
+                  values={{ current: index + 1, total: pageCount }}
+                />
               </figcaption>
             </figure>
           ))}

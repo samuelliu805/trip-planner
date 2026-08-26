@@ -4,7 +4,7 @@ import { decisionSummaryItemTypes } from "@/features/variants/decision-summary-t
 export const affectsDecisionSummary = (type?: string) =>
   decisionSummaryItemTypes.includes(type as (typeof decisionSummaryItemTypes)[number]);
 
-const localityProjectionTypes = ["location", "activity", "meal", "hotel"] as const;
+const localityProjectionTypes = ["location", "activity", "car_rental", "meal", "hotel"] as const;
 
 export const affectsLocalityProjection = (type?: string) =>
   localityProjectionTypes.includes(type as (typeof localityProjectionTypes)[number]);

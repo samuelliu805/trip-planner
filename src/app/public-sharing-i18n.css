@@ -1,0 +1,141 @@
+html[lang="zh-CN"] .public-itinerary-shell :is(.timeline-day-index-v4, .overview-day-number-v4) {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  word-break: keep-all;
+  writing-mode: horizontal-tb;
+}
+
+html[lang="zh-CN"] .public-itinerary-shell .public-matrix .matrix-day-column {
+  width: 4.75rem;
+  flex-basis: 4.75rem;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+html[lang="zh-CN"] .public-template-ethereal .timeline-section-header-v4 {
+  grid-template-columns: 5.25rem minmax(0, 1fr) auto;
+}
+
+html[lang="zh-CN"] .public-template-ethereal .timeline-day-index-v4 {
+  min-height: 2.75rem;
+  align-items: center;
+  font-size: 1.625rem;
+  line-height: 1.15;
+}
+
+html[lang="zh-CN"] .public-template-journal .timeline-section-header-v4 {
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+}
+
+html[lang="zh-CN"] .public-template-journal .overview-day-title-v4 {
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+}
+
+html[lang="zh-CN"] .public-template-journal .overview-day-number-v4,
+html[lang="zh-CN"] .public-template-journal .timeline-day-index-v4 {
+  width: 4.125rem;
+  height: 4.125rem;
+  padding-inline: 0.25rem;
+  line-height: 1.15;
+}
+
+html[lang="zh-CN"] .public-template-traverse .timeline-section-header-v4 {
+  grid-template-columns: 4.75rem minmax(0, 1fr) auto;
+}
+
+html[lang="zh-CN"] .public-template-traverse .timeline-day-index-v4 {
+  min-height: 2.25rem;
+  align-items: center;
+  font-size: 1.125rem;
+  line-height: 1.15;
+}
+
+html[lang="zh-CN"] .public-template-traverse .overview-day-v4 {
+  padding-left: 4.75rem;
+}
+
+html[lang="zh-CN"] .public-template-traverse .overview-day-v4::before {
+  width: 4.25rem;
+  height: 4.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+html[lang="zh-CN"] .public-template-traverse .overview-day-heading-v4 {
+  min-height: 4.25rem;
+}
+
+html[lang="zh-CN"]
+  .public-itinerary-shell:not(.public-template-ethereal):not(.public-template-journal):not(
+    .public-template-traverse
+  )
+  .timeline-section-header-v4 {
+  grid-template-columns: 3.75rem minmax(0, 1fr) auto;
+}
+
+html[lang="zh-CN"]
+  .public-itinerary-shell:not(.public-template-ethereal):not(.public-template-journal):not(
+    .public-template-traverse
+  )
+  .timeline-day-index-v4 {
+  width: 3.375rem;
+  min-width: 3.375rem;
+  font-size: 0.75rem;
+  line-height: 1.15;
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .public-template-ethereal .public-view-scroll,
+  .public-template-journal .public-view-scroll {
+    scrollbar-width: thin;
+  }
+
+  .public-template-ethereal .public-view-scroll::-webkit-scrollbar,
+  .public-template-journal .public-view-scroll::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .public-template-ethereal .public-view-scroll::-webkit-scrollbar-track,
+  .public-template-journal .public-view-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@media (max-width: 899px) {
+  html[lang="zh-CN"] .public-template-ethereal .timeline-section-header-v4 {
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+  }
+
+  html[lang="zh-CN"] .public-template-ethereal .timeline-day-index-v4 {
+    min-height: 2.25rem;
+    font-size: 1.125rem;
+  }
+
+  html[lang="zh-CN"] .public-template-journal .timeline-section-header-v4 {
+    grid-template-columns: 4rem minmax(0, 1fr);
+  }
+
+  html[lang="zh-CN"] .public-template-journal .overview-day-title-v4 {
+    grid-template-columns: 4rem minmax(0, 1fr);
+  }
+
+  html[lang="zh-CN"] .public-template-journal .overview-day-number-v4,
+  html[lang="zh-CN"] .public-template-journal .timeline-day-index-v4 {
+    width: 3.75rem;
+    height: 3.75rem;
+    font-size: 0.8125rem;
+  }
+
+  html[lang="zh-CN"] .public-template-traverse .timeline-section-header-v4 {
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+  }
+
+  html[lang="zh-CN"] .public-template-traverse .timeline-day-index-v4 {
+    font-size: 1rem;
+  }
+}

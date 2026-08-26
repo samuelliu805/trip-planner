@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ArrowLeft, Lightbulb, LoaderCircle, Table2 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { useState, type ReactNode } from "react";
@@ -21,6 +22,7 @@ const sections: Array<{ id: TripSection; label: string }> = [
 
 function TripSectionLinkContent({ Icon, label }: { Icon: typeof Table2; label: string }) {
   const { pending } = useLinkStatus();
+  const { t } = useI18n();
 
   return (
     <>
@@ -29,10 +31,10 @@ function TripSectionLinkContent({ Icon, label }: { Icon: typeof Table2; label: s
       ) : (
         <Icon aria-hidden="true" className="size-3.5" />
       )}
-      {label}
+      <Localized value={label} />
       {pending ? (
         <span className="sr-only" role="status">
-          Opening {label}
+          {t("Opening {label}", { label: t(label) })}
         </span>
       ) : null}
     </>
@@ -122,7 +124,7 @@ export function TripAppBar({
         <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
             <Button asChild className="-ml-1 size-11 shrink-0 p-0" variant="ghost">
-              <Link aria-label="Back to Trips" href="/trips">
+              <Link aria-label="Back to Trips" data-i18n-aria-label={"Back to Trips"} href="/trips">
                 <ArrowLeft aria-hidden="true" className="size-4" />
               </Link>
             </Button>
@@ -134,6 +136,7 @@ export function TripAppBar({
 
           <nav
             aria-label="Trip sections"
+            data-i18n-aria-label={"Trip sections"}
             className="hidden items-center rounded-lg bg-muted p-1 sm:flex"
           >
             {sections.map((section) => {
@@ -165,7 +168,8 @@ export function TripAppBar({
                 className="hidden items-center gap-1 text-xs text-muted-foreground lg:flex"
                 role="status"
               >
-                <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" /> Saving
+                <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />{" "}
+                <T message={" Saving "} />
               </span>
             ) : null}
             {actions}
@@ -204,7 +208,8 @@ export function TripAppBar({
         >
           <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-semibold shadow-lg">
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-destructive" />
-            Deleting “{title}”…
+            <T message={" Deleting “"} />
+            {title}”…
           </div>
         </div>
       ) : null}

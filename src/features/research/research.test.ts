@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { plannerResearchCategory } from "./planner-context.ts";
+import { translateMessage } from "../i18n/translate.ts";
 import { initialResearchSegments } from "./journey.ts";
 import { researchDecisionSlotKey } from "./decision-slot.ts";
 import {
@@ -41,6 +42,11 @@ const ids = {
   trip: "00000000-0000-4000-8000-000000000001",
   variant: "00000000-0000-4000-8000-000000000002",
 };
+
+test("Ideas field labels have authentic Simplified Chinese translations", () => {
+  assert.equal(translateMessage("zh-CN", "Option name"), "备选方案名称");
+  assert.equal(translateMessage("zh-CN", "Note (optional)"), "备注（选填）");
+});
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
   return {

@@ -50,6 +50,7 @@
 }
 
 .public-template-traverse .timeline-day-index-v4 {
+  margin-top: 0.1875rem;
   width: auto;
   height: auto;
   justify-content: flex-start;
@@ -58,6 +59,10 @@
   color: var(--traverse-orange);
   font: 900 1.75rem/0.9 var(--traverse-condensed);
   letter-spacing: 0.04em;
+}
+
+.public-template-traverse .timeline-day-copy-v4 {
+  margin-top: 0.1875rem;
 }
 
 .public-template-traverse .timeline-day-copy-v4 strong {

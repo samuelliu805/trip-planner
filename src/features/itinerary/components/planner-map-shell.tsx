@@ -3,10 +3,12 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { PlannerMapControls } from "@/features/itinerary/components/planner-map-controls";
 import { PlannerMapSelectedPlace } from "@/features/itinerary/components/planner-map-selected-place";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type {
+  PlannerMapMode,
+  PlannerMapModeChange,
+} from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
@@ -71,7 +73,7 @@ export function PlannerMapShell({
   onExpand?: () => void;
   onEditMapItem: (itemId: string) => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onMapSelectionClear: () => void;
   onMarkerClick: (id?: string) => void;
   overviewRoute: OverviewRouteUi;
@@ -138,6 +140,7 @@ export function PlannerMapShell({
   return (
     <section
       aria-label="Itinerary map"
+      data-i18n-aria-label={"Itinerary map"}
       className="relative h-full min-w-0 overflow-hidden bg-muted/40"
     >
       <PlannerMapCanvas
@@ -150,6 +153,7 @@ export function PlannerMapShell({
         viewportKey={viewportKey}
       />
       <PlannerMapControls
+        activeDayNumber={dayRoute.activeDay?.day_number}
         compact={compact}
         comparisonBlockingReason={comparison.blockingReason}
         dayCityLayerAvailable={dayCityLayerAvailable}
@@ -157,11 +161,11 @@ export function PlannerMapShell({
         mapMode={mapMode}
         onDayMapLayerChange={onDayMapLayerChange}
         onExpand={onExpand}
-        onMapModeChange={(mode) => {
+        onMapModeChange={(mode, comparisonScope) => {
           if (mode === "day_route") setDayPanelOpen(true);
           else if (mode === "overview") setOverviewPanelOpen(true);
           else setComparisonPanelOpen(true);
-          onMapModeChange(mode);
+          onMapModeChange(mode, comparisonScope);
         }}
         onPanelOpen={() => {
           if (mapMode === "overview") setOverviewPanelOpen(true);
@@ -171,9 +175,8 @@ export function PlannerMapShell({
         panelDismissed={panelDismissed && !selectedId}
       />
       {!compact && selectedPlace ? (
-        <section className="map-bottom-panel map-place-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
-          <PullUpPanelHandle className="sm:hidden" onClose={closeSelectedPlace} />
-          <div className="min-h-0 overflow-y-auto overscroll-contain px-3 pb-3 pt-1 sm:p-4">
+        <section className="map-bottom-panel map-place-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+          <div className="min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4">
             {selectedPlace}
           </div>
         </section>

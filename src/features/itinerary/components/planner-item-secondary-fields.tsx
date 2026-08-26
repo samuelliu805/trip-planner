@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ArrowUpToLine, Plus, Trash2, X } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 
@@ -41,17 +42,24 @@ export function ItemTimeField({
   startTime: string;
   type: ItineraryItemType;
 }) {
+  const { t } = useI18n();
+  const timeLabel =
+    type === "location"
+      ? "Arrival time"
+      : type === "activity"
+        ? "Time"
+        : type === "meal"
+          ? "Meal time"
+          : carAction === "pickup"
+            ? "Pickup time"
+            : "Return time";
   return (
     <div className="min-w-0 space-y-2">
       <Label htmlFor={`item-time-${fieldId}-${type}`}>
-        {type === "location"
-          ? "Arrival time"
-          : type === "activity"
-            ? "Time"
-            : type === "meal"
-              ? "Meal time"
-              : `${carAction === "pickup" ? "Pickup" : "Return"} time`}{" "}
-        <span className="font-normal text-muted-foreground">optional</span>
+        {t(timeLabel)}{" "}
+        <span className="font-normal text-muted-foreground">
+          <T message={"optional"} />
+        </span>
       </Label>
       <div className="planner-native-control-frame relative min-w-0 max-w-full">
         <Input
@@ -64,6 +72,7 @@ export function ItemTimeField({
         {startTime ? (
           <button
             aria-label="Clear time"
+            data-i18n-aria-label={"Clear time"}
             className="absolute right-0 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => setStartTime("")}
             tabIndex={-1}
@@ -86,10 +95,14 @@ export function ItemLinksField({
   links: LinkValue[];
   setLinks: Dispatch<SetStateAction<LinkValue[]>>;
 }) {
+  const { t } = useI18n();
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium">
-        {linkLabel} <span className="font-normal text-muted-foreground">optional</span>
+        <Localized value={linkLabel} />{" "}
+        <span className="font-normal text-muted-foreground">
+          <T message={"optional"} />
+        </span>
       </legend>
       {links.map((link, index) => (
         <div
@@ -110,19 +123,23 @@ export function ItemLinksField({
                 : "Website"
             }
           >
-            <SelectTrigger aria-label={`${index === 0 ? "Primary" : "Link"} action label`}>
+            <SelectTrigger
+              aria-label={t(index === 0 ? "Primary action label" : "Link action label")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {semanticLinkLabels.map((label) => (
                 <SelectItem key={label} value={label}>
-                  {label}
+                  <Localized value={label} />
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Input
-            aria-label={`${index === 0 ? "Primary" : `Link ${index + 1}`} URL`}
+            aria-label={
+              index === 0 ? t("Primary URL") : t("Link {number} URL", { number: index + 1 })
+            }
             onChange={(event) =>
               setLinks((current) =>
                 current.map((value, linkIndex) =>
@@ -131,11 +148,12 @@ export function ItemLinksField({
               )
             }
             placeholder="https://"
+            data-i18n-placeholder={"https://"}
             type="url"
             value={link.url}
           />
           <Button
-            aria-label={`Remove link ${index + 1}`}
+            aria-label={t("Remove link {number}", { number: index + 1 })}
             onClick={() =>
               setLinks((current) => current.filter((_, linkIndex) => linkIndex !== index))
             }
@@ -147,7 +165,9 @@ export function ItemLinksField({
             <Trash2 className="size-4" />
           </Button>
           {index === 0 ? (
-            <span className="col-span-3 text-xs font-medium text-primary">Primary action</span>
+            <span className="col-span-3 text-xs font-medium text-primary">
+              <T message={"Primary action"} />
+            </span>
           ) : (
             <button
               className="col-span-3 flex min-h-8 items-center gap-1.5 text-xs font-medium text-primary hover:underline"
@@ -159,7 +179,7 @@ export function ItemLinksField({
               }
               type="button"
             >
-              <ArrowUpToLine className="size-3.5" /> Make Primary
+              <ArrowUpToLine className="size-3.5" /> <T message={" Make Primary "} />
             </button>
           )}
         </div>
@@ -170,11 +190,15 @@ export function ItemLinksField({
         type="button"
         variant="outline"
       >
-        <Plus className="size-4" /> Add link
+        <Plus className="size-4" /> <T message={" Add link "} />
       </Button>
       {links.length ? (
         <p className="text-xs text-muted-foreground">
-          The first link is the public Primary action. Remaining links appear under More links.
+          <T
+            message={
+              " The first link is the public Primary action. Remaining links appear under More links. "
+            }
+          />
         </p>
       ) : null}
     </fieldset>
@@ -194,16 +218,20 @@ export function ItemNotesField({
   setNotes: Dispatch<SetStateAction<string>>;
   type: ItineraryItemType;
 }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-2">
       <Label htmlFor={`item-notes-${fieldId}-${type}`}>
-        {copyLabel} notes <span className="font-normal text-muted-foreground">optional</span>
+        <Localized value={copyLabel} /> <T message={" notes "} />
+        <span className="font-normal text-muted-foreground">
+          <T message={"optional"} />
+        </span>
       </Label>
       <Textarea
         className="min-h-28"
         id={`item-notes-${fieldId}-${type}`}
         onChange={(event) => setNotes(event.target.value)}
-        placeholder={`Add ${copyLabel.toLowerCase()} details`}
+        placeholder={t("Add {item} details", { item: t(copyLabel) })}
         value={notes}
       />
     </div>

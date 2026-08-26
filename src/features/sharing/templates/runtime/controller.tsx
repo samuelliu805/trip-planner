@@ -16,6 +16,7 @@ import {
 } from "react";
 
 import type { PublicMapSelection } from "../../components/public-map-workspace";
+import { usePublicViewportContainment } from "../../hooks/use-public-viewport-containment";
 import type {
   OwnerShareImageState,
   PublicItinerary,
@@ -85,6 +86,7 @@ export function PublicTemplateControllerProvider({
   template: CompiledPublicTemplateV1;
   token: string;
 }) {
+  usePublicViewportContainment();
   const [view, setView] = useState<PublicView>(initialView);
   const [mapVisible, setMapVisible] = useState(itinerary.settings.showMapRoutes);
   const [mapSheetOpen, setMapSheetOpen] = useState(false);

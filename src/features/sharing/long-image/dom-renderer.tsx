@@ -3,6 +3,9 @@ import QRCode from "qrcode";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 
+import type { Locale } from "@/features/i18n/config";
+import { I18nProvider } from "@/features/i18n/i18n-provider";
+
 import {
   LEGACY_PUBLIC_TEMPLATE_KEY,
   getPublicTemplate,
@@ -24,6 +27,7 @@ type RenderTimelineExportInput = {
   destinationType: "share_page" | "homepage";
   destinationUrl: string;
   itinerary: PublicItinerary;
+  locale: Locale;
   templateId: string;
   templateVersion: number;
 };
@@ -95,15 +99,17 @@ async function showDocument(
   const itinerary = { ...options.itinerary, days: options.days };
   flushSync(() => {
     root.render(
-      <TimelineExportDocument
-        destinationType={options.destinationType}
-        destinationUrl={options.destinationUrl}
-        includeHeader={options.includeHeader}
-        itinerary={itinerary}
-        qrDataUrl={options.qrDataUrl}
-        showIntro={options.showIntro}
-        template={template}
-      />,
+      <I18nProvider initialLocale={options.locale}>
+        <TimelineExportDocument
+          destinationType={options.destinationType}
+          destinationUrl={options.destinationUrl}
+          includeHeader={options.includeHeader}
+          itinerary={itinerary}
+          qrDataUrl={options.qrDataUrl}
+          showIntro={options.showIntro}
+          template={template}
+        />
+      </I18nProvider>,
     );
   });
   const documentNode = host.firstElementChild;

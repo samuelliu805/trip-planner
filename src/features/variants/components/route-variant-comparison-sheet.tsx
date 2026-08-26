@@ -1,6 +1,7 @@
 "use client";
 
 import { PullUpPanel } from "@/components/ui/pull-up-panel";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import { VariantComparisonSheetStatus } from "@/features/variants/components/variant-comparison-feedback";
 import { VariantComparisonRows } from "@/features/variants/components/variant-comparison-rows";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
@@ -14,21 +15,21 @@ export function RouteVariantComparisonSheet({
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
-  const active = comparison.presentations.find(({ isActive }) => isActive);
+  const { t } = useI18n();
   return (
     <PullUpPanel
       className="comparison-sheet z-[120] max-h-[62dvh]"
-      description={`${
-        comparison.dayNumber
-          ? "Solid lines are saved routes; dashed lines preview Activity stop order."
-          : "Dashed lines show city/town order—not driving directions."
-      } The Matrix stays on ${active?.name ?? "the route being edited"}.`}
+      compactHeader
       dragMode="mobile"
       id="route-comparison"
       onOpenChange={onOpenChange}
       open={open}
       overlayClassName="z-[115]"
-      title={comparison.dayNumber ? `Day ${comparison.dayNumber} routes` : "Routes on map"}
+      title={
+        comparison.dayNumber
+          ? t("Day {day} routes", { day: comparison.dayNumber })
+          : t("Routes on map")
+      }
     >
       <div className="space-y-2 overflow-y-auto overscroll-contain p-4">
         {comparison.isLoading || comparison.error ? (

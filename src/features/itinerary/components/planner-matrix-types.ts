@@ -8,7 +8,7 @@ import type {
 } from "react";
 
 import type { PlannerCategory, EditorState } from "./planner-config";
-import type { PlannerMapMode } from "./planner-map-types";
+import type { PlannerMapMode, PlannerMapModeChange } from "./planner-map-types";
 import type { GridCoordinate } from "../grid-interactions";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "../types";
 import type { PlannerMapLine, PlannerMapMarker } from "../../maps/planner-map-model";
@@ -59,7 +59,7 @@ export type PlannerMatrixProps = {
   onDecisionSummaryPanelClose: () => void;
   onEditMapItem: (itemId: string) => void;
   onMapExpand: () => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onMapSelectionClear: () => void;
   onMarkerClick: (id?: string) => void;
   openEditorFromDoubleClick: (event: MouseEvent<HTMLDivElement>) => void;

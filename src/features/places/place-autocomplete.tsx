@@ -6,6 +6,7 @@ import { LoaderCircle, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { normalizeGooglePlace } from "@/lib/providers/places/normalize";
 import { placeFields, type PlaceSnapshot } from "@/lib/providers/places/types";
 
@@ -52,6 +53,7 @@ export function PlaceAutocomplete({
   value?: PlaceSnapshot | null;
 }) {
   const places = useMapsLibrary("places");
+  const { t } = useI18n();
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const sessionToken = useRef<google.maps.places.AutocompleteSessionToken>(null);
@@ -170,7 +172,7 @@ export function PlaceAutocomplete({
         />
         <Input
           aria-describedby={ariaDescribedBy}
-          aria-label={ariaLabel}
+          aria-label={ariaLabel ? t(ariaLabel) : undefined}
           aria-activedescendant={
             !resolving && activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined
           }
@@ -218,7 +220,7 @@ export function PlaceAutocomplete({
               setSuggestions([]);
             }
           }}
-          placeholder={placeholder}
+          placeholder={t(placeholder)}
           ref={inputRef}
           role="combobox"
           type="text"
@@ -237,8 +239,11 @@ export function PlaceAutocomplete({
               hasCustomOption
                 ? {
                     label: customValueLabel
-                      ? `Use “${customQuery}” as ${customValueLabel}`
-                      : `Use “${customQuery}”`,
+                      ? t("Use “{query}” as {label}", {
+                          label: t(customValueLabel),
+                          query: customQuery,
+                        })
+                      : t("Use “{query}”", { query: customQuery }),
                     onChoose: chooseCustomValue,
                   }
                 : undefined
@@ -257,7 +262,7 @@ export function PlaceAutocomplete({
           role="status"
         >
           <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
-          Loading place details…
+          <T message={" Loading place details… "} />
         </p>
       ) : null}
       {selectedValue ? (
@@ -270,13 +275,15 @@ export function PlaceAutocomplete({
       {!places && showAvailabilityMessage ? (
         <p className="mt-1 text-xs text-muted-foreground">
           {onCustomValue
-            ? `Google Maps is unavailable. You can still use a typed ${customValueLabel ?? "entry"}.`
-            : "Places search loads when Google Maps is configured."}
+            ? t("Google Maps is unavailable. You can still type a {label}.", {
+                label: t(customValueLabel ?? "value"),
+              })
+            : t("Places search loads when Google Maps is configured.")}
         </p>
       ) : null}
       {error ? (
         <p className="mt-1 text-xs text-destructive" role="alert">
-          {error}
+          {t(error)}
         </p>
       ) : null}
     </div>

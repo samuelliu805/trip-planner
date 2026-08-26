@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { nativeSelectClass, ResearchField } from "./form-controls";
 import { ResearchPlaceField } from "./research-place-field";
 import { ResearchMultiCityFields } from "./research-multi-city-fields";
@@ -80,9 +81,15 @@ export function ResearchJourneyFields({
             onChange={(event) => setJourneyType(event.target.value as ResearchJourneyType)}
             value={journeyType}
           >
-            <option value="one_way">One way</option>
-            <option value="round_trip">Round trip</option>
-            <option value="multi_city">Multiple cities</option>
+            <option value="one_way">
+              <T message={"One way"} />
+            </option>
+            <option value="round_trip">
+              <T message={"Round trip"} />
+            </option>
+            <option value="multi_city">
+              <T message={"Multiple cities"} />
+            </option>
           </select>
         </ResearchField>
       ) : null}
@@ -145,9 +152,13 @@ export function ResearchJourneyDetailFields({
   }
 
   return (
-    <section className="min-w-0 space-y-4" aria-label="Carrier and service details">
+    <section
+      className="min-w-0 space-y-4"
+      aria-label="Carrier and service details"
+      data-i18n-aria-label={"Carrier and service details"}
+    >
       <h3 className="text-base font-bold">
-        {category === "flight" ? "Airline & flight number" : "Train number"}
+        <Localized value={category === "flight" ? "Airline & flight number" : "Train number"} />
       </h3>
       <div className="min-w-0 space-y-5">
         {segments.map((segment, index) => (

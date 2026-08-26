@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 
 import { categories } from "@/features/itinerary/components/planner-config";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import { useI18n } from "@/features/i18n/i18n-provider";
+import type {
+  PlannerComparisonScope,
+  PlannerMapMode,
+} from "@/features/itinerary/components/planner-map-types";
 import type { GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { PlannerVariant, PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
@@ -24,6 +28,7 @@ export function usePlannerMap(
   dayRoute: DayRouteUi,
   variants: PlannerVariant[],
 ) {
+  const { locale, t } = useI18n();
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
   const [comparisonDayNumber, setComparisonDayNumber] = useState<number>();
   const [comparisonReturnMode, setComparisonReturnMode] =
@@ -57,7 +62,10 @@ export function usePlannerMap(
         : undefined,
     [selectedItemId, workspace.days],
   );
-  const overviewStages = useMemo(() => deriveOverviewStages(workspace.days), [workspace.days]);
+  const overviewStages = useMemo(
+    () => deriveOverviewStages(workspace.days, locale),
+    [locale, workspace.days],
+  );
   const overviewDefaultModes = useMemo(
     () => deriveOverviewDefaultModes(workspace.days, overviewStages),
     [overviewStages, workspace.days],
@@ -79,9 +87,12 @@ export function usePlannerMap(
         label: stage.firstDayLabel,
         latitude: stage.latitude,
         longitude: stage.longitude,
-        summary: `${stage.dayRangeLabel} · City/town stage ${stage.position}`,
+        summary: t("{range} · City/town stage {position}", {
+          position: stage.position,
+          range: stage.dayRangeLabel,
+        }),
       })),
-    [overviewStages],
+    [overviewStages, t],
   );
   const overviewLines = useMemo<PlannerMapLine[]>(
     () => buildOverviewRouteLines(overviewStages, overviewRoute.calculatedLegs),
@@ -98,8 +109,8 @@ export function usePlannerMap(
     [dayRoute.draft?.itemIds, dayRoute.editing, dayRoute.plan?.stops],
   );
   const dayRouteMarkers = useMemo(
-    () => buildDayRouteMarkers(dayRoute.activeDay, routeStopIds, dayRoute.previousDay),
-    [dayRoute.activeDay, dayRoute.previousDay, routeStopIds],
+    () => buildDayRouteMarkers(dayRoute.activeDay, routeStopIds, dayRoute.previousDay, locale),
+    [dayRoute.activeDay, dayRoute.previousDay, locale, routeStopIds],
   );
   const dayRouteLines = useMemo(
     () => buildDayRouteLines(dayRoute.plan?.calculation ?? null),
@@ -161,11 +172,15 @@ export function usePlannerMap(
     });
   }
 
-  function changeMapMode(mode: PlannerMapMode) {
-    if (mode === mapMode) return;
+  function changeMapMode(mode: PlannerMapMode, comparisonScope?: PlannerComparisonScope) {
+    if (
+      mode === mapMode &&
+      (mode !== "comparison" || !comparisonScope || comparisonScope === comparisonReturnMode)
+    )
+      return;
     if (mode === "comparison" && comparison.blockingReason) return;
     if (mode === "comparison") {
-      const returnMode = mapMode === "day_route" ? "day_route" : "overview";
+      const returnMode = comparisonScope ?? (mapMode === "day_route" ? "day_route" : "overview");
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
         returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,
@@ -232,9 +247,9 @@ export function usePlannerMap(
     decisionSummary,
     decisionSummaryPanelOpen,
     decisionSummarySheetOpen,
-    enterComparison: () => {
+    enterComparison: (scope?: PlannerComparisonScope) => {
       if (comparison.blockingReason) return;
-      const returnMode = mapMode === "day_route" ? "day_route" : "overview";
+      const returnMode = scope ?? (mapMode === "day_route" ? "day_route" : "overview");
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
         returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,

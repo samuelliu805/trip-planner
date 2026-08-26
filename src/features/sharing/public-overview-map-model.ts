@@ -1,3 +1,6 @@
+import type { Locale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
+
 import { haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
 import type { PlannerMapLine } from "../maps/planner-map-model.ts";
 import type { OverviewRouteMode } from "../routes/types.ts";
@@ -43,7 +46,7 @@ function orderedPublicItems(day: PublicItineraryDay) {
 function publicDayClusters(itinerary: PublicItinerary, day: PublicItineraryDay) {
   const ordered = orderedPublicItems(day);
   const canonical = ordered.flatMap((item) => {
-    const title = ["activity", "meal", "hotel"].includes(item.type)
+    const title = ["activity", "car_rental", "meal", "hotel"].includes(item.type)
       ? item.place?.localityName?.trim()
       : undefined;
     return title &&
@@ -84,9 +87,15 @@ function publicDayClusters(itinerary: PublicItinerary, day: PublicItineraryDay) 
       : [],
   );
   const evidence = canonical.length ? canonical : legacyItems.length ? legacyItems : legacySequence;
-  const groups = new Map<string, { points: PublicAnchor[]; refs: string[]; title: string }>();
+  const groups: Array<{
+    key: string;
+    points: PublicAnchor[];
+    refs: string[];
+    title: string;
+  }> = [];
   evidence.forEach(({ item, key, title }) => {
-    const group = groups.get(key) ?? { points: [], refs: [], title };
+    const previous = groups.at(-1);
+    const group = previous?.key === key ? previous : { key, points: [], refs: [], title };
     group.refs.push(item.ref);
     group.points.push({
       activity: canonical.length > 0,
@@ -94,38 +103,33 @@ function publicDayClusters(itinerary: PublicItinerary, day: PublicItineraryDay) 
       longitude: item.place!.longitude!,
       ref: item.ref,
     });
-    groups.set(key, group);
+    if (group !== previous) groups.push(group);
   });
-  const clusters = [...groups.entries()].map(([key, group]) => ({
-    anchor: publicMedoid(group.points),
-    key,
-    ref: group.refs[0],
-    title: group.title,
-  }));
-  const primaryKey = publicLocalityKey(day.primaryLocality);
   const finalEvidence = evidence.at(-1);
-  const primaryGroup = groups.get(primaryKey);
-  if (
-    clusters.length > 1 &&
-    finalEvidence?.key === primaryKey &&
-    clusters.at(-1)?.key !== primaryKey &&
-    primaryGroup
-  )
-    clusters.push({
-      anchor: {
-        activity: canonical.length > 0,
-        latitude: finalEvidence.item.place!.latitude!,
-        longitude: finalEvidence.item.place!.longitude!,
-        ref: finalEvidence.item.ref,
-      },
-      key: primaryKey,
-      ref: finalEvidence.item.ref,
-      title: finalEvidence.title,
-    });
-  return clusters;
+  return groups.map((group, index) => {
+    const finalHotelAnchor =
+      index === groups.length - 1 &&
+      finalEvidence &&
+      "type" in finalEvidence.item &&
+      finalEvidence.item.type === "hotel" &&
+      finalEvidence.key === group.key
+        ? {
+            activity: canonical.length > 0,
+            latitude: finalEvidence.item.place!.latitude!,
+            longitude: finalEvidence.item.place!.longitude!,
+            ref: finalEvidence.item.ref,
+          }
+        : null;
+    return {
+      anchor: finalHotelAnchor ?? publicMedoid(group.points),
+      key: group.key,
+      ref: finalHotelAnchor?.ref ?? group.refs[0],
+      title: group.title,
+    };
+  });
 }
 
-export function derivePublicOverviewStages(itinerary: PublicItinerary) {
+export function derivePublicOverviewStages(itinerary: PublicItinerary, locale: Locale = "en") {
   const stages: Array<{
     anchor: PublicAnchor | null;
     dayLabel: string;
@@ -144,12 +148,17 @@ export function derivePublicOverviewStages(itinerary: PublicItinerary) {
         if (!previous.dayNumbers.includes(day.dayNumber)) previous.dayNumbers.push(day.dayNumber);
         const first = previous.dayNumbers[0];
         previous.dayLabel =
-          first === day.dayNumber ? `Day ${first}` : `Days ${first}–${day.dayNumber}`;
+          first === day.dayNumber
+            ? translateMessage(locale, "Day {day}", { day: first })
+            : translateMessage(locale, "Days {first}–{last}", {
+                first,
+                last: day.dayNumber,
+              });
         return;
       }
       stages.push({
         anchor: cluster.anchor,
-        dayLabel: `Day ${day.dayNumber}`,
+        dayLabel: translateMessage(locale, "Day {day}", { day: day.dayNumber }),
         dayNumbers: [day.dayNumber],
         ref: cluster.ref,
         title: cluster.title,

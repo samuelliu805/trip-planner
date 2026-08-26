@@ -1,8 +1,8 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LoaderCircle, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,9 @@ import {
 import { SheetTitle } from "@/components/ui/sheet";
 import { updateAccount } from "@/features/account/actions";
 import { logout } from "@/features/auth/actions";
+import type { Locale } from "@/features/i18n/config";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { PlannerEditorField } from "@/features/itinerary/components/planner-editor-fields";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
@@ -28,7 +31,7 @@ function AccountCurrencyField({ initialCurrency }: { initialCurrency: string }) 
   return (
     <>
       <input name="currency" type="hidden" value={currency} />
-      <PlannerEditorField id="account-currency" label="Preferred currency">
+      <PlannerEditorField id="account-currency" label={<T message="Preferred currency" />}>
         <Select onValueChange={setCurrency} value={currency}>
           <SelectTrigger className="min-w-0" id="account-currency">
             <SelectValue aria-label={currency}>{currency}</SelectValue>
@@ -47,16 +50,17 @@ function AccountCurrencyField({ initialCurrency }: { initialCurrency: string }) 
 }
 
 function AccountHomeCityField({ initialHomeCity }: { initialHomeCity: string }) {
+  const { t } = useI18n();
   const [homeCity, setHomeCity] = useState(initialHomeCity);
   const [place, setPlace] = useState<PlaceSnapshot | null>(null);
 
   return (
     <>
       <input name="home_city" type="hidden" value={homeCity} />
-      <PlannerEditorField id="account-home-city" label="Home city">
+      <PlannerEditorField id="account-home-city" label={<T message="Home city" />}>
         <PlaceAutocomplete
-          ariaLabel="Home city"
-          customValueLabel="home city"
+          ariaLabel={t("Home city")}
+          customValueLabel={t("home city")}
           id="account-home-city"
           includedPrimaryTypes={["locality"]}
           initialOptionsDismissed={Boolean(initialHomeCity)}
@@ -73,7 +77,7 @@ function AccountHomeCityField({ initialHomeCity }: { initialHomeCity: string }) 
             setPlace(null);
             setHomeCity(value);
           }}
-          placeholder="Search a city"
+          placeholder={t("Search a city")}
           showAvailabilityMessage={false}
           value={place}
         />
@@ -82,31 +86,65 @@ function AccountHomeCityField({ initialHomeCity }: { initialHomeCity: string }) 
   );
 }
 
+function AccountLanguageField({ initialLocale }: { initialLocale: Locale }) {
+  const [selectedLocale, setSelectedLocale] = useState(initialLocale);
+
+  return (
+    <>
+      <input name="locale" type="hidden" value={selectedLocale} />
+      <PlannerEditorField id="account-language" label={<T message="Preferred language" />}>
+        <Select
+          onValueChange={(value) => setSelectedLocale(value as Locale)}
+          value={selectedLocale}
+        >
+          <SelectTrigger className="min-w-0" id="account-language">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="en">
+              <T message={"English"} />
+            </SelectItem>
+            <SelectItem value="zh-CN">简体中文</SelectItem>
+          </SelectContent>
+        </Select>
+      </PlannerEditorField>
+    </>
+  );
+}
+
 function AccountForm({
   currency: initialCurrency,
   email,
+  exiting,
   homeCity,
+  locale,
+  onExit,
 }: {
   currency: string;
   email: string;
+  exiting: boolean;
   homeCity: string;
+  locale: Locale;
+  onExit: () => void;
 }) {
-  const router = useRouter();
+  const { t } = useI18n();
   const [state, action, pending] = useActionState(updateAccount, {});
-  const exit = () => router.replace("/trips");
+  const [logoutPending, startLogout] = useTransition();
 
   return (
     <PlannerEditorForm
-      cancelLabel="Exit"
+      cancelLabel={t("Exit")}
+      cancelPending={exiting}
+      cancelPendingLabel={t("Exiting…")}
       compactActions
       denseFields
       formAction={action}
       header={null}
-      onCancel={exit}
-      onClose={exit}
-      pending={pending}
-      pendingLabel="Saving…"
-      saveLabel="Save preferences"
+      onCancel={onExit}
+      onClose={onExit}
+      pending={pending || logoutPending}
+      pendingLabel={logoutPending ? t("Logging out…") : t("Saving…")}
+      saveLabel={t("Save preferences")}
     >
       <div className="flex min-w-0 items-center justify-between gap-3">
         <SheetTitle
@@ -114,27 +152,42 @@ function AccountForm({
           data-account-title=""
           tabIndex={-1}
         >
-          Account
+          <T message="Account" />
         </SheetTitle>
-        <Button
-          className="min-h-11 shrink-0 px-2"
-          formAction={logout}
-          formNoValidate
-          type="submit"
-          variant="ghost"
-        >
-          <LogOut aria-hidden="true" className="size-4" /> Log out
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <LanguageSwitcher className="px-2" />
+          <Button
+            aria-busy={logoutPending}
+            className="min-h-11 shrink-0 px-2"
+            disabled={pending || logoutPending || exiting}
+            onClick={() =>
+              startLogout(async () => {
+                await logout();
+              })
+            }
+            type="button"
+            variant="ghost"
+          >
+            {logoutPending ? (
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+            ) : (
+              <LogOut aria-hidden="true" className="size-4" />
+            )}{" "}
+            <T message={logoutPending ? "Logging out…" : "Log out"} />
+          </Button>
+        </div>
       </div>
 
       {state.error ? (
         <p className="text-sm font-medium text-destructive" role="alert">
-          {state.error}
+          <T message={state.error} />
         </p>
       ) : null}
 
       <div className="min-w-0 space-y-2">
-        <p className="text-sm font-medium leading-none">Email</p>
+        <p className="text-sm font-medium leading-none">
+          <T message="Email" />
+        </p>
         <p className="min-w-0 break-all py-1 text-sm leading-6 text-muted-foreground">{email}</p>
       </div>
 
@@ -142,9 +195,11 @@ function AccountForm({
 
       <AccountHomeCityField initialHomeCity={homeCity} key={homeCity} />
 
+      <AccountLanguageField initialLocale={locale} key={locale} />
+
       {state.success ? (
         <p className="text-sm font-medium text-primary" role="status">
-          {state.success}
+          <T message={state.success} />
         </p>
       ) : null}
     </PlannerEditorForm>
@@ -155,22 +210,38 @@ export function AccountEditor({
   currency,
   email,
   homeCity,
+  locale,
 }: {
   currency: string;
   email: string;
   homeCity: string;
+  locale: Locale;
 }) {
   const router = useRouter();
+  const [exiting, startExit] = useTransition();
+  useEffect(() => router.prefetch("/trips"), [router]);
+  const exit = useCallback(() => {
+    if (exiting) return;
+    startExit(() => router.replace("/trips"));
+  }, [exiting, router]);
+
   return (
     <PlannerEditorScreen
       editorKind="trip-settings"
       initialFocusSelector="[data-account-title]"
       onOpenChange={(open) => {
-        if (!open) router.replace("/trips");
+        if (!open) exit();
       }}
       open
     >
-      <AccountForm currency={currency} email={email} homeCity={homeCity} />
+      <AccountForm
+        currency={currency}
+        email={email}
+        exiting={exiting}
+        homeCity={homeCity}
+        locale={locale}
+        onExit={exit}
+      />
     </PlannerEditorScreen>
   );
 }

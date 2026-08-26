@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { PlannerVariant } from "@/features/itinerary/types";
+import { useI18n } from "@/features/i18n/i18n-provider";
 
 import {
   reconcileComparisonVisibility,
@@ -43,6 +44,7 @@ export function useVariantComparison({
   tripId: string;
   variants: PlannerVariant[];
 }): VariantComparisonUi {
+  const { locale } = useI18n();
   const query = useVariantComparisonProjection(tripId, enabled, dayNumber);
   const knownVariantIds = useRef(new Set(variants.map(({ id }) => id)));
   const [visibleVariantIds, setVisibleVariantIds] = useState<Set<string>>(
@@ -74,9 +76,9 @@ export function useVariantComparison({
   const presentations = useMemo(
     () =>
       projections.map((projection) =>
-        deriveVariantComparisonPresentation(projection, activeVariantId, dayNumber),
+        deriveVariantComparisonPresentation(projection, activeVariantId, dayNumber, locale),
       ),
-    [activeVariantId, dayNumber, projections],
+    [activeVariantId, dayNumber, locale, projections],
   );
   const visiblePresentations = useMemo(
     () => visibleComparisonPresentations(presentations, visibleVariantIds, activeVariantId),
@@ -84,7 +86,7 @@ export function useVariantComparison({
   );
   const available = variants.length >= 2;
   const blockingReason = !available
-    ? "Compare requires at least two route variants. Add another variant to use Decision summary."
+    ? "Compare requires at least two route variants. Add another variant to use Comparison summary."
     : dayRouteEditing
       ? "Discard or save the open Day route draft before comparing variants."
       : undefined;

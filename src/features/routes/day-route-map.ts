@@ -1,3 +1,5 @@
+import type { Locale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
 import type { ItineraryItem, PlannerDay } from "../itinerary/types.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model.ts";
 import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
@@ -8,7 +10,10 @@ import type { DayRouteCalculation } from "./types.ts";
 const markerKind = (item: ItineraryItem): "activity" | "hotel" | "meal" =>
   item.type === "hotel" ? "hotel" : item.type === "meal" ? "meal" : "activity";
 
-const markerGlyph = { activity: "A", hotel: "H", meal: "M" } as const;
+const markerGlyph = {
+  en: { activity: "A", hotel: "H", meal: "M" },
+  "zh-CN": { activity: "活", hotel: "住", meal: "餐" },
+} as const;
 
 export function eligibleDayRouteItems(day?: PlannerDay): ItineraryItem[] {
   return (
@@ -22,6 +27,7 @@ export function buildDayRouteMarkers(
   day: PlannerDay | undefined,
   stopItemIds: string[],
   previousDay?: PlannerDay,
+  locale: Locale = "en",
 ) {
   const grouped = new Map<string, PlannerMapMarker>();
   const positionsByItem = new Map<string, number[]>();
@@ -40,7 +46,7 @@ export function buildDayRouteMarkers(
     const kind = markerKind(item);
     const key = item.place!.id;
     const entry = {
-      dayLabel: `Day ${itemDay.day_number}`,
+      dayLabel: translateMessage(locale, "Day {day}", { day: itemDay.day_number }),
       dayNumber: itemDay.day_number,
       itemId: item.id,
       kind,
@@ -72,7 +78,7 @@ export function buildDayRouteMarkers(
     marker.label = positions.length
       ? positions.join(" · ")
       : kinds.size === 1
-        ? markerGlyph[marker.entries[0].kind as keyof typeof markerGlyph]
+        ? markerGlyph[locale][marker.entries[0].kind as keyof (typeof markerGlyph)["en"]]
         : "•";
   }
   return [...grouped.values()];

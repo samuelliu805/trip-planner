@@ -1,13 +1,6 @@
-import type { TransportMode } from "../itinerary/types.ts";
-import { transportModeLabels, transportModes } from "../itinerary/types.ts";
-
 import { deriveCityMetrics, derivePlanningHorizon } from "./decision-summary-city-metrics.ts";
 import { deriveHotelOccurrences } from "./decision-summary-hotel-metrics.ts";
-import {
-  countedDecisionSummaryModes,
-  explicitDecisionSummaryTransportMode,
-  sortedDecisionSummaryDays,
-} from "./decision-summary-normalization.ts";
+import { sortedDecisionSummaryDays } from "./decision-summary-normalization.ts";
 import { deriveRouteMetrics } from "./decision-summary-route-metrics.ts";
 import type {
   DecisionSummaryInput,
@@ -58,10 +51,6 @@ export function deriveVariantDecisionSummaryProjections(
       const placeLinked = items.filter(
         ({ place_id, type }) => Boolean(place_id) && plannedPlaceTypes.has(type),
       );
-      const tripModes = items
-        .filter(({ type }) => ["transport", "flight", "train"].includes(type))
-        .map(explicitDecisionSummaryTransportMode)
-        .filter((mode): mode is TransportMode => mode !== null);
       return {
         ...deriveCityMetrics(variant.id, days, itemsGroupedByDay(items)),
         ...derivePlanningHorizon(days),
@@ -96,11 +85,6 @@ export function deriveVariantDecisionSummaryProjections(
         knownCostBreakdown: input.knownCostBreakdowns[variant.id] ?? [],
         name: variant.name,
         plannedPlaceOccurrenceCount: placeLinked.length,
-        tripTransportModes: countedDecisionSummaryModes(
-          tripModes,
-          transportModes,
-          (mode) => transportModeLabels[mode],
-        ),
         uniquePlannedPlaces: new Set(placeLinked.map(({ place_id }) => place_id)).size,
         variantId: variant.id,
       };

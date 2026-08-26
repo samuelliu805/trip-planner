@@ -12,7 +12,7 @@ import {
   type CompiledPublicTemplateV1,
 } from "./schema.ts";
 
-export const DEFAULT_PUBLIC_TEMPLATE_KEY = "ethereal@1" as const;
+export const DEFAULT_PUBLIC_TEMPLATE_KEY = "neon@1" as const;
 export const LEGACY_PUBLIC_TEMPLATE_KEY = "standard@1" as const;
 
 export type PublicTemplateRegistryEntry = {

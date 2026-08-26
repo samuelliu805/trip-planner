@@ -1,10 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { continueWithGoogle, login } from "@/features/auth/actions";
 import { AuthForm } from "@/features/auth/components/auth-form";
+import { getRequestLocale } from "@/features/i18n/server";
+import { translateMessage } from "@/features/i18n/translate";
 import { createClient } from "@/lib/supabase/server";
 
-export const metadata = { title: "Log in" };
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  return { title: translateMessage(locale, "Log in") };
+}
 
 type LoginPageProps = {
   searchParams: Promise<{ error?: string | string[] }>;

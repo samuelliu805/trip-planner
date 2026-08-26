@@ -1,3 +1,4 @@
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { MapPinOff, MapPinned, Route } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export function PublicSharedRouteSummary({
   route?: PublicSavedRoute;
   unmappedActivityCount: number;
 }) {
+  const { locale, t } = useI18n();
   const modes = Array.from(new Set(route?.legs.map(({ mode }) => mode) ?? []));
   const stops = route?.stops ?? candidates;
 
@@ -31,13 +33,13 @@ export function PublicSharedRouteSummary({
         <p className="flex min-h-9 items-center gap-2 border px-2.5 text-xs text-muted-foreground">
           <MapPinned aria-hidden="true" className="size-4 shrink-0" />
           {modes.length
-            ? modes.map((mode) => transportModeLabels[mode]).join(" / ")
-            : "Shared route"}
+            ? modes.map((mode) => t(transportModeLabels[mode])).join(" / ")
+            : t("Shared route")}
           {route.totalDistanceMeters != null
             ? ` · ${formatDistance(route.totalDistanceMeters)}`
             : ""}
           {route.totalDurationSeconds != null
-            ? ` · ${formatDuration(route.totalDurationSeconds)}`
+            ? ` · ${formatDuration(route.totalDurationSeconds, locale)}`
             : ""}
         </p>
       ) : null}
@@ -53,7 +55,7 @@ export function PublicSharedRouteSummary({
             <span className="min-w-0 flex-1 truncate">{stop.title}</span>
             {index === 0 || index === stops.length - 1 ? (
               <span className="text-[9px] uppercase tracking-wide text-muted-foreground">
-                {index === 0 ? "Start" : "End"}
+                <Localized value={index === 0 ? "Start" : "End"} />
               </span>
             ) : null}
           </li>
@@ -65,20 +67,22 @@ export function PublicSharedRouteSummary({
       {omittedActivityCount ? (
         <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <MapPinOff aria-hidden="true" className="size-3.5 shrink-0" />
-          {omittedActivityCount} mapped {omittedActivityCount === 1 ? "activity" : "activities"}
-          {" added in Explore route"}
+          {t("{count} mapped activity/activity(s) added in Explore route", {
+            count: omittedActivityCount,
+          })}
         </p>
       ) : null}
       {unmappedActivityCount ? (
         <p className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <MapPinOff aria-hidden="true" className="size-3.5 shrink-0" />
-          {unmappedActivityCount}
-          {unmappedActivityCount === 1 ? " activity has" : " activities have"} no map location
+          {t("{count} activity/activity(s) have no map location", {
+            count: unmappedActivityCount,
+          })}
         </p>
       ) : null}
       {canExplore ? (
         <Button className="min-h-11 w-full" onClick={onExplore} type="button">
-          <Route className="size-4" /> Explore route
+          <Route className="size-4" /> <T message={" Explore route "} />
         </Button>
       ) : null}
     </>

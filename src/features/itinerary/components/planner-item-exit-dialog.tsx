@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,16 +28,26 @@ export function PlannerItemExitDialog({
     <AlertDialog onOpenChange={onOpenChange} open={open}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Exit without saving?</AlertDialogTitle>
+          <AlertDialogTitle>
+            <T message={"Exit without saving?"} />
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {editing
-              ? "Your edits to this item have not been saved yet."
-              : "This item has not been added to the trip yet."}
+            <Localized
+              value={
+                editing
+                  ? "Your edits to this item have not been saved yet."
+                  : "This item has not been added to the trip yet."
+              }
+            />
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep editing</AlertDialogCancel>
-          <AlertDialogAction onClick={onDiscard}>Exit without saving</AlertDialogAction>
+          <AlertDialogCancel>
+            <T message={"Keep editing"} />
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={onDiscard}>
+            <T message={"Exit without saving"} />
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

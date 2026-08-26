@@ -1,3 +1,4 @@
+import { T } from "@/features/i18n/i18n-provider";
 import type { PublicItinerary } from "../types";
 import { PublicTimelineDay } from "./public-timeline-day";
 
@@ -17,13 +18,19 @@ export function PublicTimeline({
   showIntro?: boolean;
 }) {
   return (
-    <section aria-label="Itinerary timeline" className="public-timeline timeline-v4">
+    <section
+      aria-label="Itinerary timeline"
+      data-i18n-aria-label={"Itinerary timeline"}
+      className="public-timeline timeline-v4"
+    >
       {showIntro ? (
         <div className="timeline-intro-v4">
           <div>
-            <div className="public-section-label">Journey timeline</div>
+            <div className="public-section-label">
+              <T message={"Journey timeline"} />
+            </div>
             <p className="timeline-intro-copy-v4">
-              Manual order, actual times, and major travel context.
+              <T message={" Manual order, actual times, and major travel context. "} />
             </p>
           </div>
         </div>

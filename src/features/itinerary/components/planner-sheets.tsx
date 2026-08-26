@@ -1,6 +1,8 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { format, parseISO } from "date-fns";
+import { zhCN } from "date-fns/locale";
 import { LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,7 +18,10 @@ import type { EditorState } from "@/features/itinerary/components/planner-config
 import { PlannerItemEditorDialog } from "@/features/itinerary/components/planner-item-editor-dialog";
 import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/planner-item-save-feedback";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type {
+  PlannerMapMode,
+  PlannerMapModeChange,
+} from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
@@ -61,7 +66,7 @@ type PlannerSheetsProps = {
   onItemSaveFeedback: (feedback?: PlannerItemSaveFeedback) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id?: string) => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onMapSelectionClear: () => void;
   onSettingsOpenChange: (open: boolean) => void;
   onTargetDaysChange: (days: Set<string>) => void;
@@ -127,6 +132,7 @@ export function PlannerSheets({
   mapViewportKey,
   workspace,
 }: PlannerSheetsProps) {
+  const { locale } = useI18n();
   return (
     <>
       <RouteVariantComparisonSheet
@@ -156,11 +162,17 @@ export function PlannerSheets({
       />
       <Sheet onOpenChange={onMapExpandedChange} open={mapExpanded}>
         <SheetContent className="planner-map-sheet p-0" side="right">
-          <SheetHeader className="py-4">
-            <SheetTitle>Map & routes</SheetTitle>
-            <SheetDescription>
-              {selectedItem?.title ?? "Saved places and route tools for this itinerary."}
-            </SheetDescription>
+          <SheetHeader className="py-5">
+            <SheetTitle className="text-lg">
+              <T message={"Map & routes"} />
+            </SheetTitle>
+            {selectedItem?.title ? (
+              <SheetDescription>{selectedItem.title}</SheetDescription>
+            ) : (
+              <SheetDescription className="sr-only">
+                <T message={"Map & routes"} />
+              </SheetDescription>
+            )}
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell
@@ -204,9 +216,11 @@ export function PlannerSheets({
       <Sheet onOpenChange={onCopyDaysOpenChange} open={copyDaysOpen}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>Copy to days</SheetTitle>
+            <SheetTitle>
+              <T message={"Copy to days"} />
+            </SheetTitle>
             <SheetDescription>
-              Create independent copies on each selected destination day.
+              <T message={" Create independent copies on each selected destination day. "} />
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 space-y-2 overflow-y-auto p-5">
@@ -227,8 +241,14 @@ export function PlannerSheets({
                       onTargetDaysChange(next);
                     }}
                   />
-                  Day {day.day_number} ·{" "}
-                  {day.date ? format(parseISO(day.date), "MMM d") : "Date TBD"}
+                  <T message={"Day {day}"} values={{ day: day.day_number }} /> ·{" "}
+                  {day.date ? (
+                    format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                      locale: locale === "zh-CN" ? zhCN : undefined,
+                    })
+                  ) : (
+                    <T message="Date TBD" />
+                  )}
                 </label>
               );
             })}
@@ -239,7 +259,7 @@ export function PlannerSheets({
               onClick={() => onCopyDaysOpenChange(false)}
               variant="ghost"
             >
-              Cancel
+              <T message={" Cancel "} />
             </Button>
             <Button
               aria-busy={copyPending}
@@ -247,7 +267,7 @@ export function PlannerSheets({
               onClick={onCopyToSelectedDays}
             >
               {copyPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-              {copyPending ? "Copying…" : "Copy items"}
+              <Localized value={copyPending ? "Copying…" : "Copy items"} />
             </Button>
           </div>
         </SheetContent>

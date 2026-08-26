@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Pencil, Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -42,6 +43,7 @@ export function ManageRouteVariantsDialog({
   tripId: string;
   variants: PlannerVariant[];
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [editVariant, setEditVariant] = useState<PlannerVariant>();
   const [deleteVariant, setDeleteVariant] = useState<PlannerVariant>();
@@ -56,7 +58,7 @@ export function ManageRouteVariantsDialog({
     setNotice(undefined);
     try {
       await primaryMutation.mutateAsync({ tripId, variantId: variant.id });
-      setNotice(`${variant.name} is now the primary Plan.`);
+      setNotice(t("{variant} is now the primary Plan.", { variant: variant.name }));
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The primary Plan could not be changed.");
@@ -84,9 +86,11 @@ export function ManageRouteVariantsDialog({
       <Dialog onOpenChange={onOpenChange} open={open}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Manage Plans</DialogTitle>
+            <DialogTitle>
+              <T message={"Manage Plans"} />
+            </DialogTitle>
             <DialogDescription>
-              Rename Plans, change identity colors, or choose the primary Plan.
+              <T message={" Rename Plans, change identity colors, or choose the primary Plan. "} />
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 px-5 py-5 sm:px-6">
@@ -96,7 +100,7 @@ export function ManageRouteVariantsDialog({
                   <VariantIdentity variant={variant} />
                   <div className="flex shrink-0 gap-1">
                     <Button
-                      aria-label={`Edit ${variant.name}`}
+                      aria-label={t("Edit {item}", { item: variant.name })}
                       className="size-10 p-0"
                       onClick={() => {
                         onOpenChange(false);
@@ -107,7 +111,7 @@ export function ManageRouteVariantsDialog({
                       <Pencil className="size-4" />
                     </Button>
                     <Button
-                      aria-label={`Delete ${variant.name}`}
+                      aria-label={t("Delete {item}", { item: variant.name })}
                       className="size-10 p-0 text-destructive"
                       disabled={variant.is_primary || variants.length === 1}
                       onClick={() => {
@@ -128,28 +132,30 @@ export function ManageRouteVariantsDialog({
                     onClick={() => void setPrimary(variant)}
                     variant="outline"
                   >
-                    <Star className="size-3.5" /> Set as primary
+                    <Star className="size-3.5" /> <T message={" Set as primary "} />
                   </Button>
                 ) : null}
               </div>
             ))}
             {limitReached ? (
-              <p className="text-xs text-muted-foreground">Maximum of three variants reached.</p>
+              <p className="text-xs text-muted-foreground">
+                <T message={"Maximum of three variants reached."} />
+              </p>
             ) : null}
             {error ? (
               <p className="text-sm text-destructive" role="alert">
-                {error}
+                <Localized value={error} />
               </p>
             ) : null}
             {notice ? (
               <p className="text-sm text-primary" aria-live="polite">
-                {notice}
+                <Localized value={notice} />
               </p>
             ) : null}
           </div>
           <DialogFooter>
             <Button onClick={() => onOpenChange(false)} type="button">
-              Done
+              <T message={" Done "} />
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -173,25 +179,33 @@ export function ManageRouteVariantsDialog({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete “{deleteVariant?.name}”?</AlertDialogTitle>
+            <AlertDialogTitle>
+              <T message={"Delete “"} />
+              {deleteVariant?.name}”?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently deletes this variant’s days, itinerary items, and saved routes.
-              Shared trip places remain available to other Plans.
+              <T
+                message={
+                  " This permanently deletes this variant’s days, itinerary items, and saved routes. Shared trip places remain available to other Plans. "
+                }
+              />
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error ? (
             <p className="text-sm text-destructive" role="alert">
-              {error}
+              <Localized value={error} />
             </p>
           ) : null}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>
+              <T message={"Cancel"} />
+            </AlertDialogCancel>
             <Button
               disabled={deleteMutation.isPending}
               onClick={() => void removeVariant()}
               variant="destructive"
             >
-              {deleteMutation.isPending ? "Deleting…" : "Delete Plan"}
+              <Localized value={deleteMutation.isPending ? "Deleting…" : "Delete Plan"} />
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

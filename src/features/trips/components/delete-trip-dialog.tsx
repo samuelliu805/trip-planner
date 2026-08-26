@@ -1,11 +1,11 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, Trash2 } from "lucide-react";
 import { useActionState, useEffect } from "react";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -29,19 +29,20 @@ function DeleteAction({
   const loading = checking || pending;
 
   return (
-    <AlertDialogAction
+    <Button
       aria-busy={loading}
       disabled={loading}
       onClick={() => onPendingChange?.(true)}
       type="submit"
+      variant="destructive"
     >
       {loading ? (
         <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
       ) : (
         <Trash2 aria-hidden="true" className="size-4" />
       )}
-      {checking ? "Checking…" : pending ? "Deleting…" : "Delete trip"}
-    </AlertDialogAction>
+      <Localized value={checking ? "Checking…" : pending ? "Deleting…" : "Delete trip"} />
+    </Button>
   );
 }
 
@@ -62,6 +63,7 @@ export function DeleteTripDialog({
   title: string;
   tripId: string;
 }) {
+  const { t } = useI18n();
   const checkingSharePages = activeSharePageCount === null;
   const [, action, pending] = useActionState(deleteTrip, {});
 
@@ -69,7 +71,13 @@ export function DeleteTripDialog({
   useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
   return (
-    <AlertDialog onOpenChange={onOpenChange} open={open}>
+    <AlertDialog
+      onOpenChange={(nextOpen) => {
+        if (pending && !nextOpen) return;
+        onOpenChange?.(nextOpen);
+      }}
+      open={open}
+    >
       {renderTrigger ? (
         <AlertDialogTrigger asChild>
           <Button
@@ -77,16 +85,22 @@ export function DeleteTripDialog({
             variant="ghost"
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
-            <Trash2 aria-hidden="true" className="size-4" /> Delete Trip
+            <Trash2 aria-hidden="true" className="size-4" /> <T message={" Delete Trip "} />
           </Button>
         </AlertDialogTrigger>
       ) : null}
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-xl font-semibold">Delete “{title}”?</AlertDialogTitle>
+          <AlertDialogTitle className="text-xl font-semibold">
+            <T message={"Delete “"} />
+            {title}”?
+          </AlertDialogTitle>
           <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
-            This permanently removes the trip, its routes, and generated trip days. This action
-            cannot be undone.
+            <T
+              message={
+                " This permanently removes the trip, its routes, and generated trip days. This action cannot be undone. "
+              }
+            />
             {checkingSharePages ? (
               <span
                 aria-live="polite"
@@ -94,14 +108,14 @@ export function DeleteTripDialog({
                 role="status"
               >
                 <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
-                Checking published Share Pages…
+                <T message={" Checking published Share Pages… "} />
               </span>
             ) : activeSharePageCount ? (
               <span className="mt-3 block border-l-2 border-primary bg-primary/5 px-3 py-2 text-foreground">
-                {activeSharePageCount} published{" "}
-                {activeSharePageCount === 1 ? "Share Page" : "Share Pages"} and their permanent
-                images will remain online as independent snapshots. They will no longer be
-                updateable from this trip. Revoke them before deleting if they should stop working.
+                {t(
+                  "{count} published Share Page(s) and their permanent images will remain online as independent snapshots. They will no longer be updateable from this trip. Revoke them before deleting if they should stop working.",
+                  { count: activeSharePageCount },
+                )}
               </span>
             ) : null}
           </AlertDialogDescription>
@@ -109,7 +123,9 @@ export function DeleteTripDialog({
         <form action={action}>
           <input name="trip_id" type="hidden" value={tripId} />
           <AlertDialogFooter>
-            <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={pending} type="button">
+              <T message={"Cancel"} />
+            </AlertDialogCancel>
             <DeleteAction
               checking={checkingSharePages}
               onPendingChange={onPendingChange}

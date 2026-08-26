@@ -1,3 +1,6 @@
+"use client";
+
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { ArrowDown, ArrowUp, MapPinOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +24,7 @@ export function PublicTemporaryRouteStops({
   onToggleStop: (ref: string, include: boolean) => void;
   plan: ReturnType<typeof publicDayRoutePlan>;
 }) {
+  const { t } = useI18n();
   const candidateRefs = new Set(candidates.map(({ ref }) => ref));
 
   return (
@@ -35,7 +39,9 @@ export function PublicTemporaryRouteStops({
               <MapPinOff aria-hidden="true" className="size-4 shrink-0" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium">{item.title}</span>
-                <span className="block text-[9px] uppercase tracking-wide">No map location</span>
+                <span className="block text-[9px] uppercase tracking-wide">
+                  <T message={"No map location"} />
+                </span>
               </span>
             </li>
           );
@@ -55,7 +61,7 @@ export function PublicTemporaryRouteStops({
         return (
           <li className="flex min-h-13 items-center gap-1 px-2" key={item.ref}>
             <Checkbox
-              aria-label={`Include ${item.title}`}
+              aria-label={t("Include {item}", { item: item.title })}
               checked={included}
               disabled={locked}
               id={checkboxId}
@@ -70,7 +76,7 @@ export function PublicTemporaryRouteStops({
             {!locked && included ? (
               <>
                 <Button
-                  aria-label={`Move ${item.title} earlier`}
+                  aria-label={t("Move {item} earlier", { item: item.title })}
                   className="size-10 p-0"
                   disabled={position <= (plan.startRef ? 1 : 0)}
                   onClick={() => onMoveStop(position, -1)}
@@ -80,7 +86,7 @@ export function PublicTemporaryRouteStops({
                   <ArrowUp className="size-4" />
                 </Button>
                 <Button
-                  aria-label={`Move ${item.title} later`}
+                  aria-label={t("Move {item} later", { item: item.title })}
                   className="size-10 p-0"
                   disabled={position >= localStops.length - (plan.endRef ? 2 : 1)}
                   onClick={() => onMoveStop(position, 1)}

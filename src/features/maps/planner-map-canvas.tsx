@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Map, useApiLoadingStatus, useMap } from "@vis.gl/react-google-maps";
 import { AlertTriangle, MapPinned } from "lucide-react";
 import { useEffect, useId, useRef } from "react";
@@ -70,7 +71,7 @@ function State({
   title,
 }: {
   error?: boolean;
-  message: string;
+  message?: string;
   onRetry?: () => void;
   title: string;
 }) {
@@ -82,11 +83,17 @@ function State({
     >
       <div className="max-w-sm rounded-xl border bg-background/95 p-5 shadow-sm">
         <Icon className={`mx-auto size-6 ${error ? "text-destructive" : "text-primary"}`} />
-        <h2 className="mt-3 font-semibold">{title}</h2>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">{message}</p>
+        <h2 className="mt-3 font-semibold">
+          <Localized value={title} />
+        </h2>
+        {message ? (
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            <Localized value={message} />
+          </p>
+        ) : null}
         {onRetry ? (
           <Button className="mt-4" onClick={onRetry} size="sm" type="button" variant="outline">
-            Retry map
+            <T message={" Retry map "} />
           </Button>
         ) : null}
       </div>
@@ -146,8 +153,7 @@ export function PlannerMapCanvas({
         onRetry={onRetry}
       />
     );
-  if (loadingStatus !== "LOADED")
-    return <State title="Loading map" message="Preparing your saved itinerary places…" />;
+  if (loadingStatus !== "LOADED") return <State title="Loading map" />;
   return (
     <div className="relative h-full">
       <Map
@@ -186,8 +192,12 @@ export function PlannerMapCanvas({
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">
           <div className="max-w-sm rounded-xl border bg-background/95 p-5 text-center shadow-sm backdrop-blur">
             <MapPinned className="mx-auto size-6 text-primary" />
-            <h2 className="mt-3 font-semibold">{emptyState.title}</h2>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">{emptyState.message}</p>
+            <h2 className="mt-3 font-semibold">
+              <Localized value={emptyState.title} />
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">
+              <Localized value={emptyState.message} />
+            </p>
           </div>
         </div>
       ) : null}

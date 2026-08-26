@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { CircleCheck } from "lucide-react";
 
 import {
@@ -27,8 +28,9 @@ export function PlannerItemSaveConfirmation({
   onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useI18n();
   const createAnother = intent === "save-and-create-another";
-  const lowerLabel = itemLabel.toLowerCase();
+  const localizedLabel = t(itemLabel);
 
   return (
     <AlertDialog onOpenChange={onOpenChange} open={Boolean(intent)}>
@@ -36,24 +38,31 @@ export function PlannerItemSaveConfirmation({
         <AlertDialogHeader>
           <AlertDialogTitle>
             {createAnother
-              ? `Create this ${lowerLabel} and start another?`
-              : `Create this ${lowerLabel}?`}
+              ? t("Create this {item} and start another?", { item: localizedLabel })
+              : t("Create this {item}?", { item: localizedLabel })}
           </AlertDialogTitle>
           <AlertDialogDescription>
             {createAnother
-              ? `“${itemTitle}” will be added to the itinerary. The success message will include a link back to it while you start the next ${lowerLabel}.`
-              : `“${itemTitle}” will be added to the itinerary.`}
+              ? t(
+                  "“{title}” will be added to the itinerary. The success message will include a link back to it while you start the next {item}.",
+                  { item: localizedLabel, title: itemTitle },
+                )
+              : t("“{title}” will be added to the itinerary.", { title: itemTitle })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogCancel>
+            <T message={"Keep editing"} />
+          </AlertDialogCancel>
           <AlertDialogAction
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={onConfirm}
             type="button"
           >
             <CircleCheck aria-hidden="true" className="size-4" />
-            {createAnother ? "Create & start another" : `Create ${lowerLabel}`}
+            {createAnother
+              ? t("Create & start another")
+              : t("Create {item}", { item: localizedLabel })}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

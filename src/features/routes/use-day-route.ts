@@ -5,12 +5,19 @@ import { useMemo, useState } from "react";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 
 import { eligibleDayRouteItems } from "./day-route-map";
+import { defaultDayRouteDraft } from "./day-route-default-draft";
+import { fixedDayRouteDraft } from "./day-route-order";
 import { resolveRouteCalculationConfig } from "./plan-config";
 import { useCalculateDayRoute, useClearDayRoutePlan, useSaveDayRoutePlan } from "./queries";
 import { validateDayRouteDraft } from "./route-config";
 import { dayRouteStatus, type DayRouteStatus } from "./status";
 import { suggestedDraftLegMode } from "./transport-suggestion";
-import type { DayRouteDraft, DayRoutePlan, RouteLegMode } from "./types";
+import {
+  canonicalRouteLegMode,
+  type DayRouteDraft,
+  type DayRoutePlan,
+  type RouteLegMode,
+} from "./types";
 
 export type DayRouteEditorDraft = { itemIds: string[]; legModes: RouteLegMode[] };
 
@@ -24,8 +31,6 @@ export type DayRouteUi = {
   eligibleItems: ItineraryItem[];
   error?: string;
   fitKey?: string;
-  hotelTransferAvailable: boolean;
-  moveStop: (index: number, direction: -1 | 1) => void;
   openCreate: () => void;
   openEdit: () => void;
   pending: boolean;
@@ -37,12 +42,13 @@ export type DayRouteUi = {
   setLegMode: (index: number, mode: RouteLegMode) => void;
   status?: DayRouteStatus;
   stopItems: ItineraryItem[];
-  useHotelRoundTrip: () => void;
 };
 
 const savedDraft = (plan: DayRoutePlan): DayRouteEditorDraft => ({
   itemIds: [...plan.stops].sort((a, b) => a.position - b.position).map(({ item_id }) => item_id),
-  legModes: [...plan.legs].sort((a, b) => a.position - b.position).map(({ mode }) => mode),
+  legModes: [...plan.legs]
+    .sort((a, b) => a.position - b.position)
+    .map(({ mode }) => canonicalRouteLegMode(mode)),
 });
 
 export function useDayRoute(
@@ -107,30 +113,29 @@ export function useDayRoute(
     if (!item) return;
     updateDraft((current) => {
       if (current.itemIds.includes(itemId)) return current;
-      const repeatedHotel =
-        current.itemIds.length >= 2 &&
-        current.itemIds[0] === current.itemIds.at(-1) &&
-        eligibleItems.find(({ id }) => id === current.itemIds[0])?.type === "hotel";
-      const hotelTransfer =
-        current.itemIds[0] === previousHotel?.id && current.itemIds.at(-1) === currentHotel?.id;
-      const insertAt =
-        repeatedHotel || hotelTransfer ? current.itemIds.length - 1 : current.itemIds.length;
-      const itemIds = [...current.itemIds];
-      itemIds.splice(insertAt, 0, itemId);
-      const legModes = [...current.legModes];
-      if (itemIds.length > 1)
-        legModes.splice(Math.min(insertAt, legModes.length), 0, suggestedMode);
-      return { itemIds, legModes };
+      return fixedDayRouteDraft(
+        { itemIds: [...current.itemIds, itemId], legModes: current.legModes },
+        eligibleItems.map(({ id }) => id),
+        suggestedMode,
+        previousHotel?.id,
+        currentHotel?.id,
+      );
     });
   }
 
   function removeStop(index: number) {
     updateDraft((current) => {
       if (!current.itemIds[index]) return current;
-      const itemIds = current.itemIds.filter((_, candidate) => candidate !== index);
-      const legModes = [...current.legModes];
-      if (legModes.length) legModes.splice(Math.min(index, legModes.length - 1), 1);
-      return { itemIds, legModes };
+      return fixedDayRouteDraft(
+        {
+          itemIds: current.itemIds.filter((_, candidate) => candidate !== index),
+          legModes: current.legModes,
+        },
+        eligibleItems.map(({ id }) => id),
+        suggestedMode,
+        previousHotel?.id,
+        currentHotel?.id,
+      );
     });
   }
 
@@ -142,50 +147,29 @@ export function useDayRoute(
         .sort((a, b) => b - a);
       let next = current;
       for (const index of indexes) {
-        const itemIds = next.itemIds.filter((_, candidate) => candidate !== index);
-        const legModes = [...next.legModes];
-        if (legModes.length) legModes.splice(Math.min(index, legModes.length - 1), 1);
-        next = { itemIds, legModes };
+        next = fixedDayRouteDraft(
+          {
+            itemIds: next.itemIds.filter((_, candidate) => candidate !== index),
+            legModes: next.legModes,
+          },
+          eligibleItems.map(({ id }) => id),
+          suggestedMode,
+          previousHotel?.id,
+          currentHotel?.id,
+        );
       }
       return next;
     });
   }
 
-  function moveStop(index: number, direction: -1 | 1) {
-    updateDraft((current) => {
-      const destination = index + direction;
-      if (destination < 0 || destination >= current.itemIds.length) return current;
-      if (current.itemIds[0] === previousHotel?.id && (index === 0 || destination === 0))
-        return current;
-      const itemIds = [...current.itemIds];
-      [itemIds[index], itemIds[destination]] = [itemIds[destination], itemIds[index]];
-      return { ...current, itemIds };
-    });
-  }
-
   function setLegMode(index: number, mode: RouteLegMode) {
+    const canonicalMode = canonicalRouteLegMode(mode);
     updateDraft((current) => ({
       ...current,
       legModes: current.legModes.map((candidate, candidateIndex) =>
-        candidateIndex === index ? mode : candidate,
+        candidateIndex === index ? canonicalMode : candidate,
       ),
     }));
-  }
-
-  function useHotelRoundTrip() {
-    if (!previousHotel || !currentHotel) return;
-    updateDraft((current) => {
-      const withoutHotels = current.itemIds.filter(
-        (itemId) => itemId !== previousHotel.id && itemId !== currentHotel.id,
-      );
-      const itemIds = [previousHotel.id, ...withoutHotels, currentHotel.id];
-      return {
-        itemIds,
-        legModes: Array.from({ length: Math.max(0, itemIds.length - 1) }, (_, index) =>
-          index < current.legModes.length ? current.legModes[index] : suggestedMode,
-        ),
-      };
-    });
   }
 
   async function saveAndCalculate() {
@@ -250,13 +234,7 @@ export function useDayRoute(
   const status = plan ? dayRouteStatus(workspace, plan) : undefined;
   const resolved = plan ? resolveRouteCalculationConfig(workspace, plan) : undefined;
   const calculatedFitKey = plan?.calculation?.computed_at;
-  const defaultDraft = (): DayRouteEditorDraft => {
-    const itemIds = eligibleItems.slice(0, 20).map(({ id }) => id);
-    return {
-      itemIds,
-      legModes: Array.from({ length: Math.max(0, itemIds.length - 1) }, () => suggestedMode),
-    };
-  };
+  const defaultDraft = () => defaultDayRouteDraft(eligibleItems, suggestedMode, previousHotel);
 
   return {
     activeDay,
@@ -271,14 +249,21 @@ export function useDayRoute(
     eligibleItems,
     error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
     fitKey: calculatedFitKey ? `day-route:${activeDay?.id}:${calculatedFitKey}` : undefined,
-    hotelTransferAvailable: Boolean(previousHotel && currentHotel),
-    moveStop,
     openCreate: () => {
       setDraft(defaultDraft());
       setError(undefined);
     },
     openEdit: () => {
-      if (plan) setDraft(savedDraft(plan));
+      if (plan)
+        setDraft(
+          fixedDayRouteDraft(
+            savedDraft(plan),
+            eligibleItems.map(({ id }) => id),
+            suggestedMode,
+            previousHotel?.id,
+            currentHotel?.id,
+          ),
+        );
       else setDraft(defaultDraft());
       setError(undefined);
     },
@@ -291,6 +276,5 @@ export function useDayRoute(
     setLegMode,
     status,
     stopItems,
-    useHotelRoundTrip,
   };
 }

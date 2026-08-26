@@ -23,7 +23,13 @@ type PlaceLinkedComparisonCity = ComparisonCityRow & {
   place_id: string;
 };
 
-const canonicalTypes = new Set<ComparisonCityRow["type"]>(["activity", "meal", "hotel"]);
+const canonicalLocalityTypes = new Set<ComparisonCityRow["type"]>([
+  "activity",
+  "meal",
+  "car_rental",
+  "hotel",
+]);
+const dayRouteStopTypes = new Set<ComparisonCityRow["type"]>(["activity", "meal", "hotel"]);
 
 function localityKey(city: ComparisonCityRow) {
   const label =
@@ -98,7 +104,7 @@ export function normalizeVariantComparisonProjection(
       (a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id),
     );
     const canonicalLocalities = ordered.filter(
-      (item) => canonicalTypes.has(item.type) && localityKey(item),
+      (item) => canonicalLocalityTypes.has(item.type) && localityKey(item),
     );
     const localitySources = canonicalLocalities.length
       ? canonicalLocalities
@@ -119,7 +125,8 @@ export function normalizeVariantComparisonProjection(
           : best;
       }, undefined);
     const canonicalCoordinates = ordered.filter(
-      (item) => item.type !== "location" && canonicalTypes.has(item.type) && hasValidSnapshot(item),
+      (item) =>
+        item.type !== "location" && dayRouteStopTypes.has(item.type) && hasValidSnapshot(item),
     ) as PlaceLinkedComparisonCity[];
     const localityGroups = new Map<
       string,
@@ -233,7 +240,7 @@ export function attachVariantComparisonDayRoutes(
     cityRows
       .filter(
         (item): item is PlaceLinkedComparisonCity =>
-          canonicalTypes.has(item.type) && hasValidSnapshot(item),
+          dayRouteStopTypes.has(item.type) && hasValidSnapshot(item),
       )
       .map((item) => [item.id, item]),
   );

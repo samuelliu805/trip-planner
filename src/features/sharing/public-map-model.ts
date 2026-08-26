@@ -1,3 +1,6 @@
+import type { Locale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
+
 import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model.ts";
 
@@ -26,6 +29,7 @@ function markerKind(type: string): "activity" | "carRental" | "city" | "hotel" |
 export function buildPublicMarkers(
   itinerary: PublicItinerary,
   theme?: { color: string; glyphColor: string },
+  locale: Locale = "en",
 ): PlannerMapMarker[] {
   const activityMarkers = itinerary.days.flatMap((day) =>
     day.items.flatMap((item) => {
@@ -35,12 +39,15 @@ export function buildPublicMarkers(
       const kind = markerKind(item.type);
       return [
         {
-          accessibleLabel: `${item.title}, Day ${day.dayNumber}`,
+          accessibleLabel: translateMessage(locale, "{item}, Day {day}", {
+            day: day.dayNumber,
+            item: item.title,
+          }),
           address: item.place.address,
           appearance: "category" as const,
           entries: [
             {
-              dayLabel: `Day ${day.dayNumber}`,
+              dayLabel: translateMessage(locale, "Day {day}", { day: day.dayNumber }),
               dayNumber: day.dayNumber,
               itemId: item.ref,
               kind,
@@ -50,7 +57,10 @@ export function buildPublicMarkers(
           ...(theme && { glyphColor: theme.glyphColor }),
           id: `public:${item.ref}`,
           itemIds: [item.ref],
-          label: kind === "city" ? `D${day.dayNumber}` : undefined,
+          label:
+            kind === "city"
+              ? translateMessage(locale, "D{day}", { day: day.dayNumber })
+              : undefined,
           latitude: item.place.latitude,
           longitude: item.place.longitude,
           readOnly: true,
@@ -61,7 +71,7 @@ export function buildPublicMarkers(
       ];
     }),
   );
-  const stageMarkers = derivePublicOverviewStages(itinerary).flatMap((stage, index) => {
+  const stageMarkers = derivePublicOverviewStages(itinerary, locale).flatMap((stage, index) => {
     if (!stage.anchor) return [];
     return [
       {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Bed, Clock3, ListOrdered } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -13,8 +14,10 @@ type PointerIntent = {
 };
 
 export function ActivityIdentity({ item }: { item: ItineraryItem }) {
+  const { t } = useI18n();
   const time = (item.start_time ?? item.end_time)?.slice(0, 5);
-  const anchorLabel = item.type === "hotel" ? "End of day" : time ? `${time} anchor` : null;
+  const anchorLabel =
+    item.type === "hotel" ? t("End of day") : time ? t("{time} anchor", { time }) : null;
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
       <span
@@ -31,7 +34,7 @@ export function ActivityIdentity({ item }: { item: ItineraryItem }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">{item.title}</p>
         <p className="text-xs text-muted-foreground">
-          {anchorLabel ?? "Untimed · choose its position"}
+          {anchorLabel ?? <Localized value="Untimed · choose its position" />}
         </p>
       </div>
     </div>
@@ -77,6 +80,7 @@ export function ActivityInsertionGap({
     <div className="relative z-10 h-3" role="presentation">
       <button
         aria-label="Click to place Activity here"
+        data-i18n-aria-label={"Click to place Activity here"}
         autoFocus={autoFocus}
         className={`absolute left-0 top-1/2 flex h-11 w-full -translate-y-1/2 items-center justify-center px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring xl:h-9 ${pressed ? "text-primary" : "text-muted-foreground"}`}
         data-activity-gap={index}
@@ -143,7 +147,7 @@ export function ActivityInsertionGap({
       >
         <span className="absolute inset-x-2 top-1/2 border-t border-dashed border-current" />
         <span className="relative rounded-full bg-background px-2 text-[10px] font-medium">
-          Click to place
+          <T message={" Click to place "} />
         </span>
       </button>
     </div>

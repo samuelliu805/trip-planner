@@ -21,13 +21,13 @@ export function RouteVariantDecisionSummarySheet({
   return (
     <PullUpPanel
       className="z-[120] max-h-[68dvh]"
-      description="Saved facts for up to three routes. Primary is the baseline; differences are neutral."
+      compactHeader
       dragMode="mobile"
       id="route-decision-summary"
       onOpenChange={onOpenChange}
       open={open}
       overlayClassName="z-[115]"
-      title="Decision summary"
+      title="Comparison summary"
     >
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4">
         {summary.isLoading || summary.error ? (

@@ -1,3 +1,4 @@
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, RefreshCw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export function AttachmentUploadTask({
   onRetry: () => void;
   task: UploadTask;
 }) {
+  const { t } = useI18n();
   return (
     <div className="min-w-0 rounded-md border bg-muted/20 p-3">
       <div className="flex min-w-0 items-center gap-2">
@@ -32,17 +34,19 @@ export function AttachmentUploadTask({
         )}
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{task.file.name}</span>
         <span className="shrink-0 text-xs text-muted-foreground">
-          {task.error ? "Failed" : `${task.progress.percent}%`}
+          {task.error ? <T message="Failed" /> : `${task.progress.percent}%`}
         </span>
       </div>
       {task.error ? (
         <div className="mt-2 flex min-w-0 items-start gap-2">
-          <p className="min-w-0 flex-1 text-xs leading-5 text-destructive">{task.error}</p>
+          <p className="min-w-0 flex-1 text-xs leading-5 text-destructive">
+            <Localized value={task.error} />
+          </p>
           <Button className="min-h-11" onClick={onRetry} size="sm" type="button" variant="outline">
-            Retry
+            <T message={" Retry "} />
           </Button>
           <Button
-            aria-label={`Dismiss ${task.file.name}`}
+            aria-label={t("Dismiss {file}", { file: task.file.name })}
             className="size-11 p-0"
             onClick={onDismiss}
             type="button"
@@ -60,7 +64,7 @@ export function AttachmentUploadTask({
             />
           </div>
           <Button className="min-h-11" onClick={onCancel} size="sm" type="button" variant="ghost">
-            Cancel
+            <T message={" Cancel "} />
           </Button>
         </div>
       )}

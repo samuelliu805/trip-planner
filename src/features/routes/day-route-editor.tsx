@@ -1,8 +1,7 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import {
-  ArrowDown,
-  ArrowUp,
   BedDouble,
   ChevronDown,
   Footprints,
@@ -16,7 +15,6 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import {
   Select,
   SelectContent,
@@ -26,9 +24,9 @@ import {
 } from "@/components/ui/select";
 import { transportModeLabels, type ItineraryItem } from "@/features/itinerary/types";
 
-import { DayRouteStatusBadge, SelectedPlaceSlot } from "./day-route-panel-ui";
+import { SelectedPlaceSlot } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
-import { routeLegModes, type RouteLegMode } from "./types";
+import { selectableRouteLegModes, type RouteLegMode } from "./types";
 import type { DayRouteUi } from "./use-day-route";
 
 function StopIcon({ item }: { item?: ItineraryItem }) {
@@ -46,6 +44,7 @@ export function DayRouteEditor({
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const [unplannedOpen, setUnplannedOpen] = useState(true);
   const draft = route.draft!;
   const itemsById = new Map(route.stopItems.map((item) => [item.id, item]));
@@ -55,17 +54,17 @@ export function DayRouteEditor({
   return (
     <section
       aria-label="Edit Route A"
-      className="day-route-editor mobile-pull-up-panel absolute inset-x-3 bottom-3 z-30 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/97 shadow-xl backdrop-blur min-[900px]:left-auto min-[900px]:right-3 min-[900px]:top-14 min-[900px]:max-h-none min-[900px]:w-[min(360px,calc(100%-1.5rem))]"
+      data-i18n-aria-label={"Edit Route A"}
+      className="day-route-editor absolute inset-x-3 bottom-3 z-30 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/97 shadow-xl backdrop-blur min-[900px]:left-auto min-[900px]:right-3 min-[900px]:top-14 min-[900px]:max-h-none min-[900px]:w-[min(360px,calc(100%-1.5rem))]"
     >
-      <PullUpPanelHandle className="sm:hidden" onClose={onBack} />
       <header className="border-b px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">Day {route.activeDay?.day_number} · Route A</p>
-            <p className="text-xs text-muted-foreground">Manual order is used.</p>
-          </div>
+          <p className="text-base font-semibold">
+            {route.activeDay ? (
+              <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />
+            ) : null}
+          </p>
           <div className="flex items-center gap-2">
-            <DayRouteStatusBadge route={route} />
             <RouteIconButton
               label="Discard changes and collapse route editor"
               onClick={onBack}
@@ -79,13 +78,15 @@ export function DayRouteEditor({
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
         {draft.itemIds.length ? (
-          <ol className="space-y-2" aria-label="Planned stops">
+          <ol
+            className="space-y-2"
+            aria-label="Planned stops"
+            data-i18n-aria-label={"Planned stops"}
+          >
             {draft.itemIds.map((itemId, index) => {
               const item = itemsById.get(itemId);
               const itemDay =
                 item?.day_id === route.previousDay?.id ? route.previousDay : route.activeDay;
-              const previousHotelStart =
-                itemsById.get(draft.itemIds[0])?.day_id === route.previousDay?.id;
               const time = item?.start_time?.slice(0, 5);
               return (
                 <li key={`${itemId}:${index}`}>
@@ -98,37 +99,17 @@ export function DayRouteEditor({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-medium">
-                        {item?.title ?? "Deleted item"}
+                        {item?.title ?? <T message="Deleted item" />}
                       </span>
                       <span className="block truncate text-[10px] text-muted-foreground">
-                        {itemDay ? `Day ${itemDay.day_number} · ` : ""}
+                        {itemDay ? `${t("Day {day}", { day: itemDay.day_number })} · ` : ""}
                         {time ? `${time} · ` : ""}
-                        {item?.place ? item.place.displayName : "Saved place missing"}
+                        {item?.place ? item.place.displayName : <T message="Saved place missing" />}
                       </span>
                     </span>
                     <RouteIconButton
-                      disabled={index === 0 || (index === 1 && previousHotelStart) || route.pending}
-                      label={`Move stop ${index + 1} up`}
-                      onClick={() => route.moveStop(index, -1)}
-                      title="Move stop up"
-                    >
-                      <ArrowUp className="size-4" />
-                    </RouteIconButton>
-                    <RouteIconButton
-                      disabled={
-                        index === draft.itemIds.length - 1 ||
-                        (index === 0 && previousHotelStart) ||
-                        route.pending
-                      }
-                      label={`Move stop ${index + 1} down`}
-                      onClick={() => route.moveStop(index, 1)}
-                      title="Move stop down"
-                    >
-                      <ArrowDown className="size-4" />
-                    </RouteIconButton>
-                    <RouteIconButton
                       disabled={route.pending}
-                      label={`Remove stop ${index + 1}`}
+                      label={t("Remove stop {number}", { number: index + 1 })}
                       onClick={() => route.removeStop(index)}
                       title="Remove stop"
                       variant="destructive"
@@ -145,15 +126,15 @@ export function DayRouteEditor({
                         value={draft.legModes[index]}
                       >
                         <SelectTrigger
-                          aria-label={`Travel mode for leg ${index + 1}`}
+                          aria-label={t("Travel mode for leg {number}", { number: index + 1 })}
                           className="h-10"
                         >
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {routeLegModes.map((mode) => (
+                          {selectableRouteLegModes.map((mode) => (
                             <SelectItem key={mode} value={mode}>
-                              {transportModeLabels[mode]}
+                              <Localized value={transportModeLabels[mode]} />
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -166,32 +147,9 @@ export function DayRouteEditor({
           </ol>
         ) : (
           <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
-            Add stops from Unplanned places or select a gray Pin on the map.
+            <T message={" Add stops from Unplanned places or select a gray Pin on the map. "} />
           </div>
         )}
-
-        <Button
-          aria-busy={route.pending}
-          className="mt-3 w-full"
-          disabled={route.pending || !route.hotelTransferAvailable}
-          onClick={route.useHotelRoundTrip}
-          size="sm"
-          title={
-            route.hotelTransferAvailable
-              ? "Start at the previous day's Hotel and end at today's Hotel"
-              : "Add a place-linked Hotel to both the previous day and this day"
-          }
-          type="button"
-          variant="outline"
-        >
-          <BedDouble className="size-4" />
-          Use Hotels as start &amp; end
-        </Button>
-        {!route.hotelTransferAvailable ? (
-          <p className="mt-1.5 px-1 text-[10px] text-muted-foreground">
-            Requires a place-linked Hotel on both the previous day and this day.
-          </p>
-        ) : null}
 
         <div className="mt-3 overflow-hidden rounded-lg border">
           <button
@@ -200,7 +158,10 @@ export function DayRouteEditor({
             onClick={() => setUnplannedOpen((open) => !open)}
             type="button"
           >
-            <span>Unplanned places ({unplanned.length})</span>
+            <span>
+              <T message={"Unplanned places ("} />
+              {unplanned.length})
+            </span>
             <ChevronDown
               aria-hidden="true"
               className={`size-4 shrink-0 text-muted-foreground transition-transform ${unplannedOpen ? "rotate-180" : ""}`}
@@ -218,7 +179,7 @@ export function DayRouteEditor({
                       <span className="min-w-0 flex-1 truncate text-xs">{item.title}</span>
                       <RouteIconButton
                         disabled={route.pending}
-                        label={`Add ${item.title} to route`}
+                        label={t("Add {item} to route", { item: item.title })}
                         onClick={() => route.addStop(item.id)}
                         title="Add to route"
                         variant="secondary"
@@ -230,7 +191,7 @@ export function DayRouteEditor({
                 </ul>
               ) : (
                 <p className="p-2 text-xs text-muted-foreground">
-                  All eligible places are planned.
+                  <T message={" All eligible places are planned. "} />
                 </p>
               )}
             </div>
@@ -242,7 +203,7 @@ export function DayRouteEditor({
             className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
             role="alert"
           >
-            {route.error}
+            <Localized value={route.error} />
           </p>
         ) : null}
       </div>
@@ -252,7 +213,7 @@ export function DayRouteEditor({
             disabled={route.pending}
             label="Clear saved route"
             onClick={() => {
-              if (window.confirm("Clear this saved day route and its calculation?"))
+              if (window.confirm(t("Clear this saved day route and its calculation?")))
                 void route.clearRoute();
             }}
             variant="destructive"
@@ -272,7 +233,7 @@ export function DayRouteEditor({
           ) : (
             <Save className="size-4" />
           )}
-          {route.pending ? "Saving…" : "Save & calculate"}
+          <Localized value={route.pending ? "Saving…" : "Save & calculate"} />
         </Button>
       </footer>
     </section>

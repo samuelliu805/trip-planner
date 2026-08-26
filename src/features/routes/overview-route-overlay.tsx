@@ -1,9 +1,9 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, RotateCcw, Route, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import {
   Select,
   SelectContent,
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatRouteDuration } from "./day-route-panel-ui";
 import { overviewRouteModeLabels } from "./overview-transport";
 import { RouteIconButton } from "./route-icon-button";
 import { RouteLegDetails } from "./route-leg-details";
@@ -22,12 +23,6 @@ const notSetValue = "not_set";
 const formatDistance = (meters: number) =>
   meters >= 1_000 ? `${(meters / 1_000).toFixed(1)} km` : `${Math.round(meters)} m`;
 
-const formatDuration = (seconds: number) => {
-  const minutes = Math.round(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  return hours ? `${hours}h ${minutes % 60}m` : `${minutes} min`;
-};
-
 export function OverviewRouteOverlay({
   onClose,
   route,
@@ -37,10 +32,10 @@ export function OverviewRouteOverlay({
   route: OverviewRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
+  const { locale, t } = useI18n();
   if (!route.segments.length)
     return selectedPlace ? (
-      <section className="map-bottom-panel overview-route-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 overscroll-none rounded-xl border bg-background/95 px-3 pb-3 pr-12 shadow-lg backdrop-blur">
-        <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
+      <section className="map-bottom-panel overview-route-panel absolute bottom-3 left-3 right-3 z-20 overscroll-none rounded-xl border bg-background/95 p-3 pr-12 shadow-lg backdrop-blur">
         {selectedPlace}
         <RouteIconButton
           className="absolute right-2 top-2"
@@ -52,7 +47,6 @@ export function OverviewRouteOverlay({
         </RouteIconButton>
       </section>
     ) : null;
-  const calculatedCount = route.segments.filter(({ calculatedLeg }) => calculatedLeg).length;
   const hasConfiguration = route.segments.some(({ calculatedLeg, mode }) => calculatedLeg || mode);
   const hasPendingCalculation = route.segments.some(({ calculatedLeg, mode }) =>
     Boolean(mode && !calculatedLeg),
@@ -70,33 +64,36 @@ export function OverviewRouteOverlay({
   );
 
   return (
-    <section className="map-bottom-panel overview-route-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur min-[900px]:max-h-[calc(100%-4.5rem)]">
-      <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
+    <section className="map-bottom-panel overview-route-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur min-[900px]:max-h-[calc(100%-4.5rem)]">
       {selectedPlace ? <div className="shrink-0 border-b px-3 py-2">{selectedPlace}</div> : null}
       <div className="flex min-h-0 flex-1 flex-col px-3 py-2">
         <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <Route className="size-4 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">Overview route</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {route.segments.length} stage{" "}
-                {route.segments.length === 1 ? "connection" : "connections"}
-                {calculatedCount
-                  ? ` · ${calculatedCount}/${route.segments.length} calculated`
-                  : " · Preview only"}
-              </p>
-            </div>
+            <p className="min-w-0 truncate text-base font-semibold">
+              <T message={"Overview route"} />
+            </p>
           </div>
-          <Button
-            className="col-start-2 row-start-1"
-            onClick={() => route.setEditing(!route.editing)}
-            size="sm"
-            type="button"
-            variant={route.editing ? "outline" : hasPendingCalculation ? "default" : "outline"}
-          >
-            {route.editing ? "Done" : hasPendingCalculation ? "Set up route" : "Route details"}
-          </Button>
+          {route.editing ? (
+            <RouteIconButton
+              className="col-start-2 row-start-1"
+              label="Finish route setup"
+              onClick={() => route.setEditing(false)}
+              title="Finish route setup"
+            >
+              <X className="size-4" />
+            </RouteIconButton>
+          ) : (
+            <Button
+              className="col-start-2 row-start-1"
+              onClick={() => route.setEditing(true)}
+              size="sm"
+              type="button"
+              variant={hasPendingCalculation ? "default" : "outline"}
+            >
+              <Localized value={hasPendingCalculation ? "Set up route" : "Route details"} />
+            </Button>
+          )}
           {!route.editing ? (
             <RouteIconButton
               className="col-start-3 row-start-1"
@@ -111,24 +108,25 @@ export function OverviewRouteOverlay({
 
         {route.editing ? (
           <div className="mt-2 flex min-h-0 flex-1 flex-col border-t pt-2">
-            <p className="mb-2 shrink-0 text-xs leading-4 text-muted-foreground sm:text-[11px]">
-              Choose a travel mode for each stage connection. Calculation happens only when you
-              select Calculate route; an unset connection keeps its straight preview line.
-            </p>
             <ol
               aria-label="Overview route connections"
+              data-i18n-aria-label={"Overview route connections"}
               className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 sm:max-h-56"
             >
               {route.segments.map((segment, index) => {
                 const leg = segment.calculatedLeg;
-                const duration =
-                  leg?.durationSeconds === null
-                    ? "Duration unavailable"
-                    : leg?.durationSeconds !== undefined
-                      ? `${leg.estimateKind === "transit_current_service" ? "Approx. " : ""}${formatDuration(leg.durationSeconds)}`
-                      : segment.mode
-                        ? "Ready to calculate"
-                        : "Preview line";
+                const dayLabel =
+                  segment.from.firstDayLabel === segment.to.firstDayLabel
+                    ? segment.from.firstDayLabel
+                    : `${segment.from.firstDayLabel} → ${segment.to.firstDayLabel}`;
+                const legMeta = leg
+                  ? [
+                      formatDistance(leg.distanceMeters),
+                      leg.durationSeconds === null
+                        ? t("Duration unavailable")
+                        : `${leg.estimateKind === "transit_current_service" ? t("Approx. ") : ""}${formatRouteDuration(leg.durationSeconds, locale)}`,
+                    ]
+                  : [];
                 return (
                   <li
                     className="grid grid-cols-[minmax(0,1fr)_minmax(8.5rem,0.75fr)] items-center gap-2 rounded-lg border px-2.5 py-2"
@@ -139,8 +137,7 @@ export function OverviewRouteOverlay({
                         {index + 1}. {segment.from.entries[0].title} → {segment.to.entries[0].title}
                       </p>
                       <p className="truncate text-[10px] text-muted-foreground">
-                        {segment.from.firstDayLabel} → {segment.to.firstDayLabel}
-                        {leg ? ` · ${formatDistance(leg.distanceMeters)}` : ""} · {duration}
+                        {[dayLabel, ...legMeta].join(" · ")}
                       </p>
                     </div>
                     <Select
@@ -154,16 +151,21 @@ export function OverviewRouteOverlay({
                       value={segment.mode ?? notSetValue}
                     >
                       <SelectTrigger
-                        aria-label={`Travel from ${segment.from.entries[0].title} to ${segment.to.entries[0].title}`}
+                        aria-label={t("Travel from {from} to {to}", {
+                          from: segment.from.entries[0].title,
+                          to: segment.to.entries[0].title,
+                        })}
                         className="h-10"
                       >
-                        <SelectValue placeholder="Select travel mode" />
+                        <SelectValue placeholder={t("Select travel mode")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={notSetValue}>Not set · preview line</SelectItem>
+                        <SelectItem value={notSetValue}>
+                          <T message={"Not set · preview line"} />
+                        </SelectItem>
                         {overviewRouteModes.map((mode) => (
                           <SelectItem key={mode} value={mode}>
-                            {overviewRouteModeLabels[mode]}
+                            <Localized value={overviewRouteModeLabels[mode]} />
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -191,11 +193,15 @@ export function OverviewRouteOverlay({
                 type="button"
               >
                 {route.pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-                {route.pending
-                  ? "Calculating…"
-                  : hasPendingCalculation
-                    ? "Calculate route"
-                    : "Routes current"}
+                <Localized
+                  value={
+                    route.pending
+                      ? "Calculating…"
+                      : hasPendingCalculation
+                        ? "Calculate route"
+                        : "Routes current"
+                  }
+                />
               </Button>
             </div>
           </div>
@@ -206,7 +212,7 @@ export function OverviewRouteOverlay({
             className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
             role="alert"
           >
-            {route.error}
+            <Localized value={route.error} />
           </p>
         ) : null}
       </div>

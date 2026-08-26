@@ -1,12 +1,23 @@
 "use client";
 
-import { GitCompareArrows, Maximize2, PanelBottomOpen } from "lucide-react";
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
+import { ChevronDown, GitCompareArrows, Maximize2, PanelBottomOpen } from "lucide-react";
 import { useId } from "react";
 
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type {
+  PlannerMapMode,
+  PlannerMapModeChange,
+} from "@/features/itinerary/components/planner-map-types";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerMapControls({
+  activeDayNumber,
   compact,
   comparisonBlockingReason,
   dayCityLayerAvailable,
@@ -18,6 +29,7 @@ export function PlannerMapControls({
   onPanelOpen,
   panelDismissed,
 }: {
+  activeDayNumber?: number;
   compact: boolean;
   comparisonBlockingReason?: string;
   dayCityLayerAvailable: boolean;
@@ -25,73 +37,97 @@ export function PlannerMapControls({
   mapMode: PlannerMapMode;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onExpand?: () => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onPanelOpen: () => void;
   panelDismissed: boolean;
 }) {
+  const { t } = useI18n();
   const comparisonReasonId = useId();
   return (
     <>
       {onExpand ? (
         <button
           aria-label="Open full-screen map"
+          data-i18n-aria-label={"Open full-screen map"}
           className="absolute right-2 top-2 z-20 flex min-h-11 items-center justify-center gap-1.5 rounded-md border bg-background/95 px-3 text-xs font-medium shadow-sm backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onExpand}
           type="button"
         >
           <Maximize2 className="size-4" />
-          Open map
+          <T message={" Open map "} />
         </button>
       ) : null}
       {!compact ? (
         <div className="absolute left-2 top-2 z-20 max-w-[calc(100%-1rem)] overflow-hidden rounded-lg border bg-background/95 shadow-sm backdrop-blur">
-          <div aria-label="Map scope" className="flex p-0.5" role="group">
+          <div
+            aria-label="Map scope"
+            data-i18n-aria-label={"Map scope"}
+            className="flex p-0.5"
+            role="group"
+          >
             {(
               [
                 { description: "Show the whole trip", label: "Whole trip", value: "overview" },
                 { description: "Show the selected day", label: "This day", value: "day_route" },
-                {
-                  description:
-                    comparisonBlockingReason ??
-                    (mapMode === "day_route"
-                      ? "Compare this Day route across variants"
-                      : "Compare route variants by Activity city/town stages"),
-                  disabled: Boolean(comparisonBlockingReason),
-                  label: "Compare",
-                  value: "comparison",
-                },
               ] as const
-            ).map(({ description, label, value, ...item }) => {
-              const disabled = "disabled" in item && item.disabled;
+            ).map(({ description, label, value }) => {
               return (
-                <span className="flex" key={value} title={disabled ? description : undefined}>
+                <span className="flex" key={value}>
                   <button
-                    aria-describedby={disabled ? comparisonReasonId : undefined}
-                    aria-label={description}
+                    aria-label={t(description)}
                     aria-pressed={mapMode === value}
                     className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-                    disabled={disabled}
                     onClick={() => onMapModeChange(value)}
-                    title={description}
+                    title={t(description)}
                     type="button"
                   >
-                    {value === "comparison" ? (
-                      <GitCompareArrows aria-hidden="true" className="size-3.5" />
-                    ) : null}
-                    {label}
+                    <Localized value={label} />
                   </button>
                 </span>
               );
             })}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-describedby={comparisonBlockingReason ? comparisonReasonId : undefined}
+                  aria-label={t("Choose comparison scope")}
+                  aria-pressed={mapMode === "comparison"}
+                  className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === "comparison" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                  disabled={Boolean(comparisonBlockingReason)}
+                  title={comparisonBlockingReason ? t(comparisonBlockingReason) : t("Compare")}
+                  type="button"
+                >
+                  <GitCompareArrows aria-hidden="true" className="size-3.5" />
+                  <T message="Compare" />
+                  <ChevronDown aria-hidden="true" className="size-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[120] min-w-52">
+                <DropdownMenuItem onSelect={() => onMapModeChange("comparison", "overview")}>
+                  <T message="Compare whole trip" />
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!activeDayNumber}
+                  onSelect={() => onMapModeChange("comparison", "day_route")}
+                >
+                  {activeDayNumber ? (
+                    <T message="Compare Day {day}" values={{ day: activeDayNumber }} />
+                  ) : (
+                    <T message="Select a day to compare" />
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {comparisonBlockingReason ? (
             <span className="sr-only" id={comparisonReasonId}>
-              {comparisonBlockingReason}
+              <Localized value={comparisonBlockingReason} />
             </span>
           ) : null}
           {mapMode === "day_route" && dayCityLayerAvailable ? (
             <div
               aria-label="Day map content"
+              data-i18n-aria-label={"Day map content"}
               className="flex overflow-x-auto border-t p-0.5"
               role="group"
             >
@@ -103,12 +139,12 @@ export function PlannerMapControls({
                 ] as const
               ).map(({ description, label, value }) => (
                 <button
-                  aria-label={description}
+                  aria-label={t(description)}
                   aria-pressed={dayMapLayer === value}
                   className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dayMapLayer === value ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted/70"}`}
                   key={value}
                   onClick={() => onDayMapLayerChange(value)}
-                  title={description}
+                  title={t(description)}
                   type="button"
                 >
                   {value === "all" ? (
@@ -122,7 +158,7 @@ export function PlannerMapControls({
                       className={`size-2 rounded-full ${value === "cities" ? "bg-blue-600" : "bg-green-800"}`}
                     />
                   )}
-                  {label}
+                  <Localized value={label} />
                 </button>
               ))}
             </div>
@@ -132,9 +168,11 @@ export function PlannerMapControls({
       {!compact && panelDismissed ? (
         <button
           aria-label="Open map details"
+          data-i18n-aria-label={"Open map details"}
           className="map-panel-reopen absolute left-3 z-20 flex size-11 items-center justify-center rounded-full border bg-background/95 p-0 text-foreground shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onPanelOpen}
           title="Open map details"
+          data-i18n-title={"Open map details"}
           type="button"
         >
           <PanelBottomOpen className="size-5 text-primary" />

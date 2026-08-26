@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ArrowUpRight, CircleAlert, CircleCheckBig, X } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -18,6 +19,7 @@ export function PlannerItemSaveFeedbackAlert({
   onDismiss: () => void;
   onView: (item: ItineraryItem) => void;
 }) {
+  const { t } = useI18n();
   if (!feedback || typeof document === "undefined") return null;
   const success = feedback.status === "created";
 
@@ -39,8 +41,14 @@ export function PlannerItemSaveFeedbackAlert({
           <div className="min-w-0 flex-1">
             <p className="font-semibold">
               {success
-                ? `${feedback.itemLabel} “${feedback.item.title}” was created.`
-                : `${feedback.itemLabel} “${feedback.itemTitle}” was not created.`}
+                ? t("{item} “{title}” was created.", {
+                    item: t(feedback.itemLabel),
+                    title: feedback.item.title,
+                  })
+                : t("{item} “{title}” was not created.", {
+                    item: t(feedback.itemLabel),
+                    title: feedback.itemTitle,
+                  })}
             </p>
             {success && feedback.showViewLink ? (
               <button
@@ -48,14 +56,18 @@ export function PlannerItemSaveFeedbackAlert({
                 onClick={() => onView(feedback.item)}
                 type="button"
               >
-                View and focus in planner <ArrowUpRight aria-hidden="true" className="size-4" />
+                <T message={" View and focus in planner "} />
+                <ArrowUpRight aria-hidden="true" className="size-4" />
               </button>
             ) : !success ? (
-              <p className="mt-1 text-sm text-destructive">{feedback.message}</p>
+              <p className="mt-1 text-sm text-destructive">
+                <Localized value={feedback.message} />
+              </p>
             ) : null}
           </div>
           <button
             aria-label="Dismiss message"
+            data-i18n-aria-label={"Dismiss message"}
             className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={onDismiss}
             type="button"

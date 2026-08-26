@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import type {
   OwnerShareImageState,
   PublicItinerary,
@@ -40,7 +41,9 @@ export function PublicItineraryShell({
   if (!template)
     return (
       <main className="grid min-h-dvh place-items-center bg-background p-6">
-        <p role="alert">This itinerary template is temporarily unavailable.</p>
+        <p role="alert">
+          <T message={"This itinerary template is temporarily unavailable."} />
+        </p>
       </main>
     );
   return (

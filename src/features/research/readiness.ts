@@ -1,3 +1,6 @@
+import type { Locale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
+
 import type { ResearchCategory, ResearchItem } from "./types";
 
 const commonRequired: Array<keyof ResearchItem> = ["total_price_amount", "currency"];
@@ -61,21 +64,23 @@ export function stayPerNightPrice(item: ResearchItem) {
   return nights && item.total_price_amount !== null ? item.total_price_amount / nights : null;
 }
 
-export function researchContextLabel(item: ResearchItem) {
+export function researchContextLabel(item: ResearchItem, locale: Locale = "en") {
   const dates = item.start_date
     ? item.end_date
-      ? `${formatDate(item.start_date)}–${formatDate(item.end_date)}`
-      : formatDate(item.start_date)
+      ? `${formatDate(item.start_date, locale)}–${formatDate(item.end_date, locale)}`
+      : formatDate(item.start_date, locale)
     : null;
   if (item.category === "stay")
-    return [item.location_text ?? "Stay ideas", dates].filter(Boolean).join(" · ");
+    return [item.location_text ?? translateMessage(locale, "Stay ideas"), dates]
+      .filter(Boolean)
+      .join(" · ");
   if (item.category === "rental")
     return [
       item.origin_text
         ? item.destination_text
           ? `${item.origin_text} → ${item.destination_text}`
-          : `Pick-up: ${item.origin_text}`
-        : "Rental ideas",
+          : translateMessage(locale, "Pick-up: {place}", { place: item.origin_text })
+        : translateMessage(locale, "Rental ideas"),
       dates,
     ]
       .filter(Boolean)
@@ -83,12 +88,12 @@ export function researchContextLabel(item: ResearchItem) {
   return item.origin_text && item.destination_text
     ? `${item.origin_text} → ${item.destination_text}`
     : item.category === "flight"
-      ? "Flight ideas"
-      : "Train ideas";
+      ? translateMessage(locale, "Flight ideas")
+      : translateMessage(locale, "Train ideas");
 }
 
-function formatDate(value: string) {
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString(undefined, {
+function formatDate(value: string, locale: Locale) {
+  return new Date(`${value}T00:00:00Z`).toLocaleDateString(locale === "zh-CN" ? "zh-CN" : "en-US", {
     day: "numeric",
     month: "short",
     timeZone: "UTC",

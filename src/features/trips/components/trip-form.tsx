@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Settings2 } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
@@ -87,14 +88,14 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
             data-trip-settings-title=""
             tabIndex={-1}
           >
-            {editor.title}
+            <Localized value={editor.title} />
           </SheetTitle>
           <SheetDescription className="mt-0.5 max-w-prose text-sm leading-5 sm:mt-1">
-            {editor.description}
+            <Localized value={editor.description} />
           </SheetDescription>
           {state.error ? (
             <p className="mt-2 text-sm font-medium text-destructive" role="alert">
-              {state.error}
+              <Localized value={state.error} />
             </p>
           ) : null}
         </div>
@@ -138,7 +139,10 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
           id="trip-start-date"
           label={
             <>
-              Start date <span className="font-normal text-muted-foreground">optional</span>
+              <T message={" Start date "} />
+              <span className="font-normal text-muted-foreground">
+                <T message={"optional"} />
+              </span>
             </>
           }
         >
@@ -157,7 +161,10 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
           id="trip-end-date"
           label={
             <>
-              End date <span className="font-normal text-muted-foreground">optional</span>
+              <T message={" End date "} />
+              <span className="font-normal text-muted-foreground">
+                <T message={"optional"} />
+              </span>
             </>
           }
         >
@@ -191,7 +198,7 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
 
       {state.success ? (
         <p className="text-sm font-medium text-primary" role="status">
-          {state.success}
+          <Localized value={state.success} />
         </p>
       ) : null}
     </PlannerEditorForm>

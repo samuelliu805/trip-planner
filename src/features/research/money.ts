@@ -39,6 +39,7 @@ export function knownCostFromPrices(
 
 export function planCostBreakdown(
   items: Array<{
+    date?: string | null;
     dayNumber: number;
     id: string;
     price_amount: number | null;
@@ -54,6 +55,7 @@ export function planCostBreakdown(
             {
               amount: item.price_amount,
               currency: item.price_currency,
+              date: item.date,
               dayNumber: item.dayNumber,
               itemId: item.id,
               title: item.title,

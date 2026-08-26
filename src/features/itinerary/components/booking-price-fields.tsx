@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { tripCurrencyCodes } from "@/features/trips/currencies";
@@ -34,7 +35,9 @@ export function BookingPriceFields({
   return (
     <div className="grid min-w-0 gap-4 sm:grid-cols-2">
       <div className="min-w-0 space-y-2">
-        <Label htmlFor={`${idPrefix}-amount`}>Price</Label>
+        <Label htmlFor={`${idPrefix}-amount`}>
+          <T message={"Price"} />
+        </Label>
         <Input
           disabled={disabled}
           id={`${idPrefix}-amount`}
@@ -49,7 +52,9 @@ export function BookingPriceFields({
         />
       </div>
       <div className="min-w-0 space-y-2">
-        <Label htmlFor={`${idPrefix}-currency`}>Currency</Label>
+        <Label htmlFor={`${idPrefix}-currency`}>
+          <T message={"Currency"} />
+        </Label>
         <select
           className="planner-native-currency-select box-border flex h-[3.75rem] min-h-[3.75rem] w-full min-w-0 max-w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
           disabled={disabled}

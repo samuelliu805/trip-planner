@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle } from "lucide-react";
 
 import {
@@ -26,27 +27,33 @@ export function PlannerClearCellsDialog({
   onConfirm: () => void;
   pending: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <AlertDialog onOpenChange={(open) => !open && !pending && onCancel()} open={itemCount > 0}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Clear the selected cells?</AlertDialogTitle>
+          <AlertDialogTitle>
+            <T message={"Clear the selected cells?"} />
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            This permanently deletes {itemCount}{" "}
-            {itemCount === 1 ? "itinerary item" : "itinerary items"}. Saved day routes that use them
-            will need editing.
+            {t(
+              "This permanently deletes {count} itinerary item(s). Saved day routes that use them will need editing.",
+              { count: itemCount },
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error ? (
           <p className="text-sm text-destructive" role="alert">
-            {error}
+            <Localized value={error} />
           </p>
         ) : null}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={pending}>Keep items</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>
+            <T message={"Keep items"} />
+          </AlertDialogCancel>
           <Button aria-busy={pending} disabled={pending} onClick={onConfirm} variant="destructive">
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            {pending ? "Clearing…" : "Clear cells"}
+            <Localized value={pending ? "Clearing…" : "Clear cells"} />
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

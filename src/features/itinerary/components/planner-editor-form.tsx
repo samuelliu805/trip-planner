@@ -23,6 +23,8 @@ export function PlannerEditorForm({
   alternateSaveLabel,
   backDisabled = false,
   cancelLabel,
+  cancelPending = false,
+  cancelPendingLabel,
   children,
   compactActions = false,
   denseFields = false,
@@ -49,6 +51,8 @@ export function PlannerEditorForm({
   alternateSaveLabel?: string;
   backDisabled?: boolean;
   cancelLabel?: string;
+  cancelPending?: boolean;
+  cancelPendingLabel?: string;
   children: ReactNode;
   compactActions?: boolean;
   denseFields?: boolean;
@@ -97,7 +101,7 @@ export function PlannerEditorForm({
         if (event.key === "Enter") {
           if (event.metaKey || event.ctrlKey) {
             event.preventDefault();
-            if (!pending && !saveDisabled) event.currentTarget.requestSubmit();
+            if (!pending && !cancelPending && !saveDisabled) event.currentTarget.requestSubmit();
             return;
           }
           if ((event.target as Element).closest(enterCommitSelector)) return;
@@ -123,7 +127,7 @@ export function PlannerEditorForm({
                 submitter?.dataset.plannerSaveIntent === "save-and-create-another"
                   ? "save-and-create-another"
                   : "save";
-              if (!pending && !saveDisabled) void onSave(intent);
+              if (!pending && !cancelPending && !saveDisabled) void onSave(intent);
             }
           : undefined
       }
@@ -134,9 +138,9 @@ export function PlannerEditorForm({
         <div className="planner-item-form-content px-5 py-8 sm:px-6 sm:py-10">
           <div className="planner-item-form-card">
             <fieldset
-              aria-busy={pending}
+              aria-busy={pending || cancelPending}
               className="min-w-0 border-0 p-0 disabled:pointer-events-none"
-              disabled={pending}
+              disabled={pending || cancelPending}
             >
               <div
                 className={`planner-item-form-fields planner-item-step-fields min-w-0 ${denseFields ? "space-y-5 sm:space-y-6" : compactActions ? "space-y-6 sm:space-y-10" : "space-y-10"}`}
@@ -149,6 +153,8 @@ export function PlannerEditorForm({
               alternateSaveLabel={alternateSaveLabel}
               backDisabled={backDisabled}
               cancelLabel={cancelLabel}
+              cancelPending={cancelPending}
+              cancelPendingLabel={cancelPendingLabel}
               compactActions={compactActions}
               nextDisabled={nextDisabled}
               onBack={onBack}

@@ -74,6 +74,12 @@ export const transportModes = [
 ] as const;
 export type TransportMode = (typeof transportModes)[number];
 
+// `rideshare` remains a supported persisted value for existing trips. New edits use the single
+// taxi value so Taxi and Rideshare are one user-facing choice without requiring a data migration.
+export const selectableTransportModes = transportModes.filter(
+  (mode): mode is Exclude<TransportMode, "rideshare"> => mode !== "rideshare",
+);
+
 export const transportModeLabels: Record<TransportMode, string> = {
   bike: "Bike",
   bus: "Bus",
@@ -82,11 +88,11 @@ export const transportModeLabels: Record<TransportMode, string> = {
   flight: "Flight",
   motorcycle: "Motorcycle",
   other: "Other",
-  rideshare: "Rideshare",
+  rideshare: "Rideshare / taxi",
   self_driving: "Drive",
   shuttle: "Shuttle",
   subway: "Subway / metro",
-  taxi: "Taxi",
+  taxi: "Rideshare / taxi",
   train: "Train",
   tram: "Tram",
   walk: "Walk",
@@ -96,6 +102,7 @@ export function normalizeTransportMode(value?: string): TransportMode {
   if (value === "coach") return "bus";
   if (value === "metro" || value === "light_rail") return "subway";
   if (value === "rental_car") return "self_driving";
+  if (value === "rideshare") return "taxi";
   return transportModes.includes(value as TransportMode) ? (value as TransportMode) : "train";
 }
 

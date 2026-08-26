@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ export function ResearchMultiCityFields({
   onSegmentsChange: (segments: ResearchSegment[]) => void;
   segments: ResearchSegment[];
 }) {
+  const { t } = useI18n();
   const update = (index: number, values: Partial<ResearchSegment>) =>
     onSegmentsChange(
       segments.map((segment, position) =>
@@ -38,7 +40,8 @@ export function ResearchMultiCityFields({
       {segments.map((segment, index) => (
         <fieldset className="min-w-0 space-y-3" key={index}>
           <legend className="text-sm font-semibold text-muted-foreground">
-            Flight {index + 1}
+            <T message={" Flight "} />
+            {index + 1}
           </legend>
           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             <ResearchField label="From">
@@ -74,7 +77,7 @@ export function ResearchMultiCityFields({
           {segments.length > 2 ? (
             <div className="flex justify-end">
               <Button
-                aria-label={`Remove flight ${index + 1}`}
+                aria-label={t("Remove flight {number}", { number: index + 1 })}
                 className="size-11 p-0"
                 onClick={() =>
                   onSegmentsChange(segments.filter((_, position) => position !== index))
@@ -94,7 +97,7 @@ export function ResearchMultiCityFields({
         type="button"
         variant="outline"
       >
-        <Plus className="size-4" /> Add another flight
+        <Plus className="size-4" /> <T message={" Add another flight "} />
       </Button>
     </div>
   );

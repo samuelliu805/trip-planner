@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, Paperclip, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -50,6 +51,7 @@ export function SavedItemAttachmentsSection({
   uploadSessionId: string;
   uploadSessionSignal: AbortSignal;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [attachments, setAttachments] = useState<OwnerAttachment[]>(item?.attachments ?? []);
   const [tasks, setTasks] = useState<UploadTask[]>([]);
@@ -200,13 +202,13 @@ export function SavedItemAttachmentsSection({
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="flex items-center gap-1.5 text-base font-bold" id="attachments-heading">
-            <Paperclip aria-hidden="true" className="size-4" /> Attachments
+            <Paperclip aria-hidden="true" className="size-4" /> <T message={" Attachments "} />
             <span className="font-normal text-muted-foreground">
               {countedAttachments.length}/{MAX_ATTACHMENTS_PER_ITEM}
             </span>
           </h3>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {attachmentAcceptedTypeCopy}
+            <Localized value={attachmentAcceptedTypeCopy} />
           </p>
         </div>
         <input
@@ -229,7 +231,7 @@ export function SavedItemAttachmentsSection({
           type="button"
           variant="outline"
         >
-          <UploadCloud aria-hidden="true" className="size-4" /> Add files
+          <UploadCloud aria-hidden="true" className="size-4" /> <T message={" Add files "} />
         </Button>
       </div>
 
@@ -269,17 +271,17 @@ export function SavedItemAttachmentsSection({
 
       {!attachments.length && !tasks.length ? (
         <div className="rounded-md border border-dashed px-3 py-4 text-center text-xs leading-5 text-muted-foreground">
-          Files stay private unless you turn on Share file.
+          <T message={" Files stay private unless you turn on Share file. "} />
         </div>
       ) : null}
       {draftCount ? (
         <p className="text-xs leading-5 text-muted-foreground">
-          Save this itinerary item to keep {draftCount === 1 ? "this file" : "these files"}.
+          {t("Save this itinerary item to keep {count} new file(s).", { count: draftCount })}
         </p>
       ) : null}
       {error ? (
         <p className="text-sm text-destructive" role="alert">
-          {error}
+          <Localized value={error} />
         </p>
       ) : null}
 
@@ -296,17 +298,26 @@ export function SavedItemAttachmentsSection({
       >
         <AlertDialogContent data-attachment-overlay="">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this attachment?</AlertDialogTitle>
+            <AlertDialogTitle>
+              <T message={"Delete this attachment?"} />
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This removes “{deleteTarget?.fileName}” from this itinerary item and its shared page.
-              A deduplicated copy remains only if another item still uses it.
+              <T message={" This removes “"} />
+              {deleteTarget?.fileName}
+              <T
+                message={
+                  "” from this itinerary item and its shared page. A deduplicated copy remains only if another item still uses it. "
+                }
+              />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={mutationPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={mutationPending}>
+              <T message={"Cancel"} />
+            </AlertDialogCancel>
             <AlertDialogAction disabled={mutationPending} onClick={confirmDelete}>
               {mutationPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-              Delete attachment
+              <T message={" Delete attachment "} />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,72 +1,59 @@
 "use client";
 
-import type { NeutralDeltaKind } from "@/features/variants/decision-summary-presentation";
-import {
-  neutralDeltaAccessibleLabel,
-  neutralDeltaLabel,
-} from "@/features/variants/decision-summary-presentation";
-import type { DecisionSummaryModeCount } from "@/features/variants/decision-summary-types";
-
-export function DeltaChip({
-  kind,
-  value,
-}: {
-  kind: NeutralDeltaKind;
-  value: number | null | undefined;
-}) {
-  if (value === null || value === undefined) return null;
-  return (
-    <span
-      aria-label={neutralDeltaAccessibleLabel(kind, value)}
-      className="inline-flex rounded-full border bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-    >
-      {neutralDeltaLabel(kind, value)}
-    </span>
-  );
-}
+import { Localized } from "@/features/i18n/i18n-provider";
+import { ChevronDown, type LucideIcon } from "lucide-react";
 
 export function DecisionSummaryMetric({
-  delta,
-  deltaKind,
   detail,
+  icon: Icon,
   label,
   value,
 }: {
-  delta?: number | null;
-  deltaKind?: NeutralDeltaKind;
   detail?: string;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {
   return (
-    <div className="min-w-0 border-t py-2 first:border-t-0">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <dt className="text-[11px] font-medium text-muted-foreground">{label}</dt>
-          <dd className="mt-0.5 text-sm font-semibold">{value}</dd>
-          {detail ? <p className="mt-0.5 text-[10px] text-muted-foreground">{detail}</p> : null}
+    <div className="min-w-0 border-t first:border-t-0">
+      <div className="flex min-h-11 items-center justify-between gap-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <dt className="sr-only">
+              <Localized value={label} />
+            </dt>
+            <dd className="break-words text-sm font-normal leading-5">{value}</dd>
+            {detail ? <p className="mt-0.5 text-[10px] text-muted-foreground">{detail}</p> : null}
+          </div>
         </div>
-        {deltaKind ? <DeltaChip kind={deltaKind} value={delta} /> : null}
       </div>
     </div>
   );
 }
 
-export function DecisionSummaryModeList({
-  empty,
-  modes,
+export function DecisionSummaryDisclosureSummary({
+  icon: Icon,
+  label,
+  trailing,
 }: {
-  empty: string;
-  modes: DecisionSummaryModeCount<string>[];
+  icon: LucideIcon;
+  label: React.ReactNode;
+  trailing?: React.ReactNode;
 }) {
-  if (!modes.length) return <span className="text-muted-foreground">{empty}</span>;
   return (
-    <span className="flex flex-wrap gap-1">
-      {modes.map(({ count, label, mode }) => (
-        <span className="rounded-full border px-2 py-0.5" key={mode}>
-          {label} · {count}
-        </span>
-      ))}
-    </span>
+    <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 text-sm font-normal leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <span className="flex min-w-0 items-center gap-2">
+        <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        <span className="min-w-0">{label}</span>
+      </span>
+      <span className="flex shrink-0 items-center gap-2 text-xs font-normal text-muted-foreground">
+        {trailing}
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 transition-transform group-open:rotate-180"
+        />
+      </span>
+    </summary>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Map, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,18 +29,21 @@ function TripHeaderPart() {
 }
 
 function DesktopMapTogglePart() {
+  const { t } = useI18n();
   const { mapVisible, setMapVisible, showMap } = usePublicTemplateController();
   if (!showMap) return null;
   return (
     <Button
-      aria-label={mapVisible ? "Collapse map and routes" : "Restore map and routes"}
+      aria-label={t(mapVisible ? "Collapse map and routes" : "Restore map and routes")}
       className="public-desktop-map-control public-header-button"
       onClick={() => setMapVisible((visible) => !visible)}
       type="button"
       variant="outline"
     >
       {mapVisible ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
-      <span className="hidden lg:inline">{mapVisible ? "Close map" : "Map & routes"}</span>
+      <span className="hidden lg:inline">
+        <T message={mapVisible ? "Close map" : "Map & routes"} />
+      </span>
     </Button>
   );
 }
@@ -101,6 +105,7 @@ function MapWorkspacePart() {
     <>
       <div
         aria-label="Resize itinerary and map panes"
+        data-i18n-aria-label={"Resize itinerary and map panes"}
         aria-orientation="vertical"
         aria-valuemax={75}
         aria-valuemin={52}
@@ -122,6 +127,7 @@ function MapWorkspacePart() {
       <aside
         className="public-map-pane min-h-0 min-w-0 border-l"
         aria-label="Map and route workspace"
+        data-i18n-aria-label="Map and route workspace"
       >
         <PlatformMapWorkspace />
       </aside>
@@ -152,12 +158,15 @@ function MobileMapTriggerPart() {
   return (
     <Button
       aria-label="Open map and routes"
+      data-i18n-aria-label={"Open map and routes"}
       className="public-mobile-map-control"
       onClick={() => setMapSheetOpen(true)}
       type="button"
     >
       <Map aria-hidden="true" className="size-4" />
-      <span>Map & routes</span>
+      <span>
+        <T message={"Map & routes"} />
+      </span>
     </Button>
   );
 }
@@ -173,9 +182,11 @@ function MobileMapSheetPart() {
         side="right"
       >
         <SheetHeader className="shrink-0">
-          <SheetTitle>Map & routes</SheetTitle>
+          <SheetTitle>
+            <T message={"Map & routes"} />
+          </SheetTitle>
           <SheetDescription className="sr-only">
-            Shared route first; route exploration stays temporary.
+            <T message={" Shared route first; route exploration stays temporary. "} />
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1">

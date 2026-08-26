@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "backfill:place-localities": "node --use-env-proxy --env-file=.env.local scripts/backfill-place-localities.ts",
     "build:public-templates": "node scripts/build-public-templates.mjs",
     "dev": "node --use-env-proxy node_modules/next/dist/bin/next dev --webpack",
     "build": "next build",
     "check:auth-routes": "node scripts/check-auth-routes.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prebuild": "npm run validate:public-templates",

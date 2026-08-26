@@ -93,7 +93,7 @@ export async function getVariantDecisionSummary(
         itemsResult.error?.message ??
         plansResult.error?.message ??
         pricesResult.error?.message ??
-        "The decision summary could not be loaded.",
+        "The comparison summary could not be loaded.",
     };
 
   const planIds = (plansResult.data ?? []).map(({ id }) => id);
@@ -135,7 +135,12 @@ export async function getVariantDecisionSummary(
     calculations = (calculationsResult.data ?? []) as DecisionSummaryCalculationRow[];
   }
 
-  const dayNumbers = new Map((daysResult.data ?? []).map(({ day_number, id }) => [id, day_number]));
+  const daysById = new Map(
+    (daysResult.data ?? []).map(({ date, day_number, id }) => [
+      id,
+      { date, dayNumber: day_number },
+    ]),
+  );
   const knownCostBreakdowns = Object.fromEntries(
     variantIds.map((variantId) => [
       variantId,
@@ -143,8 +148,8 @@ export async function getVariantDecisionSummary(
         (pricesResult.data ?? [])
           .filter((price) => price.variant_id === variantId)
           .flatMap((price) => {
-            const dayNumber = dayNumbers.get(price.day_id);
-            return dayNumber === undefined ? [] : [{ ...price, dayNumber }];
+            const day = daysById.get(price.day_id);
+            return day ? [{ ...price, ...day }] : [];
           }),
       ),
     ]),

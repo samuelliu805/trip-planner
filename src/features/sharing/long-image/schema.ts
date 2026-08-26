@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { defaultLocale, supportedLocales } from "../../i18n/config.ts";
+
 import { publicItinerarySchema } from "../schema.ts";
 
 const imageDestinationUrlSchema = z.url().refine((value) => {
@@ -23,6 +25,7 @@ export const longImageScopeSchema = z.discriminatedUnion("mode", [
 
 export const longImageRenderConfigSchema = z
   .object({
+    locale: z.enum(supportedLocales).default(defaultLocale),
     renderer: z.literal("timeline"),
     scope: longImageScopeSchema.default({ mode: "entire_trip" }),
     version: z.literal(1),
@@ -62,6 +65,7 @@ export const ownerShareImageStateSchema = z
     partCount: z.number().int().positive(),
     permanentSlug: z.string().regex(/^[0-9a-f]{24}$/),
     renderConfig: longImageRenderConfigSchema.default({
+      locale: defaultLocale,
       renderer: "timeline",
       scope: { mode: "entire_trip" },
       version: 1,

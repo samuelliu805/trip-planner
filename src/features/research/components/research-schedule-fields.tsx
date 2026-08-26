@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { useId } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -27,14 +28,18 @@ export function ResearchDateTimeField({
   timeName?: string;
 }) {
   const id = useId();
+  const { t } = useI18n();
   return (
     <div className="planner-native-control-frame min-w-0 max-w-full space-y-2">
       <Label htmlFor={`${id}-date`}>
-        {label} <span className="font-normal text-muted-foreground">time optional</span>
+        <Localized value={label} />{" "}
+        <span className="font-normal text-muted-foreground">
+          <T message={"time optional"} />
+        </span>
       </Label>
       <div className="planner-editor-compound-field grid min-w-0 max-w-full grid-cols-[minmax(0,1fr)_minmax(7.75rem,0.58fr)] overflow-hidden rounded-xl border border-input bg-background shadow-sm focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50">
         <Input
-          aria-label={`${label} date`}
+          aria-label={t("{label} date", { label: t(label) })}
           className="planner-native-datetime-input"
           id={`${id}-date`}
           min={minDate || undefined}
@@ -44,7 +49,7 @@ export function ResearchDateTimeField({
           value={date}
         />
         <Input
-          aria-label={`${label} time (optional)`}
+          aria-label={t("{label} time (optional)", { label: t(label) })}
           className="planner-native-time-input border-l"
           name={timeName}
           onChange={(event) => onTimeChange(event.target.value)}
@@ -65,6 +70,7 @@ export function ResearchSegmentScheduleFields({
   onSegmentsChange: (segments: ResearchSegment[]) => void;
   segments: ResearchSegment[];
 }) {
+  const { locale, t } = useI18n();
   function update(index: number, values: Partial<ResearchSegment>) {
     onSegmentsChange(
       segments.map((segment, position) =>
@@ -74,12 +80,18 @@ export function ResearchSegmentScheduleFields({
   }
 
   return (
-    <section className="min-w-0 space-y-6" aria-label="Departure and arrival">
+    <section
+      className="min-w-0 space-y-6"
+      aria-label="Departure and arrival"
+      data-i18n-aria-label={"Departure and arrival"}
+    >
       {segments.map((segment, index) => {
         const route =
           segment.origin || segment.destination
-            ? `${segment.origin || "From"} → ${segment.destination || "To"}`
-            : `${category === "flight" ? "Flight" : "Train"} ${index + 1}`;
+            ? `${segment.origin || t("From")} → ${segment.destination || t("To")}`
+            : locale === "zh-CN"
+              ? `第${index + 1}段${t(category === "flight" ? "Flight" : "Train")}`
+              : `${t(category === "flight" ? "Flight" : "Train")} ${index + 1}`;
         return (
           <div
             className="min-w-0 space-y-3"

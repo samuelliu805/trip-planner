@@ -45,6 +45,8 @@ import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import { inferredHomeCity } from "../account/profile-defaults.ts";
+import { parseLocale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
 import {
   defaultTripCurrency,
   defaultTripDayCount,
@@ -80,6 +82,8 @@ import {
   buildDayRouteMarkers,
   eligibleDayRouteItems,
 } from "../routes/day-route-map.ts";
+import { fixedDayRouteDraft } from "../routes/day-route-order.ts";
+import { defaultDayRouteDraft } from "../routes/day-route-default-draft.ts";
 import { buildDayCityMarkers, buildDayCityRouteLines } from "../routes/day-city-map.ts";
 import { validateDayRouteDraft } from "../routes/route-config.ts";
 import { calculateRouteConfiguration } from "../routes/calculator.ts";
@@ -89,7 +93,12 @@ import { dayRouteStatus } from "../routes/status.ts";
 import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
 import { routeLegExplanation } from "../routes/route-leg-presentation.ts";
 import { compactTransportEndpoint, compactTransportRoute } from "./transport-presentation.ts";
-import { overviewRouteModes, routeLegModes, type DayRouteDraft } from "../routes/types.ts";
+import {
+  overviewRouteModes,
+  routeLegModes,
+  selectableRouteLegModes,
+  type DayRouteDraft,
+} from "../routes/types.ts";
 import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "../routes/types.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
@@ -109,6 +118,7 @@ import {
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 import {
   deriveDayLocality,
+  deriveDayOverviewClusters,
   deriveOverviewStageProjections,
   formatDayLocalitySummary,
   representativeActivityAnchor,
@@ -439,9 +449,69 @@ test("Account and Ideas share supported currencies while email remains plain tex
   const supportedCurrencies: readonly string[] = tripCurrencyCodes;
   for (const currency of ["CNY", "HKD", "JPY"]) assert.ok(supportedCurrencies.includes(currency));
   assert.doesNotMatch(accountEditor, /PlannerEditorTextField[\s\S]*label="Email"/);
-  assert.match(accountEditor, /<p[^>]*>Email<\/p>[\s\S]*\{email\}<\/p>/);
+  assert.match(accountEditor, /message=(?:\{" Email "\}|"Email")[\s\S]*\{email\}<\/p>/);
   assert.match(bookingPriceFields, /commonBookingCurrencies[^=]*= tripCurrencyCodes/);
   assert.match(plannerResearchActions, /currencies[^=]*= tripCurrencyCodes/);
+  assert.match(accountEditor, /router\.prefetch\("\/trips"\)/);
+  assert.match(accountEditor, /cancelPending=\{exiting\}/);
+  assert.match(accountEditor, /cancelPendingLabel=\{t\("Exiting…"\)\}/);
+  assert.match(accountEditor, /LoaderCircle[\s\S]*Logging out…/);
+});
+
+test("browser locale parsing distinguishes an absent preference from default English", () => {
+  assert.equal(parseLocale(undefined), null);
+  assert.equal(parseLocale("en"), "en");
+  assert.equal(parseLocale("zh-Hans"), "zh-CN");
+  assert.equal(parseLocale("fr"), null);
+});
+
+test("Bus uses the requested authentic Simplified Chinese transport label", () => {
+  assert.equal(translateMessage("zh-CN", "Bus"), "大巴");
+});
+
+test("compact language controls rely on their localized accessible name", async () => {
+  const languageSwitcher = await readFile(
+    new URL("../i18n/language-switcher.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(languageSwitcher, /aria-label=\{ariaLabel\}/);
+  assert.match(languageSwitcher, /\{expanded \? <span>\{label\}<\/span> : null\}/);
+  assert.doesNotMatch(languageSwitcher, /nextLocale === "zh-CN" \? "中文" : "EN"/);
+});
+
+test("browser locale wins without rewriting the saved account preference", async () => {
+  const [serverLocale, localeAction, i18nProvider, accountAction, accountEditor, rootLayout] =
+    await Promise.all(
+      [
+        "../i18n/server.ts",
+        "../i18n/actions.ts",
+        "../i18n/i18n-provider.tsx",
+        "../account/actions.ts",
+        "../account/components/account-editor.tsx",
+        "../../app/layout.tsx",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    );
+  assert.match(
+    serverLocale,
+    /if \(browserLocale\) return \{ locale: browserLocale, source: "browser" \}/,
+  );
+  assert.match(serverLocale, /source: "profile"/);
+  assert.doesNotMatch(localeAction, /preferred_locale|profiles|createClient/);
+  assert.doesNotMatch(accountAction, /setLocaleCookie/);
+  assert.match(accountEditor, /useState\(initialLocale\)/);
+  assert.match(accountEditor, /<LanguageSwitcher/);
+  assert.match(rootLayout, /persistInitialLocale=\{localeState\.source === "profile"\}/);
+  assert.match(i18nProvider, /document\.readyState === "complete"/);
+  assert.match(i18nProvider, /window\.addEventListener\("load", scheduleInitialSync/);
+});
+
+test("overflow menus remain scrollable inside the available viewport", async () => {
+  const dropdown = await readFile(
+    new URL("../../components/ui/dropdown-menu.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dropdown, /max-h-\[var\(--radix-dropdown-menu-content-available-height\)\]/);
+  assert.match(dropdown, /overflow-x-hidden overflow-y-auto overscroll-contain/);
 });
 
 test("trip filters, date settlement, and lifecycle toggles stay deterministic", () => {
@@ -531,10 +601,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{loading\}/);
-  assert.match(
-    filter,
-    /operationLabel \?\? `Loading \$\{tripStatusFilterLabels\[displayedActive\]\} trips/,
-  );
+  assert.match(filter, /operationLabel[\s\S]*Loading \{status\} trips/);
   assert.match(filter, /items-center justify-between/);
   assert.match(filter, /bg-muted\/30/);
   assert.match(tripsPage, /action=\{<CreateTripButton \/>\}/);
@@ -542,10 +609,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(card, /<DeleteTripDialog/);
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
   assert.match(card, /useTripListLoading\(\)/);
-  assert.match(card, /Deleting “\$\{trip\.title\}”/);
+  assert.match(card, /Deleting/);
   assert.match(tripAppBar, /<DeleteTripDialog/);
   assert.match(tripAppBar, /countActiveSharePages\(tripId\)/);
-  assert.match(tripAppBar, /Deleting “\{title\}”…/);
+  assert.match(tripAppBar, /Deleting/);
   assert.match(tripBarMenu, /onDeleteTrip/);
   assert.equal(tripBarMenu.match(/Delete trip/g)?.length, 2);
   assert.match(tripActions, /deleteTrip[\s\S]*redirect\("\/trips"\)/);
@@ -555,6 +622,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
   assert.match(deleteDialog, /const \[, action, pending\] = useActionState\(deleteTrip, \{\}\)/);
   assert.match(deleteDialog, /<form action=\{action\}>/);
+  assert.doesNotMatch(deleteDialog, /AlertDialogAction/);
+  assert.match(deleteDialog, /<Button[\s\S]*type="submit"[\s\S]*variant="destructive"/);
+  assert.match(deleteDialog, /if \(pending && !nextOpen\) return/);
+  assert.match(deleteDialog, /<AlertDialogCancel disabled=\{pending\}/);
   assert.doesNotMatch(tripBarMenu, /emphasis|bg-primary text-primary-foreground/);
   assert.match(tripBarMenu, /focusPanelOnOpen/);
   assert.match(editor, /className="planner-item-dialog p-0"/);
@@ -595,7 +666,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorForm, /saveDisabled/);
   assert.match(
     editorForm,
-    /<fieldset[\s\S]*aria-busy=\{pending\}[\s\S]*disabled=\{pending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
+    /<fieldset[\s\S]*aria-busy=\{pending \|\| cancelPending\}[\s\S]*disabled=\{pending \|\| cancelPending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
   );
   assert.match(editorHeader, /navigation\?: ReactNode/);
   assert.match(editor, /onOpenAutoFocus[\s\S]*initialFocusSelector[\s\S]*preventScroll: true/);
@@ -612,13 +683,13 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(suggestionList, /<button[\s\S]*onClick=\{customOption\.onChoose\}/);
   assert.doesNotMatch(suggestionList, /customOption\.description/);
   assert.doesNotMatch(suggestionList, /activeIndex === suggestions\.length/);
-  assert.match(primaryFields, /customValueLabel=\{creatingActivity \? "activity name"/);
+  assert.match(primaryFields, /customValueLabel=\{creatingActivity \? t\("activity name"\)/);
   assert.match(primaryFields, /Search Maps or type a name/);
   assert.match(primaryFields, /scrollIntoView[\s\S]*focus\(\{ preventScroll: true \}\)/);
   assert.doesNotMatch(primaryFields, /custom activity|Custom activity added|Choose a Google Maps/);
   assert.match(placeAutocomplete, /const requestGeneration = useRef\(0\)/);
   assert.match(placeAutocomplete, /generation !== requestGeneration\.current/);
-  assert.match(placeAutocomplete, /`Use “\$\{customQuery\}” as \$\{customValueLabel\}`/);
+  assert.match(placeAutocomplete, /t\("Use “\{query\}” as \{label\}"/);
   assert.match(placeAutocomplete, /Loading place details…/);
   assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
   assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
@@ -629,11 +700,14 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
   );
-  assert.match(actions, /aria-label="Previous step"[\s\S]*hidden sm:inline">Previous/);
-  assert.match(actions, /aria-label="Next step"[\s\S]*hidden sm:inline">Next/);
+  assert.match(actions, /aria-label="Previous step"[\s\S]*message=\{"Previous"\}/);
+  assert.match(actions, /aria-label="Next step"[\s\S]*message=\{"Next"\}/);
   assert.match(actions, /grid-cols-2[\s\S]*Save \+ another[\s\S]*row-start-2/);
-  assert.match(actions, /splitCancelAndSave[\s\S]*justify-between[\s\S]*\{cancelLabel\}/);
-  assert.match(actions, /pending \|\| saveDisabled/);
+  assert.match(
+    actions,
+    /splitCancelAndSave[\s\S]*justify-between[\s\S]*cancelPending \? cancelPendingLabel : cancelLabel/,
+  );
+  assert.match(actions, /pending \|\| cancelPending \|\| saveDisabled/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
   assert.match(form, /label="Trip name"/);
   assert.match(form, /label="Duration \(days\)"/);
@@ -733,7 +807,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(controls, /router\.push\(tripSectionHref/);
   assert.match(variantUi, /<PullUpPanel/);
   assert.match(variantUi, /PrimaryBadge/);
-  assert.match(variantUi, />\s*Primary\s*</);
+  assert.match(variantUi, /message=\{"? ?Primary ?"?\}/);
   assert.match(variantUi, /Maximum of three variants reached/);
   assert.match(variantUi, /<AlertDialog/);
   assert.doesNotMatch(variantUi, /window\.confirm/);
@@ -746,7 +820,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(workspaceEvents, /event\.key === "Backspace"/);
   assert.match(clearDialog, /<AlertDialog/);
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
-  assert.match(toolbar, />\s*Clear selected cells\s*</);
+  assert.match(toolbar, /Clear selected cells/);
   assert.match(toolbar, /Trip Planner \/|Back to Trips/);
   assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
   assert.match(
@@ -1027,6 +1101,11 @@ test("route mode mapping is explicit and unknown modes never become Transit", ()
     walk: "WALK",
   } as const;
   for (const mode of routeLegModes) assert.equal(googleTravelMode(mode), expected[mode]);
+  assert.ok(selectableRouteLegModes.includes("bike"));
+  assert.equal(
+    selectableRouteLegModes.some((mode) => mode === ("rideshare" as string)),
+    false,
+  );
   assert.equal(googleTravelMode("unknown"), null);
 });
 
@@ -1428,7 +1507,7 @@ test("map marker dates merge consecutive day intervals", () => {
   );
 });
 
-test("Activity locality drives Day summaries and adjacent-only Overview stages", () => {
+test("destination records drive complete Day localities and adjacent-only Overview stages", () => {
   const item = (
     id: string,
     type: ItineraryItem["type"],
@@ -1462,7 +1541,8 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
         item("mit", "activity", 1, "Cambridge", 42.36, -71.09),
         item("lunch", "meal", 2, "Boston", 42.35, -71.07),
         item("harvard", "activity", 3, "Cambridge", 42.37, -71.12),
-        item("hotel", "hotel", 4, "Boston", 42.36, -71.05),
+        item("return-car", "car_rental", 4, "Somerville", 42.39, -71.1),
+        item("hotel", "hotel", 5, "Boston", 42.36, -71.05),
       ],
     },
     {
@@ -1488,9 +1568,9 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
   const firstDay = deriveDayLocality(days[0]);
   assert.deepEqual(
     firstDay.localities.map(({ label }) => label),
-    ["Boston", "Cambridge"],
+    ["Boston", "Cambridge", "Boston", "Cambridge", "Somerville", "Boston"],
   );
-  assert.equal(formatDayLocalitySummary(firstDay), "Boston · Cambridge");
+  assert.equal(formatDayLocalitySummary(firstDay), "Boston · Cambridge · +4");
   assert.equal(firstDay.primaryLocality?.label, "Boston");
 
   const stages = deriveOverviewStageProjections(days);
@@ -1510,9 +1590,29 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
   const mapStages = deriveOverviewStages(days);
   assert.deepEqual(
     mapStages.map(({ entries }) => entries[0].title),
-    ["Boston", "Cambridge", "Boston", "Hakone", "Boston"],
+    ["Boston", "Cambridge", "Boston", "Cambridge", "Somerville", "Boston", "Hakone", "Boston"],
   );
-  assert.equal(mapStages[2].entries[0].itemId, "hotel");
+  assert.equal(mapStages[5].entries[0].itemId, "hotel");
+});
+
+test("owner and public City cells render every inferred locality on its own row", async () => {
+  const cityList = await readFile(
+    new URL("./components/matrix-city-list.tsx", import.meta.url),
+    "utf8",
+  );
+  const matrix = await readFile(
+    new URL("./components/planner-matrix.tsx", import.meta.url),
+    "utf8",
+  );
+  const publicTable = await readFile(
+    new URL("../sharing/components/public-table.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(cityList, /rows\.map\(\(title, index\) =>/);
+  assert.match(matrix, /deriveDayLocality\(day\)\.localities\.map/);
+  assert.doesNotMatch(matrix, /formatDayLocalitySummary/);
+  assert.match(publicTable, /<MatrixCityList/);
+  assert.doesNotMatch(publicTable, /localities\?\.join/);
 });
 
 test("overview allows the same City across days and omits the no-travel stay boundary", () => {
@@ -1812,6 +1912,60 @@ test("Day route markers include only eligible places and combine repeated Hotel 
   );
 });
 
+test("Day route drafts always follow the itinerary SSOT order", () => {
+  assert.deepEqual(
+    fixedDayRouteDraft(
+      {
+        itemIds: ["previous-hotel", "activity", "meal"],
+        legModes: ["walk", "train"],
+      },
+      ["activity", "meal"],
+      "self_driving",
+      "previous-hotel",
+    ),
+    {
+      itemIds: ["previous-hotel", "activity", "meal"],
+      legModes: ["walk", "train"],
+    },
+  );
+  assert.deepEqual(
+    fixedDayRouteDraft(
+      { itemIds: ["meal", "previous-hotel", "activity"], legModes: ["walk", "train"] },
+      ["activity", "meal"],
+      "self_driving",
+      "previous-hotel",
+    ),
+    {
+      itemIds: ["previous-hotel", "activity", "meal"],
+      legModes: ["train", "self_driving"],
+    },
+  );
+  assert.deepEqual(
+    fixedDayRouteDraft(
+      { itemIds: ["hotel", "hotel", "activity"], legModes: ["walk"] },
+      ["activity", "hotel"],
+      "self_driving",
+      undefined,
+      "hotel",
+    ).itemIds,
+    ["hotel", "activity", "hotel"],
+  );
+});
+
+test("new Day routes include all eligible stops and anchor available Hotels", () => {
+  const routeItem = (id: string, type: ItineraryItem["type"], sortOrder: number) =>
+    ({ id, sort_order: sortOrder, type }) as ItineraryItem;
+  const previousHotel = routeItem("previous-hotel", "hotel", 1);
+  const activity = routeItem("activity", "activity", 1);
+  const meal = routeItem("meal", "meal", 2);
+  const currentHotel = routeItem("current-hotel", "hotel", 3);
+
+  assert.deepEqual(defaultDayRouteDraft([activity, currentHotel, meal], "walk", previousHotel), {
+    itemIds: ["previous-hotel", "activity", "meal", "current-hotel"],
+    legModes: ["walk", "walk", "walk"],
+  });
+});
+
 test("Day route renders Google legs solid and straight fallbacks dashed", () => {
   const calculation = {
     calculatedLegs: [
@@ -1939,6 +2093,10 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
     new URL("../routes/overview-route-overlay.tsx", import.meta.url),
     "utf8",
   );
+  const plannerSheets = await readFile(
+    new URL("./components/planner-sheets.tsx", import.meta.url),
+    "utf8",
+  );
   const itemActions = await readItineraryItemActions();
   const itemValidation = await readFile(
     new URL("./item-action-validation.ts", import.meta.url),
@@ -1971,7 +2129,12 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
   assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
-  assert.match(overviewUi, /Preview only/);
+  assert.doesNotMatch(
+    overviewUi,
+    /Preview only|stage connection\(s\)|Choose a travel mode|Ready to calculate/,
+  );
+  assert.match(overviewUi, /segment\.from\.firstDayLabel === segment\.to\.firstDayLabel/);
+  assert.doesNotMatch(plannerSheets, /Saved places and route tools for this itinerary/);
   assert.match(overviewUi, /Overview route connections/);
   assert.match(overviewUi, /Calculate route/);
   assert.match(overviewUi, /overviewRouteModes/);
@@ -2018,10 +2181,12 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(routeUi, /destructive: "text-destructive hover:bg-destructive\/10"/);
   assert.match(routeUi, /useState\(true\)/);
   assert.match(routeUi, /aria-expanded=\{unplannedOpen\}/);
-  assert.match(routeUi, /Add \$\{item\.title\} to route/);
+  assert.match(routeUi, /Add \{item\} to route/);
   assert.doesNotMatch(routeUi, /View route|requestFit/);
-  assert.match(routeUi, /Manual order is used/);
+  assert.doesNotMatch(routeUi, /Manual order is used|Move stop up|Move stop down|Stale/);
   assert.match(routeUi, /Save & calculate/);
+  assert.doesNotMatch(routeUi, /route warning\(s\)|message=\{" · Route A"\}/);
+  assert.doesNotMatch(routeUi + overviewUi + mapShell, /PullUpPanelHandle|mobile-pull-up-panel/);
   assert.doesNotMatch(
     routeUi,
     /[">]Route [BC][<"]|alternative route|schedule selector|time order/i,
@@ -2545,8 +2710,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /M12 15V21M9 18H15/);
   assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="above"/);
   assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="below"/);
-  assert.match(workspace, />Add day before</);
-  assert.match(workspace, />Add day after</);
+  assert.match(workspace, /Add day before/);
+  assert.match(workspace, /Add day after/);
   assert.match(workspace, /insertIcon\("up"\)/);
   assert.match(workspace, /insertIcon\("down"\)/);
   assert.match(workspace, /min-w-max select-none/);
@@ -2559,7 +2724,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(form, /const \[orderPreviewItems\] = useState\(\(\) => dayItems\)/);
   assert.match(form, /saveDisabled=\{Boolean\(formError\)\}/);
   assert.doesNotMatch(form, /"Place item"/);
-  assert.match(form, /Step \$\{stepIndex \+ 1\} of \$\{steps\.length\}/);
+  assert.match(form, /Step \{current\} of \{total\}: \{step\}/);
   assert.match(workspace, /Click to place/);
   assert.doesNotMatch(workspace, /onPlaceItem/);
   assert.match(workspace, /initialMovingItemId/);
@@ -2567,8 +2732,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /const active =\s*selectedCount === 1/);
   assert.match(workspace, /lastSelected &&\s*selectionAnchor\.row === selectionEnd\.row/);
   assert.match(workspace, /selectedDayRow/);
-  assert.match(workspace, />Edit item</);
-  assert.match(workspace, />\s*Delete item\s*</);
+  assert.match(workspace, /Edit item/);
+  assert.match(workspace, /Delete item/);
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
@@ -2885,7 +3050,34 @@ test("Day locality uses Stay, dominant frequency, first-appearance ties, and leg
   assert.equal(deriveDayLocality(tied).primaryLocality?.label, "Cambridge");
   assert.deepEqual(
     deriveDayLocality(tied).localities.map(({ label }) => label),
-    ["Cambridge", "Boston"],
+    ["Cambridge", "Providence", "Boston"],
+  );
+
+  const returned = {
+    ...tied,
+    id: "returned",
+    items: [
+      placed("cambridge-1", "activity", 0, "Cambridge"),
+      placed("cambridge-2", "meal", 1, "Cambridge"),
+      placed("providence-1", "car_rental", 2, "Providence"),
+      placed("providence-2", "car_rental", 3, "Providence"),
+      placed("cambridge-return", "activity", 4, "Cambridge"),
+    ],
+  } as unknown as PlannerDay;
+  assert.deepEqual(
+    deriveDayLocality(returned).localities.map(({ label }) => label),
+    ["Cambridge", "Providence", "Cambridge"],
+  );
+  assert.deepEqual(
+    deriveDayOverviewClusters(returned).map(({ locality, returning }) => [
+      locality.label,
+      returning,
+    ]),
+    [
+      ["Cambridge", false],
+      ["Providence", false],
+      ["Cambridge", true],
+    ],
   );
 
   const stayed = {
@@ -3345,19 +3537,22 @@ test("copy and route requests retain visible, accessible progress feedback", asy
   assert.match(sheets, /LoaderCircle[\s\S]*Copying…/);
   assert.match(routeDetails, /aria-label="Route leg details"/);
   assert.match(routeDetails, /defaultOpen = false/);
-  assert.match(routeDetails, /Time unavailable/);
+  assert.doesNotMatch(routeDetails, /Time unavailable/);
   assert.match(routeDetails, /motion-reduce:transition-none/);
+  assert.match(routeDetails, /Footprints/);
+  assert.match(routeDetails, /CarFront/);
+  assert.doesNotMatch(routeDetails, /MapPinned/);
 });
 
-test("route leg explanations stay concise and expose fallback semantics", () => {
-  assert.equal(routeLegExplanation({ mode: "walk", position: 1 }), "Walking directions");
+test("route leg explanations stay concise without unavailable fallback copy", () => {
+  assert.equal(routeLegExplanation({ mode: "walk", position: 1 }), "Walking");
   assert.equal(
     routeLegExplanation({
       geometry: { source: "straight" },
       mode: "flight",
       position: 2,
     }),
-    "Route unavailable · direct map line",
+    "Flight",
   );
   assert.equal(
     routeLegExplanation({
@@ -3365,8 +3560,9 @@ test("route leg explanations stay concise and expose fallback semantics", () => 
       mode: "train",
       position: 3,
     }),
-    "Transit directions · current-service estimate",
+    "Train · current-service estimate",
   );
+  assert.equal(routeLegExplanation({ mode: "taxi", position: 4 }), "Driving (Rideshare / taxi)");
 });
 
 test("the item editor groups every type into short steps and gates required fields", () => {

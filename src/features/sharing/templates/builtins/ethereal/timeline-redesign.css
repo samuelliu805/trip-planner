@@ -52,23 +52,8 @@
   margin-top: 0.75rem;
 }
 
-.public-template-ethereal .timeline-node-content-v4 .public-item-attachments::before,
-.public-template-ethereal .timeline-node-content-v4 .public-quick-actions::before {
-  display: block;
-  grid-column: 1 / -1;
-  margin-bottom: 0.125rem;
-  color: #777970;
-  font: 700 0.6875rem/1.3 var(--font-sans);
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-.public-template-ethereal .timeline-node-content-v4 .public-item-attachments::before {
-  content: "Attachments";
-}
-
-.public-template-ethereal .timeline-node-content-v4 .public-quick-actions::before {
-  content: "Links";
+.public-template-ethereal .timeline-node-mobile-label-v4 {
+  display: none;
 }
 
 .public-template-ethereal .timeline-node-content-v4 .public-attachment-name {

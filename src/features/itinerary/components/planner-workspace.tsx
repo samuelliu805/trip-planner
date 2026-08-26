@@ -1,5 +1,6 @@
 "use client";
 
+import { T } from "@/features/i18n/i18n-provider";
 import { LoaderCircle } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -72,7 +73,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         >
           <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-medium shadow-lg">
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-primary" />
-            Updating selected cells…
+            <T message={" Updating selected cells… "} />
           </div>
         </div>
       ) : null}

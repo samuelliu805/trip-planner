@@ -1,3 +1,4 @@
+import { T } from "@/features/i18n/i18n-provider";
 import { RefreshCw, Unlink } from "lucide-react";
 
 import {
@@ -24,16 +25,20 @@ export function LongImageRegenerateDialog({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button className="col-span-2 min-h-11" disabled={pending} size="sm" variant="outline">
-          <RefreshCw className="size-4" /> Regenerate…
+          <RefreshCw className="size-4" /> <T message={" Regenerate… "} />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Regenerate this image?</AlertDialogTitle>
+          <AlertDialogTitle>
+            <T message={"Regenerate this image?"} />
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            A new link leaves the current image unchanged until it expires. Replacing updates the
-            existing link and renews it for 30 days. Downloaded copies cannot be updated. The QR
-            destination remains unchanged.
+            <T
+              message={
+                " A new link leaves the current image unchanged until it expires. Replacing updates the existing link and renews it for 30 days. Downloaded copies cannot be updated. The QR destination remains unchanged. "
+              }
+            />
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="sm:flex-col sm:items-stretch">
@@ -41,12 +46,14 @@ export function LongImageRegenerateDialog({
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => onGenerate("new_export")}
           >
-            Create new link (recommended)
+            <T message={" Create new link (recommended) "} />
           </AlertDialogAction>
           <AlertDialogAction onClick={() => onGenerate("replace_existing")}>
-            Replace existing version
+            <T message={" Replace existing version "} />
           </AlertDialogAction>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>
+            <T message={"Cancel"} />
+          </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -64,20 +71,29 @@ export function LongImageRevokeDialog({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button className="col-span-2 min-h-11" disabled={pending} size="sm" variant="ghost">
-          <Unlink className="size-4" /> Revoke image link…
+          <Unlink className="size-4" /> <T message={" Revoke image link… "} />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Revoke this image link?</AlertDialogTitle>
+          <AlertDialogTitle>
+            <T message={"Revoke this image link?"} />
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            The URL will stop working and its stored image files will be deleted. Downloaded or
-            reposted copies cannot be removed.
+            <T
+              message={
+                " The URL will stop working and its stored image files will be deleted. Downloaded or reposted copies cannot be removed. "
+              }
+            />
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onRevoke}>Revoke image link</AlertDialogAction>
+          <AlertDialogCancel>
+            <T message={"Cancel"} />
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={onRevoke}>
+            <T message={"Revoke image link"} />
+          </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

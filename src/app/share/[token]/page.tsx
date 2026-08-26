@@ -4,12 +4,15 @@ import { z } from "zod";
 
 import { PublicItineraryShell } from "@/features/sharing/components/public-itinerary-shell";
 import { PublicUnavailable } from "@/features/sharing/components/public-unavailable";
+import { getRequestLocale } from "@/features/i18n/server";
+import { translateMessage } from "@/features/i18n/translate";
 import {
   getOwnerShareImageState,
   getOwnerSharePageByToken,
   getPublicItinerary,
   getPublicShareImage,
 } from "@/features/sharing/data";
+import { localizeGeneratedPublicDescription } from "@/features/sharing/public-copy";
 import { publicShareUrlState } from "@/features/sharing/public-url-state";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { resolvePublicTemplate } from "@/features/sharing/templates/resolver";
@@ -35,19 +38,20 @@ type PublicSharePageProps = {
 };
 
 export async function generateMetadata({ params }: PublicSharePageProps): Promise<Metadata> {
-  const { token } = await params;
+  const [{ token }, locale] = await Promise.all([params, getRequestLocale()]);
   const itinerary = await loadItinerary(token);
   if (!itinerary) {
     return {
-      description: "The owner may have disabled or replaced this link.",
+      description: translateMessage(locale, "The owner may have disabled or replaced this link."),
       robots: { follow: false, index: false, noarchive: true },
-      title: "This itinerary is no longer available",
+      title: translateMessage(locale, "This itinerary is no longer available"),
     };
   }
+  const description = localizeGeneratedPublicDescription(itinerary.metadata.description, locale);
   return {
-    description: itinerary.metadata.description,
+    description,
     openGraph: {
-      description: itinerary.metadata.description,
+      description,
       title: itinerary.metadata.title,
       type: "website",
     },
@@ -56,7 +60,7 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
     title: itinerary.metadata.title,
     twitter: {
       card: "summary_large_image",
-      description: itinerary.metadata.description,
+      description,
       title: itinerary.metadata.title,
     },
   };

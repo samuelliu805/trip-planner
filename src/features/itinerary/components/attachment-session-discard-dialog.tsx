@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,21 +31,27 @@ export function AttachmentSessionDiscardDialog({
     <AlertDialog onOpenChange={(next) => !pending && onOpenChange(next)} open={open}>
       <AlertDialogContent data-attachment-overlay="">
         <AlertDialogHeader>
-          <AlertDialogTitle>Discard new files?</AlertDialogTitle>
+          <AlertDialogTitle>
+            <T message={"Discard new files?"} />
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {uploadPending
-              ? "The upload will be canceled. New files from this edit session will be removed."
-              : "New files from this edit session will be removed because the itinerary item was not saved."}
+            <Localized
+              value={
+                uploadPending
+                  ? "The upload will be canceled. New files from this edit session will be removed."
+                  : "New files from this edit session will be removed because the itinerary item was not saved."
+              }
+            />
           </AlertDialogDescription>
           {error ? (
             <p className="text-sm text-destructive" role="alert">
-              {error}
+              <Localized value={error} />
             </p>
           ) : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending} type="button">
-            Keep editing
+            <T message={" Keep editing "} />
           </AlertDialogCancel>
           <AlertDialogAction
             disabled={pending}
@@ -54,7 +61,7 @@ export function AttachmentSessionDiscardDialog({
             }}
             type="button"
           >
-            {pending ? "Removing…" : "Discard files"}
+            <Localized value={pending ? "Removing…" : "Discard files"} />
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -104,7 +104,7 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
   );
   assert.equal(
     traverse.digest,
-    "sha256-b7402fbfaeb70280adfd34a8785697342ea8ebb782ce036a81b4cd16fb5a79cd",
+    "sha256-b6728507733cf4396e6424d10284b6da2d02538b4e59aba2edd3d83a08b0b6e6",
   );
   for (const source of sources)
     assert.equal(
@@ -129,6 +129,7 @@ test("built-ins compile to deterministic immutable artifact contracts", () => {
 });
 
 test("template resolver honors legacy query, persistence, disable, fallback, and rollback", () => {
+  assert.equal(DEFAULT_PUBLIC_TEMPLATE_KEY, "neon@1");
   assert.equal(
     resolvePublicTemplate({
       legacyTemplate: "standard",
@@ -164,7 +165,7 @@ test("template resolver honors legacy query, persistence, disable, fallback, and
       persistedTemplateId: "bento",
       persistedTemplateVersion: 1,
     }).key,
-    "ethereal@1",
+    "neon@1",
   );
   assert.equal(
     resolvePublicTemplate({

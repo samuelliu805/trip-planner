@@ -1,3 +1,4 @@
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Bike, Calculator, Car, Footprints, LoaderCircle, Route, TrainFront } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -70,22 +71,23 @@ export function PublicDayRoutePanel({
   route?: PublicSavedRoute;
   routeSetupItems: PublicItineraryItem[];
 }) {
+  const { t } = useI18n();
   const day = plan.day;
 
   return (
     <div className="space-y-2">
       {days.length > 1 ? (
         <Select onValueChange={onSelectDay} value={day?.ref}>
-          <SelectTrigger aria-label="Route day" className="min-h-10 font-semibold">
+          <SelectTrigger aria-label={t("Route day")} className="min-h-10 font-semibold">
             <span className="truncate">
-              Day {day?.dayNumber}
+              {day ? <T message={"Day {day}"} values={{ day: day.dayNumber }} /> : null}
               {day && publicDayCityLabel(day, true) ? ` · ${publicDayCityLabel(day, true)}` : ""}
             </span>
           </SelectTrigger>
           <SelectContent>
             {days.map((option) => (
               <SelectItem key={option.ref} value={option.ref}>
-                Day {option.dayNumber}
+                <T message={"Day {day}"} values={{ day: option.dayNumber }} />
                 {publicDayCityLabel(option, true) ? ` · ${publicDayCityLabel(option, true)}` : ""}
               </SelectItem>
             ))}
@@ -97,50 +99,59 @@ export function PublicDayRoutePanel({
         calculation ? (
           <>
             <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-              <span>Temporary route</span>
+              <span>
+                <T message={"Temporary route"} />
+              </span>
               <span aria-hidden="true" className="text-border">
                 ·
               </span>
-              <span className="text-muted-foreground">Only you</span>
+              <span className="text-muted-foreground">
+                <T message={"Only you"} />
+              </span>
             </div>
             <PublicRouteLegDetails
               labels={localStops.map(
-                (ref) => routeSetupItems.find((item) => item.ref === ref)?.title ?? "Stop",
+                (ref) => routeSetupItems.find((item) => item.ref === ref)?.title ?? t("Stop"),
               )}
               legs={calculation.legs}
             />
             {error ? (
               <p aria-live="polite" className="text-xs text-destructive">
-                {error}
+                <Localized value={error} />
               </p>
             ) : null}
             <div className="grid grid-cols-2 gap-2 border-t pt-2">
               <Button className="min-h-11" onClick={onEdit} type="button" variant="outline">
-                Edit route
+                <T message={" Edit route "} />
               </Button>
               <Button className="min-h-11" onClick={onBackToShared} type="button" variant="ghost">
-                Shared route
+                <T message={" Shared route "} />
               </Button>
             </div>
           </>
         ) : (
           <>
             <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-              <span>Temporary</span>
+              <span>
+                <T message={"Temporary"} />
+              </span>
               <span aria-hidden="true" className="text-border">
                 ·
               </span>
-              <span className="text-muted-foreground">Only you</span>
+              <span className="text-muted-foreground">
+                <T message={"Only you"} />
+              </span>
             </div>
             <div
               aria-label="Temporary route travel mode"
+              data-i18n-aria-label={"Temporary route travel mode"}
               className="grid grid-cols-4 border"
               role="radiogroup"
             >
               {dayRouteModes.map(({ Icon, label, value }) => (
                 <button
                   aria-checked={dayMode === value}
-                  aria-label={label}
+                  aria-label={t(label)}
                   className="flex min-h-12 flex-col items-center justify-center gap-0.5 border-r text-muted-foreground last:border-r-0 hover:bg-muted aria-checked:bg-primary aria-checked:text-primary-foreground"
                   key={value}
                   onClick={() => onModeChange(value)}
@@ -148,7 +159,9 @@ export function PublicDayRoutePanel({
                   type="button"
                 >
                   <Icon aria-hidden="true" className="size-4" />
-                  <span className="text-[9px] font-semibold">{label}</span>
+                  <span className="text-[9px] font-semibold">
+                    <Localized value={label} />
+                  </span>
                 </button>
               ))}
             </div>
@@ -162,7 +175,7 @@ export function PublicDayRoutePanel({
             />
             {error ? (
               <p aria-live="polite" className="text-xs text-destructive">
-                {error}
+                <Localized value={error} />
               </p>
             ) : null}
             <div className="sticky bottom-0 grid grid-cols-[1fr_auto_auto] gap-2 border-t bg-background pt-2">
@@ -178,13 +191,13 @@ export function PublicDayRoutePanel({
                 ) : (
                   <Calculator className="size-4" />
                 )}
-                {pending ? "Calculating…" : "Calculate"}
+                <Localized value={pending ? "Calculating…" : "Calculate"} />
               </Button>
               <Button onClick={onReset} type="button" variant="outline">
-                Reset
+                <T message={" Reset "} />
               </Button>
               <Button onClick={onBackToShared} type="button" variant="ghost">
-                Shared route
+                <T message={" Shared route "} />
               </Button>
             </div>
           </>

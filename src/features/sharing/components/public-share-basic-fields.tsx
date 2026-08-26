@@ -1,3 +1,4 @@
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -28,19 +29,14 @@ export function PublicShareBasicFields({
   variants: PlannerVariant[];
 }) {
   const templates = publicTemplateOptions();
-  const variant = variants.find(({ id }) => id === variantId);
 
   return (
-    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-      <div className="min-w-0 space-y-1.5">
-        <Label htmlFor={existingPage ? undefined : "public-share-variant"}>
-          {existingPage ? "Route (fixed)" : "Route"}
-        </Label>
-        {existingPage ? (
-          <div className="flex min-h-11 items-center border bg-muted/30 px-3 text-sm">
-            {variant?.name ?? "Route unavailable"}
-          </div>
-        ) : (
+    <div className={`grid min-w-0 gap-4 ${existingPage ? "" : "sm:grid-cols-2"}`}>
+      {!existingPage ? (
+        <div className="min-w-0 space-y-1.5">
+          <Label htmlFor="public-share-variant">
+            <T message={"Route"} />
+          </Label>
           <Select onValueChange={onChooseVariant} value={variantId}>
             <SelectTrigger className="min-h-11 min-w-0" id="public-share-variant">
               <SelectValue />
@@ -53,11 +49,13 @@ export function PublicShareBasicFields({
               ))}
             </SelectContent>
           </Select>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="min-w-0 space-y-1.5">
-        <Label htmlFor="public-share-template">Style</Label>
+        <Label htmlFor="public-share-template">
+          <T message={"Style"} />
+        </Label>
         <Select
           onValueChange={(key) => {
             const template = templates.find((option) => option.key === key);
@@ -73,7 +71,7 @@ export function PublicShareBasicFields({
           <SelectContent>
             {templates.map((template) => (
               <SelectItem key={template.key} value={template.key}>
-                {template.label}
+                <Localized value={template.label} />
               </SelectItem>
             ))}
           </SelectContent>

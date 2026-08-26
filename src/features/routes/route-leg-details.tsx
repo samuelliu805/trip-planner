@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, Clock3, MapPinned, Route } from "lucide-react";
+import { useI18n } from "@/features/i18n/i18n-provider";
+import { CarFront, ChevronDown, Clock3, Footprints, Route } from "lucide-react";
 import { useState } from "react";
 
 import { formatRouteDistance, formatRouteDuration } from "./day-route-panel-ui";
@@ -9,18 +10,24 @@ import { routeLegExplanation, type RouteLegDetail } from "./route-leg-presentati
 export type { RouteLegDetail } from "./route-leg-presentation";
 
 function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
+  const { locale, t } = useI18n();
   return (
-    <ol aria-label="Route leg details" className="divide-y">
+    <ol
+      aria-label="Route leg details"
+      data-i18n-aria-label={"Route leg details"}
+      className="divide-y"
+    >
       {legs
         .slice()
         .sort((left, right) => left.position - right.position)
         .map((leg) => {
+          const hasRealRoute = leg.geometry?.source !== "straight" && !leg.fallbackReason;
           const duration =
-            leg.durationSeconds === null || leg.durationSeconds === undefined
-              ? "Time unavailable"
-              : formatRouteDuration(leg.durationSeconds);
+            hasRealRoute && leg.durationSeconds !== null && leg.durationSeconds !== undefined
+              ? formatRouteDuration(leg.durationSeconds, locale)
+              : null;
           const distance =
-            leg.distanceMeters === null || leg.distanceMeters === undefined
+            !hasRealRoute || leg.distanceMeters === null || leg.distanceMeters === undefined
               ? null
               : formatRouteDistance(leg.distanceMeters);
           return (
@@ -35,18 +42,22 @@ function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
                 <span className="block truncate text-xs font-medium">
                   {leg.fromLabel && leg.toLabel
                     ? `${leg.fromLabel} → ${leg.toLabel}`
-                    : `Leg ${leg.position}`}
+                    : t("Leg {position}", { position: leg.position })}
                 </span>
                 <span className="block truncate text-[10px] text-muted-foreground">
-                  {routeLegExplanation(leg)}
+                  {routeLegExplanation(leg, t)}
                 </span>
               </span>
-              <span className="text-right text-[10px] text-muted-foreground">
-                <span className="block whitespace-nowrap font-medium text-foreground">
-                  {duration}
+              {duration || distance ? (
+                <span className="text-right text-[10px] text-muted-foreground">
+                  {duration ? (
+                    <span className="block whitespace-nowrap font-medium text-foreground">
+                      {duration}
+                    </span>
+                  ) : null}
+                  {distance ? <span className="block whitespace-nowrap">{distance}</span> : null}
                 </span>
-                {distance ? <span className="block whitespace-nowrap">{distance}</span> : null}
-              </span>
+              ) : null}
             </li>
           );
         })}
@@ -61,18 +72,29 @@ export function RouteLegDetails({
   defaultOpen?: boolean;
   legs: RouteLegDetail[];
 }) {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(defaultOpen);
   if (!legs.length) return null;
-  const knownDuration = legs.every(
-    ({ durationSeconds }) => durationSeconds !== null && durationSeconds !== undefined,
-  )
-    ? legs.reduce((total, leg) => total + (leg.durationSeconds ?? 0), 0)
-    : null;
-  const knownDistance = legs.every(
-    ({ distanceMeters }) => distanceMeters !== null && distanceMeters !== undefined,
-  )
-    ? legs.reduce((total, leg) => total + (leg.distanceMeters ?? 0), 0)
-    : null;
+  const routedLegs = legs.filter(
+    ({ fallbackReason, geometry }) => geometry?.source !== "straight" && !fallbackReason,
+  );
+  const knownDuration =
+    routedLegs.length &&
+    routedLegs.every(
+      ({ durationSeconds }) => durationSeconds !== null && durationSeconds !== undefined,
+    )
+      ? routedLegs.reduce((total, leg) => total + (leg.durationSeconds ?? 0), 0)
+      : null;
+  const distanceFor = (modes: RouteLegDetail["mode"][]) => {
+    const matching = routedLegs.filter(({ mode }) => modes.includes(mode));
+    if (!matching.length) return null;
+    const known = matching.filter(
+      ({ distanceMeters }) => distanceMeters !== null && distanceMeters !== undefined,
+    );
+    return known.length ? known.reduce((total, leg) => total + (leg.distanceMeters ?? 0), 0) : null;
+  };
+  const walkingDistance = distanceFor(["walk"]);
+  const drivingDistance = distanceFor(["self_driving", "taxi", "rideshare", "motorcycle"]);
 
   return (
     <section className="border-t">
@@ -83,19 +105,25 @@ export function RouteLegDetails({
         type="button"
       >
         <Route aria-hidden="true" className="size-3.5 text-primary" />
-        <span>
-          {legs.length} {legs.length === 1 ? "leg" : "legs"}
-        </span>
+        <span>{t("{count} leg(s)", { count: legs.length })}</span>
         {knownDuration !== null ? (
           <span className="flex items-center gap-1 font-normal text-muted-foreground">
             <Clock3 aria-hidden="true" className="size-3" />
-            {formatRouteDuration(knownDuration)}
+            {formatRouteDuration(knownDuration, locale)}
           </span>
         ) : null}
-        {knownDistance !== null ? (
+        {walkingDistance !== null ? (
           <span className="flex items-center gap-1 font-normal text-muted-foreground">
-            <MapPinned aria-hidden="true" className="size-3" />
-            {formatRouteDistance(knownDistance)}
+            <Footprints aria-hidden="true" className="size-3" />
+            <span className="sr-only">{t("Walking")}: </span>
+            {formatRouteDistance(walkingDistance)}
+          </span>
+        ) : null}
+        {drivingDistance !== null ? (
+          <span className="flex items-center gap-1 font-normal text-muted-foreground">
+            <CarFront aria-hidden="true" className="size-3" />
+            <span className="sr-only">{t("Driving")}: </span>
+            {formatRouteDistance(drivingDistance)}
           </span>
         ) : null}
         <ChevronDown

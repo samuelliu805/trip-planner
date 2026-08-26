@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Check, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -42,13 +43,17 @@ export function RouteVariantSwitcher({
   title: string;
   variants: PlannerVariant[];
 }) {
+  const { t } = useI18n();
   return (
     <>
       <div className="hidden min-w-0 max-w-full items-center gap-1 min-[960px]:flex">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              aria-label={`Open Plans for ${title}. Current Plan: ${activeVariant.name}`}
+              aria-label={t("Open Plans for {title}. Current Plan: {plan}", {
+                plan: activeVariant.name,
+                title,
+              })}
               className="h-10 min-w-0 max-w-full justify-start gap-2 px-1.5"
               variant="ghost"
             >
@@ -61,7 +66,9 @@ export function RouteVariantSwitcher({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
-            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">Plans</div>
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+              <T message={"Plans"} />
+            </div>
             {variants.map((variant) => (
               <DropdownMenuItem key={variant.id} onSelect={() => onSwitch(variant.id)}>
                 <VariantIdentity variant={variant} />
@@ -75,31 +82,36 @@ export function RouteVariantSwitcher({
                   className="min-[900px]:hidden"
                   disabled={Boolean(comparisonBlockingReason)}
                   onSelect={onCompare}
-                  title={comparisonBlockingReason}
+                  title={comparisonBlockingReason ? t(comparisonBlockingReason) : undefined}
                 >
-                  <GitCompareArrows className="size-4" /> Compare routes
+                  <GitCompareArrows className="size-4" /> <T message={" Compare routes "} />
                   {comparisonBlockingReason ? (
-                    <span className="sr-only">{comparisonBlockingReason}</span>
+                    <span className="sr-only">
+                      <Localized value={comparisonBlockingReason} />
+                    </span>
                   ) : null}
                 </DropdownMenuItem>
               </>
             ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled={limitReached} onSelect={() => onAction("create")}>
-              <Plus className="size-4" /> New empty Plan
+              <Plus className="size-4" /> <T message={" New empty Plan "} />
             </DropdownMenuItem>
             <DropdownMenuItem disabled={limitReached} onSelect={() => onAction("duplicate")}>
-              <Copy className="size-4" /> Duplicate Plan
+              <Copy className="size-4" /> <T message={" Duplicate Plan "} />
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onAction("manage")}>
-              <MoreHorizontal className="size-4" /> Manage Plans
+              <MoreHorizontal className="size-4" /> <T message={" Manage Plans "} />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       <Button
-        aria-label={`Open Plans for ${title}. Current Plan: ${activeVariant.name}`}
+        aria-label={t("Open Plans for {title}. Current Plan: {plan}", {
+          plan: activeVariant.name,
+          title,
+        })}
         className="h-10 min-w-0 max-w-full justify-start gap-2 px-1.5 min-[960px]:hidden"
         onClick={() => onSheetOpenChange(true)}
         variant="ghost"
@@ -145,11 +157,11 @@ export function RouteVariantSwitcher({
                   onClick={onCompare}
                   variant="outline"
                 >
-                  <GitCompareArrows className="size-4" /> Compare routes
+                  <GitCompareArrows className="size-4" /> <T message={" Compare routes "} />
                 </Button>
                 {comparisonBlockingReason ? (
                   <p className="text-xs text-muted-foreground" id="mobile-comparison-disabled">
-                    {comparisonBlockingReason}
+                    <Localized value={comparisonBlockingReason} />
                   </p>
                 ) : null}
               </>
@@ -160,7 +172,7 @@ export function RouteVariantSwitcher({
               onClick={() => onAction("create")}
               variant="outline"
             >
-              <Plus className="size-4" /> New empty Plan
+              <Plus className="size-4" /> <T message={" New empty Plan "} />
             </Button>
             <Button
               className="h-11 justify-start"
@@ -168,14 +180,14 @@ export function RouteVariantSwitcher({
               onClick={() => onAction("duplicate")}
               variant="outline"
             >
-              <Copy className="size-4" /> Duplicate Plan
+              <Copy className="size-4" /> <T message={" Duplicate Plan "} />
             </Button>
             <Button
               className="h-11 justify-start"
               onClick={() => onAction("manage")}
               variant="ghost"
             >
-              <MoreHorizontal className="size-4" /> Manage Plans
+              <MoreHorizontal className="size-4" /> <T message={" Manage Plans "} />
             </Button>
           </div>
         </div>

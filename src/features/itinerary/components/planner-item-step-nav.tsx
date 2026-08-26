@@ -1,5 +1,6 @@
 "use client";
 
+import { Localized } from "@/features/i18n/i18n-provider";
 import { Check } from "lucide-react";
 
 type EditorStep = { id: string; title: string };
@@ -22,6 +23,7 @@ export function PlannerItemStepNav<Step extends EditorStep>({
   return (
     <ol
       aria-label="Item details steps"
+      data-i18n-aria-label={"Item details steps"}
       className="planner-item-step-nav relative mx-8 h-[4.5rem] min-w-0"
     >
       {steps.slice(1).map((step, index) => (
@@ -56,7 +58,7 @@ export function PlannerItemStepNav<Step extends EditorStep>({
                   active ? "font-semibold text-foreground" : "text-muted-foreground"
                 }`}
               >
-                {step.title}
+                <Localized value={step.title} />
               </span>
               <span
                 className={`flex size-12 shrink-0 items-center justify-center rounded-full border-2 text-base font-bold shadow-sm transition-[background-color,border-color,color,box-shadow,transform] group-focus-visible:ring-2 group-focus-visible:ring-ring ${

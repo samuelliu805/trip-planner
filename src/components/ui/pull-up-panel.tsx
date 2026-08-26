@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Localized } from "@/features/i18n/i18n-provider";
 import { cn } from "@/lib/utils";
 
 import { usePullUpPanelDrag } from "./use-pull-up-panel-drag";
@@ -70,6 +71,7 @@ export function PullUpPanelHandle({
 export function PullUpPanel({
   children,
   className,
+  compactHeader = false,
   description,
   dragMode = "all",
   focusPanelOnOpen = false,
@@ -81,6 +83,7 @@ export function PullUpPanel({
 }: {
   children: ReactNode;
   className?: string;
+  compactHeader?: boolean;
   description?: string;
   dragMode?: "all" | "mobile";
   focusPanelOnOpen?: boolean;
@@ -97,6 +100,7 @@ export function PullUpPanel({
       <SheetContent
         className={cn(
           "mobile-pull-up-panel max-h-[76dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)] [&>[data-sheet-close]]:top-8",
+          compactHeader && "[&>[data-sheet-close]]:top-3",
           className,
         )}
         overlayClassName={overlayClassName}
@@ -110,12 +114,18 @@ export function PullUpPanel({
         tabIndex={focusPanelOnOpen ? -1 : undefined}
       >
         <PullUpPanelHandle
-          className={dragMode === "mobile" ? "sm:hidden" : undefined}
+          className={cn(dragMode === "mobile" ? "sm:hidden" : undefined, compactHeader && "h-5")}
           onClose={() => onOpenChange(false)}
         />
-        <SheetHeader className="shrink-0 border-b-0 pb-3 pt-3">
-          <SheetTitle>{title}</SheetTitle>
-          {description ? <SheetDescription>{description}</SheetDescription> : null}
+        <SheetHeader className={cn("shrink-0 border-b-0 pb-3 pt-3", compactHeader && "pb-2 pt-1")}>
+          <SheetTitle className={compactHeader ? "text-lg leading-tight" : undefined}>
+            <Localized value={title} />
+          </SheetTitle>
+          {description ? (
+            <SheetDescription>
+              <Localized value={description} />
+            </SheetDescription>
+          ) : null}
         </SheetHeader>
         {children}
       </SheetContent>
