@@ -1,7 +1,6 @@
 import type { ResearchCategory, ResearchItem } from "./types.ts";
 
 export type BookingSiteLink = {
-  includesDetails: boolean;
   name: string;
   url: string;
 };
@@ -17,7 +16,7 @@ type SearchItem = Pick<
   | "start_date"
 >;
 
-const providerPages: Record<ResearchCategory, Array<Omit<BookingSiteLink, "includesDetails">>> = {
+const providerPages: Record<ResearchCategory, BookingSiteLink[]> = {
   flight: [
     { name: "Google Flights", url: "https://www.google.com/travel/flights" },
     { name: "Trip.com", url: "https://www.trip.com/flights/" },
@@ -49,6 +48,10 @@ const providerPages: Record<ResearchCategory, Array<Omit<BookingSiteLink, "inclu
     { name: "Omio", url: "https://www.omio.com/" },
   ],
 };
+
+export function bookingSitesForCategory(category: ResearchCategory) {
+  return providerPages[category];
+}
 
 function flightQueryUrl(item: SearchItem) {
   if (
@@ -115,7 +118,6 @@ export function bookingSitesForItem(item: SearchItem): BookingSiteLink[] {
   }
   return providerPages[category].map((provider) => ({
     ...provider,
-    includesDetails: detailsByProvider.has(provider.name),
     url: detailsByProvider.get(provider.name) ?? provider.url,
   }));
 }

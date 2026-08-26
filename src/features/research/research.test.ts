@@ -3,7 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { plannerResearchCategory } from "./planner-context.ts";
-import { bookingSearchDetails, bookingSitesForItem } from "./booking-sites.ts";
+import {
+  bookingSearchDetails,
+  bookingSitesForCategory,
+  bookingSitesForItem,
+} from "./booking-sites.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import { initialResearchSegments } from "./journey.ts";
 import { researchDecisionSlotKey } from "./decision-slot.ts";
@@ -68,12 +72,18 @@ test("booking sites use exact saved details only for durable search links", () =
     google.searchParams.get("q"),
     "Flights from SFO to LAX on 2026-10-04 returning 2026-10-12",
   );
-  assert.equal(sites.find(({ name }) => name === "Google Flights")!.includesDetails, true);
   assert.equal(
     sites.find(({ name }) => name === "KAYAK")!.url,
     "https://www.kayak.com/flights/SFO-LAX/2026-10-04/2026-10-12",
   );
-  assert.equal(sites.find(({ name }) => name === "Trip.com")!.includesDetails, false);
+});
+
+test("booking sites are available before a comparison record exists", () => {
+  assert.deepEqual(bookingSitesForCategory("flight"), [
+    { name: "Google Flights", url: "https://www.google.com/travel/flights" },
+    { name: "Trip.com", url: "https://www.trip.com/flights/" },
+    { name: "KAYAK", url: "https://www.kayak.com/flights" },
+  ]);
 });
 
 test("booking sites do not guess airport codes from city names", () => {
@@ -85,7 +95,6 @@ test("booking sites do not guess airport codes from city names", () => {
       start_date: "2026-10-04",
     }),
   );
-  assert.equal(sites.find(({ name }) => name === "KAYAK")!.includesDetails, false);
   assert.equal(sites.find(({ name }) => name === "KAYAK")!.url, "https://www.kayak.com/flights");
 });
 
@@ -112,8 +121,8 @@ test("stay searches pass location and dates to Airbnb and Booking.com", () => {
 });
 
 test("rental and train provider sets open official booking pages without brittle parameters", () => {
-  const rental = bookingSitesForItem(item({ category: "rental" }));
-  const train = bookingSitesForItem(item({ category: "train" }));
+  const rental = bookingSitesForCategory("rental");
+  const train = bookingSitesForCategory("train");
   assert.deepEqual(
     rental.map(({ name }) => name),
     ["Hertz", "Enterprise", "Avis", "Europcar", "Budget", "SIXT"],
@@ -121,10 +130,6 @@ test("rental and train provider sets open official booking pages without brittle
   assert.deepEqual(
     train.map(({ name }) => name),
     ["Amtrak", "Eurail", "SNCF Connect", "SBB", "Omio"],
-  );
-  assert.equal(
-    [...rental, ...train].some(({ includesDetails }) => includesDetails),
-    false,
   );
 });
 
@@ -924,6 +929,7 @@ test("Compare keeps one responsive inline filter row below the Trip App Bar", as
   assert.match(workspace, /aria-label="Ideas filters"/);
   assert.doesNotMatch(workspace, /saved in Ideas &amp; Options|research-context-bar/);
   assert.match(workspace, /TripMobileTabBar/);
+  assert.match(workspace, /BookingSitesDialog category=\{category\} toolbar/);
   assert.match(workspace, /CategorySelector[\s\S]*ResearchSortMenu[\s\S]*ResearchItemDialog/);
   assert.match(route, /\{appBar\}/);
   assert.match(sortMenu, /className="min-h-11"/);
