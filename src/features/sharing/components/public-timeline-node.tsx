@@ -46,6 +46,12 @@ export function PublicTimelineNode({
             onClick={onSelect}
             type="button"
           >
+            <span aria-hidden="true" className="timeline-node-mobile-label-v4">
+              <span className="timeline-node-mobile-key-v4">{node.gutterLabel}</span>
+              <span className="timeline-node-mobile-type-v4">
+                <Localized value={publicItemTypeLabels[item.type]} />
+              </span>
+            </span>
             <span className="timeline-node-copy-v4">
               <span className="timeline-node-title-v4">{item.title}</span>
               {schedule || place ? (

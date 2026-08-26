@@ -113,6 +113,10 @@
   color: var(--foreground);
 }
 
+.timeline-node-mobile-label-v4 {
+  display: none;
+}
+
 .timeline-node-axis-v4 {
   position: relative;
   z-index: 2;

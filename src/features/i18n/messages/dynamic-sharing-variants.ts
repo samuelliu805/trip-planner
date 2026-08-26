@@ -30,7 +30,6 @@ export const dynamicSharingVariantsZhCN: Record<string, string> = {
   "{plan}, Day {day}, route stop {position}, {place}, read-only comparison":
     "{plan}，第{day}天，第{position}个路线停靠点，{place}，只读比较",
   "{plan} · Day {day} route stop {position}": "{plan} · 第{day}天路线的第{position}个停靠点",
-  "{label} QR code": "{label}二维码",
   "{value} vs Primary": "相对主要方案 {value}",
   "{variant} is being edited and is always visible on the comparison map":
     "正在编辑{variant}，因此它始终显示在比较地图上",

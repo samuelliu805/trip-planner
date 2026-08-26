@@ -462,6 +462,16 @@ test("Bus uses the requested authentic Simplified Chinese transport label", () =
   assert.equal(translateMessage("zh-CN", "Bus"), "大巴");
 });
 
+test("compact language controls rely on their localized accessible name", async () => {
+  const languageSwitcher = await readFile(
+    new URL("../i18n/language-switcher.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(languageSwitcher, /aria-label=\{ariaLabel\}/);
+  assert.match(languageSwitcher, /\{expanded \? <span>\{label\}<\/span> : null\}/);
+  assert.doesNotMatch(languageSwitcher, /nextLocale === "zh-CN" \? "中文" : "EN"/);
+});
+
 test("browser locale wins without rewriting the saved account preference", async () => {
   const [serverLocale, localeAction, i18nProvider, accountAction, accountEditor, rootLayout] =
     await Promise.all(
@@ -605,6 +615,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
   assert.match(deleteDialog, /const \[, action, pending\] = useActionState\(deleteTrip, \{\}\)/);
   assert.match(deleteDialog, /<form action=\{action\}>/);
+  assert.doesNotMatch(deleteDialog, /AlertDialogAction/);
+  assert.match(deleteDialog, /<Button[\s\S]*type="submit"[\s\S]*variant="destructive"/);
+  assert.match(deleteDialog, /if \(pending && !nextOpen\) return/);
+  assert.match(deleteDialog, /<AlertDialogCancel disabled=\{pending\}/);
   assert.doesNotMatch(tripBarMenu, /emphasis|bg-primary text-primary-foreground/);
   assert.match(tripBarMenu, /focusPanelOnOpen/);
   assert.match(editor, /className="planner-item-dialog p-0"/);

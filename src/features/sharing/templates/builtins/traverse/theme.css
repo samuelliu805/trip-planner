@@ -117,25 +117,26 @@
 .public-template-traverse .public-template-region-view-navigation {
   position: relative;
   z-index: 80;
-  height: 0;
-  flex: none;
+  width: 100%;
+  height: 3.5rem;
+  min-width: 0;
+  flex: 0 0 3.5rem;
+  background: #0a222c;
 }
 
 .public-template-traverse .public-view-switcher {
-  position: absolute;
-  top: 0;
-  right: auto;
-  bottom: auto;
-  left: 1.25rem;
+  position: static;
+  inset: auto;
   z-index: 70;
-  width: min(22.5rem, calc(100vw - 2.5rem));
+  width: 100%;
+  height: 3.5rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   border: 0;
   border-radius: 0;
   background: #0a222c;
   padding: 0;
-  box-shadow: 0 8px 18px rgb(10 27 32 / 18%);
+  box-shadow: 0 -1px 0 rgb(210 227 230 / 16%);
   backdrop-filter: none;
 }
 
@@ -169,7 +170,7 @@
 }
 
 .public-template-traverse .public-view-scroll {
-  padding-top: 2.75rem;
+  padding-top: 0;
 }
 
 .public-template-traverse .public-overview,

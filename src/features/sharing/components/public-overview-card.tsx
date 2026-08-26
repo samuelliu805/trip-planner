@@ -49,7 +49,7 @@ export function PublicOverviewCard({
       >
         <span
           className="overview-item-icon-v4"
-          data-public-item-category={publicItemTypeLabels[item.type]}
+          data-public-item-category={t(publicItemTypeLabels[item.type])}
         >
           <PublicItemIcon className="size-3.5" type={item.type} />
         </span>

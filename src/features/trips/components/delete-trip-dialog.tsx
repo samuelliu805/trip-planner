@@ -6,7 +6,6 @@ import { useActionState, useEffect } from "react";
 
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -30,11 +29,12 @@ function DeleteAction({
   const loading = checking || pending;
 
   return (
-    <AlertDialogAction
+    <Button
       aria-busy={loading}
       disabled={loading}
       onClick={() => onPendingChange?.(true)}
       type="submit"
+      variant="destructive"
     >
       {loading ? (
         <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -42,7 +42,7 @@ function DeleteAction({
         <Trash2 aria-hidden="true" className="size-4" />
       )}
       <Localized value={checking ? "Checking…" : pending ? "Deleting…" : "Delete trip"} />
-    </AlertDialogAction>
+    </Button>
   );
 }
 
@@ -71,7 +71,13 @@ export function DeleteTripDialog({
   useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
   return (
-    <AlertDialog onOpenChange={onOpenChange} open={open}>
+    <AlertDialog
+      onOpenChange={(nextOpen) => {
+        if (pending && !nextOpen) return;
+        onOpenChange?.(nextOpen);
+      }}
+      open={open}
+    >
       {renderTrigger ? (
         <AlertDialogTrigger asChild>
           <Button
@@ -117,7 +123,7 @@ export function DeleteTripDialog({
         <form action={action}>
           <input name="trip_id" type="hidden" value={tripId} />
           <AlertDialogFooter>
-            <AlertDialogCancel type="button">
+            <AlertDialogCancel disabled={pending} type="button">
               <T message={"Cancel"} />
             </AlertDialogCancel>
             <DeleteAction

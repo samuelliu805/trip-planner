@@ -24,7 +24,7 @@ export function LanguageSwitcher({
     <Button
       aria-label={ariaLabel}
       className={cn(
-        expanded ? "min-h-11 w-full justify-start px-3 font-normal" : "min-h-11",
+        expanded ? "min-h-11 w-full justify-start px-3 font-normal" : "size-11 shrink-0 p-0",
         className,
       )}
       onClick={() => setLocale(nextLocale)}
@@ -32,7 +32,7 @@ export function LanguageSwitcher({
       variant="ghost"
     >
       <Languages aria-hidden="true" className="size-4 shrink-0" />
-      <span>{expanded ? label : nextLocale === "zh-CN" ? "中文" : "EN"}</span>
+      {expanded ? <span>{label}</span> : null}
     </Button>
   );
 }

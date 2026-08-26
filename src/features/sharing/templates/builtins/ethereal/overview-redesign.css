@@ -18,6 +18,8 @@
 
 .public-template-ethereal .overview-day-title-v4 > span:last-child {
   margin-top: 0.5rem;
+  overflow: visible;
+  padding-bottom: 0.08em;
   color: #11120f;
   font: 600 2rem/1.12 var(--ethereal-serif);
   letter-spacing: -0.025em;
@@ -143,8 +145,6 @@
   }
 
   .public-template-ethereal .overview-day-title-v4 > span:last-child {
-    overflow: visible;
-    padding-bottom: 0.06em;
     font-size: 1.75rem;
     line-height: 1.18;
   }

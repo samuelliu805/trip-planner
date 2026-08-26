@@ -41,7 +41,6 @@ import {
 } from "./public-timeline-presentation.ts";
 import { canonicalPublicTemplates, publicShareUrlState } from "./public-url-state.ts";
 import { siteUrlFromHeaders } from "./site-url.ts";
-import { resolveWechatShareMode } from "./wechat-share.ts";
 import {
   canonicalPublicViews,
   publicItinerarySchema,
@@ -123,41 +122,6 @@ test("share URLs follow the current request host across local and preview enviro
   assert.equal(
     siteUrlFromHeaders(new Headers({ origin: "null" }), "https://trip-planner.example.com"),
     "https://trip-planner.example.com",
-  );
-});
-
-test("WeChat sharing uses phone-native handoff without showing a self-scan QR code", () => {
-  assert.equal(
-    resolveWechatShareMode({
-      canNativeShare: true,
-      isMobile: true,
-      isWechatBrowser: false,
-    }),
-    "native-share",
-  );
-  assert.equal(
-    resolveWechatShareMode({
-      canNativeShare: false,
-      isMobile: true,
-      isWechatBrowser: false,
-    }),
-    "copy-link",
-  );
-  assert.equal(
-    resolveWechatShareMode({
-      canNativeShare: false,
-      isMobile: true,
-      isWechatBrowser: true,
-    }),
-    "wechat-menu",
-  );
-  assert.equal(
-    resolveWechatShareMode({
-      canNativeShare: true,
-      isMobile: false,
-      isWechatBrowser: false,
-    }),
-    "desktop-qr",
   );
 });
 
@@ -293,7 +257,7 @@ test("long-image date ranges are inclusive and update the exported trip summary"
 test("public views keep the canonical three, prefer Timeline for new links, and preserve saved defaults", () => {
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
   assert.equal(defaultShareSettings.defaultView, "timeline");
-  assert.equal(defaultShareSettings.templateId, "ethereal");
+  assert.equal(defaultShareSettings.templateId, "neon");
   assert.equal(defaultShareSettings.templateVersion, 1);
   for (const setting of [
     "allowRouteExplore",
@@ -1431,6 +1395,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./templates/builtins/ethereal/timeline-redesign.css", import.meta.url),
     "utf8",
   );
+  const etherealTimelineMobileDensity = await readFile(
+    new URL("./templates/builtins/ethereal/timeline-mobile-density.css", import.meta.url),
+    "utf8",
+  );
+  const traverseSource = await readFile(
+    new URL("./templates/builtins/traverse/source.ts", import.meta.url),
+    "utf8",
+  );
   const tableResources = await readFile(
     new URL("../../app/public-sharing-table-resources.css", import.meta.url),
     "utf8",
@@ -1479,7 +1451,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(overviewTransport, /publicTransportShortLabel/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
-  assert.match(overviewCard, /data-public-item-category=\{publicItemTypeLabels\[item\.type\]\}/);
+  assert.match(
+    overviewCard,
+    /data-public-item-category=\{t\(publicItemTypeLabels\[item\.type\]\)\}/,
+  );
   assert.doesNotMatch(overviewCard, /\{media\.length\} media/);
   assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
   assert.doesNotMatch(overview + overviewCard, /PublicTimelineNode|PublicDayJourney/);
@@ -1500,6 +1475,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.doesNotMatch(timelineNode, /public-timeline-route-leg|routeLegAfter/);
   assert.doesNotMatch(timelineSources, /PublicOverviewCard/);
   assert.match(timelineNode, /variant="timeline"/);
+  assert.match(timelineNode, /timeline-node-mobile-label-v4/);
   assert.ok(
     timelineNode.indexOf("timeline-node-topline-v4") <
       timelineNode.indexOf("<PublicItemMediaGallery"),
@@ -1676,6 +1652,19 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     styles,
     /\.public-template-traverse \.overview-item-icon-v4::after \{[^}]*content: attr\(data-public-item-category\)/,
   );
+  assert.ok(
+    traverseSource.indexOf('<tp-region name="workspace">') <
+      traverseSource.indexOf('<tp-region name="view-navigation">'),
+    "Traverse keeps its view switcher below the workspace",
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-template-region-view-navigation \{[^}]*height: 3\.5rem;[^}]*background: #0a222c/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-view-switcher \{[^}]*position: static;[^}]*width: 100%;[^}]*background: #0a222c/,
+  );
   assert.match(
     styles,
     /\.public-template-traverse \.overview-transport-list-v4 \{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(15rem, 100%\), 1fr\)\);[^}]*gap: 1px;[^}]*overflow: hidden;[^}]*border: 1px solid[^}]*background: var\(--traverse-line\)/,
@@ -1755,7 +1744,16 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     etherealOverviewRedesign,
-    /@media \(max-width: 899px\)[\s\S]*\.overview-day-title-v4 > span:last-child \{[^}]*overflow: visible;[^}]*padding-bottom: 0\.06em;[^}]*font-size: 1\.75rem;[^}]*line-height: 1\.18/,
+    /\.overview-day-title-v4 > span:last-child \{[^}]*overflow: visible;[^}]*padding-bottom: 0\.08em/,
+  );
+  assert.match(
+    etherealOverviewRedesign,
+    /@media \(max-width: 899px\)[\s\S]*\.overview-day-title-v4 > span:last-child \{[^}]*font-size: 1\.75rem;[^}]*line-height: 1\.18/,
+  );
+  assert.doesNotMatch(styles, /content:\s*"(?:Attachments|Links)"/);
+  assert.match(
+    etherealTimelineMobileDensity,
+    /@media \(max-width: 899px\)[\s\S]*\.timeline-node-mobile-label-v4 \{[^}]*display: flex;[\s\S]*\.timeline-node-mobile-key-v4 \{[^}]*width: 3rem;[^}]*font-variant-numeric: tabular-nums;[^}]*text-align: right/,
   );
   assert.match(
     etherealOverviewRedesign,
@@ -1866,15 +1864,9 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     viewerShare.indexOf("<ShareLinkActions") < viewerShare.indexOf("<LongImageExportPanel"),
     "share link actions stay above image generation",
   );
-  assert.match(viewerShare, /showWechatQr \? \(/);
-  assert.match(viewerShare, /hidden border bg-muted\/30 p-4 min-\[900px\]:block/);
-  assert.match(shareTools, /aria-expanded=\{mobileShare \? undefined : qrExpanded\}/);
-  assert.match(shareTools, /resolveWechatShareMode/);
-  assert.match(shareTools, /void share\("wechat"\)/);
-  assert.match(shareTools, /Link copied\. Open WeChat and paste it into a chat\./);
-  assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
-  assert.match(shareTools, /className=\{`block size-36 max-w-full/);
-  assert.match(shareTools, /width: 144/);
+  assert.doesNotMatch(viewerShare + shareTools, /WeChat|Wechat|showWechatQr|ShareQrCode/);
+  assert.match(shareTools, /grid grid-cols-2 gap-2/);
+  assert.equal(shareTools.match(/<Button/g)?.length, 2);
   assert.doesNotMatch(shell + controller + renderer + platformParts, /Compact/);
 });
 
@@ -1983,6 +1975,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
     sharePageMigration,
     imageRangeMigration,
     neonMigration,
+    defaultTemplateMigration,
     databaseTypes,
   ] = await Promise.all(
     [
@@ -2001,6 +1994,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
       "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
       "../../../supabase/migrations/20260823184500_add_neon_public_template.sql",
+      "../../../supabase/migrations/20260826060350_default_public_template_neon.sql",
       "../../types/database.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
@@ -2092,23 +2086,33 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(neonMigration, /requested_template_id = 'neon'/);
   assert.match(neonMigration, /requested_template_version = 1/);
   assert.match(neonMigration, /raise exception 'PUBLIC_TEMPLATE_UNAVAILABLE'/);
+  assert.match(defaultTemplateMigration, /alter column template_id set default 'neon'/);
+  assert.match(
+    defaultTemplateMigration,
+    /create or replace function public\.create_share_page_v3[\s\S]*requested_template_id text default 'neon'/,
+  );
+  assert.match(defaultTemplateMigration, /security definer[\s\S]*set search_path = ''/);
   assert.match(imageRangeMigration, /create function public\.prepare_share_image_version_v2/);
   assert.match(imageRangeMigration, /security definer[\s\S]*set search_path = ''/);
 });
 
 test("sharing and public route security use real QR, safe new tabs, and no-store headers", async () => {
   const tools = await readFile(new URL("./components/share-tools.tsx", import.meta.url), "utf8");
+  const longImageRenderer = await readFile(
+    new URL("./long-image/dom-renderer.tsx", import.meta.url),
+    "utf8",
+  );
   const quickActions = await readFile(
     new URL("./components/public-quick-actions.tsx", import.meta.url),
     "utf8",
   );
   const config = await readFile(new URL("../../../next.config.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../../app/share/[token]/page.tsx", import.meta.url), "utf8");
-  const sharingSources = tools + quickActions + page;
-  assert.match(tools, /QRCode\.toCanvas/);
+  const sharingSources = tools + longImageRenderer + quickActions + page;
+  assert.match(longImageRenderer, /QRCode\.toDataURL/);
   assert.match(tools, /navigator\.share/);
   assert.match(tools, /AbortError/);
-  assert.match(tools, /Tap •••, then choose Send to Chat or Moments/);
+  assert.doesNotMatch(tools, /WeChat|QRCode/);
   assert.match(quickActions, /rel="noopener noreferrer"/);
   assert.match(quickActions, /target="_blank"/);
   assert.match(config, /private, no-store, max-age=0/);

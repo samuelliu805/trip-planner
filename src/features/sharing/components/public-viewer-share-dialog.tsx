@@ -26,7 +26,7 @@ import { formatShareImageExpiry } from "../long-image/expiration";
 import { localizeGeneratedPublicDescription } from "../public-copy";
 import { LongImageExportPanel } from "./long-image-export-panel";
 import { downloadShareImageParts } from "./share-image-download";
-import { ShareLinkActions, ShareQrCode } from "./share-tools";
+import { ShareLinkActions } from "./share-tools";
 
 export function PublicViewerShareDialog({
   itinerary,
@@ -46,15 +46,10 @@ export function PublicViewerShareDialog({
   const { locale } = useI18n();
   const [currentImageState, setCurrentImageState] = useState(ownerImageState);
   const [open, setOpen] = useState(false);
-  const [showWechatQr, setShowWechatQr] = useState(false);
   const siteUrl = new URL(url).origin;
-  const onOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen);
-    if (!nextOpen) setShowWechatQr(false);
-  };
-  useExclusivePullUpPanel("viewer-share", open, onOpenChange);
+  useExclusivePullUpPanel("viewer-share", open, setOpen);
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
+    <Dialog onOpenChange={setOpen} open={open}>
       <DialogTrigger asChild>
         <Button
           aria-label="Share itinerary"
@@ -73,7 +68,7 @@ export function PublicViewerShareDialog({
         data-public-template-key={template.key}
       >
         <div className="sm:hidden">
-          <PullUpPanelHandle onClose={() => onOpenChange(false)} />
+          <PullUpPanelHandle onClose={() => setOpen(false)} />
         </div>
         <DialogHeader className="shrink-0">
           <DialogTitle>
@@ -93,16 +88,9 @@ export function PublicViewerShareDialog({
                 itinerary.metadata.description,
                 locale,
               )}
-              onWechatToggle={() => setShowWechatQr((visible) => !visible)}
-              qrExpanded={showWechatQr}
               title={itinerary.metadata.title}
               url={url}
             />
-            {showWechatQr ? (
-              <div className="hidden border bg-muted/30 p-4 min-[900px]:block">
-                <ShareQrCode label="Scan with WeChat" url={url} />
-              </div>
-            ) : null}
           </section>
           {ownerSharePage || shareImage ? (
             <section className="space-y-3 border-t pt-5" aria-labelledby="trip-image-heading">

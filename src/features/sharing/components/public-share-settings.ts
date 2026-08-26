@@ -20,7 +20,7 @@ export const defaultShareSettings: ShareSettings = {
   showPlacePhotos: true,
   showQuickActionLinks: true,
   showTimes: true,
-  templateId: "ethereal",
+  templateId: "neon",
   templateVersion: 1,
 };
 
