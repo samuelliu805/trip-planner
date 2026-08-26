@@ -21,12 +21,13 @@ function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
         .slice()
         .sort((left, right) => left.position - right.position)
         .map((leg) => {
+          const hasRealRoute = leg.geometry?.source !== "straight" && !leg.fallbackReason;
           const duration =
-            leg.durationSeconds === null || leg.durationSeconds === undefined
-              ? t("Time unavailable")
-              : formatRouteDuration(leg.durationSeconds, locale);
+            hasRealRoute && leg.durationSeconds !== null && leg.durationSeconds !== undefined
+              ? formatRouteDuration(leg.durationSeconds, locale)
+              : null;
           const distance =
-            leg.distanceMeters === null || leg.distanceMeters === undefined
+            !hasRealRoute || leg.distanceMeters === null || leg.distanceMeters === undefined
               ? null
               : formatRouteDistance(leg.distanceMeters);
           return (
@@ -47,12 +48,16 @@ function RouteLegList({ legs }: { legs: RouteLegDetail[] }) {
                   {routeLegExplanation(leg, t)}
                 </span>
               </span>
-              <span className="text-right text-[10px] text-muted-foreground">
-                <span className="block whitespace-nowrap font-medium text-foreground">
-                  {duration}
+              {duration || distance ? (
+                <span className="text-right text-[10px] text-muted-foreground">
+                  {duration ? (
+                    <span className="block whitespace-nowrap font-medium text-foreground">
+                      {duration}
+                    </span>
+                  ) : null}
+                  {distance ? <span className="block whitespace-nowrap">{distance}</span> : null}
                 </span>
-                {distance ? <span className="block whitespace-nowrap">{distance}</span> : null}
-              </span>
+              ) : null}
             </li>
           );
         })}
@@ -70,13 +75,18 @@ export function RouteLegDetails({
   const { locale, t } = useI18n();
   const [open, setOpen] = useState(defaultOpen);
   if (!legs.length) return null;
-  const knownDuration = legs.every(
-    ({ durationSeconds }) => durationSeconds !== null && durationSeconds !== undefined,
-  )
-    ? legs.reduce((total, leg) => total + (leg.durationSeconds ?? 0), 0)
-    : null;
+  const routedLegs = legs.filter(
+    ({ fallbackReason, geometry }) => geometry?.source !== "straight" && !fallbackReason,
+  );
+  const knownDuration =
+    routedLegs.length &&
+    routedLegs.every(
+      ({ durationSeconds }) => durationSeconds !== null && durationSeconds !== undefined,
+    )
+      ? routedLegs.reduce((total, leg) => total + (leg.durationSeconds ?? 0), 0)
+      : null;
   const distanceFor = (modes: RouteLegDetail["mode"][]) => {
-    const matching = legs.filter(({ mode }) => modes.includes(mode));
+    const matching = routedLegs.filter(({ mode }) => modes.includes(mode));
     if (!matching.length) return null;
     const known = matching.filter(
       ({ distanceMeters }) => distanceMeters !== null && distanceMeters !== undefined,

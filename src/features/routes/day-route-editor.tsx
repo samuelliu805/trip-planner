@@ -26,7 +26,7 @@ import { transportModeLabels, type ItineraryItem } from "@/features/itinerary/ty
 
 import { SelectedPlaceSlot } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
-import { routeLegModes, type RouteLegMode } from "./types";
+import { selectableRouteLegModes, type RouteLegMode } from "./types";
 import type { DayRouteUi } from "./use-day-route";
 
 function StopIcon({ item }: { item?: ItineraryItem }) {
@@ -132,7 +132,7 @@ export function DayRouteEditor({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {routeLegModes.map((mode) => (
+                          {selectableRouteLegModes.map((mode) => (
                             <SelectItem key={mode} value={mode}>
                               <Localized value={transportModeLabels[mode]} />
                             </SelectItem>

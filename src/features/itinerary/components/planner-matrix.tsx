@@ -8,7 +8,7 @@ import { Map } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AddItemButton, DayActions } from "@/features/itinerary/components/planner-grid-elements";
 import { PlannerItemRow } from "@/features/itinerary/components/planner-item-row";
-import { MatrixItemSummary } from "@/features/itinerary/components/matrix-presentation";
+import { MatrixCityList } from "@/features/itinerary/components/matrix-city-list";
 import {
   PlannerDivider,
   PlannerGridHeader,
@@ -19,7 +19,7 @@ import type { PlannerMatrixProps } from "@/features/itinerary/components/planner
 import { selectionContains } from "@/features/itinerary/grid-interactions";
 import { useInitialMatrixScrollPosition } from "@/features/itinerary/hooks/use-initial-matrix-scroll-position";
 import { useMobileMatrixTopContainment } from "@/features/itinerary/hooks/use-mobile-matrix-top-containment";
-import { deriveDayLocality, formatDayLocalitySummary } from "@/features/itinerary/locality";
+import { deriveDayLocality } from "@/features/itinerary/locality";
 
 export function PlannerMatrix({
   compactMapEmptyState,
@@ -204,15 +204,9 @@ export function PlannerMatrix({
                     >
                       <div className="space-y-px min-[1200px]:space-y-1">
                         {category.id === "city" ? (
-                          <div
-                            className="matrix-city-summary flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-1"
-                            data-city-summary=""
-                          >
-                            <MatrixItemSummary
-                              title={formatDayLocalitySummary(deriveDayLocality(day))}
-                              type="location"
-                            />
-                          </div>
+                          <MatrixCityList
+                            labels={deriveDayLocality(day).localities.map(({ label }) => label)}
+                          />
                         ) : null}
                         {items.map((item) => (
                           <PlannerItemRow

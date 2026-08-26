@@ -1,12 +1,16 @@
+import type { PublicItineraryLink } from "../types";
+import { LongImageSettingsFields } from "./long-image-settings-fields";
 import type { ShareSettings } from "./public-share-settings";
 import { ShareSettingOption, ShareSettingSection } from "./public-share-setting-card";
 
 export function PublicShareVisibilityFields({
   onSettingChange,
   settings,
+  sharePages,
 }: {
   onSettingChange: <Key extends keyof ShareSettings>(key: Key, value: ShareSettings[Key]) => void;
   settings: ShareSettings;
+  sharePages: PublicItineraryLink[];
 }) {
   return (
     <>
@@ -34,7 +38,7 @@ export function PublicShareVisibilityFields({
           />
           <ShareSettingOption
             checked={settings.showPlacePhotos}
-            label="Place photos"
+            label="Place photos from Google"
             onCheckedChange={(value) => onSettingChange("showPlacePhotos", value)}
           />
           <ShareSettingOption
@@ -43,6 +47,11 @@ export function PublicShareVisibilityFields({
             onCheckedChange={(value) => onSettingChange("showQuickActionLinks", value)}
           />
         </div>
+        <LongImageSettingsFields
+          onSettingChange={onSettingChange}
+          settings={settings}
+          sharePages={sharePages}
+        />
       </ShareSettingSection>
 
       <ShareSettingSection title="Trip details">

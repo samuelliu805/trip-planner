@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
+import { T } from "@/features/i18n/i18n-provider";
 import type { PlannerVariant } from "@/features/itinerary/types";
 
 import type { PublicItineraryLink } from "../types";
-import { LongImageSettingsFields } from "./long-image-settings-fields";
 import { PublicShareBasicFields } from "./public-share-basic-fields";
 import { PublicSharePageFields } from "./public-share-page-fields";
 import type { ShareSettings } from "./public-share-settings";
-import { ShareSettingDisclosure } from "./public-share-setting-card";
+import { ShareSettingDisclosure, ShareSettingSection } from "./public-share-setting-card";
 import { PublicShareVisibilityFields } from "./public-share-visibility-fields";
 
 export function PublicShareSettingsFields({
@@ -43,16 +43,20 @@ export function PublicShareSettingsFields({
         variantId={variantId}
         variants={variants}
       />
-      {pagePicker}
       <ShareSettingDisclosure title="Advanced settings">
+        <ShareSettingSection title="Shareable pages">
+          <p className="text-xs leading-5 text-muted-foreground">
+            <T message="Create multiple links with different routes, styles, and page settings." />
+          </p>
+          {pagePicker}
+        </ShareSettingSection>
         <PublicSharePageFields
           onSettingChange={onSettingChange}
           settings={settings}
           suggestedDescription={suggestedDescription}
           suggestedTitle={suggestedTitle}
         />
-        <PublicShareVisibilityFields onSettingChange={onSettingChange} settings={settings} />
-        <LongImageSettingsFields
+        <PublicShareVisibilityFields
           onSettingChange={onSettingChange}
           settings={settings}
           sharePages={sharePages}

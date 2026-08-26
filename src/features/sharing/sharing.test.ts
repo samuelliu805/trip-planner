@@ -1770,7 +1770,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     traverseTimeline,
-    /\.public-template-traverse \.timeline-day-copy-v4 \{[^}]*margin-top: 0\.3125rem/,
+    /\.public-template-traverse \.timeline-day-index-v4 \{[^}]*margin-top: 0\.1875rem/,
+  );
+  assert.match(
+    traverseTimeline,
+    /\.public-template-traverse \.timeline-day-copy-v4 \{[^}]*margin-top: 0\.1875rem/,
   );
   assert.match(
     traverseResponsive,
@@ -1864,15 +1868,17 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareSettingsFields, /ShareSettingDisclosure title="Advanced settings"/);
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
-  assert.match(shareSettingsFields, /LongImageSettingsFields/);
+  assert.match(shareVisibilityFields, /LongImageSettingsFields/);
   assert.match(shareBasicFields, /!existingPage \? \([\s\S]*public-share-variant/);
   assert.doesNotMatch(shareBasicFields, /Route \(fixed\)/);
   assert.ok(
     shareSettingsFields.indexOf("PublicShareBasicFields") <
-      shareSettingsFields.indexOf("{pagePicker}") &&
+      shareSettingsFields.indexOf('ShareSettingDisclosure title="Advanced settings"') &&
+      shareSettingsFields.indexOf('ShareSettingDisclosure title="Advanced settings"') <
+        shareSettingsFields.indexOf("{pagePicker}") &&
       shareSettingsFields.indexOf("{pagePicker}") <
-        shareSettingsFields.indexOf('ShareSettingDisclosure title="Advanced settings"'),
-    "style and route fields stay before the share-page picker and advanced settings",
+        shareSettingsFields.indexOf("<PublicSharePageFields"),
+    "the share-page picker is the first section inside advanced settings",
   );
   assert.doesNotMatch(longImageFields, /Entire trip|Date range/);
   assert.match(longImageScopePicker, /Entire trip/);

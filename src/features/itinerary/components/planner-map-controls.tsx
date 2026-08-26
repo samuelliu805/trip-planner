@@ -94,13 +94,11 @@ export function PlannerMapControls({
                   aria-pressed={mapMode === "comparison"}
                   className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === "comparison" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                   disabled={Boolean(comparisonBlockingReason)}
-                  title={
-                    comparisonBlockingReason ? t(comparisonBlockingReason) : t("Compare routes")
-                  }
+                  title={comparisonBlockingReason ? t(comparisonBlockingReason) : t("Compare")}
                   type="button"
                 >
                   <GitCompareArrows aria-hidden="true" className="size-3.5" />
-                  <T message="Compare routes" />
+                  <T message="Compare" />
                   <ChevronDown aria-hidden="true" className="size-3" />
                 </button>
               </DropdownMenuTrigger>

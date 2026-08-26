@@ -46,7 +46,7 @@ export async function getVariantComparison(
       )
       .eq("trip_id", tripId)
       .in("variant_id", variantIds)
-      .in("type", ["location", "activity", "meal", "hotel"])
+      .in("type", ["location", "activity", "meal", "car_rental", "hotel"])
       .order("day_id", { ascending: true })
       .order("sort_order", { ascending: true })
       .order("id", { ascending: true }),

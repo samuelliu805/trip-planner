@@ -17,11 +17,15 @@ function Feedback({ comparison }: { comparison: VariantComparisonUi }) {
           className="mx-auto block size-6 animate-spin rounded-full border-2 border-primary border-r-transparent motion-reduce:animate-none"
         />
       )}
-      <h2 className="mt-3 font-semibold">
-        <Localized
-          value={comparison.error ? "Comparison unavailable" : "Loading route comparison"}
-        />
-      </h2>
+      {comparison.error ? (
+        <h2 className="mt-3 font-semibold">
+          <Localized value="Comparison unavailable" />
+        </h2>
+      ) : (
+        <span className="sr-only">
+          <T message="Loading route comparison" />
+        </span>
+      )}
       {comparison.error ? (
         <p className="mt-1 text-sm leading-5 text-muted-foreground">
           <Localized value={comparison.error} />

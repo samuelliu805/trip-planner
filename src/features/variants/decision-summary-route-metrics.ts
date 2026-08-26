@@ -2,7 +2,7 @@ import { transportModeLabels } from "../itinerary/types.ts";
 import { isRouteLegMode } from "../routes/route-config.ts";
 import { parseCalculatedRouteLegs } from "../routes/results.ts";
 import { dayRouteStatusFromProjection } from "../routes/status.ts";
-import { routeLegModes, type RouteLegMode } from "../routes/types.ts";
+import { canonicalRouteLegMode, routeLegModes, type RouteLegMode } from "../routes/types.ts";
 
 import { validDecisionSummaryCoordinates } from "./decision-summary-normalization.ts";
 import type {
@@ -106,16 +106,18 @@ export function deriveRouteMetrics(
     const modeByPosition = new Map(plan.legs.map(({ mode, position }) => [position, mode]));
     coverage.currentCalculatedLegCount += plan.calculation.calculatedLegs.length;
     for (const leg of plan.calculation.calculatedLegs) {
+      if (leg.geometry.source === "straight") coverage.fallbackLegCount += 1;
+      if (leg.fallbackReason === "no_route") coverage.noRouteFallbackCount += 1;
+      if (leg.fallbackReason === "unsupported_mode") coverage.unsupportedModeFallbackCount += 1;
+      if (leg.geometry.source === "straight" || leg.fallbackReason) continue;
       hasCurrentLeg = true;
       knownDistance += leg.distanceMeters;
-      const savedMode = modeByPosition.get(leg.position);
+      const persistedMode = modeByPosition.get(leg.position);
+      const savedMode = persistedMode ? canonicalRouteLegMode(persistedMode) : undefined;
       if (savedMode)
         distanceByMode.set(savedMode, (distanceByMode.get(savedMode) ?? 0) + leg.distanceMeters);
       if (leg.durationSeconds === null) unknownDurationLegCount += 1;
       else knownDuration += leg.durationSeconds;
-      if (leg.geometry.source === "straight") coverage.fallbackLegCount += 1;
-      if (leg.fallbackReason === "no_route") coverage.noRouteFallbackCount += 1;
-      if (leg.fallbackReason === "unsupported_mode") coverage.unsupportedModeFallbackCount += 1;
     }
   }
   return {

@@ -74,19 +74,26 @@ export function OverviewRouteOverlay({
               <T message={"Overview route"} />
             </p>
           </div>
-          <Button
-            className="col-start-2 row-start-1"
-            onClick={() => route.setEditing(!route.editing)}
-            size="sm"
-            type="button"
-            variant={route.editing ? "outline" : hasPendingCalculation ? "default" : "outline"}
-          >
-            <Localized
-              value={
-                route.editing ? "Done" : hasPendingCalculation ? "Set up route" : "Route details"
-              }
-            />
-          </Button>
+          {route.editing ? (
+            <RouteIconButton
+              className="col-start-2 row-start-1"
+              label="Finish route setup"
+              onClick={() => route.setEditing(false)}
+              title="Finish route setup"
+            >
+              <X className="size-4" />
+            </RouteIconButton>
+          ) : (
+            <Button
+              className="col-start-2 row-start-1"
+              onClick={() => route.setEditing(true)}
+              size="sm"
+              type="button"
+              variant={hasPendingCalculation ? "default" : "outline"}
+            >
+              <Localized value={hasPendingCalculation ? "Set up route" : "Route details"} />
+            </Button>
+          )}
           {!route.editing ? (
             <RouteIconButton
               className="col-start-3 row-start-1"

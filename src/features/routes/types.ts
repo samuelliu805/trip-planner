@@ -22,6 +22,14 @@ export const routeLegModes = [
 
 export type RouteLegMode = (typeof routeLegModes)[number];
 
+export const selectableRouteLegModes = routeLegModes.filter(
+  (mode): mode is Exclude<RouteLegMode, "rideshare"> => mode !== "rideshare",
+);
+
+export function canonicalRouteLegMode(mode: RouteLegMode): RouteLegMode {
+  return mode === "rideshare" ? "taxi" : mode;
+}
+
 export const overviewRouteModes = ["self_driving", "flight", "train", "bus", "bike"] as const;
 export type OverviewRouteMode = (typeof overviewRouteModes)[number];
 

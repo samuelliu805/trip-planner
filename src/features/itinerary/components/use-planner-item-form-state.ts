@@ -7,7 +7,7 @@ import { itemOrderAnchor } from "../activity-order";
 import { plannerItemTitleAfterPlaceSelection } from "../planner-item-title-autofill";
 import {
   normalizeTransportMode,
-  transportModes,
+  selectableTransportModes,
   type CarRentalDetails,
   type ItineraryItem,
   type TransportMode,
@@ -15,7 +15,7 @@ import {
 import type { Json } from "../../../types/database";
 import { placeSnapshotFromJson, type PlaceSnapshot } from "../../../lib/providers/places/types";
 
-const allTransportModes: TransportMode[] = [...transportModes];
+const allTransportModes: TransportMode[] = [...selectableTransportModes];
 
 export function usePlannerItemFormState({
   dayDate,

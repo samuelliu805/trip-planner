@@ -21,6 +21,10 @@ import {
 } from "./decision-summary-metrics.ts";
 import { decisionSummaryMetricVisibility } from "./decision-summary-presentation.ts";
 import { consecutiveHotelStays } from "./decision-summary-hotel-stays.ts";
+import {
+  decisionSummaryCostDates,
+  groupDecisionSummaryCosts,
+} from "./decision-summary-cost-groups.ts";
 import type {
   DecisionSummaryDayRow,
   DecisionSummaryInput,
@@ -30,6 +34,34 @@ import type {
 } from "./decision-summary-types.ts";
 
 const tripId = "trip-summary";
+
+test("comparison cost breakdown groups repeated items and merges disjoint date ranges", () => {
+  const lines = [
+    { date: "2026-02-10", dayNumber: 1, itemId: "a", amount: 100 },
+    { date: "2026-02-11", dayNumber: 2, itemId: "b", amount: 100 },
+    { date: "2026-02-12", dayNumber: 3, itemId: "c", amount: 100 },
+    { date: "2026-02-14", dayNumber: 5, itemId: "d", amount: 100 },
+  ].map((line) => ({
+    ...line,
+    convertedAmount: line.amount,
+    convertedCurrency: "USD",
+    currency: "USD",
+    title: "Hotel Example",
+    type: "hotel" as const,
+  }));
+  const groups = groupDecisionSummaryCosts(lines);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].amount, 400);
+  assert.equal(groups[0].convertedAmount, 400);
+  assert.equal(
+    decisionSummaryCostDates(groups[0], "en", (day) => `Day ${day}`),
+    "Feb 10–12, Feb 14",
+  );
+  assert.equal(
+    decisionSummaryCostDates(groups[0], "zh-CN", (day) => `第${day}天`),
+    "2月10日至12日, 2月14日",
+  );
+});
 
 const variants: DecisionSummaryVariantRow[] = [
   {
@@ -357,7 +389,7 @@ test("Phase 5C planned places deduplicate supported persisted place IDs only", (
   assert.equal(summary.nightCount, null, "Hotel items never supply inferred nights");
 });
 
-test("Phase 5C route totals include only current signatures and retain partial fallback facts", () => {
+test("Phase 5C route totals exclude fallback metrics while retaining fallback diagnostics", () => {
   const days = [
     day("a-1", "route-a", 1, null),
     day("a-2", "route-a", 2, null),
@@ -484,18 +516,15 @@ test("Phase 5C route totals include only current signatures and retain partial f
   assert.equal(summary.routeCoverage.stale, 1);
   assert.equal(summary.routeCoverage.uncalculated, 1);
   assert.equal(summary.routeCoverage.needs_edit, 1);
-  assert.equal(summary.knownDayRouteDistanceMeters, 3_000);
+  assert.equal(summary.knownDayRouteDistanceMeters, 1_000);
   assert.equal(summary.knownDurationSeconds, 600);
-  assert.equal(summary.unknownDurationLegCount, 1);
+  assert.equal(summary.unknownDurationLegCount, 0);
   assert.equal(summary.routeCoverage.fallbackLegCount, 1);
   assert.equal(summary.routeCoverage.noRouteFallbackCount, 1);
   assert.equal(summary.routeCoverage.currentCalculatedLegCount, 2);
   assert.deepEqual(
     summary.savedDayRouteDistanceByMode.map(({ distanceMeters, mode }) => [mode, distanceMeters]),
-    [
-      ["walk", 1_000],
-      ["train", 2_000],
-    ],
+    [["walk", 1_000]],
   );
 });
 

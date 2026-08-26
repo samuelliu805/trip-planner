@@ -61,6 +61,9 @@ export const sharingZhCN: Record<string, string> = {
   "Sharing was unavailable. Copy the link instead.": "暂时无法分享，请复制链接。",
   "Sharing was unavailable. Open the image page instead.": "暂时无法分享，请改为打开长图页面。",
   "Shareable page": "分享页面",
+  "Shareable pages": "分享页面",
+  "Create multiple links with different routes, styles, and page settings.":
+    "可创建多个链接，并分别设置方案、样式和页面内容。",
   "Shareable page {number}": "分享页面 {number}",
   "Shareable page text": "分享页面文案",
   "Shared itinerary": "分享的行程",
@@ -160,6 +163,7 @@ export const sharingZhCN: Record<string, string> = {
   Neon: "霓虹",
   Notes: "备注",
   "Place photos": "地点照片",
+  "Place photos from Google": "Google 地点照片",
   Route: "方案",
   "Route (fixed)": "方案（不可更改）",
   "Route exploration": "路线探索",

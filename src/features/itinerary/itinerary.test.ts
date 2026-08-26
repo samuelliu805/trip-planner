@@ -93,7 +93,12 @@ import { dayRouteStatus } from "../routes/status.ts";
 import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
 import { routeLegExplanation } from "../routes/route-leg-presentation.ts";
 import { compactTransportEndpoint, compactTransportRoute } from "./transport-presentation.ts";
-import { overviewRouteModes, routeLegModes, type DayRouteDraft } from "../routes/types.ts";
+import {
+  overviewRouteModes,
+  routeLegModes,
+  selectableRouteLegModes,
+  type DayRouteDraft,
+} from "../routes/types.ts";
 import type { DayRouteCalculation, DayRoutePlan, RouteCalculationConfig } from "../routes/types.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import {
@@ -1096,6 +1101,11 @@ test("route mode mapping is explicit and unknown modes never become Transit", ()
     walk: "WALK",
   } as const;
   for (const mode of routeLegModes) assert.equal(googleTravelMode(mode), expected[mode]);
+  assert.ok(selectableRouteLegModes.includes("bike"));
+  assert.equal(
+    selectableRouteLegModes.some((mode) => mode === ("rideshare" as string)),
+    false,
+  );
   assert.equal(googleTravelMode("unknown"), null);
 });
 
@@ -1497,7 +1507,7 @@ test("map marker dates merge consecutive day intervals", () => {
   );
 });
 
-test("Activity locality drives Day summaries and adjacent-only Overview stages", () => {
+test("destination records drive complete Day localities and adjacent-only Overview stages", () => {
   const item = (
     id: string,
     type: ItineraryItem["type"],
@@ -1531,7 +1541,8 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
         item("mit", "activity", 1, "Cambridge", 42.36, -71.09),
         item("lunch", "meal", 2, "Boston", 42.35, -71.07),
         item("harvard", "activity", 3, "Cambridge", 42.37, -71.12),
-        item("hotel", "hotel", 4, "Boston", 42.36, -71.05),
+        item("return-car", "car_rental", 4, "Somerville", 42.39, -71.1),
+        item("hotel", "hotel", 5, "Boston", 42.36, -71.05),
       ],
     },
     {
@@ -1557,9 +1568,9 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
   const firstDay = deriveDayLocality(days[0]);
   assert.deepEqual(
     firstDay.localities.map(({ label }) => label),
-    ["Boston", "Cambridge", "Boston", "Cambridge", "Boston"],
+    ["Boston", "Cambridge", "Boston", "Cambridge", "Somerville", "Boston"],
   );
-  assert.equal(formatDayLocalitySummary(firstDay), "Boston · Cambridge · +3");
+  assert.equal(formatDayLocalitySummary(firstDay), "Boston · Cambridge · +4");
   assert.equal(firstDay.primaryLocality?.label, "Boston");
 
   const stages = deriveOverviewStageProjections(days);
@@ -1579,9 +1590,29 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
   const mapStages = deriveOverviewStages(days);
   assert.deepEqual(
     mapStages.map(({ entries }) => entries[0].title),
-    ["Boston", "Cambridge", "Boston", "Cambridge", "Boston", "Hakone", "Boston"],
+    ["Boston", "Cambridge", "Boston", "Cambridge", "Somerville", "Boston", "Hakone", "Boston"],
   );
-  assert.equal(mapStages[4].entries[0].itemId, "hotel");
+  assert.equal(mapStages[5].entries[0].itemId, "hotel");
+});
+
+test("owner and public City cells render every inferred locality on its own row", async () => {
+  const cityList = await readFile(
+    new URL("./components/matrix-city-list.tsx", import.meta.url),
+    "utf8",
+  );
+  const matrix = await readFile(
+    new URL("./components/planner-matrix.tsx", import.meta.url),
+    "utf8",
+  );
+  const publicTable = await readFile(
+    new URL("../sharing/components/public-table.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(cityList, /rows\.map\(\(title, index\) =>/);
+  assert.match(matrix, /deriveDayLocality\(day\)\.localities\.map/);
+  assert.doesNotMatch(matrix, /formatDayLocalitySummary/);
+  assert.match(publicTable, /<MatrixCityList/);
+  assert.doesNotMatch(publicTable, /localities\?\.join/);
 });
 
 test("overview allows the same City across days and omits the no-travel stay boundary", () => {
@@ -3506,14 +3537,14 @@ test("copy and route requests retain visible, accessible progress feedback", asy
   assert.match(sheets, /LoaderCircle[\s\S]*Copying…/);
   assert.match(routeDetails, /aria-label="Route leg details"/);
   assert.match(routeDetails, /defaultOpen = false/);
-  assert.match(routeDetails, /Time unavailable/);
+  assert.doesNotMatch(routeDetails, /Time unavailable/);
   assert.match(routeDetails, /motion-reduce:transition-none/);
   assert.match(routeDetails, /Footprints/);
   assert.match(routeDetails, /CarFront/);
   assert.doesNotMatch(routeDetails, /MapPinned/);
 });
 
-test("route leg explanations stay concise and expose fallback semantics", () => {
+test("route leg explanations stay concise without unavailable fallback copy", () => {
   assert.equal(routeLegExplanation({ mode: "walk", position: 1 }), "Walking");
   assert.equal(
     routeLegExplanation({
@@ -3521,7 +3552,7 @@ test("route leg explanations stay concise and expose fallback semantics", () => 
       mode: "flight",
       position: 2,
     }),
-    "Route unavailable · direct map line",
+    "Flight",
   );
   assert.equal(
     routeLegExplanation({
@@ -3531,6 +3562,7 @@ test("route leg explanations stay concise and expose fallback semantics", () => 
     }),
     "Train · current-service estimate",
   );
+  assert.equal(routeLegExplanation({ mode: "taxi", position: 4 }), "Driving (Rideshare / taxi)");
 });
 
 test("the item editor groups every type into short steps and gates required fields", () => {

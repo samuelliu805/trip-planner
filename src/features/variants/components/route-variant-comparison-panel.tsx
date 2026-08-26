@@ -1,6 +1,6 @@
 "use client";
 
-import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { BarChart3, X } from "lucide-react";
 
 import { VariantComparisonRows } from "@/features/variants/components/variant-comparison-rows";
@@ -26,21 +26,10 @@ export function RouteVariantComparisonPanel({
       className="map-bottom-panel absolute bottom-3 left-3 right-3 z-20 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
       <div className="flex min-h-11 items-center justify-between border-b px-3 py-2">
-        <div>
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold">
-            {comparison.dayNumber
-              ? t("Day {day} routes", { day: comparison.dayNumber })
-              : t("Overview comparison")}
+            {comparison.dayNumber ? t("Day {day}", { day: comparison.dayNumber }) : t("Whole trip")}
           </h2>
-          <p className="text-[11px] text-muted-foreground">
-            <Localized
-              value={
-                comparison.dayNumber
-                  ? "Solid lines are saved routes; dashed lines preview stop order."
-                  : "Dashed lines show city/town order—not driving directions."
-              }
-            />
-          </p>
         </div>
         <button
           aria-label="Close comparison panel"
@@ -64,7 +53,7 @@ export function RouteVariantComparisonPanel({
             type="button"
           >
             <BarChart3 aria-hidden="true" className="size-4" />
-            <T message={" Comparison summary "} />
+            <T message={" Summary "} />
           </button>
         </div>
       ) : null}

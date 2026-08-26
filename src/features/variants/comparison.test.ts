@@ -113,7 +113,7 @@ function comparisonProjection(
   };
 }
 
-test("variant comparison derives one Activity locality stage per Day with legacy fallback", async () => {
+test("variant comparison derives current destination localities with legacy fallback", async () => {
   const loader = await readFile(new URL("./comparison-data.ts", import.meta.url), "utf8");
   const schema = (
     await Promise.all(
@@ -135,6 +135,24 @@ test("variant comparison derives one Activity locality stage per Day with legacy
         id: "city-second",
         sort_order: 2,
         title: "Kyoto",
+        variant_id: "route-a",
+      }),
+      comparisonCity({
+        day_id: "day-a-1",
+        id: "rental-osaka",
+        place: {
+          country_code: "JP",
+          formatted_address: "Osaka, Japan",
+          google_place_id: "google-rental-osaka",
+          id: "place-rental-osaka",
+          latitude: 34.6937,
+          locality_name: "Osaka",
+          longitude: 135.5023,
+        },
+        place_id: "place-rental-osaka",
+        sort_order: 2,
+        title: "Return car",
+        type: "car_rental",
         variant_id: "route-a",
       }),
       comparisonCity({
@@ -177,7 +195,7 @@ test("variant comparison derives one Activity locality stage per Day with legacy
   );
   assert.deepEqual(
     normalized[0].days[0].cities.map(({ itemId }) => itemId),
-    ["activity-first"],
+    ["activity-first", "rental-osaka"],
   );
   assert.equal(normalized[0].days[0].cities[0].latitude, 35.6762);
   assert.equal(normalized[0].days[0].cities[0].placeId, "place-activity-first");
@@ -198,7 +216,8 @@ test("variant comparison derives one Activity locality stage per Day with legacy
   assert.match(loader, /\.from\("day_route_plans"\)/);
   assert.match(loader, /\.from\("day_route_stops"\)/);
   assert.match(loader, /\.from\("day_route_calculations"\)/);
-  assert.doesNotMatch(loader, /"transport"|"flight"|"train"|"car_rental"/);
+  assert.match(loader, /"car_rental"/);
+  assert.doesNotMatch(loader, /"transport"|"flight"|"train"/);
   for (const policy of [
     "route_variants_select_members",
     "trip_days_select_members",
@@ -531,6 +550,10 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
     new URL("../itinerary/components/planner-map-controls.tsx", import.meta.url),
     "utf8",
   );
+  const mapShell = await readFile(
+    new URL("../itinerary/components/planner-map-shell.tsx", import.meta.url),
+    "utf8",
+  );
   const variantControls = await readFile(
     new URL("./components/route-variant-controls.tsx", import.meta.url),
     "utf8",
@@ -548,11 +571,15 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
   ).join("\n");
 
   assert.match(controls, /DropdownMenu[\s\S]*Compare whole trip[\s\S]*Compare Day \{day\}/);
+  assert.match(
+    mapShell,
+    /onMapModeChange=\{\(mode, comparisonScope\) =>[\s\S]*onMapModeChange\(mode, comparisonScope\)/,
+  );
   assert.match(comparisonHook, /variants\.length >= 2/);
   assert.match(comparisonHook, /Discard or save the open Day route draft/);
   assert.match(comparisonHook, /variantId === activeVariantId \|\|/);
   assert.doesNotMatch(comparisonUi, /Matrix:[\s\S]*Map: read only/);
-  assert.match(comparisonUi, /Map routes[\s\S]*comparison\.visiblePresentations\.length/);
+  assert.match(comparisonUi, /Routes[\s\S]*comparison\.visiblePresentations\.length/);
   assert.doesNotMatch(comparisonUi, /Known Cost|Always visible/);
   assert.match(comparisonUi, /comparisonMoney/);
   assert.doesNotMatch(comparisonUi, /No priced items/);

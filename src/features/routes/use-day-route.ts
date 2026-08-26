@@ -12,7 +12,12 @@ import { useCalculateDayRoute, useClearDayRoutePlan, useSaveDayRoutePlan } from 
 import { validateDayRouteDraft } from "./route-config";
 import { dayRouteStatus, type DayRouteStatus } from "./status";
 import { suggestedDraftLegMode } from "./transport-suggestion";
-import type { DayRouteDraft, DayRoutePlan, RouteLegMode } from "./types";
+import {
+  canonicalRouteLegMode,
+  type DayRouteDraft,
+  type DayRoutePlan,
+  type RouteLegMode,
+} from "./types";
 
 export type DayRouteEditorDraft = { itemIds: string[]; legModes: RouteLegMode[] };
 
@@ -41,7 +46,9 @@ export type DayRouteUi = {
 
 const savedDraft = (plan: DayRoutePlan): DayRouteEditorDraft => ({
   itemIds: [...plan.stops].sort((a, b) => a.position - b.position).map(({ item_id }) => item_id),
-  legModes: [...plan.legs].sort((a, b) => a.position - b.position).map(({ mode }) => mode),
+  legModes: [...plan.legs]
+    .sort((a, b) => a.position - b.position)
+    .map(({ mode }) => canonicalRouteLegMode(mode)),
 });
 
 export function useDayRoute(
@@ -156,10 +163,11 @@ export function useDayRoute(
   }
 
   function setLegMode(index: number, mode: RouteLegMode) {
+    const canonicalMode = canonicalRouteLegMode(mode);
     updateDraft((current) => ({
       ...current,
       legModes: current.legModes.map((candidate, candidateIndex) =>
-        candidateIndex === index ? mode : candidate,
+        candidateIndex === index ? canonicalMode : candidate,
       ),
     }));
   }

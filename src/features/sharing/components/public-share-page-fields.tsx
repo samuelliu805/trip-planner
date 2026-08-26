@@ -40,12 +40,6 @@ export function PublicSharePageFields({
       </fieldset>
 
       <div className="space-y-3">
-        <p className="text-sm font-medium">
-          <T message={" Shareable page text "} />
-          <span className="font-normal text-muted-foreground">
-            <T message={"(optional)"} />
-          </span>
-        </p>
         <div className="space-y-1.5">
           <Label htmlFor="share-title">
             <T message={"Title"} />

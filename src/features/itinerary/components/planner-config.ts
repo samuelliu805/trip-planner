@@ -1,6 +1,6 @@
 import {
   normalizeTransportMode,
-  transportModes,
+  selectableTransportModes,
   type ItineraryItem,
   type ItineraryItemType,
   type PlannerDay,
@@ -48,7 +48,7 @@ export function isCategoryAtCapacity(day?: PlannerDay, category?: PlannerCategor
   const usedModes = day.items
     .filter((item) => item.type === "transport")
     .map((item) => normalizeTransportMode((item.details as Record<string, string>).mode));
-  return usedModes.length >= transportModes.length;
+  return usedModes.length >= selectableTransportModes.length;
 }
 
 export function plannerSelectionSize(

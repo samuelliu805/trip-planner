@@ -25,9 +25,7 @@ export function VariantComparisonMobileBar({
       <div className="flex min-h-14 items-center justify-between gap-3 px-3 py-2">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold">
-            {comparison.dayNumber
-              ? t("Day {day} routes", { day: comparison.dayNumber })
-              : t("Overview comparison")}
+            {comparison.dayNumber ? t("Day {day}", { day: comparison.dayNumber }) : t("Whole trip")}
           </h2>
         </div>
         <div className="flex shrink-0 gap-1.5">
@@ -40,7 +38,7 @@ export function VariantComparisonMobileBar({
             >
               <BarChart3 aria-hidden="true" className="size-4" />
               <span>
-                <T message={"Comparison summary"} />
+                <T message={"Summary"} />
               </span>
             </Button>
           ) : null}
@@ -56,7 +54,7 @@ export function VariantComparisonMobileBar({
           >
             <Eye aria-hidden="true" className="size-4" />
             <span>
-              <T message={"Map routes"} /> · {comparison.visiblePresentations.length}/
+              <T message={"Routes"} /> {comparison.visiblePresentations.length}/
               {comparison.presentations.length}
             </span>
           </Button>

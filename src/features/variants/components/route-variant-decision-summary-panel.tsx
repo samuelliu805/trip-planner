@@ -27,16 +27,16 @@ export function RouteVariantDecisionSummaryPanel({
       data-i18n-aria-label="Route variant comparison summary"
       className="map-bottom-panel absolute inset-x-3 bottom-3 z-30 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-2xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
-      <header className="flex min-h-11 items-center justify-between gap-4 border-b px-4 py-2">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">
+      <header className="flex min-h-14 items-center justify-between gap-4 border-b px-4">
+        <div className="flex min-h-11 min-w-0 items-center">
+          <h2 className="text-base font-semibold leading-none">
             <T message={"Comparison summary"} />
           </h2>
         </div>
         <button
           aria-label="Close comparison summary"
           data-i18n-aria-label={"Close comparison summary"}
-          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex size-11 shrink-0 items-center justify-center self-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onCollapse}
           type="button"
         >

@@ -68,6 +68,7 @@ export type KnownCostAmount = { amount: number; currency: string };
 export type PlanCostBreakdownLine = {
   amount: number;
   currency: string;
+  date?: string | null;
   dayNumber: number;
   itemId: string;
   title: string;

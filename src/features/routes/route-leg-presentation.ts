@@ -24,15 +24,14 @@ export type RouteLegDetail = {
 
 export function routeLegExplanation(leg: RouteLegDetail, t: Translate = identityTranslate) {
   if (leg.geometry?.source === "straight" || leg.fallbackReason) {
-    return leg.fallbackReason === "unsupported_mode"
-      ? t("{mode} unavailable · direct map line", { mode: t(transportModeLabels[leg.mode]) })
-      : t("Route unavailable · direct map line");
+    return t(transportModeLabels[leg.mode]);
   }
   if (leg.estimateKind === "transit_current_service")
     return t("{mode} · current-service estimate", {
       mode: t(transportModeLabels[leg.mode]),
     });
-  if (["self_driving", "taxi", "rideshare", "motorcycle"].includes(leg.mode)) return t("Driving");
+  if (["taxi", "rideshare"].includes(leg.mode)) return t("Driving (Rideshare / taxi)");
+  if (["self_driving", "motorcycle"].includes(leg.mode)) return t("Driving");
   if (leg.mode === "walk") return t("Walking");
   if (leg.mode === "bike") return t("Cycling");
   return t(transportModeLabels[leg.mode]);

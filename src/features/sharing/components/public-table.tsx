@@ -8,6 +8,7 @@ import {
   MatrixGridHeader,
   MatrixItemSummary,
 } from "@/features/itinerary/components/matrix-presentation";
+import { MatrixCityList } from "@/features/itinerary/components/matrix-city-list";
 import { matrixCategoryColumns } from "@/features/itinerary/components/matrix-columns";
 import { transportModeLabels, type TransportMode } from "@/features/itinerary/types";
 
@@ -121,19 +122,16 @@ export function PublicTable({
                       className={`public-table-cell-items ${column.id === "transport" ? "is-transport" : ""}`}
                     >
                       {column.id === "city" ? (
-                        <div
-                          className="matrix-city-summary flex min-h-11 min-w-0 flex-col justify-center px-1.5 py-1 min-[1200px]:min-h-8"
-                          data-city-summary=""
-                        >
-                          <MatrixItemSummary
-                            title={
-                              day.localities?.join(" · ") ||
-                              day.primaryLocality ||
-                              t("City / town unavailable")
-                            }
-                            type="location"
-                          />
-                        </div>
+                        <MatrixCityList
+                          labels={
+                            day.localities?.length
+                              ? day.localities
+                              : day.primaryLocality
+                                ? [day.primaryLocality]
+                                : []
+                          }
+                          publicView
+                        />
                       ) : null}
                       {items.map((item) => (
                         <div

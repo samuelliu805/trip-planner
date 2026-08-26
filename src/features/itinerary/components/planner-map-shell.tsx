@@ -161,11 +161,11 @@ export function PlannerMapShell({
         mapMode={mapMode}
         onDayMapLayerChange={onDayMapLayerChange}
         onExpand={onExpand}
-        onMapModeChange={(mode) => {
+        onMapModeChange={(mode, comparisonScope) => {
           if (mode === "day_route") setDayPanelOpen(true);
           else if (mode === "overview") setOverviewPanelOpen(true);
           else setComparisonPanelOpen(true);
-          onMapModeChange(mode);
+          onMapModeChange(mode, comparisonScope);
         }}
         onPanelOpen={() => {
           if (mapMode === "overview") setOverviewPanelOpen(true);
