@@ -89,9 +89,16 @@ export function I18nProvider({
       localizedAttributesReady.current = true;
     };
     let initialSync: number | undefined;
+    const scheduleInitialSync = () => {
+      // A streamed route can keep hydrating after the root provider mounts. Mutating localized
+      // attributes before `load` makes React compare translated DOM with the original JSX copy.
+      initialSync = window.setTimeout(startSync, 1_000);
+    };
     if (localizedAttributesReady.current) startSync();
-    else initialSync = window.setTimeout(startSync, 1_000);
+    else if (document.readyState === "complete") scheduleInitialSync();
+    else window.addEventListener("load", scheduleInitialSync, { once: true });
     return () => {
+      window.removeEventListener("load", scheduleInitialSync);
       if (initialSync !== undefined) window.clearTimeout(initialSync);
       observer.disconnect();
     };

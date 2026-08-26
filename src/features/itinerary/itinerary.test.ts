@@ -454,15 +454,17 @@ test("browser locale parsing distinguishes an absent preference from default Eng
 });
 
 test("browser locale wins without rewriting the saved account preference", async () => {
-  const [serverLocale, localeAction, accountAction, accountEditor, rootLayout] = await Promise.all(
-    [
-      "../i18n/server.ts",
-      "../i18n/actions.ts",
-      "../account/actions.ts",
-      "../account/components/account-editor.tsx",
-      "../../app/layout.tsx",
-    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
-  );
+  const [serverLocale, localeAction, i18nProvider, accountAction, accountEditor, rootLayout] =
+    await Promise.all(
+      [
+        "../i18n/server.ts",
+        "../i18n/actions.ts",
+        "../i18n/i18n-provider.tsx",
+        "../account/actions.ts",
+        "../account/components/account-editor.tsx",
+        "../../app/layout.tsx",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+    );
   assert.match(
     serverLocale,
     /if \(browserLocale\) return \{ locale: browserLocale, source: "browser" \}/,
@@ -473,6 +475,8 @@ test("browser locale wins without rewriting the saved account preference", async
   assert.match(accountEditor, /useState\(initialLocale\)/);
   assert.match(accountEditor, /<LanguageSwitcher/);
   assert.match(rootLayout, /persistInitialLocale=\{localeState\.source === "profile"\}/);
+  assert.match(i18nProvider, /document\.readyState === "complete"/);
+  assert.match(i18nProvider, /window\.addEventListener\("load", scheduleInitialSync/);
 });
 
 test("overflow menus remain scrollable inside the available viewport", async () => {
