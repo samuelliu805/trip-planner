@@ -8,6 +8,7 @@ export const routesVariantsZhCN: Record<string, string> = {
   Current: "当前有效",
   "Current calculated legs": "当前已计算路段",
   "Decision summary": "决策摘要",
+  "Days & nights": "天数与住宿晚数",
   "Duplicate Plan": "复制方案",
   "Edit route": "编辑路线",
   "Eligible saved places are shown in gray. Nothing is routed until you save.":
@@ -35,6 +36,7 @@ export const routesVariantsZhCN: Record<string, string> = {
   "Route details": "路线详情",
   Routes: "路线",
   "Saved Day route modes": "已保存的单日路线方式",
+  "Saved distance by mode": "按出行方式统计的已保存距离",
   "Select a day": "选择日期",
   "Select travel mode": "选择出行方式",
   "Set as primary": "设为主方案",
@@ -63,6 +65,7 @@ export const routesVariantsZhCN: Record<string, string> = {
   "unsupported-mode": "不支持的方式",
   Updating: "正在更新",
   "Trip transport items": "行程交通项目",
+  "Unknown nights": "住宿晚数未知",
   same: "项相同",
   changed: "项有变化",
   added: "项新增",

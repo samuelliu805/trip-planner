@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { PlannerVariant } from "@/features/itinerary/types";
 
 import type { PublicItineraryLink } from "../types";
@@ -12,6 +14,7 @@ export function PublicShareSettingsFields({
   existingPage,
   onChooseVariant,
   onSettingChange,
+  pagePicker,
   settings,
   sharePages,
   suggestedDescription,
@@ -22,6 +25,7 @@ export function PublicShareSettingsFields({
   existingPage: boolean;
   onChooseVariant: (variantId: string) => void;
   onSettingChange: <Key extends keyof ShareSettings>(key: Key, value: ShareSettings[Key]) => void;
+  pagePicker: ReactNode;
   settings: ShareSettings;
   sharePages: PublicItineraryLink[];
   suggestedDescription: string;
@@ -39,6 +43,7 @@ export function PublicShareSettingsFields({
         variantId={variantId}
         variants={variants}
       />
+      {pagePicker}
       <ShareSettingDisclosure title="Advanced settings">
         <PublicSharePageFields
           onSettingChange={onSettingChange}

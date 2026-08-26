@@ -3,7 +3,6 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { BarChart3, X } from "lucide-react";
 
-import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { VariantComparisonRows } from "@/features/variants/components/variant-comparison-rows";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 
@@ -24,9 +23,8 @@ export function RouteVariantComparisonPanel({
     <aside
       aria-label="Route variant comparison legend"
       data-i18n-aria-label="Route variant comparison legend"
-      className="map-bottom-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
+      className="map-bottom-panel absolute bottom-3 left-3 right-3 z-20 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
-      <PullUpPanelHandle className="hidden" onClose={onClose} />
       <div className="flex min-h-11 items-center justify-between border-b px-3 py-2">
         <div>
           <h2 className="text-sm font-semibold">

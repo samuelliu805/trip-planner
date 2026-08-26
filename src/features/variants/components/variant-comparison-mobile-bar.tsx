@@ -4,7 +4,6 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { BarChart3, Eye, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 
 export function VariantComparisonMobileBar({
@@ -22,8 +21,7 @@ export function VariantComparisonMobileBar({
   const active = comparison.presentations.find(({ isActive }) => isActive);
   if (!active || comparison.isLoading || comparison.error) return null;
   return (
-    <div className="map-bottom-panel mobile-pull-up-panel absolute inset-x-3 bottom-3 z-20 flex flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur min-[900px]:hidden">
-      <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
+    <div className="map-bottom-panel absolute inset-x-3 bottom-3 z-20 flex flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur min-[900px]:hidden">
       <div className="flex min-h-14 items-center justify-between gap-3 px-3 py-2">
         <div className="min-w-0">
           <h2 className="text-xs font-semibold">
@@ -31,10 +29,6 @@ export function VariantComparisonMobileBar({
               ? t("Day {day} routes", { day: comparison.dayNumber })
               : t("Overview comparison")}
           </h2>
-          <p className="truncate text-[11px] text-muted-foreground">
-            <T message={" Matrix: "} />
-            {active.name} <T message={" · Map: read only "} />
-          </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
           {!comparison.dayNumber ? (

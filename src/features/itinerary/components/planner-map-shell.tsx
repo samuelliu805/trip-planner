@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
-import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
 import { PlannerMapControls } from "@/features/itinerary/components/planner-map-controls";
 import { PlannerMapSelectedPlace } from "@/features/itinerary/components/planner-map-selected-place";
 import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
@@ -172,9 +171,8 @@ export function PlannerMapShell({
         panelDismissed={panelDismissed && !selectedId}
       />
       {!compact && selectedPlace ? (
-        <section className="map-bottom-panel map-place-panel mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
-          <PullUpPanelHandle className="sm:hidden" onClose={closeSelectedPlace} />
-          <div className="min-h-0 overflow-y-auto overscroll-contain px-3 pb-3 pt-1 sm:p-4">
+        <section className="map-bottom-panel map-place-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">
+          <div className="min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-4">
             {selectedPlace}
           </div>
         </section>

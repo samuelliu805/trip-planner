@@ -16,18 +16,9 @@ export function RouteVariantComparisonSheet({
   open: boolean;
 }) {
   const { t } = useI18n();
-  const active = comparison.presentations.find(({ isActive }) => isActive);
   return (
     <PullUpPanel
       className="comparison-sheet z-[120] max-h-[62dvh]"
-      description={t("{explanation} The Matrix stays on {route}.", {
-        explanation: t(
-          comparison.dayNumber
-            ? "Solid lines are saved routes; dashed lines preview Activity stop order."
-            : "Dashed lines show city/town order—not driving directions.",
-        ),
-        route: active?.name ?? t("the route being edited"),
-      })}
       dragMode="mobile"
       id="route-comparison"
       onOpenChange={onOpenChange}

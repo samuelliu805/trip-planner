@@ -39,11 +39,11 @@
   }
 
   .public-template-ethereal .timeline-node-mobile-key-v4 {
-    width: 3rem;
-    flex: 0 0 3rem;
+    width: auto;
+    flex: 0 0 auto;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.04em;
-    text-align: right;
+    text-align: left;
   }
 
   .public-template-ethereal .timeline-node-mobile-type-v4 {

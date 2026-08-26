@@ -1,18 +1,10 @@
 "use client";
 
-import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Pencil, Plus, Route, X } from "lucide-react";
 
-import { PullUpPanelHandle } from "@/components/ui/pull-up-panel";
-import { transportModeLabels } from "@/features/itinerary/types";
-
 import { DayRouteEditor } from "./day-route-editor";
-import {
-  DayRouteStatusBadge,
-  formatRouteDistance,
-  formatRouteDuration,
-  SelectedPlaceSlot,
-} from "./day-route-panel-ui";
+import { DayRouteStatusBadge, SelectedPlaceSlot } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
 import { RouteLegDetails } from "./route-leg-details";
 import type { DayRouteUi } from "./use-day-route";
@@ -26,25 +18,7 @@ function DayRouteSummary({
   route: DayRouteUi;
   selectedPlace?: React.ReactNode;
 }) {
-  const { locale, t } = useI18n();
   const calculation = route.plan?.calculation;
-  const stops = route.plan?.stops.length ?? 0;
-  const modes = [
-    ...new Set(route.plan?.legs.map(({ mode }) => t(transportModeLabels[mode])) ?? []),
-  ];
-  const missingDurations = calculation?.calculatedLegs
-    .filter(({ durationSeconds }) => durationSeconds === null)
-    .map(({ position }) => position);
-  const warnings = [
-    ...new Set(
-      calculation?.calculatedLegs.flatMap(({ warnings: legWarnings }) =>
-        legWarnings.map(({ message }) => message),
-      ) ?? [],
-    ),
-  ];
-  const transitEstimate = calculation?.calculatedLegs.some(
-    ({ estimateKind }) => estimateKind === "transit_current_service",
-  );
   const itemTitles = new Map(route.stopItems.map((item) => [item.id, item.title]));
   const orderedStops = route.plan?.stops
     .slice()
@@ -57,8 +31,7 @@ function DayRouteSummary({
     })) ?? [];
 
   return (
-    <section className="map-bottom-panel day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
-      <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
+    <section className="map-bottom-panel day-route-summary absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
         <div className="mr-auto min-w-0">
@@ -67,22 +40,10 @@ function DayRouteSummary({
             <p className="truncate text-sm font-semibold">
               {route.activeDay ? (
                 <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />
-              ) : null}{" "}
-              <T message={" · Route A "} />
+              ) : null}
             </p>
             <DayRouteStatusBadge route={route} />
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {stops} <T message={" stops "} />
-            {calculation ? ` · ${formatRouteDistance(calculation.total_distance_meters)}` : ""}
-            {calculation?.total_duration_seconds !== null &&
-            calculation?.total_duration_seconds !== undefined
-              ? ` · ${formatRouteDuration(calculation.total_duration_seconds, locale)}`
-              : calculation
-                ? ` · ${t("Duration incomplete")}`
-                : ` · ${t("Not calculated")}`}
-            {modes.length ? ` · ${modes.join(", ")}` : ""}
-          </p>
         </div>
         <RouteIconButton
           label="Edit route"
@@ -96,33 +57,6 @@ function DayRouteSummary({
           <X className="size-4" />
         </RouteIconButton>
       </div>
-      {missingDurations?.length ? (
-        <p className="px-3 text-[11px] text-muted-foreground">
-          <T message={" Duration unknown for "} />
-          {missingDurations.map((position) => `leg ${position}`).join(", ")}.
-        </p>
-      ) : null}
-      {transitEstimate ? (
-        <p className="px-3 text-[11px] text-muted-foreground">
-          <T
-            message={
-              " Transit is an approximate current-service estimate, not an itinerary-time calculation. "
-            }
-          />
-        </p>
-      ) : null}
-      {warnings.length ? (
-        <details className="px-3 text-[11px] text-amber-900">
-          <summary className="cursor-pointer">
-            {warnings.length} <T message={" route warning(s)"} />
-          </summary>
-          <ul className="mt-1 list-disc pl-4">
-            {warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
       <RouteLegDetails legs={legDetails} />
       {route.error ? (
         <p
@@ -147,8 +81,7 @@ export function DayRouteOverlay({
 }) {
   if (!route.activeDay)
     return (
-      <section className="map-bottom-panel day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 overscroll-none rounded-xl border bg-background/95 px-4 pb-4 text-center shadow-lg backdrop-blur">
-        <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
+      <section className="map-bottom-panel day-route-summary absolute bottom-3 left-3 right-3 z-20 overscroll-none rounded-xl border bg-background/95 p-4 text-center shadow-lg backdrop-blur">
         <RouteIconButton
           className="absolute right-2 top-2"
           label="Close route panel"
@@ -172,8 +105,7 @@ export function DayRouteOverlay({
   if (route.plan)
     return <DayRouteSummary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
   return (
-    <section className="map-bottom-panel day-route-summary mobile-pull-up-panel absolute bottom-3 left-3 right-3 z-20 overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
-      <PullUpPanelHandle className="sm:hidden" onClose={onClose} />
+    <section className="map-bottom-panel day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
       <SelectedPlaceSlot>{selectedPlace}</SelectedPlaceSlot>
       <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2">
         <div className="min-w-0">

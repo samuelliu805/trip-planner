@@ -1350,6 +1350,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./components/public-share-settings-fields.tsx", import.meta.url),
     "utf8",
   );
+  const shareBasicFields = await readFile(
+    new URL("./components/public-share-basic-fields.tsx", import.meta.url),
+    "utf8",
+  );
   const shareVisibilityFields = await readFile(
     new URL("./components/public-share-visibility-fields.tsx", import.meta.url),
     "utf8",
@@ -1753,7 +1757,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.doesNotMatch(styles, /content:\s*"(?:Attachments|Links)"/);
   assert.match(
     etherealTimelineMobileDensity,
-    /@media \(max-width: 899px\)[\s\S]*\.timeline-node-mobile-label-v4 \{[^}]*display: flex;[\s\S]*\.timeline-node-mobile-key-v4 \{[^}]*width: 3rem;[^}]*font-variant-numeric: tabular-nums;[^}]*text-align: right/,
+    /@media \(max-width: 899px\)[\s\S]*\.timeline-node-mobile-label-v4 \{[^}]*display: flex;[\s\S]*\.timeline-node-mobile-key-v4 \{[^}]*width: auto;[^}]*font-variant-numeric: tabular-nums;[^}]*text-align: left/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 899px\)[\s\S]*\.public-template-traverse \.timeline-section-v4 \{[^}]*padding: 1rem 0\.5625rem 0\.875rem;[\s\S]*\.public-template-traverse \.timeline-section-header-v4 \{[^}]*grid-template-columns: 2\.75rem minmax\(0, 1fr\);[^}]*gap: 0\.375rem/,
   );
   assert.match(
     etherealOverviewRedesign,
@@ -1844,6 +1852,15 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
   assert.match(shareSettingsFields, /LongImageSettingsFields/);
+  assert.match(shareBasicFields, /!existingPage \? \([\s\S]*public-share-variant/);
+  assert.doesNotMatch(shareBasicFields, /Route \(fixed\)/);
+  assert.ok(
+    shareSettingsFields.indexOf("PublicShareBasicFields") <
+      shareSettingsFields.indexOf("{pagePicker}") &&
+      shareSettingsFields.indexOf("{pagePicker}") <
+        shareSettingsFields.indexOf('ShareSettingDisclosure title="Advanced settings"'),
+    "style and route fields stay before the share-page picker and advanced settings",
+  );
   assert.doesNotMatch(longImageFields, /Entire trip|Date range/);
   assert.match(longImageScopePicker, /Entire trip/);
   assert.match(longImageScopePicker, /Date range/);

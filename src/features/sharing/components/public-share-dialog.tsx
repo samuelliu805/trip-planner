@@ -201,41 +201,45 @@ export function PublicShareDialog({
               pending={pending}
               publicUrl={publicUrl}
             />
-            <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <div className="min-w-0 space-y-1.5">
-                <Label htmlFor="share-page-picker">
-                  <T message={"Shareable page"} />
-                </Label>
-                <Select onValueChange={choosePage} value={selectedPageId}>
-                  <SelectTrigger className="min-h-11 min-w-0" id="share-page-picker">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {links.map((page, index) => (
-                      <SelectItem key={page.id} value={page.id}>
-                        {page.shareTitle || t("Shareable page {number}", { number: index + 1 })} ·{" "}
-                        {variants.find(({ id }) => id === page.variantId)?.name ?? t("Saved route")}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="new">
-                      <T message={"New shareable page"} />
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="min-h-11"
-                onClick={createAnotherPage}
-                type="button"
-                variant="outline"
-              >
-                <Plus className="size-4" /> <T message={" New shareable page "} />
-              </Button>
-            </div>
             <PublicShareSettingsFields
               existingPage={Boolean(activeLink)}
               onChooseVariant={chooseVariant}
               onSettingChange={setSetting}
+              pagePicker={
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div className="min-w-0 space-y-1.5">
+                    <Label htmlFor="share-page-picker">
+                      <T message={"Shareable page"} />
+                    </Label>
+                    <Select onValueChange={choosePage} value={selectedPageId}>
+                      <SelectTrigger className="min-h-11 min-w-0" id="share-page-picker">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {links.map((page, index) => (
+                          <SelectItem key={page.id} value={page.id}>
+                            {page.shareTitle || t("Shareable page {number}", { number: index + 1 })}{" "}
+                            {" · "}
+                            {variants.find(({ id }) => id === page.variantId)?.name ??
+                              t("Saved route")}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="new">
+                          <T message={"New shareable page"} />
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    className="min-h-11"
+                    onClick={createAnotherPage}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Plus className="size-4" /> <T message={" New shareable page "} />
+                  </Button>
+                </div>
+              }
               settings={settings}
               sharePages={links.filter(({ id }) => id !== activeLink?.id)}
               suggestedDescription={suggestedDescription}

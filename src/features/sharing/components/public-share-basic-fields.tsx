@@ -29,19 +29,14 @@ export function PublicShareBasicFields({
   variants: PlannerVariant[];
 }) {
   const templates = publicTemplateOptions();
-  const variant = variants.find(({ id }) => id === variantId);
 
   return (
-    <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-      <div className="min-w-0 space-y-1.5">
-        <Label htmlFor={existingPage ? undefined : "public-share-variant"}>
-          <T message={existingPage ? "Route (fixed)" : "Route"} />
-        </Label>
-        {existingPage ? (
-          <div className="flex min-h-11 items-center border bg-muted/30 px-3 text-sm">
-            {variant?.name ?? <T message="Route unavailable" />}
-          </div>
-        ) : (
+    <div className={`grid min-w-0 gap-4 ${existingPage ? "" : "sm:grid-cols-2"}`}>
+      {!existingPage ? (
+        <div className="min-w-0 space-y-1.5">
+          <Label htmlFor="public-share-variant">
+            <T message={"Route"} />
+          </Label>
           <Select onValueChange={onChooseVariant} value={variantId}>
             <SelectTrigger className="min-h-11 min-w-0" id="public-share-variant">
               <SelectValue />
@@ -54,8 +49,8 @@ export function PublicShareBasicFields({
               ))}
             </SelectContent>
           </Select>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="min-w-0 space-y-1.5">
         <Label htmlFor="public-share-template">

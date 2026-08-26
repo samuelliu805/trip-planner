@@ -24,11 +24,9 @@ export const formatRouteDuration = (seconds: number, locale: "en" | "zh-CN" = "e
 };
 
 export function DayRouteStatusBadge({ route }: { route: DayRouteUi }) {
-  if (!route.status) return null;
+  if (!route.status || route.status === "current") return null;
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${route.status === "current" ? "bg-primary/15 text-primary" : "bg-amber-100 text-amber-900"}`}
-    >
+    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900">
       <Localized value={statusLabels[route.status]} />
     </span>
   );

@@ -3,9 +3,26 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
-import { formatMoney } from "@/features/research/money";
+
+function comparisonMoney(amount: number, currency: string, locale: "en" | "zh-CN") {
+  let fractionDigits = 2;
+  try {
+    fractionDigits =
+      new Intl.NumberFormat(locale, {
+        currency,
+        style: "currency",
+      }).resolvedOptions().minimumFractionDigits ?? 2;
+  } catch {
+    fractionDigits = 2;
+  }
+  return `${currency} ${amount.toLocaleString(locale, {
+    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: fractionDigits,
+  })}`;
+}
 
 function VariantBadges({ isActive, isPrimary }: { isActive: boolean; isPrimary: boolean }) {
+  if (!isActive && !isPrimary) return null;
   return (
     <span className="flex flex-wrap items-center gap-1 text-[10px] font-semibold uppercase tracking-wide">
       {isPrimary ? (
@@ -13,17 +30,17 @@ function VariantBadges({ isActive, isPrimary }: { isActive: boolean; isPrimary: 
           <T message={"Primary"} />
         </span>
       ) : null}
-      <span
-        className={`rounded-sm px-1.5 py-0.5 ${isActive ? "border text-foreground" : "bg-muted text-muted-foreground"}`}
-      >
-        <Localized value={isActive ? "Editing" : "Read only"} />
-      </span>
+      {isActive ? (
+        <span className="rounded-sm border px-1.5 py-0.5 text-foreground">
+          <Localized value="Editing" />
+        </span>
+      ) : null}
     </span>
   );
 }
 
 export function VariantComparisonRows({ comparison }: { comparison: VariantComparisonUi }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   return comparison.presentations.map((variant) => {
     const visible = variant.isActive || comparison.visibleVariantIds.has(variant.variantId);
     const controlId = `comparison-route-${variant.variantId}`;
@@ -33,7 +50,6 @@ export function VariantComparisonRows({ comparison }: { comparison: VariantCompa
         key={variant.variantId}
       >
         <Checkbox
-          aria-describedby={`${controlId}-status`}
           aria-label={
             variant.isActive
               ? t("{variant} is being edited and is always visible on the comparison map", {
@@ -73,22 +89,13 @@ export function VariantComparisonRows({ comparison }: { comparison: VariantCompa
             {variant.citySequence}
           </span>
           <span className="mt-0.5 block truncate text-[10px] font-semibold text-foreground">
-            <T message={" Known Cost ·"} />{" "}
             {variant.knownCost.length ? (
               variant.knownCost
-                .map(({ amount, currency }) => `${currency} ${formatMoney(amount, currency)}`)
+                .map(({ amount, currency }) => comparisonMoney(amount, currency, locale))
                 .join(" · ")
             ) : (
               <T message="No priced items" />
             )}
-          </span>
-          <span
-            className="mt-0.5 block text-[10px] font-medium text-muted-foreground"
-            id={`${controlId}-status`}
-          >
-            <Localized
-              value={variant.isActive ? "Always visible" : visible ? "Visible" : "Hidden"}
-            />
           </span>
         </label>
       </article>

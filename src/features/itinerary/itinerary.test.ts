@@ -2089,6 +2089,8 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.doesNotMatch(routeUi, /View route|requestFit/);
   assert.match(routeUi, /Manual order is used/);
   assert.match(routeUi, /Save & calculate/);
+  assert.doesNotMatch(routeUi, /route warning\(s\)|message=\{" · Route A"\}/);
+  assert.doesNotMatch(routeUi + overviewUi + mapShell, /PullUpPanelHandle|mobile-pull-up-panel/);
   assert.doesNotMatch(
     routeUi,
     /[">]Route [BC][<"]|alternative route|schedule selector|time order/i,

@@ -37,7 +37,7 @@ export const tripsZhCN: Record<string, string> = {
   "Delete Trip": "删除行程",
   "Delete trip": "删除行程",
   "Deleting “": "正在删除“",
-  "Edit trip": "编辑行程",
+  "Edit trip": "行程设置",
   "End date": "结束日期",
   "New trip": "新建行程",
   "Open planner": "打开行程表",
