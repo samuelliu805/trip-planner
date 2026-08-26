@@ -4,7 +4,7 @@ import { Mali, Nunito } from "next/font/google";
 import { QueryProvider } from "@/components/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/features/i18n/i18n-provider";
-import { getRequestLocale } from "@/features/i18n/server";
+import { getRequestLocale, getRequestLocaleState } from "@/features/i18n/server";
 import { getSiteUrl } from "@/features/sharing/site-url";
 
 import "./globals.css";
@@ -36,11 +36,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const locale = await getRequestLocale();
+  const localeState = await getRequestLocaleState();
+  const { locale } = localeState;
   return (
     <html lang={locale}>
       <body className={`${journalSans.variable} ${journalHand.variable}`}>
-        <I18nProvider initialLocale={locale}>
+        <I18nProvider
+          initialLocale={locale}
+          persistInitialLocale={localeState.source === "profile"}
+        >
           <QueryProvider>
             <TooltipProvider delayDuration={350}>{children}</TooltipProvider>
           </QueryProvider>

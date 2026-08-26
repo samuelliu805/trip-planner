@@ -1,3 +1,6 @@
+"use client";
+
+import { useI18n } from "@/features/i18n/i18n-provider";
 import { PublicItemIcon } from "./public-item-icon";
 import { PublicItemMediaGallery } from "./public-item-media";
 import { PublicQuickActions } from "./public-quick-actions";
@@ -13,7 +16,8 @@ export function PublicTimelineTransport({
   item: PublicItineraryItem;
   label: string;
 }) {
-  const shortTitle = publicTransportShortLabel(item);
+  const { t } = useI18n();
+  const shortTitle = t(publicTransportShortLabel(item));
   const structuredMeta = publicTimelineTransportMeta(item);
   const meta =
     [publicTransportSupportingTitle(item), structuredMeta]

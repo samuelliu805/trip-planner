@@ -25,11 +25,16 @@ export type {
   OverviewStageProjection,
 } from "./locality-foundation.ts";
 
-const canonicalActivityTypes = new Set<ItineraryItem["type"]>(["activity", "meal", "hotel"]);
+const canonicalLocalityTypes = new Set<ItineraryItem["type"]>([
+  "activity",
+  "car_rental",
+  "hotel",
+  "meal",
+]);
 
 function activityLocality(item: ItineraryItem): ActivityLocality | null {
   const label = item.place?.localityName?.trim();
-  if (!label || !item.place || !canonicalActivityTypes.has(item.type)) return null;
+  if (!label || !item.place || !canonicalLocalityTypes.has(item.type)) return null;
   const hasCoordinate = usableCoordinate(item.place.latitude, item.place.longitude);
   return {
     countryCode: item.place.countryCode,
@@ -65,13 +70,8 @@ function legacyLocality(item: ItineraryItem): ActivityLocality | null {
   };
 }
 
-function deduplicateFirstAppearance(localities: ActivityLocality[]) {
-  const seen = new Set<string>();
-  return localities.filter((locality) => {
-    if (seen.has(locality.key)) return false;
-    seen.add(locality.key);
-    return true;
-  });
+function deduplicateAdjacentLocalities(localities: ActivityLocality[]) {
+  return localities.filter((locality, index) => locality.key !== localities[index - 1]?.key);
 }
 
 export function deriveDayLocality(day: PlannerDay): DayLocalityProjection {
@@ -85,7 +85,7 @@ export function deriveDayLocality(day: PlannerDay): DayLocalityProjection {
     return locality ? [locality] : [];
   });
   const evidence = canonicalEvidence.length ? canonicalEvidence : legacyEvidence;
-  const localities = deduplicateFirstAppearance(evidence);
+  const localities = deduplicateAdjacentLocalities(evidence);
 
   const stayLocality = [...orderedItems]
     .reverse()
@@ -142,7 +142,7 @@ export function representativeActivityAnchor(days: PlannerDay[]): OverviewAnchor
     [...day.items].sort(compareManualItemOrder).flatMap((item): OverviewAnchor[] => {
       if (
         item.type === "location" ||
-        !canonicalActivityTypes.has(item.type) ||
+        !canonicalLocalityTypes.has(item.type) ||
         !item.place ||
         !usableCoordinate(item.place.latitude, item.place.longitude)
       )
@@ -180,9 +180,8 @@ export function representativeActivityAnchor(days: PlannerDay[]): OverviewAnchor
 }
 
 /**
- * Groups a Day's Activity places by locality, preserving first appearance. When the final Hotel
- * returns to the base locality after an intermediate stop, the return is retained as the final
- * cluster instead of being globally deduplicated.
+ * Groups neighboring itinerary places by locality. A later return to a locality starts a new
+ * cluster so the inferred route keeps its actual A → B → A order.
  */
 export function deriveDayOverviewClusters(day: PlannerDay): DayOverviewCluster[] {
   const orderedItems = [...day.items].sort(compareManualItemOrder);
@@ -195,13 +194,16 @@ export function deriveDayOverviewClusters(day: PlannerDay): DayOverviewCluster[]
     return locality ? [{ item, locality }] : [];
   });
   const evidence = canonical.length ? canonical : legacy;
-  const groups = new Map<
-    string,
-    { itemIds: string[]; locality: ActivityLocality; points: OverviewAnchor[] }
-  >();
+  const groups: Array<{
+    itemIds: string[];
+    locality: ActivityLocality;
+    points: OverviewAnchor[];
+  }> = [];
 
   for (const { item, locality } of evidence) {
-    const group = groups.get(locality.key) ?? { itemIds: [], locality, points: [] };
+    const previous = groups.at(-1);
+    const group =
+      previous?.locality.key === locality.key ? previous : { itemIds: [], locality, points: [] };
     group.itemIds.push(item.id);
     if (locality.placeId && locality.latitude !== undefined && locality.longitude !== undefined)
       group.points.push({
@@ -210,48 +212,25 @@ export function deriveDayOverviewClusters(day: PlannerDay): DayOverviewCluster[]
         longitude: locality.longitude,
         placeId: locality.placeId,
       });
-    groups.set(locality.key, group);
+    if (group !== previous) groups.push(group);
   }
 
-  const clusters = [...groups.values()].map((group): DayOverviewCluster => ({
-    anchor: representativeAnchor(group.points),
-    itemIds: group.itemIds,
-    locality: group.locality,
-    returning: false,
-  }));
-  const primary = deriveDayLocality(day).primaryLocality;
-  const finalEvidence = evidence.at(-1);
-  const primaryGroup = primary ? groups.get(primary.key) : undefined;
-  if (
-    clusters.length > 1 &&
-    primary &&
-    primaryGroup &&
-    finalEvidence?.locality.key === primary.key &&
-    clusters.at(-1)?.locality.key !== primary.key
-  ) {
-    const locality = finalEvidence.locality;
-    const returnAnchor =
-      locality.placeId && locality.latitude !== undefined && locality.longitude !== undefined
-        ? {
-            itemId: finalEvidence.item.id,
-            latitude: locality.latitude,
-            longitude: locality.longitude,
-            placeId: locality.placeId,
-          }
-        : representativeAnchor(primaryGroup.points);
-    clusters.push({
-      anchor: returnAnchor,
-      itemIds: [finalEvidence.item.id],
-      locality,
-      returning: true,
-    });
-  }
-  return clusters;
+  const seen = new Set<string>();
+  return groups.map((group): DayOverviewCluster => {
+    const returning = seen.has(group.locality.key);
+    seen.add(group.locality.key);
+    return {
+      anchor: representativeAnchor(group.points),
+      itemIds: group.itemIds,
+      locality: group.locality,
+      returning,
+    };
+  });
 }
 
 function stageSecondaryLocalities(days: PlannerDay[], primary: ActivityLocality | null) {
   const all = days.flatMap((day) => deriveDayLocality(day).localities);
-  return deduplicateFirstAppearance(all).filter((locality) => locality.key !== primary?.key);
+  return deduplicateAdjacentLocalities(all).filter((locality) => locality.key !== primary?.key);
 }
 
 function finalizeStage(stage: Omit<OverviewStageProjection, "anchor" | "secondaryLocalities">) {

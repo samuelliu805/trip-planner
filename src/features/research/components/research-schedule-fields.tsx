@@ -90,7 +90,7 @@ export function ResearchSegmentScheduleFields({
           segment.origin || segment.destination
             ? `${segment.origin || t("From")} → ${segment.destination || t("To")}`
             : locale === "zh-CN"
-              ? `第 ${index + 1} 段${t(category === "flight" ? "Flight" : "Train")}`
+              ? `第${index + 1}段${t(category === "flight" ? "Flight" : "Train")}`
               : `${t(category === "flight" ? "Flight" : "Train")} ${index + 1}`;
         return (
           <div

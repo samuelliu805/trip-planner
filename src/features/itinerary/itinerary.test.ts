@@ -45,6 +45,7 @@ import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import { inferredHomeCity } from "../account/profile-defaults.ts";
+import { parseLocale } from "../i18n/config.ts";
 import {
   defaultTripCurrency,
   defaultTripDayCount,
@@ -109,6 +110,7 @@ import {
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
 import {
   deriveDayLocality,
+  deriveDayOverviewClusters,
   deriveOverviewStageProjections,
   formatDayLocalitySummary,
   representativeActivityAnchor,
@@ -442,6 +444,44 @@ test("Account and Ideas share supported currencies while email remains plain tex
   assert.match(accountEditor, /message=(?:\{" Email "\}|"Email")[\s\S]*\{email\}<\/p>/);
   assert.match(bookingPriceFields, /commonBookingCurrencies[^=]*= tripCurrencyCodes/);
   assert.match(plannerResearchActions, /currencies[^=]*= tripCurrencyCodes/);
+});
+
+test("browser locale parsing distinguishes an absent preference from default English", () => {
+  assert.equal(parseLocale(undefined), null);
+  assert.equal(parseLocale("en"), "en");
+  assert.equal(parseLocale("zh-Hans"), "zh-CN");
+  assert.equal(parseLocale("fr"), null);
+});
+
+test("browser locale wins without rewriting the saved account preference", async () => {
+  const [serverLocale, localeAction, accountAction, accountEditor, rootLayout] = await Promise.all(
+    [
+      "../i18n/server.ts",
+      "../i18n/actions.ts",
+      "../account/actions.ts",
+      "../account/components/account-editor.tsx",
+      "../../app/layout.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
+  assert.match(
+    serverLocale,
+    /if \(browserLocale\) return \{ locale: browserLocale, source: "browser" \}/,
+  );
+  assert.match(serverLocale, /source: "profile"/);
+  assert.doesNotMatch(localeAction, /preferred_locale|profiles|createClient/);
+  assert.doesNotMatch(accountAction, /setLocaleCookie/);
+  assert.match(accountEditor, /useState\(initialLocale\)/);
+  assert.match(accountEditor, /<LanguageSwitcher/);
+  assert.match(rootLayout, /persistInitialLocale=\{localeState\.source === "profile"\}/);
+});
+
+test("overflow menus remain scrollable inside the available viewport", async () => {
+  const dropdown = await readFile(
+    new URL("../../components/ui/dropdown-menu.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dropdown, /max-h-\[var\(--radix-dropdown-menu-content-available-height\)\]/);
+  assert.match(dropdown, /overflow-x-hidden overflow-y-auto overscroll-contain/);
 });
 
 test("trip filters, date settlement, and lifecycle toggles stay deterministic", () => {
@@ -1485,9 +1525,9 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
   const firstDay = deriveDayLocality(days[0]);
   assert.deepEqual(
     firstDay.localities.map(({ label }) => label),
-    ["Boston", "Cambridge"],
+    ["Boston", "Cambridge", "Boston", "Cambridge", "Boston"],
   );
-  assert.equal(formatDayLocalitySummary(firstDay), "Boston · Cambridge");
+  assert.equal(formatDayLocalitySummary(firstDay), "Boston · Cambridge · +3");
   assert.equal(firstDay.primaryLocality?.label, "Boston");
 
   const stages = deriveOverviewStageProjections(days);
@@ -1507,9 +1547,9 @@ test("Activity locality drives Day summaries and adjacent-only Overview stages",
   const mapStages = deriveOverviewStages(days);
   assert.deepEqual(
     mapStages.map(({ entries }) => entries[0].title),
-    ["Boston", "Cambridge", "Boston", "Hakone", "Boston"],
+    ["Boston", "Cambridge", "Boston", "Cambridge", "Boston", "Hakone", "Boston"],
   );
-  assert.equal(mapStages[2].entries[0].itemId, "hotel");
+  assert.equal(mapStages[4].entries[0].itemId, "hotel");
 });
 
 test("overview allows the same City across days and omits the no-travel stay boundary", () => {
@@ -2882,7 +2922,34 @@ test("Day locality uses Stay, dominant frequency, first-appearance ties, and leg
   assert.equal(deriveDayLocality(tied).primaryLocality?.label, "Cambridge");
   assert.deepEqual(
     deriveDayLocality(tied).localities.map(({ label }) => label),
-    ["Cambridge", "Boston"],
+    ["Cambridge", "Providence", "Boston"],
+  );
+
+  const returned = {
+    ...tied,
+    id: "returned",
+    items: [
+      placed("cambridge-1", "activity", 0, "Cambridge"),
+      placed("cambridge-2", "meal", 1, "Cambridge"),
+      placed("providence-1", "car_rental", 2, "Providence"),
+      placed("providence-2", "car_rental", 3, "Providence"),
+      placed("cambridge-return", "activity", 4, "Cambridge"),
+    ],
+  } as unknown as PlannerDay;
+  assert.deepEqual(
+    deriveDayLocality(returned).localities.map(({ label }) => label),
+    ["Cambridge", "Providence", "Cambridge"],
+  );
+  assert.deepEqual(
+    deriveDayOverviewClusters(returned).map(({ locality, returning }) => [
+      locality.label,
+      returning,
+    ]),
+    [
+      ["Cambridge", false],
+      ["Providence", false],
+      ["Cambridge", true],
+    ],
   );
 
   const stayed = {

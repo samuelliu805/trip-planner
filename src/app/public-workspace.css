@@ -14,6 +14,7 @@
 @import "./public-workspace-tablet.css";
 @import "./public-sharing-content-safety.css";
 @import "./public-sharing-table-resources.css";
+@import "./public-sharing-i18n.css";
 
 html:has(.public-itinerary-shell),
 body:has(.public-itinerary-shell) {
@@ -27,10 +28,11 @@ body:has(.public-itinerary-shell) {
 }
 
 .public-itinerary-shell {
-  position: relative;
+  position: fixed;
+  inset: 0;
   width: 100%;
-  height: 100dvh;
-  max-height: 100dvh;
+  height: auto;
+  max-height: none;
   overflow: hidden;
   overscroll-behavior: none;
 }

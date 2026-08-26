@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 
 import { updateAccountSchema } from "@/features/account/schema";
 import type { AccountActionState } from "@/features/account/types";
-import { setLocaleCookie } from "@/features/i18n/server-cookie";
 import { createClient } from "@/lib/supabase/server";
 
 export async function updateAccount(
@@ -41,7 +40,6 @@ export async function updateAccount(
     .maybeSingle();
 
   if (error || !data) return { error: error?.message ?? "Could not save your preferences." };
-  await setLocaleCookie(parsed.data.locale);
   revalidatePath("/account");
   return { success: "Account preferences saved." };
 }

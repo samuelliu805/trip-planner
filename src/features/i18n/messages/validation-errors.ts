@@ -4,7 +4,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Add a name, link, or note.": "请填写名称、链接或备注。",
   "Add a reminder or detail": "添加提醒或详情",
   "Add a saved place to an Activity, Meal, or Hotel on this day.":
-    "请为当天的活动、用餐或酒店添加已保存地点。",
+    "请为当天的活动、用餐或住宿添加已保存地点。",
   "Add a saved place with city/town data to an Activity to map the trip overview.":
     "请为活动添加包含城市或城镇信息的已保存地点，以便绘制全程地图。",
   "Add at least two city/town stages before calculating.":
@@ -73,7 +73,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   Forest: "森林绿",
   "Google could not find a route for this leg, so a straight fallback is shown.":
     "Google 未找到此路段的路线，已改用直线显示。",
-  hotel: "酒店",
+  hotel: "住宿",
   "Items can only be copied within the active route variant.": "只能在当前方案内复制项目。",
   "Items must be unique.": "项目不能重复。",
   "Leg mode count must equal stop count minus one.": "分段出行方式数量应比停靠点数量少一个。",
@@ -96,7 +96,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Only HTTP(S) destinations can be encoded.": "只能编码 HTTP(S) 目标地址。",
   "Only HTTP(S) links can be shared.": "只能分享 HTTP(S) 链接。",
   "Only one hotel is allowed per day. Edit the existing hotel instead.":
-    "每天只能添加一家酒店，请编辑现有酒店。",
+    "每天只能添加一个住宿项目，请编辑现有住宿。",
   "Only safe public media URLs can be shared.": "只能分享安全的公开媒体网址。",
   "Only the private attachment access route can be shared.": "只能分享私有附件访问路径。",
   "Overview leg positions must be unique.": "全程路线的分段位置不能重复。",
@@ -182,8 +182,8 @@ export const validationErrorsZhCN: Record<string, string> = {
   "These files would exceed this item’s 50 MB attachment limit.":
     "这些文件会超过此项目 50 MB 的附件上限。",
   "This day": "当天",
-  "This day route must end at the current day Hotel.": "当天路线必须在当天酒店结束。",
-  "This day route must start at the previous day Hotel.": "当天路线必须从前一天酒店出发。",
+  "This day route must end at the current day Hotel.": "当天路线必须在当天住宿结束。",
+  "This day route must start at the previous day Hotel.": "当天路线必须从前一天住宿出发。",
   "This item type does not contribute a Plan price.": "此项目类型不计入方案价格。",
   "This item type does not support links.": "此项目类型不支持链接。",
   "This item type does not support times.": "此项目类型不支持时间。",

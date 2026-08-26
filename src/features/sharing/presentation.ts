@@ -132,28 +132,39 @@ function normalizedCityName(value?: string) {
   return value?.trim().toLocaleLowerCase().replace(/\s+/g, " ") ?? "";
 }
 
-function samePublicCity(left: PublicItineraryItem, right: PublicItineraryItem) {
-  const leftNames = new Set(
-    [left.title, left.place?.displayName].map(normalizedCityName).filter(Boolean),
-  );
-  const sameName = [right.title, right.place?.displayName]
-    .map(normalizedCityName)
-    .some((name) => name && leftNames.has(name));
-  const sameCoordinates =
-    typeof left.place?.latitude === "number" &&
-    typeof left.place.longitude === "number" &&
-    left.place.latitude === right.place?.latitude &&
-    left.place.longitude === right.place?.longitude;
-  return sameName || sameCoordinates;
+function adjacentUniqueLabels(entries: Array<{ key: string; label: string }>) {
+  return entries
+    .filter((entry, index) => entry.key !== entries[index - 1]?.key)
+    .map(({ label }) => label);
 }
 
 export function publicDayCitySequence(day: PublicItineraryDay) {
-  if (day.localities?.length) return [...new Set(day.localities)];
+  const canonical = orderedPublicItems(day).flatMap((item) => {
+    if (!["activity", "car_rental", "hotel", "meal"].includes(item.type)) return [];
+    const label = item.place?.localityName?.trim();
+    if (!label) return [];
+    return [
+      {
+        key: `${item.place?.countryCode?.toUpperCase() ?? ""}:${normalizedCityName(label)}`,
+        label,
+      },
+    ];
+  });
+  if (canonical.length) return adjacentUniqueLabels(canonical);
+  if (day.localities?.length)
+    return adjacentUniqueLabels(
+      day.localities.map((label) => ({ key: normalizedCityName(label), label })),
+    );
   const cityItems = orderedPublicItems(day).filter((item) => item.type === "location");
   if (!cityItems.length) return day.city ? [day.city] : [];
-  return cityItems
-    .filter((item, index) => index === 0 || !samePublicCity(cityItems[index - 1], item))
-    .map(({ title }) => title);
+  return adjacentUniqueLabels(
+    cityItems.map((item) => ({
+      key: `${item.place?.countryCode?.toUpperCase() ?? ""}:${normalizedCityName(
+        item.place?.localityName || item.place?.displayName || item.title,
+      )}`,
+      label: item.place?.localityName?.trim() || item.place?.displayName?.trim() || item.title,
+    })),
+  );
 }
 
 export function publicDayCityLabel(day: PublicItineraryDay, condensed = false) {

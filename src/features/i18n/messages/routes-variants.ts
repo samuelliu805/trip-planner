@@ -18,8 +18,8 @@ export const routesVariantsZhCN: Record<string, string> = {
   "Move stop up": "上移站点",
   "New empty Plan": "新建空白方案",
   "No day route": "暂无当天路线",
-  "No explicit Hotel occurrences.": "没有明确添加的酒店项目。",
-  "No Hotel occurrences in either route.": "两个方案中都没有酒店项目。",
+  "No explicit Hotel occurrences.": "没有明确添加的住宿项目。",
+  "No Hotel occurrences in either route.": "两个方案中都没有住宿项目。",
   "No saved Day routes. Opening this summary never calculates routes.":
     "暂无已保存的单日路线。打开摘要不会触发路线计算。",
   "Not set · preview line": "未设置 · 仅显示预览线",
@@ -42,7 +42,7 @@ export const routesVariantsZhCN: Record<string, string> = {
   Summary: "摘要",
   Uncalculated: "未计算",
   "Unplanned places": "未规划地点",
-  "Use Hotels as start & end": "以酒店作为起点和终点",
+  "Use Hotels as start & end": "以住宿作为起点和终点",
   "vs Primary": "与主方案相比",
   "Add stops from Unplanned places or select a gray Pin on the map.":
     "可从“未规划地点”添加站点，或选择地图上的灰色图钉。",
@@ -67,9 +67,9 @@ export const routesVariantsZhCN: Record<string, string> = {
   changed: "项有变化",
   added: "项新增",
   removed: "项已移除",
-  "Hotel occurrences": "酒店项目",
+  "Hotel occurrences": "住宿项目",
   "Explicit Hotel items only. An occurrence is not an inferred night.":
-    "仅统计明确添加的酒店项目，不根据住宿晚数推断。",
+    "仅统计明确添加的住宿项目，不根据住宿晚数推断。",
   "Known Cost ·": "已知费用 ·",
   "Factual saved data · neutral differences vs Primary · no route calculation":
     "基于已保存数据 · 客观对比主方案差异 · 不触发路线计算",
@@ -81,7 +81,7 @@ export const routesVariantsZhCN: Record<string, string> = {
   "Explicit saved leg modes only; stale and needs-editing routes are excluded.":
     "仅统计明确保存的路段方式；需要更新或编辑的路线不计入。",
   "Requires a place-linked Hotel on both the previous day and this day.":
-    "前一天和当天都必须有已关联地点的酒店。",
+    "前一天和当天都必须有已关联地点的住宿。",
   "· Route A": "· 路线 A",
   "· No day route": "· 暂无当天路线",
   stops: "个站点",

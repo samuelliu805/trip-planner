@@ -88,6 +88,7 @@ async function readAppStyles() {
         "../../app/public-sharing-content-safety.css",
         "../../app/public-sharing-table.css",
         "../../app/public-sharing-table-resources.css",
+        "../../app/public-sharing-i18n.css",
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
         "../../app/public-sharing-timeline-export.css",
@@ -790,7 +791,7 @@ test("public Days and Overview retain intermediate locality clusters", () => {
   assert.equal(buildPublicOverviewLines({ ...itinerary, days: [day] }).length, 1);
 });
 
-test("public Overview clusters alternating localities and retains the final Hotel return", () => {
+test("public Overview includes rental localities and collapses only neighboring duplicates", () => {
   const day = publicItinerarySchema.parse({
     ...itinerary,
     days: [
@@ -823,13 +824,37 @@ test("public Overview clusters alternating localities and retains the final Hote
           },
           {
             place: {
+              displayName: "Rental pickup",
+              latitude: 41.82,
+              localityName: "Providence",
+              longitude: -71.41,
+            },
+            ref: ref("v"),
+            sortOrder: 2,
+            title: "Rental pickup",
+            type: "car_rental",
+          },
+          {
+            place: {
+              displayName: "Rental return",
+              latitude: 41.83,
+              localityName: "Providence",
+              longitude: -71.4,
+            },
+            ref: ref("w"),
+            sortOrder: 3,
+            title: "Rental return",
+            type: "car_rental",
+          },
+          {
+            place: {
               displayName: "Lunch",
               latitude: 42.35,
               localityName: "Boston",
               longitude: -71.07,
             },
             ref: ref("s"),
-            sortOrder: 2,
+            sortOrder: 4,
             title: "Lunch",
             type: "meal",
           },
@@ -841,7 +866,7 @@ test("public Overview clusters alternating localities and retains the final Hote
               longitude: -71.05,
             },
             ref: ref("t"),
-            sortOrder: 3,
+            sortOrder: 5,
             title: "Hotel",
             type: "hotel",
           },
@@ -854,10 +879,10 @@ test("public Overview clusters alternating localities and retains the final Hote
   const stops = publicOverviewStops(day);
   assert.deepEqual(
     stops.map(({ title }) => title),
-    ["Boston", "Cambridge", "Boston"],
+    ["Boston", "Cambridge", "Providence", "Boston"],
   );
   assert.equal(stops.at(-1)?.ref, ref("t"));
-  assert.equal(buildPublicOverviewLines(day).length, 2);
+  assert.equal(buildPublicOverviewLines(day).length, 3);
   assert.equal(buildPublicOverviewLines(day, "#58f58b")[0]?.color, "#58f58b");
   assert.equal(
     buildPublicMarkers(day, { color: "#58f58b", glyphColor: "#06100a" })[0]?.variantColor,
@@ -1630,6 +1655,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(styles, /\.public-itinerary-shell[\s\S]*overscroll-behavior: none/);
   assert.match(
     styles,
+    /\.public-itinerary-shell \{[\s\S]*position: fixed;[\s\S]*inset: 0;[\s\S]*height: auto;/,
+  );
+  assert.match(
+    styles,
     /html:has\(\.public-itinerary-shell\),[\s\S]*body:has\(\.public-itinerary-shell\)[\s\S]*position: fixed/,
   );
   assert.match(styles, /\.public-itinerary-header[\s\S]*position: relative/);
@@ -1654,6 +1683,26 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     /\.public-template-journal \.public-matrix \.matrix-grid-header \{\s*height: 2\.75rem;/,
   );
   assert.match(styles, /\.public-view-scroll[\s\S]*overscroll-behavior-y: none/);
+  assert.match(
+    styles,
+    /\.public-template-ethereal \.public-view-scroll,[\s\S]*\.public-template-journal \.public-view-scroll \{[\s\S]*scrollbar-width: thin/,
+  );
+  assert.match(
+    styles,
+    /html\[lang="zh-CN"\][\s\S]*\.timeline-day-index-v4[\s\S]*white-space: nowrap;[\s\S]*word-break: keep-all/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-traverse \.public-map-panel \{[\s\S]*--background: #151b1e;[\s\S]*--foreground: #eef2f0;/,
+  );
+  assert.match(
+    styles,
+    /\.public-table-cell-items\.is-transport \{[\s\S]*border: 0;[\s\S]*background: transparent;/,
+  );
+  assert.match(
+    styles,
+    /\.public-attachment-button,[\s\S]*\.public-resource-button \{[\s\S]*border-color:[\s\S]*background:/,
+  );
   assert.match(
     styles,
     /\.public-view-scroll[\s\S]*overflow-anchor: none[\s\S]*touch-action: pan-y/,
@@ -1851,6 +1900,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
     transportMigration,
     canonicalTransportMigration,
     transportSnapshotMigration,
+    localitySequenceMigration,
     sharePageMigration,
     imageRangeMigration,
     neonMigration,
@@ -1867,6 +1917,7 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260815033331_expose_public_transport_journey.sql",
       "../../../supabase/migrations/20260823220000_canonical_research_transport_titles.sql",
       "../../../supabase/migrations/20260823221500_refresh_research_transport_snapshots.sql",
+      "../../../supabase/migrations/20260825214000_public_locality_sequence_includes_rentals.sql",
       "../../../supabase/migrations/20260815095627_share_pages_and_timeline_exports.sql",
       "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
       "../../../supabase/migrations/20260823184500_add_neon_public_template.sql",
@@ -1920,6 +1971,13 @@ test("public template route, hydration, persistence, and rollback contracts stay
   assert.match(transportSnapshotMigration, /then coalesce\(\(\s*select current_item\.value/);
   assert.match(transportSnapshotMigration, /snapshot_hash = encode/);
   assert.match(transportSnapshotMigration, /published_item\.value ->> 'ref'/);
+  assert.match(
+    localitySequenceMigration,
+    /item\.type in \('activity', 'meal', 'car_rental', 'hotel'\)/,
+  );
+  assert.doesNotMatch(localitySequenceMigration, /source_day\.trip_id/);
+  assert.match(localitySequenceMigration, /lag\([\s\S]*previous_key/);
+  assert.match(localitySequenceMigration, /previous_key is distinct from ordered\.locality_key/);
   assert.match(baseMigration, /revoke all on function public\.get_public_itinerary_v4/);
   assert.match(
     baseMigration,
@@ -2042,7 +2100,7 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(presentation, /"car_rental"/);
   assert.match(presentation, /\.filter\(isPublicTransfer\)/);
   assert.doesNotMatch(timelineTransport, /border bg-|rounded-xl|shadow/);
-  assert.match(timelineTransport, /const shortTitle = publicTransportShortLabel\(item\)/);
+  assert.match(timelineTransport, /const shortTitle = t\(publicTransportShortLabel\(item\)\)/);
   const styles = await readAppStyles();
   assert.match(
     styles,

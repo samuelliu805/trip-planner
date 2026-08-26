@@ -1,4 +1,6 @@
-import { T } from "@/features/i18n/i18n-provider";
+"use client";
+
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import type { PublicOverviewItemPresentation } from "../public-overview-presentation";
 import {
   publicTransportRouteLabel,
@@ -14,6 +16,7 @@ export function PublicOverviewTransportList({
 }: {
   items: PublicOverviewItemPresentation[];
 }) {
+  const { t } = useI18n();
   if (!items.length) return null;
 
   return (
@@ -28,7 +31,7 @@ export function PublicOverviewTransportList({
         const place = item.place?.localityName ?? item.place?.displayName;
         const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
         const route = publicTransportRouteLabel(item);
-        const shortTitle = publicTransportShortLabel(item);
+        const shortTitle = t(publicTransportShortLabel(item));
         const routeDetail = [
           publicTransportSupportingTitle(item),
           route,

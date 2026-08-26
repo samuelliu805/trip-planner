@@ -9,10 +9,14 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && supportedLocales.includes(value as Locale);
 }
 
-export function normalizeLocale(value: unknown): Locale {
+export function parseLocale(value: unknown): Locale | null {
   if (isLocale(value)) return value;
   if (typeof value === "string" && value.toLowerCase().startsWith("zh")) return "zh-CN";
-  return defaultLocale;
+  return null;
+}
+
+export function normalizeLocale(value: unknown): Locale {
+  return parseLocale(value) ?? defaultLocale;
 }
 
 export function otherLocale(locale: Locale): Locale {

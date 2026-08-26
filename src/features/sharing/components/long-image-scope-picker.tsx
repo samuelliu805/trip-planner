@@ -17,9 +17,9 @@ import {
 import type { LongImageScope } from "../types";
 
 function dayLabel(dayNumber: number, startDate: string | null, locale: "en" | "zh-CN") {
-  if (!startDate) return locale === "zh-CN" ? `第 ${dayNumber} 天` : `Day ${dayNumber}`;
+  if (!startDate) return locale === "zh-CN" ? `第${dayNumber}天` : `Day ${dayNumber}`;
   if (locale === "zh-CN")
-    return `第 ${dayNumber} 天 · ${format(addDays(parseISO(startDate), dayNumber - 1), "M月d日", { locale: zhCN })}`;
+    return `第${dayNumber}天 · ${format(addDays(parseISO(startDate), dayNumber - 1), "M月d日", { locale: zhCN })}`;
   return `Day ${dayNumber} · ${format(addDays(parseISO(startDate), dayNumber - 1), "MMM d")}`;
 }
 

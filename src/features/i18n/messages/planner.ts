@@ -39,8 +39,8 @@ export const plannerZhCN: Record<string, string> = {
   "Fill selected cells down": "向下填充所选单元格",
   Fixed: "固定",
   Flight: "航班",
-  Hotel: "酒店",
-  "Hotels stay at the end of the day.": "酒店始终排在当天末尾。",
+  Hotel: "住宿",
+  "Hotels stay at the end of the day.": "住宿始终排在当天末尾。",
   "Item details steps": "行程项目编辑步骤",
   "Itinerary map": "行程地图",
   "Keep day": "保留当天",
@@ -83,8 +83,9 @@ export const plannerZhCN: Record<string, string> = {
   "This itinerary is empty. Select a category cell, then choose Add item.":
     "行程还是空的。请选择一个分类单元格，再点击“添加项目”。",
   "Timed items stay anchored and Hotel stays last. Transport stays in its separate section.":
-    "已设时间的项目位置固定，酒店始终在最后，交通则保留在独立区域。",
-  Train: "列车",
+    "已设时间的项目位置固定，住宿始终在最后，交通则保留在独立区域。",
+  Train: "火车",
+  "Subway / metro": "地铁/轻轨",
   Transport: "交通",
   "Trip settings": "行程设置",
   "Updating selected cells…": "正在更新所选单元格…",
@@ -103,7 +104,7 @@ export const plannerZhCN: Record<string, string> = {
   ". Saved day routes that use them will need editing.":
     "。使用这些项目的已保存单日路线需要重新编辑。",
   ". Only this column will change.": "。只会更改这一列。",
-  "optional if a displayed hotel name is provided": "已填写酒店显示名称时选填",
+  "optional if a displayed hotel name is provided": "已填写住宿显示名称时选填",
   "optional if a meal name is provided": "已填写用餐名称时选填",
   "through Day": "到第",
   "Clear time": "清除时间",

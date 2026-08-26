@@ -15,7 +15,7 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "Choose a different City. Neighboring City items on the same day cannot use the same map place.":
     "请选择其他城市；同一天相邻的城市项目不能使用同一个地图地点。",
   "Choose a hotel location or enter a displayed hotel name.":
-    "请选择酒店地点，或填写要显示的酒店名称。",
+    "请选择住宿地点，或填写要显示的住宿名称。",
   "Choose a meal location or enter a displayed meal name.":
     "请选择用餐地点，或填写要显示的餐厅名称。",
   "Choose an available built-in public template.": "请选择可用的内置公开模板。",
@@ -34,7 +34,7 @@ export const runtimeErrorsZhCN: Record<string, string> = {
     "每个路线停靠点都需要已保存且坐标有效的地图地点。",
   "Flight ideas": "航班备选",
   "Pick-up: {place}": "取车地点：{place}",
-  "Hotel link": "酒店链接",
+  "Hotel link": "住宿链接",
   Image: "图片",
   "JPG Image": "JPG 图片",
   "JPG/PNG/WebP Image (10 MB) · PDF (20 MB) · MP4/WebM/MOV Video (30 MB)":
@@ -44,9 +44,9 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "MOV Video": "MOV 视频",
   "MP4 Video": "MP4 视频",
   "Only Activity, Meal, and Hotel items can be route stops.":
-    "只有活动、用餐和酒店项目可以作为路线停靠点。",
+    "只有活动、用餐和住宿项目可以作为路线停靠点。",
   "Only one Hotel may be repeated as the first and final stop.":
-    "只有同一家酒店可以同时作为起点和终点重复出现。",
+    "只有同一住宿可以同时作为起点和终点重复出现。",
   "Only the Share Page owner can generate images.": "只有分享页面的所有者可以生成长图。",
   "Only the trip owner can configure or calculate routes.": "只有行程所有者可以设置或计算路线。",
   "Only the trip owner can manage public links.": "只有行程所有者可以管理公开链接。",
@@ -61,7 +61,7 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "Restaurant link": "餐厅链接",
   "Return time": "还车时间",
   "Route stops must belong to this day, except the first stop may be the previous day Hotel.":
-    "路线停靠点必须属于当天，但第一个停靠点可以是前一天的酒店。",
+    "路线停靠点必须属于当天，但第一个停靠点可以是前一天的住宿。",
   "Search Google Maps or enter an activity name.": "请搜索 Google 地图，或输入活动名称。",
   Source: "来源",
   Station: "车站",
@@ -87,11 +87,11 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "This file is already attached here.": "此文件已经附加在这里。",
   "This route already has an active public link.": "此方案已有一个有效的公开链接。",
   "This saved item would exceed its 50 MB attachment limit.": "此项目会超过 50 MB 的附件上限。",
-  "Train ideas": "列车备选",
+  "Train ideas": "火车备选",
   "Transport link": "交通链接",
   "You do not have permission to change itinerary items.": "你没有权限更改行程项目。",
   "A repeated Hotel must appear exactly at the first and final positions.":
-    "重复的酒店必须且只能出现在路线的起点和终点。",
+    "重复的住宿必须且只能出现在路线的起点和终点。",
   "Use a JPEG, PNG, WebP, PDF, MP4, WebM, or QuickTime/MOV file. HEIC is not supported yet.":
     "请使用 JPEG、PNG、WebP、PDF、MP4、WebM 或 QuickTime/MOV 文件；暂不支持 HEIC。",
   Video: "视频",

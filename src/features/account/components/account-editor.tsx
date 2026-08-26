@@ -17,6 +17,7 @@ import { updateAccount } from "@/features/account/actions";
 import { logout } from "@/features/auth/actions";
 import type { Locale } from "@/features/i18n/config";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { PlannerEditorField } from "@/features/itinerary/components/planner-editor-fields";
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
@@ -86,14 +87,16 @@ function AccountHomeCityField({ initialHomeCity }: { initialHomeCity: string }) 
 }
 
 function AccountLanguageField({ initialLocale }: { initialLocale: Locale }) {
-  const { locale, setLocale } = useI18n();
-  const selectedLocale = locale || initialLocale;
+  const [selectedLocale, setSelectedLocale] = useState(initialLocale);
 
   return (
     <>
       <input name="locale" type="hidden" value={selectedLocale} />
       <PlannerEditorField id="account-language" label={<T message="Preferred language" />}>
-        <Select onValueChange={(value) => setLocale(value as Locale, false)} value={selectedLocale}>
+        <Select
+          onValueChange={(value) => setSelectedLocale(value as Locale)}
+          value={selectedLocale}
+        >
           <SelectTrigger className="min-w-0" id="account-language">
             <SelectValue />
           </SelectTrigger>
@@ -146,15 +149,18 @@ function AccountForm({
         >
           <T message="Account" />
         </SheetTitle>
-        <Button
-          className="min-h-11 shrink-0 px-2"
-          formAction={logout}
-          formNoValidate
-          type="submit"
-          variant="ghost"
-        >
-          <LogOut aria-hidden="true" className="size-4" /> <T message="Log out" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <LanguageSwitcher className="px-2" />
+          <Button
+            className="min-h-11 shrink-0 px-2"
+            formAction={logout}
+            formNoValidate
+            type="submit"
+            variant="ghost"
+          >
+            <LogOut aria-hidden="true" className="size-4" /> <T message="Log out" />
+          </Button>
+        </div>
       </div>
 
       {state.error ? (

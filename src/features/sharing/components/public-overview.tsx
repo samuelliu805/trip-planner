@@ -56,6 +56,7 @@ export function PublicOverview({
             <article
               aria-current={selectedDayRef === day.ref ? "true" : undefined}
               className="public-overview-day overview-day-v4"
+              data-day-index={day.dayNumber}
               data-day-number={String(day.dayNumber).padStart(2, "0")}
               data-public-day-ref={day.ref}
               key={day.ref}

@@ -49,7 +49,7 @@
 }
 
 :lang(zh-CN) .public-template-traverse .overview-day-v4::before {
-  content: "第" attr(data-day-number) "天";
+  content: "第" attr(data-day-index) "天";
   letter-spacing: 0;
 }
 

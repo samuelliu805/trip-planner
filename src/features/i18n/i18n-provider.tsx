@@ -51,12 +51,19 @@ function syncLocalizedAttributes(root: ParentNode, locale: Locale) {
 export function I18nProvider({
   children,
   initialLocale,
+  persistInitialLocale = false,
 }: {
   children: ReactNode;
   initialLocale: Locale;
+  persistInitialLocale?: boolean;
 }) {
   const [locale, setLocaleState] = useState(initialLocale);
   const localizedAttributesReady = useRef(false);
+
+  useEffect(() => {
+    if (!persistInitialLocale) return;
+    document.cookie = `${localeCookieName}=${encodeURIComponent(initialLocale)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  }, [initialLocale, persistInitialLocale]);
 
   useEffect(() => {
     const observer = new MutationObserver((records) => {

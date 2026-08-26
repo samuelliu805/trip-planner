@@ -187,6 +187,16 @@
 }
 
 .public-template-traverse .public-map-panel {
+  --accent: #2b3b40;
+  --accent-foreground: #fff;
+  --background: #151b1e;
+  --border: rgb(215 229 230 / 28%);
+  --foreground: #eef2f0;
+  --input: rgb(215 229 230 / 34%);
+  --muted: #263338;
+  --muted-foreground: #b9c9ca;
+  --primary: #f05a28;
+  --primary-foreground: #fff;
   border-color: var(--traverse-orange);
   border-top-width: 4px;
   border-radius: 0;
