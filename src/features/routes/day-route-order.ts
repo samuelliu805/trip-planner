@@ -28,8 +28,11 @@ export function fixedDayRouteDraft(
     .sort((left, right) => {
       const rank = ({ itemId, occurrence }: { itemId: string; occurrence: number }) => {
         if (itemId === previousHotelId) return -1;
-        if (itemId === roundTripHotelId && (countsById.get(itemId) ?? 0) > 1 && occurrence === 0)
-          return -0.5;
+        if (itemId === roundTripHotelId) {
+          const count = countsById.get(itemId) ?? 0;
+          if (count > 1 && occurrence === 0) return -0.5;
+          if (occurrence === count - 1) return Number.MAX_SAFE_INTEGER;
+        }
         return rankById.get(itemId) ?? Number.MAX_SAFE_INTEGER;
       };
       return rank(left) - rank(right) || left.originalIndex - right.originalIndex;

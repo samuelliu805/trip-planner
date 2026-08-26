@@ -19,17 +19,14 @@ export function DecisionSummaryFeedback({ summary }: { summary: VariantDecisionS
       )}
       <h3 className="mt-3 text-sm font-semibold">
         <Localized
-          value={summary.error ? "Decision summary unavailable" : "Loading decision summary"}
+          value={summary.error ? "Comparison summary unavailable" : "Loading comparison summary"}
         />
       </h3>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">
-        <Localized
-          value={
-            summary.error ??
-            "Loading persisted facts only. The Matrix and City comparison remain available."
-          }
-        />
-      </p>
+      {summary.error ? (
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          <Localized value={summary.error} />
+        </p>
+      ) : null}
       {summary.error ? (
         <Button className="mt-4 min-h-11 gap-2" onClick={summary.retry} size="sm">
           <RotateCcw aria-hidden="true" className="size-4" /> <T message={" Retry summary "} />

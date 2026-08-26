@@ -27,7 +27,7 @@ export function RouteVariantDecisionSummarySheet({
       onOpenChange={onOpenChange}
       open={open}
       overlayClassName="z-[115]"
-      title="Decision summary"
+      title="Comparison summary"
     >
       <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain p-4">
         {summary.isLoading || summary.error ? (

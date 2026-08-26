@@ -4,7 +4,10 @@ import { useMemo, useState } from "react";
 
 import { categories } from "@/features/itinerary/components/planner-config";
 import { useI18n } from "@/features/i18n/i18n-provider";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type {
+  PlannerComparisonScope,
+  PlannerMapMode,
+} from "@/features/itinerary/components/planner-map-types";
 import type { GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { PlannerVariant, PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
@@ -169,11 +172,15 @@ export function usePlannerMap(
     });
   }
 
-  function changeMapMode(mode: PlannerMapMode) {
-    if (mode === mapMode) return;
+  function changeMapMode(mode: PlannerMapMode, comparisonScope?: PlannerComparisonScope) {
+    if (
+      mode === mapMode &&
+      (mode !== "comparison" || !comparisonScope || comparisonScope === comparisonReturnMode)
+    )
+      return;
     if (mode === "comparison" && comparison.blockingReason) return;
     if (mode === "comparison") {
-      const returnMode = mapMode === "day_route" ? "day_route" : "overview";
+      const returnMode = comparisonScope ?? (mapMode === "day_route" ? "day_route" : "overview");
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
         returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,
@@ -240,9 +247,9 @@ export function usePlannerMap(
     decisionSummary,
     decisionSummaryPanelOpen,
     decisionSummarySheetOpen,
-    enterComparison: () => {
+    enterComparison: (scope?: PlannerComparisonScope) => {
       if (comparison.blockingReason) return;
-      const returnMode = mapMode === "day_route" ? "day_route" : "overview";
+      const returnMode = scope ?? (mapMode === "day_route" ? "day_route" : "overview");
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
         returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,

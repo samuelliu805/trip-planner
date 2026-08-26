@@ -68,7 +68,7 @@ export function MatrixItemSummary({
             transportMode
               ? "matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium text-[15px] leading-[1.25] min-[1200px]:text-[13px]"
               : type === "location"
-                ? "whitespace-normal break-words text-[15px] font-medium leading-[1.5] min-[1200px]:text-[13px]"
+                ? "whitespace-normal break-words text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
                 : "truncate text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
           }
         >

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 
 import { eligibleDayRouteItems } from "./day-route-map";
+import { defaultDayRouteDraft } from "./day-route-default-draft";
 import { fixedDayRouteDraft } from "./day-route-order";
 import { resolveRouteCalculationConfig } from "./plan-config";
 import { useCalculateDayRoute, useClearDayRoutePlan, useSaveDayRoutePlan } from "./queries";
@@ -25,7 +26,6 @@ export type DayRouteUi = {
   eligibleItems: ItineraryItem[];
   error?: string;
   fitKey?: string;
-  hotelTransferAvailable: boolean;
   openCreate: () => void;
   openEdit: () => void;
   pending: boolean;
@@ -37,7 +37,6 @@ export type DayRouteUi = {
   setLegMode: (index: number, mode: RouteLegMode) => void;
   status?: DayRouteStatus;
   stopItems: ItineraryItem[];
-  useHotelRoundTrip: () => void;
 };
 
 const savedDraft = (plan: DayRoutePlan): DayRouteEditorDraft => ({
@@ -165,23 +164,6 @@ export function useDayRoute(
     }));
   }
 
-  function useHotelRoundTrip() {
-    if (!previousHotel || !currentHotel) return;
-    updateDraft((current) => {
-      const withoutHotels = current.itemIds.filter(
-        (itemId) => itemId !== previousHotel.id && itemId !== currentHotel.id,
-      );
-      const itemIds = [previousHotel.id, ...withoutHotels, currentHotel.id];
-      return fixedDayRouteDraft(
-        { itemIds, legModes: current.legModes },
-        eligibleItems.map(({ id }) => id),
-        suggestedMode,
-        previousHotel.id,
-        currentHotel.id,
-      );
-    });
-  }
-
   async function saveAndCalculate() {
     if (!activeDay || !draft) return;
     const itemsById = new Map(stopItems.map((item) => [item.id, item]));
@@ -244,13 +226,7 @@ export function useDayRoute(
   const status = plan ? dayRouteStatus(workspace, plan) : undefined;
   const resolved = plan ? resolveRouteCalculationConfig(workspace, plan) : undefined;
   const calculatedFitKey = plan?.calculation?.computed_at;
-  const defaultDraft = (): DayRouteEditorDraft => {
-    const itemIds = eligibleItems.slice(0, 20).map(({ id }) => id);
-    return {
-      itemIds,
-      legModes: Array.from({ length: Math.max(0, itemIds.length - 1) }, () => suggestedMode),
-    };
-  };
+  const defaultDraft = () => defaultDayRouteDraft(eligibleItems, suggestedMode, previousHotel);
 
   return {
     activeDay,
@@ -265,7 +241,6 @@ export function useDayRoute(
     eligibleItems,
     error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
     fitKey: calculatedFitKey ? `day-route:${activeDay?.id}:${calculatedFitKey}` : undefined,
-    hotelTransferAvailable: Boolean(previousHotel && currentHotel),
     openCreate: () => {
       setDraft(defaultDraft());
       setError(undefined);
@@ -293,6 +268,5 @@ export function useDayRoute(
     setLegMode,
     status,
     stopItems,
-    useHotelRoundTrip,
   };
 }

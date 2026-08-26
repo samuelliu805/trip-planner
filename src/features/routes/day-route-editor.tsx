@@ -151,29 +151,6 @@ export function DayRouteEditor({
           </div>
         )}
 
-        <Button
-          aria-busy={route.pending}
-          className="mt-3 w-full"
-          disabled={route.pending || !route.hotelTransferAvailable}
-          onClick={route.useHotelRoundTrip}
-          size="sm"
-          title={t(
-            route.hotelTransferAvailable
-              ? "Start at the previous day's Hotel and end at today's Hotel"
-              : "Add a place-linked Hotel to both the previous day and this day",
-          )}
-          type="button"
-          variant="outline"
-        >
-          <BedDouble className="size-4" />
-          <T message={" Use Hotels as start & end "} />
-        </Button>
-        {!route.hotelTransferAvailable ? (
-          <p className="mt-1.5 px-1 text-[10px] text-muted-foreground">
-            <T message={" Requires a place-linked Hotel on both the previous day and this day. "} />
-          </p>
-        ) : null}
-
         <div className="mt-3 overflow-hidden rounded-lg border">
           <button
             aria-expanded={unplannedOpen}

@@ -40,7 +40,7 @@ export function VariantComparisonMobileBar({
             >
               <BarChart3 aria-hidden="true" className="size-4" />
               <span>
-                <T message={"Summary"} />
+                <T message={"Comparison summary"} />
               </span>
             </Button>
           ) : null}

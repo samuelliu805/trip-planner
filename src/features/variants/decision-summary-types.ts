@@ -1,4 +1,3 @@
-import type { TransportMode } from "@/features/itinerary/types";
 import type { DayRouteStatus } from "@/features/routes/status";
 import type { RouteLegMode } from "@/features/routes/types";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
@@ -102,12 +101,6 @@ export type DecisionSummaryInput = {
   variants: DecisionSummaryVariantRow[];
 };
 
-export type DecisionSummaryModeCount<TMode extends string = TransportMode> = {
-  count: number;
-  label: string;
-  mode: TMode;
-};
-
 export type DecisionSummaryModeDistance<TMode extends string = RouteLegMode> = {
   distanceMeters: number;
   label: string;
@@ -152,8 +145,6 @@ export type VariantDecisionSummaryProjection = {
   plannedPlaceOccurrenceCount: number;
   routeCoverage: DecisionSummaryRouteCoverage;
   savedDayRouteDistanceByMode: DecisionSummaryModeDistance[];
-  savedDayRouteModes: DecisionSummaryModeCount<RouteLegMode>[];
-  tripTransportModes: DecisionSummaryModeCount[];
   uniqueCityPlaceCount: number;
   uniquePlannedPlaces: number;
   unknownDurationLegCount: number;

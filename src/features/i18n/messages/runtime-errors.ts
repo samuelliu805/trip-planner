@@ -1,4 +1,5 @@
 export const runtimeErrorsZhCN: Record<string, string> = {
+  "The comparison summary could not be loaded.": "无法加载对比摘要。",
   "A day route requires at least two distinct coordinate locations.":
     "当天路线至少需要两个坐标不同的地点。",
   "A day route requires between 2 and 20 stop references.": "当天路线需要 2 至 20 个停靠点。",
@@ -22,8 +23,8 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "Choose an image range within this trip.": "请选择此行程范围内的长图日期。",
   "City / town unavailable": "城市 / 城镇不可用",
   "City location": "城市位置",
-  "Compare requires at least two route variants. Add another variant to use Decision summary.":
-    "至少需要两个方案才能比较；请再添加一个方案以使用决策摘要。",
+  "Compare requires at least two route variants. Add another variant to use Comparison summary.":
+    "至少需要两个方案才能比较；请再添加一个方案以使用对比摘要。",
   "Create an empty Plan": "创建空白方案",
   "Discard or save the open Day route draft before comparing variants.":
     "比较方案前，请放弃或保存当前打开的当天路线草稿。",

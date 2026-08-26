@@ -1,7 +1,6 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ChevronDown } from "lucide-react";
 
 import { formatMoney } from "../money";
 import type { ConvertedPlanCostLine, PlanCostSummary } from "../types";
@@ -87,43 +86,5 @@ export function PlanCostBreakdown({
         </p>
       ) : null}
     </div>
-  );
-}
-
-export function PlanCostDisclosure({
-  lines,
-  showLabel = true,
-  summary,
-}: {
-  lines: ConvertedPlanCostLine[];
-  showLabel?: boolean;
-  summary: PlanCostSummary;
-}) {
-  return (
-    <details className="group min-w-0 border-t">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <span className="min-w-0">
-          <span
-            className={
-              showLabel ? "block text-[11px] font-medium text-muted-foreground" : "sr-only"
-            }
-          >
-            <T message={"Cost"} />
-          </span>
-          <span
-            className={`${showLabel ? "mt-0.5" : ""} block truncate text-sm font-semibold tabular-nums`}
-          >
-            <Localized value={costSummaryText(summary)} />
-          </span>
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-        />
-      </summary>
-      <div className="overflow-hidden rounded-md border bg-muted/20">
-        <PlanCostBreakdown lines={lines} summary={summary} />
-      </div>
-    </details>
   );
 }

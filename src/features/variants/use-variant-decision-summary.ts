@@ -41,7 +41,7 @@ export function useVariantDecisionSummary({
       query.error instanceof Error
         ? query.error.message
         : query.isError
-          ? "The decision summary could not be loaded."
+          ? "The comparison summary could not be loaded."
           : undefined,
     isLoading: enabled && available && query.isPending,
     retry: () => void query.refetch(),

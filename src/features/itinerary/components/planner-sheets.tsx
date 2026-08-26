@@ -18,7 +18,10 @@ import type { EditorState } from "@/features/itinerary/components/planner-config
 import { PlannerItemEditorDialog } from "@/features/itinerary/components/planner-item-editor-dialog";
 import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/planner-item-save-feedback";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type {
+  PlannerMapMode,
+  PlannerMapModeChange,
+} from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerWorkspace, TransportMode } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
@@ -63,7 +66,7 @@ type PlannerSheetsProps = {
   onItemSaveFeedback: (feedback?: PlannerItemSaveFeedback) => void;
   onMapExpandedChange: (open: boolean) => void;
   onMarkerClick: (id?: string) => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onMapSelectionClear: () => void;
   onSettingsOpenChange: (open: boolean) => void;
   onTargetDaysChange: (days: Set<string>) => void;

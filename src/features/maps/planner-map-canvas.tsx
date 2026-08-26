@@ -71,7 +71,7 @@ function State({
   title,
 }: {
   error?: boolean;
-  message: string;
+  message?: string;
   onRetry?: () => void;
   title: string;
 }) {
@@ -86,9 +86,11 @@ function State({
         <h2 className="mt-3 font-semibold">
           <Localized value={title} />
         </h2>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">
-          <Localized value={message} />
-        </p>
+        {message ? (
+          <p className="mt-1 text-sm leading-5 text-muted-foreground">
+            <Localized value={message} />
+          </p>
+        ) : null}
         {onRetry ? (
           <Button className="mt-4" onClick={onRetry} size="sm" type="button" variant="outline">
             <T message={" Retry map "} />
@@ -151,8 +153,7 @@ export function PlannerMapCanvas({
         onRetry={onRetry}
       />
     );
-  if (loadingStatus !== "LOADED")
-    return <State title="Loading map" message="Preparing your saved itinerary places…" />;
+  if (loadingStatus !== "LOADED") return <State title="Loading map" />;
   return (
     <div className="relative h-full">
       <Map

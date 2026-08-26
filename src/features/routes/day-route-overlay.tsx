@@ -112,13 +112,6 @@ export function DayRouteOverlay({
             <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />{" "}
             <T message={" · No day route"} />
           </p>
-          <p className="text-xs text-muted-foreground">
-            <T
-              message={
-                " Eligible saved places are shown in gray. Nothing is routed until you save. "
-              }
-            />
-          </p>
         </div>
         <RouteIconButton
           label="Create route"

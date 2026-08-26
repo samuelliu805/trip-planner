@@ -186,8 +186,11 @@ export function usePlannerWorkspaceController({
     workspace,
   });
 
-  function changeMapModeAndSelection(mode: Parameters<typeof map.setMapMode>[0]) {
-    map.setMapMode(mode);
+  function changeMapModeAndSelection(
+    mode: Parameters<typeof map.setMapMode>[0],
+    comparisonScope?: Parameters<typeof map.setMapMode>[1],
+  ) {
+    map.setMapMode(mode, comparisonScope);
     if (mode !== "overview") return;
     setSelectedDayRow(null);
     setSelectedItemId(undefined);

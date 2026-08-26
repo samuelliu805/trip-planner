@@ -64,7 +64,7 @@ export function RouteVariantComparisonPanel({
             type="button"
           >
             <BarChart3 aria-hidden="true" className="size-4" />
-            <T message={" Decision summary "} />
+            <T message={" Comparison summary "} />
           </button>
         </div>
       ) : null}

@@ -23,19 +23,19 @@ export function RouteVariantDecisionSummaryPanel({
   const visibility = decisionSummaryMetricVisibility(summary.summaries);
   return (
     <aside
-      aria-label="Route variant decision summary"
-      data-i18n-aria-label="Route variant decision summary"
+      aria-label="Route variant comparison summary"
+      data-i18n-aria-label="Route variant comparison summary"
       className="map-bottom-panel absolute inset-x-3 bottom-3 z-30 hidden max-h-[min(34rem,calc(100dvh-7rem))] overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-2xl backdrop-blur min-[900px]:flex min-[900px]:flex-col"
     >
       <header className="flex min-h-11 items-center justify-between gap-4 border-b px-4 py-2">
         <div className="min-w-0">
           <h2 className="text-base font-semibold">
-            <T message={"Decision summary"} />
+            <T message={"Comparison summary"} />
           </h2>
         </div>
         <button
-          aria-label="Close decision summary"
-          data-i18n-aria-label={"Close decision summary"}
+          aria-label="Close comparison summary"
+          data-i18n-aria-label={"Close comparison summary"}
           className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onCollapse}
           type="button"
@@ -43,11 +43,11 @@ export function RouteVariantDecisionSummaryPanel({
           <X aria-hidden="true" className="size-4" />
         </button>
       </header>
-      <div className="min-h-0 overflow-y-auto overscroll-contain p-3">
+      <div className="min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain p-3">
         {summary.isLoading || summary.error ? (
           <DecisionSummaryFeedback summary={summary} />
         ) : (
-          <div className="grid auto-cols-[minmax(16rem,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1">
+          <div className="grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
             {summary.summaries.slice(0, 3).map((variantSummary) => (
               <DecisionSummaryCard
                 activeVariantId={activeVariantId}

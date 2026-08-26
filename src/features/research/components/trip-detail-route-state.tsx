@@ -33,9 +33,11 @@ export function TripDetailRouteState({
               <h1 className="font-semibold">
                 <Localized value={title} />
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                <Localized value={description} />
-              </p>
+              {onRetry ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <Localized value={description} />
+                </p>
+              ) : null}
               {onRetry ? (
                 <Button className="mt-4 min-h-11" onClick={onRetry}>
                   <T message={" Try again "} />

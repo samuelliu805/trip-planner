@@ -5,7 +5,10 @@ import { useState } from "react";
 
 import { PlannerMapControls } from "@/features/itinerary/components/planner-map-controls";
 import { PlannerMapSelectedPlace } from "@/features/itinerary/components/planner-map-selected-place";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type {
+  PlannerMapMode,
+  PlannerMapModeChange,
+} from "@/features/itinerary/components/planner-map-types";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { DayRouteOverlay } from "@/features/routes/day-route-overlay";
@@ -70,7 +73,7 @@ export function PlannerMapShell({
   onExpand?: () => void;
   onEditMapItem: (itemId: string) => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onMapSelectionClear: () => void;
   onMarkerClick: (id?: string) => void;
   overviewRoute: OverviewRouteUi;
@@ -150,6 +153,7 @@ export function PlannerMapShell({
         viewportKey={viewportKey}
       />
       <PlannerMapControls
+        activeDayNumber={dayRoute.activeDay?.day_number}
         compact={compact}
         comparisonBlockingReason={comparison.blockingReason}
         dayCityLayerAvailable={dayCityLayerAvailable}

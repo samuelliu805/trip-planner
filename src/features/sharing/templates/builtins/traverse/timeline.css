@@ -60,6 +60,10 @@
   letter-spacing: 0.04em;
 }
 
+.public-template-traverse .timeline-day-copy-v4 {
+  margin-top: 0.3125rem;
+}
+
 .public-template-traverse .timeline-day-copy-v4 strong {
   font: 900 1.125rem/1.1 var(--traverse-condensed);
   letter-spacing: 0.02em;

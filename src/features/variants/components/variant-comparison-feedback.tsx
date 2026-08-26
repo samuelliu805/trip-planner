@@ -1,13 +1,12 @@
 "use client";
 
-import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { VariantComparisonUi } from "@/features/variants/use-variant-comparison";
 
 function Feedback({ comparison }: { comparison: VariantComparisonUi }) {
-  const { t } = useI18n();
   return (
     <div className="text-center" role={comparison.error ? "alert" : "status"}>
       {comparison.error ? (
@@ -23,17 +22,11 @@ function Feedback({ comparison }: { comparison: VariantComparisonUi }) {
           value={comparison.error ? "Comparison unavailable" : "Loading route comparison"}
         />
       </h2>
-      <p className="mt-1 text-sm leading-5 text-muted-foreground">
-        {comparison.error ? (
+      {comparison.error ? (
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">
           <Localized value={comparison.error} />
-        ) : comparison.dayNumber ? (
-          t("Loading saved and planned Day {day} routes while the Matrix stays available.", {
-            day: comparison.dayNumber,
-          })
-        ) : (
-          <T message="Loading Activity city/town stages while the Matrix stays available." />
-        )}
-      </p>
+        </p>
+      ) : null}
       {comparison.error ? (
         <Button className="mt-4 min-h-11 gap-2" onClick={comparison.retry} size="sm">
           <RotateCcw className="size-4" /> <T message={" Retry "} />

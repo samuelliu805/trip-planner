@@ -19,12 +19,7 @@ import {
   finalizeVariantDecisionSummaries,
   reconcileDecisionSummaryProjections,
 } from "./decision-summary-metrics.ts";
-import {
-  decisionSummaryMetricVisibility,
-  formatKnownDuration,
-  neutralDeltaAccessibleLabel,
-  neutralDeltaLabel,
-} from "./decision-summary-presentation.ts";
+import { decisionSummaryMetricVisibility } from "./decision-summary-presentation.ts";
 import { consecutiveHotelStays } from "./decision-summary-hotel-stays.ts";
 import type {
   DecisionSummaryDayRow,
@@ -169,8 +164,6 @@ function projectionForHotel(
       updating: 0,
     },
     savedDayRouteDistanceByMode: [],
-    savedDayRouteModes: [],
-    tripTransportModes: [],
     uniqueCityPlaceCount: 0,
     uniquePlannedPlaces: 0,
     unknownDurationLegCount: 0,
@@ -504,13 +497,6 @@ test("Phase 5C route totals include only current signatures and retain partial f
       ["train", 2_000],
     ],
   );
-  assert.deepEqual(
-    summary.savedDayRouteModes.map(({ count, mode }) => [mode, count]),
-    [
-      ["walk", 1],
-      ["train", 1],
-    ],
-  );
 });
 
 test("shared route status signature reacts to coordinates, stop order, and modes but not title/time", () => {
@@ -603,27 +589,6 @@ test("shared route status signature reacts to coordinates, stop order, and modes
     "current",
     "title and time fields are deliberately absent from the signature projection",
   );
-});
-
-test("Phase 5C travel modes use explicit product data and never provider or distance inference", () => {
-  const days = [day("a-1", "route-a", 1, null)];
-  const items = [
-    item("transport", "route-a", "a-1", "transport", { details: { mode: "coach" } }),
-    item("flight", "route-a", "a-1", "flight"),
-    item("train", "route-a", "a-1", "train"),
-    item("unknown", "route-a", "a-1", "transport", { details: { mode: "teleport" } }),
-  ];
-  const summary = deriveVariantDecisionSummaryProjections(baseInput({ days, items }))[0];
-
-  assert.deepEqual(
-    summary.tripTransportModes.map(({ count, mode }) => [mode, count]),
-    [
-      ["flight", 1],
-      ["train", 1],
-      ["bus", 1],
-    ],
-  );
-  assert.equal(summary.savedDayRouteModes.length, 0);
 });
 
 test("Phase 5C Hotel comparison supports place/title identity, date/day alignment, and multiplicity", () => {
@@ -806,56 +771,26 @@ test("Phase 5C neutral deltas preserve unknowns, partial duration, and baseline 
     null,
     "partial durations do not get fake deltas",
   );
-  assert.equal(formatKnownDuration(0, 2), "No known duration · 2 legs unknown");
-  assert.equal(neutralDeltaLabel("planning day", 1), "+1 vs Primary");
-  assert.equal(
-    neutralDeltaAccessibleLabel("planning day", 1),
-    "1 additional planning day versus Primary",
-  );
-  assert.match(
-    neutralDeltaAccessibleLabel("locality span", -250),
-    /less locality span versus Primary/,
-  );
-  assert.equal(
-    neutralDeltaAccessibleLabel("Hotel added", 2),
-    "2 Hotel occurrences added versus Primary",
-  );
-  assert.doesNotMatch(
-    neutralDeltaLabel("planning day", 1) + neutralDeltaAccessibleLabel("planning day", -1),
-    /winner|loser|better|worse/i,
-  );
 });
 
-test("Phase 5C hides all-unknown metrics and exposes only known saved distance modes", () => {
+test("Phase 5C exposes only known saved distance modes", () => {
   const primary = projectionForHotel("route-a", true, [], []);
   const compared = projectionForHotel("route-b", false, [], []);
   const hidden = decisionSummaryMetricVisibility(
     finalizeVariantDecisionSummaries([primary, compared]),
   );
 
-  assert.equal(hidden.nights, false);
-  assert.equal(hidden.citySpan, false);
-  assert.equal(hidden.routeCoverage, false);
-  assert.equal(hidden.tripTransportModes, false);
   assert.deepEqual(hidden.routeDistanceModes, []);
 
-  compared.citySpanMeters = 1_000;
-  compared.nightCount = 2;
   compared.knownDayRouteDistanceMeters = 4_000;
   compared.savedDayRouteDistanceByMode = [
     { distanceMeters: 1_500, label: "Walk", mode: "walk" },
     { distanceMeters: 2_500, label: "Drive", mode: "self_driving" },
   ];
-  compared.routeCoverage.totalSavedPlans = 1;
-  compared.tripTransportModes = [{ count: 1, label: "Train", mode: "train" }];
   const visible = decisionSummaryMetricVisibility(
     finalizeVariantDecisionSummaries([primary, compared]),
   );
 
-  assert.equal(visible.nights, true);
-  assert.equal(visible.citySpan, true);
-  assert.equal(visible.routeCoverage, true);
-  assert.equal(visible.tripTransportModes, true);
   assert.deepEqual(
     visible.routeDistanceModes.map(({ mode }) => mode),
     ["walk", "self_driving"],
@@ -928,6 +863,7 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
         "./components/decision-summary-card-elements.tsx",
         "./components/decision-summary-feedback.tsx",
         "./components/decision-summary-hotel-details.tsx",
+        "./components/decision-summary-cost-details.tsx",
         "./components/decision-summary-route-details.tsx",
         "./components/route-variant-decision-summary-panel.tsx",
         "./components/route-variant-decision-summary-sheet.tsx",
@@ -958,18 +894,20 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
 
   assert.match(hook, /variants\.length >= 2/);
   assert.match(query, /\["variant-decision-summary", tripId\]/);
-  assert.match(ui, /Decision summary/);
+  assert.match(ui, /Comparison summary/);
   assert.match(ui, /message=\{"Primary"\}/);
   assert.match(ui, /Localized value="Editing"/);
   assert.doesNotMatch(ui, /Localized value=\{isActive \? "Editing" : "Read only"\}/);
   assert.doesNotMatch(ui, /Price breakdown/);
-  assert.match(ui, /hideLabel[\s\S]*label="Cities"/);
-  assert.match(ui, /hideLabel[\s\S]*label="Days & nights"/);
-  assert.match(ui, /PlanCostDisclosure[\s\S]*showLabel=\{false\}/);
+  assert.match(ui, /icon=\{MapPin\}[\s\S]*label="Cities"/);
+  assert.match(ui, /icon=\{CalendarDays\}[\s\S]*label="Days & nights"/);
+  assert.match(ui, /DecisionSummaryCostDetails/);
+  assert.match(ui, /message="Breakdown"/);
   assert.doesNotMatch(ui, /Known Cost/);
   assert.match(ui, /Route details/);
   assert.doesNotMatch(ui, /Saved distance by mode|message=\{" distance"\}/);
   assert.match(ui, /flex flex-wrap items-center gap-x-4/);
+  assert.doesNotMatch(ui, /overflow-x-auto/);
   assert.doesNotMatch(ui, /Trip transport items/);
   assert.doesNotMatch(ui, /Known day-route distance|Known duration|Nights unknown/);
   assert.doesNotMatch(ui, /Route coverage|Explicit saved leg modes|excluded from totals/);

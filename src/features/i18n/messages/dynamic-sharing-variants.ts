@@ -30,7 +30,6 @@ export const dynamicSharingVariantsZhCN: Record<string, string> = {
   "{plan}, Day {day}, route stop {position}, {place}, read-only comparison":
     "{plan}，第{day}天，第{position}个路线停靠点，{place}，只读比较",
   "{plan} · Day {day} route stop {position}": "{plan} · 第{day}天路线的第{position}个停靠点",
-  "{value} vs Primary": "相对主要方案 {value}",
   "{variant} is being edited and is always visible on the comparison map":
     "正在编辑{variant}，因此它始终显示在比较地图上",
   "{variant} is now the primary Plan.": "{variant}现已设为主要方案。",
@@ -55,7 +54,7 @@ export const dynamicSharingVariantsZhCN: Record<string, string> = {
   "{range} · City/town stage {position}": "{range} · 第{position}个城市 / 城镇阶段",
   "Day {number}": "第{number}天",
   "Download part {part}": "下载第{part}部分",
-  "Decision summary unavailable": "无法加载决策摘要",
+  "Comparison summary unavailable": "无法加载对比摘要",
   "Delete {item}": "删除{item}",
   "Delete Plan": "删除方案",
   "Deleting…": "正在删除…",
@@ -64,16 +63,10 @@ export const dynamicSharingVariantsZhCN: Record<string, string> = {
   Hidden: "已隐藏",
   Hide: "隐藏",
   "Link copied": "链接已复制",
-  "Loading Activity city/town stages while the Matrix stays available.":
-    "正在加载活动中的城市或城镇阶段；行程表仍可使用。",
-  "Loading decision summary": "正在加载决策摘要",
-  "Loading persisted facts only. The Matrix and City comparison remain available.":
-    "仅加载已保存的数据；行程表和城市比较仍可使用。",
+  "Loading comparison summary": "正在加载对比摘要",
   "Loading route comparison": "正在加载路线比较",
   "No city/town stages": "没有城市 / 城镇阶段",
   "No Day {day} route stops": "第{day}天没有路线停靠点",
-  "Loading saved and planned Day {day} routes while the Matrix stays available.":
-    "正在加载第{day}天已保存和已规划的路线；行程表仍可使用。",
   "Open route panel": "打开路线面板",
   "Open Plans for {title}. Current Plan: {plan}": "打开{title}的方案列表。当前方案：{plan}",
   "Open attachment {file}": "打开附件{file}",
@@ -85,7 +78,6 @@ export const dynamicSharingVariantsZhCN: Record<string, string> = {
   "Read only": "只读",
   "Routes on map": "地图上的路线",
   "Map routes": "地图路线",
-  "Same {metric} as Primary": "与主要方案的{metric}相同",
   "Same as Primary": "与主要方案相同",
   "Save changes": "保存更改",
   Sharing: "分享中",

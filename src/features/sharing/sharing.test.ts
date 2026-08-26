@@ -1407,6 +1407,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./templates/builtins/traverse/source.ts", import.meta.url),
     "utf8",
   );
+  const traverseTimeline = await readFile(
+    new URL("./templates/builtins/traverse/timeline.css", import.meta.url),
+    "utf8",
+  );
+  const traverseResponsive = await readFile(
+    new URL("./templates/builtins/traverse/responsive.css", import.meta.url),
+    "utf8",
+  );
   const tableResources = await readFile(
     new URL("../../app/public-sharing-table-resources.css", import.meta.url),
     "utf8",
@@ -1421,6 +1429,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(controller, /if \(legacyTemplateOverride\) params\.set\("template"/);
   assert.match(controller, /else params\.delete\("template"\)/);
   assert.match(platformParts, /<PublicViewSwitcher/);
+  assert.match(publicTripHeader, /template\.id === "traverse"/);
   assert.doesNotMatch(shell + renderer, /role="tablist"|canonicalPublicViews\.map/);
   assert.match(switcher, /canonicalPublicViews\.map/);
   assert.match(switcher, /AppBottomNavigation/);
@@ -1760,8 +1769,12 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     /@media \(max-width: 899px\)[\s\S]*\.timeline-node-mobile-label-v4 \{[^}]*display: flex;[\s\S]*\.timeline-node-mobile-key-v4 \{[^}]*width: auto;[^}]*font-variant-numeric: tabular-nums;[^}]*text-align: left/,
   );
   assert.match(
-    styles,
-    /@media \(max-width: 899px\)[\s\S]*\.public-template-traverse \.timeline-section-v4:first-child \{[^}]*margin-top: 0\.625rem;[\s\S]*\.public-template-traverse \.timeline-section-v4 \{[^}]*padding: 1rem 0\.5625rem 0\.875rem;[\s\S]*\.public-template-traverse \.timeline-section-header-v4 \{[^}]*grid-template-columns: 2\.75rem minmax\(0, 1fr\);[^}]*gap: 0\.375rem/,
+    traverseTimeline,
+    /\.public-template-traverse \.timeline-day-copy-v4 \{[^}]*margin-top: 0\.3125rem/,
+  );
+  assert.match(
+    traverseResponsive,
+    /@media \(max-width: 899px\)[\s\S]*\.public-template-traverse \.timeline-section-v4 \{[^}]*padding: 1rem 0\.5625rem 0\.875rem;[\s\S]*\.public-template-traverse \.timeline-section-header-v4 \{[^}]*grid-template-columns: 2\.75rem minmax\(0, 1fr\);[^}]*gap: 0\.375rem/,
   );
   assert.match(
     etherealOverviewRedesign,

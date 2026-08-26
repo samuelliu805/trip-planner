@@ -4,10 +4,7 @@ import { parseCalculatedRouteLegs } from "../routes/results.ts";
 import { dayRouteStatusFromProjection } from "../routes/status.ts";
 import { routeLegModes, type RouteLegMode } from "../routes/types.ts";
 
-import {
-  countedDecisionSummaryModes,
-  validDecisionSummaryCoordinates,
-} from "./decision-summary-normalization.ts";
+import { validDecisionSummaryCoordinates } from "./decision-summary-normalization.ts";
 import type {
   DecisionSummaryCalculatedPlan,
   DecisionSummaryDayRow,
@@ -100,14 +97,12 @@ export function deriveRouteMetrics(
   let knownDuration = 0;
   let hasCurrentLeg = false;
   let unknownDurationLegCount = 0;
-  const currentModes: RouteLegMode[] = [];
   const distanceByMode = new Map<RouteLegMode, number>();
   for (const { plan, projection } of plansForVariant(input, variantId, days, items)) {
     const status = dayRouteStatusFromProjection(projection, plan);
     coverage[status] += 1;
     coverage.totalSavedPlans += 1;
     if (status !== "current" || !plan.calculation) continue;
-    currentModes.push(...plan.legs.map(({ mode }) => mode));
     const modeByPosition = new Map(plan.legs.map(({ mode, position }) => [position, mode]));
     coverage.currentCalculatedLegCount += plan.calculation.calculatedLegs.length;
     for (const leg of plan.calculation.calculatedLegs) {
@@ -133,11 +128,6 @@ export function deriveRouteMetrics(
         ? []
         : [{ distanceMeters, label: transportModeLabels[mode], mode }];
     }),
-    savedDayRouteModes: countedDecisionSummaryModes(
-      currentModes,
-      routeLegModes,
-      (mode) => transportModeLabels[mode],
-    ),
     unknownDurationLegCount,
   };
 }

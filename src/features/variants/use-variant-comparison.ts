@@ -86,7 +86,7 @@ export function useVariantComparison({
   );
   const available = variants.length >= 2;
   const blockingReason = !available
-    ? "Compare requires at least two route variants. Add another variant to use Decision summary."
+    ? "Compare requires at least two route variants. Add another variant to use Comparison summary."
     : dayRouteEditing
       ? "Discard or save the open Day route draft before comparing variants."
       : undefined;

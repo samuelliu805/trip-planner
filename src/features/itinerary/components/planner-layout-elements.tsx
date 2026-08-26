@@ -2,7 +2,10 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import type {
+  PlannerMapMode,
+  PlannerMapModeChange,
+} from "@/features/itinerary/components/planner-map-types";
 import { categories } from "@/features/itinerary/components/planner-config";
 import { MatrixGridHeader } from "@/features/itinerary/components/matrix-presentation";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
@@ -131,7 +134,7 @@ export function PlannerMapPane({
   onEditMapItem: (itemId: string) => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onMarkerClick: (id?: string) => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onMapSelectionClear: () => void;
   overviewRoute: OverviewRouteUi;
   selectedId?: string;

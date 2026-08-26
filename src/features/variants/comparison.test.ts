@@ -547,7 +547,7 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
     )
   ).join("\n");
 
-  assert.match(controls, /label: "Compare"/);
+  assert.match(controls, /DropdownMenu[\s\S]*Compare whole trip[\s\S]*Compare Day \{day\}/);
   assert.match(comparisonHook, /variants\.length >= 2/);
   assert.match(comparisonHook, /Discard or save the open Day route draft/);
   assert.match(comparisonHook, /variantId === activeVariantId \|\|/);

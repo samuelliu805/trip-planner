@@ -29,14 +29,11 @@ export function routeLegExplanation(leg: RouteLegDetail, t: Translate = identity
       : t("Route unavailable · direct map line");
   }
   if (leg.estimateKind === "transit_current_service")
-    return t("Transit directions · current-service estimate");
-  if (["self_driving", "taxi", "rideshare", "motorcycle"].includes(leg.mode))
-    return t("Driving directions");
+    return t("{mode} · current-service estimate", {
+      mode: t(transportModeLabels[leg.mode]),
+    });
+  if (["self_driving", "taxi", "rideshare", "motorcycle"].includes(leg.mode)) return t("Driving");
   if (leg.mode === "walk") return t("Walking");
-  if (leg.mode === "bike") return t("Cycling directions");
-  if (["bus", "subway", "tram", "shuttle", "train", "cable_car"].includes(leg.mode))
-    return t("Transit directions");
-  if (leg.mode === "flight") return t("Flight connection");
-  if (leg.mode === "ferry") return t("Ferry connection");
-  return t("{mode} route", { mode: t(transportModeLabels[leg.mode]) });
+  if (leg.mode === "bike") return t("Cycling");
+  return t(transportModeLabels[leg.mode]);
 }

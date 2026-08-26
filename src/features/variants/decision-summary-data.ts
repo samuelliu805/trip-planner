@@ -93,7 +93,7 @@ export async function getVariantDecisionSummary(
         itemsResult.error?.message ??
         plansResult.error?.message ??
         pricesResult.error?.message ??
-        "The decision summary could not be loaded.",
+        "The comparison summary could not be loaded.",
     };
 
   const planIds = (plansResult.data ?? []).map(({ id }) => id);

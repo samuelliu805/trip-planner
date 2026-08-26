@@ -83,6 +83,7 @@ import {
   eligibleDayRouteItems,
 } from "../routes/day-route-map.ts";
 import { fixedDayRouteDraft } from "../routes/day-route-order.ts";
+import { defaultDayRouteDraft } from "../routes/day-route-default-draft.ts";
 import { buildDayCityMarkers, buildDayCityRouteLines } from "../routes/day-city-map.ts";
 import { validateDayRouteDraft } from "../routes/route-config.ts";
 import { calculateRouteConfiguration } from "../routes/calculator.ts";
@@ -1920,6 +1921,20 @@ test("Day route drafts always follow the itinerary SSOT order", () => {
   );
 });
 
+test("new Day routes include all eligible stops and anchor available Hotels", () => {
+  const routeItem = (id: string, type: ItineraryItem["type"], sortOrder: number) =>
+    ({ id, sort_order: sortOrder, type }) as ItineraryItem;
+  const previousHotel = routeItem("previous-hotel", "hotel", 1);
+  const activity = routeItem("activity", "activity", 1);
+  const meal = routeItem("meal", "meal", 2);
+  const currentHotel = routeItem("current-hotel", "hotel", 3);
+
+  assert.deepEqual(defaultDayRouteDraft([activity, currentHotel, meal], "walk", previousHotel), {
+    itemIds: ["previous-hotel", "activity", "meal", "current-hotel"],
+    legModes: ["walk", "walk", "walk"],
+  });
+});
+
 test("Day route renders Google legs solid and straight fallbacks dashed", () => {
   const calculation = {
     calculatedLegs: [
@@ -3514,7 +3529,7 @@ test("route leg explanations stay concise and expose fallback semantics", () => 
       mode: "train",
       position: 3,
     }),
-    "Transit directions · current-service estimate",
+    "Train · current-service estimate",
   );
 });
 

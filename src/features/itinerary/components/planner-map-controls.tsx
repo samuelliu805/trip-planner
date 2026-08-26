@@ -1,13 +1,23 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { GitCompareArrows, Maximize2, PanelBottomOpen } from "lucide-react";
+import { ChevronDown, GitCompareArrows, Maximize2, PanelBottomOpen } from "lucide-react";
 import { useId } from "react";
 
-import type { PlannerMapMode } from "@/features/itinerary/components/planner-map-types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type {
+  PlannerMapMode,
+  PlannerMapModeChange,
+} from "@/features/itinerary/components/planner-map-types";
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 
 export function PlannerMapControls({
+  activeDayNumber,
   compact,
   comparisonBlockingReason,
   dayCityLayerAvailable,
@@ -19,6 +29,7 @@ export function PlannerMapControls({
   onPanelOpen,
   panelDismissed,
 }: {
+  activeDayNumber?: number;
   compact: boolean;
   comparisonBlockingReason?: string;
   dayCityLayerAvailable: boolean;
@@ -26,7 +37,7 @@ export function PlannerMapControls({
   mapMode: PlannerMapMode;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onExpand?: () => void;
-  onMapModeChange: (mode: PlannerMapMode) => void;
+  onMapModeChange: PlannerMapModeChange;
   onPanelOpen: () => void;
   panelDismissed: boolean;
 }) {
@@ -58,39 +69,57 @@ export function PlannerMapControls({
               [
                 { description: "Show the whole trip", label: "Whole trip", value: "overview" },
                 { description: "Show the selected day", label: "This day", value: "day_route" },
-                {
-                  description:
-                    comparisonBlockingReason ??
-                    (mapMode === "day_route"
-                      ? "Compare this Day route across variants"
-                      : "Compare route variants by Activity city/town stages"),
-                  disabled: Boolean(comparisonBlockingReason),
-                  label: "Compare",
-                  value: "comparison",
-                },
               ] as const
-            ).map(({ description, label, value, ...item }) => {
-              const disabled = "disabled" in item && item.disabled;
+            ).map(({ description, label, value }) => {
               return (
-                <span className="flex" key={value} title={disabled ? t(description) : undefined}>
+                <span className="flex" key={value}>
                   <button
-                    aria-describedby={disabled ? comparisonReasonId : undefined}
                     aria-label={t(description)}
                     aria-pressed={mapMode === value}
                     className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-                    disabled={disabled}
                     onClick={() => onMapModeChange(value)}
                     title={t(description)}
                     type="button"
                   >
-                    {value === "comparison" ? (
-                      <GitCompareArrows aria-hidden="true" className="size-3.5" />
-                    ) : null}
                     <Localized value={label} />
                   </button>
                 </span>
               );
             })}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-describedby={comparisonBlockingReason ? comparisonReasonId : undefined}
+                  aria-label={t("Choose comparison scope")}
+                  aria-pressed={mapMode === "comparison"}
+                  className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === "comparison" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                  disabled={Boolean(comparisonBlockingReason)}
+                  title={
+                    comparisonBlockingReason ? t(comparisonBlockingReason) : t("Compare routes")
+                  }
+                  type="button"
+                >
+                  <GitCompareArrows aria-hidden="true" className="size-3.5" />
+                  <T message="Compare routes" />
+                  <ChevronDown aria-hidden="true" className="size-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-[120] min-w-52">
+                <DropdownMenuItem onSelect={() => onMapModeChange("comparison", "overview")}>
+                  <T message="Compare whole trip" />
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!activeDayNumber}
+                  onSelect={() => onMapModeChange("comparison", "day_route")}
+                >
+                  {activeDayNumber ? (
+                    <T message="Compare Day {day}" values={{ day: activeDayNumber }} />
+                  ) : (
+                    <T message="Select a day to compare" />
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {comparisonBlockingReason ? (
             <span className="sr-only" id={comparisonReasonId}>

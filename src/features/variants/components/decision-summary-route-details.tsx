@@ -64,10 +64,10 @@ export function DecisionSummaryRouteDistanceByMode({
             <span className="text-muted-foreground">
               <ModeIcon mode={mode} />
             </span>
-            <dt className="text-[11px] text-muted-foreground">
+            <dt className="text-sm font-normal text-muted-foreground">
               <Localized value={label} />
             </dt>
-            <dd className="text-sm font-semibold">
+            <dd className="text-sm font-normal tabular-nums">
               {summary.knownDayRouteDistanceMeters === null ? (
                 <T message="Not calculated" />
               ) : (
