@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 
+import { BookingSitesDialog } from "./booking-sites-dialog";
 import { ResearchItemDialog } from "./research-item-dialog";
 import { ResearchPlanActions } from "./research-plan-actions";
 import { deleteResearchItem } from "../actions";
@@ -176,6 +177,7 @@ export function ResearchItemRow({
       ) : null}
       <div className="mt-3 flex min-w-0 flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-1">
+          <BookingSitesDialog item={item} />
           {links.slice(0, 3).map((link) => (
             <Button
               asChild

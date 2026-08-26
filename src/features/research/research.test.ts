@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { plannerResearchCategory } from "./planner-context.ts";
+import { bookingSearchDetails, bookingSitesForItem } from "./booking-sites.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import { initialResearchSegments } from "./journey.ts";
 import { researchDecisionSlotKey } from "./decision-slot.ts";
@@ -46,6 +47,85 @@ const ids = {
 test("Ideas field labels have authentic Simplified Chinese translations", () => {
   assert.equal(translateMessage("zh-CN", "Option name"), "备选方案名称");
   assert.equal(translateMessage("zh-CN", "Note (optional)"), "备注（选填）");
+});
+
+test("booking sites use exact saved details only for durable search links", () => {
+  const flight = item({
+    category: "flight",
+    destination_text: "LAX",
+    end_date: "2026-10-12",
+    journey_type: "round_trip",
+    origin_text: "SFO",
+    start_date: "2026-10-04",
+  });
+  const sites = bookingSitesForItem(flight);
+  assert.deepEqual(
+    sites.map(({ name }) => name),
+    ["Google Flights", "Trip.com", "KAYAK"],
+  );
+  const google = new URL(sites.find(({ name }) => name === "Google Flights")!.url);
+  assert.equal(
+    google.searchParams.get("q"),
+    "Flights from SFO to LAX on 2026-10-04 returning 2026-10-12",
+  );
+  assert.equal(sites.find(({ name }) => name === "Google Flights")!.includesDetails, true);
+  assert.equal(
+    sites.find(({ name }) => name === "KAYAK")!.url,
+    "https://www.kayak.com/flights/SFO-LAX/2026-10-04/2026-10-12",
+  );
+  assert.equal(sites.find(({ name }) => name === "Trip.com")!.includesDetails, false);
+});
+
+test("booking sites do not guess airport codes from city names", () => {
+  const sites = bookingSitesForItem(
+    item({
+      category: "flight",
+      destination_text: "Los Angeles",
+      origin_text: "San Francisco",
+      start_date: "2026-10-04",
+    }),
+  );
+  assert.equal(sites.find(({ name }) => name === "KAYAK")!.includesDetails, false);
+  assert.equal(sites.find(({ name }) => name === "KAYAK")!.url, "https://www.kayak.com/flights");
+});
+
+test("stay searches pass location and dates to Airbnb and Booking.com", () => {
+  const stay = item({
+    end_date: "2026-10-08",
+    location_text: "Tokyo, Japan",
+    start_date: "2026-10-04",
+  });
+  const sites = bookingSitesForItem(stay);
+  assert.deepEqual(
+    sites.map(({ name }) => name),
+    ["Airbnb", "Trip.com", "Booking.com", "Agoda", "Hilton", "Marriott", "IHG", "Hyatt"],
+  );
+  const airbnb = new URL(sites.find(({ name }) => name === "Airbnb")!.url);
+  const booking = new URL(sites.find(({ name }) => name === "Booking.com")!.url);
+  assert.equal(decodeURIComponent(airbnb.pathname), "/s/Tokyo--Japan/homes");
+  assert.equal(airbnb.searchParams.get("checkin"), "2026-10-04");
+  assert.equal(airbnb.searchParams.get("checkout"), "2026-10-08");
+  assert.equal(booking.searchParams.get("ss"), "Tokyo, Japan");
+  assert.equal(booking.searchParams.get("checkin"), "2026-10-04");
+  assert.equal(booking.searchParams.get("checkout"), "2026-10-08");
+  assert.equal(bookingSearchDetails(stay), "Tokyo, Japan · 2026-10-04 → 2026-10-08");
+});
+
+test("rental and train provider sets open official booking pages without brittle parameters", () => {
+  const rental = bookingSitesForItem(item({ category: "rental" }));
+  const train = bookingSitesForItem(item({ category: "train" }));
+  assert.deepEqual(
+    rental.map(({ name }) => name),
+    ["Hertz", "Enterprise", "Avis", "Europcar", "Budget", "SIXT"],
+  );
+  assert.deepEqual(
+    train.map(({ name }) => name),
+    ["Amtrak", "Eurail", "SNCF Connect", "SBB", "Omio"],
+  );
+  assert.equal(
+    [...rental, ...train].some(({ includesDetails }) => includesDetails),
+    false,
+  );
 });
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
