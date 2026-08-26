@@ -3,6 +3,7 @@
 import { CalendarDays, Route, Send } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import Link from "next/link";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import type { CompiledPublicTemplateV1 } from "../templates/schema";
@@ -27,11 +28,11 @@ export function PublicTripHeader({
   itinerary: PublicItinerary;
   template: CompiledPublicTemplateV1;
 }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const BrandIcon = template.id === "journal" ? Send : Route;
   return (
     <div className="public-brand-area">
-      <div className="public-brand-kicker">
+      <Link aria-label={t("Go to Trip Planner")} className="public-brand-kicker" href="/">
         {template.id === "ethereal" ? (
           <span aria-hidden="true" className="public-brand-monogram">
             <T message={" TP "} />
@@ -40,7 +41,7 @@ export function PublicTripHeader({
           <BrandIcon aria-hidden="true" className="size-3.5" />
         )}
         <T message="Trip Planner" />
-      </div>
+      </Link>
       <h1 className="public-trip-title">{itinerary.trip.title}</h1>
       <p className="public-trip-meta">
         <CalendarDays aria-hidden="true" className="size-3.5 shrink-0" />

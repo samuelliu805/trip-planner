@@ -7,10 +7,19 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 
 import { copyTextToClipboard } from "./copy-to-clipboard";
+import { resolveWechatShareMode } from "../wechat-share";
 
 const subscribeToStaticBrowserState = () => () => {};
 const isWechatBrowser = () => /MicroMessenger/i.test(window.navigator.userAgent);
 const isWechatServer = () => false;
+const mobileShareQuery = "(max-width: 899px), (pointer: coarse)";
+const isMobileShareBrowser = () => window.matchMedia(mobileShareQuery).matches;
+const isMobileShareServer = () => false;
+const subscribeToMobileShareState = (onStoreChange: () => void) => {
+  const media = window.matchMedia(mobileShareQuery);
+  media.addEventListener("change", onStoreChange);
+  return () => media.removeEventListener("change", onStoreChange);
+};
 
 export function ShareQrCode({ label, url }: { label: string; url: string }) {
   const { t } = useI18n();
@@ -86,32 +95,66 @@ export function ShareLinkActions({
 }) {
   const [status, setStatus] = useState<string>();
   const [copying, setCopying] = useState(false);
-  const [sharing, setSharing] = useState(false);
+  const [sharingTarget, setSharingTarget] = useState<"general" | "wechat">();
   const wechat = useSyncExternalStore(
     subscribeToStaticBrowserState,
     isWechatBrowser,
     isWechatServer,
   );
+  const mobileShare = useSyncExternalStore(
+    subscribeToMobileShareState,
+    isMobileShareBrowser,
+    isMobileShareServer,
+  );
+  const sharing = sharingTarget !== undefined;
 
-  async function share() {
+  async function share(target: "general" | "wechat") {
     if (sharing) return;
     setStatus(undefined);
-    if (!navigator.share) {
-      setStatus("Native sharing is unavailable here. Copy the link or scan the QR code.");
-      return;
-    }
-    setSharing(true);
+    setSharingTarget(target);
     try {
+      if (!navigator.share) {
+        if (target === "wechat") {
+          await copyTextToClipboard(url);
+          setStatus("Link copied. Open WeChat and paste it into a chat.");
+        } else {
+          setStatus("Native sharing is unavailable here. Copy the link instead.");
+        }
+        return;
+      }
       await navigator.share({ text: description, title, url });
       setStatus("Shared.");
     } catch (error) {
-      setStatus(
-        error instanceof DOMException && error.name === "AbortError"
-          ? "Share cancelled."
-          : "Sharing was unavailable. Copy the link instead.",
-      );
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setStatus("Share cancelled.");
+      } else if (target === "wechat") {
+        try {
+          await copyTextToClipboard(url);
+          setStatus("Link copied. Open WeChat and paste it into a chat.");
+        } catch {
+          setStatus("Sharing was unavailable. Copy the link instead.");
+        }
+      } else {
+        setStatus("Sharing was unavailable. Copy the link instead.");
+      }
     } finally {
-      setSharing(false);
+      setSharingTarget(undefined);
+    }
+  }
+
+  function shareToWechat() {
+    const mode = resolveWechatShareMode({
+      canNativeShare: typeof navigator.share === "function",
+      isMobile: mobileShare,
+      isWechatBrowser: wechat,
+    });
+    if (mode === "wechat-menu") {
+      setStatus("Tap •••, then choose Send to Chat or Moments.");
+    } else if (mode === "desktop-qr") {
+      setStatus(undefined);
+      onWechatToggle();
+    } else {
+      void share("wechat");
     }
   }
 
@@ -132,22 +175,22 @@ export function ShareLinkActions({
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Button
-          aria-busy={sharing}
+          aria-busy={sharingTarget === "general"}
           className="min-h-11 w-full sm:w-auto"
           disabled={sharing}
-          onClick={() => void share()}
+          onClick={() => void share("general")}
           type="button"
         >
-          {sharing ? (
+          {sharingTarget === "general" ? (
             <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
           ) : (
             <Share2 aria-hidden="true" className="size-4" />
           )}
-          <Localized value={sharing ? "Sharing…" : "Share"} />
+          <Localized value={sharingTarget === "general" ? "Sharing…" : "Share"} />
         </Button>
         <Button
           className="min-h-11 w-full sm:w-auto"
-          disabled={copying}
+          disabled={copying || sharing}
           onClick={() => void copy()}
           type="button"
           variant="outline"
@@ -162,16 +205,20 @@ export function ShareLinkActions({
           <Localized value={copying ? "Copying…" : "Copy link"} />
         </Button>
         <Button
-          aria-expanded={qrExpanded}
+          aria-busy={sharingTarget === "wechat"}
+          aria-expanded={mobileShare ? undefined : qrExpanded}
           className="col-span-2 min-h-11 w-full sm:col-auto sm:w-auto"
-          onClick={() => {
-            onWechatToggle();
-            setStatus(wechat ? "Tap •••, then choose Send to Chat or Moments." : undefined);
-          }}
+          disabled={sharing || copying}
+          onClick={shareToWechat}
           type="button"
           variant="outline"
         >
-          <MessageCircle aria-hidden="true" className="size-4" /> <T message={" WeChat "} />
+          {sharingTarget === "wechat" ? (
+            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+          ) : (
+            <MessageCircle aria-hidden="true" className="size-4" />
+          )}{" "}
+          <Localized value={sharingTarget === "wechat" ? "Opening share options…" : "WeChat"} />
         </Button>
       </div>
       {status ? (

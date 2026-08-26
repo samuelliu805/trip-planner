@@ -99,7 +99,7 @@ export function PublicViewerShareDialog({
               url={url}
             />
             {showWechatQr ? (
-              <div className="border bg-muted/30 p-4">
+              <div className="hidden border bg-muted/30 p-4 min-[900px]:block">
                 <ShareQrCode label="Scan with WeChat" url={url} />
               </div>
             ) : null}

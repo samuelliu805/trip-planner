@@ -41,6 +41,7 @@ import {
 } from "./public-timeline-presentation.ts";
 import { canonicalPublicTemplates, publicShareUrlState } from "./public-url-state.ts";
 import { siteUrlFromHeaders } from "./site-url.ts";
+import { resolveWechatShareMode } from "./wechat-share.ts";
 import {
   canonicalPublicViews,
   publicItinerarySchema,
@@ -122,6 +123,41 @@ test("share URLs follow the current request host across local and preview enviro
   assert.equal(
     siteUrlFromHeaders(new Headers({ origin: "null" }), "https://trip-planner.example.com"),
     "https://trip-planner.example.com",
+  );
+});
+
+test("WeChat sharing uses phone-native handoff without showing a self-scan QR code", () => {
+  assert.equal(
+    resolveWechatShareMode({
+      canNativeShare: true,
+      isMobile: true,
+      isWechatBrowser: false,
+    }),
+    "native-share",
+  );
+  assert.equal(
+    resolveWechatShareMode({
+      canNativeShare: false,
+      isMobile: true,
+      isWechatBrowser: false,
+    }),
+    "copy-link",
+  );
+  assert.equal(
+    resolveWechatShareMode({
+      canNativeShare: false,
+      isMobile: true,
+      isWechatBrowser: true,
+    }),
+    "wechat-menu",
+  );
+  assert.equal(
+    resolveWechatShareMode({
+      canNativeShare: true,
+      isMobile: false,
+      isWechatBrowser: false,
+    }),
+    "desktop-qr",
   );
 });
 
@@ -1382,6 +1418,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./components/public-table.tsx", import.meta.url),
     "utf8",
   );
+  const publicTripHeader = await readFile(
+    new URL("./components/public-trip-header.tsx", import.meta.url),
+    "utf8",
+  );
   const styles = await readAppStyles();
   const etherealOverviewRedesign = await readFile(
     new URL("./templates/builtins/ethereal/overview-redesign.css", import.meta.url),
@@ -1424,6 +1464,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     styles,
     /html\[lang="zh-CN"\][\s\S]*\.public-matrix \.matrix-day-column \{[^}]*width: 4\.75rem;[^}]*flex-basis: 4\.75rem;[^}]*white-space: nowrap/,
   );
+  assert.match(
+    publicTripHeader,
+    /<Link aria-label=\{t\("Go to Trip Planner"\)\} className="public-brand-kicker" href="\/">/,
+  );
+  assert.match(tripAppBar, /data-i18n-aria-label=\{"Back to Trips"\} href="\/trips"/);
   assert.match(overview, /publicOverviewDaySections/);
   assert.match(overview, /PublicOverviewCard/);
   assert.match(overview, /PublicOverviewTransportList[\s\S]*public-overview-board/);
@@ -1709,6 +1754,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     /\.public-template-ethereal \.public-view-scroll,[\s\S]*\.public-template-journal \.public-view-scroll \{[\s\S]*scrollbar-width: thin/,
   );
   assert.match(
+    etherealOverviewRedesign,
+    /@media \(max-width: 899px\)[\s\S]*\.overview-day-title-v4 > span:last-child \{[^}]*overflow: visible;[^}]*padding-bottom: 0\.06em;[^}]*font-size: 1\.75rem;[^}]*line-height: 1\.18/,
+  );
+  assert.match(
+    etherealOverviewRedesign,
+    /@media \(max-width: 899px\)[\s\S]*\.overview-day-v4 \+ \.overview-day-v4 \{[^}]*padding-top: 1\.25rem;[^}]*padding-bottom: 1\.5rem/,
+  );
+  assert.match(
     styles,
     /html\[lang="zh-CN"\][\s\S]*\.timeline-day-index-v4[\s\S]*white-space: nowrap;[\s\S]*word-break: keep-all/,
   );
@@ -1814,7 +1867,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     "share link actions stay above image generation",
   );
   assert.match(viewerShare, /showWechatQr \? \(/);
-  assert.match(shareTools, /aria-expanded=\{qrExpanded\}/);
+  assert.match(viewerShare, /hidden border bg-muted\/30 p-4 min-\[900px\]:block/);
+  assert.match(shareTools, /aria-expanded=\{mobileShare \? undefined : qrExpanded\}/);
+  assert.match(shareTools, /resolveWechatShareMode/);
+  assert.match(shareTools, /void share\("wechat"\)/);
+  assert.match(shareTools, /Link copied\. Open WeChat and paste it into a chat\./);
   assert.match(shareTools, /flex w-full shrink-0 flex-col items-center justify-center/);
   assert.match(shareTools, /className=\{`block size-36 max-w-full/);
   assert.match(shareTools, /width: 144/);

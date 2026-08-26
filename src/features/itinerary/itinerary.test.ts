@@ -46,6 +46,7 @@ import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
 import { mergeMarkerDateRanges } from "../maps/marker-date-ranges.ts";
 import { inferredHomeCity } from "../account/profile-defaults.ts";
 import { parseLocale } from "../i18n/config.ts";
+import { translateMessage } from "../i18n/translate.ts";
 import {
   defaultTripCurrency,
   defaultTripDayCount,
@@ -455,6 +456,10 @@ test("browser locale parsing distinguishes an absent preference from default Eng
   assert.equal(parseLocale("en"), "en");
   assert.equal(parseLocale("zh-Hans"), "zh-CN");
   assert.equal(parseLocale("fr"), null);
+});
+
+test("Bus uses the requested authentic Simplified Chinese transport label", () => {
+  assert.equal(translateMessage("zh-CN", "Bus"), "大巴");
 });
 
 test("browser locale wins without rewriting the saved account preference", async () => {

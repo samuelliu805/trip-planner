@@ -128,12 +128,73 @@
 }
 
 @media (max-width: 899px) {
+  .public-template-ethereal .overview-v4 {
+    padding-top: 0.375rem;
+  }
+
+  .public-template-ethereal .overview-day-v4,
+  .public-template-ethereal .overview-day-v4 + .overview-day-v4 {
+    padding-top: 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .public-template-ethereal .overview-day-heading-v4 {
+    margin-bottom: 0.875rem;
+  }
+
+  .public-template-ethereal .overview-day-title-v4 > span:last-child {
+    overflow: visible;
+    padding-bottom: 0.06em;
+    font-size: 1.75rem;
+    line-height: 1.18;
+  }
+
+  .public-template-ethereal .overview-day-number-v4,
+  .public-template-ethereal .overview-day-date-v4 {
+    font-size: 0.8125rem;
+  }
+
+  .public-template-ethereal .overview-transport-list-v4 {
+    margin-bottom: 0.625rem;
+  }
+
+  .public-template-ethereal .overview-transport-item-v4,
+  .public-template-ethereal .overview-transport-item-v4:first-child,
+  .public-template-ethereal .overview-transport-item-v4:last-child,
+  .public-template-ethereal .overview-transport-item-v4 + .overview-transport-item-v4 {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+
+  .public-template-ethereal .overview-item-card-v4,
+  .public-template-ethereal .overview-board-v4 .overview-item-card-v4:last-child {
+    padding-top: 0.9375rem;
+    padding-bottom: 0.9375rem;
+  }
+
   .public-template-ethereal .overview-item-title-v4 {
     font-size: 1.125rem;
   }
 
   .public-template-ethereal .overview-item-meta-v4,
-  .public-template-ethereal .overview-item-notes-v4 {
+  .public-template-ethereal .overview-item-notes-v4,
+  .public-template-ethereal .overview-transport-route-v4,
+  .public-template-ethereal .overview-transport-meta-v4,
+  .public-template-ethereal .overview-transport-notes-v4 {
+    font-size: 0.8125rem;
+  }
+
+  .public-template-ethereal .overview-transport-kind-v4,
+  .public-template-ethereal .overview-order-v4 {
     font-size: 0.75rem;
+  }
+
+  .public-template-ethereal .overview-item-card-v4 .public-item-attachments,
+  .public-template-ethereal .overview-item-card-v4 .public-quick-actions {
+    margin-top: 0.375rem;
+  }
+
+  .public-template-ethereal .overview-item-card-v4.has-media > .public-item-media {
+    margin-top: 0.75rem;
   }
 }
