@@ -84,6 +84,7 @@ export const dynamicSharingVariantsZhCN: Record<string, string> = {
   "Publishing…": "正在发布…",
   "Read only": "只读",
   "Routes on map": "地图上的路线",
+  "Map routes": "地图路线",
   "Same {metric} as Primary": "与主要方案的{metric}相同",
   "Same as Primary": "与主要方案相同",
   "Save changes": "保存更改",

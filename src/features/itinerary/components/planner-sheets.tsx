@@ -159,15 +159,17 @@ export function PlannerSheets({
       />
       <Sheet onOpenChange={onMapExpandedChange} open={mapExpanded}>
         <SheetContent className="planner-map-sheet p-0" side="right">
-          <SheetHeader className="py-4">
-            <SheetTitle>
+          <SheetHeader className="py-5">
+            <SheetTitle className="text-lg">
               <T message={"Map & routes"} />
             </SheetTitle>
-            <SheetDescription>
-              {selectedItem?.title ?? (
-                <T message="Saved places and route tools for this itinerary." />
-              )}
-            </SheetDescription>
+            {selectedItem?.title ? (
+              <SheetDescription>{selectedItem.title}</SheetDescription>
+            ) : (
+              <SheetDescription className="sr-only">
+                <T message={"Map & routes"} />
+              </SheetDescription>
+            )}
           </SheetHeader>
           <div className="min-h-0 flex-1">
             <PlannerMapShell

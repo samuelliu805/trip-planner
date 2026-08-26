@@ -2,8 +2,6 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import {
-  ArrowDown,
-  ArrowUp,
   BedDouble,
   ChevronDown,
   Footprints,
@@ -26,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { transportModeLabels, type ItineraryItem } from "@/features/itinerary/types";
 
-import { DayRouteStatusBadge, SelectedPlaceSlot } from "./day-route-panel-ui";
+import { SelectedPlaceSlot } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
 import { routeLegModes, type RouteLegMode } from "./types";
 import type { DayRouteUi } from "./use-day-route";
@@ -61,18 +59,12 @@ export function DayRouteEditor({
     >
       <header className="border-b px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold">
-              {route.activeDay ? (
-                <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />
-              ) : null}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              <T message={"Manual order is used."} />
-            </p>
-          </div>
+          <p className="text-base font-semibold">
+            {route.activeDay ? (
+              <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />
+            ) : null}
+          </p>
           <div className="flex items-center gap-2">
-            <DayRouteStatusBadge route={route} />
             <RouteIconButton
               label="Discard changes and collapse route editor"
               onClick={onBack}
@@ -95,8 +87,6 @@ export function DayRouteEditor({
               const item = itemsById.get(itemId);
               const itemDay =
                 item?.day_id === route.previousDay?.id ? route.previousDay : route.activeDay;
-              const previousHotelStart =
-                itemsById.get(draft.itemIds[0])?.day_id === route.previousDay?.id;
               const time = item?.start_time?.slice(0, 5);
               return (
                 <li key={`${itemId}:${index}`}>
@@ -117,26 +107,6 @@ export function DayRouteEditor({
                         {item?.place ? item.place.displayName : <T message="Saved place missing" />}
                       </span>
                     </span>
-                    <RouteIconButton
-                      disabled={index === 0 || (index === 1 && previousHotelStart) || route.pending}
-                      label={t("Move stop {number} up", { number: index + 1 })}
-                      onClick={() => route.moveStop(index, -1)}
-                      title="Move stop up"
-                    >
-                      <ArrowUp className="size-4" />
-                    </RouteIconButton>
-                    <RouteIconButton
-                      disabled={
-                        index === draft.itemIds.length - 1 ||
-                        (index === 0 && previousHotelStart) ||
-                        route.pending
-                      }
-                      label={t("Move stop {number} down", { number: index + 1 })}
-                      onClick={() => route.moveStop(index, 1)}
-                      title="Move stop down"
-                    >
-                      <ArrowDown className="size-4" />
-                    </RouteIconButton>
                     <RouteIconButton
                       disabled={route.pending}
                       label={t("Remove stop {number}", { number: index + 1 })}

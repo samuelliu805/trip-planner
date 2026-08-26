@@ -1761,7 +1761,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
-    /@media \(max-width: 899px\)[\s\S]*\.public-template-traverse \.timeline-section-v4 \{[^}]*padding: 1rem 0\.5625rem 0\.875rem;[\s\S]*\.public-template-traverse \.timeline-section-header-v4 \{[^}]*grid-template-columns: 2\.75rem minmax\(0, 1fr\);[^}]*gap: 0\.375rem/,
+    /@media \(max-width: 899px\)[\s\S]*\.public-template-traverse \.timeline-section-v4:first-child \{[^}]*margin-top: 0\.625rem;[\s\S]*\.public-template-traverse \.timeline-section-v4 \{[^}]*padding: 1rem 0\.5625rem 0\.875rem;[\s\S]*\.public-template-traverse \.timeline-section-header-v4 \{[^}]*grid-template-columns: 2\.75rem minmax\(0, 1fr\);[^}]*gap: 0\.375rem/,
   );
   assert.match(
     etherealOverviewRedesign,

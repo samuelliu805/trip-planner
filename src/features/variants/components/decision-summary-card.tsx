@@ -6,10 +6,7 @@ import { ChevronDown, CircleDot, Route } from "lucide-react";
 import { DecisionSummaryMetric } from "@/features/variants/components/decision-summary-card-elements";
 import { PlanCostDisclosure } from "@/features/research/components/plan-cost-breakdown";
 import { DecisionSummaryHotelDetails } from "@/features/variants/components/decision-summary-hotel-details";
-import {
-  DecisionSummaryRouteDistanceByMode,
-  DecisionSummaryTripTransportItems,
-} from "@/features/variants/components/decision-summary-route-details";
+import { DecisionSummaryRouteDistanceByMode } from "@/features/variants/components/decision-summary-route-details";
 import type { DecisionSummaryMetricVisibility } from "@/features/variants/decision-summary-presentation";
 import type { VariantDecisionSummary } from "@/features/variants/decision-summary-types";
 
@@ -40,7 +37,7 @@ export function DecisionSummaryCard({
             className="size-4 shrink-0"
             style={{ color: summary.color }}
           />
-          <h3 className="truncate text-sm font-semibold">{summary.name}</h3>
+          <h3 className="truncate text-base font-semibold">{summary.name}</h3>
         </div>
         {summary.isPrimary || isActive ? (
           <span className="flex shrink-0 flex-wrap justify-end gap-1 text-[10px] font-medium">
@@ -60,12 +57,18 @@ export function DecisionSummaryCard({
 
       <dl className="mt-1">
         <DecisionSummaryMetric
+          hideLabel
           label="Cities"
           value={summary.citySequence.length ? summary.citySequence.join(" → ") : "No places yet"}
         />
-        <PlanCostDisclosure lines={summary.costBreakdown} summary={summary.cost} />
+        <PlanCostDisclosure
+          lines={summary.costBreakdown}
+          showLabel={false}
+          summary={summary.cost}
+        />
         <DecisionSummaryMetric
           detail={summary.nightUnknownReason?.toLowerCase()}
+          hideLabel
           label="Days & nights"
           value={`${t("{count} day(s)", { count: summary.dayCount })} · ${
             summary.nightCount === null
@@ -74,7 +77,7 @@ export function DecisionSummaryCard({
           }`}
         />
       </dl>
-      {visibility.routeDistanceModes.length || visibility.tripTransportModes ? (
+      {visibility.routeDistanceModes.length ? (
         <details className="group border-t">
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <span className="flex items-center gap-2">
@@ -89,15 +92,10 @@ export function DecisionSummaryCard({
             </span>
           </summary>
           <div className="border-t">
-            {visibility.routeDistanceModes.length ? (
-              <DecisionSummaryRouteDistanceByMode
-                modes={visibility.routeDistanceModes}
-                summary={summary}
-              />
-            ) : null}
-            {visibility.tripTransportModes ? (
-              <DecisionSummaryTripTransportItems summary={summary} />
-            ) : null}
+            <DecisionSummaryRouteDistanceByMode
+              modes={visibility.routeDistanceModes}
+              summary={summary}
+            />
           </div>
         </details>
       ) : null}

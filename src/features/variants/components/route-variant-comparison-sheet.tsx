@@ -19,6 +19,7 @@ export function RouteVariantComparisonSheet({
   return (
     <PullUpPanel
       className="comparison-sheet z-[120] max-h-[62dvh]"
+      compactHeader
       dragMode="mobile"
       id="route-comparison"
       onOpenChange={onOpenChange}

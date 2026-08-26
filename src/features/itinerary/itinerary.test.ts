@@ -82,6 +82,7 @@ import {
   buildDayRouteMarkers,
   eligibleDayRouteItems,
 } from "../routes/day-route-map.ts";
+import { fixedDayRouteDraft } from "../routes/day-route-order.ts";
 import { buildDayCityMarkers, buildDayCityRouteLines } from "../routes/day-city-map.ts";
 import { validateDayRouteDraft } from "../routes/route-config.ts";
 import { calculateRouteConfiguration } from "../routes/calculator.ts";
@@ -1879,6 +1880,46 @@ test("Day route markers include only eligible places and combine repeated Hotel 
   );
 });
 
+test("Day route drafts always follow the itinerary SSOT order", () => {
+  assert.deepEqual(
+    fixedDayRouteDraft(
+      {
+        itemIds: ["previous-hotel", "activity", "meal"],
+        legModes: ["walk", "train"],
+      },
+      ["activity", "meal"],
+      "self_driving",
+      "previous-hotel",
+    ),
+    {
+      itemIds: ["previous-hotel", "activity", "meal"],
+      legModes: ["walk", "train"],
+    },
+  );
+  assert.deepEqual(
+    fixedDayRouteDraft(
+      { itemIds: ["meal", "previous-hotel", "activity"], legModes: ["walk", "train"] },
+      ["activity", "meal"],
+      "self_driving",
+      "previous-hotel",
+    ),
+    {
+      itemIds: ["previous-hotel", "activity", "meal"],
+      legModes: ["train", "self_driving"],
+    },
+  );
+  assert.deepEqual(
+    fixedDayRouteDraft(
+      { itemIds: ["hotel", "hotel", "activity"], legModes: ["walk"] },
+      ["activity", "hotel"],
+      "self_driving",
+      undefined,
+      "hotel",
+    ).itemIds,
+    ["hotel", "activity", "hotel"],
+  );
+});
+
 test("Day route renders Google legs solid and straight fallbacks dashed", () => {
   const calculation = {
     calculatedLegs: [
@@ -2006,6 +2047,10 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
     new URL("../routes/overview-route-overlay.tsx", import.meta.url),
     "utf8",
   );
+  const plannerSheets = await readFile(
+    new URL("./components/planner-sheets.tsx", import.meta.url),
+    "utf8",
+  );
   const itemActions = await readItineraryItemActions();
   const itemValidation = await readFile(
     new URL("./item-action-validation.ts", import.meta.url),
@@ -2038,7 +2083,12 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
   assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
-  assert.match(overviewUi, /Preview only/);
+  assert.doesNotMatch(
+    overviewUi,
+    /Preview only|stage connection\(s\)|Choose a travel mode|Ready to calculate/,
+  );
+  assert.match(overviewUi, /segment\.from\.firstDayLabel === segment\.to\.firstDayLabel/);
+  assert.doesNotMatch(plannerSheets, /Saved places and route tools for this itinerary/);
   assert.match(overviewUi, /Overview route connections/);
   assert.match(overviewUi, /Calculate route/);
   assert.match(overviewUi, /overviewRouteModes/);
@@ -2087,7 +2137,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(routeUi, /aria-expanded=\{unplannedOpen\}/);
   assert.match(routeUi, /Add \{item\} to route/);
   assert.doesNotMatch(routeUi, /View route|requestFit/);
-  assert.match(routeUi, /Manual order is used/);
+  assert.doesNotMatch(routeUi, /Manual order is used|Move stop up|Move stop down|Stale/);
   assert.match(routeUi, /Save & calculate/);
   assert.doesNotMatch(routeUi, /route warning\(s\)|message=\{" · Route A"\}/);
   assert.doesNotMatch(routeUi + overviewUi + mapShell, /PullUpPanelHandle|mobile-pull-up-panel/);
@@ -3443,10 +3493,13 @@ test("copy and route requests retain visible, accessible progress feedback", asy
   assert.match(routeDetails, /defaultOpen = false/);
   assert.match(routeDetails, /Time unavailable/);
   assert.match(routeDetails, /motion-reduce:transition-none/);
+  assert.match(routeDetails, /Footprints/);
+  assert.match(routeDetails, /CarFront/);
+  assert.doesNotMatch(routeDetails, /MapPinned/);
 });
 
 test("route leg explanations stay concise and expose fallback semantics", () => {
-  assert.equal(routeLegExplanation({ mode: "walk", position: 1 }), "Walking directions");
+  assert.equal(routeLegExplanation({ mode: "walk", position: 1 }), "Walking");
   assert.equal(
     routeLegExplanation({
       geometry: { source: "straight" },

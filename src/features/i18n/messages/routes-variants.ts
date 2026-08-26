@@ -71,6 +71,10 @@ export const routesVariantsZhCN: Record<string, string> = {
   added: "项新增",
   removed: "项已移除",
   "Hotel occurrences": "住宿项目",
+  Hotels: "住宿",
+  "No Hotels.": "暂无住宿。",
+  "{count} hotel(s)": "{count} 项住宿",
+  "Day {start}–{end}": "第{start}–{end}天",
   "Explicit Hotel items only. An occurrence is not an inferred night.":
     "仅统计明确添加的住宿项目，不根据住宿晚数推断。",
   "Known Cost ·": "已知费用 ·",

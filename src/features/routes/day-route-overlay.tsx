@@ -4,7 +4,7 @@ import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Pencil, Plus, Route, X } from "lucide-react";
 
 import { DayRouteEditor } from "./day-route-editor";
-import { DayRouteStatusBadge, SelectedPlaceSlot } from "./day-route-panel-ui";
+import { SelectedPlaceSlot } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
 import { RouteLegDetails } from "./route-leg-details";
 import type { DayRouteUi } from "./use-day-route";
@@ -42,7 +42,6 @@ function DayRouteSummary({
                 <T message={"Day {day}"} values={{ day: route.activeDay.day_number }} />
               ) : null}
             </p>
-            <DayRouteStatusBadge route={route} />
           </div>
         </div>
         <RouteIconButton

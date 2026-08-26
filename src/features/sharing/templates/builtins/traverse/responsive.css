@@ -171,6 +171,10 @@
     min-height: 10.875rem;
   }
 
+  .public-template-traverse .timeline-section-v4:first-child {
+    margin-top: 0.625rem;
+  }
+
   .public-template-traverse .timeline-section-v4 {
     padding: 1rem 0.5625rem 0.875rem;
   }

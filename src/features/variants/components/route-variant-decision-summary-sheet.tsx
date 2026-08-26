@@ -21,6 +21,7 @@ export function RouteVariantDecisionSummarySheet({
   return (
     <PullUpPanel
       className="z-[120] max-h-[68dvh]"
+      compactHeader
       dragMode="mobile"
       id="route-decision-summary"
       onOpenChange={onOpenChange}

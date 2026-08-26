@@ -32,7 +32,7 @@ export function routeLegExplanation(leg: RouteLegDetail, t: Translate = identity
     return t("Transit directions · current-service estimate");
   if (["self_driving", "taxi", "rideshare", "motorcycle"].includes(leg.mode))
     return t("Driving directions");
-  if (leg.mode === "walk") return t("Walking directions");
+  if (leg.mode === "walk") return t("Walking");
   if (leg.mode === "bike") return t("Cycling directions");
   if (["bus", "subway", "tram", "shuttle", "train", "cable_car"].includes(leg.mode))
     return t("Transit directions");

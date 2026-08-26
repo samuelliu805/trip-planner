@@ -92,19 +92,27 @@ export function PlanCostBreakdown({
 
 export function PlanCostDisclosure({
   lines,
+  showLabel = true,
   summary,
 }: {
   lines: ConvertedPlanCostLine[];
+  showLabel?: boolean;
   summary: PlanCostSummary;
 }) {
   return (
     <details className="group min-w-0 border-t">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <span className="min-w-0">
-          <span className="block text-[11px] font-medium text-muted-foreground">
+          <span
+            className={
+              showLabel ? "block text-[11px] font-medium text-muted-foreground" : "sr-only"
+            }
+          >
             <T message={"Cost"} />
           </span>
-          <span className="mt-0.5 block truncate text-sm font-semibold tabular-nums">
+          <span
+            className={`${showLabel ? "mt-0.5" : ""} block truncate text-sm font-semibold tabular-nums`}
+          >
             <Localized value={costSummaryText(summary)} />
           </span>
         </span>

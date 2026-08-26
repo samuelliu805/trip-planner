@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
-import { ChevronDown, Clock3, MapPinned, Route } from "lucide-react";
+import { CarFront, ChevronDown, Clock3, Footprints, Route } from "lucide-react";
 import { useState } from "react";
 
 import { formatRouteDistance, formatRouteDuration } from "./day-route-panel-ui";
@@ -75,11 +75,16 @@ export function RouteLegDetails({
   )
     ? legs.reduce((total, leg) => total + (leg.durationSeconds ?? 0), 0)
     : null;
-  const knownDistance = legs.every(
-    ({ distanceMeters }) => distanceMeters !== null && distanceMeters !== undefined,
-  )
-    ? legs.reduce((total, leg) => total + (leg.distanceMeters ?? 0), 0)
-    : null;
+  const distanceFor = (modes: RouteLegDetail["mode"][]) => {
+    const matching = legs.filter(({ mode }) => modes.includes(mode));
+    if (!matching.length) return null;
+    const known = matching.filter(
+      ({ distanceMeters }) => distanceMeters !== null && distanceMeters !== undefined,
+    );
+    return known.length ? known.reduce((total, leg) => total + (leg.distanceMeters ?? 0), 0) : null;
+  };
+  const walkingDistance = distanceFor(["walk"]);
+  const drivingDistance = distanceFor(["self_driving", "taxi", "rideshare", "motorcycle"]);
 
   return (
     <section className="border-t">
@@ -97,10 +102,18 @@ export function RouteLegDetails({
             {formatRouteDuration(knownDuration, locale)}
           </span>
         ) : null}
-        {knownDistance !== null ? (
+        {walkingDistance !== null ? (
           <span className="flex items-center gap-1 font-normal text-muted-foreground">
-            <MapPinned aria-hidden="true" className="size-3" />
-            {formatRouteDistance(knownDistance)}
+            <Footprints aria-hidden="true" className="size-3" />
+            <span className="sr-only">{t("Walking")}: </span>
+            {formatRouteDistance(walkingDistance)}
+          </span>
+        ) : null}
+        {drivingDistance !== null ? (
+          <span className="flex items-center gap-1 font-normal text-muted-foreground">
+            <CarFront aria-hidden="true" className="size-3" />
+            <span className="sr-only">{t("Driving")}: </span>
+            {formatRouteDistance(drivingDistance)}
           </span>
         ) : null}
         <ChevronDown

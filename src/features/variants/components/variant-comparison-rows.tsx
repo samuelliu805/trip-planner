@@ -66,14 +66,16 @@ export function VariantComparisonRows({ comparison }: { comparison: VariantCompa
           id={controlId}
           onCheckedChange={() => comparison.toggleVariant(variant.variantId)}
         />
-        <span
-          aria-hidden="true"
-          className="mt-1 size-2.5 shrink-0 rounded-full ring-2 ring-background"
-          style={{ backgroundColor: variant.color }}
-        />
         <label className={`min-w-0 flex-1 ${visible ? "" : "opacity-55"}`} htmlFor={controlId}>
           <span className="flex items-start justify-between gap-2">
-            <span className="truncate text-xs font-semibold">{variant.name}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="size-2.5 shrink-0 rounded-full ring-2 ring-background"
+                style={{ backgroundColor: variant.color }}
+              />
+              <span className="truncate text-sm font-semibold">{variant.name}</span>
+            </span>
             <VariantBadges isActive={variant.isActive} isPrimary={variant.isPrimary} />
           </span>
           <span
@@ -88,15 +90,13 @@ export function VariantComparisonRows({ comparison }: { comparison: VariantCompa
           >
             {variant.citySequence}
           </span>
-          <span className="mt-0.5 block truncate text-[10px] font-semibold text-foreground">
-            {variant.knownCost.length ? (
-              variant.knownCost
+          {variant.knownCost.length ? (
+            <span className="mt-0.5 block truncate text-[10px] font-semibold text-foreground">
+              {variant.knownCost
                 .map(({ amount, currency }) => comparisonMoney(amount, currency, locale))
-                .join(" · ")
-            ) : (
-              <T message="No priced items" />
-            )}
-          </span>
+                .join(" · ")}
+            </span>
+          ) : null}
         </label>
       </article>
     );

@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { DecisionSummaryModeList } from "@/features/variants/components/decision-summary-card-elements";
+import { Bike, CarFront, Footprints, Route, TrainFront } from "lucide-react";
 import { formatSummaryDistance } from "@/features/variants/decision-summary-presentation";
 import type { DecisionSummaryMetricVisibility } from "@/features/variants/decision-summary-presentation";
 import type { VariantDecisionSummary } from "@/features/variants/decision-summary-types";
@@ -26,6 +26,16 @@ function ModeDistanceDelta({ label, value }: { label: string; value: number | nu
   );
 }
 
+function ModeIcon({ mode }: { mode: string }) {
+  if (mode === "walk") return <Footprints aria-hidden="true" className="size-3.5" />;
+  if (["self_driving", "taxi", "rideshare", "motorcycle"].includes(mode))
+    return <CarFront aria-hidden="true" className="size-3.5" />;
+  if (mode === "bike") return <Bike aria-hidden="true" className="size-3.5" />;
+  if (["bus", "subway", "tram", "shuttle", "train", "cable_car"].includes(mode))
+    return <TrainFront aria-hidden="true" className="size-3.5" />;
+  return <Route aria-hidden="true" className="size-3.5" />;
+}
+
 export function DecisionSummaryRouteDistanceByMode({
   modes,
   summary,
@@ -46,48 +56,28 @@ export function DecisionSummaryRouteDistanceByMode({
     <section
       aria-label="Current saved route distance by mode"
       data-i18n-aria-label={"Current saved route distance by mode"}
-      className="border-t py-2"
+      className="py-2"
     >
-      <h4 className="text-[11px] font-medium text-muted-foreground">
-        <T message={" Saved distance by mode "} />
-      </h4>
-      <dl className="mt-2 space-y-1.5">
+      <dl className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {modes.map(({ label, mode }) => (
-          <div className="flex items-center justify-between gap-3" key={mode}>
-            <div>
-              <dt className="text-[11px] text-muted-foreground">
-                <Localized value={label} /> <T message={" distance"} />
-              </dt>
-              <dd className="text-sm font-semibold">
-                {summary.knownDayRouteDistanceMeters === null ? (
-                  <T message="Not calculated" />
-                ) : (
-                  formatSummaryDistance(distanceByMode.get(mode) ?? 0)
-                )}
-              </dd>
-            </div>
+          <div className="flex min-w-0 items-center gap-1.5" key={mode}>
+            <span className="text-muted-foreground">
+              <ModeIcon mode={mode} />
+            </span>
+            <dt className="text-[11px] text-muted-foreground">
+              <Localized value={label} />
+            </dt>
+            <dd className="text-sm font-semibold">
+              {summary.knownDayRouteDistanceMeters === null ? (
+                <T message="Not calculated" />
+              ) : (
+                formatSummaryDistance(distanceByMode.get(mode) ?? 0)
+              )}
+            </dd>
             <ModeDistanceDelta label={label} value={deltaByMode.get(mode)} />
           </div>
         ))}
       </dl>
     </section>
-  );
-}
-
-export function DecisionSummaryTripTransportItems({
-  summary,
-}: {
-  summary: VariantDecisionSummary;
-}) {
-  return (
-    <div className="border-t py-2 text-[11px]">
-      <p className="mb-1 font-medium text-muted-foreground">
-        <T message={"Trip transport items"} />
-      </p>
-      <DecisionSummaryModeList
-        empty="No explicit trip transport modes"
-        modes={summary.tripTransportModes}
-      />
-    </div>
   );
 }

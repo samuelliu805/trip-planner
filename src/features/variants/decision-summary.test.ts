@@ -25,6 +25,7 @@ import {
   neutralDeltaAccessibleLabel,
   neutralDeltaLabel,
 } from "./decision-summary-presentation.ts";
+import { consecutiveHotelStays } from "./decision-summary-hotel-stays.ts";
 import type {
   DecisionSummaryDayRow,
   DecisionSummaryInput,
@@ -728,6 +729,39 @@ test("Phase 5C Hotel comparison supports place/title identity, date/day alignmen
   assert.equal(dateMismatch.removed, 1);
 });
 
+test("Decision summary merges consecutive occurrences of the same Hotel", () => {
+  const stays = consecutiveHotelStays([
+    {
+      date: "2026-07-17",
+      dayNumber: 1,
+      identity: "place:hotel-a",
+      itemId: "hotel-a-1",
+      placeId: "hotel-a",
+      title: "Hotel A",
+    },
+    {
+      date: "2026-07-18",
+      dayNumber: 2,
+      identity: "place:hotel-a",
+      itemId: "hotel-a-2",
+      placeId: "hotel-a",
+      title: "Hotel A",
+    },
+    {
+      date: "2026-07-19",
+      dayNumber: 3,
+      identity: "place:hotel-b",
+      itemId: "hotel-b-3",
+      placeId: "hotel-b",
+      title: "Hotel B",
+    },
+  ]);
+  assert.equal(stays.length, 2);
+  assert.equal(stays[0].start.dayNumber, 1);
+  assert.equal(stays[0].end.dayNumber, 2);
+  assert.equal(stays[1].title, "Hotel B");
+});
+
 test("Phase 5C neutral deltas preserve unknowns, partial duration, and baseline semantics", () => {
   const primary = projectionForHotel("route-a", true, [], []);
   const compared = projectionForHotel("route-b", false, [], []);
@@ -929,20 +963,23 @@ test("Phase 5C UI is isolated, responsive, accessible, and makes zero provider c
   assert.match(ui, /Localized value="Editing"/);
   assert.doesNotMatch(ui, /Localized value=\{isActive \? "Editing" : "Read only"\}/);
   assert.doesNotMatch(ui, /Price breakdown/);
-  assert.match(ui, /label="Cities"/);
-  assert.match(ui, /label="Days & nights"/);
-  assert.match(ui, /PlanCostDisclosure/);
+  assert.match(ui, /hideLabel[\s\S]*label="Cities"/);
+  assert.match(ui, /hideLabel[\s\S]*label="Days & nights"/);
+  assert.match(ui, /PlanCostDisclosure[\s\S]*showLabel=\{false\}/);
   assert.doesNotMatch(ui, /Known Cost/);
   assert.match(ui, /Route details/);
-  assert.match(ui, /Saved distance by mode/);
-  assert.match(ui, /Localized value=\{label\}[\s\S]*message=\{" distance"\}/);
+  assert.doesNotMatch(ui, /Saved distance by mode|message=\{" distance"\}/);
+  assert.match(ui, /flex flex-wrap items-center gap-x-4/);
+  assert.doesNotMatch(ui, /Trip transport items/);
   assert.doesNotMatch(ui, /Known day-route distance|Known duration|Nights unknown/);
   assert.doesNotMatch(ui, /Route coverage|Explicit saved leg modes|excluded from totals/);
   assert.match(ui, /Retry summary/);
   assert.match(ui, /min-h-11/);
   assert.match(ui, /min-\[900px\]/);
   assert.match(ui, /<PullUpPanel/);
-  assert.match(ui, /Hotel occurrences/);
+  assert.match(ui, /Hotels/);
+  assert.match(ui, /consecutiveHotelStays/);
+  assert.match(ui, /compactHeader/);
   assert.doesNotMatch(ui, /Hotel changed|Hotel added|Hotel removed|Explicit Hotel items only/);
   assert.match(ui, /aria-label|aria-expanded/);
   assert.match(mapHook, /decisionSummaryPanelOpen \|\| decisionSummarySheetOpen/);

@@ -24,6 +24,7 @@ export const dynamicResearchRoutesZhCN: Record<string, string> = {
   "Duration unavailable": "时长不可用",
   "Cycling directions": "骑行路线",
   "Driving directions": "驾车路线",
+  Driving: "驾车",
   "Ferry connection": "轮渡连接",
   "Flight connection": "航班连接",
   Idea: "想法",
@@ -56,6 +57,7 @@ export const dynamicResearchRoutesZhCN: Record<string, string> = {
   "Travel from {from} to {to}": "从{from}前往{to}",
   "Leg {position}": "第{position}段",
   "Walking directions": "步行路线",
+  Walking: "步行",
   "City/town": "城市 / 城镇",
   "We found more than one possible Plan item. Choose which one this {item} should replace. We’ll update the Plan for you.":
     "找到了多个可能对应的方案项目。请选择此{item}要替换哪一项，我们会为你更新方案。",

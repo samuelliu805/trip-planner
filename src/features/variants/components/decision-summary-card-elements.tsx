@@ -41,12 +41,14 @@ export function DecisionSummaryMetric({
   delta,
   deltaKind,
   detail,
+  hideLabel = false,
   label,
   value,
 }: {
   delta?: number | null;
   deltaKind?: NeutralDeltaKind;
   detail?: string;
+  hideLabel?: boolean;
   label: string;
   value: string;
 }) {
@@ -54,10 +56,10 @@ export function DecisionSummaryMetric({
     <div className="min-w-0 border-t py-2 first:border-t-0">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <dt className="text-[11px] font-medium text-muted-foreground">
+          <dt className={hideLabel ? "sr-only" : "text-[11px] font-medium text-muted-foreground"}>
             <Localized value={label} />
           </dt>
-          <dd className="mt-0.5 text-sm font-semibold">{value}</dd>
+          <dd className={`${hideLabel ? "" : "mt-0.5"} text-sm font-semibold`}>{value}</dd>
           {detail ? <p className="mt-0.5 text-[10px] text-muted-foreground">{detail}</p> : null}
         </div>
         {deltaKind ? <DeltaChip kind={deltaKind} value={delta} /> : null}

@@ -24,7 +24,7 @@ export function VariantComparisonMobileBar({
     <div className="map-bottom-panel absolute inset-x-3 bottom-3 z-20 flex flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur min-[900px]:hidden">
       <div className="flex min-h-14 items-center justify-between gap-3 px-3 py-2">
         <div className="min-w-0">
-          <h2 className="text-xs font-semibold">
+          <h2 className="text-sm font-semibold">
             {comparison.dayNumber
               ? t("Day {day} routes", { day: comparison.dayNumber })
               : t("Overview comparison")}
@@ -56,8 +56,8 @@ export function VariantComparisonMobileBar({
           >
             <Eye aria-hidden="true" className="size-4" />
             <span>
-              <T message={" Routes "} />
-              {comparison.visiblePresentations.length}/{comparison.presentations.length}
+              <T message={"Map routes"} /> · {comparison.visiblePresentations.length}/
+              {comparison.presentations.length}
             </span>
           </Button>
           <Button
