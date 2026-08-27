@@ -22,6 +22,8 @@ export type TelemetryLogForwarder = {
   flush: () => Promise<void>;
 };
 
+export type TelemetryLogForwarderLoader = () => Promise<TelemetryLogForwarder | null>;
+
 const identifierPattern = /^[A-Za-z0-9_-]{8,128}$/;
 const operationIdPattern = /^[0-9a-f-]{36}$/i;
 const traceIdPattern = /^[0-9a-f]{16,32}$/i;
@@ -46,6 +48,12 @@ let activeForwarder: TelemetryLogForwarder | null = null;
 
 export function registerTelemetryLogForwarder(forwarder: TelemetryLogForwarder): void {
   activeForwarder = forwarder;
+}
+
+async function loadPostHogLogForwarder(): Promise<TelemetryLogForwarder | null> {
+  if (!isNodeTelemetryRuntime()) return null;
+  const { getPostHogLogForwarder } = await import("./otel-logs.server.ts");
+  return getPostHogLogForwarder();
 }
 
 function boundedInteger(value: unknown): number | undefined {
@@ -122,6 +130,7 @@ export function createStructuredLogger(
   options: {
     config?: TelemetryConfig;
     forwarder?: TelemetryLogForwarder;
+    loadForwarder?: TelemetryLogForwarderLoader;
     now?: () => Date;
     write?: (line: string) => void;
   } = {},
@@ -133,6 +142,38 @@ export function createStructuredLogger(
     ((line: string) => {
       console.log(line.endsWith("\n") ? line.slice(0, -1) : line);
     });
+  const pendingForwards = new Set<Promise<void>>();
+  let loadedForwarder: Promise<TelemetryLogForwarder | null> | null = null;
+
+  async function resolveForwarder(): Promise<TelemetryLogForwarder | null> {
+    if (options.forwarder) return options.forwarder;
+    if (activeForwarder) return activeForwarder;
+    loadedForwarder ??= (options.loadForwarder ?? loadPostHogLogForwarder)().catch(() => null);
+    return loadedForwarder;
+  }
+
+  function forward(record: StructuredLogRecord): void {
+    const immediate = options.forwarder ?? activeForwarder;
+    if (immediate) {
+      try {
+        immediate.emit(record);
+      } catch {
+        // Remote log delivery is best effort.
+      }
+      return;
+    }
+
+    const pending = resolveForwarder()
+      .then((forwarder) => {
+        forwarder?.emit(record);
+      })
+      .catch(() => undefined);
+    pendingForwards.add(pending);
+    void pending.then(
+      () => pendingForwards.delete(pending),
+      () => pendingForwards.delete(pending),
+    );
+  }
 
   function emit(level: TelemetryLogLevel, fields: TelemetryLogFields): void {
     if (!isNodeTelemetryRuntime()) return;
@@ -143,21 +184,16 @@ export function createStructuredLogger(
     } catch {
       // Application behavior cannot depend on stdout availability.
     }
-    const forwarder = options.forwarder ?? activeForwarder;
-    if (forwarder && shouldForward(record)) {
-      try {
-        forwarder.emit(record);
-      } catch {
-        // Remote log delivery is best effort.
-      }
-    }
+    if (shouldForward(record)) forward(record);
   }
 
   return {
     error: (fields: TelemetryLogFields) => emit("error", fields),
     async flush() {
       try {
-        await (options.forwarder ?? activeForwarder)?.flush();
+        const forwarder = await resolveForwarder();
+        await Promise.allSettled([...pendingForwards]);
+        await forwarder?.flush();
       } catch {
         // Serverless responses must not fail because a log exporter did.
       }

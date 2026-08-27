@@ -1,8 +1,9 @@
 import { PostHog } from "posthog-node";
 
-import type { TelemetryConfig } from "./config";
-import type { ServerTelemetryEventName } from "./events";
-import { sanitizeProviderEvent, type ProviderCaptureEvent } from "./privacy";
+import type { TelemetryConfig } from "./config.ts";
+import type { ServerTelemetryEventName } from "./events.ts";
+import { sanitizeProviderEvent, type ProviderCaptureEvent } from "./privacy.ts";
+import { sanitizeServerExceptionEvent } from "./privacy-server-exceptions.ts";
 
 export type PostHogServerAdapter = {
   capture: (
@@ -18,22 +19,14 @@ export type PostHogServerAdapter = {
   flush: () => Promise<void>;
 };
 
-let singleton: PostHog | null = null;
+export type PostHogServerClient = Pick<PostHog, "capture" | "captureExceptionImmediate" | "flush">;
 
-export function getPostHogServerAdapter(config: TelemetryConfig): PostHogServerAdapter | null {
-  if (!config.enabled || !config.host || !config.projectToken) return null;
-  singleton ??= new PostHog(config.projectToken, {
-    before_send: (event) =>
-      sanitizeProviderEvent(event as unknown as ProviderCaptureEvent, config) as typeof event,
-    enableExceptionAutocapture: false,
-    flushAt: 1,
-    flushInterval: 0,
-    host: config.host,
-    privacyMode: true,
-  });
+let singleton: PostHogServerClient | null = null;
+
+export function createPostHogServerAdapter(client: PostHogServerClient): PostHogServerAdapter {
   return {
     capture(eventName, distinctId, properties) {
-      singleton?.capture({
+      client.capture({
         disableGeoip: true,
         distinctId,
         event: eventName,
@@ -41,10 +34,30 @@ export function getPostHogServerAdapter(config: TelemetryConfig): PostHogServerA
       });
     },
     async captureException(error, distinctId, properties) {
-      await singleton?.captureExceptionImmediate(error, distinctId, properties);
+      await client.captureExceptionImmediate(error, distinctId, properties);
     },
     async flush() {
-      await singleton?.flush();
+      await client.flush();
     },
   };
+}
+
+export function getPostHogServerAdapter(config: TelemetryConfig): PostHogServerAdapter | null {
+  if (!config.enabled || !config.host || !config.projectToken) return null;
+  singleton ??= new PostHog(config.projectToken, {
+    before_send: (event) => {
+      const providerEvent = event as unknown as ProviderCaptureEvent;
+      const sanitized =
+        providerEvent?.event === "$exception"
+          ? sanitizeServerExceptionEvent(providerEvent, config)
+          : sanitizeProviderEvent(providerEvent, config);
+      return sanitized as typeof event;
+    },
+    enableExceptionAutocapture: false,
+    flushAt: 1,
+    flushInterval: 0,
+    host: config.host,
+    privacyMode: true,
+  });
+  return createPostHogServerAdapter(singleton);
 }

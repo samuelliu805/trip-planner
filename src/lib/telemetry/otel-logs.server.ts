@@ -3,15 +3,40 @@ import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs";
 
-import { resolveServerTelemetryConfig } from "./config";
-import { isNodeTelemetryRuntime, telemetryRelease } from "./context";
+import { resolveServerTelemetryConfig, type TelemetryConfig } from "./config.ts";
+import { isNodeTelemetryRuntime, telemetryRelease } from "./context.ts";
 import {
   registerTelemetryLogForwarder,
   type StructuredLogRecord,
   type TelemetryLogForwarder,
-} from "./logger";
+} from "./logger.ts";
 
-let provider: LoggerProvider | null = null;
+const postHogLogsEndpoint = "https://us.i.posthog.com/i/v1/logs";
+
+type OTelLogProvider = {
+  emit: (record: StructuredLogRecord) => void;
+  forceFlush: () => Promise<void>;
+};
+
+export type PostHogLogProviderOptions = {
+  exporter: {
+    headers: { Authorization: string; "Content-Type": "application/json" };
+    url: typeof postHogLogsEndpoint;
+  };
+  resourceAttributes: {
+    "deployment.environment": "preview" | "production";
+    "service.name": "trip-planner-web";
+    "service.version"?: string;
+    "telemetry.region": "global";
+  };
+};
+
+type CreatePostHogLogForwarderOptions = {
+  config?: TelemetryConfig;
+  createProvider?: (options: PostHogLogProviderOptions) => OTelLogProvider;
+  release?: string;
+  runtimeEnv?: Partial<Record<"NEXT_RUNTIME", string>>;
+};
 
 function severityNumber(record: StructuredLogRecord): SeverityNumber {
   if (record.level === "error") return SeverityNumber.ERROR;
@@ -19,19 +44,39 @@ function severityNumber(record: StructuredLogRecord): SeverityNumber {
   return SeverityNumber.INFO;
 }
 
-export function registerPostHogLogExporter(): void {
-  if (provider || !isNodeTelemetryRuntime()) return;
-  const config = resolveServerTelemetryConfig();
-  if (!config.enabled || !config.host || !config.projectToken || config.region !== "global") return;
-
-  const exporter = new OTLPLogExporter({
-    headers: {
-      Authorization: `Bearer ${config.projectToken}`,
-      "Content-Type": "application/json",
+export function postHogLogProviderOptions(
+  config: TelemetryConfig,
+  release = telemetryRelease(),
+): PostHogLogProviderOptions | null {
+  if (
+    !config.enabled ||
+    !config.projectToken ||
+    config.environment === "development" ||
+    config.host !== "https://us.i.posthog.com" ||
+    config.region !== "global"
+  ) {
+    return null;
+  }
+  return {
+    exporter: {
+      headers: {
+        Authorization: `Bearer ${config.projectToken}`,
+        "Content-Type": "application/json",
+      },
+      url: postHogLogsEndpoint,
     },
-    url: `${config.host}/i/v1/logs`,
-  });
-  provider = new LoggerProvider({
+    resourceAttributes: {
+      "deployment.environment": config.environment,
+      "service.name": "trip-planner-web",
+      ...(release ? { "service.version": release } : {}),
+      "telemetry.region": "global",
+    },
+  };
+}
+
+function createOTelProvider(options: PostHogLogProviderOptions): OTelLogProvider {
+  const exporter = new OTLPLogExporter(options.exporter);
+  const provider = new LoggerProvider({
     processors: [
       new BatchLogRecordProcessor({
         exportTimeoutMillis: 5_000,
@@ -41,16 +86,10 @@ export function registerPostHogLogExporter(): void {
         scheduledDelayMillis: 500,
       }),
     ],
-    resource: resourceFromAttributes({
-      "deployment.environment": config.environment,
-      "deployment.environment.name": config.environment,
-      region: "global",
-      "service.name": "trip-planner-web",
-      ...(telemetryRelease() ? { "service.version": telemetryRelease() } : {}),
-    }),
+    resource: resourceFromAttributes(options.resourceAttributes),
   });
   const otelLogger = provider.getLogger("trip-planner-web");
-  const forwarder: TelemetryLogForwarder = {
+  return {
     emit(record) {
       otelLogger.emit({
         attributes: record,
@@ -61,9 +100,48 @@ export function registerPostHogLogExporter(): void {
         timestamp: new Date(record.timestamp),
       });
     },
-    async flush() {
-      await provider?.forceFlush({ timeoutMillis: 5_000 });
+    async forceFlush() {
+      await provider.forceFlush({ timeoutMillis: 5_000 });
     },
   };
-  registerTelemetryLogForwarder(forwarder);
+}
+
+export function createPostHogLogForwarder(
+  options: CreatePostHogLogForwarderOptions = {},
+): TelemetryLogForwarder | null {
+  if (!isNodeTelemetryRuntime(options.runtimeEnv)) return null;
+  const setup = postHogLogProviderOptions(
+    options.config ?? resolveServerTelemetryConfig(),
+    options.release,
+  );
+  if (!setup) return null;
+  try {
+    const provider = (options.createProvider ?? createOTelProvider)(setup);
+    return {
+      emit(record) {
+        provider.emit(record);
+      },
+      async flush() {
+        await provider.forceFlush();
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+let initialized = false;
+let singleton: TelemetryLogForwarder | null = null;
+
+export function getPostHogLogForwarder(): TelemetryLogForwarder | null {
+  if (!initialized) {
+    initialized = true;
+    singleton = createPostHogLogForwarder();
+  }
+  return singleton;
+}
+
+export function registerPostHogLogExporter(): void {
+  const forwarder = getPostHogLogForwarder();
+  if (forwarder) registerTelemetryLogForwarder(forwarder);
 }

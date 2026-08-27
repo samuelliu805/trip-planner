@@ -11,6 +11,7 @@ type SmokeEnvironment = TelemetryEnvironmentVariables &
 export type TelemetrySmokeDependencies = {
   captureException: (error: Error) => Promise<void>;
   env: SmokeEnvironment;
+  flushLogs: () => Promise<void>;
   logWarning: () => void;
 };
 
@@ -79,8 +80,10 @@ export async function handleTelemetrySmokeRequest(
   }
 
   try {
-    if (kind === "structured_log") dependencies.logWarning();
-    else {
+    if (kind === "structured_log") {
+      dependencies.logWarning();
+      await dependencies.flushLogs();
+    } else {
       await dependencies.captureException(new SafeTelemetryError("synthetic_preview_exception"));
     }
   } catch {

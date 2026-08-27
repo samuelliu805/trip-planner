@@ -53,12 +53,14 @@ export const serverAnalytics = {
       const adapter = await serverAdapter();
       if (!adapter || !config.enabled) return;
       const code = context.errorCode ?? safeErrorCode(error);
-      const analyticsId = /^tpv1_[0-9a-f]{64}$/.test(context.analyticsId ?? "")
+      const authenticated = /^tpv1_[0-9a-f]{64}$/.test(context.analyticsId ?? "");
+      const analyticsId = authenticated
         ? context.analyticsId!
         : systemAnalyticsId(config.environment);
       await adapter.captureException(sanitizedError(error, code), analyticsId, {
         ...serverTelemetryContext(config),
         $pathname: normalizeTelemetryRoute(context.route),
+        actor_type: authenticated ? "authenticated" : "system",
         error_code: code,
         provider: context.provider ?? "application",
         route: normalizeTelemetryRoute(context.route),

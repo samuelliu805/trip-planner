@@ -7,6 +7,7 @@ const safeErrorNames = new Set([
   "RangeError",
   "ReferenceError",
   "SyntaxError",
+  "SyntheticPreviewException",
   "TypeError",
   "URIError",
 ]);
@@ -16,7 +17,10 @@ export class SafeTelemetryError extends Error {
 
   constructor(telemetryCode: TelemetryErrorCode) {
     super(telemetryCode);
-    this.name = "TelemetryError";
+    this.name =
+      telemetryCode === "synthetic_preview_exception"
+        ? "SyntheticPreviewException"
+        : "TelemetryError";
     this.telemetryCode = telemetryCode;
   }
 }

@@ -1,5 +1,3 @@
-import { after } from "next/server";
-
 import { logger } from "@/lib/telemetry/logger";
 import { serverAnalytics } from "@/lib/telemetry/server";
 import { handleTelemetrySmokeRequest } from "@/lib/telemetry/smoke";
@@ -13,6 +11,7 @@ export async function POST(request: Request) {
         errorCode: "synthetic_preview_exception",
         route: "/api/internal/telemetry-smoke",
       });
+      await serverAnalytics.flush();
     },
     env: {
       NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -25,6 +24,7 @@ export async function POST(request: Request) {
       TELEMETRY_SMOKE_TEST_TOKEN: process.env.TELEMETRY_SMOKE_TEST_TOKEN,
       VERCEL_ENV: process.env.VERCEL_ENV,
     },
+    flushLogs: () => logger.flush(),
     logWarning() {
       logger.warn({
         actor_type: "system",
@@ -35,10 +35,5 @@ export async function POST(request: Request) {
       });
     },
   });
-  if (response.status === 202) {
-    after(async () => {
-      await Promise.all([logger.flush(), serverAnalytics.flush()]);
-    });
-  }
   return response;
 }

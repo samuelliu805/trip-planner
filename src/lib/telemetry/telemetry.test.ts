@@ -13,10 +13,17 @@ import {
 import { createPseudonymousAnalyticsId } from "./identity.server.ts";
 import { createStructuredLogger } from "./logger.ts";
 import {
+  createPostHogLogForwarder,
+  postHogLogProviderOptions,
+  type PostHogLogProviderOptions,
+} from "./otel-logs.server.ts";
+import { createPostHogServerAdapter, type PostHogServerClient } from "./posthog-server.adapter.ts";
+import {
   isProhibitedTelemetryKey,
   sanitizeProviderEvent,
   sanitizeTelemetryProperties,
 } from "./privacy.ts";
+import { sanitizeServerExceptionEvent } from "./privacy-server-exceptions.ts";
 import {
   ideasCategoryForPath,
   normalizeTelemetryRoute,
@@ -268,6 +275,121 @@ test("exception sanitization removes raw messages, query strings, and attachment
   assert.match(serialized, /unexpected_error/);
 });
 
+test("server exception sanitization preserves SDK issue and Source Map metadata only", () => {
+  const releaseId = "0197e6db-9a73-7b91-9e80-4e1b7158db5c";
+  const chunkId = "0197e6db-9a73-7b91-9e80-4e1b7158db5d";
+  const release = "500d89293a9be3521abc3a3144d210454cbb2c6a";
+  const sanitized = sanitizeServerExceptionEvent(
+    {
+      _originatedFromCaptureException: true,
+      distinctId: "system:trip-planner-web:preview",
+      event: "$exception",
+      properties: {
+        $exception_level: "error",
+        $exception_list: [
+          {
+            mechanism: { handled: true, source: "private", synthetic: false, type: "generic" },
+            stacktrace: {
+              frames: [
+                {
+                  abs_path: "/var/task/.next/server/chunks/app.js?token=private",
+                  chunk_id: chunkId,
+                  colno: 12,
+                  context_line: 'throw new Error("traveler@example.com")',
+                  filename: "/var/task/.next/server/chunks/app.js?trip=private",
+                  function: "handleTelemetrySmokeRequest",
+                  in_app: true,
+                  lineno: 42,
+                  platform: "node:javascript",
+                  vars: { authorization: "Bearer private" },
+                },
+              ],
+              type: "raw",
+            },
+            type: "SyntheticPreviewException",
+            value: "traveler@example.com at 37.7749,-122.4194",
+          },
+        ],
+        $pathname: "/api/internal/telemetry-smoke?token=private",
+        $release_id: releaseId,
+        actor_type: "system",
+        authorization: "Bearer private",
+        body: { notes: "private" },
+        cookie: "session=private",
+        environment: "preview",
+        error_code: "synthetic_preview_exception",
+        provider: "application",
+        release,
+        route: "/api/internal/telemetry-smoke?token=private",
+        runtime: "nodejs",
+        telemetry_region: "global",
+      },
+    },
+    enabledPreviewConfig(),
+  );
+  assert.ok(sanitized);
+  const properties = sanitized.properties!;
+  const exception = (properties.$exception_list as Array<Record<string, unknown>>)[0];
+  const frame = (exception.stacktrace as { frames: Array<Record<string, unknown>> }).frames[0];
+  assert.deepEqual(exception.mechanism, {
+    handled: true,
+    synthetic: false,
+    type: "generic",
+  });
+  assert.equal(exception.type, "SyntheticPreviewException");
+  assert.equal(exception.value, "synthetic_preview_exception");
+  assert.equal(properties.$release_id, releaseId);
+  assert.equal(properties.release, release);
+  assert.equal(frame.chunk_id, chunkId);
+  assert.equal(frame.filename, "/var/task/.next/server/chunks/app.js");
+  assert.equal(properties.route, "/api/internal/telemetry-smoke");
+  assert.equal(properties.actor_type, "system");
+  const serialized = JSON.stringify(sanitized);
+  for (const prohibited of [
+    "traveler@example.com",
+    "37.7749",
+    "Bearer private",
+    "session=private",
+    "notes",
+    "?token=private",
+    "context_line",
+    "vars",
+  ]) {
+    assert.equal(serialized.includes(prohibited), false, prohibited);
+  }
+});
+
+test("server exception adapter uses the SDK immediate exception API", async () => {
+  const calls: string[] = [];
+  let capturedError: unknown;
+  let capturedProperties: Record<string | number, unknown> | undefined;
+  const client: PostHogServerClient = {
+    capture() {
+      calls.push("capture");
+    },
+    async captureExceptionImmediate(error, distinctId, properties) {
+      calls.push(`captureExceptionImmediate:${distinctId}`);
+      capturedError = error;
+      capturedProperties = properties;
+    },
+    async flush() {
+      calls.push("flush");
+    },
+  };
+  const adapter = createPostHogServerAdapter(client);
+  const error = new SafeTelemetryError("synthetic_preview_exception");
+  await adapter.captureException(error, "system:trip-planner-web:preview", {
+    actor_type: "system",
+    error_code: "synthetic_preview_exception",
+    route: "/api/internal/telemetry-smoke",
+  });
+  await adapter.flush();
+  assert.equal(capturedError, error);
+  assert.equal(capturedError instanceof Error, true);
+  assert.equal(capturedProperties?.error_code, "synthetic_preview_exception");
+  assert.deepEqual(calls, ["captureExceptionImmediate:system:trip-planner-web:preview", "flush"]);
+});
+
 test("HMAC analytics identifiers are deterministic, isolated, and non-reversible", () => {
   const userId = "123e4567-e89b-42d3-a456-426614174000";
   const secretA = "a".repeat(32);
@@ -359,16 +481,98 @@ test("safe error codes never expose provider messages", () => {
   assert.equal(safeErrorCode(new Error("person@example.com")), "unexpected_error");
 });
 
+test("PostHog OTel logs initialize only for valid Node telemetry", async () => {
+  const config = enabledPreviewConfig();
+  const release = "500d89293a9be3521abc3a3144d210454cbb2c6a";
+  const expected = postHogLogProviderOptions(config, release);
+  assert.ok(expected);
+  assert.equal(expected.exporter.url, "https://us.i.posthog.com/i/v1/logs");
+  assert.equal(expected.exporter.headers.Authorization, `Bearer ${config.projectToken}`);
+  assert.equal(expected.exporter.headers["Content-Type"], "application/json");
+  assert.equal(expected.exporter.headers.Authorization.includes("phx_"), false);
+  assert.deepEqual(expected.resourceAttributes, {
+    "deployment.environment": "preview",
+    "service.name": "trip-planner-web",
+    "service.version": release,
+    "telemetry.region": "global",
+  });
+
+  let providerOptions: PostHogLogProviderOptions | undefined;
+  const emitted: string[] = [];
+  let flushes = 0;
+  const forwarder = createPostHogLogForwarder({
+    config,
+    createProvider(options) {
+      providerOptions = options;
+      return {
+        emit(record) {
+          emitted.push(record.log_name);
+        },
+        async forceFlush() {
+          flushes += 1;
+        },
+      };
+    },
+    release,
+    runtimeEnv: { NEXT_RUNTIME: "nodejs" },
+  });
+  assert.ok(forwarder);
+  forwarder.emit({
+    actor_type: "system",
+    environment: "preview",
+    level: "warn",
+    log_name: "telemetry_smoke_warning",
+    outcome: "observed",
+    provider: "application",
+    region: "global",
+    runtime: "nodejs",
+    service: "trip-planner-web",
+    timestamp: "2026-08-27T12:00:00.000Z",
+  });
+  await forwarder.flush();
+  assert.deepEqual(providerOptions, expected);
+  assert.deepEqual(emitted, ["telemetry_smoke_warning"]);
+  assert.equal(flushes, 1);
+
+  assert.equal(
+    createPostHogLogForwarder({
+      config,
+      createProvider() {
+        throw new Error("must not initialize");
+      },
+      runtimeEnv: { NEXT_RUNTIME: "edge" },
+    }),
+    null,
+  );
+  assert.equal(
+    createPostHogLogForwarder({
+      config: { ...config, enabled: false },
+      createProvider() {
+        throw new Error("must not initialize");
+      },
+      runtimeEnv: { NEXT_RUNTIME: "nodejs" },
+    }),
+    null,
+  );
+});
+
 test("structured logger writes one-line allowlisted JSON and selects remote levels", async () => {
   const lines: string[] = [];
   const forwarded: string[] = [];
+  let flushes = 0;
+  let loads = 0;
   const logger = createStructuredLogger({
     config: enabledPreviewConfig(),
-    forwarder: {
-      emit(record) {
-        forwarded.push(record.log_name);
-      },
-      async flush() {},
+    async loadForwarder() {
+      loads += 1;
+      return {
+        emit(record) {
+          forwarded.push(record.log_name);
+        },
+        async flush() {
+          flushes += 1;
+        },
+      };
     },
     now: () => new Date("2026-08-27T12:00:00.000Z"),
     write: (line) => lines.push(line),
@@ -379,7 +583,19 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
     outcome: "started",
     provider: "vercel_cron",
     route: "/trips/123e4567-e89b-42d3-a456-426614174000?notes=secret",
-    ...({ email: "person@example.com", message: "private" } as Record<string, string>),
+    ...({
+      address: "1 Market Street",
+      authorization: "Bearer private",
+      body: '{"notes":"private"}',
+      cookie: "session=private",
+      email: "person@example.com",
+      latitude: "37.7749",
+      message: "private",
+      signed_url: "https://files.example.test/a?X-Amz-Signature=private",
+      storage_key: "private/boarding-pass.pdf",
+      token: "private",
+      user_id: "123e4567-e89b-42d3-a456-426614174000",
+    } as Record<string, string>),
   });
   logger.warn({
     log_name: "telemetry_smoke_warning",
@@ -396,7 +612,47 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
   assert.equal(record.route, "/trips/[tripId]");
   assert.equal(record.email, undefined);
   assert.equal(record.message, undefined);
+  const serialized = JSON.stringify(record);
+  for (const prohibited of [
+    "1 Market Street",
+    "Bearer private",
+    "session=private",
+    "person@example.com",
+    "37.7749",
+    "X-Amz-Signature",
+    "boarding-pass.pdf",
+    '"token"',
+  ]) {
+    assert.equal(serialized.includes(prohibited), false, prohibited);
+  }
   assert.deepEqual(forwarded, ["telemetry_smoke_warning"]);
+  assert.equal(loads, 1);
+  assert.equal(flushes, 1);
+});
+
+test("structured logger export failures never affect application behavior", async () => {
+  const logger = createStructuredLogger({
+    config: enabledPreviewConfig(),
+    async loadForwarder() {
+      return {
+        emit() {
+          throw new Error("export unavailable");
+        },
+        async flush() {
+          throw new Error("export unavailable");
+        },
+      };
+    },
+    write() {},
+  });
+  assert.doesNotThrow(() =>
+    logger.warn({
+      log_name: "telemetry_smoke_warning",
+      outcome: "observed",
+      provider: "application",
+    }),
+  );
+  await assert.doesNotReject(logger.flush());
 });
 
 const smokeToken = "preview-smoke-token-that-is-at-least-32-characters";
@@ -421,6 +677,7 @@ test("smoke route is hidden in Production, disabled Preview, and for wrong token
   const dependencies = {
     captureException: async () => {},
     env: enabledSmokeEnvironment,
+    flushLogs: async () => {},
     logWarning: () => {},
   };
   assert.equal(
@@ -472,6 +729,9 @@ test("valid smoke calls exercise only the requested adapter without exposing the
       calls.push(`exception:${error.message}`);
     },
     env: enabledSmokeEnvironment,
+    async flushLogs() {
+      calls.push("flush");
+    },
     logWarning() {
       calls.push("warning");
     },
@@ -486,10 +746,50 @@ test("valid smoke calls exercise only the requested adapter without exposing the
   );
   assert.equal(logResponse.status, 202);
   assert.equal(exceptionResponse.status, 202);
-  assert.deepEqual(calls, ["warning", "exception:synthetic_preview_exception"]);
+  assert.deepEqual(calls, ["warning", "flush", "exception:synthetic_preview_exception"]);
   assert.equal((await logResponse.text()).includes(smokeToken), false);
   assert.equal((await exceptionResponse.text()).includes(smokeToken), false);
   assert.equal(JSON.stringify(calls).includes(smokeToken), false);
+});
+
+test("smoke responses wait for log flush and immediate exception delivery", async () => {
+  let releaseLogFlush!: () => void;
+  const logFlushGate = new Promise<void>((resolve) => {
+    releaseLogFlush = resolve;
+  });
+  let logResolved = false;
+  const logResponse = handleTelemetrySmokeRequest(smokeRequest("structured_log"), {
+    async captureException() {},
+    env: enabledSmokeEnvironment,
+    flushLogs: () => logFlushGate,
+    logWarning() {},
+  }).then((response) => {
+    logResolved = true;
+    return response;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(logResolved, false);
+  releaseLogFlush();
+  assert.equal((await logResponse).status, 202);
+
+  let releaseException!: () => void;
+  const exceptionGate = new Promise<void>((resolve) => {
+    releaseException = resolve;
+  });
+  let exceptionResolved = false;
+  const exceptionResponse = handleTelemetrySmokeRequest(smokeRequest("server_exception"), {
+    captureException: () => exceptionGate,
+    env: enabledSmokeEnvironment,
+    flushLogs: async () => {},
+    logWarning() {},
+  }).then((response) => {
+    exceptionResolved = true;
+    return response;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(exceptionResolved, false);
+  releaseException();
+  assert.equal((await exceptionResponse).status, 202);
 });
 
 test("smoke telemetry failures do not change the controlled response", async () => {
@@ -498,6 +798,9 @@ test("smoke telemetry failures do not change the controlled response", async () 
       throw new Error("telemetry unavailable");
     },
     env: enabledSmokeEnvironment,
+    async flushLogs() {
+      throw new Error("telemetry unavailable");
+    },
     logWarning() {
       throw new Error("telemetry unavailable");
     },

@@ -1,5 +1,24 @@
 import type { TelemetryErrorCode } from "./events.ts";
 
+const exceptionTypes = new Set([
+  "AggregateError",
+  "Error",
+  "RangeError",
+  "ReferenceError",
+  "SyntaxError",
+  "SyntheticPreviewException",
+  "TypeError",
+  "URIError",
+]);
+const mechanismTypes = new Set([
+  "generic",
+  "middleware",
+  "onuncaughtexception",
+  "onconsole",
+  "onunhandledrejection",
+]);
+const sourceMapIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function finiteNumber(value: unknown, minimum = 0, maximum = 10_000_000) {
   return typeof value === "number" && Number.isFinite(value) && value >= minimum && value <= maximum
     ? value
@@ -24,6 +43,24 @@ function safeCodeLocation(value: unknown): string | undefined {
   return withoutQuery.slice(0, 1_000);
 }
 
+function sanitizeMechanism(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const mechanism = value as Record<string, unknown>;
+  const type =
+    typeof mechanism.type === "string" && mechanismTypes.has(mechanism.type)
+      ? mechanism.type
+      : "generic";
+  return {
+    ...(typeof mechanism.handled === "boolean" ? { handled: mechanism.handled } : {}),
+    ...(typeof mechanism.synthetic === "boolean" ? { synthetic: mechanism.synthetic } : {}),
+    type,
+  };
+}
+
+export function safeSourceMapId(value: unknown): string | undefined {
+  return typeof value === "string" && sourceMapIdPattern.test(value) ? value : undefined;
+}
+
 export function sanitizeExceptionList(value: unknown, errorCode: TelemetryErrorCode) {
   if (!Array.isArray(value)) return null;
   const exceptions = value.slice(0, 10).flatMap((candidate) => {
@@ -36,11 +73,13 @@ export function sanitizeExceptionList(value: unknown, errorCode: TelemetryErrorC
           const source = frame as Record<string, unknown>;
           const filename = safeCodeLocation(source.filename);
           const absPath = safeCodeLocation(source.abs_path);
+          const chunkId = safeSourceMapId(source.chunk_id);
           const platform =
             source.platform === "node:javascript" ? "node:javascript" : "web:javascript";
           return [
             {
               ...(absPath ? { abs_path: absPath } : {}),
+              ...(chunkId ? { chunk_id: chunkId } : {}),
               ...(finiteNumber(source.colno) !== undefined ? { colno: source.colno } : {}),
               ...(filename ? { filename } : {}),
               ...(safeCodeLabel(source.function, 160) ? { function: source.function } : {}),
@@ -52,16 +91,12 @@ export function sanitizeExceptionList(value: unknown, errorCode: TelemetryErrorC
         })
       : [];
     const type = safeCodeLabel(exception.type, 50);
+    const mechanism = sanitizeMechanism(exception.mechanism);
     return [
       {
+        ...(mechanism ? { mechanism } : {}),
         ...(frames.length ? { stacktrace: { frames, type: "raw" } } : {}),
-        type:
-          type &&
-          /^(?:AggregateError|Error|RangeError|ReferenceError|SyntaxError|TypeError|URIError)$/.test(
-            type,
-          )
-            ? type
-            : "Error",
+        type: type && exceptionTypes.has(type) ? type : "Error",
         value: errorCode,
       },
     ];

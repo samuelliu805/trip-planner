@@ -13,7 +13,7 @@ import {
   sanitizedReferrer,
   telemetryScreenForRoute,
 } from "./routes.ts";
-import { sanitizeExceptionList } from "./privacy-exceptions.ts";
+import { safeSourceMapId, sanitizeExceptionList } from "./privacy-exceptions.ts";
 import { sanitizePersonProperties } from "./privacy-person.ts";
 
 export type ProviderCaptureEvent = {
@@ -198,6 +198,9 @@ function sanitizeException(properties: Record<string, unknown>, config: Telemetr
     $exception_level: properties.$exception_level === "fatal" ? "fatal" : "error",
     $exception_list: exceptionList,
     $pathname: context.$pathname,
+    ...(safeSourceMapId(properties.$release_id)
+      ? { $release_id: safeSourceMapId(properties.$release_id) }
+      : {}),
     error_code: errorCode,
     ...(properties.provider === "application" ||
     properties.provider === "posthog" ||

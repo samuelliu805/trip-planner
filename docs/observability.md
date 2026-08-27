@@ -9,24 +9,26 @@ The implementation follows the stable [PostHog Next.js integration](https://post
 - `config.ts` parses the bounded environment, provider, and region configuration. Invalid or mismatched configuration is disabled.
 - `events.ts` is the typed event, property, log-name, provider, outcome, and safe-error-code registry.
 - `routes.ts` removes query strings and fragments, maps dynamic routes to templates, and derives bounded screens and Ideas categories.
-- `privacy.ts` is the central per-event property allowlist and PostHog `before_send` sanitizer.
+- `privacy.ts` is the central per-event property allowlist and browser PostHog `before_send` sanitizer. `privacy-server-exceptions.ts` preserves the bounded SDK metadata required for server Issue creation and Source Map lookup.
 - `identity.server.ts` creates the authenticated HMAC identifier. The raw Supabase user ID never crosses the server boundary.
 - `client.ts` is the only browser SDK adapter. `instrumentation-client.ts` initializes it before hydration.
 - `server.ts` is the provider-neutral server API. It loads the Node adapter lazily and never loads `posthog-node` in the Edge runtime.
-- `logger.ts` emits allowlisted one-line JSON to stdout. `otel-logs.server.ts` forwards only selected records through OTLP.
-- `instrumentation.ts` registers the log exporter and implements Next.js `onRequestError`.
+- `logger.ts` emits allowlisted one-line JSON to stdout and lazily resolves a route-local forwarder. `otel-logs.server.ts` forwards only selected records through direct OTLP.
+- `instrumentation.ts` pre-registers the Node log exporter and implements Next.js `onRequestError`. Route-local lazy initialization is also required because Next.js can bundle instrumentation and Route Handlers as separate module instances.
 
 Telemetry failures are swallowed at each adapter boundary. Authentication, rendering, navigation, cleanup, and application mutations do not depend on telemetry delivery.
 
 ## Environment isolation
 
-| Deployment        | `NEXT_PUBLIC_TELEMETRY_ENVIRONMENT` | PostHog project    | Default state                                          |
-| ----------------- | ----------------------------------- | ------------------ | ------------------------------------------------------ |
-| Vercel Production | `production`                        | Production project | Enabled only with valid Production-scoped variables    |
-| Vercel Preview    | `preview`                           | Preview project    | Enabled only with valid Preview-scoped variables       |
-| Local/development | `development`                       | None               | Disabled, even if the enabled flag is accidentally set |
+| Deployment        | `NEXT_PUBLIC_TELEMETRY_ENVIRONMENT` | PostHog project | Required environment property                          |
+| ----------------- | ----------------------------------- | --------------- | ------------------------------------------------------ |
+| Vercel Production | `production`                        | Shared project  | `environment=production`                               |
+| Vercel Preview    | `preview`                           | Shared project  | `environment=preview`                                  |
+| Local/development | `development`                       | None            | Disabled, even if the enabled flag is accidentally set |
 
-On the server, the configured environment must equal `VERCEL_ENV`. Production and Preview variables must be scoped separately in Vercel, including different project tokens, project IDs, and HMAC secrets. A project token does not encode a verifiable project name, so Vercel variable scoping is the authoritative project mapping.
+Preview and Production intentionally share one PostHog project. Isolation is property-based: analytics and exceptions carry the bounded `environment` property, while logs carry the `deployment.environment` resource attribute. Every PostHog query, Issue review, log search, dashboard, or future alert must include the appropriate environment filter.
+
+On the server, the configured environment must equal `VERCEL_ENV`; environment is never inferred from a hostname. The shared project token and project ID may be scoped to both Vercel environments, but `NEXT_PUBLIC_TELEMETRY_ENVIRONMENT`, smoke settings, and HMAC secrets remain environment-scoped. Preview and Production must use different HMAC secrets so authenticated analytics identifiers cannot correlate across environments.
 
 The only implemented region is `global`, using the US ingestion and UI hosts. Configuring `cn` disables telemetry; it never falls back to the global adapter. A future CN provider can implement the same event and identity contracts without changing feature components or event names.
 
@@ -38,10 +40,10 @@ The only implemented region is `global`, using the US ingestion and UI hosts. Co
 | `NEXT_PUBLIC_TELEMETRY_PROVIDER`    | Browser and server | Must be `posthog`.                                                                             |
 | `NEXT_PUBLIC_TELEMETRY_REGION`      | Browser and server | Must be `global`; `cn` is explicitly unsupported in Phase 1.                                   |
 | `NEXT_PUBLIC_TELEMETRY_ENVIRONMENT` | Browser and server | Bounded to `production`, `preview`, or `development`.                                          |
-| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | Browser and server | Browser-safe, write-only `phc_...` project token. Scope it to the matching Vercel environment. |
+| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | Browser and server | Browser-safe, write-only `phc_...` project token used by analytics, exceptions, and OTLP Logs. |
 | `NEXT_PUBLIC_POSTHOG_HOST`          | Browser and server | Global ingestion host; expected to be `https://us.i.posthog.com`.                              |
 | `POSTHOG_UI_HOST`                   | Build only         | PostHog UI/API host used for source-map upload; expected to be `https://us.posthog.com`.       |
-| `POSTHOG_PROJECT_ID`                | Build only         | Numeric project ID for source maps. Use the matching Production or Preview project.            |
+| `POSTHOG_PROJECT_ID`                | Build only         | Numeric ID of the shared project used for source-map upload.                                   |
 | `POSTHOG_API_KEY`                   | Build only         | Personal API Key used solely by the source-map uploader. Never prefix it with `NEXT_PUBLIC_`.  |
 | `TELEMETRY_ID_HMAC_SECRET`          | Server only        | At least 32 characters. Use independent random values for Production and Preview.              |
 | `TELEMETRY_SMOKE_TEST_ENABLED`      | Server only        | Exact `true` enables the acceptance route, which still requires Preview and a token.           |
@@ -88,7 +90,9 @@ The HMAC is computed only in a server component after `supabase.auth.getUser()` 
 
 Browser exceptions use PostHog exception autocapture for uncaught errors and unhandled rejections. No duplicate `window.onerror` or `unhandledrejection` listeners are installed, and console errors are not captured.
 
-Uncaught server errors use Next.js `instrumentation.ts` and its supported `onRequestError` hook. Headers, cookies, bodies, query strings, raw identifiers, and raw error messages are excluded. Error names and stack locations are reduced to safe code metadata so uploaded source maps can still resolve application frames. A `WeakSet` suppresses repeated capture of the same error object. Server events use a non-person system distinct ID unless a valid HMAC analytics ID is supplied.
+Uncaught server errors use Next.js `instrumentation.ts` and its supported `onRequestError` hook. The adapter passes a real sanitized `Error` to `posthog-node`'s official `captureExceptionImmediate` API and awaits its immediate HTTP delivery. It never constructs `$exception` through the generic analytics capture API, and it never shuts down the shared warm-instance client after a request.
+
+Headers, cookies, bodies, query strings, raw identifiers, and raw error messages are excluded before the SDK sees the error. The dedicated server exception sanitizer preserves the SDK-generated `mechanism`, injected `$release_id`, and validated frame `chunk_id`, filename, line, and column fields needed for Issue creation and symbolication. Context lines, variables, provider messages, and arbitrary exception properties remain forbidden. A `WeakSet` suppresses repeated capture of the same error object. Server events use a non-person system distinct ID unless a valid HMAC analytics ID is supplied.
 
 `VERCEL_GIT_COMMIT_SHA` is attached as the release/service version when it is a valid commit SHA. Safe error codes are bounded values such as `unexpected_error`, `database_unavailable`, `storage_unavailable`, `timeout`, and `synthetic_preview_exception`.
 
@@ -96,14 +100,20 @@ Uncaught server errors use Next.js `instrumentation.ts` and its supported `onReq
 
 The server logger writes one JSON object per stdout line for Vercel Runtime Logs. It has no free-form message field and does not patch `console`. Fields include timestamp, level, log name, environment, region, release, service, runtime, safe route, operation/request/trace IDs, actor type, provider, outcome, duration, bounded counts, and safe error code.
 
-The OpenTelemetry exporter sends logs to the PostHog OTLP endpoint with resource attributes:
+The logger explicitly dual-writes selected records: first as one-line JSON for Vercel Runtime Logs, then through an OpenTelemetry `LoggerProvider` directly to `https://us.i.posthog.com/i/v1/logs`. OTLP authentication uses `Authorization: Bearer <project token>` and `Content-Type: application/json`. It never uses the Personal API Key and never puts the token in a URL.
+
+The Vercel Hobby plan does not provide Log Drains, so no drain is required or configured. Direct application-level OTLP export is the PostHog Logs path; it does not forward arbitrary Vercel or third-party console output.
+
+The exporter applies exactly these bounded resource attributes:
 
 - `service.name = trip-planner-web`
 - `deployment.environment = production | preview`
 - `service.version = <Git commit SHA>` when available
-- `region = global`
+- `telemetry.region = global`
 
 Only ERROR logs, selected WARN logs, and the `cleanup_succeeded` INFO heartbeat are forwarded. Ordinary stdout, debug output, and `console.*` calls are not forwarded.
+
+Each Node.js function bundle initializes at most one provider per warm instance. This route-local singleton is intentional: Next.js can compile `instrumentation.ts` and a Route Handler into isolated module graphs, so an instrumentation-only module global is not a reliable handoff. The batch processor remains non-blocking during ordinary work. Cleanup and request-error paths use `after()` or an explicit flush boundary; the smoke log awaits `forceFlush()` before returning `202`. Providers are not shut down after each request, and exporter failures are swallowed.
 
 Implemented structured log names are `cleanup_started`, `cleanup_succeeded`, `cleanup_failed`, `cleanup_backlog_observed`, `server_exception`, and `telemetry_smoke_warning`. Implemented custom events are the four cleanup outcomes plus `$pageview` and `$web_vitals`.
 
@@ -125,39 +135,96 @@ or:
 { "kind": "server_exception" }
 ```
 
-The first emits one `telemetry_smoke_warning`; the second captures one controlled `synthetic_preview_exception`. Neither crashes the deployment or mutates data.
+The first emits one `telemetry_smoke_warning` and waits for the OTLP provider to flush before returning. The second passes a controlled `SyntheticPreviewException` through `captureExceptionImmediate` and flushes the shared client before returning. Both return the existing controlled `202`; delivery failure is swallowed and neither path crashes the deployment or mutates data.
 
 ### Manual Preview acceptance
 
-1. Configure Preview-scoped variables with the Preview PostHog project token, project ID, HMAC secret, smoke token, `NEXT_PUBLIC_TELEMETRY_ENVIRONMENT=preview`, and `TELEMETRY_SMOKE_TEST_ENABLED=true`.
-2. Deploy a Preview build and confirm `GET /api/health` returns 200 with `Cache-Control: no-store`.
-3. Open the Preview app and navigate through a static route, a Trip route, an Ideas category, and a public share. Confirm only normalized `$pageview` paths and bounded screens/categories appear in the Preview project.
-4. Confirm `$web_vitals` URL fields are normalized and do not contain queries, UUIDs, or tokens.
-5. Sign in, confirm the distinct ID starts with `tpv1_`, then sign out and confirm subsequent auth/public-share activity is anonymous. Do not compare it to the raw Supabase UUID outside the server.
-6. Exercise both smoke kinds with placeholders replaced locally:
+1. Configure Preview-scoped variables with the shared PostHog project token and project ID, a Preview-only HMAC secret and smoke token, `NEXT_PUBLIC_TELEMETRY_ENVIRONMENT=preview`, and `TELEMETRY_SMOKE_TEST_ENABLED=true`.
+2. Deploy a new Preview build from the repaired commit. Set local placeholders without placing secrets in shell history shared with other users:
 
 ```bash
-curl -X POST "$PREVIEW_URL/api/internal/telemetry-smoke" \
-  -H "content-type: application/json" \
-  -H "x-telemetry-smoke-token: $TELEMETRY_SMOKE_TOKEN" \
-  --data '{"kind":"structured_log"}'
+export TRIP_PREVIEW_DEPLOYMENT='<new-preview-deployment>'
+export TRIP_TELEMETRY_SMOKE_TOKEN='<preview-smoke-token>'
+```
 
-curl -X POST "$PREVIEW_URL/api/internal/telemetry-smoke" \
-  -H "content-type: application/json" \
-  -H "x-telemetry-smoke-token: $TELEMETRY_SMOKE_TOKEN" \
+3. Check liveness:
+
+```bash
+vercel curl /api/health \
+  --deployment "$TRIP_PREVIEW_DEPLOYMENT"
+```
+
+4. Send the structured log:
+
+```bash
+vercel curl /api/internal/telemetry-smoke \
+  --deployment "$TRIP_PREVIEW_DEPLOYMENT" \
+  -- \
+  --request POST \
+  --header "Content-Type: application/json" \
+  --header "x-telemetry-smoke-token: $TRIP_TELEMETRY_SMOKE_TOKEN" \
+  --data '{"kind":"structured_log"}'
+```
+
+5. Send the controlled server exception:
+
+```bash
+vercel curl /api/internal/telemetry-smoke \
+  --deployment "$TRIP_PREVIEW_DEPLOYMENT" \
+  -- \
+  --request POST \
+  --header "Content-Type: application/json" \
+  --header "x-telemetry-smoke-token: $TRIP_TELEMETRY_SMOKE_TOKEN" \
   --data '{"kind":"server_exception"}'
 ```
 
-7. Observe the warning log and synthetic exception in the Preview project. Inspect their properties for prohibited data.
-8. Disable the smoke route after acceptance and verify it returns 404. Repeat with a wrong token.
+6. Verify wrong and missing tokens remain hidden:
 
-This procedure is required before claiming Preview telemetry verification. Production verification must be performed separately in the Production project.
+```bash
+vercel curl /api/internal/telemetry-smoke \
+  --deployment "$TRIP_PREVIEW_DEPLOYMENT" \
+  -- \
+  --request POST \
+  --header "Content-Type: application/json" \
+  --header "x-telemetry-smoke-token: wrong-token" \
+  --data '{"kind":"structured_log"}'
+
+vercel curl /api/internal/telemetry-smoke \
+  --deployment "$TRIP_PREVIEW_DEPLOYMENT" \
+  -- \
+  --request POST \
+  --header "Content-Type: application/json" \
+  --data '{"kind":"structured_log"}'
+```
+
+7. Confirm health is `200`; both valid smoke requests are `202`; wrong and missing tokens are `404`; and Vercel contains the sanitized JSON warning.
+8. In PostHog Logs, filter `service.name=trip-planner-web`, `deployment.environment=preview`, and body or `log_name=telemetry_smoke_warning`. Confirm `service.version` matches the deployed Git SHA and `telemetry.region=global`.
+9. In Error Tracking, open the `synthetic_preview_exception` occurrence. Confirm its environment and release, then verify at least one application frame resolves to a repository source file and useful source line through the uploaded Symbol Set.
+10. Inspect the raw log, event, and Issue occurrence for prohibited data and confirm no Production telemetry was produced. Disable the smoke route after acceptance and verify it returns `404`.
+
+This procedure is required before claiming Preview delivery or symbolication verification. Production verification must be performed separately with `environment=production`, even though both environments share a project.
 
 ## Source maps
 
-Source-map upload uses stable `@posthog/nextjs-config`, which supports the installed Next.js 16 Turbopack compiler path. The wrapper is enabled only during a validated Production or Preview build when `POSTHOG_API_KEY`, `POSTHOG_PROJECT_ID`, and `POSTHOG_UI_HOST` are all valid. Missing credentials leave the normal Next.js config unchanged, so local and test builds do not upload or fail.
+Source-map upload uses stable `@posthog/nextjs-config`, which supports the installed Next.js 16 Turbopack compiler path. The wrapper is enabled only during a validated Production or Preview build when `POSTHOG_API_KEY`, `POSTHOG_PROJECT_ID`, and `POSTHOG_UI_HOST` are all valid. Missing credentials leave the normal Next.js config unchanged, so local and test builds do not upload or fail. Runtime code never uploads source maps.
 
-The matching environment-scoped project ID is mandatory; this prevents a correctly configured Preview build from targeting Production. The Git SHA is used as release/build metadata when available. Generated source maps are deleted after a successful upload and are not served publicly. Keep the Personal API Key build-only.
+The shared project ID is mandatory. The Git SHA is used as release/build metadata when available, while the build plugin injects a PostHog `$release_id` and per-bundle `chunk_id` values. The official exception API attaches those values and the dedicated sanitizer preserves them, allowing an occurrence to select the exact uploaded Symbol Set. Generated source maps are deleted after a successful upload and are not served publicly. Keep the Personal API Key build-only.
+
+Uploaded Symbol Sets alone do not prove symbolication. Acceptance requires an actual Issue occurrence whose release resolves to the deployed build and whose application frame is de-minified to a repository source path and useful line.
+
+## Troubleshooting
+
+### Analytics `$exception` exists but no Issue
+
+Confirm the call uses `captureException` or `captureExceptionImmediate`, not generic `capture`. Inspect `$exception_list` for a bounded type, value, stacktrace, and `mechanism`. Check grouping and suppression rules, then confirm the exception was not transformed by a generic property sanitizer. For Vercel smoke calls, the immediate capture promise must complete before the `202` response.
+
+### Vercel JSON log exists but PostHog Logs is empty
+
+JSON stdout and PostHog Logs are separate writes. Confirm the route-local OTLP provider initialized in the Node.js bundle, the endpoint is `/i/v1/logs`, the Bearer credential is the project token rather than the Personal API Key, and `Content-Type` is `application/json`. Verify an explicit selected record was emitted and `forceFlush()` ran before the function froze. Do not use a Vercel Log Drain on the Hobby plan.
+
+### Symbol Sets exist but the stack remains minified
+
+Open the actual Issue occurrence. Compare its injected `$release_id` and displayed release with the Symbol Set release for the deployed Git SHA. Inspect application frames for `chunk_id`, filename, line, and column values, and confirm the served bundle contains the injected chunk marker. Do not change upload configuration until the occurrence metadata identifies a concrete mismatch.
 
 ## Phase 2 boundary
 
