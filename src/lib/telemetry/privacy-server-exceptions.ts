@@ -1,4 +1,5 @@
 import type { TelemetryConfig } from "./config.ts";
+import { syntheticPreviewExceptionFingerprint } from "./errors.ts";
 import type { TelemetryErrorCode } from "./events.ts";
 import type { ProviderCaptureEvent } from "./privacy.ts";
 import { safeSourceMapId, sanitizeExceptionList } from "./privacy-exceptions.ts";
@@ -60,6 +61,13 @@ export function sanitizeServerExceptionEvent(
     typeof event.distinctId === "string" && analyticsIdPattern.test(event.distinctId)
       ? event.distinctId
       : undefined;
+  const exceptionFingerprint =
+    config.environment === "preview" &&
+    errorCode === "synthetic_preview_exception" &&
+    route === "/api/internal/telemetry-smoke" &&
+    properties.$exception_fingerprint === syntheticPreviewExceptionFingerprint
+      ? syntheticPreviewExceptionFingerprint
+      : undefined;
 
   return {
     // posthog-node removes this internal marker before before_send runs. The
@@ -69,6 +77,7 @@ export function sanitizeServerExceptionEvent(
     ...(distinctId ? { distinctId } : {}),
     event: "$exception",
     properties: {
+      ...(exceptionFingerprint ? { $exception_fingerprint: exceptionFingerprint } : {}),
       $exception_level: properties.$exception_level === "fatal" ? "fatal" : "error",
       $exception_list: exceptionList,
       $geoip_disable: true,

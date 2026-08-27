@@ -1,5 +1,10 @@
 import type { TelemetryErrorCode } from "./events.ts";
 
+export const syntheticPreviewExceptionFingerprint =
+  "trip-planner-web:synthetic-preview-exception:v1" as const;
+
+export type SyntheticPreviewExceptionFingerprint = typeof syntheticPreviewExceptionFingerprint;
+
 const databaseCodes = new Set(["23505", "42501", "PGRST000", "PGRST001", "PGRST002"]);
 const safeErrorNames = new Set([
   "AggregateError",

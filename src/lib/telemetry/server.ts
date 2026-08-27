@@ -1,6 +1,12 @@
 import { resolveServerTelemetryConfig } from "./config";
 import { isNodeTelemetryRuntime, serverTelemetryContext } from "./context";
-import { markExceptionCaptured, safeErrorCode, sanitizedError } from "./errors";
+import {
+  markExceptionCaptured,
+  safeErrorCode,
+  sanitizedError,
+  syntheticPreviewExceptionFingerprint,
+  type SyntheticPreviewExceptionFingerprint,
+} from "./errors";
 import type {
   ServerTelemetryEventName,
   TelemetryErrorCode,
@@ -45,6 +51,7 @@ export const serverAnalytics = {
     context: {
       analyticsId?: string;
       errorCode?: TelemetryErrorCode;
+      exceptionFingerprint?: SyntheticPreviewExceptionFingerprint;
       provider?: "application" | "posthog" | "storage" | "supabase";
       route: string;
     },
@@ -59,8 +66,13 @@ export const serverAnalytics = {
       const analyticsId = authenticated
         ? context.analyticsId!
         : systemAnalyticsId(config.environment);
+      const exceptionFingerprint =
+        context.exceptionFingerprint === syntheticPreviewExceptionFingerprint
+          ? syntheticPreviewExceptionFingerprint
+          : undefined;
       await adapter.captureException(sanitizedError(error, code), analyticsId, {
         ...serverTelemetryContext(config),
+        ...(exceptionFingerprint ? { $exception_fingerprint: exceptionFingerprint } : {}),
         $pathname: normalizeTelemetryRoute(context.route),
         actor_type: authenticated ? "authenticated" : "system",
         error_code: code,

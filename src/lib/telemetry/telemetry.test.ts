@@ -3,7 +3,11 @@ import test from "node:test";
 
 import { createAnalyticsBoundary, type BrowserTelemetryAdapter } from "./client.ts";
 import { resolveTelemetryConfig, type TelemetryConfig } from "./config.ts";
-import { safeErrorCode, SafeTelemetryError } from "./errors.ts";
+import {
+  safeErrorCode,
+  SafeTelemetryError,
+  syntheticPreviewExceptionFingerprint,
+} from "./errors.ts";
 import {
   telemetryEventNames,
   telemetryEventRegistry,
@@ -165,6 +169,7 @@ test("pageview sanitization rebuilds an allowlisted payload", () => {
       notes: "Anniversary trip",
       price_amount: 999,
       trip_title: "Private holiday",
+      $exception_fingerprint: "attacker-controlled-fingerprint",
       unknown_custom_property: "must disappear",
     },
     enabledPreviewConfig(),
@@ -174,6 +179,7 @@ test("pageview sanitization rebuilds an allowlisted payload", () => {
   assert.equal(properties.$current_url, "https://preview.example.test/trips/[tripId]");
   assert.equal(properties.$referrer, "https://mail.example");
   assert.equal(properties.screen, "trip_plan");
+  assert.equal("$exception_fingerprint" in properties, false);
   const serialized = JSON.stringify(properties);
   for (const prohibited of [
     tripId,
@@ -285,6 +291,7 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
       event: "$exception",
       properties: {
         $exception_level: "error",
+        $exception_fingerprint: syntheticPreviewExceptionFingerprint,
         $exception_list: [
           {
             mechanism: { handled: true, source: "private", synthetic: false, type: "generic" },
@@ -337,6 +344,7 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   });
   assert.equal(exception.type, "SyntheticPreviewException");
   assert.equal(exception.value, "synthetic_preview_exception");
+  assert.equal(properties.$exception_fingerprint, syntheticPreviewExceptionFingerprint);
   assert.equal(properties.$release_id, releaseId);
   assert.equal(properties.release, release);
   assert.equal(frame.chunk_id, chunkId);
@@ -358,9 +366,36 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   ]) {
     assert.equal(serialized.includes(prohibited), false, prohibited);
   }
+
+  const arbitraryFingerprint = sanitizeServerExceptionEvent(
+    {
+      ...sanitized,
+      properties: {
+        ...properties,
+        $exception_fingerprint: "attacker-controlled-fingerprint",
+      },
+    },
+    enabledPreviewConfig(),
+  );
+  assert.ok(arbitraryFingerprint);
+  assert.equal("$exception_fingerprint" in arbitraryFingerprint.properties!, false);
+
+  const wrongRoute = sanitizeServerExceptionEvent(
+    {
+      ...sanitized,
+      properties: {
+        ...properties,
+        $exception_fingerprint: syntheticPreviewExceptionFingerprint,
+        route: "/api/health",
+      },
+    },
+    enabledPreviewConfig(),
+  );
+  assert.ok(wrongRoute);
+  assert.equal("$exception_fingerprint" in wrongRoute.properties!, false);
 });
 
-test("server exception adapter uses the SDK immediate exception API", async () => {
+test("server exception adapter uses only the SDK immediate exception API", async () => {
   const calls: string[] = [];
   let capturedError: unknown;
   let capturedProperties: Record<string | number, unknown> | undefined;
@@ -387,6 +422,7 @@ test("server exception adapter uses the SDK immediate exception API", async () =
   const error = new Error("synthetic_preview_exception");
   error.name = "SyntheticPreviewException";
   const delivery = adapter.captureException(error, "system:trip-planner-web:preview", {
+    $exception_fingerprint: syntheticPreviewExceptionFingerprint,
     actor_type: "system",
     error_code: "synthetic_preview_exception",
     route: "/api/internal/telemetry-smoke",
@@ -399,6 +435,7 @@ test("server exception adapter uses the SDK immediate exception API", async () =
   assert.equal(capturedError instanceof Error, true);
   assert.equal((capturedError as Error).name, "SyntheticPreviewException");
   assert.equal((capturedError as Error).message, "synthetic_preview_exception");
+  assert.equal(capturedProperties?.$exception_fingerprint, syntheticPreviewExceptionFingerprint);
   assert.equal(capturedProperties?.error_code, "synthetic_preview_exception");
   assert.deepEqual(calls, [
     "captureExceptionImmediate:start:system:trip-planner-web:preview",
@@ -808,9 +845,10 @@ test("smoke route is hidden in Production, disabled Preview, and for wrong token
 test("valid smoke calls exercise only the requested adapter without exposing the token", async () => {
   const calls: string[] = [];
   const dependencies = {
-    async captureException(error: Error) {
-      calls.push(`exception:${error.message}`);
+    async captureException(error: Error, fingerprint: string) {
+      calls.push(`exception:${error.message}:${fingerprint}`);
       assert.equal(error.name, "SyntheticPreviewException");
+      assert.equal(fingerprint, syntheticPreviewExceptionFingerprint);
       return "captured" as const;
     },
     env: enabledSmokeEnvironment,
@@ -829,12 +867,27 @@ test("valid smoke calls exercise only the requested adapter without exposing the
     dependencies,
   );
   const exceptionResponse = await handleTelemetrySmokeRequest(
-    smokeRequest("server_exception"),
+    new Request(
+      "https://preview.example.test/api/internal/telemetry-smoke?fingerprint=attacker-controlled",
+      {
+        body: JSON.stringify({ kind: "server_exception" }),
+        headers: {
+          "content-type": "application/json",
+          "x-exception-fingerprint": "attacker-controlled",
+          "x-telemetry-smoke-token": smokeToken,
+        },
+        method: "POST",
+      },
+    ),
     dependencies,
   );
   assert.equal(logResponse.status, 202);
   assert.equal(exceptionResponse.status, 202);
-  assert.deepEqual(calls, ["warning", "flush", "exception:synthetic_preview_exception"]);
+  assert.deepEqual(calls, [
+    "warning",
+    "flush",
+    `exception:synthetic_preview_exception:${syntheticPreviewExceptionFingerprint}`,
+  ]);
   assert.equal((await logResponse.text()).includes(smokeToken), false);
   assert.equal((await exceptionResponse.text()).includes(smokeToken), false);
   assert.equal(JSON.stringify(calls).includes(smokeToken), false);

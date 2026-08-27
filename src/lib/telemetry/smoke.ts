@@ -1,6 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { resolveTelemetryConfig, type TelemetryEnvironmentVariables } from "./config.ts";
+import {
+  syntheticPreviewExceptionFingerprint,
+  type SyntheticPreviewExceptionFingerprint,
+} from "./errors.ts";
 import type { ExceptionDeliveryResult } from "./server.ts";
 
 export type TelemetrySmokeKind = "server_exception" | "structured_log";
@@ -9,7 +13,10 @@ type SmokeEnvironment = TelemetryEnvironmentVariables &
   Partial<Record<"TELEMETRY_SMOKE_TEST_ENABLED" | "TELEMETRY_SMOKE_TEST_TOKEN", string>>;
 
 export type TelemetrySmokeDependencies = {
-  captureException: (error: Error) => Promise<ExceptionDeliveryResult>;
+  captureException: (
+    error: Error,
+    fingerprint: SyntheticPreviewExceptionFingerprint,
+  ) => Promise<ExceptionDeliveryResult>;
   env: SmokeEnvironment;
   flushLogs: () => Promise<void>;
   logExceptionDeliveryFailure: () => void;
@@ -106,7 +113,10 @@ export async function handleTelemetrySmokeRequest(
     } else {
       const error = new Error("synthetic_preview_exception");
       error.name = "SyntheticPreviewException";
-      const result = await dependencies.captureException(error);
+      const result = await dependencies.captureException(
+        error,
+        syntheticPreviewExceptionFingerprint,
+      );
       if (result !== "captured") {
         reportDeliveryFailure(dependencies);
         return deliveryFailed();

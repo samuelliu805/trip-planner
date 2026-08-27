@@ -6,9 +6,10 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const response = await handleTelemetrySmokeRequest(request, {
-    async captureException(error) {
+    async captureException(error, fingerprint) {
       return serverAnalytics.captureException(error, {
         errorCode: "synthetic_preview_exception",
+        exceptionFingerprint: fingerprint,
         provider: "posthog",
         route: "/api/internal/telemetry-smoke",
       });

@@ -135,7 +135,7 @@ or:
 { "kind": "server_exception" }
 ```
 
-The first emits one `telemetry_smoke_warning` and waits for the OTLP provider to flush before returning. The second creates an `Error` with the fixed name `SyntheticPreviewException` and fixed message `synthetic_preview_exception`, passes it through `captureExceptionImmediate`, and flushes the shared client before returning. Successful delivery returns `202`. Capture or flush failure returns only `503` with the bounded `telemetry_delivery_failed` code and writes one allowlisted `posthog_exception_delivery_failed` JSON diagnostic to Vercel; it never returns or logs the SDK error, stack, token, request data, or environment values.
+The first emits one `telemetry_smoke_warning` and waits for the OTLP provider to flush before returning. The second creates an `Error` with the fixed name `SyntheticPreviewException` and fixed message `synthetic_preview_exception`, adds the code-owned fingerprint `trip-planner-web:synthetic-preview-exception:v1`, passes it through `captureExceptionImmediate`, and flushes the shared client before returning. The dedicated server-exception sanitizer preserves that fingerprint only for this Preview route and error code; request data and generic analytics events cannot set it. Successful delivery returns `202`. Capture or flush failure returns only `503` with the bounded `telemetry_delivery_failed` code and writes one allowlisted `posthog_exception_delivery_failed` JSON diagnostic to Vercel; it never returns or logs the SDK error, stack, token, request data, or environment values.
 
 ### Manual Preview acceptance
 
@@ -199,7 +199,7 @@ vercel curl /api/internal/telemetry-smoke \
 
 7. Confirm health is `200`; both valid smoke requests are `202`; wrong and missing tokens are `404`; and Vercel contains the sanitized JSON warning. A `503` exception response means delivery did not complete; inspect only the bounded `posthog_exception_delivery_failed` Vercel diagnostic.
 8. In PostHog Logs, filter `service.name=trip-planner-web`, `deployment.environment=preview`, and body or `log_name=telemetry_smoke_warning`. Confirm `service.version` matches the deployed Git SHA and `telemetry.region=global`.
-9. In Error Tracking, open the `synthetic_preview_exception` occurrence. Confirm its environment and release, then verify at least one application frame resolves to a repository source file and useful source line through the uploaded Symbol Set.
+9. In Error Tracking, open the `synthetic_preview_exception` occurrence. Confirm its fingerprint is `trip-planner-web:synthetic-preview-exception:v1`, confirm its environment and release, then verify at least one application frame resolves to a repository source file and useful source line through the uploaded Symbol Set.
 10. Inspect the raw log, event, and Issue occurrence for prohibited data and confirm no Production telemetry was produced. Disable the smoke route after acceptance and verify it returns `404`.
 
 This procedure is required before claiming Preview delivery or symbolication verification. Production verification must be performed separately with `environment=production`, even though both environments share a project.
