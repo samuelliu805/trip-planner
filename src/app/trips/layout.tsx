@@ -6,7 +6,9 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/features/auth/actions";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+import { getRequestLocale } from "@/features/i18n/server";
 import { createClient } from "@/lib/supabase/server";
+import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 
 export default async function TripsLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -14,9 +16,11 @@ export default async function TripsLayout({ children }: { children: React.ReactN
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  const locale = await getRequestLocale();
 
   return (
     <div className="trips-shell min-h-dvh bg-background">
+      <AuthenticatedTelemetryIdentity locale={locale} supabaseUserId={user.id} />
       <header className="trips-global-header sticky top-0 z-[80] border-b bg-card/95 backdrop-blur">
         <div className="flex h-14 w-full items-center justify-between px-4 sm:h-16 lg:px-5">
           <Link className="font-semibold tracking-tight" href="/trips">

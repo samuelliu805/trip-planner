@@ -9,6 +9,7 @@ import { translateMessage } from "@/features/i18n/translate";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { defaultTripCurrency } from "@/features/trips/create-defaults";
 import { createClient } from "@/lib/supabase/server";
+import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -31,6 +32,7 @@ export default async function AccountPage() {
 
   return (
     <main className="min-h-dvh bg-muted">
+      <AuthenticatedTelemetryIdentity locale={requestLocale} supabaseUserId={user.id} />
       <PlannerMapProvider>
         <AccountEditor
           currency={profile?.default_currency ?? defaultTripCurrency}

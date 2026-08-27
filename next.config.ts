@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { withPostHogConfig } from "@posthog/nextjs-config";
+
+import { resolveTelemetryConfig } from "./src/lib/telemetry/config";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -16,4 +19,41 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+const buildTelemetryConfig = resolveTelemetryConfig(
+  {
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN,
+    NEXT_PUBLIC_TELEMETRY_ENABLED: process.env.NEXT_PUBLIC_TELEMETRY_ENABLED,
+    NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: process.env.NEXT_PUBLIC_TELEMETRY_ENVIRONMENT,
+    NEXT_PUBLIC_TELEMETRY_PROVIDER: process.env.NEXT_PUBLIC_TELEMETRY_PROVIDER,
+    NEXT_PUBLIC_TELEMETRY_REGION: process.env.NEXT_PUBLIC_TELEMETRY_REGION,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+  },
+  { validateVercelEnvironment: true },
+);
+const postHogApiKey = process.env.POSTHOG_API_KEY?.trim();
+const postHogProjectId = process.env.POSTHOG_PROJECT_ID?.trim();
+const postHogUiHost = process.env.POSTHOG_UI_HOST?.replace(/\/+$/, "");
+const releaseCandidate = process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+const release = /^[0-9a-f]{7,64}$/i.test(releaseCandidate ?? "") ? releaseCandidate : undefined;
+const sourceMapUploadEnabled =
+  buildTelemetryConfig.enabled &&
+  /^phx_[A-Za-z0-9_-]+$/.test(postHogApiKey ?? "") &&
+  /^\d+$/.test(postHogProjectId ?? "") &&
+  postHogUiHost === "https://us.posthog.com";
+
+export default sourceMapUploadEnabled
+  ? withPostHogConfig(nextConfig, {
+      host: postHogUiHost,
+      logLevel: "warn",
+      personalApiKey: postHogApiKey!,
+      projectId: postHogProjectId!,
+      sourcemaps: {
+        build: release,
+        deleteAfterUpload: true,
+        enabled: true,
+        releaseName: "trip-planner-web",
+        releaseVersion: release,
+      },
+    })
+  : nextConfig;

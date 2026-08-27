@@ -9,6 +9,7 @@ import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { createClient } from "@/lib/supabase/server";
+import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -34,6 +35,7 @@ const capabilities = [
 ];
 
 export default async function HomePage() {
+  const locale = await getRequestLocale();
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,6 +43,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      {user ? <AuthenticatedTelemetryIdentity locale={locale} supabaseUserId={user.id} /> : null}
       <nav
         className="border-b bg-background/95"
         aria-label="Primary navigation"
