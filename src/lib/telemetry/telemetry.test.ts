@@ -309,6 +309,12 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
                   platform: "node:javascript",
                   vars: { authorization: "Bearer private" },
                 },
+                {
+                  filename: "/var/task/.next/server/chunks/worker.js?token=private",
+                  in_app: true,
+                  lineno: 7,
+                  platform: "node:javascript",
+                },
               ],
               type: "raw",
             },
@@ -336,7 +342,8 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   assert.ok(sanitized);
   const properties = sanitized.properties!;
   const exception = (properties.$exception_list as Array<Record<string, unknown>>)[0];
-  const frame = (exception.stacktrace as { frames: Array<Record<string, unknown>> }).frames[0];
+  const frames = (exception.stacktrace as { frames: Array<Record<string, unknown>> }).frames;
+  const frame = frames[0];
   assert.deepEqual(exception.mechanism, {
     handled: true,
     synthetic: false,
@@ -349,6 +356,9 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   assert.equal(properties.release, release);
   assert.equal(frame.chunk_id, chunkId);
   assert.equal(frame.filename, "/var/task/.next/server/chunks/app.js");
+  assert.equal(frame.function, "handleTelemetrySmokeRequest");
+  assert.equal(frames[1].filename, "/var/task/.next/server/chunks/worker.js");
+  assert.equal(frames[1].function, "?");
   assert.equal(properties.route, "/api/internal/telemetry-smoke");
   assert.equal(properties.actor_type, "system");
   assert.equal(properties.provider, "posthog");

@@ -76,13 +76,14 @@ export function sanitizeExceptionList(value: unknown, errorCode: TelemetryErrorC
           const chunkId = safeSourceMapId(source.chunk_id);
           const platform =
             source.platform === "node:javascript" ? "node:javascript" : "web:javascript";
+          const functionName = safeCodeLabel(source.function, 160) ?? "?";
           return [
             {
               ...(absPath ? { abs_path: absPath } : {}),
               ...(chunkId ? { chunk_id: chunkId } : {}),
               ...(finiteNumber(source.colno) !== undefined ? { colno: source.colno } : {}),
               ...(filename ? { filename } : {}),
-              ...(safeCodeLabel(source.function, 160) ? { function: source.function } : {}),
+              function: functionName,
               ...(typeof source.in_app === "boolean" ? { in_app: source.in_app } : {}),
               ...(finiteNumber(source.lineno) !== undefined ? { lineno: source.lineno } : {}),
               platform,
