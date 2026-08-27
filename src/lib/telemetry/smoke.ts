@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 
 import { resolveTelemetryConfig, type TelemetryEnvironmentVariables } from "./config.ts";
-import { SafeTelemetryError } from "./errors.ts";
+import type { ExceptionDeliveryResult } from "./server.ts";
 
 export type TelemetrySmokeKind = "server_exception" | "structured_log";
 
@@ -9,9 +9,10 @@ type SmokeEnvironment = TelemetryEnvironmentVariables &
   Partial<Record<"TELEMETRY_SMOKE_TEST_ENABLED" | "TELEMETRY_SMOKE_TEST_TOKEN", string>>;
 
 export type TelemetrySmokeDependencies = {
-  captureException: (error: Error) => Promise<void>;
+  captureException: (error: Error) => Promise<ExceptionDeliveryResult>;
   env: SmokeEnvironment;
   flushLogs: () => Promise<void>;
+  logExceptionDeliveryFailure: () => void;
   logWarning: () => void;
 };
 
@@ -20,6 +21,25 @@ function notFound() {
     { accepted: false },
     { headers: { "Cache-Control": "no-store" }, status: 404 },
   );
+}
+
+function deliveryFailed() {
+  return Response.json(
+    {
+      accepted: false,
+      error_code: "telemetry_delivery_failed",
+      kind: "server_exception",
+    },
+    { headers: { "Cache-Control": "no-store" }, status: 503 },
+  );
+}
+
+function reportDeliveryFailure(dependencies: TelemetrySmokeDependencies): void {
+  try {
+    dependencies.logExceptionDeliveryFailure();
+  } catch {
+    // A diagnostic failure cannot expose or replace the bounded response.
+  }
 }
 
 function tokensMatch(expected: string, actual: string | null): boolean {
@@ -84,10 +104,20 @@ export async function handleTelemetrySmokeRequest(
       dependencies.logWarning();
       await dependencies.flushLogs();
     } else {
-      await dependencies.captureException(new SafeTelemetryError("synthetic_preview_exception"));
+      const error = new Error("synthetic_preview_exception");
+      error.name = "SyntheticPreviewException";
+      const result = await dependencies.captureException(error);
+      if (result !== "captured") {
+        reportDeliveryFailure(dependencies);
+        return deliveryFailed();
+      }
     }
   } catch {
-    // This acceptance helper reports delivery out-of-band in PostHog.
+    if (kind === "server_exception") {
+      reportDeliveryFailure(dependencies);
+      return deliveryFailed();
+    }
+    // Structured logging remains fail-safe and reports delivery out-of-band.
   }
   return Response.json(
     { accepted: true, kind },

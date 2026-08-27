@@ -28,7 +28,6 @@ export function sanitizeServerExceptionEvent(
   if (
     !event ||
     event.event !== "$exception" ||
-    event._originatedFromCaptureException !== true ||
     !config.enabled ||
     !config.projectToken ||
     config.environment === "development" ||
@@ -63,6 +62,9 @@ export function sanitizeServerExceptionEvent(
       : undefined;
 
   return {
+    // posthog-node removes this internal marker before before_send runs. The
+    // server adapter exposes no generic $exception capture path, so rebuilding
+    // the event here remains restricted to the official exception API.
     _originatedFromCaptureException: true,
     ...(distinctId ? { distinctId } : {}),
     event: "$exception",

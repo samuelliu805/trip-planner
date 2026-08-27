@@ -16,7 +16,7 @@ The implementation follows the stable [PostHog Next.js integration](https://post
 - `logger.ts` emits allowlisted one-line JSON to stdout and lazily resolves a route-local forwarder. `otel-logs.server.ts` forwards only selected records through direct OTLP.
 - `instrumentation.ts` pre-registers the Node log exporter and implements Next.js `onRequestError`. Route-local lazy initialization is also required because Next.js can bundle instrumentation and Route Handlers as separate module instances.
 
-Telemetry failures are swallowed at each adapter boundary. Authentication, rendering, navigation, cleanup, and application mutations do not depend on telemetry delivery.
+Telemetry failures are swallowed at each normal application adapter boundary. Authentication, rendering, navigation, cleanup, and application mutations do not depend on telemetry delivery. The Preview-only smoke endpoint is the deliberate exception: it returns a bounded `503` when controlled exception delivery does not complete.
 
 ## Environment isolation
 
@@ -90,9 +90,9 @@ The HMAC is computed only in a server component after `supabase.auth.getUser()` 
 
 Browser exceptions use PostHog exception autocapture for uncaught errors and unhandled rejections. No duplicate `window.onerror` or `unhandledrejection` listeners are installed, and console errors are not captured.
 
-Uncaught server errors use Next.js `instrumentation.ts` and its supported `onRequestError` hook. The adapter passes a real sanitized `Error` to `posthog-node`'s official `captureExceptionImmediate` API and awaits its immediate HTTP delivery. It never constructs `$exception` through the generic analytics capture API, and it never shuts down the shared warm-instance client after a request.
+Uncaught server errors use Next.js `instrumentation.ts` and its supported `onRequestError` hook. The adapter passes a real sanitized `Error` to `posthog-node`'s official `captureExceptionImmediate` API, awaits it, and then explicitly awaits `flush()`. It never constructs `$exception` through the generic analytics capture API, and it never shuts down the shared warm-instance client after a request.
 
-Headers, cookies, bodies, query strings, raw identifiers, and raw error messages are excluded before the SDK sees the error. The dedicated server exception sanitizer preserves the SDK-generated `mechanism`, injected `$release_id`, and validated frame `chunk_id`, filename, line, and column fields needed for Issue creation and symbolication. Context lines, variables, provider messages, and arbitrary exception properties remain forbidden. A `WeakSet` suppresses repeated capture of the same error object. Server events use a non-person system distinct ID unless a valid HMAC analytics ID is supplied.
+Headers, cookies, bodies, query strings, raw identifiers, and raw error messages are excluded before the SDK sees the error. The dedicated server exception sanitizer preserves the SDK-generated `mechanism`, injected `$release_id`, and validated frame `chunk_id`, filename, line, and column fields needed for Issue creation and symbolication. `posthog-node` removes its internal `_originatedFromCaptureException` marker before calling `before_send`, so the sanitizer does not rely on that unavailable marker; the typed server adapter itself exposes no generic `$exception` capture path. Context lines, variables, provider messages, and arbitrary exception properties remain forbidden. A `WeakSet` suppresses repeated capture of the same error object. Server events use a non-person system distinct ID unless a valid HMAC analytics ID is supplied.
 
 `VERCEL_GIT_COMMIT_SHA` is attached as the release/service version when it is a valid commit SHA. Safe error codes are bounded values such as `unexpected_error`, `database_unavailable`, `storage_unavailable`, `timeout`, and `synthetic_preview_exception`.
 
@@ -115,7 +115,7 @@ Only ERROR logs, selected WARN logs, and the `cleanup_succeeded` INFO heartbeat 
 
 Each Node.js function bundle initializes at most one provider per warm instance. This route-local singleton is intentional: Next.js can compile `instrumentation.ts` and a Route Handler into isolated module graphs, so an instrumentation-only module global is not a reliable handoff. The batch processor remains non-blocking during ordinary work. Cleanup and request-error paths use `after()` or an explicit flush boundary; the smoke log awaits `forceFlush()` before returning `202`. Providers are not shut down after each request, and exporter failures are swallowed.
 
-Implemented structured log names are `cleanup_started`, `cleanup_succeeded`, `cleanup_failed`, `cleanup_backlog_observed`, `server_exception`, and `telemetry_smoke_warning`. Implemented custom events are the four cleanup outcomes plus `$pageview` and `$web_vitals`.
+Implemented structured log names are `cleanup_started`, `cleanup_succeeded`, `cleanup_failed`, `cleanup_backlog_observed`, `server_exception`, `telemetry_smoke_warning`, and `posthog_exception_delivery_failed`. The last is a bounded Vercel-only WARN diagnostic and is not selected for OTLP forwarding. Implemented custom events are the four cleanup outcomes plus `$pageview` and `$web_vitals`.
 
 ## Health, cleanup, and smoke acceptance
 
@@ -135,7 +135,7 @@ or:
 { "kind": "server_exception" }
 ```
 
-The first emits one `telemetry_smoke_warning` and waits for the OTLP provider to flush before returning. The second passes a controlled `SyntheticPreviewException` through `captureExceptionImmediate` and flushes the shared client before returning. Both return the existing controlled `202`; delivery failure is swallowed and neither path crashes the deployment or mutates data.
+The first emits one `telemetry_smoke_warning` and waits for the OTLP provider to flush before returning. The second creates an `Error` with the fixed name `SyntheticPreviewException` and fixed message `synthetic_preview_exception`, passes it through `captureExceptionImmediate`, and flushes the shared client before returning. Successful delivery returns `202`. Capture or flush failure returns only `503` with the bounded `telemetry_delivery_failed` code and writes one allowlisted `posthog_exception_delivery_failed` JSON diagnostic to Vercel; it never returns or logs the SDK error, stack, token, request data, or environment values.
 
 ### Manual Preview acceptance
 
@@ -197,7 +197,7 @@ vercel curl /api/internal/telemetry-smoke \
   --data '{"kind":"structured_log"}'
 ```
 
-7. Confirm health is `200`; both valid smoke requests are `202`; wrong and missing tokens are `404`; and Vercel contains the sanitized JSON warning.
+7. Confirm health is `200`; both valid smoke requests are `202`; wrong and missing tokens are `404`; and Vercel contains the sanitized JSON warning. A `503` exception response means delivery did not complete; inspect only the bounded `posthog_exception_delivery_failed` Vercel diagnostic.
 8. In PostHog Logs, filter `service.name=trip-planner-web`, `deployment.environment=preview`, and body or `log_name=telemetry_smoke_warning`. Confirm `service.version` matches the deployed Git SHA and `telemetry.region=global`.
 9. In Error Tracking, open the `synthetic_preview_exception` occurrence. Confirm its environment and release, then verify at least one application frame resolves to a repository source file and useful source line through the uploaded Symbol Set.
 10. Inspect the raw log, event, and Issue occurrence for prohibited data and confirm no Production telemetry was produced. Disable the smoke route after acceptance and verify it returns `404`.
@@ -216,7 +216,7 @@ Uploaded Symbol Sets alone do not prove symbolication. Acceptance requires an ac
 
 ### Analytics `$exception` exists but no Issue
 
-Confirm the call uses `captureException` or `captureExceptionImmediate`, not generic `capture`. Inspect `$exception_list` for a bounded type, value, stacktrace, and `mechanism`. Check grouping and suppression rules, then confirm the exception was not transformed by a generic property sanitizer. For Vercel smoke calls, the immediate capture promise must complete before the `202` response.
+Confirm the call uses `captureException` or `captureExceptionImmediate`, not generic `capture`. Inspect `$exception_list` for a bounded type, value, stacktrace, and `mechanism`. Check grouping and suppression rules, then confirm the exception was not transformed by a generic property sanitizer. In `posthog-node@5.51.3`, `_originatedFromCaptureException` is not available inside `before_send`; requiring it drops the occurrence before any HTTP request. For Vercel smoke calls, both immediate capture and `flush()` must complete before the `202` response.
 
 ### Vercel JSON log exists but PostHog Logs is empty
 

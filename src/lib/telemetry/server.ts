@@ -12,6 +12,8 @@ import { normalizeTelemetryRoute } from "./routes";
 
 let adapterPromise: Promise<PostHogServerAdapter | null> | null = null;
 
+export type ExceptionDeliveryResult = "captured" | "disabled" | "duplicate" | "failed";
+
 async function serverAdapter(): Promise<PostHogServerAdapter | null> {
   const config = resolveServerTelemetryConfig();
   if (!config.enabled || !isNodeTelemetryRuntime()) return null;
@@ -46,12 +48,12 @@ export const serverAnalytics = {
       provider?: "application" | "posthog" | "storage" | "supabase";
       route: string;
     },
-  ): Promise<void> {
-    if (!markExceptionCaptured(error)) return;
+  ): Promise<ExceptionDeliveryResult> {
+    if (!markExceptionCaptured(error)) return "duplicate";
     try {
       const config = resolveServerTelemetryConfig();
       const adapter = await serverAdapter();
-      if (!adapter || !config.enabled) return;
+      if (!adapter || !config.enabled) return "disabled";
       const code = context.errorCode ?? safeErrorCode(error);
       const authenticated = /^tpv1_[0-9a-f]{64}$/.test(context.analyticsId ?? "");
       const analyticsId = authenticated
@@ -65,8 +67,10 @@ export const serverAnalytics = {
         provider: context.provider ?? "application",
         route: normalizeTelemetryRoute(context.route),
       });
+      return "captured";
     } catch {
       // Exception reporting is isolated from the request that failed.
+      return "failed";
     }
   },
   async flush(): Promise<void> {

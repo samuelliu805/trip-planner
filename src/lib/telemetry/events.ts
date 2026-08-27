@@ -100,6 +100,7 @@ export const telemetryLogNames = [
   "cleanup_backlog_observed",
   "server_exception",
   "telemetry_smoke_warning",
+  "posthog_exception_delivery_failed",
 ] as const;
 
 export type TelemetryLogName = (typeof telemetryLogNames)[number];

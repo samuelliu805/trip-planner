@@ -7,11 +7,11 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   const response = await handleTelemetrySmokeRequest(request, {
     async captureException(error) {
-      await serverAnalytics.captureException(error, {
+      return serverAnalytics.captureException(error, {
         errorCode: "synthetic_preview_exception",
+        provider: "posthog",
         route: "/api/internal/telemetry-smoke",
       });
-      await serverAnalytics.flush();
     },
     env: {
       NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
@@ -25,6 +25,16 @@ export async function POST(request: Request) {
       VERCEL_ENV: process.env.VERCEL_ENV,
     },
     flushLogs: () => logger.flush(),
+    logExceptionDeliveryFailure() {
+      logger.warn({
+        actor_type: "system",
+        error_code: "telemetry_delivery_failed",
+        log_name: "posthog_exception_delivery_failed",
+        outcome: "failed",
+        provider: "posthog",
+        route: "/api/internal/telemetry-smoke",
+      });
+    },
     logWarning() {
       logger.warn({
         actor_type: "system",

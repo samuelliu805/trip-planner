@@ -281,7 +281,6 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   const release = "500d89293a9be3521abc3a3144d210454cbb2c6a";
   const sanitized = sanitizeServerExceptionEvent(
     {
-      _originatedFromCaptureException: true,
       distinctId: "system:trip-planner-web:preview",
       event: "$exception",
       properties: {
@@ -318,7 +317,7 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
         cookie: "session=private",
         environment: "preview",
         error_code: "synthetic_preview_exception",
-        provider: "application",
+        provider: "posthog",
         release,
         route: "/api/internal/telemetry-smoke?token=private",
         runtime: "nodejs",
@@ -344,6 +343,8 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   assert.equal(frame.filename, "/var/task/.next/server/chunks/app.js");
   assert.equal(properties.route, "/api/internal/telemetry-smoke");
   assert.equal(properties.actor_type, "system");
+  assert.equal(properties.provider, "posthog");
+  assert.equal(sanitized._originatedFromCaptureException, true);
   const serialized = JSON.stringify(sanitized);
   for (const prohibited of [
     "traveler@example.com",
@@ -363,31 +364,73 @@ test("server exception adapter uses the SDK immediate exception API", async () =
   const calls: string[] = [];
   let capturedError: unknown;
   let capturedProperties: Record<string | number, unknown> | undefined;
+  let releaseCapture!: () => void;
+  const captureGate = new Promise<void>((resolve) => {
+    releaseCapture = resolve;
+  });
   const client: PostHogServerClient = {
     capture() {
       calls.push("capture");
     },
     async captureExceptionImmediate(error, distinctId, properties) {
-      calls.push(`captureExceptionImmediate:${distinctId}`);
+      calls.push(`captureExceptionImmediate:start:${distinctId}`);
       capturedError = error;
       capturedProperties = properties;
+      await captureGate;
+      calls.push("captureExceptionImmediate:resolved");
     },
     async flush() {
       calls.push("flush");
     },
   };
   const adapter = createPostHogServerAdapter(client);
-  const error = new SafeTelemetryError("synthetic_preview_exception");
-  await adapter.captureException(error, "system:trip-planner-web:preview", {
+  const error = new Error("synthetic_preview_exception");
+  error.name = "SyntheticPreviewException";
+  const delivery = adapter.captureException(error, "system:trip-planner-web:preview", {
     actor_type: "system",
     error_code: "synthetic_preview_exception",
     route: "/api/internal/telemetry-smoke",
   });
-  await adapter.flush();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.deepEqual(calls, ["captureExceptionImmediate:start:system:trip-planner-web:preview"]);
+  releaseCapture();
+  await delivery;
   assert.equal(capturedError, error);
   assert.equal(capturedError instanceof Error, true);
+  assert.equal((capturedError as Error).name, "SyntheticPreviewException");
+  assert.equal((capturedError as Error).message, "synthetic_preview_exception");
   assert.equal(capturedProperties?.error_code, "synthetic_preview_exception");
-  assert.deepEqual(calls, ["captureExceptionImmediate:system:trip-planner-web:preview", "flush"]);
+  assert.deepEqual(calls, [
+    "captureExceptionImmediate:start:system:trip-planner-web:preview",
+    "captureExceptionImmediate:resolved",
+    "flush",
+  ]);
+});
+
+test("server exception adapter surfaces capture and flush failures to its safe boundary", async () => {
+  const captureFailure = createPostHogServerAdapter({
+    capture() {},
+    async captureExceptionImmediate() {
+      throw new Error("raw capture failure with person@example.com");
+    },
+    async flush() {
+      assert.fail("flush must not run after capture fails");
+    },
+  });
+  await assert.rejects(
+    captureFailure.captureException(new Error("safe"), "system:trip-planner-web:preview", {}),
+  );
+
+  const flushFailure = createPostHogServerAdapter({
+    capture() {},
+    async captureExceptionImmediate() {},
+    async flush() {
+      throw new Error("raw flush failure with a private token");
+    },
+  });
+  await assert.rejects(
+    flushFailure.captureException(new Error("safe"), "system:trip-planner-web:preview", {}),
+  );
 });
 
 test("HMAC analytics identifiers are deterministic, isolated, and non-reversible", () => {
@@ -602,8 +645,23 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
     outcome: "observed",
     provider: "application",
   });
+  logger.warn({
+    actor_type: "system",
+    error_code: "telemetry_delivery_failed",
+    log_name: "posthog_exception_delivery_failed",
+    outcome: "failed",
+    provider: "posthog",
+    route: "/api/internal/telemetry-smoke?token=private",
+    ...({
+      authorization: "Bearer private",
+      body: '{"email":"person@example.com"}',
+      cookie: "session=private",
+      message: "raw SDK failure",
+      token: "private",
+    } as Record<string, string>),
+  });
   await logger.flush();
-  assert.equal(lines.length, 2);
+  assert.equal(lines.length, 3);
   assert.equal(
     lines.every((line) => line.endsWith("\n") && line.trim().split("\n").length === 1),
     true,
@@ -626,6 +684,30 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
     assert.equal(serialized.includes(prohibited), false, prohibited);
   }
   assert.deepEqual(forwarded, ["telemetry_smoke_warning"]);
+  const diagnostic = JSON.parse(lines[2]) as Record<string, unknown>;
+  assert.deepEqual(
+    {
+      actor_type: diagnostic.actor_type,
+      error_code: diagnostic.error_code,
+      level: diagnostic.level,
+      log_name: diagnostic.log_name,
+      outcome: diagnostic.outcome,
+      provider: diagnostic.provider,
+      route: diagnostic.route,
+    },
+    {
+      actor_type: "system",
+      error_code: "telemetry_delivery_failed",
+      level: "warn",
+      log_name: "posthog_exception_delivery_failed",
+      outcome: "failed",
+      provider: "posthog",
+      route: "/api/internal/telemetry-smoke",
+    },
+  );
+  assert.equal(lines[2].includes("private"), false);
+  assert.equal(lines[2].includes("person@example.com"), false);
+  assert.equal(lines[2].includes("raw SDK failure"), false);
   assert.equal(loads, 1);
   assert.equal(flushes, 1);
 });
@@ -675,9 +757,10 @@ function smokeRequest(kind: string, token = smokeToken) {
 
 test("smoke route is hidden in Production, disabled Preview, and for wrong tokens", async () => {
   const dependencies = {
-    captureException: async () => {},
+    captureException: async () => "captured" as const,
     env: enabledSmokeEnvironment,
     flushLogs: async () => {},
+    logExceptionDeliveryFailure: () => {},
     logWarning: () => {},
   };
   assert.equal(
@@ -727,6 +810,8 @@ test("valid smoke calls exercise only the requested adapter without exposing the
   const dependencies = {
     async captureException(error: Error) {
       calls.push(`exception:${error.message}`);
+      assert.equal(error.name, "SyntheticPreviewException");
+      return "captured" as const;
     },
     env: enabledSmokeEnvironment,
     async flushLogs() {
@@ -734,6 +819,9 @@ test("valid smoke calls exercise only the requested adapter without exposing the
     },
     logWarning() {
       calls.push("warning");
+    },
+    logExceptionDeliveryFailure() {
+      calls.push("delivery-failed");
     },
   };
   const logResponse = await handleTelemetrySmokeRequest(
@@ -759,9 +847,12 @@ test("smoke responses wait for log flush and immediate exception delivery", asyn
   });
   let logResolved = false;
   const logResponse = handleTelemetrySmokeRequest(smokeRequest("structured_log"), {
-    async captureException() {},
+    async captureException() {
+      return "captured";
+    },
     env: enabledSmokeEnvironment,
     flushLogs: () => logFlushGate,
+    logExceptionDeliveryFailure() {},
     logWarning() {},
   }).then((response) => {
     logResolved = true;
@@ -773,14 +864,15 @@ test("smoke responses wait for log flush and immediate exception delivery", asyn
   assert.equal((await logResponse).status, 202);
 
   let releaseException!: () => void;
-  const exceptionGate = new Promise<void>((resolve) => {
-    releaseException = resolve;
+  const exceptionGate = new Promise<"captured">((resolve) => {
+    releaseException = () => resolve("captured");
   });
   let exceptionResolved = false;
   const exceptionResponse = handleTelemetrySmokeRequest(smokeRequest("server_exception"), {
     captureException: () => exceptionGate,
     env: enabledSmokeEnvironment,
     flushLogs: async () => {},
+    logExceptionDeliveryFailure() {},
     logWarning() {},
   }).then((response) => {
     exceptionResolved = true;
@@ -792,20 +884,50 @@ test("smoke responses wait for log flush and immediate exception delivery", asyn
   assert.equal((await exceptionResponse).status, 202);
 });
 
-test("smoke telemetry failures do not change the controlled response", async () => {
-  const response = await handleTelemetrySmokeRequest(smokeRequest("server_exception"), {
+test("smoke exception failures return a bounded response and safe diagnostic", async () => {
+  let diagnosticCount = 0;
+  const rawFailure =
+    "person@example.com Authorization Bearer private request body 37.7749,-122.4194";
+  const captureResponse = await handleTelemetrySmokeRequest(smokeRequest("server_exception"), {
     async captureException() {
-      throw new Error("telemetry unavailable");
+      throw new Error(rawFailure);
     },
     env: enabledSmokeEnvironment,
     async flushLogs() {
-      throw new Error("telemetry unavailable");
+      throw new Error(rawFailure);
+    },
+    logExceptionDeliveryFailure(...args: unknown[]) {
+      assert.equal(args.length, 0);
+      diagnosticCount += 1;
     },
     logWarning() {
-      throw new Error("telemetry unavailable");
+      throw new Error(rawFailure);
     },
   });
-  assert.equal(response.status, 202);
+  assert.equal(captureResponse.status, 503);
+  assert.equal(diagnosticCount, 1);
+  const captureBody = await captureResponse.text();
+  assert.deepEqual(JSON.parse(captureBody), {
+    accepted: false,
+    error_code: "telemetry_delivery_failed",
+    kind: "server_exception",
+  });
+  assert.equal(captureBody.includes(rawFailure), false);
+  assert.equal(captureBody.includes(smokeToken), false);
+
+  const boundedFailure = await handleTelemetrySmokeRequest(smokeRequest("server_exception"), {
+    async captureException() {
+      return "failed";
+    },
+    env: enabledSmokeEnvironment,
+    async flushLogs() {},
+    logExceptionDeliveryFailure() {
+      diagnosticCount += 1;
+    },
+    logWarning() {},
+  });
+  assert.equal(boundedFailure.status, 503);
+  assert.equal(diagnosticCount, 2);
 });
 
 test("the typed event registry is exhaustive", () => {

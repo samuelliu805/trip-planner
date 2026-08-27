@@ -35,6 +35,7 @@ export function createPostHogServerAdapter(client: PostHogServerClient): PostHog
     },
     async captureException(error, distinctId, properties) {
       await client.captureExceptionImmediate(error, distinctId, properties);
+      await client.flush();
     },
     async flush() {
       await client.flush();
