@@ -315,6 +315,11 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
                   lineno: 7,
                   platform: "node:javascript",
                 },
+                {
+                  function: "anonymousCallback",
+                  in_app: false,
+                  platform: "node:javascript",
+                },
               ],
               type: "raw",
             },
@@ -359,6 +364,8 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   assert.equal(frame.function, "handleTelemetrySmokeRequest");
   assert.equal(frames[1].filename, "/var/task/.next/server/chunks/worker.js");
   assert.equal(frames[1].function, "?");
+  assert.equal(frames[2].filename, "<anonymous>");
+  assert.equal(frames[2].function, "anonymousCallback");
   assert.equal(properties.route, "/api/internal/telemetry-smoke");
   assert.equal(properties.actor_type, "system");
   assert.equal(properties.provider, "posthog");
