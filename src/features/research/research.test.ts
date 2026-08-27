@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { plannerResearchCategory } from "./planner-context.ts";
+import {
+  bookingSearchDetails,
+  bookingSitesForCategory,
+  bookingSitesForItem,
+} from "./booking-sites.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import { initialResearchSegments } from "./journey.ts";
 import { researchDecisionSlotKey } from "./decision-slot.ts";
@@ -46,6 +51,86 @@ const ids = {
 test("Ideas field labels have authentic Simplified Chinese translations", () => {
   assert.equal(translateMessage("zh-CN", "Option name"), "备选方案名称");
   assert.equal(translateMessage("zh-CN", "Note (optional)"), "备注（选填）");
+});
+
+test("booking sites use exact saved details only for durable search links", () => {
+  const flight = item({
+    category: "flight",
+    destination_text: "LAX",
+    end_date: "2026-10-12",
+    journey_type: "round_trip",
+    origin_text: "SFO",
+    start_date: "2026-10-04",
+  });
+  const sites = bookingSitesForItem(flight);
+  assert.deepEqual(
+    sites.map(({ name }) => name),
+    ["Google Flights", "Trip.com", "KAYAK"],
+  );
+  const google = new URL(sites.find(({ name }) => name === "Google Flights")!.url);
+  assert.equal(
+    google.searchParams.get("q"),
+    "Flights from SFO to LAX on 2026-10-04 returning 2026-10-12",
+  );
+  assert.equal(
+    sites.find(({ name }) => name === "KAYAK")!.url,
+    "https://www.kayak.com/flights/SFO-LAX/2026-10-04/2026-10-12",
+  );
+});
+
+test("booking sites are available before a comparison record exists", () => {
+  assert.deepEqual(bookingSitesForCategory("flight"), [
+    { name: "Google Flights", url: "https://www.google.com/travel/flights" },
+    { name: "Trip.com", url: "https://www.trip.com/flights/" },
+    { name: "KAYAK", url: "https://www.kayak.com/flights" },
+  ]);
+});
+
+test("booking sites do not guess airport codes from city names", () => {
+  const sites = bookingSitesForItem(
+    item({
+      category: "flight",
+      destination_text: "Los Angeles",
+      origin_text: "San Francisco",
+      start_date: "2026-10-04",
+    }),
+  );
+  assert.equal(sites.find(({ name }) => name === "KAYAK")!.url, "https://www.kayak.com/flights");
+});
+
+test("stay searches pass location and dates to Airbnb and Booking.com", () => {
+  const stay = item({
+    end_date: "2026-10-08",
+    location_text: "Tokyo, Japan",
+    start_date: "2026-10-04",
+  });
+  const sites = bookingSitesForItem(stay);
+  assert.deepEqual(
+    sites.map(({ name }) => name),
+    ["Airbnb", "Trip.com", "Booking.com", "Agoda", "Hilton", "Marriott", "IHG", "Hyatt"],
+  );
+  const airbnb = new URL(sites.find(({ name }) => name === "Airbnb")!.url);
+  const booking = new URL(sites.find(({ name }) => name === "Booking.com")!.url);
+  assert.equal(decodeURIComponent(airbnb.pathname), "/s/Tokyo--Japan/homes");
+  assert.equal(airbnb.searchParams.get("checkin"), "2026-10-04");
+  assert.equal(airbnb.searchParams.get("checkout"), "2026-10-08");
+  assert.equal(booking.searchParams.get("ss"), "Tokyo, Japan");
+  assert.equal(booking.searchParams.get("checkin"), "2026-10-04");
+  assert.equal(booking.searchParams.get("checkout"), "2026-10-08");
+  assert.equal(bookingSearchDetails(stay), "Tokyo, Japan · 2026-10-04 → 2026-10-08");
+});
+
+test("rental and train provider sets open official booking pages without brittle parameters", () => {
+  const rental = bookingSitesForCategory("rental");
+  const train = bookingSitesForCategory("train");
+  assert.deepEqual(
+    rental.map(({ name }) => name),
+    ["Hertz", "Enterprise", "Avis", "Europcar", "Budget", "SIXT"],
+  );
+  assert.deepEqual(
+    train.map(({ name }) => name),
+    ["Amtrak", "Eurail", "SNCF Connect", "SBB", "Omio"],
+  );
 });
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
@@ -844,6 +929,7 @@ test("Compare keeps one responsive inline filter row below the Trip App Bar", as
   assert.match(workspace, /aria-label="Ideas filters"/);
   assert.doesNotMatch(workspace, /saved in Ideas &amp; Options|research-context-bar/);
   assert.match(workspace, /TripMobileTabBar/);
+  assert.match(workspace, /BookingSitesDialog category=\{category\} toolbar/);
   assert.match(workspace, /CategorySelector[\s\S]*ResearchSortMenu[\s\S]*ResearchItemDialog/);
   assert.match(route, /\{appBar\}/);
   assert.match(sortMenu, /className="min-h-11"/);

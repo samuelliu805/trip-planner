@@ -9,6 +9,8 @@ export const researchZhCN: Record<string, string> = {
   "Applied to": "已应用到",
   "Automatic Revert stopped safely.": "已安全停止自动还原。",
   "Booking records": "预订信息",
+  "Browse booking sites, then add the options you want to compare.":
+    "浏览预订网站，然后添加想要比较的选项。",
   "Carrier and service details": "承运方与班次详情",
   "Choose category": "选择分类",
   "Checked {count} days ago": "{count} 天前检查",
@@ -79,6 +81,8 @@ export const researchZhCN: Record<string, string> = {
   "Ideas filters": "灵感筛选",
   "Enter a name or area": "输入名称或区域",
   "Search Google Maps for {label}": "在 Google 地图中搜索{label}",
+  "Search booking sites": "搜索预订网站",
+  "Search sites": "搜索网站",
   "Train number": "车次",
   "{label}, entered manually": "{label}，手动输入",
   "{label} date": "{label}日期",
@@ -93,6 +97,7 @@ export const researchZhCN: Record<string, string> = {
   Trains: "火车",
   "Trip type": "行程类型",
   "Booking link (optional)": "预订链接（选填）",
+  "Open {site} in a new tab": "在新标签页中打开{site}",
   "Price category: {category}": "价格分类：{category}",
   "Saved today": "今天保存",
 };

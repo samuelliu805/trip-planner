@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CategorySelector } from "./category-selector";
+import { BookingSitesDialog } from "./booking-sites-dialog";
 import { ResearchItemDialog } from "./research-item-dialog";
 import { ResearchItemList } from "./research-item-list";
 import { ResearchSortMenu } from "./research-sort-menu";
@@ -144,6 +145,7 @@ export function CompareWorkspace({
               />
             </div>
             <div className="flex min-w-0 shrink-0 items-center gap-2">
+              <BookingSitesDialog category={category} toolbar />
               <ResearchSortMenu onChange={setSort} value={sort} />
               <ResearchItemDialog
                 category={category}
