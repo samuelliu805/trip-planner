@@ -1,0 +1,55 @@
+name: Observability CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: observability-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      TELEMETRY_SMOKE_TEST_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 24
+      - run: npm ci
+      - run: npm run test:telemetry
+      - run: npm test
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run check:i18n
+      - run: npm run validate:public-templates
+      - name: Check public authentication routes
+        shell: bash
+        run: |
+          npm run dev > /tmp/trip-planner-auth-routes.log 2>&1 &
+          dev_pid=$!
+          trap 'kill "$dev_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for attempt in {1..60}; do
+            if curl --fail --silent --output /dev/null http://localhost:3000/login; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != "true" ]; then
+            tail -n 100 /tmp/trip-planner-auth-routes.log
+            exit 1
+          fi
+          npm run check:auth-routes
+      - run: npm run build
+      - run: git diff --check
