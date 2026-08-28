@@ -3,6 +3,7 @@ import {
   type AuthFlow,
   type AuthMethod,
   type DurationBucket,
+  featureAreaForProductEvent,
   type ItemEditorCloseReason,
   type ItemKind,
   type PlannerView,
@@ -10,8 +11,13 @@ import {
   type ProductSurface,
   type TelemetryActorType,
 } from "./events.ts";
+import {
+  advancedProductEventPropertyAllowlists,
+  isAdvancedProductEvent,
+} from "./privacy-product-advanced.ts";
 import { normalizeTelemetryRoute, telemetryScreenForRoute } from "./routes.ts";
 import { sanitizeTelemetryErrorCode } from "./privacy-values.ts";
+import { addAdvancedProductValues } from "./privacy-product-values.ts";
 
 const operationIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -48,6 +54,15 @@ const surfaces = new Set<ProductSurface>([
   "planner",
   "planner_app_bar",
   "trip_list",
+  "ideas_options",
+  "research_editor",
+  "route_panel",
+  "variant_controls",
+  "variant_comparison",
+  "share_dialog",
+  "public_share",
+  "attachment_editor",
+  "export_panel",
 ]);
 
 const common = ["actor_type", "environment", "telemetry_region", "route", "screen"] as const;
@@ -55,7 +70,7 @@ const operation = ["operation_id", "surface"] as const;
 const auth = ["auth_flow", "auth_method"] as const;
 const item = ["item_kind"] as const;
 
-export const productEventPropertyAllowlists = {
+const foundationProductEventPropertyAllowlists = {
   auth_failed: [...common, ...operation, ...auth, "error_code", "release"],
   auth_started: [...common, ...operation, ...auth],
   auth_succeeded: [...common, ...operation, ...auth, "release"],
@@ -86,6 +101,11 @@ export const productEventPropertyAllowlists = {
   trip_settings_save_failed: [...common, ...operation, "error_code", "release"],
   trip_settings_saved: [...common, ...operation, "release"],
   trip_status_changed: [...common, ...operation, "error_code", "outcome", "release", "trip_status"],
+} as const;
+
+export const productEventPropertyAllowlists = {
+  ...foundationProductEventPropertyAllowlists,
+  ...advancedProductEventPropertyAllowlists,
 } as const satisfies Record<ProductEventName, readonly string[]>;
 
 function member<Value extends string>(value: unknown, values: Set<Value>): Value | undefined {
@@ -110,6 +130,26 @@ function hasRequiredProperties(eventName: ProductEventName, safe: Record<string,
     if (!safe.item_kind) return false;
   }
   if (eventName.endsWith("_failed") && !safe.error_code) return false;
+  if (isAdvancedProductEvent(eventName)) {
+    if (!safe.operation_id || !safe.surface) return false;
+    if (safe.feature_area !== featureAreaForProductEvent(eventName)) return false;
+    if ((safe.feature_area === "ideas" || safe.feature_area === "research") && !safe.ideas_category)
+      return false;
+    if (safe.feature_area === "routes" && (!safe.route_mode || !safe.route_view)) return false;
+    if (
+      (eventName === "variant_created" || eventName === "variant_create_failed") &&
+      !safe.variant_action
+    )
+      return false;
+    if (eventName.startsWith("variant_comparison_") && !safe.comparison_scope) return false;
+    if (eventName === "variant_comparison_selection_changed" && !safe.selection_state) return false;
+    if (eventName.startsWith("share_") && !safe.share_artifact) return false;
+    if (eventName.includes("export") && !safe.export_mode) return false;
+    if (eventName.startsWith("public_share_")) {
+      if (!safe.public_view || safe.actor_type !== "anonymous") return false;
+    }
+    if (safe.feature_area === "attachments" && !safe.attachment_target) return false;
+  }
   if (
     eventName === "auth_started" ||
     eventName === "trip_create_started" ||
@@ -167,6 +207,7 @@ export function sanitizeProductEventProperties(
     member(properties.duration_bucket, durationBuckets),
   );
   addIfAllowed(safe, allowed, "error_code", sanitizeTelemetryErrorCode(properties.error_code));
+  addAdvancedProductValues(safe, allowed, properties);
   addIfAllowed(
     safe,
     allowed,

@@ -25,6 +25,8 @@ import type {
   ShareImageManifest,
 } from "../../types";
 import type { CompiledPublicTemplateV1 } from "../schema";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 type PublicTemplateController = {
   desktopMap: boolean;
@@ -97,6 +99,21 @@ export function PublicTemplateControllerProvider({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const showMap = itinerary.settings.showMapRoutes;
+  const exposureReported = useRef(false);
+
+  useEffect(() => {
+    if (exposureReported.current) return;
+    exposureReported.current = true;
+    captureBrowserProductEvent(
+      "public_share_viewed",
+      {
+        operation_id: newTelemetryOperationId(),
+        public_view: initialView,
+        surface: "public_share",
+      },
+      { actorType: "anonymous" },
+    );
+  }, [initialView]);
 
   useEffect(() => {
     const media = window.matchMedia("(min-width: 900px) and (max-width: 1199px)");
@@ -127,6 +144,15 @@ export function PublicTemplateControllerProvider({
     applyTemplateQuery(nextParams, legacyTemplateOverride);
     nextParams.set("view", nextView);
     if (nextView !== view) {
+      captureBrowserProductEvent(
+        "public_share_view_changed",
+        {
+          operation_id: newTelemetryOperationId(),
+          public_view: nextView,
+          surface: "public_share",
+        },
+        { actorType: "anonymous" },
+      );
       setSelection({});
       setView(nextView);
     }

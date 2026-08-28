@@ -9,6 +9,7 @@ export type UploadTask = {
   error?: string;
   file: File;
   id: string;
+  operationId: string;
   progress: AttachmentUploadProgress;
 };
 

@@ -24,6 +24,7 @@ import {
   researchItemSelection,
 } from "./data";
 import type { ResearchItem, ResearchMutationResult, ResearchWorkspaceSnapshot } from "./types";
+import { reportResearchMutation } from "./telemetry.server";
 
 export async function loadResearchWorkspace(input: {
   tripId: string;
@@ -59,18 +60,34 @@ export async function createResearchItem(
   try {
     places = await persistResearchPlaces(supabase, parsed.data);
   } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "The map location could not be saved.",
-    };
+    return reportResearchMutation({
+      category: parsed.data.category,
+      mutation: "create",
+      operationId: parsed.data.operationId,
+      result: {
+        error: error instanceof Error ? error.message : "The map location could not be saved.",
+      },
+    });
   }
   const { data, error } = await supabase
     .from("research_items")
     .insert(researchItemValues(parsed.data, places))
     .select(researchItemSelection)
     .maybeSingle();
-  if (error || !data) return { error: error?.message ?? "The candidate could not be saved." };
+  if (error || !data)
+    return reportResearchMutation({
+      category: parsed.data.category,
+      mutation: "create",
+      operationId: parsed.data.operationId,
+      result: { error: error?.message ?? "The candidate could not be saved." },
+    });
   revalidateResearch(parsed.data.tripId);
-  return { data: researchItemFromRow(data) as ResearchItem };
+  return reportResearchMutation({
+    category: parsed.data.category,
+    mutation: "create",
+    operationId: parsed.data.operationId,
+    result: { data: researchItemFromRow(data) as ResearchItem },
+  });
 }
 
 export async function updateResearchItem(
@@ -84,9 +101,14 @@ export async function updateResearchItem(
   try {
     places = await persistResearchPlaces(supabase, values);
   } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "The map location could not be saved.",
-    };
+    return reportResearchMutation({
+      category: parsed.data.category,
+      mutation: "update",
+      operationId: parsed.data.operationId,
+      result: {
+        error: error instanceof Error ? error.message : "The map location could not be saved.",
+      },
+    });
   }
   const { data, error } = await supabase
     .from("research_items")
@@ -95,13 +117,26 @@ export async function updateResearchItem(
     .eq("trip_id", values.tripId)
     .select(researchItemSelection)
     .maybeSingle();
-  if (error || !data) return { error: error?.message ?? "The candidate could not be updated." };
+  if (error || !data)
+    return reportResearchMutation({
+      category: parsed.data.category,
+      mutation: "update",
+      operationId: parsed.data.operationId,
+      result: { error: error?.message ?? "The candidate could not be updated." },
+    });
   revalidateResearch(values.tripId);
-  return { data: researchItemFromRow(data) as ResearchItem };
+  return reportResearchMutation({
+    category: parsed.data.category,
+    mutation: "update",
+    operationId: parsed.data.operationId,
+    result: { data: researchItemFromRow(data) as ResearchItem },
+  });
 }
 
 export async function deleteResearchItem(input: {
+  category: "flight" | "rental" | "stay" | "train";
   id: string;
+  operationId?: string;
   tripId: string;
 }): Promise<ResearchMutationResult<{ id: string }>> {
   const parsed = deleteResearchItemSchema.safeParse(input);
@@ -115,7 +150,17 @@ export async function deleteResearchItem(input: {
     .select("id")
     .maybeSingle();
   if (error || !data)
-    return { error: "This saved option could not be deleted. Refresh and try again." };
+    return reportResearchMutation({
+      category: parsed.data.category,
+      mutation: "delete",
+      operationId: parsed.data.operationId,
+      result: { error: "This saved option could not be deleted. Refresh and try again." },
+    });
   revalidateResearch(parsed.data.tripId);
-  return { data };
+  return reportResearchMutation({
+    category: parsed.data.category,
+    mutation: "delete",
+    operationId: parsed.data.operationId,
+    result: { data },
+  });
 }

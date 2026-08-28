@@ -20,6 +20,7 @@ import { BookingSitesDialog } from "./booking-sites-dialog";
 import { ResearchItemDialog } from "./research-item-dialog";
 import { ResearchPlanActions } from "./research-plan-actions";
 import { deleteResearchItem } from "../actions";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { researchLinksWithSource } from "../links";
 import { formatMoney } from "../money";
 import {
@@ -244,7 +245,12 @@ export function ResearchItemRow({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                const result = await deleteResearchItem({ id: item.id, tripId: item.trip_id });
+                const result = await deleteResearchItem({
+                  category: item.category as "flight" | "rental" | "stay" | "train",
+                  id: item.id,
+                  operationId: newTelemetryOperationId(),
+                  tripId: item.trip_id,
+                });
                 if (result.error) setError(result.error);
                 else onDeleted(item.id);
               }}

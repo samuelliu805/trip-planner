@@ -29,6 +29,7 @@ type UploadOptions = {
   file: File;
   itemId?: string;
   onProgress: (progress: AttachmentUploadProgress) => void;
+  operationId: string;
   researchItemId?: string;
   signal: AbortSignal;
   tripId: string;
@@ -186,6 +187,7 @@ export async function uploadFileAttachment({
   file,
   itemId,
   onProgress,
+  operationId,
   researchItemId,
   signal,
   tripId,
@@ -224,6 +226,7 @@ export async function uploadFileAttachment({
       mimeType: detected.mimeType,
       sha256,
       uploadSessionId,
+      operationId,
     }),
     headers: { "Content-Type": "application/json" },
     method: "POST",
@@ -288,7 +291,7 @@ export async function uploadFileAttachment({
 
     onProgress({ percent: 88, stage: "finalizing" });
     const finalizeResponse = await fetch(lifecycleUrl, {
-      body: JSON.stringify({ posterUploaded }),
+      body: JSON.stringify({ operationId, posterUploaded }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
       signal,
@@ -301,7 +304,15 @@ export async function uploadFileAttachment({
     onProgress({ percent: 100, stage: "complete" });
     return finalized.data.attachment;
   } catch (error) {
-    await fetch(lifecycleUrl, { keepalive: true, method: "DELETE" }).catch(() => undefined);
+    await fetch(lifecycleUrl, {
+      body: JSON.stringify({
+        failure: !(error instanceof DOMException && error.name === "AbortError"),
+        operationId,
+      }),
+      headers: { "Content-Type": "application/json" },
+      keepalive: true,
+      method: "DELETE",
+    }).catch(() => undefined);
     throw error;
   }
 }

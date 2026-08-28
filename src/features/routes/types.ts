@@ -80,11 +80,21 @@ export type SaveDayRoutePlanInput = {
   legModes: RouteLegMode[];
   tripId: string;
   variantId: string;
+  operationId?: string;
+  telemetryRouteMode?: import("@/lib/telemetry/events").RouteMode;
 };
 
-export type CalculateDayRouteInput = { planId: string; tripId: string; variantId: string };
+export type CalculateDayRouteInput = {
+  operationId?: string;
+  planId: string;
+  telemetryRouteMode?: import("@/lib/telemetry/events").RouteMode;
+  tripId: string;
+  variantId: string;
+};
 export type CalculateOverviewRouteInput = {
   legs: Array<{ mode: OverviewRouteMode; position: number }>;
+  operationId?: string;
+  telemetryRouteMode?: import("@/lib/telemetry/events").RouteMode;
   tripId: string;
   variantId: string;
 };

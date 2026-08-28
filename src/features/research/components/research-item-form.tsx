@@ -10,6 +10,8 @@ import { PlannerEditorHeader } from "@/features/itinerary/components/planner-edi
 import { PlannerItemExitDialog } from "@/features/itinerary/components/planner-item-exit-dialog";
 import { PlannerItemStepNav } from "@/features/itinerary/components/planner-item-step-nav";
 import { useAttachmentEditSession } from "@/features/itinerary/components/use-attachment-edit-session";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { ResearchItemFields } from "./research-item-fields";
 import { createResearchItem, updateResearchItem } from "../actions";
@@ -117,11 +119,18 @@ export function ResearchItemForm({
     const form = new FormData(formRef.current);
     if (!researchDraftCanSave(form, category)) return;
     const input = researchItemInputFromForm({ category, context, form, item, tripId });
+    const operationId = newTelemetryOperationId();
+    if (!item)
+      captureBrowserProductEvent(
+        "research_create_started",
+        { ideas_category: category, operation_id: operationId, surface: "research_editor" },
+        { actorType: "authenticated" },
+      );
     setMutationPending(true);
     setError(undefined);
     const result = item
-      ? await updateResearchItem({ ...input, id: item.id })
-      : await createResearchItem(input);
+      ? await updateResearchItem({ ...input, id: item.id, operationId })
+      : await createResearchItem({ ...input, operationId });
     if (result.error || !result.data) {
       setMutationPending(false);
       setError(result.error ?? "This idea could not be saved.");

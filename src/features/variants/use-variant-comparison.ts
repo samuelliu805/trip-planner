@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { useI18n } from "@/features/i18n/i18n-provider";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import {
   reconcileComparisonVisibility,
@@ -110,6 +112,17 @@ export function useVariantComparison({
         !presentations.some((presentation) => presentation.variantId === variantId)
       )
         return;
+      const selectionState = visibleVariantIds.has(variantId) ? "deselected" : "selected";
+      captureBrowserProductEvent(
+        "variant_comparison_selection_changed",
+        {
+          comparison_scope: dayNumber ? "day" : "trip",
+          operation_id: newTelemetryOperationId(),
+          selection_state: selectionState,
+          surface: "variant_comparison",
+        },
+        { actorType: "authenticated" },
+      );
       setVisibleVariantIds((current) => {
         const next = new Set(current);
         if (next.has(variantId)) next.delete(variantId);

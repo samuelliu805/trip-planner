@@ -16,6 +16,7 @@ import {
   shareImagePartInputSchema,
 } from "./schema";
 import { longImageScopeFromPage, scopePublicItinerary } from "./scope";
+import { reportSharingMutation } from "../telemetry.server";
 
 const prepareImageInputSchema = z
   .object({
@@ -24,6 +25,7 @@ const prepareImageInputSchema = z
     mode: z.enum(["new_export", "replace_existing"]),
     sharePageId: z.uuid(),
     scope: longImageScopeSchema.optional(),
+    operationId: z.uuid().optional(),
   })
   .strict();
 
@@ -120,11 +122,18 @@ export async function prepareShareImageVersion(
 }
 
 export async function finalizeShareImageVersion(rawInput: {
+  exportMode?: "new" | "replace";
+  operationId?: string;
   parts: ShareImagePartInput[];
   versionId: string;
 }): Promise<ShareActionResult<{ expiresAt: string; permanentSlug: string; partCount: number }>> {
   const input = z
-    .object({ parts: shareImagePartInputSchema.array().min(1).max(20), versionId: z.uuid() })
+    .object({
+      exportMode: z.enum(["new", "replace"]).optional(),
+      operationId: z.uuid().optional(),
+      parts: shareImagePartInputSchema.array().min(1).max(20),
+      versionId: z.uuid(),
+    })
     .strict()
     .safeParse(rawInput);
   if (!input.success) return { error: "The rendered image parts are invalid." };
@@ -141,29 +150,64 @@ export async function finalizeShareImageVersion(rawInput: {
     })
     .passthrough()
     .safeParse(data);
-  return error || !parsed.success
-    ? { error: imageError(error?.message) }
-    : {
-        data: {
-          expiresAt:
-            parsed.data.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString(),
-          partCount: parsed.data.partCount,
-          permanentSlug: parsed.data.permanentSlug,
-        },
-      };
+  const result =
+    error || !parsed.success
+      ? { error: imageError(error?.message) }
+      : {
+          data: {
+            expiresAt:
+              parsed.data.expiresAt ??
+              new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString(),
+            partCount: parsed.data.partCount,
+            permanentSlug: parsed.data.permanentSlug,
+          },
+        };
+  return reportSharingMutation({
+    artifact: "image",
+    exportMode: input.data.exportMode,
+    mutation: "export",
+    operationId: input.data.operationId,
+    result,
+  });
 }
 
-export async function failShareImageVersion(versionId: string, message: string) {
+export async function failShareImageVersion(
+  versionId: string,
+  message: string,
+  operationId?: string,
+  exportMode?: "new" | "replace",
+) {
   if (!z.uuid().safeParse(versionId).success) return;
   const supabase = await createClient();
-  await supabase.rpc("fail_share_image_version_v1", {
+  const { error } = await supabase.rpc("fail_share_image_version_v1", {
     requested_error_message: message,
     target_version_id: versionId,
+  });
+  await reportSharingMutation({
+    artifact: "image",
+    exportMode,
+    mutation: "export",
+    operationId,
+    result: { error: error?.message ?? "Timeline export failed." },
+  });
+}
+
+export async function reportShareImageExportFailure(
+  operationId: string,
+  exportMode: "new" | "replace",
+) {
+  await reportSharingMutation({
+    artifact: "image",
+    exportMode,
+    mutation: "export",
+    operationId,
+    result: { error: "Timeline export failed." },
   });
 }
 
 export async function revokeShareImageExport(
   exportId: string,
+  operationId?: string,
 ): Promise<ShareActionResult<{ revoked: true }>> {
   if (!z.uuid().safeParse(exportId).success) return { error: "The image link is invalid." };
   const supabase = await createClient();
@@ -171,15 +215,32 @@ export async function revokeShareImageExport(
     target_export_id: exportId,
   });
   const paths = z.array(z.string().min(1).max(1_000)).max(5_000).safeParse(pathsResult.data);
-  if (pathsResult.error || !paths.success) return { error: imageError(pathsResult.error?.message) };
+  if (pathsResult.error || !paths.success)
+    return reportSharingMutation({
+      artifact: "image",
+      mutation: "revoke",
+      operationId,
+      result: { error: imageError(pathsResult.error?.message) },
+    });
   for (let index = 0; index < paths.data.length; index += 100) {
     const { error } = await supabase.storage
       .from("share-images")
       .remove(paths.data.slice(index, index + 100));
-    if (error) return { error: "The stored image could not be deleted. Try again." };
+    if (error)
+      return reportSharingMutation({
+        artifact: "image",
+        mutation: "revoke",
+        operationId,
+        result: { error: "The stored image could not be deleted. Try again." },
+      });
   }
   const { error } = await supabase.rpc("revoke_share_image_export_v1", {
     target_export_id: exportId,
   });
-  return error ? { error: imageError(error.message) } : { data: { revoked: true } };
+  return reportSharingMutation({
+    artifact: "image",
+    mutation: "revoke",
+    operationId,
+    result: error ? { error: imageError(error.message) } : { data: { revoked: true as const } },
+  });
 }

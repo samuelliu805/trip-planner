@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { PlannerVariant } from "@/features/itinerary/types";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { variantHref } from "../active";
 import { useDeleteRouteVariant, useSetPrimaryRouteVariant } from "../queries";
@@ -57,7 +58,11 @@ export function ManageRouteVariantsDialog({
     setError(undefined);
     setNotice(undefined);
     try {
-      await primaryMutation.mutateAsync({ tripId, variantId: variant.id });
+      await primaryMutation.mutateAsync({
+        operationId: newTelemetryOperationId(),
+        tripId,
+        variantId: variant.id,
+      });
       setNotice(t("{variant} is now the primary Plan.", { variant: variant.name }));
       router.refresh();
     } catch (caught) {
@@ -70,7 +75,11 @@ export function ManageRouteVariantsDialog({
     setError(undefined);
     try {
       const wasActive = deleteVariant.id === activeVariantId;
-      const result = await deleteMutation.mutateAsync({ tripId, variantId: deleteVariant.id });
+      const result = await deleteMutation.mutateAsync({
+        operationId: newTelemetryOperationId(),
+        tripId,
+        variantId: deleteVariant.id,
+      });
       setDeleteVariant(undefined);
       if (wasActive) {
         const primary = result.variants.find(({ is_primary }) => is_primary);

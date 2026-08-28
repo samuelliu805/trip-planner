@@ -279,6 +279,7 @@ export const publicItinerarySettingsSchema = z
     templateId: publicTemplateIdSchema,
     templateVersion: publicTemplateVersionSchema,
     variantId: z.uuid(),
+    operationId: z.uuid().optional(),
   })
   .strict()
   .refine(
@@ -290,6 +291,8 @@ export const publicItinerarySettingsSchema = z
     { message: "Choose a valid long-image date range." },
   );
 
-export const linkMutationSchema = z.object({ linkId: z.uuid(), tripId: z.uuid() }).strict();
+export const linkMutationSchema = z
+  .object({ linkId: z.uuid(), operationId: z.uuid().optional(), tripId: z.uuid() })
+  .strict();
 
 export type PublicItinerarySettingsInput = z.infer<typeof publicItinerarySettingsSchema>;

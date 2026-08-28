@@ -19,6 +19,7 @@ import {
   type UpdateRouteVariantInput,
 } from "./schema";
 import type { VariantMutationResult } from "./types";
+import { reportVariantMutation } from "./telemetry.server";
 
 const domainMessages: Record<string, string> = {
   AUTHENTICATION_REQUIRED: "Sign in again before managing route variants.",
@@ -51,8 +52,17 @@ async function mutationResult(
   tripId: string,
   variantId: string | null,
   rpcError?: string,
+  telemetry?: {
+    action?: "blank" | "duplicate";
+    mutation: "create" | "update" | "delete" | "primary";
+    operationId?: string;
+  },
 ): Promise<VariantMutationResult> {
-  if (rpcError || !variantId) return { error: variantError(rpcError) };
+  if (rpcError || !variantId) {
+    const result = { error: variantError(rpcError) };
+    return telemetry ? reportVariantMutation({ ...telemetry, result }) : result;
+  }
+  if (telemetry) await reportVariantMutation({ ...telemetry, result: { data: { variantId } } });
   const variants = await getPlannerVariants(tripId);
   if (variants.error || !variants.data)
     return { error: variants.error ?? "The updated route variants could not be loaded." };
@@ -85,7 +95,11 @@ export async function createRouteVariant(
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message);
+  return mutationResult(parsed.data.tripId, data, error?.message, {
+    action: "blank",
+    mutation: "create",
+    operationId: parsed.data.operationId,
+  });
 }
 
 export async function duplicateRouteVariant(
@@ -100,7 +114,11 @@ export async function duplicateRouteVariant(
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message);
+  return mutationResult(parsed.data.tripId, data, error?.message, {
+    action: "duplicate",
+    mutation: "create",
+    operationId: parsed.data.operationId,
+  });
 }
 
 export async function updateRouteVariant(
@@ -115,7 +133,10 @@ export async function updateRouteVariant(
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message);
+  return mutationResult(parsed.data.tripId, data, error?.message, {
+    mutation: "update",
+    operationId: parsed.data.operationId,
+  });
 }
 
 export async function setPrimaryRouteVariant(
@@ -128,7 +149,10 @@ export async function setPrimaryRouteVariant(
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message);
+  return mutationResult(parsed.data.tripId, data, error?.message, {
+    mutation: "primary",
+    operationId: parsed.data.operationId,
+  });
 }
 
 export async function deleteRouteVariant(
@@ -141,5 +165,8 @@ export async function deleteRouteVariant(
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message);
+  return mutationResult(parsed.data.tripId, data, error?.message, {
+    mutation: "delete",
+    operationId: parsed.data.operationId,
+  });
 }

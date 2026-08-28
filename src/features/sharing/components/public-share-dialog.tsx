@@ -24,6 +24,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { PlannerVariant } from "@/features/itinerary/types";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import type { Tables } from "@/types/database";
 
 import {
@@ -119,7 +121,14 @@ export function PublicShareDialog({
     setError(undefined);
     setNotice(undefined);
     startTransition(async () => {
-      const input = { ...settings, variantId };
+      const operationId = newTelemetryOperationId();
+      if (!activeLink)
+        captureBrowserProductEvent(
+          "share_publish_started",
+          { operation_id: operationId, share_artifact: "page", surface: "share_dialog" },
+          { actorType: "authenticated" },
+        );
+      const input = { ...settings, operationId, variantId };
       const result = activeLink
         ? await updatePublicItineraryLink(activeLink.id, input)
         : await createPublicItineraryLink(input);
@@ -140,7 +149,11 @@ export function PublicShareDialog({
     setError(undefined);
     setNotice(undefined);
     startTransition(async () => {
-      const result = await revokePublicItineraryLink({ linkId: activeLink.id, tripId: trip.id });
+      const result = await revokePublicItineraryLink({
+        linkId: activeLink.id,
+        operationId: newTelemetryOperationId(),
+        tripId: trip.id,
+      });
       if ("error" in result) {
         setError(result.error);
         return;
@@ -252,7 +265,22 @@ export function PublicShareDialog({
         <DialogFooter className="shrink-0 [&>*]:w-full sm:[&>*]:w-auto">
           {unchanged ? (
             <Button asChild>
-              <a href={publicUrl} rel="noopener noreferrer" target="_blank">
+              <a
+                href={publicUrl}
+                onClick={() =>
+                  captureBrowserProductEvent(
+                    "share_link_opened",
+                    {
+                      operation_id: newTelemetryOperationId(),
+                      share_artifact: "page",
+                      surface: "share_dialog",
+                    },
+                    { actorType: "authenticated" },
+                  )
+                }
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 <ExternalLink className="size-4" /> <T message={" Open page "} />
               </a>
             </Button>

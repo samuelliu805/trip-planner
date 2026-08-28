@@ -4,11 +4,14 @@ import { useState, useTransition } from "react";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
 import { createClient } from "@/lib/supabase/client";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import {
   failShareImageVersion,
   finalizeShareImageVersion,
   prepareShareImageVersion,
+  reportShareImageExportFailure,
   revokeShareImageExport,
 } from "../long-image/actions";
 import type {
@@ -44,6 +47,18 @@ export function useLongImageExport({
     setError(undefined);
     setCopied(false);
     setProgress(t("Preparing snapshot…"));
+    const operationId = newTelemetryOperationId();
+    const exportMode = mode === "replace_existing" ? "replace" : "new";
+    captureBrowserProductEvent(
+      "share_export_started",
+      {
+        export_mode: exportMode,
+        operation_id: operationId,
+        share_artifact: "image",
+        surface: "export_panel",
+      },
+      { actorType: "authenticated" },
+    );
     startTransition(async () => {
       const uploadedPaths: string[] = [];
       let versionId: string | undefined;
@@ -52,6 +67,7 @@ export function useLongImageExport({
           exportId: mode === "replace_existing" ? (imageState?.exportId ?? null) : null,
           locale,
           mode,
+          operationId,
           sharePageId: sharePage.id,
           scope,
         });
@@ -98,7 +114,12 @@ export function useLongImageExport({
         }
 
         setProgress(t("Publishing permanent image link…"));
-        const finalized = await finalizeShareImageVersion({ parts: metadata, versionId });
+        const finalized = await finalizeShareImageVersion({
+          exportMode,
+          operationId,
+          parts: metadata,
+          versionId,
+        });
         if ("error" in finalized) throw new Error(finalized.error);
         const now = new Date().toISOString();
         onImageStateChange({
@@ -131,7 +152,10 @@ export function useLongImageExport({
           await failShareImageVersion(
             versionId,
             caught instanceof Error ? caught.message : "Timeline export failed",
+            operationId,
+            exportMode,
           );
+        else await reportShareImageExportFailure(operationId, exportMode);
         setProgress(undefined);
         setError(t(caught instanceof Error ? caught.message : "Timeline export failed."));
       }
@@ -180,7 +204,7 @@ export function useLongImageExport({
     if (!imageState) return;
     setError(undefined);
     startTransition(async () => {
-      const result = await revokeShareImageExport(imageState.exportId);
+      const result = await revokeShareImageExport(imageState.exportId, newTelemetryOperationId());
       if ("error" in result) {
         setError(result.error);
         return;

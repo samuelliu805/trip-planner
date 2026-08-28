@@ -8,6 +8,7 @@ import {
 } from "@/features/attachments/schema";
 import { createSignedAssetUpload } from "@/features/attachments/storage.server";
 import { createClient } from "@/lib/supabase/server";
+import { reportAttachmentMutation } from "@/features/attachments/telemetry.server";
 
 const paramsSchema = z.object({ itemId: z.uuid(), tripId: z.uuid() });
 
@@ -39,10 +40,25 @@ export async function POST(
     target_trip_id: routeParams.data.tripId,
   });
   const reservation = preparedAssetReservationSchema.safeParse(result.data);
-  if (result.error || !reservation.success)
+  if (result.error || !reservation.success) {
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId: input.data.operationId,
+      result: { error: attachmentError(result.error?.message) },
+      supabaseUserId: authData.user.id,
+      target: "itinerary",
+    });
     return Response.json({ error: attachmentError(result.error?.message) }, { status: 400 });
+  }
 
-  if (!reservation.data.uploadRequired)
+  if (!reservation.data.uploadRequired) {
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId: input.data.operationId,
+      result: { data: true },
+      supabaseUserId: authData.user.id,
+      target: "itinerary",
+    });
     return Response.json(
       {
         assetId: reservation.data.assetId,
@@ -53,6 +69,7 @@ export async function POST(
       },
       { headers: { "Cache-Control": "no-store" } },
     );
+  }
   if (!reservation.data.objectKey)
     return Response.json({ error: "The private upload path is unavailable." }, { status: 500 });
 
@@ -80,6 +97,13 @@ export async function POST(
       target_asset_id: reservation.data.assetId,
     });
     await drainAssetDeletionQueue(10);
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId: input.data.operationId,
+      result: { error: error instanceof Error ? error.message : "Upload authorization failed" },
+      supabaseUserId: authData.user.id,
+      target: "itinerary",
+    });
     return Response.json(
       { error: error instanceof Error ? error.message : "Upload authorization failed." },
       { status: 500 },

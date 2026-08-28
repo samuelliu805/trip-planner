@@ -10,6 +10,8 @@ import {
   tripSectionHref,
   type TripSection,
 } from "@/features/research/urls";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { ManageRouteVariantsDialog } from "./manage-route-variants-dialog";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
@@ -48,8 +50,14 @@ export function RouteVariantControls({
 
   function switchVariant(variantId: string) {
     setSheetOpen(false);
-    if (variantId !== activeVariantId)
+    if (variantId !== activeVariantId) {
+      captureBrowserProductEvent(
+        "variant_switched",
+        { operation_id: newTelemetryOperationId(), surface: "variant_controls" },
+        { actorType: "authenticated" },
+      );
       router.push(tripSectionHref(tripId, activeSection, variantId, currentResearchCategory));
+    }
   }
 
   function openAction(action: RouteVariantAction) {

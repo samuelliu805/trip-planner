@@ -2,6 +2,7 @@
 
 import { analytics } from "./client.ts";
 import { browserTelemetryConfig, type TelemetryConfig } from "./config.ts";
+import { featureAreaForProductEvent } from "./events.ts";
 import type {
   BrowserProductEventName,
   ProductContext,
@@ -47,6 +48,9 @@ export function captureBrowserProductEvent<EventName extends BrowserProductEvent
   const eventProperties = {
     ...properties,
     ...(insertId ? { $insert_id: insertId } : {}),
+    ...(featureAreaForProductEvent(eventName)
+      ? { feature_area: featureAreaForProductEvent(eventName) }
+      : {}),
     actor_type: options.actorType,
     environment: config.environment,
     route,
