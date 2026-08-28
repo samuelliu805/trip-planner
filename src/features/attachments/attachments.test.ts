@@ -276,7 +276,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(upload, /x-signature/);
   assert.match(upload, /retryDelays/);
   assert.match(upload, /findPreviousUploads/);
-  assert.match(upload, /keepalive: true, method: "DELETE"/);
+  assert.match(upload, /keepalive: true,[\s\S]{0,80}method: "DELETE"/);
   assert.match(viewer, /handlePreviewError/);
   assert.match(viewer, /ArrowLeft/);
   assert.match(viewer, /playsInline/);

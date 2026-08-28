@@ -12,6 +12,7 @@ import {
 } from "./errors.ts";
 import {
   browserProductEventNames,
+  featureAreaForProductEvent,
   serverProductEventNames,
   telemetryEventNames,
   telemetryEventRegistry,
@@ -255,6 +256,48 @@ function validProductProperties(eventName: ProductEventName): Record<string, unk
     screen: "account",
     surface: "planner",
   };
+  const featureArea = featureAreaForProductEvent(eventName);
+  if (featureArea) {
+    properties.feature_area = featureArea;
+    properties.surface =
+      featureArea === "ideas"
+        ? "ideas_options"
+        : featureArea === "research"
+          ? "research_editor"
+          : featureArea === "routes"
+            ? "route_panel"
+            : featureArea === "variants"
+              ? "variant_controls"
+              : featureArea === "sharing"
+                ? "share_dialog"
+                : "attachment_editor";
+  }
+  if (featureArea === "ideas" || featureArea === "research") properties.ideas_category = "stay";
+  if (featureArea === "routes") {
+    properties.route_mode = "walk";
+    properties.route_view = "day";
+  }
+  if (eventName === "variant_created" || eventName === "variant_create_failed")
+    properties.variant_action = "blank";
+  if (eventName.startsWith("variant_comparison_")) {
+    properties.comparison_scope = eventName.endsWith("summary_viewed") ? "summary" : "trip";
+    properties.surface = "variant_comparison";
+  }
+  if (eventName === "variant_comparison_selection_changed") properties.selection_state = "selected";
+  if (eventName.startsWith("share_") || eventName.startsWith("public_share_")) {
+    if (eventName.startsWith("share_")) properties.share_artifact = "page";
+    if (eventName.includes("export")) {
+      properties.export_mode = "new";
+      properties.share_artifact = "image";
+      properties.surface = "export_panel";
+    }
+    if (eventName.startsWith("public_share_")) {
+      properties.actor_type = "anonymous";
+      properties.public_view = "overview";
+      properties.surface = "public_share";
+    }
+  }
+  if (featureArea === "attachments") properties.attachment_target = "itinerary";
   if (eventName.startsWith("auth_")) {
     properties.auth_flow = "login";
     properties.auth_method = "password";
@@ -285,7 +328,7 @@ function validProductProperties(eventName: ProductEventName): Record<string, unk
   return properties;
 }
 
-test("the Phase 2A product registry and per-event property allowlists are exhaustive", () => {
+test("the product registry and per-event property allowlists are exhaustive", () => {
   const catalog = [...browserProductEventNames, ...serverProductEventNames];
   assert.equal(new Set(catalog).size, catalog.length);
   assert.deepEqual(Object.keys(productEventPropertyAllowlists).sort(), [...catalog].sort());
@@ -399,6 +442,118 @@ test("product events reject missing required fields and telemetry-disabled captu
     false,
   );
   assert.equal(captures, 0);
+});
+
+test("advanced product enums, public anonymity, and operation deduplication stay bounded", () => {
+  const route = validProductProperties("route_calculation_started");
+  assert.ok(
+    sanitizeTelemetryProperties("route_calculation_started", route, enabledPreviewConfig()),
+  );
+  assert.equal(
+    sanitizeTelemetryProperties(
+      "route_calculation_started",
+      { ...route, route_mode: "private-provider-mode" },
+      enabledPreviewConfig(),
+    ),
+    null,
+  );
+  const publicView = validProductProperties("public_share_viewed");
+  const sanitizedPublicView = sanitizeTelemetryProperties(
+    "public_share_viewed",
+    {
+      ...publicView,
+      route: `/share/${productOperationId}?token=private-share-token`,
+      share_token: "private-share-token",
+    },
+    enabledPreviewConfig(),
+  );
+  assert.ok(sanitizedPublicView);
+  assert.equal(sanitizedPublicView.actor_type, "anonymous");
+  assert.equal(sanitizedPublicView.route, "/share/[token]");
+  assert.equal(JSON.stringify(sanitizedPublicView).includes("private-share-token"), false);
+  assert.equal(
+    sanitizeTelemetryProperties(
+      "public_share_viewed",
+      { ...publicView, actor_type: "authenticated" },
+      enabledPreviewConfig(),
+    ),
+    null,
+  );
+  assert.equal(
+    telemetryInsertId("route_calculated", productOperationId),
+    telemetryInsertId("route_calculated", productOperationId),
+  );
+  assert.notEqual(
+    telemetryInsertId("route_calculated", productOperationId),
+    telemetryInsertId("route_calculation_failed", productOperationId),
+  );
+});
+
+test("advanced intent events and authoritative outcome events keep exact ownership", () => {
+  const expectedBrowser = [
+    "ideas_viewed",
+    "ideas_category_changed",
+    "research_create_started",
+    "research_apply_started",
+    "research_revert_started",
+    "route_calculation_started",
+    "route_mode_changed",
+    "route_view_changed",
+    "variant_switched",
+    "variant_comparison_viewed",
+    "variant_comparison_selection_changed",
+    "variant_comparison_summary_viewed",
+    "share_publish_started",
+    "share_link_copied",
+    "share_link_opened",
+    "share_export_started",
+    "public_share_viewed",
+    "public_share_view_changed",
+    "attachment_upload_started",
+    "attachment_opened",
+  ];
+  const expectedServer = [
+    "research_created",
+    "research_create_failed",
+    "research_updated",
+    "research_update_failed",
+    "research_deleted",
+    "research_delete_failed",
+    "research_applied",
+    "research_apply_failed",
+    "research_reverted",
+    "research_revert_failed",
+    "route_calculated",
+    "route_calculation_failed",
+    "variant_created",
+    "variant_create_failed",
+    "variant_updated",
+    "variant_update_failed",
+    "variant_deleted",
+    "variant_delete_failed",
+    "variant_primary_set",
+    "variant_primary_set_failed",
+    "share_published",
+    "share_publish_failed",
+    "share_settings_updated",
+    "share_settings_update_failed",
+    "share_revoked",
+    "share_revoke_failed",
+    "share_exported",
+    "share_export_failed",
+    "attachment_uploaded",
+    "attachment_upload_failed",
+    "attachment_deleted",
+    "attachment_delete_failed",
+  ];
+  const foundationBrowserCount = 6;
+  const foundationServerCount = 16;
+  assert.deepEqual(browserProductEventNames.slice(foundationBrowserCount), expectedBrowser);
+  assert.deepEqual(serverProductEventNames.slice(foundationServerCount), expectedServer);
+  for (const eventName of expectedBrowser)
+    assert.equal(serverProductEventNames.includes(eventName as never), false);
+  for (const eventName of expectedServer)
+    assert.equal(browserProductEventNames.includes(eventName as never), false);
 });
 
 test("authentication failures cannot identify or create a person profile", () => {
