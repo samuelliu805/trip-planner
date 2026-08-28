@@ -4,16 +4,22 @@ import test from "node:test";
 import { createAnalyticsBoundary, type BrowserTelemetryAdapter } from "./client.ts";
 import { resolveTelemetryConfig, type TelemetryConfig } from "./config.ts";
 import {
+  safeAuthErrorCode,
   safeErrorCode,
+  safeMutationErrorCode,
   SafeTelemetryError,
   syntheticPreviewExceptionFingerprint,
 } from "./errors.ts";
 import {
+  browserProductEventNames,
+  serverProductEventNames,
   telemetryEventNames,
   telemetryEventRegistry,
+  type ProductEventName,
   type PersonProperties,
   type TelemetryEventName,
 } from "./events.ts";
+import { createAnonymousIdentityResetTracker } from "./identity-boundary.ts";
 import { createPseudonymousAnalyticsId } from "./identity.server.ts";
 import { createStructuredLogger } from "./logger.ts";
 import {
@@ -28,6 +34,14 @@ import {
   sanitizeTelemetryProperties,
 } from "./privacy.ts";
 import { sanitizeServerExceptionEvent } from "./privacy-server-exceptions.ts";
+import { productEventPropertyAllowlists } from "./privacy-product.ts";
+import { captureBrowserProductEvent } from "./product-client.ts";
+import {
+  durationBucket,
+  reportAuthoritativeMutationOutcome,
+  reportSuccessfulSignOut,
+  telemetryInsertId,
+} from "./product.ts";
 import {
   ideasCategoryForPath,
   normalizeTelemetryRoute,
@@ -36,6 +50,11 @@ import {
   telemetryScreenForRoute,
 } from "./routes.ts";
 import { handleTelemetrySmokeRequest } from "./smoke.ts";
+import { createItemEditorTelemetrySession } from "../../features/itinerary/item-editor-telemetry.ts";
+import {
+  createPlannerViewReporter,
+  plannerViewForLayout,
+} from "../../features/itinerary/planner-view-telemetry.ts";
 
 const previewEnvironment = {
   NEXT_PUBLIC_POSTHOG_HOST: "https://us.i.posthog.com",
@@ -224,13 +243,213 @@ test("web vitals keep PostHog compatibility fields without URL details", () => {
   );
 });
 
+const productOperationId = "123e4567-e89b-42d3-a456-426614174000";
+
+function validProductProperties(eventName: ProductEventName): Record<string, unknown> {
+  const properties: Record<string, unknown> = {
+    actor_type:
+      eventName === "auth_started" || eventName === "auth_failed" ? "anonymous" : "authenticated",
+    operation_id: productOperationId,
+    release: "500d89293a9be3521abc3a3144d210454cbb2c6a",
+    route: `/trips/${productOperationId}?share_token=private`,
+    screen: "account",
+    surface: "planner",
+  };
+  if (eventName.startsWith("auth_")) {
+    properties.auth_flow = "login";
+    properties.auth_method = "password";
+    properties.surface = "auth_form";
+  }
+  if (eventName.startsWith("item_")) properties.item_kind = "activity";
+  if (eventName.endsWith("_failed")) properties.error_code = "database_unavailable";
+  if (eventName === "auth_started") properties.surface = "auth_form";
+  if (eventName === "trip_create_started") properties.surface = "trip_list";
+  if (eventName === "planner_view_changed") {
+    properties.planner_view = "split";
+    properties.surface = "planner";
+  }
+  if (eventName === "item_editor_opened" || eventName === "item_editor_closed") {
+    properties.editor_mode = "create";
+    properties.surface = "item_editor";
+  }
+  if (eventName === "item_editor_closed") {
+    properties.close_reason = "escape";
+    properties.dirty = true;
+    properties.duration_bucket = "30s_2m";
+  }
+  if (eventName === "trip_status_changed") {
+    properties.outcome = "failed";
+    properties.error_code = "forbidden";
+    properties.trip_status = "done";
+  }
+  return properties;
+}
+
+test("the Phase 2A product registry and per-event property allowlists are exhaustive", () => {
+  const catalog = [...browserProductEventNames, ...serverProductEventNames];
+  assert.equal(new Set(catalog).size, catalog.length);
+  assert.deepEqual(Object.keys(productEventPropertyAllowlists).sort(), [...catalog].sort());
+
+  const providerCore = new Set(["$geoip_disable", "token"]);
+  for (const eventName of catalog) {
+    const properties = {
+      ...validProductProperties(eventName),
+      address: "private-address-marker",
+      attachment_metadata: "private-attachment-marker",
+      booking_information: "private-booking-marker",
+      cookie: "private-cookie-marker",
+      coordinates: "private-coordinate-marker",
+      display_name: "private-name-marker",
+      email: "private-email-marker@example.com",
+      form_values: "private-form-marker",
+      free_form_input: "private-free-form-marker",
+      headers: "private-header-marker",
+      item_count: 42,
+      itinerary_item_id: productOperationId,
+      item_title: "private-item-title-marker",
+      location: "private-location-marker",
+      notes: "private-note-marker",
+      place_search_text: "private-search-marker",
+      price_amount: 12345,
+      provider_error: "private-provider-error-marker",
+      raw_supabase_user_id: productOperationId,
+      raw_url: "https://example.test/private?token=secret",
+      schedule_details: "private-schedule-marker",
+      share_token: "private-share-marker",
+      start_date: "private-date-marker",
+      trip_id: productOperationId,
+      trip_title: "private-trip-marker",
+      unknown_property: "private-unknown-marker",
+    };
+    const sanitized = sanitizeTelemetryProperties(eventName, properties, enabledPreviewConfig());
+    assert.ok(sanitized, eventName);
+    const allowed = new Set<string>(productEventPropertyAllowlists[eventName]);
+    for (const key of Object.keys(sanitized)) {
+      assert.equal(allowed.has(key) || providerCore.has(key), true, `${eventName}:${key}`);
+    }
+    assert.equal(sanitized.route, "/trips/[tripId]");
+    assert.equal(sanitized.screen, "trip_plan");
+    const serialized = JSON.stringify(sanitized);
+    for (const marker of [
+      "private-address-marker",
+      "private-attachment-marker",
+      "private-booking-marker",
+      "private-cookie-marker",
+      "private-coordinate-marker",
+      "private-email-marker",
+      "private-free-form-marker",
+      "private-form-marker",
+      "private-header-marker",
+      "private-item-title-marker",
+      "private-location-marker",
+      "private-name-marker",
+      "private-note-marker",
+      "private-provider-error-marker",
+      "private-schedule-marker",
+      "private-search-marker",
+      "private-share-marker",
+      "private-trip-marker",
+      "private-unknown-marker",
+      "private-date-marker",
+    ]) {
+      assert.equal(serialized.includes(marker), false, `${eventName}:${marker}`);
+    }
+  }
+});
+
+test("product events reject missing required fields and telemetry-disabled capture is a no-op", () => {
+  assert.equal(
+    sanitizeTelemetryProperties(
+      "item_editor_closed",
+      { actor_type: "authenticated", item_kind: "activity", route: "/trips/id" },
+      enabledPreviewConfig(),
+    ),
+    null,
+  );
+  assert.equal(
+    sanitizeTelemetryProperties(
+      "item_create_started",
+      {
+        actor_type: "authenticated",
+        item_kind: "activity",
+        route: "/trips/private",
+      },
+      enabledPreviewConfig(),
+    ),
+    null,
+  );
+  const disabled = resolveTelemetryConfig({
+    ...previewEnvironment,
+    NEXT_PUBLIC_TELEMETRY_ENABLED: "false",
+  });
+  let captures = 0;
+  assert.equal(
+    captureBrowserProductEvent(
+      "planner_view_changed",
+      { planner_view: "matrix", surface: "planner" },
+      {
+        actorType: "authenticated",
+        capture: () => {
+          captures += 1;
+        },
+        config: disabled,
+        pathname: "/trips/private",
+      },
+    ),
+    false,
+  );
+  assert.equal(captures, 0);
+});
+
+test("authentication failures cannot identify or create a person profile", () => {
+  const sanitized = sanitizeProviderEvent(
+    {
+      $set: { email: "private@example.com", name: "Private Person" },
+      distinctId: "system:trip-planner-web:preview",
+      event: "auth_failed",
+      properties: {
+        ...validProductProperties("auth_failed"),
+        $process_person_profile: false,
+        email: "private@example.com",
+        raw_user_id: productOperationId,
+      },
+    },
+    enabledPreviewConfig(),
+  );
+  assert.ok(sanitized);
+  assert.equal("$set" in sanitized, false);
+  assert.equal(sanitized.properties?.$process_person_profile, false);
+  assert.equal(JSON.stringify(sanitized).includes("private@example.com"), false);
+});
+
 test("unknown events and prohibited properties are discarded centrally", () => {
   assert.equal(isProhibitedTelemetryKey("authorization_header"), true);
   assert.equal(isProhibitedTelemetryKey("shareToken"), true);
+  for (const key of [
+    "address",
+    "attachment_metadata",
+    "display_name",
+    "email",
+    "form_values",
+    "free_form_input",
+    "headers",
+    "item_count",
+    "itinerary_item_id",
+    "location",
+    "place_search_text",
+    "provider_error",
+    "schedule_details",
+    "start_date",
+    "raw_supabase_user_id",
+    "trip_id",
+    "trip_title",
+  ]) {
+    assert.equal(isProhibitedTelemetryKey(key), true, key);
+  }
   assert.equal(isProhibitedTelemetryKey("operation_id"), false);
   assert.equal(
     sanitizeProviderEvent(
-      { event: "trip_created", properties: { email: "person@example.com" } },
+      { event: "totally_unknown", properties: { email: "person@example.com" } },
       enabledPreviewConfig(),
     ),
     null,
@@ -498,6 +717,162 @@ test("HMAC analytics identifiers are deterministic, isolated, and non-reversible
   assert.match(first ?? "", /^tpv1_[0-9a-f]{64}$/);
   assert.equal(first?.includes(userId), false);
   assert.equal(createPseudonymousAnalyticsId(userId, "short", "preview"), null);
+});
+
+test("editor telemetry preserves dirty close semantics and prevents duplicate terminal events", () => {
+  assert.equal(durationBucket(0), "under_30s");
+  assert.equal(durationBucket(30_000), "30s_2m");
+  assert.equal(durationBucket(120_000), "2m_5m");
+  assert.equal(durationBucket(300_000), "over_5m");
+  let now = 1_000;
+  const events: Array<{ event: string; properties: Record<string, unknown> }> = [];
+  const session = createItemEditorTelemetrySession({
+    capture(event, properties) {
+      events.push({ event, properties });
+    },
+    editorMode: "edit",
+    itemKind: "meal",
+    now: () => now,
+  });
+  assert.equal(session.open(), true);
+  assert.equal(session.open(), false);
+  now += 45_000;
+  assert.equal(session.close("page_hidden", true), true);
+  assert.equal(session.close("page_hidden", true), false);
+  assert.equal(session.close("escape", true), true);
+  assert.equal(session.close("navigation", false), false);
+  assert.deepEqual(
+    events.map(({ event }) => event),
+    ["item_editor_opened", "item_editor_closed", "item_editor_closed"],
+  );
+  assert.deepEqual(events[1]?.properties, {
+    close_reason: "page_hidden",
+    dirty: true,
+    duration_bucket: "30s_2m",
+    editor_mode: "edit",
+    item_kind: "meal",
+    surface: "item_editor",
+  });
+  assert.equal(events[2]?.properties.close_reason, "escape");
+  assert.equal(events[2]?.properties.dirty, true);
+});
+
+test("planner views emit only when the semantic view changes", () => {
+  const views: string[] = [];
+  const report = createPlannerViewReporter((view) => views.push(view));
+  assert.equal(plannerViewForLayout(false, false), "matrix");
+  assert.equal(plannerViewForLayout(false, true), "split");
+  assert.equal(plannerViewForLayout(true, true), "map");
+  assert.equal(report("matrix"), true);
+  assert.equal(report("matrix"), false);
+  assert.equal(report("map"), true);
+  assert.equal(report("map"), false);
+  assert.deepEqual(views, ["matrix", "map"]);
+});
+
+test("failure mapping is bounded and never returns raw provider or product messages", () => {
+  assert.equal(
+    safeAuthErrorCode(new Error("invalid password for person@example.com")),
+    "authentication_failed",
+  );
+  assert.equal(safeAuthErrorCode({ name: "TimeoutError" }), "timeout");
+  assert.equal(safeMutationErrorCode({ code: "42501", message: "private" }), "forbidden");
+  assert.equal(safeMutationErrorCode({ code: "23505", detail: "private" }), "conflict");
+  assert.equal(safeMutationErrorCode({ code: "22023", hint: "private" }), "invalid_input");
+  assert.equal(
+    safeMutationErrorCode("You do not have permission to update this private trip."),
+    "forbidden",
+  );
+  assert.equal(
+    safeMutationErrorCode("The selected item position changed. Choose its position again."),
+    "conflict",
+  );
+  assert.equal(safeMutationErrorCode("provider said traveler@example.com"), "unexpected_error");
+});
+
+test("authoritative mutation reporting selects one server outcome and preserves product results", async () => {
+  const calls: string[] = [];
+  const success = { data: { id: "private-item-id" } };
+  assert.equal(
+    await reportAuthoritativeMutationOutcome(success, {
+      failed: (code) => {
+        calls.push(`failed:${code}`);
+      },
+      succeeded: () => {
+        calls.push("succeeded");
+      },
+    }),
+    success,
+  );
+  const failure = { error: "You do not have permission to change this item." };
+  assert.equal(
+    await reportAuthoritativeMutationOutcome(failure, {
+      failed: (code) => {
+        calls.push(`failed:${code}`);
+      },
+      succeeded: () => {
+        calls.push("unexpected-success");
+      },
+    }),
+    failure,
+  );
+  const telemetryFailureResult = { data: { id: "another-private-id" } };
+  assert.equal(
+    await reportAuthoritativeMutationOutcome(telemetryFailureResult, {
+      failed: () => undefined,
+      succeeded: () => {
+        throw new Error("telemetry failed");
+      },
+    }),
+    telemetryFailureResult,
+  );
+  assert.deepEqual(calls, ["succeeded", "failed:forbidden"]);
+  assert.equal(
+    telemetryInsertId("item_created", productOperationId),
+    `item_created:${productOperationId}`,
+  );
+  assert.equal(
+    telemetryInsertId("trip_status_changed", productOperationId, "failed"),
+    `trip_status_changed:failed:${productOperationId}`,
+  );
+  assert.equal(telemetryInsertId("item_created", "private-item-id"), undefined);
+  assert.equal(
+    telemetryInsertId("item_created", productOperationId, undefined, "meal"),
+    `item_created:meal:${productOperationId}`,
+  );
+  assert.equal(
+    telemetryInsertId("auth_succeeded", productOperationId, undefined, undefined, "confirmation"),
+    `auth_succeeded:confirmation:${productOperationId}`,
+  );
+});
+
+test("successful logout capture precedes one anonymous identity reset per transition", async () => {
+  const calls: string[] = [];
+  const shouldReset = createAnonymousIdentityResetTracker();
+  assert.equal(shouldReset("/trips"), false);
+  await reportSuccessfulSignOut(
+    async () => {
+      calls.push("sign_out");
+      return { error: null };
+    },
+    () => {
+      calls.push("capture:signed_out");
+    },
+  );
+  if (shouldReset("/login")) calls.push("reset");
+  if (shouldReset("/login")) calls.push("duplicate-reset");
+  if (shouldReset("/signup")) calls.push("cross-route-duplicate-reset");
+  assert.deepEqual(calls, ["sign_out", "capture:signed_out", "reset"]);
+
+  await reportSuccessfulSignOut(
+    async () => ({ error: new Error("sign-out failed") }),
+    () => {
+      calls.push("unexpected-capture");
+    },
+  );
+  assert.equal(calls.includes("unexpected-capture"), false);
+  assert.equal(shouldReset("/trips"), false);
+  assert.equal(shouldReset("/login"), true);
 });
 
 test("identity is deduplicated, reset on user switches, and reset on logout boundaries", () => {

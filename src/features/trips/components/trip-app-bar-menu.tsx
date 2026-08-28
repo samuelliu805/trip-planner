@@ -122,6 +122,7 @@ export function TripBarMenu({
               </Link>
             </DropdownMenuItem>
             <form action={logout}>
+              <input name="surface" type="hidden" value="planner_app_bar" />
               <DropdownMenuItem asChild>
                 <button className="w-full" type="submit">
                   <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
@@ -217,6 +218,7 @@ export function TripBarMenu({
               </Link>
             </Button>
             <form action={logout}>
+              <input name="surface" type="hidden" value="planner_app_bar" />
               <Button
                 className="min-h-11 w-full justify-start px-3 font-normal"
                 type="submit"

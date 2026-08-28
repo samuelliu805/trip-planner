@@ -132,7 +132,13 @@ export function usePlannerClipboard({
         await Promise.all(
           replacements.flatMap(({ replacedItems }) =>
             replacedItems.map((item) =>
-              deleteMutation.mutateAsync({ id: item.id, tripId, variantId }),
+              deleteMutation.mutateAsync({
+                id: item.id,
+                itemKind: item.type,
+                surface: "planner",
+                tripId,
+                variantId,
+              }),
             ),
           ),
         );

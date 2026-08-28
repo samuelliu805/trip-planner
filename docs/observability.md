@@ -1,6 +1,6 @@
 # Observability foundation
 
-Phase 1 establishes a privacy-safe, provider-neutral telemetry boundary for the web application. It intentionally covers platform health and telemetry mechanics, not product workflow analytics. Application and feature code call the typed APIs in `src/lib/telemetry`; only adapter files import PostHog or OpenTelemetry packages.
+Phase 1 establishes a privacy-safe, provider-neutral telemetry boundary for the web application. Phase 2A adds semantic Authentication, Trip lifecycle, and core Planner telemetry through that boundary. Application and feature code call the typed APIs in `src/lib/telemetry`; only adapter files import PostHog or OpenTelemetry packages.
 
 The implementation follows the stable [PostHog Next.js integration](https://posthog.com/docs/libraries/next-js), [PostHog Logs OpenTelemetry setup](https://posthog.com/docs/logs/installation/nextjs), and [PostHog source-map integration](https://posthog.com/docs/error-tracking/upload-source-maps/nextjs). It does not use the prerelease `@posthog/next` package.
 
@@ -9,10 +9,11 @@ The implementation follows the stable [PostHog Next.js integration](https://post
 - `config.ts` parses the bounded environment, provider, and region configuration. Invalid or mismatched configuration is disabled.
 - `events.ts` is the typed event, property, log-name, provider, outcome, and safe-error-code registry.
 - `routes.ts` removes query strings and fragments, maps dynamic routes to templates, and derives bounded screens and Ideas categories.
-- `privacy.ts` is the central per-event property allowlist and browser PostHog `before_send` sanitizer. `privacy-server-exceptions.ts` preserves the bounded SDK metadata required for server Issue creation and Source Map lookup.
+- `privacy.ts` is the central browser PostHog `before_send` sanitizer. `privacy-product.ts` contains the exact per-product-event allowlists, and `privacy-server-exceptions.ts` preserves the bounded SDK metadata required for server Issue creation and Source Map lookup.
 - `identity.server.ts` creates the authenticated HMAC identifier. The raw Supabase user ID never crosses the server boundary.
 - `client.ts` is the only browser SDK adapter. `instrumentation-client.ts` initializes it before hydration.
 - `server.ts` is the provider-neutral server API. It loads the Node adapter lazily and never loads `posthog-node` in the Edge runtime.
+- `product-client.ts`, `product-server.ts`, and `product.ts` add bounded product context, safe operation correlation, duration buckets, item-kind normalization, and isolated success/failure reporting without exposing a vendor to feature code.
 - `logger.ts` emits allowlisted one-line JSON to stdout and lazily resolves a route-local forwarder. `otel-logs.server.ts` forwards only selected records through direct OTLP.
 - `instrumentation.ts` pre-registers the Node log exporter and implements Next.js `onRequestError`. Route-local lazy initialization is also required because Next.js can bundle instrumentation and Route Handlers as separate module instances.
 
@@ -75,6 +76,7 @@ The allowlists cover only:
 - sanitized route, screen, environment, region, and ingestion metadata;
 - bounded Web Vital fields;
 - bounded cleanup counts, duration, operation ID, runtime, and safe error code;
+- the Phase 2A properties enumerated in the product event catalog below;
 - PostHog ingestion fields needed for anonymous/identified analytics and error tracking;
 - person properties `locale`, `account_state`, optional bounded `app_role`, `telemetry_region`, and `environment`.
 
@@ -84,7 +86,7 @@ Never add email, phone, names, avatars, raw user/Trip/item/research IDs, titles,
 
 Authenticated identity is `tpv1_` followed by an HMAC-SHA-256 digest of the environment and raw Supabase user ID. It is deterministic within an environment, changes with the HMAC secret or environment, and contains no reversible encoding of the source UUID.
 
-The HMAC is computed only in a server component after `supabase.auth.getUser()` returns a real user. Only the pseudonymous ID and bounded person properties reach the client bridge. Repeated renders do not repeat `identify`; a different authenticated ID resets the previous PostHog identity first. Login, signup, successful logout navigation, and public-share routes reset persisted identity. Public-share viewers therefore remain anonymous.
+The HMAC is computed only on the server after `supabase.auth.getUser()` returns a real user. Only the pseudonymous ID and bounded person properties reach the client bridge. Repeated renders do not repeat `identify`; a different authenticated ID resets the previous PostHog identity first. A successful server sign-out captures `signed_out` before redirecting, and entering the anonymous login boundary resets persisted identity exactly once for that authenticated-to-anonymous transition. Login, signup, and public-share routes also enforce anonymous identity boundaries. Public-share viewers therefore remain anonymous.
 
 ## Errors and release metadata
 
@@ -94,7 +96,7 @@ Uncaught server errors use Next.js `instrumentation.ts` and its supported `onReq
 
 Headers, cookies, bodies, query strings, raw identifiers, and raw error messages are excluded before the SDK sees the error. The dedicated server exception sanitizer preserves the SDK-generated `mechanism`, injected `$release_id`, and validated frame `chunk_id`, filename, function, line, and column fields needed for Issue creation and symbolication. PostHog's Error Tracking wire format requires every Node.js frame to include `filename` and `function`, so absent or unsafe SDK values become the fixed `<anonymous>` and `?` placeholders instead of being omitted. `posthog-node` removes its internal `_originatedFromCaptureException` marker before calling `before_send`, so the sanitizer does not rely on that unavailable marker; the typed server adapter itself exposes no generic `$exception` capture path. Context lines, variables, provider messages, and arbitrary exception properties remain forbidden. A `WeakSet` suppresses repeated capture of the same error object. Server events use a non-person system distinct ID unless a valid HMAC analytics ID is supplied.
 
-`VERCEL_GIT_COMMIT_SHA` is attached as the release/service version when it is a valid commit SHA. Safe error codes are bounded values such as `unexpected_error`, `database_unavailable`, `storage_unavailable`, `timeout`, and `synthetic_preview_exception`.
+`VERCEL_GIT_COMMIT_SHA` is attached as the release/service version when it is a valid commit SHA. The complete safe-code registry is `authentication_failed`, `conflict`, `database_unavailable`, `forbidden`, `invalid_input`, `request_aborted`, `storage_unavailable`, `synthetic_preview_exception`, `telemetry_delivery_failed`, `timeout`, and `unexpected_error`. Raw Supabase, Postgres, browser, and provider errors never become analytics properties.
 
 ## Structured logs
 
@@ -115,7 +117,69 @@ Only ERROR logs, selected WARN logs, and the `cleanup_succeeded` INFO heartbeat 
 
 Each Node.js function bundle initializes at most one provider per warm instance. This route-local singleton is intentional: Next.js can compile `instrumentation.ts` and a Route Handler into isolated module graphs, so an instrumentation-only module global is not a reliable handoff. The batch processor remains non-blocking during ordinary work. Cleanup and request-error paths use `after()` or an explicit flush boundary; the smoke log awaits `forceFlush()` before returning `202`. Providers are not shut down after each request, and exporter failures are swallowed.
 
-Implemented structured log names are `cleanup_started`, `cleanup_succeeded`, `cleanup_failed`, `cleanup_backlog_observed`, `server_exception`, `telemetry_smoke_warning`, and `posthog_exception_delivery_failed`. The last is a bounded Vercel-only WARN diagnostic and is not selected for OTLP forwarding. Implemented custom events are the four cleanup outcomes plus `$pageview` and `$web_vitals`.
+Implemented structured log names are `cleanup_started`, `cleanup_succeeded`, `cleanup_failed`, `cleanup_backlog_observed`, `server_exception`, `telemetry_smoke_warning`, and `posthog_exception_delivery_failed`. The last is a bounded Vercel-only WARN diagnostic and is not selected for OTLP forwarding. Implemented analytics events are the four cleanup outcomes, `$pageview`, `$web_vitals`, and the Phase 2A product catalog below. The existing names are unchanged.
+
+## Phase 2A product telemetry
+
+Every product event receives the centrally rebuilt common context `environment`, `telemetry_region`, normalized `route`, bounded `screen`, and `actor_type`. Server outcomes also receive `release` when `VERCEL_GIT_COMMIT_SHA` is valid. These fields are not repeated in the table. `operation_id` and `surface` are optional unless the table says otherwise. A valid operation ID produces a stable, provider-level `$insert_id`; server retries with the same event, operation, outcome, item kind, and authentication flow therefore deduplicate without collapsing separate signup and confirmation outcomes.
+
+The bounded values are:
+
+- `auth_method`: `password`, `google`, or `email_link`.
+- `auth_flow`: `login`, `signup`, or `confirmation`. Recovery is not listed because the product has no recovery flow.
+- `surface`: `account`, `auth_form`, `global_header`, `item_editor`, `planner`, `planner_app_bar`, or `trip_list`.
+- `planner_view`: `matrix`, `split`, or `map`.
+- `item_kind`: `activity`, `car_rental`, `hotel`, `meal`, `note`, or `transport`; legacy `flight` and `train` normalize to `transport`, and legacy City rows are not reported.
+- `editor_mode`: `create` or `edit`.
+- `close_reason`: `saved`, `cancel`, `close_button`, `escape`, `overlay`, `browser_back`, `navigation`, or `page_hidden`.
+- `duration_bucket`: `under_30s`, `30s_2m`, `2m_5m`, or `over_5m`.
+- `trip_status`: `open` or `done`; `outcome`: `succeeded` or `failed`.
+- `error_code`: one value from the safe-code registry above.
+
+| Event                       | Authoritative owner                                                                               | Event-specific properties                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `auth_started`              | Password or Google form submission in `AuthForm`                                                  | `auth_method`, `auth_flow`, required `operation_id`, `surface=auth_form`                      |
+| `auth_succeeded`            | Password login/signup server action or `/auth/callback` session exchange                          | `auth_method`, `auth_flow`, `operation_id?`, `surface?`                                       |
+| `auth_failed`               | Validation/provider failure in the auth server action or callback route                           | `auth_method`, `auth_flow`, `error_code`, `operation_id?`, `surface?`                         |
+| `signed_out`                | Successful Supabase `signOut` result in the logout server action, before anonymous identity reset | `surface?`, `operation_id?`                                                                   |
+| `trip_create_started`       | New Trip form submission in `CreateTripButton`                                                    | required `operation_id`, `surface=trip_list`                                                  |
+| `trip_created`              | Successful `create_trip` RPC result in the Trip server action                                     | `operation_id?`, `surface?`                                                                   |
+| `trip_create_failed`        | Validation, authentication, or `create_trip` failure in the Trip server action                    | `error_code`, `operation_id?`, `surface?`                                                     |
+| `trip_settings_saved`       | Successful `update_trip_plan` RPC result                                                          | `operation_id?`, `surface?`                                                                   |
+| `trip_settings_save_failed` | Validation, authentication, or `update_trip_plan` failure                                         | `error_code`, `operation_id?`, `surface?`                                                     |
+| `trip_status_changed`       | Owned Trip status update result                                                                   | `trip_status`, `outcome`, `error_code?` only on failure, `operation_id?`, `surface?`          |
+| `trip_deleted`              | Owned Trip delete result, before redirect                                                         | `operation_id?`, `surface?`                                                                   |
+| `trip_delete_failed`        | Validation, authentication, or owned Trip delete failure                                          | `error_code`, `operation_id?`, `surface?`                                                     |
+| `planner_view_changed`      | Semantic responsive Planner state, deduplicated across rerenders                                  | `planner_view`, `surface=planner`                                                             |
+| `item_editor_opened`        | One logical mount of the existing progressive item editor                                         | `item_kind`, `editor_mode`, `surface=item_editor`                                             |
+| `item_editor_closed`        | The same editor lifecycle, reusing its existing dirty state                                       | `item_kind`, `editor_mode`, `dirty`, `close_reason`, `duration_bucket`, `surface=item_editor` |
+| `item_create_started`       | Create mutation start in the item or Planner copy mutation owner                                  | `item_kind`, required `operation_id`, `surface?`                                              |
+| `item_created`              | Successful item insert, link/order completion, or Planner copy server boundary                    | `item_kind`, `operation_id?`, `surface?`                                                      |
+| `item_create_failed`        | Failed item create or Planner copy server boundary                                                | `item_kind`, `error_code`, `operation_id?`, `surface?`                                        |
+| `item_updated`              | Successful item update or Planner reorder server boundary                                         | `item_kind`, `operation_id?`, `surface?`                                                      |
+| `item_update_failed`        | Failed item update or Planner reorder server boundary                                             | `item_kind`, `error_code`, `operation_id?`, `surface?`                                        |
+| `item_deleted`              | Successful direct delete or Planner clear server boundary                                         | `item_kind`, `operation_id?`, `surface?`                                                      |
+| `item_delete_failed`        | Failed direct delete or Planner clear server boundary                                             | `item_kind`, `error_code`, `operation_id?`, `surface?`                                        |
+
+Client intent is deliberately limited to the actual interaction owners: `src/features/auth/components/auth-form.tsx`, `src/features/trips/components/create-trip-button.tsx`, `src/features/itinerary/hooks/use-planner-view-telemetry.ts`, `src/features/itinerary/components/use-item-editor-telemetry.ts`, and the React Query mutation owners in `item-mutations.ts` and `day-mutations.ts`. A click never emits a durable success. Durable Auth results are emitted from `src/features/auth/actions.ts` and `src/app/auth/callback/route.ts`; Trip results from `src/features/trips/actions.ts` and `src/features/trips/update-trip-action.ts`; direct item results from `src/features/itinerary/item-create-action.ts`, `actions.ts`, and `item-delete-action.ts`; and copy/reorder results from `src/features/itinerary/day-actions.ts`. All are emitted only after their Supabase action, RPC, or mutation result is known.
+
+Planner copy, clear, and reorder operations emit at most one outcome per distinct bounded item kind for one operation ID. They never send the number of selected or changed items. Removing a whole Trip day can cascade item deletion, but it is a day lifecycle operation rather than a direct item-delete intent and does not synthesize per-item events.
+
+`page_hidden` is a non-terminal observation. The editor session can later emit `saved` or another definitive close reason, and abandonment analysis must exclude `page_hidden`. Every other logical editor session emits at most one terminal close event. “Save & create new” closes the saved logical session and the remounted blank editor opens a new one.
+
+### Expected funnels after data arrives
+
+No dashboard or saved insight is created in Phase 2A. Once a representative Preview and Production sample exists, the following PostHog funnels can be created with an explicit environment filter:
+
+1. `auth_started` to `auth_succeeded`, broken down by `auth_flow` and `auth_method`; inspect `auth_failed` separately by bounded `error_code`.
+2. `trip_create_started` to `trip_created`, with `trip_create_failed` as the failure diagnostic.
+3. `trip_created` to the first subsequent `item_created` for the same `tpv1_` identity to measure time to first itinerary item without Trip IDs or groups.
+4. `item_editor_opened` to `item_created` or `item_updated`, plus terminal `item_editor_closed`; exclude `close_reason=page_hidden` from abandonment.
+5. Success-to-failure trends for Trip settings, status, delete, and item create/update/delete, broken down only by the bounded properties in the catalog.
+
+## Intentionally deferred telemetry
+
+Phase 2A does not add Research, Routes, Variants, Sharing, Attachments, dashboards, alerts, Session Replay, feature flags, surveys, or another analytics vendor. It also does not invent password recovery, unsupported auth methods, a profile model, Trip groups, or indirect per-item deletion events for whole-day removal. Sharing and attachment editor interactions remain uninstrumented even when they are reachable from the item editor. Any future phase must extend the typed catalog and central per-event allowlist before a feature owner can emit a new event or property.
 
 ## Health, cleanup, and smoke acceptance
 
@@ -140,7 +204,7 @@ The first emits one `telemetry_smoke_warning` and waits for the OTLP provider to
 ### Manual Preview acceptance
 
 1. Configure Preview-scoped variables with the shared PostHog project token and project ID, a Preview-only HMAC secret and smoke token, `NEXT_PUBLIC_TELEMETRY_ENVIRONMENT=preview`, and `TELEMETRY_SMOKE_TEST_ENABLED=true`.
-2. Deploy a new Preview build from the repaired commit. Set local placeholders without placing secrets in shell history shared with other users:
+2. Deploy a new Preview build from the candidate commit. Set local placeholders without placing secrets in shell history shared with other users:
 
 ```bash
 export TRIP_PREVIEW_DEPLOYMENT='<new-preview-deployment>'
@@ -201,8 +265,20 @@ vercel curl /api/internal/telemetry-smoke \
 8. In PostHog Logs, filter `service.name=trip-planner-web`, `deployment.environment=preview`, and body or `log_name=telemetry_smoke_warning`. Confirm `service.version` matches the deployed Git SHA and `telemetry.region=global`.
 9. In Error Tracking, open the `synthetic_preview_exception` occurrence. Confirm its fingerprint is `trip-planner-web:synthetic-preview-exception:v1`, confirm its environment and release, then verify at least one application frame resolves to a repository source file and useful source line through the uploaded Symbol Set.
 10. Inspect the raw log, event, and Issue occurrence for prohibited data and confirm no Production telemetry was produced. Disable the smoke route after acceptance and verify it returns `404`.
+11. In a clean browser profile, submit one invalid password login, one successful password login, and the supported signup/confirmation or Google flow. Confirm `auth_started` is browser-owned, each server result is singular, failures contain only a bounded `error_code`, and successful events use a `tpv1_` distinct ID. Do not use a real email address as a PostHog filter.
+12. Sign out successfully. Confirm `signed_out` appears under the authenticated `tpv1_` identity before subsequent `/login` activity becomes anonymous. Navigate back into an authenticated session and sign out again to confirm the anonymous-boundary reset is not skipped or repeated.
+13. Create a Trip, then save settings, toggle status, and delete a disposable Trip. Confirm each server outcome, its normalized route/screen, and matching operation ID where present. Confirm no Trip ID or title and no PostHog group appear.
+14. In a disposable Trip, switch between Matrix, split, and expanded map where the viewport permits. Confirm only semantic `planner_view_changed` transitions appear. Open clean and dirty create/edit item editors, then exercise close button, Escape, overlay, discard, save, and browser navigation. Confirm duration buckets and dirty values; exclude `page_hidden` when judging abandonment.
+15. Create, edit, delete, copy, reorder, and clear disposable itinerary items. Confirm one authoritative outcome per bounded item kind and operation, safe failure codes for deliberate failures, and no item counts, IDs, titles, dates, locations, schedule details, or form values.
+16. Inspect raw Phase 2A events for the entire prohibited-field list, confirm queries are absent from routes, confirm authenticated distinct IDs match `^tpv1_[0-9a-f]{64}$`, and confirm repeated delivery with the same `$insert_id` does not create duplicate events. Repeat Production verification separately before claiming Production acceptance.
 
 This procedure is required before claiming Preview delivery or symbolication verification. Production verification must be performed separately with `environment=production`, even though both environments share a project.
+
+### Acceptance evidence available on 2026-08-27
+
+A read-only inspection of the connected Trip Planner PostHog project found `$pageview` and `$web_vitals` events with `environment=preview`; bounded `telemetry_smoke_warning` logs with `deployment.environment=preview`, `service.name=trip-planner-web`, `telemetry.region=global`, and the deployed Git SHA; a `SyntheticPreviewException` issue sourced to `src/lib/telemetry/smoke.ts`; and valid uploaded Symbol Sets for release `becbecfb209b4e66f3b7829774a05f5c687f1f70`. This is external evidence for pageview, Web Vitals, structured-log, synthetic-exception, and source-map ingestion.
+
+The available PostHog schema did not prove the complete browser identity-reset sequence or exhaustively prove absence of every prohibited property in every historical raw event. Those contracts are covered locally by telemetry tests, but the manual raw-event checks above are still required before claiming full Preview foundation acceptance. No Phase 2A Preview or Production events had been deployed or observed when this section was written.
 
 ## Source maps
 
@@ -226,6 +302,6 @@ JSON stdout and PostHog Logs are separate writes. Confirm the route-local OTLP p
 
 Open the actual Issue occurrence. Compare its injected `$release_id` and displayed release with the Symbol Set release for the deployed Git SHA. Inspect application frames for `chunk_id`, filename, line, and column values, and confirm the served bundle contains the injected chunk marker. Do not change upload configuration until the occurrence metadata identifies a concrete mismatch.
 
-## Phase 2 boundary
+## Future-phase boundary
 
-Phase 2 will define authoritative events for Auth, Trip lifecycle, planner item mutations, route calculation, variants, Research Apply/Revert, sharing, attachments, editor abandonment, and feature exposure. Do not add those events ad hoc to Phase 1 or bypass the typed provider boundary.
+Phase 2A is limited to the catalog above. Future route calculation, variants, Research Apply/Revert, sharing, attachments, feature exposure, or engagement tooling must not reuse a nearby Phase 2A event with misleading semantics or bypass the typed provider boundary.

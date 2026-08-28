@@ -33,6 +33,7 @@ import { TripSettingsEditor } from "@/features/trips/components/trip-settings-ed
 import { useTripListLoading } from "@/features/trips/components/trip-status-filter";
 import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
 import type { TripListEntry } from "@/features/trips/types";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 function tripDateSummary(trip: TripListEntry, locale: "en" | "zh-CN") {
   if (trip.start_date && trip.end_date) {
@@ -93,7 +94,12 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
 
   function changeStatus() {
     startStatusChange(async () => {
-      await setTripStatus({ status: toggle.next, tripId: trip.id });
+      await setTripStatus({
+        operationId: newTelemetryOperationId(),
+        status: toggle.next,
+        surface: "trip_list",
+        tripId: trip.id,
+      });
       router.refresh();
     });
   }
@@ -198,6 +204,7 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
             setEditorOpen(false);
             router.refresh();
           }}
+          surface="trip_list"
           trip={trip}
         />
       </TripSettingsEditor>

@@ -46,6 +46,7 @@ export function safeErrorCode(error: unknown): TelemetryErrorCode {
     if (candidate.name === "TimeoutError") return "timeout";
     if (candidate.name === "ZodError") return "invalid_input";
     if (typeof candidate.code === "string") {
+      if (candidate.code === "22023") return "invalid_input";
       if (candidate.code === "42501") return "forbidden";
       if (candidate.code === "23505") return "conflict";
       if (databaseCodes.has(candidate.code) || candidate.code.startsWith("PGRST")) {
@@ -53,6 +54,31 @@ export function safeErrorCode(error: unknown): TelemetryErrorCode {
       }
     }
   }
+  return "unexpected_error";
+}
+
+export function safeAuthErrorCode(error: unknown): TelemetryErrorCode {
+  const code = safeErrorCode(error);
+  return code === "request_aborted" || code === "timeout" || code === "invalid_input"
+    ? code
+    : "authentication_failed";
+}
+
+export function safeMutationErrorCode(error: unknown): TelemetryErrorCode {
+  const direct = safeErrorCode(error);
+  if (direct !== "unexpected_error") return direct;
+  const message =
+    typeof error === "string"
+      ? error.toLowerCase()
+      : error instanceof Error
+        ? error.message.toLowerCase()
+        : "";
+  if (/permission|sign in|unauthori[sz]ed|forbidden/.test(message)) return "forbidden";
+  if (/already|changed|conflict|duplicate/.test(message)) return "conflict";
+  if (/invalid|choose|enter|required|cannot|only one|not supported|legacy/.test(message)) {
+    return "invalid_input";
+  }
+  if (/database|postgres|query|unavailable/.test(message)) return "database_unavailable";
   return "unexpected_error";
 }
 

@@ -66,7 +66,13 @@ export function usePlannerMutations(
 
   async function deleteItem(item: ItineraryItem) {
     try {
-      await deleteMutation.mutateAsync({ id: item.id, tripId, variantId });
+      await deleteMutation.mutateAsync({
+        id: item.id,
+        itemKind: item.type,
+        surface: "planner",
+        tripId,
+        variantId,
+      });
       setInteractionError(undefined);
     } catch {
       setInteractionError(`“${item.title}” could not be deleted. Please try again.`);

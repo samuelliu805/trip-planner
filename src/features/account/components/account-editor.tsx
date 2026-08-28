@@ -162,7 +162,9 @@ function AccountForm({
             disabled={pending || logoutPending || exiting}
             onClick={() =>
               startLogout(async () => {
-                await logout();
+                const formData = new FormData();
+                formData.set("surface", "account");
+                await logout(formData);
               })
             }
             type="button"

@@ -42,6 +42,7 @@ export function PlannerEditorForm({
   onNext,
   onSave,
   onScrollNode,
+  onSubmitStart,
   pending,
   pendingLabel,
   saveDisabled = false,
@@ -70,6 +71,7 @@ export function PlannerEditorForm({
   onNext?: () => void;
   onSave?: (intent: PlannerEditorSaveIntent) => void | Promise<void>;
   onScrollNode?: (node: HTMLDivElement | null) => void;
+  onSubmitStart?: () => void;
   pending: boolean;
   pendingLabel: string;
   saveDisabled?: boolean;
@@ -129,7 +131,9 @@ export function PlannerEditorForm({
                   : "save";
               if (!pending && !cancelPending && !saveDisabled) void onSave(intent);
             }
-          : undefined
+          : onSubmitStart
+            ? () => onSubmitStart()
+            : undefined
       }
       ref={formRef}
     >

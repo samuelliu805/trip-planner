@@ -113,6 +113,7 @@ const itemBaseSchema = z.object({
   dayId: z.uuid(),
   endTime: optionalTime,
   notes: optionalText(5000),
+  operationId: z.uuid().optional(),
   placeId: z.uuid().optional().nullable(),
   placeSnapshot: placeSnapshotSchema.optional().nullable(),
   priceAmount: z.number().min(0).max(9_999_999_999.99).optional().nullable(),
@@ -124,6 +125,7 @@ const itemBaseSchema = z.object({
     .optional()
     .nullable(),
   startTime: optionalTime,
+  surface: z.enum(["item_editor", "planner"]).optional(),
   title: z.string().trim().min(1, "Enter an item title.").max(200),
   tripId: z.uuid(),
   variantId: z.uuid(),
@@ -253,6 +255,9 @@ export const updateItineraryItemSchema = z
 
 export const deleteItineraryItemSchema = z.object({
   id: z.uuid(),
+  itemKind: z.enum(itineraryItemTypes).optional(),
+  operationId: z.uuid().optional(),
+  surface: z.enum(["item_editor", "planner"]).optional(),
   tripId: z.uuid(),
   variantId: z.uuid(),
 });

@@ -28,6 +28,7 @@ const identifierPattern = /^[A-Za-z0-9_-]{8,128}$/;
 const operationIdPattern = /^[0-9a-f-]{36}$/i;
 const traceIdPattern = /^[0-9a-f]{16,32}$/i;
 const errorCodes = new Set<TelemetryErrorCode>([
+  "authentication_failed",
   "conflict",
   "database_unavailable",
   "forbidden",

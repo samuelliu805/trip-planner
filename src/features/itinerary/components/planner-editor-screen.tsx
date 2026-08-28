@@ -10,12 +10,14 @@ export function PlannerEditorScreen({
   children,
   editorKind,
   initialFocusSelector,
+  onDismissReason,
   onOpenChange,
   open,
 }: {
   children: ReactNode;
   editorKind?: "research" | "trip-settings";
   initialFocusSelector?: string;
+  onDismissReason?: (reason: "escape" | "overlay") => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 }) {
@@ -26,6 +28,7 @@ export function PlannerEditorScreen({
       <SheetContent
         className="planner-item-dialog p-0"
         data-editor-kind={editorKind}
+        onEscapeKeyDown={() => onDismissReason?.("escape")}
         onOpenAutoFocus={
           initialFocusSelector
             ? (event) => {
@@ -37,6 +40,7 @@ export function PlannerEditorScreen({
             : undefined
         }
         overlayClassName="bg-background"
+        onPointerDownOutside={() => onDismissReason?.("overlay")}
         showCloseButton={false}
         side="right"
       >

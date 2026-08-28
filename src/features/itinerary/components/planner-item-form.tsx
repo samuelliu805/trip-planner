@@ -26,8 +26,10 @@ import { usePlannerItemDraft } from "@/features/itinerary/components/use-planner
 import { usePlannerItemFormState } from "@/features/itinerary/components/use-planner-item-form-state";
 import { usePlannerItemSaveFlow } from "@/features/itinerary/components/use-planner-item-save-flow";
 import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
+import { useItemEditorTelemetry } from "@/features/itinerary/components/use-item-editor-telemetry";
 import { itemOrderSlots } from "@/features/itinerary/activity-order";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
+import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
 
 export function PlannerItemForm({
   dayDate,
@@ -62,14 +64,22 @@ export function PlannerItemForm({
   });
   const titleRef = useRef<HTMLInputElement>(null);
   const copy = itemCopy[type];
-  const saveFlow = usePlannerItemSaveFlow({
-    dayId,
+  const { closeEditor, onCreatedAnother, onItemSaved, setCloseReason } = useItemEditorTelemetry({
+    dirty: state.dirty,
     item,
     onCancel,
     onCreateAnother,
+    onSaved,
+    type,
+  });
+  const saveFlow = usePlannerItemSaveFlow({
+    dayId,
+    item,
+    onCancel: closeEditor,
+    onCreateAnother: onCreateAnother ? onCreatedAnother : undefined,
     onError,
     onSaveFeedback,
-    onSaved,
+    onSaved: onItemSaved,
     tripId,
     type,
     variantId,
@@ -136,21 +146,22 @@ export function PlannerItemForm({
     title: state.title,
     type,
   });
-
-  const requestExit = useCallback(() => {
-    if (itemMutationPending) return;
-    if (state.dirty) {
-      setExitOpen(true);
-      return;
-    }
-    requestCancel();
-  }, [itemMutationPending, requestCancel, state.dirty]);
-
+  const requestExit = useCallback(
+    (reason: ItemEditorCloseReason = "cancel") => {
+      if (itemMutationPending) return;
+      setCloseReason(reason);
+      if (state.dirty) {
+        setExitOpen(true);
+        return;
+      }
+      requestCancel();
+    },
+    [itemMutationPending, requestCancel, setCloseReason, state.dirty],
+  );
   useEffect(() => {
     onCloseRequestRegistration?.(requestExit);
     return () => onCloseRequestRegistration?.(null);
   }, [onCloseRequestRegistration, requestExit]);
-
   function goToStep(nextStepId: ItemFormStep["id"]) {
     if (nextStepId === activeStep.id) return true;
     const blocking = plannerItemStepError({
@@ -240,13 +251,13 @@ export function PlannerItemForm({
           navigation={
             <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
           }
-          onClose={requestExit}
+          onClose={() => requestExit("close_button")}
           title={t(item ? "Edit {item}" : "Add {item}", { item: t(copy.label) })}
         />
       }
       nextDisabled={stepIndex === steps.length - 1}
       onBack={() => moveStep(-1)}
-      onClose={requestExit}
+      onClose={() => requestExit("escape")}
       onNext={() => moveStep(1)}
       onSave={save}
       onScrollNode={setGestureSurfaceNode}

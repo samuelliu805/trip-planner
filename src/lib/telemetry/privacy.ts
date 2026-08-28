@@ -1,7 +1,6 @@
 import type { TelemetryConfig } from "./config.ts";
 import {
   telemetryEventRegistry,
-  type TelemetryErrorCode,
   type TelemetryEventName,
   type WebVitalName,
   type WebVitalRating,
@@ -15,6 +14,13 @@ import {
 } from "./routes.ts";
 import { safeSourceMapId, sanitizeExceptionList } from "./privacy-exceptions.ts";
 import { sanitizePersonProperties } from "./privacy-person.ts";
+import {
+  productEventPropertyAllowlists,
+  sanitizeProductEventProperties,
+} from "./privacy-product.ts";
+import { sanitizeTelemetryErrorCode } from "./privacy-values.ts";
+
+export { isProhibitedTelemetryKey } from "./privacy-keys.ts";
 
 export type ProviderCaptureEvent = {
   _originatedFromCaptureException?: boolean;
@@ -33,26 +39,8 @@ const operationIdPattern =
 const eventIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const releasePattern = /^[0-9a-f]{7,64}$/i;
 const safeLabelPattern = /^[A-Za-z0-9 ./_:+-]{1,100}$/;
-const safeErrorCodes = new Set<TelemetryErrorCode>([
-  "conflict",
-  "database_unavailable",
-  "forbidden",
-  "invalid_input",
-  "request_aborted",
-  "storage_unavailable",
-  "synthetic_preview_exception",
-  "telemetry_delivery_failed",
-  "timeout",
-  "unexpected_error",
-]);
 const webVitalNames = new Set<WebVitalName>(["CLS", "FCP", "INP", "LCP", "TTFB"]);
 const webVitalRatings = new Set<WebVitalRating>(["good", "needs-improvement", "poor"]);
-
-export function isProhibitedTelemetryKey(key: string): boolean {
-  return /(?:authorization|avatar|body|booking|cookie|coordinate|display.?name|email|filename|latitude|longitude|notes?|phone|price|query|raw.?user|signed.?url|storage.?key|title|token|url$|user.?id)/i.test(
-    key,
-  );
-}
 
 function safeString(value: unknown, maximumLength = 100): string | undefined {
   return typeof value === "string" && value.length <= maximumLength && safeLabelPattern.test(value)
@@ -73,12 +61,6 @@ function finiteNumber(value: unknown, minimum = -1_000_000_000, maximum = 1_000_
 function boundedCount(value: unknown): number | undefined {
   const candidate = finiteNumber(value, 0, 1_000_000);
   return candidate === undefined ? undefined : Math.trunc(candidate);
-}
-
-function safeErrorCode(value: unknown): TelemetryErrorCode | undefined {
-  return typeof value === "string" && safeErrorCodes.has(value as TelemetryErrorCode)
-    ? (value as TelemetryErrorCode)
-    : undefined;
 }
 
 function coreProperties(properties: Record<string, unknown>, config: TelemetryConfig) {
@@ -188,7 +170,7 @@ function sanitizeWebVitals(properties: Record<string, unknown>, config: Telemetr
 }
 
 function sanitizeException(properties: Record<string, unknown>, config: TelemetryConfig) {
-  const errorCode = safeErrorCode(properties.error_code) ?? "unexpected_error";
+  const errorCode = sanitizeTelemetryErrorCode(properties.error_code) ?? "unexpected_error";
   const exceptionList = sanitizeExceptionList(properties.$exception_list, errorCode);
   if (!exceptionList) return null;
   const context = routeContext(properties);
@@ -238,7 +220,7 @@ function sanitizeCleanup(properties: Record<string, unknown>, config: TelemetryC
     const value = boundedCount(properties[key]);
     if (value !== undefined) safe[key] = value;
   }
-  const errorCode = safeErrorCode(properties.error_code);
+  const errorCode = sanitizeTelemetryErrorCode(properties.error_code);
   if (errorCode) safe.error_code = errorCode;
   if (typeof properties.release === "string" && releasePattern.test(properties.release)) {
     safe.release = properties.release;
@@ -256,6 +238,16 @@ export function sanitizeTelemetryProperties(
   if (eventName === "$web_vitals") return sanitizeWebVitals(properties, config);
   if (eventName === "$exception") return sanitizeException(properties, config);
   if (eventName === "$identify") return coreProperties(properties, config);
+  if (eventName in productEventPropertyAllowlists) {
+    const productProperties = sanitizeProductEventProperties(
+      eventName as keyof typeof productEventPropertyAllowlists,
+      properties,
+      config,
+    );
+    return productProperties
+      ? { ...coreProperties(properties, config), ...productProperties }
+      : null;
+  }
   return sanitizeCleanup(properties, config);
 }
 

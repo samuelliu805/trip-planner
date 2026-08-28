@@ -7,15 +7,11 @@ import { useReportWebVitals } from "next/web-vitals";
 import { analytics } from "./client";
 import { browserTelemetryConfig } from "./config";
 import type { WebVitalName, WebVitalRating } from "./events";
-import {
-  ideasCategoryForPath,
-  isAnonymousTelemetryRoute,
-  normalizeTelemetryRoute,
-  telemetryScreenForRoute,
-} from "./routes";
+import { createAnonymousIdentityResetTracker } from "./identity-boundary";
+import { ideasCategoryForPath, normalizeTelemetryRoute, telemetryScreenForRoute } from "./routes";
 
 let lastPageviewPathname: string | null = null;
-let anonymousBoundaryPathname: string | null = null;
+const shouldResetAnonymousIdentity = createAnonymousIdentityResetTracker();
 const reportedWebVitals = new Set<string>();
 
 export function TelemetryNavigation() {
@@ -24,10 +20,7 @@ export function TelemetryNavigation() {
   useEffect(() => {
     if (!browserTelemetryConfig.enabled || !browserTelemetryConfig.region || !pathname) return;
     const route = normalizeTelemetryRoute(pathname);
-    if (isAnonymousTelemetryRoute(route) && anonymousBoundaryPathname !== pathname) {
-      analytics.reset();
-      anonymousBoundaryPathname = pathname;
-    }
+    if (shouldResetAnonymousIdentity(route)) analytics.reset();
     if (lastPageviewPathname === pathname) return;
     lastPageviewPathname = pathname;
     analytics.capture("$pageview", {

@@ -3,7 +3,7 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import Link from "next/link";
 import { AlertCircle, Eye, EyeOff, Info, LoaderCircle, MailCheck } from "lucide-react";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { AuthActionState } from "@/features/auth/types";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 type AuthFormProps = {
   action: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
@@ -21,7 +23,7 @@ type AuthFormProps = {
   errorMessage?: string;
   heading: string;
   mode: "login" | "signup";
-  oauthAction: () => Promise<void>;
+  oauthAction: (formData: FormData) => Promise<void>;
   submitLabel: string;
 };
 
@@ -84,7 +86,24 @@ export function AuthForm({
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
   const [showPassword, setShowPassword] = useState(false);
+  const googleOperationRef = useRef<HTMLInputElement>(null);
+  const passwordOperationRef = useRef<HTMLInputElement>(null);
   const { t } = useI18n();
+
+  function captureAuthStart(method: "google" | "password", target: HTMLInputElement | null) {
+    const operationId = newTelemetryOperationId();
+    if (target) target.value = operationId;
+    captureBrowserProductEvent(
+      "auth_started",
+      {
+        auth_flow: mode,
+        auth_method: method,
+        operation_id: operationId,
+        surface: "auth_form",
+      },
+      { actorType: "anonymous" },
+    );
+  }
 
   if (state.success) {
     return (
@@ -134,7 +153,12 @@ export function AuthForm({
             </p>
           </div>
         ) : null}
-        <form action={oauthAction}>
+        <form
+          action={oauthAction}
+          onSubmit={() => captureAuthStart("google", googleOperationRef.current)}
+        >
+          <input name="auth_flow" type="hidden" value={mode} />
+          <input name="operation_id" ref={googleOperationRef} type="hidden" />
           <GoogleAuthButton />
         </form>
         <div className="my-5 flex items-center gap-3" role="separator">
@@ -144,7 +168,14 @@ export function AuthForm({
           </span>
           <span className="h-px flex-1 bg-border" />
         </div>
-        <form action={formAction} className="space-y-4" aria-busy={pending}>
+        <form
+          action={formAction}
+          className="space-y-4"
+          aria-busy={pending}
+          onSubmit={() => captureAuthStart("password", passwordOperationRef.current)}
+        >
+          <input name="auth_flow" type="hidden" value={mode} />
+          <input name="operation_id" ref={passwordOperationRef} type="hidden" />
           {state.error ? (
             <div
               className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"

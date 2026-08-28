@@ -1,5 +1,6 @@
 import type { ItineraryItem, ItineraryItemType, TransportMode } from "../types";
 import type { PlannerItemSaveFeedback } from "./planner-item-save-feedback";
+import type { ItemEditorCloseReason } from "../../../lib/telemetry/events";
 
 export type PlannerItemFormProps = {
   dayDate: string;
@@ -8,7 +9,7 @@ export type PlannerItemFormProps = {
   defaultCurrency: string;
   item?: ItineraryItem;
   onCancel: () => void;
-  onCloseRequestRegistration?: (handler: (() => void) | null) => void;
+  onCloseRequestRegistration?: (handler: ((reason?: ItemEditorCloseReason) => void) | null) => void;
   onDraftChange?: (item: ItineraryItem | null) => void;
   onError: (message: string) => void;
   onCreateAnother?: (item: ItineraryItem) => void;

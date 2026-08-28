@@ -20,6 +20,7 @@ import type { TablesInsert } from "@/types/database";
 import { firstIssue, mutationError } from "@/features/itinerary/action-helpers";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { canonicalActivityOrderIds } from "@/features/itinerary/activity-order";
+import { reportItemMutations } from "@/features/itinerary/item-telemetry.server";
 
 export async function insertTripDay(
   input: InsertTripDayInput,
@@ -77,6 +78,19 @@ export async function reorderVariantDays(
 export async function reorderItineraryItems(
   input: ReorderItineraryItemsInput,
 ): Promise<MutationResult<ItineraryItem[]>> {
+  const result = await reorderItineraryItemsMutation(input);
+  return reportItemMutations({
+    itemTypes: result.data?.map(({ type }) => type) ?? input.itemKinds ?? [],
+    mutation: "update",
+    operationId: input.operationId,
+    result,
+    surface: input.surface,
+  });
+}
+
+async function reorderItineraryItemsMutation(
+  input: ReorderItineraryItemsInput,
+): Promise<MutationResult<ItineraryItem[]>> {
   const parsed = reorderItineraryItemsSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
@@ -96,6 +110,19 @@ export async function reorderItineraryItems(
 }
 
 export async function copyItineraryItems(
+  input: CopyItineraryItemsInput,
+): Promise<MutationResult<ItineraryItem[]>> {
+  const result = await copyItineraryItemsMutation(input);
+  return reportItemMutations({
+    itemTypes: result.data?.map(({ type }) => type) ?? input.itemKinds ?? [],
+    mutation: "create",
+    operationId: input.operationId,
+    result,
+    surface: input.surface,
+  });
+}
+
+async function copyItineraryItemsMutation(
   input: CopyItineraryItemsInput,
 ): Promise<MutationResult<ItineraryItem[]>> {
   const parsed = copyItineraryItemsSchema.safeParse(input);

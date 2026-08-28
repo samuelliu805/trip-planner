@@ -33,15 +33,22 @@ export const serverAnalytics = {
   async capture<EventName extends ServerTelemetryEventName>(
     eventName: EventName,
     properties: TelemetryEventProperties[EventName],
+    options: { analyticsId?: string } = {},
   ): Promise<void> {
     try {
       const config = resolveServerTelemetryConfig();
       const adapter = await serverAdapter();
       if (!adapter || !config.enabled) return;
-      adapter.capture(eventName, systemAnalyticsId(config.environment), {
-        ...serverTelemetryContext(config),
-        ...properties,
-      });
+      const authenticated = /^tpv1_[0-9a-f]{64}$/.test(options.analyticsId ?? "");
+      adapter.capture(
+        eventName,
+        authenticated ? options.analyticsId! : systemAnalyticsId(config.environment),
+        {
+          ...serverTelemetryContext(config),
+          ...properties,
+          ...(!authenticated ? { $process_person_profile: false } : {}),
+        },
+      );
     } catch {
       // Cleanup and application work must not depend on analytics delivery.
     }

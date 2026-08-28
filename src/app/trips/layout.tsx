@@ -38,6 +38,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
               </Link>
             </Button>
             <form action={logout}>
+              <input name="surface" type="hidden" value="global_header" />
               <Button
                 aria-label="Log out"
                 data-i18n-aria-label={"Log out"}

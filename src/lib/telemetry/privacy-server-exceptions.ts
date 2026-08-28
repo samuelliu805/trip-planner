@@ -9,6 +9,7 @@ const analyticsIdPattern = /^(?:tpv1_[0-9a-f]{64}|system:trip-planner-web:(?:pre
 const eventIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const releasePattern = /^[0-9a-f]{7,64}$/i;
 const safeErrorCodes = new Set<TelemetryErrorCode>([
+  "authentication_failed",
   "conflict",
   "database_unavailable",
   "forbidden",
