@@ -1,3 +1,5 @@
+"use server";
+
 import { revalidatePath } from "next/cache";
 
 import { insertedActivityOrderIds } from "./activity-order";
@@ -11,11 +13,25 @@ import {
 import { validateVariantDay } from "./item-action-validation";
 import { normalizedOptional, normalizedTimes, scheduleKind } from "./mutation-helpers";
 import { createItineraryItemSchema, type CreateItineraryItemInput } from "./item-schema";
+import { reportItemMutation } from "./item-telemetry.server";
 import type { MutationResult } from "./types";
 import { createClient } from "../../lib/supabase/server";
 import type { Json, TablesInsert } from "../../types/database";
 
-export async function createItineraryItemMutation(
+export async function createItineraryItem(
+  input: CreateItineraryItemInput,
+): Promise<MutationResult> {
+  const result = await createItineraryItemMutation(input);
+  return reportItemMutation({
+    itemType: input.type,
+    mutation: "create",
+    operationId: input.operationId,
+    result,
+    surface: input.surface,
+  });
+}
+
+async function createItineraryItemMutation(
   input: CreateItineraryItemInput,
 ): Promise<MutationResult> {
   const parsed = createItineraryItemSchema.safeParse(input);

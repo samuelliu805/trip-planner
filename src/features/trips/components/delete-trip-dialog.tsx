@@ -2,7 +2,7 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, Trash2 } from "lucide-react";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef } from "react";
 
 import {
   AlertDialog,
@@ -16,13 +16,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { deleteTrip } from "@/features/trips/actions";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 function DeleteAction({
   checking,
+  onSubmitStart,
   onPendingChange,
   pending,
 }: {
   checking: boolean;
+  onSubmitStart?: () => void;
   onPendingChange?: (pending: boolean) => void;
   pending: boolean;
 }) {
@@ -32,7 +35,10 @@ function DeleteAction({
     <Button
       aria-busy={loading}
       disabled={loading}
-      onClick={() => onPendingChange?.(true)}
+      onClick={() => {
+        onSubmitStart?.();
+        onPendingChange?.(true);
+      }}
       type="submit"
       variant="destructive"
     >
@@ -52,6 +58,7 @@ export function DeleteTripDialog({
   onPendingChange,
   open,
   renderTrigger = true,
+  surface = "trip_list",
   title,
   tripId,
 }: {
@@ -60,12 +67,14 @@ export function DeleteTripDialog({
   onPendingChange?: (pending: boolean) => void;
   open?: boolean;
   renderTrigger?: boolean;
+  surface?: "planner_app_bar" | "trip_list";
   title: string;
   tripId: string;
 }) {
   const { t } = useI18n();
   const checkingSharePages = activeSharePageCount === null;
   const [, action, pending] = useActionState(deleteTrip, {});
+  const operationRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => onPendingChange?.(pending), [onPendingChange, pending]);
   useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
@@ -122,6 +131,8 @@ export function DeleteTripDialog({
         </AlertDialogHeader>
         <form action={action}>
           <input name="trip_id" type="hidden" value={tripId} />
+          <input name="surface" type="hidden" value={surface} />
+          <input name="operation_id" ref={operationRef} type="hidden" />
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending} type="button">
               <T message={"Cancel"} />
@@ -129,6 +140,9 @@ export function DeleteTripDialog({
             <DeleteAction
               checking={checkingSharePages}
               onPendingChange={onPendingChange}
+              onSubmitStart={() => {
+                if (operationRef.current) operationRef.current.value = newTelemetryOperationId();
+              }}
               pending={pending}
             />
           </AlertDialogFooter>

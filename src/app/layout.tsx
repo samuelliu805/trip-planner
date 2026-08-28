@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/features/i18n/i18n-provider";
 import { getRequestLocale, getRequestLocaleState } from "@/features/i18n/server";
 import { getSiteUrl } from "@/features/sharing/site-url";
+import { TelemetryNavigation } from "@/lib/telemetry/navigation";
 
 import "./globals.css";
 
@@ -46,6 +47,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           persistInitialLocale={localeState.source === "profile"}
         >
           <QueryProvider>
+            <TelemetryNavigation />
             <TooltipProvider delayDuration={350}>{children}</TooltipProvider>
           </QueryProvider>
         </I18nProvider>

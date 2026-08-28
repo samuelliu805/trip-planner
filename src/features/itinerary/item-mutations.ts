@@ -36,6 +36,12 @@ import {
 } from "@/features/variants/queries";
 import { insertActivityAtPlacement } from "@/features/itinerary/activity-order";
 import { refreshResearchWorkspace } from "@/features/research/research-query";
+import {
+  itemKindForTelemetry,
+  itemKindsForTelemetry,
+  newTelemetryOperationId,
+} from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 export function useCreateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
@@ -43,6 +49,20 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
     mutationFn: async (input: CreateItineraryItemInput) =>
       requireData(await createItineraryItem(input)),
     onMutate: async (input) => {
+      input.operationId ??= newTelemetryOperationId();
+      input.surface ??= "planner";
+      const itemKind = itemKindForTelemetry(input.type);
+      if (itemKind) {
+        captureBrowserProductEvent(
+          "item_create_started",
+          {
+            item_kind: itemKind,
+            operation_id: input.operationId,
+            surface: input.surface,
+          },
+          { actorType: "authenticated" },
+        );
+      }
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const day = previous?.days.find(({ id }) => id === input.dayId);
@@ -116,6 +136,8 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
     mutationFn: async (input: UpdateItineraryItemInput) =>
       requireData(await updateItineraryItem(input)),
     onMutate: async (input) => {
+      input.operationId ??= newTelemetryOperationId();
+      input.surface ??= "planner";
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const existing = plannerWorkspaceItems(previous).find(({ id }) => id === input.id);
@@ -204,9 +226,12 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
     mutationFn: async (input: DeleteItineraryItemInput) =>
       requireData(await deleteItineraryItem(input)),
     onMutate: async (input) => {
+      input.operationId ??= newTelemetryOperationId();
+      input.surface ??= "planner";
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const deleted = plannerWorkspaceItems(previous).find((item) => item.id === input.id);
+      input.itemKind ??= deleted?.type;
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItem(previous, input.id));
       return {
         deletedLocalitySource: affectsLocalityProjection(deleted?.type),
@@ -236,6 +261,9 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
       const clearedItems = plannerWorkspaceItems(previous).filter((item) =>
         input.itemIds.includes(item.id),
       );
+      input.itemKinds ??= itemKindsForTelemetry(clearedItems.map(({ type }) => type));
+      input.operationId ??= newTelemetryOperationId();
+      input.surface ??= "planner";
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItems(previous, input.itemIds));
       return {
         clearedLocalitySource: clearedItems.some(({ type }) => affectsLocalityProjection(type)),

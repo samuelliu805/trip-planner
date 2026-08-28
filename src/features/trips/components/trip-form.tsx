@@ -27,15 +27,25 @@ import {
   type TripDateField,
 } from "@/features/trips/date-fields";
 import type { Tables } from "@/types/database";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 /** Trip settings supply their fields and server action to the shared planner editor form. */
-export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables<"trips"> }) {
+export function TripForm({
+  onSaved,
+  surface = "planner_app_bar",
+  trip,
+}: {
+  onSaved?: () => void;
+  surface?: "planner_app_bar" | "trip_list";
+  trip: Tables<"trips">;
+}) {
   const [state, action, pending] = useActionState(updateTrip, {});
   const [dayCount, setDayCount] = useState(String(trip.day_count));
   const [startDate, setStartDate] = useState(trip.start_date ?? "");
   const [endDate, setEndDate] = useState(trip.end_date ?? "");
   const [currency, setCurrency] = useState(trip.currency);
   const savedRef = useRef(onSaved);
+  const operationRef = useRef<HTMLInputElement>(null);
   const editor = useTripSettingsEditorContext();
 
   useEffect(() => {
@@ -64,6 +74,8 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
       hiddenFields={
         <>
           <input name="trip_id" type="hidden" value={trip.id} />
+          <input name="surface" type="hidden" value={surface} />
+          <input name="operation_id" ref={operationRef} type="hidden" />
           <input defaultValue={trip.timezone} name="timezone" type="hidden" />
           <input name="start_date" type="hidden" value={startDate} />
           <input name="end_date" type="hidden" value={endDate} />
@@ -72,6 +84,9 @@ export function TripForm({ onSaved, trip }: { onSaved?: () => void; trip: Tables
       }
       onCancel={editor.onClose}
       onClose={editor.onClose}
+      onSubmitStart={() => {
+        if (operationRef.current) operationRef.current.value = newTelemetryOperationId();
+      }}
       pending={pending}
       pendingLabel="Saving…"
     >

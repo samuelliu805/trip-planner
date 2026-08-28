@@ -1,7 +1,15 @@
 import { z } from "zod";
+import { itineraryItemTypes } from "./item-schema.ts";
+
+const itemTelemetryFields = {
+  itemKinds: z.array(z.enum(itineraryItemTypes)).max(itineraryItemTypes.length).optional(),
+  operationId: z.uuid().optional(),
+  surface: z.literal("planner").optional(),
+};
 
 export const clearItineraryItemsSchema = z
   .object({
+    ...itemTelemetryFields,
     itemIds: z.array(z.uuid()).min(1).max(2000),
     tripId: z.uuid(),
     variantId: z.uuid(),
@@ -36,6 +44,7 @@ export const reorderVariantDaysSchema = z
 
 export const reorderItineraryItemsSchema = z
   .object({
+    ...itemTelemetryFields,
     dayId: z.uuid(),
     items: z.array(z.object({ id: z.uuid(), sortOrder: z.number().int().min(0) })).min(1),
     tripId: z.uuid(),
@@ -48,6 +57,7 @@ export const reorderItineraryItemsSchema = z
 
 export const copyItineraryItemsSchema = z
   .object({
+    ...itemTelemetryFields,
     preservePlace: z.boolean().optional().default(true),
     sourceItemIds: z.array(z.uuid()).min(1),
     targetDayId: z.uuid(),

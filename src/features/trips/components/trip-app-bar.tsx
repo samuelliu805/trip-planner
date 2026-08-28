@@ -197,6 +197,7 @@ export function TripAppBar({
         onPendingChange={setDeletePending}
         open={deleteOpen}
         renderTrigger={false}
+        surface="planner_app_bar"
         title={title}
         tripId={tripId}
       />

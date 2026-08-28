@@ -62,8 +62,8 @@ export function usePlannerItemSaveFlow({
     if (pending) return;
     try {
       const savedItem = item
-        ? await updateMutation.mutateAsync({ ...values, id: item.id })
-        : await createMutation.mutateAsync({ ...values, dayId });
+        ? await updateMutation.mutateAsync({ ...values, id: item.id, surface: "item_editor" })
+        : await createMutation.mutateAsync({ ...values, dayId, surface: "item_editor" });
       const committedItem = await attachmentSession.commit(savedItem);
       if (creationNeedsConfirmation)
         onSaveFeedback({

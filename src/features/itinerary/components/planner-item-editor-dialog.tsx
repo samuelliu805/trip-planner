@@ -7,6 +7,7 @@ import { PlannerEditorScreen } from "@/features/itinerary/components/planner-edi
 import { PlannerItemForm } from "@/features/itinerary/components/planner-item-form";
 import type { PlannerItemSaveFeedback } from "@/features/itinerary/components/planner-item-save-feedback";
 import type { ItineraryItem, TransportMode } from "@/features/itinerary/types";
+import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
 
 /** A dedicated full-screen editor that never shares its viewport with the Matrix. */
 export function PlannerItemEditorDialog({
@@ -36,7 +37,8 @@ export function PlannerItemEditorDialog({
   unavailableTransportModes: TransportMode[];
   variantId: string;
 }) {
-  const closeRequest = useRef(onClose);
+  const closeRequest = useRef<(reason?: ItemEditorCloseReason) => void>(onClose);
+  const dismissReason = useRef<ItemEditorCloseReason>("overlay");
   const [creationSequence, setCreationSequence] = useState(0);
   const editorOpen = Boolean(editor);
 
@@ -66,7 +68,15 @@ export function PlannerItemEditorDialog({
   ) : null;
 
   return (
-    <PlannerEditorScreen onOpenChange={(open) => !open && closeRequest.current()} open={editorOpen}>
+    <PlannerEditorScreen
+      onDismissReason={(reason) => {
+        dismissReason.current = reason;
+      }}
+      onOpenChange={(open) => {
+        if (!open) closeRequest.current(dismissReason.current);
+      }}
+      open={editorOpen}
+    >
       {form}
     </PlannerEditorScreen>
   );

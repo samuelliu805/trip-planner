@@ -31,6 +31,8 @@ import {
   invalidateVariantDecisionSummary,
 } from "@/features/variants/queries";
 import { refreshResearchWorkspace } from "@/features/research/research-query";
+import { itemKindsForTelemetry, newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 function invalidateDayStructure(client: QueryClient, tripId: string) {
   void invalidateVariantComparison(client, tripId);
@@ -101,6 +103,21 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
       const sources = input.sourceItemIds
         .map((id) => workspaceItems.find((item) => item.id === id))
         .filter((item): item is ItineraryItem => Boolean(item));
+      const itemKinds = itemKindsForTelemetry(sources.map(({ type }) => type));
+      input.itemKinds ??= itemKinds;
+      input.operationId ??= newTelemetryOperationId();
+      input.surface ??= "planner";
+      itemKinds.forEach((itemKind) =>
+        captureBrowserProductEvent(
+          "item_create_started",
+          {
+            item_kind: itemKind,
+            operation_id: input.operationId!,
+            surface: "planner",
+          },
+          { actorType: "authenticated" },
+        ),
+      );
       const destination = previous?.days.find(({ id }) => id === input.targetDayId);
       const nextOrder =
         destination?.items.reduce((maximum, item) => Math.max(maximum, item.sort_order), -1) ?? -1;
@@ -171,6 +188,9 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
         previous?.days
           .find(({ id }) => id === input.dayId)
           ?.items.filter((item) => input.items.some(({ id }) => id === item.id)) ?? [];
+      input.itemKinds ??= itemKindsForTelemetry(reorderedItems.map(({ type }) => type));
+      input.operationId ??= newTelemetryOperationId();
+      input.surface ??= "planner";
       const orders = new Map(input.items.map(({ id, sortOrder }) => [id, sortOrder]));
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         current

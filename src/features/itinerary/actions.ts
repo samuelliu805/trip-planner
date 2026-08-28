@@ -5,16 +5,15 @@ import { revalidatePath } from "next/cache";
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import { ownerAttachmentsFromRows } from "@/features/attachments/owner-attachment-records";
 import {
-  clearItineraryItemsSchema,
-  type ClearItineraryItemsInput,
-} from "@/features/itinerary/day-schema";
-import {
-  deleteItineraryItemSchema,
   updateItineraryItemSchema,
   type CreateItineraryItemInput,
   type DeleteItineraryItemInput,
   type UpdateItineraryItemInput,
 } from "@/features/itinerary/item-schema";
+import {
+  clearItineraryItemsSchema,
+  type ClearItineraryItemsInput,
+} from "@/features/itinerary/day-schema";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { normalizedOptional, scheduleKind } from "@/features/itinerary/mutation-helpers";
 import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
@@ -28,20 +27,96 @@ import {
   withPlace,
 } from "@/features/itinerary/action-helpers";
 import { validateVariantDay } from "@/features/itinerary/item-action-validation";
-import { createItineraryItemMutation } from "@/features/itinerary/item-create-action";
 import { insertedActivityOrderIds } from "@/features/itinerary/activity-order";
+import { createItineraryItem as createItineraryItemAction } from "@/features/itinerary/item-create-action";
+import { deleteItineraryItem as deleteItineraryItemAction } from "@/features/itinerary/item-delete-action";
+import {
+  reportItemMutation,
+  reportItemMutations,
+} from "@/features/itinerary/item-telemetry.server";
 
 export async function loadPlannerWorkspace(tripId: string, variantId: string) {
   return getPlannerWorkspace(tripId, variantId);
 }
 
-export async function createItineraryItem(
-  input: CreateItineraryItemInput,
-): Promise<MutationResult> {
-  return createItineraryItemMutation(input);
+export async function createItineraryItem(input: CreateItineraryItemInput) {
+  return createItineraryItemAction(input);
+}
+
+export async function deleteItineraryItem(input: DeleteItineraryItemInput) {
+  return deleteItineraryItemAction(input);
+}
+
+export async function clearItineraryItems(
+  input: ClearItineraryItemsInput,
+): Promise<MutationResult<{ ids: string[] }>> {
+  const parsed = clearItineraryItemsSchema.safeParse(input);
+  if (!parsed.success) return reportClearMutation(input, { error: firstIssue(parsed.error) });
+
+  const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
+  if (workspaceResult.error || !workspaceResult.data)
+    return reportClearMutation(input, {
+      error: workspaceResult.error ?? "The selected cells could not be checked.",
+    });
+  const items = workspaceResult.data.days.flatMap(({ items: dayItems }) => dayItems);
+  const itemsById = new Map(items.map((item) => [item.id, item]));
+  const itemTypes = parsed.data.itemIds.flatMap((id) => {
+    const type = itemsById.get(id)?.type;
+    return type ? [type] : [];
+  });
+  const telemetryInput = { ...input, itemKinds: itemTypes };
+  if (parsed.data.itemIds.some((id) => !itemsById.has(id)))
+    return reportClearMutation(telemetryInput, {
+      error: "The selected cells changed. Review the selection and try again.",
+    });
+  if (itemTypes.includes("location"))
+    return reportClearMutation(telemetryInput, {
+      error: "Legacy City data is retained for compatibility and cannot be cleared here.",
+    });
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("clear_route_variant_items", {
+    target_item_ids: parsed.data.itemIds,
+    target_trip_id: parsed.data.tripId,
+    target_variant_id: parsed.data.variantId,
+  });
+  if (error || data !== parsed.data.itemIds.length)
+    return reportClearMutation(telemetryInput, {
+      error: mutationError(error?.message ?? "The selected cells could not be cleared."),
+    });
+
+  await drainAssetDeletionQueue(Math.min(100, parsed.data.itemIds.length * 5));
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return reportClearMutation(telemetryInput, { data: { ids: parsed.data.itemIds } });
+}
+
+function reportClearMutation<Result extends MutationResult<{ ids: string[] }>>(
+  input: ClearItineraryItemsInput,
+  result: Result,
+) {
+  return reportItemMutations({
+    itemTypes: input.itemKinds ?? [],
+    mutation: "delete",
+    operationId: input.operationId,
+    result,
+    surface: input.surface,
+  });
 }
 
 export async function updateItineraryItem(
+  input: UpdateItineraryItemInput,
+): Promise<MutationResult> {
+  const result = await updateItineraryItemMutation(input);
+  return reportItemMutation({
+    itemType: input.type,
+    mutation: "update",
+    operationId: input.operationId,
+    result,
+    surface: input.surface,
+  });
+}
+
+async function updateItineraryItemMutation(
   input: UpdateItineraryItemInput,
 ): Promise<MutationResult> {
   const parsed = updateItineraryItemSchema.safeParse(input);
@@ -213,79 +288,4 @@ export async function updateItineraryItem(
           }
         : savedItem,
   };
-}
-
-export async function deleteItineraryItem(
-  input: DeleteItineraryItemInput,
-): Promise<MutationResult<{ id: string }>> {
-  const parsed = deleteItineraryItemSchema.safeParse(input);
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-
-  const supabase = await createClient();
-  const { data: currentItem, error: readError } = await supabase
-    .from("itinerary_items")
-    .select("id, type")
-    .eq("id", parsed.data.id)
-    .eq("trip_id", parsed.data.tripId)
-    .eq("variant_id", parsed.data.variantId)
-    .maybeSingle();
-  if (readError || !currentItem)
-    return {
-      error: mutationError(readError?.message ?? "You do not have permission to delete this item."),
-    };
-  if (currentItem.type === "location")
-    return { error: "Legacy City data is retained for compatibility and cannot be deleted here." };
-  const { data, error } = await supabase
-    .from("itinerary_items")
-    .delete()
-    .eq("id", parsed.data.id)
-    .eq("trip_id", parsed.data.tripId)
-    .eq("variant_id", parsed.data.variantId)
-    .select("id")
-    .maybeSingle();
-  if (error || !data)
-    return {
-      error: mutationError(error?.message ?? "You do not have permission to delete this item."),
-    };
-
-  await drainAssetDeletionQueue(10);
-  revalidatePath(`/trips/${parsed.data.tripId}`);
-  return { data };
-}
-
-export async function clearItineraryItems(
-  input: ClearItineraryItemsInput,
-): Promise<MutationResult<{ ids: string[] }>> {
-  const parsed = clearItineraryItemsSchema.safeParse(input);
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-
-  const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
-  if (workspaceResult.error || !workspaceResult.data)
-    return { error: workspaceResult.error ?? "The selected cells could not be checked." };
-
-  const existingIds = new Set(
-    workspaceResult.data.days.flatMap(({ items }) => items.map(({ id }) => id)),
-  );
-  if (parsed.data.itemIds.some((id) => !existingIds.has(id)))
-    return { error: "The selected cells changed. Review the selection and try again." };
-  const itemsById = new Map(
-    workspaceResult.data.days.flatMap(({ items }) => items).map((item) => [item.id, item]),
-  );
-  if (parsed.data.itemIds.some((id) => itemsById.get(id)?.type === "location"))
-    return { error: "Legacy City data is retained for compatibility and cannot be cleared here." };
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("clear_route_variant_items", {
-    target_item_ids: parsed.data.itemIds,
-    target_trip_id: parsed.data.tripId,
-    target_variant_id: parsed.data.variantId,
-  });
-  if (error || data !== parsed.data.itemIds.length)
-    return {
-      error: mutationError(error?.message ?? "The selected cells could not be cleared."),
-    };
-
-  await drainAssetDeletionQueue(Math.min(100, parsed.data.itemIds.length * 5));
-  revalidatePath(`/trips/${parsed.data.tripId}`);
-  return { data: { ids: parsed.data.itemIds } };
 }

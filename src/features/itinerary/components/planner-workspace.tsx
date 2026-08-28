@@ -21,6 +21,7 @@ import { RouteVariantControls } from "../../variants/components/route-variant-co
 import { planResearchContext } from "../../research/planner-context";
 import { TripMobileTabBar } from "../../trips/components/trip-app-bar";
 import { convertPlanCostBreakdown, planCostBreakdown, planCostSummary } from "../../research/money";
+import { usePlannerViewTelemetry } from "../hooks/use-planner-view-telemetry";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
   return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
@@ -29,6 +30,7 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
 function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
   usePlannerViewportContainment();
   const c = usePlannerWorkspaceController(props);
+  usePlannerViewTelemetry(c.mapExpanded);
   const [itemSaveFeedback, setItemSaveFeedback] = useState<PlannerItemSaveFeedback>();
   const activeItem =
     c.selectedItem ??
