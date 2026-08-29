@@ -168,7 +168,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         mapMarkers={c.map.mapMarkers}
         mapMode={c.map.mapMode}
         mapViewportKey={c.map.mapViewportKey}
-        onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
         onComparisonSheetOpen={() => c.map.setComparisonSheetOpen(true)}
         onDayMapLayerChange={c.map.setDayMapLayer}
         onDecisionSummaryOpen={() => c.map.setDecisionSummaryPanelOpen(true)}

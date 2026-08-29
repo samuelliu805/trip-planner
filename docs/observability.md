@@ -11,7 +11,7 @@ The implementation follows the stable [PostHog Next.js integration](https://post
 - `routes.ts` removes query strings and fragments, maps dynamic routes to templates, and derives bounded screens and Ideas categories.
 - `privacy.ts` is the central browser PostHog `before_send` sanitizer. `privacy-product.ts`, `privacy-product-advanced.ts`, and `privacy-product-values.ts` contain the exact per-product-event allowlists and bounded-value checks; `privacy-server-exceptions.ts` preserves the bounded SDK metadata required for server Issue creation and Source Map lookup.
 - `identity.server.ts` creates the authenticated HMAC identifier. The raw Supabase user ID never crosses the server boundary.
-- `client.ts` is the only browser SDK adapter. `instrumentation-client.ts` initializes it before hydration.
+- `client.ts` is the only browser SDK adapter. `instrumentation-client.ts` initializes the route-specific instance and installs the single document-level exception owner before hydration; `browser-exceptions.ts` provides its fail-safe subscription and sanitized route context.
 - `server.ts` is the provider-neutral server API. It loads the Node adapter lazily and never loads `posthog-node` in the Edge runtime.
 - `product-client.ts`, `product-server.ts`, and `product.ts` add bounded product context, safe operation correlation, duration buckets, item-kind normalization, and isolated success/failure reporting without exposing a vendor to feature code.
 - `logger.ts` emits allowlisted one-line JSON to stdout and lazily resolves a route-local forwarder. `otel-logs.server.ts` forwards only selected records through direct OTLP.
@@ -90,7 +90,7 @@ The HMAC is computed only on the server after `supabase.auth.getUser()` returns 
 
 ## Errors and release metadata
 
-Browser exceptions use PostHog exception autocapture for uncaught errors and unhandled rejections. No duplicate `window.onerror` or `unhandledrejection` listeners are installed, and console errors are not captured.
+Browser exceptions use one application-owned `error` and `unhandledrejection` subscription installed by `instrumentation-client.ts` before hydration. PostHog SDK exception autocapture stays disabled on both instances. At delivery time the current normalized route selects exactly one provider-neutral boundary: owner routes use the persisted instance, while `/share/[token]` uses the isolated anonymous memory-only instance. Client navigation changes that selection without installing another handler or mutating the inactive instance. Every occurrence uses `captureException` and still passes through the central `before_send` sanitizer; tokens, queries, raw URLs, messages, user data, headers, and bodies are removed. Console errors are not captured. Listener installation, initialization, sanitization, and delivery failures are fail-safe.
 
 Uncaught server errors use Next.js `instrumentation.ts` and its supported `onRequestError` hook. The adapter passes a real sanitized `Error` to `posthog-node`'s official `captureExceptionImmediate` API, awaits it, and then explicitly awaits `flush()`. It never constructs `$exception` through the generic analytics capture API, and it never shuts down the shared warm-instance client after a request.
 

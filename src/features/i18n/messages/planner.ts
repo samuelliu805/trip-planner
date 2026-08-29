@@ -10,7 +10,7 @@ export const plannerZhCN: Record<string, string> = {
   "Add day at end": "在末尾添加一天",
   "Add day before": "在前面添加一天",
   "Add item": "添加项目",
-  "Add your first activity or another day.": "添加第一个活动，或再加一天。",
+  "Add your first activity.": "添加第一个活动。",
   "Add link": "添加链接",
   "Add to route": "加入路线",
   "Add an untimed Activity or Meal to choose a manual position.":

@@ -46,7 +46,6 @@ export function PlannerMatrix({
   mapLines,
   mapMode,
   mapMarkers,
-  onArrangeActivities,
   onMapExpand,
   onComparisonSheetOpen,
   onDecisionSummaryOpen,
@@ -154,8 +153,6 @@ export function PlannerMatrix({
                   <DayActions
                     day={day}
                     isOnlyDay={workspace.days.length === 1}
-                    location="cell"
-                    onArrange={onArrangeActivities}
                     onInsert={(position) => void insertDay(position)}
                     onRemove={(dayId) => void removeDay(dayId)}
                     pending={dayMutationPending}
@@ -235,11 +232,9 @@ export function PlannerMatrix({
                         <AddItemButton
                           category={category}
                           day={day}
-                          dayMutationPending={dayMutationPending}
                           disabled={category.id === "hotel" && items.length > 0}
                           newTripStarter={newTripStarter}
                           onAdd={() => setEditor({ dayId: day.id, type: category.defaultType })}
-                          onAddDay={() => void insertDay(workspace.days.length + 1)}
                         />
                       ) : null}
                       {lastSelected && selectionAnchor.row === selectionEnd.row ? (

@@ -10,7 +10,7 @@ import type {
 import type { PlannerCategory, EditorState } from "./planner-config";
 import type { PlannerMapMode, PlannerMapModeChange } from "./planner-map-types";
 import type { GridCoordinate } from "../grid-interactions";
-import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "../types";
+import type { ItineraryItem, PlannerWorkspace } from "../types";
 import type { PlannerMapLine, PlannerMapMarker } from "../../maps/planner-map-model";
 import type { DayRouteUi } from "../../routes/use-day-route";
 import type { OverviewRouteUi } from "../../routes/use-overview-route";
@@ -52,7 +52,6 @@ export type PlannerMatrixProps = {
   mapMode: PlannerMapMode;
   mapMarkers: PlannerMapMarker[];
   mapViewportKey?: string;
-  onArrangeActivities: (day: PlannerDay) => void;
   onComparisonSheetOpen: () => void;
   onDayMapLayerChange: (layer: DayMapLayer) => void;
   onDecisionSummaryOpen: () => void;

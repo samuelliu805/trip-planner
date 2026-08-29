@@ -4,8 +4,10 @@ import test from "node:test";
 import {
   analyticsBoundaryForRoute,
   createAnalyticsBoundary,
+  initializeTelemetryInstanceForRoute,
   type BrowserTelemetryAdapter,
 } from "./client.ts";
+import { browserExceptionContext, installBrowserExceptionCapture } from "./browser-exceptions.ts";
 import { resolveTelemetryConfig, type TelemetryConfig } from "./config.ts";
 import {
   safeAuthErrorCode,
@@ -1059,17 +1061,42 @@ test("identity is deduplicated, reset on user switches, and reset on logout boun
   assert.deepEqual(calls, [`identify:${first}`, "reset", `identify:${second}`, "reset"]);
 });
 
-test("a public-share tab keeps anonymous memory identity without resetting its owner tab", () => {
+test("Public Share owns one anonymous exception handler without contaminating owner identity", () => {
   const ownerId = `tpv1_${"c".repeat(64)}`;
+  const shareToken = "share_private-token.abcdef123456";
   let persistedOwnerId: string | undefined;
   let publicMemoryId: string | undefined;
+  let currentLocation = {
+    href: `https://preview.example.test/share/${shareToken}?email=person@example.com`,
+    pathname: `/share/${shareToken}`,
+  };
   const captures: { actor: string | undefined; event: string; identity: string }[] = [];
+  const exceptions: {
+    error: unknown;
+    identity: string;
+    properties: Record<string, unknown>;
+    target: "owner" | "public";
+  }[] = [];
+  const initializationCalls: string[] = [];
+  initializeTelemetryInstanceForRoute(normalizeTelemetryRoute(currentLocation.pathname), {
+    owner: () => initializationCalls.push("owner"),
+    publicShare: () => initializationCalls.push("public"),
+  });
+  assert.deepEqual(initializationCalls, ["public"]);
   const owner = createAnalyticsBoundary(true, {
     capture(event, properties) {
       captures.push({
         actor: properties.actor_type as string | undefined,
         event,
         identity: persistedOwnerId ?? "anonymous",
+      });
+    },
+    captureException(error, properties) {
+      exceptions.push({
+        error,
+        identity: persistedOwnerId ?? "anonymous",
+        properties,
+        target: "owner",
       });
     },
     currentIdentifiedId: () => persistedOwnerId,
@@ -1088,6 +1115,14 @@ test("a public-share tab keeps anonymous memory identity without resetting its o
         identity: publicMemoryId ?? "anonymous",
       });
     },
+    captureException(error, properties) {
+      exceptions.push({
+        error,
+        identity: publicMemoryId ?? "anonymous",
+        properties,
+        target: "public",
+      });
+    },
     currentIdentifiedId: () => publicMemoryId,
     identify(id) {
       publicMemoryId = id;
@@ -1098,6 +1133,71 @@ test("a public-share tab keeps anonymous memory identity without resetting its o
   });
 
   owner.identify(ownerId, personProperties);
+  const listeners = new Map<string, Set<(event: never) => void>>();
+  const target = {
+    addEventListener(type: string, listener: (event: never) => void) {
+      const registered = listeners.get(type) ?? new Set();
+      registered.add(listener);
+      listeners.set(type, registered);
+    },
+    removeEventListener(type: string, listener: (event: never) => void) {
+      listeners.get(type)?.delete(listener);
+    },
+  } as unknown as Window;
+  const dispose = installBrowserExceptionCapture(target, (error) => {
+    const context = browserExceptionContext(currentLocation);
+    analyticsBoundaryForRoute(context.route, owner, publicShare).captureException(error, context);
+  });
+  const emit = (type: "error" | "unhandledrejection", event: unknown) =>
+    listeners.get(type)?.forEach((listener) => listener(event as never));
+
+  assert.equal(listeners.get("error")?.size, 1);
+  assert.equal(listeners.get("unhandledrejection")?.size, 1);
+  emit("error", { error: new TypeError("private share content") });
+  emit("unhandledrejection", { reason: new Error("private rejection") });
+  assert.equal(exceptions.length, 2);
+  assert.equal(
+    exceptions.filter(({ error }) => error instanceof TypeError).length,
+    1,
+    "the initial Public Share exception has exactly one application owner",
+  );
+  assert.equal(
+    exceptions.filter(
+      ({ error }) => error instanceof Error && error.message === "private rejection",
+    ).length,
+    1,
+    "the Public Share rejection has exactly one application owner",
+  );
+  assert.deepEqual(
+    exceptions.map(({ identity, target: captureTarget }) => ({ identity, target: captureTarget })),
+    [
+      { identity: "anonymous", target: "public" },
+      { identity: "anonymous", target: "public" },
+    ],
+  );
+  assert.equal(exceptions[0].properties.route, "/share/[token]");
+  assert.equal(JSON.stringify(exceptions).includes(shareToken), false);
+  assert.equal(JSON.stringify(exceptions).includes("person@example.com"), false);
+
+  currentLocation = {
+    href: "https://preview.example.test/trips/123e4567-e89b-42d3-a456-426614174000?private=yes",
+    pathname: "/trips/123e4567-e89b-42d3-a456-426614174000",
+  };
+  initializeTelemetryInstanceForRoute(normalizeTelemetryRoute(currentLocation.pathname), {
+    owner: () => initializationCalls.push("owner"),
+    publicShare: () => initializationCalls.push("public"),
+  });
+  assert.deepEqual(initializationCalls, ["public", "owner"]);
+  emit("error", { error: new Error("owner exception") });
+  assert.equal(exceptions.length, 3);
+  assert.deepEqual(
+    { identity: exceptions[2].identity, target: exceptions[2].target },
+    { identity: ownerId, target: "owner" },
+  );
+  assert.equal(persistedOwnerId, ownerId);
+  assert.equal(listeners.get("error")?.size, 1);
+  assert.equal(listeners.get("unhandledrejection")?.size, 1);
+
   analyticsBoundaryForRoute("/share/[token]", owner, publicShare).capture("public_share_viewed", {
     actor_type: "anonymous",
     environment: "preview",
@@ -1128,16 +1228,81 @@ test("a public-share tab keeps anonymous memory identity without resetting its o
   ]);
   assert.equal(persistedOwnerId, ownerId);
   assert.equal(publicMemoryId, undefined);
-  const sanitized = sanitizeTelemetryProperties(
-    "public_share_viewed",
+  const sanitized = sanitizeProviderEvent(
     {
-      ...validProductProperties("public_share_viewed"),
-      route: `/share/${productOperationId}?token=private-share-token`,
+      event: "$exception",
+      properties: {
+        ...browserExceptionContext({
+          href: `https://preview.example.test/share/${shareToken}?query=private`,
+          pathname: `/share/${shareToken}`,
+        }),
+        $exception_list: [
+          {
+            mechanism: { handled: false, type: "onunhandledrejection" },
+            stacktrace: {
+              frames: [
+                {
+                  filename: `https://preview.example.test/_next/app.js?token=${shareToken}`,
+                  function: "renderPublicShare",
+                  platform: "web:javascript",
+                },
+              ],
+            },
+            type: "TypeError",
+            value: `Private content for ${shareToken}`,
+          },
+        ],
+        headers: { authorization: "private" },
+        request_body: "private",
+        user: { email: "person@example.com" },
+      },
     },
     enabledPreviewConfig(),
   );
-  assert.equal(sanitized?.route, "/share/[token]");
-  assert.equal(JSON.stringify(sanitized).includes("private-share-token"), false);
+  assert.ok(sanitized);
+  assert.equal(sanitized.properties?.route, "/share/[token]");
+  const serialized = JSON.stringify(sanitized);
+  for (const privateValue of [
+    shareToken,
+    "?query=",
+    "authorization",
+    "request_body",
+    "person@example.com",
+  ])
+    assert.equal(serialized.includes(privateValue), false, privateValue);
+
+  dispose();
+  assert.equal(listeners.get("error")?.size, 0);
+  assert.equal(listeners.get("unhandledrejection")?.size, 0);
+});
+
+test("browser exception initialization and delivery failures remain fail-safe", () => {
+  let removals = 0;
+  const partiallyFailingTarget = {
+    addEventListener(type: string) {
+      if (type === "unhandledrejection") throw new Error("listener installation failed");
+    },
+    removeEventListener(type: string) {
+      if (type === "error") removals += 1;
+    },
+  } as unknown as Window;
+  assert.doesNotThrow(() => installBrowserExceptionCapture(partiallyFailingTarget, () => {}));
+  assert.equal(removals, 1);
+
+  const listeners = new Map<string, (event: never) => void>();
+  const target = {
+    addEventListener(type: string, listener: (event: never) => void) {
+      listeners.set(type, listener);
+    },
+    removeEventListener() {},
+  } as unknown as Window;
+  installBrowserExceptionCapture(target, () => {
+    throw new Error("provider delivery failed");
+  });
+  assert.doesNotThrow(() => listeners.get("error")?.({ error: new Error("application") } as never));
+  assert.doesNotThrow(() =>
+    listeners.get("unhandledrejection")?.({ reason: new Error("rejection") } as never),
+  );
 });
 
 test("disabled and failing browser telemetry remain no-ops", () => {

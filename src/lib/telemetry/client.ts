@@ -11,6 +11,7 @@ import { isPublicShareTelemetryRoute, normalizeTelemetryRoute } from "./routes.t
 
 export type BrowserTelemetryAdapter = {
   capture: (eventName: string, properties: Record<string, unknown>) => void;
+  captureException?: (error: unknown, properties: Record<string, unknown>) => void;
   currentIdentifiedId: () => string | undefined;
   identify: (analyticsId: string, properties: PersonProperties) => void;
   reset: () => void;
@@ -31,6 +32,14 @@ export function createAnalyticsBoundary(enabled: boolean, adapter?: BrowserTelem
         activeAdapter.capture(eventName, properties);
       } catch {
         // Telemetry is never allowed to affect rendering or navigation.
+      }
+    },
+    captureException(error: unknown, properties: Record<string, unknown>) {
+      if (!active || !activeAdapter?.captureException) return;
+      try {
+        activeAdapter.captureException(error, properties);
+      } catch {
+        // Exception reporting failures must never affect the application error path.
       }
     },
     configure(nextEnabled: boolean, nextAdapter?: BrowserTelemetryAdapter) {
@@ -77,6 +86,9 @@ function postHogAdapter(instance: PostHog): BrowserTelemetryAdapter {
     capture(eventName, properties) {
       instance.capture(eventName, properties);
     },
+    captureException(error, properties) {
+      instance.captureException(error, properties);
+    },
     currentIdentifiedId() {
       const value = instance.get_property("$user_id");
       return typeof value === "string" && /^tpv1_[0-9a-f]{64}$/.test(value) ? value : undefined;
@@ -92,7 +104,7 @@ function postHogAdapter(instance: PostHog): BrowserTelemetryAdapter {
 
 function postHogOptions(
   config: typeof browserTelemetryConfig,
-  options: { captureExceptions: boolean; persistence?: PostHogConfig["persistence"] },
+  options: { persistence?: PostHogConfig["persistence"] } = {},
 ): Partial<PostHogConfig> {
   return {
     advanced_disable_decide: true,
@@ -103,13 +115,8 @@ function postHogOptions(
     before_send: (event) =>
       sanitizeProviderEvent(event as unknown as ProviderCaptureEvent, config) as typeof event,
     capture_dead_clicks: false,
-    capture_exceptions: options.captureExceptions
-      ? {
-          capture_console_errors: false,
-          capture_unhandled_errors: true,
-          capture_unhandled_rejections: true,
-        }
-      : false,
+    // One application-owned listener routes exceptions to the current analytics boundary.
+    capture_exceptions: false,
     capture_heatmaps: false,
     capture_pageleave: false,
     capture_pageview: false,
@@ -145,7 +152,7 @@ function validBrowserConfig(config: typeof browserTelemetryConfig) {
 function initializeOwnerTelemetry(config: typeof browserTelemetryConfig): void {
   if (ownerInitialized) return;
   try {
-    posthog.init(config.projectToken!, postHogOptions(config, { captureExceptions: true }));
+    posthog.init(config.projectToken!, postHogOptions(config));
     analytics.configure(true, postHogAdapter(posthog));
     ownerInitialized = true;
   } catch {
@@ -159,7 +166,7 @@ function initializePublicShareTelemetry(config: typeof browserTelemetryConfig): 
     publicSharePostHog = new PostHog();
     publicSharePostHog.init(
       config.projectToken!,
-      postHogOptions(config, { captureExceptions: false, persistence: "memory" }),
+      postHogOptions(config, { persistence: "memory" }),
     );
     publicShareAnalytics.configure(true, postHogAdapter(publicSharePostHog));
     publicShareInitialized = true;
@@ -176,12 +183,22 @@ export function analyticsBoundaryForRoute(
   return isPublicShareTelemetryRoute(route) ? publicBoundary : ownerBoundary;
 }
 
+export function initializeTelemetryInstanceForRoute(
+  route: string,
+  initializers: { owner: () => void; publicShare: () => void },
+): void {
+  if (isPublicShareTelemetryRoute(route)) initializers.publicShare();
+  else initializers.owner();
+}
+
 export function initializeBrowserTelemetry(
   config = browserTelemetryConfig,
   pathname = typeof window === "undefined" ? undefined : window.location.pathname,
 ): void {
   if (typeof window === "undefined" || !pathname || !validBrowserConfig(config)) return;
   const route = normalizeTelemetryRoute(pathname);
-  if (isPublicShareTelemetryRoute(route)) initializePublicShareTelemetry(config);
-  else initializeOwnerTelemetry(config);
+  initializeTelemetryInstanceForRoute(route, {
+    owner: () => initializeOwnerTelemetry(config),
+    publicShare: () => initializePublicShareTelemetry(config),
+  });
 }

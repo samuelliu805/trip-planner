@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlus, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -11,19 +11,15 @@ import type { PlannerDay } from "@/features/itinerary/types";
 export function AddItemButton({
   category,
   day,
-  dayMutationPending = false,
   disabled,
   newTripStarter = false,
   onAdd,
-  onAddDay,
 }: {
   category: PlannerCategory;
   day: PlannerDay;
-  dayMutationPending?: boolean;
   disabled?: boolean;
   newTripStarter?: boolean;
   onAdd: () => void;
-  onAddDay?: () => void;
 }) {
   const { t } = useI18n();
   if (disabled) return null;
@@ -43,24 +39,11 @@ export function AddItemButton({
             <T message={" Start planning "} />
           </p>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            <T message={" Add your first activity or another day. "} />
+            <T message={" Add your first activity. "} />
           </p>
         </div>
         <Button className="min-h-11 w-full" data-add-item onClick={add} size="sm" type="button">
           <Plus aria-hidden="true" className="size-4" /> <T message={" Add activity "} />
-        </Button>
-        <Button
-          className="min-h-11 w-full"
-          disabled={dayMutationPending}
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddDay?.();
-          }}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <CalendarPlus aria-hidden="true" className="size-4" /> <T message={" Add day "} />
         </Button>
       </div>
     );
