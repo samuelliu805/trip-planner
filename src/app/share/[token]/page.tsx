@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { after } from "next/server";
 import { cache } from "react";
 import { z } from "zod";
 
@@ -15,8 +16,10 @@ import {
 import { localizeGeneratedPublicDescription } from "@/features/sharing/public-copy";
 import { publicShareUrlState } from "@/features/sharing/public-url-state";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
+import { publicTemplateResolutionWarningFields } from "@/features/sharing/templates/resolution-telemetry";
 import { resolvePublicTemplate } from "@/features/sharing/templates/resolver";
 import { publicTemplateRuntimeConfig } from "@/features/sharing/templates/runtime/config.server";
+import { logger } from "@/lib/telemetry/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -83,12 +86,11 @@ export default async function PublicSharePage({ params, searchParams }: PublicSh
     persistedTemplateId: itinerary.settings.templateId,
     persistedTemplateVersion: itinerary.settings.templateVersion,
   });
-  if (resolvedTemplate.diagnostics.some(({ code }) => code !== "USED_FALLBACK"))
-    console.warn("public_template_resolution", {
-      diagnostics: resolvedTemplate.diagnostics,
-      persistedTemplateId: itinerary.settings.templateId,
-      persistedTemplateVersion: itinerary.settings.templateVersion,
-    });
+  const templateWarning = publicTemplateResolutionWarningFields(resolvedTemplate);
+  if (templateWarning) {
+    logger.warn(templateWarning);
+    after(() => logger.flush());
+  }
   return (
     <PublicItineraryShell
       initialView={urlState.view}

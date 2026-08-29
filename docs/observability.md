@@ -4,6 +4,8 @@ Phase 1 establishes a privacy-safe, provider-neutral telemetry boundary for the 
 
 The implementation follows the stable [PostHog Next.js integration](https://posthog.com/docs/libraries/next-js), [PostHog Logs OpenTelemetry setup](https://posthog.com/docs/logs/installation/nextjs), and [PostHog source-map integration](https://posthog.com/docs/error-tracking/upload-source-maps/nextjs). It does not use the prerelease `@posthog/next` package.
 
+Production verification, cleanup response, smoke testing, rollback, and privacy response procedures are maintained in the [observability operations runbook](./operations-runbook.md). Its external links, owners, alerts, notification destinations, and uptime monitor remain explicit placeholders until configured outside the repository.
+
 ## Architecture
 
 - `config.ts` parses the bounded environment, provider, and region configuration. Invalid or mismatched configuration is disabled.
@@ -100,7 +102,7 @@ Headers, cookies, bodies, query strings, raw identifiers, and raw error messages
 
 ## Structured logs
 
-The server logger writes one JSON object per stdout line for Vercel Runtime Logs. It has no free-form message field and does not patch `console`. Fields include timestamp, level, log name, environment, region, release, service, runtime, safe route, operation/request/trace IDs, actor type, provider, outcome, duration, bounded counts, and safe error code.
+The server logger writes one JSON object per stdout line for Vercel Runtime Logs. It has no free-form message field and does not patch `console`. Fields include timestamp, level, log name, environment, region, release, service, runtime, safe route, operation/request/trace IDs, actor type, provider, outcome, duration, bounded counts, and safe error code. Public Template resolution adds only a validated diagnostic enum, a bounded source enum, and a fallback boolean. The logger's stdout adapter is the sole documented production `console.*` exception; telemetry tests scan production TypeScript and TSX files to reject every direct call outside that boundary.
 
 The logger explicitly dual-writes selected records: first as one-line JSON for Vercel Runtime Logs, then through an OpenTelemetry `LoggerProvider` directly to `https://us.i.posthog.com/i/v1/logs`. OTLP authentication uses `Authorization: Bearer <project token>` and `Content-Type: application/json`. It never uses the Personal API Key and never puts the token in a URL.
 
@@ -117,7 +119,7 @@ Only ERROR logs, selected WARN logs, and the `cleanup_succeeded` INFO heartbeat 
 
 Each Node.js function bundle initializes at most one provider per warm instance. This route-local singleton is intentional: Next.js can compile `instrumentation.ts` and a Route Handler into isolated module graphs, so an instrumentation-only module global is not a reliable handoff. The batch processor remains non-blocking during ordinary work. Cleanup and request-error paths use `after()` or an explicit flush boundary; the smoke log awaits `forceFlush()` before returning `202`. Providers are not shut down after each request, and exporter failures are swallowed.
 
-Implemented structured log names are `cleanup_started`, `cleanup_succeeded`, `cleanup_failed`, `cleanup_backlog_observed`, `server_exception`, `telemetry_smoke_warning`, and `posthog_exception_delivery_failed`. The last is a bounded Vercel-only WARN diagnostic and is not selected for OTLP forwarding. Implemented analytics events are the four cleanup outcomes, `$pageview`, `$web_vitals`, the Phase 2A product catalog, and the Global advanced product catalog below. Existing names and semantics are unchanged.
+Implemented structured log names are `cleanup_started`, `cleanup_succeeded`, `cleanup_failed`, `cleanup_backlog_observed`, `server_exception`, `telemetry_smoke_warning`, `posthog_exception_delivery_failed`, and `public_template_resolution_warning`. The exception-delivery diagnostic is a bounded Vercel-only WARN and is not selected for OTLP forwarding. The Public Template warning is selected only for a validated actionable diagnostic; fallback-only resolution emits nothing. Implemented analytics events are the four cleanup outcomes, `$pageview`, `$web_vitals`, the Phase 2A product catalog, and the Global advanced product catalog below. Existing event names and semantics are unchanged.
 
 ## Phase 2A product telemetry
 
@@ -219,7 +221,7 @@ Attachment events never include filename, MIME string, storage key, hash, URL, b
 
 ## Checkpoint boundary
 
-The implementation checkpoint does not create PostHog dashboards or alerts, change Production Vercel configuration, configure external uptime, enable notification destinations, or merge the branch. Those operations remain gated on direct Preview evidence and explicit approval. Session Replay, DOM autocapture, heatmaps, surveys, product tours, feature flags, CN transport, password recovery, unsupported auth methods, Trip groups, and indirect per-item delete synthesis remain out of scope.
+The historical Foundation and Global implementation checkpoints did not create PostHog dashboards or alerts, change Production Vercel configuration, configure external uptime, enable notification destinations, or merge their own branches. Those observability implementations have since merged. This Operations hardening patch adds repository-owned logging safeguards, merge-commit CI coverage, and a runbook, but it still does not create or mutate any external dashboard, alert, monitor, notification destination, or Vercel/PostHog setting. Session Replay, DOM autocapture, heatmaps, surveys, product tours, feature flags, CN transport, password recovery, unsupported auth methods, Trip groups, and indirect per-item delete synthesis remain out of scope.
 
 ## Health, cleanup, and smoke acceptance
 

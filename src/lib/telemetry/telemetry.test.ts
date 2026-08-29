@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { readdir, readFile } from "node:fs/promises";
+import { relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
@@ -26,6 +29,7 @@ import {
   type PersonProperties,
   type TelemetryEventName,
   type TelemetryEventProperties,
+  type TelemetryLogFields,
 } from "./events.ts";
 import { createAnonymousIdentityResetTracker } from "./identity-boundary.ts";
 import { createPseudonymousAnalyticsId } from "./identity.server.ts";
@@ -64,6 +68,7 @@ import {
 import { handleTelemetrySmokeRequest } from "./smoke.ts";
 import { createServerCaptureBoundary } from "./server.ts";
 import { createItemEditorTelemetrySession } from "../../features/itinerary/item-editor-telemetry.ts";
+import { publicTemplateResolutionWarningFields } from "../../features/sharing/templates/resolution-telemetry.ts";
 import {
   createPlannerViewReporter,
   plannerViewForLayout,
@@ -1594,7 +1599,7 @@ test("PostHog OTel logs initialize only for valid Node telemetry", async () => {
   );
 });
 
-test("structured logger writes one-line allowlisted JSON and selects remote levels", async () => {
+test("structured logger sanitizes records and selects only approved OTLP levels", async () => {
   const lines: string[] = [];
   const forwarded: string[] = [];
   let flushes = 0;
@@ -1641,6 +1646,35 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
     provider: "application",
   });
   logger.warn({
+    actor_type: "anonymous",
+    fallback_used: true,
+    log_name: "public_template_resolution_warning",
+    outcome: "observed",
+    provider: "application",
+    public_template_diagnostic_code: "public_template_unknown_persisted",
+    public_template_source: "fallback",
+    route: `/share/${productOperationId}?token=private-share-token`,
+    ...({
+      public_template_id: "private-template-id",
+      public_template_version: 999_999,
+      raw_url: "https://example.test/share/private-share-token?query=private",
+      share_token: "private-share-token",
+      title: "Private trip title",
+      trip_id: productOperationId,
+      user_id: productOperationId,
+    } as Record<string, unknown>),
+  });
+  logger.warn({
+    actor_type: "anonymous",
+    fallback_used: true,
+    log_name: "public_template_resolution_warning",
+    outcome: "observed",
+    provider: "application",
+    public_template_diagnostic_code: "USED_FALLBACK",
+    public_template_source: "unbounded-source",
+    route: "/share/private-share-token",
+  } as unknown as TelemetryLogFields);
+  logger.warn({
     actor_type: "system",
     error_code: "telemetry_delivery_failed",
     log_name: "posthog_exception_delivery_failed",
@@ -1656,7 +1690,7 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
     } as Record<string, string>),
   });
   await logger.flush();
-  assert.equal(lines.length, 3);
+  assert.equal(lines.length, 4);
   assert.equal(
     lines.every((line) => line.endsWith("\n") && line.trim().split("\n").length === 1),
     true,
@@ -1678,8 +1712,43 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
   ]) {
     assert.equal(serialized.includes(prohibited), false, prohibited);
   }
-  assert.deepEqual(forwarded, ["telemetry_smoke_warning"]);
-  const diagnostic = JSON.parse(lines[2]) as Record<string, unknown>;
+  assert.deepEqual(forwarded, ["telemetry_smoke_warning", "public_template_resolution_warning"]);
+  const templateDiagnostic = JSON.parse(lines[2]) as Record<string, unknown>;
+  assert.deepEqual(
+    {
+      actor_type: templateDiagnostic.actor_type,
+      fallback_used: templateDiagnostic.fallback_used,
+      level: templateDiagnostic.level,
+      log_name: templateDiagnostic.log_name,
+      public_template_diagnostic_code: templateDiagnostic.public_template_diagnostic_code,
+      public_template_source: templateDiagnostic.public_template_source,
+      route: templateDiagnostic.route,
+    },
+    {
+      actor_type: "anonymous",
+      fallback_used: true,
+      level: "warn",
+      log_name: "public_template_resolution_warning",
+      public_template_diagnostic_code: "public_template_unknown_persisted",
+      public_template_source: "fallback",
+      route: "/share/[token]",
+    },
+  );
+  const serializedTemplateDiagnostic = JSON.stringify(templateDiagnostic);
+  for (const prohibited of [
+    productOperationId,
+    "private-share-token",
+    "private-template-id",
+    "Private trip title",
+    "999999",
+    "raw_url",
+    "share_token",
+    "trip_id",
+    "user_id",
+  ]) {
+    assert.equal(serializedTemplateDiagnostic.includes(prohibited), false, prohibited);
+  }
+  const diagnostic = JSON.parse(lines[3]) as Record<string, unknown>;
   assert.deepEqual(
     {
       actor_type: diagnostic.actor_type,
@@ -1700,11 +1769,71 @@ test("structured logger writes one-line allowlisted JSON and selects remote leve
       route: "/api/internal/telemetry-smoke",
     },
   );
-  assert.equal(lines[2].includes("private"), false);
-  assert.equal(lines[2].includes("person@example.com"), false);
-  assert.equal(lines[2].includes("raw SDK failure"), false);
+  assert.equal(lines[3].includes("private"), false);
+  assert.equal(lines[3].includes("person@example.com"), false);
+  assert.equal(lines[3].includes("raw SDK failure"), false);
   assert.equal(loads, 1);
   assert.equal(flushes, 1);
+});
+
+test("Public Template warnings normalize actionable diagnostics and ignore fallback-only values", () => {
+  assert.deepEqual(
+    publicTemplateResolutionWarningFields({
+      diagnostics: [{ code: "UNKNOWN_PERSISTED" }, { code: "USED_FALLBACK" }],
+      source: "fallback",
+    }),
+    {
+      actor_type: "anonymous",
+      fallback_used: true,
+      log_name: "public_template_resolution_warning",
+      outcome: "observed",
+      provider: "application",
+      public_template_diagnostic_code: "public_template_unknown_persisted",
+      public_template_source: "fallback",
+      route: "/share/[token]",
+    },
+  );
+  assert.equal(
+    publicTemplateResolutionWarningFields({
+      diagnostics: [{ code: "USED_FALLBACK" }],
+      source: "fallback",
+    }),
+    null,
+  );
+  assert.equal(
+    publicTemplateResolutionWarningFields({
+      diagnostics: [{ code: "UNKNOWN_DIAGNOSTIC" }],
+      source: "fallback",
+    } as unknown as Parameters<typeof publicTemplateResolutionWarningFields>[0]),
+    null,
+  );
+});
+
+async function productionSourceFiles(directory: URL): Promise<URL[]> {
+  const files: URL[] = [];
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
+    if (entry.isDirectory()) files.push(...(await productionSourceFiles(child)));
+    else if (/\.(?:ts|tsx)$/.test(entry.name) && !/\.test\.(?:ts|tsx)$/.test(entry.name))
+      files.push(child);
+  }
+  return files;
+}
+
+test("production source keeps direct console calls inside the documented logger boundary", async () => {
+  const sourceRoot = new URL("../../", import.meta.url);
+  const allowedConsoleFiles = new Set(["lib/telemetry/logger.ts"]);
+  const violations: string[] = [];
+  for (const file of await productionSourceFiles(sourceRoot)) {
+    const sourcePath = relative(fileURLToPath(sourceRoot), fileURLToPath(file));
+    if (allowedConsoleFiles.has(sourcePath)) continue;
+    const source = await readFile(file, "utf8");
+    for (const match of source.matchAll(/\bconsole\.(?:debug|error|info|log|warn)\s*\(/g)) {
+      const line = source.slice(0, match.index).split("\n").length;
+      violations.push(`${sourcePath}:${line}`);
+    }
+  }
+  assert.deepEqual(violations, []);
 });
 
 test("structured logger export failures never affect application behavior", async () => {

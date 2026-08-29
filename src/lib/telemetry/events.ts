@@ -101,12 +101,18 @@ export const telemetryLogNames = [
   "server_exception",
   "telemetry_smoke_warning",
   "posthog_exception_delivery_failed",
+  "public_template_resolution_warning",
 ] as const;
 export type TelemetryLogName = (typeof telemetryLogNames)[number];
 export type TelemetryLogLevel = "error" | "info" | "warn";
 export type TelemetryLogProvider =
   "application" | "posthog" | "storage" | "supabase" | "vercel_cron";
 export type TelemetryLogOutcome = "captured" | "failed" | "observed" | "started" | "succeeded";
+export type PublicTemplateResolutionDiagnosticCode =
+  | "public_template_disabled"
+  | "public_template_invalid_artifact"
+  | "public_template_unknown_persisted";
+export type PublicTemplateResolutionSource = "fallback" | "legacy_query" | "persisted";
 export type TelemetryLogFields = {
   actor_type?: "anonymous" | "authenticated" | "system";
   asset_files_deleted?: number;
@@ -114,10 +120,13 @@ export type TelemetryLogFields = {
   duration_ms?: number;
   environment?: TelemetryEnvironment;
   error_code?: TelemetryErrorCode;
+  fallback_used?: boolean;
   log_name: TelemetryLogName;
   operation_id?: string;
   outcome: TelemetryLogOutcome;
   provider: TelemetryLogProvider;
+  public_template_diagnostic_code?: PublicTemplateResolutionDiagnosticCode;
+  public_template_source?: PublicTemplateResolutionSource;
   region?: "global";
   release?: string;
   request_id?: string;
