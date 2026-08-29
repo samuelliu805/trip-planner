@@ -2,6 +2,8 @@ import { resolveServerTelemetryConfig, type TelemetryConfig } from "./config.ts"
 import { isNodeTelemetryRuntime, telemetryRelease } from "./context.ts";
 import {
   telemetryLogNames,
+  type PublicTemplateResolutionDiagnosticCode,
+  type PublicTemplateResolutionSource,
   type TelemetryErrorCode,
   type TelemetryLogFields,
   type TelemetryLogLevel,
@@ -41,9 +43,23 @@ const errorCodes = new Set<TelemetryErrorCode>([
   "unexpected_error",
 ]);
 const forwardedInfoLogs = new Set(["cleanup_succeeded"]);
-const forwardedWarnLogs = new Set(["cleanup_backlog_observed", "telemetry_smoke_warning"]);
+const forwardedWarnLogs = new Set([
+  "cleanup_backlog_observed",
+  "public_template_resolution_warning",
+  "telemetry_smoke_warning",
+]);
 const logOutcomes = new Set(["captured", "failed", "observed", "started", "succeeded"]);
 const logProviders = new Set(["application", "posthog", "storage", "supabase", "vercel_cron"]);
+const publicTemplateDiagnosticCodes = new Set<PublicTemplateResolutionDiagnosticCode>([
+  "public_template_disabled",
+  "public_template_invalid_artifact",
+  "public_template_unknown_persisted",
+]);
+const publicTemplateSources = new Set<PublicTemplateResolutionSource>([
+  "fallback",
+  "legacy_query",
+  "persisted",
+]);
 
 let activeForwarder: TelemetryLogForwarder | null = null;
 
@@ -111,6 +127,20 @@ function buildRecord(
     record.request_id = fields.request_id;
   if (fields.trace_id && traceIdPattern.test(fields.trace_id)) record.trace_id = fields.trace_id;
   if (fields.error_code && errorCodes.has(fields.error_code)) record.error_code = fields.error_code;
+  if (fields.log_name === "public_template_resolution_warning") {
+    if (
+      !fields.public_template_diagnostic_code ||
+      !publicTemplateDiagnosticCodes.has(fields.public_template_diagnostic_code) ||
+      !fields.public_template_source ||
+      !publicTemplateSources.has(fields.public_template_source) ||
+      typeof fields.fallback_used !== "boolean"
+    ) {
+      return null;
+    }
+    record.fallback_used = fields.fallback_used;
+    record.public_template_diagnostic_code = fields.public_template_diagnostic_code;
+    record.public_template_source = fields.public_template_source;
+  }
   const release = telemetryRelease();
   if (release) record.release = release;
   for (const key of [
