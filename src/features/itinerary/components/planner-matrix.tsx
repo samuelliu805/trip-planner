@@ -156,7 +156,7 @@ export function PlannerMatrix({
                     onInsert={(position) => void insertDay(position)}
                     onRemove={(dayId) => void removeDay(dayId)}
                     pending={dayMutationPending}
-                    visible={selectedDayRow === row}
+                    visible={workspace.days.length === 1 || selectedDayRow === row}
                   />
                 </div>
                 <div

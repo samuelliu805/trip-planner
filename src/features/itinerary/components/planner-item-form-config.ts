@@ -103,7 +103,7 @@ export const itemCopy: Record<ItineraryItemType, { label: string; placeholder: s
   transport: { label: "Transport", placeholder: "e.g. Airport to city center" },
 };
 
-const confirmedCreationTypes: ItineraryItemType[] = [
+const creationFeedbackTypes: ItineraryItemType[] = [
   "activity",
   "car_rental",
   "flight",
@@ -113,7 +113,7 @@ const confirmedCreationTypes: ItineraryItemType[] = [
   "transport",
 ];
 
-/** Categories whose creation is deliberate enough to require a final confirmation. */
-export function plannerItemCreationNeedsConfirmation(type: ItineraryItemType) {
-  return confirmedCreationTypes.includes(type);
+/** Categories whose creation result is reported in the prominent planner feedback banner. */
+export function plannerItemCreationReportsFeedback(type: ItineraryItemType) {
+  return creationFeedbackTypes.includes(type);
 }

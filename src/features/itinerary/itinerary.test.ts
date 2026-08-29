@@ -40,7 +40,7 @@ import {
 } from "./components/planner-item-form-steps.ts";
 import {
   itemFormCapabilities,
-  plannerItemCreationNeedsConfirmation,
+  plannerItemCreationReportsFeedback,
 } from "./components/planner-item-form-config.ts";
 import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
@@ -584,15 +584,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     "utf8",
   );
   const editorStyles = await readAppStyles();
-  const [
-    itemSaveConfirmation,
-    itemSaveFeedback,
-    itemSaveFlow,
-    tripActions,
-    tripAppBar,
-    tripBarMenu,
-  ] = await Promise.all([
-    readFile(new URL("./components/planner-item-save-confirmation.tsx", import.meta.url), "utf8"),
+  const [itemSaveFeedback, itemSaveFlow, tripActions, tripAppBar, tripBarMenu] = await Promise.all([
     readFile(new URL("./components/planner-item-save-feedback.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/use-planner-item-save-flow.ts", import.meta.url), "utf8"),
     readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
@@ -695,8 +687,12 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
   assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
   assert.match(itemSaveFeedback, /success && feedback\.showViewLink/);
-  assert.match(itemSaveConfirmation, /createAnother[\s\S]*success message will include a link/);
-  assert.doesNotMatch(itemSaveConfirmation, /a link will take you directly/);
+  assert.doesNotMatch(itemSaveFlow, /saveConfirmation|setSaveConfirmation|confirmSave/);
+  assert.match(
+    itemSaveFlow,
+    /if \(reportsCreationFeedback\) onSaveFeedback\(undefined\);\s*await persistSave\(intent, values\)/,
+  );
+  assert.doesNotMatch(itemForm, /onSaveConfirm|saveConfirmation/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
@@ -2724,9 +2720,9 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(dayActions, /onInsert\(day\.day_number \+ 1\)/);
   assert.doesNotMatch(dayActions, /onInsert\(day\.day_number\)/);
   assert.doesNotMatch(dayActions, /onArrange/);
-  assert.match(dayActions, /isOnlyDay \? "grid-cols-1" : "grid-cols-2"/);
-  assert.match(dayActions, /isOnlyDay \? \([\s\S]*message=\{"Add day"\}/);
-  assert.match(dayActions, /!isOnlyDay \? \([\s\S]*<Trash2/);
+  assert.match(workspace, /visible=\{workspace\.days\.length === 1 \|\| selectedDayRow === row\}/);
+  assert.match(dayActions, /if \(isOnlyDay\)[\s\S]*min-h-11 w-full[\s\S]*message=\{"Add day"\}/);
+  assert.match(dayActions, /grid grid-cols-2[\s\S]*<Trash2/);
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /aria-label="Trip menu"/);
   assert.match(
@@ -3825,7 +3821,7 @@ test("the Order step responds to legal slots and entered times", () => {
   assert.equal(plannerItemNeedsOrderStep({ ...base, type: "transport" }), false);
 });
 
-test("creating routes through Order while edits save directly", () => {
+test("creating routes through Order while final saves persist directly", () => {
   assert.equal(
     plannerItemSaveAction({ activeStepId: "basics", creating: true, includeOrder: true }),
     "confirm-order",
@@ -3852,7 +3848,11 @@ test("creating routes through Order while edits save directly", () => {
     "train",
     "transport",
   ] as const)
-    assert.equal(plannerItemCreationNeedsConfirmation(type), true, `${type} confirms creation`);
-  assert.equal(plannerItemCreationNeedsConfirmation("location"), false);
-  assert.equal(plannerItemCreationNeedsConfirmation("note"), false);
+    assert.equal(
+      plannerItemCreationReportsFeedback(type),
+      true,
+      `${type} reports its direct creation result`,
+    );
+  assert.equal(plannerItemCreationReportsFeedback("location"), false);
+  assert.equal(plannerItemCreationReportsFeedback("note"), false);
 });

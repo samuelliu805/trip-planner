@@ -87,14 +87,11 @@ export function PlannerItemForm({
   const {
     attachmentSession,
     canCreateAnother,
-    confirmSave,
-    dismissSaveConfirmation,
     itemMutationPending,
     mutationError,
     pending,
     pendingLabel,
     requestSave,
-    saveConfirmation,
   } = saveFlow;
   const orderSlots = useMemo(
     () => itemOrderSlots(orderPreviewItems, item?.id),
@@ -223,13 +220,8 @@ export function PlannerItemForm({
           attachmentSession={attachmentSession}
           editing={Boolean(item)}
           exitOpen={exitOpen}
-          itemLabel={copy.label}
-          itemTitle={saveConfirmation?.values.title ?? copy.label}
           onExit={requestCancel}
           onExitOpenChange={setExitOpen}
-          onSaveConfirm={confirmSave}
-          onSaveConfirmationOpenChange={(open) => !open && dismissSaveConfirmation()}
-          saveIntent={saveConfirmation?.intent ?? null}
         />
       }
       alternateSaveLabel={

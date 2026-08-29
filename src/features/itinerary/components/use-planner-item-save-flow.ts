@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
 import type { PlannerEditorSaveIntent } from "@/features/itinerary/components/planner-editor-form";
 import {
   itemCopy,
-  plannerItemCreationNeedsConfirmation,
+  plannerItemCreationReportsFeedback,
 } from "@/features/itinerary/components/planner-item-form-config";
 import type { PlannerItemFormProps } from "@/features/itinerary/components/planner-item-form-types";
 import { plannerItemSaveValues } from "@/features/itinerary/components/planner-item-save-values";
@@ -52,11 +50,7 @@ export function usePlannerItemSaveFlow({
   });
   const pending = itemMutationPending || attachmentSession.attachmentPending;
   const canCreateAnother = !item && ["activity", "meal"].includes(type);
-  const creationNeedsConfirmation = !item && plannerItemCreationNeedsConfirmation(type);
-  const [saveConfirmation, setSaveConfirmation] = useState<{
-    intent: PlannerEditorSaveIntent;
-    values: ItemSaveValues;
-  } | null>(null);
+  const reportsCreationFeedback = !item && plannerItemCreationReportsFeedback(type);
 
   async function persistSave(intent: PlannerEditorSaveIntent, values: ItemSaveValues) {
     if (pending) return;
@@ -65,7 +59,7 @@ export function usePlannerItemSaveFlow({
         ? await updateMutation.mutateAsync({ ...values, id: item.id, surface: "item_editor" })
         : await createMutation.mutateAsync({ ...values, dayId, surface: "item_editor" });
       const committedItem = await attachmentSession.commit(savedItem);
-      if (creationNeedsConfirmation)
+      if (reportsCreationFeedback)
         onSaveFeedback({
           item: committedItem,
           itemLabel: itemCopy[type].label,
@@ -80,7 +74,7 @@ export function usePlannerItemSaveFlow({
         mutationFailure instanceof Error
           ? mutationFailure.message
           : "The itinerary item could not be saved.";
-      if (creationNeedsConfirmation)
+      if (reportsCreationFeedback)
         onSaveFeedback({
           itemLabel: itemCopy[type].label,
           itemTitle: values.title,
@@ -93,30 +87,17 @@ export function usePlannerItemSaveFlow({
 
   async function requestSave(intent: PlannerEditorSaveIntent, values: ItemSaveValues) {
     if (pending) return;
-    if (creationNeedsConfirmation) {
-      onSaveFeedback(undefined);
-      setSaveConfirmation({ intent, values });
-      return;
-    }
+    if (reportsCreationFeedback) onSaveFeedback(undefined);
     await persistSave(intent, values);
-  }
-
-  function confirmSave() {
-    const confirmed = saveConfirmation;
-    setSaveConfirmation(null);
-    if (confirmed) void persistSave(confirmed.intent, confirmed.values);
   }
 
   return {
     attachmentSession,
     canCreateAnother,
-    confirmSave,
-    dismissSaveConfirmation: () => setSaveConfirmation(null),
     itemMutationPending,
     mutationError: createMutation.error ?? updateMutation.error,
     pending,
     pendingLabel: attachmentSession.attachmentPending ? "Updating attachments…" : "Saving…",
     requestSave,
-    saveConfirmation,
   };
 }
