@@ -5,13 +5,11 @@ import { useState, useTransition } from "react";
 import { useI18n } from "@/features/i18n/i18n-provider";
 import { createClient } from "@/lib/supabase/client";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
-import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import {
   failShareImageVersion,
   finalizeShareImageVersion,
   prepareShareImageVersion,
-  reportShareImageExportFailure,
   revokeShareImageExport,
 } from "../long-image/actions";
 import type {
@@ -49,19 +47,10 @@ export function useLongImageExport({
     setProgress(t("Preparing snapshot…"));
     const operationId = newTelemetryOperationId();
     const exportMode = mode === "replace_existing" ? "replace" : "new";
-    captureBrowserProductEvent(
-      "share_export_started",
-      {
-        export_mode: exportMode,
-        operation_id: operationId,
-        share_artifact: "image",
-        surface: "export_panel",
-      },
-      { actorType: "authenticated" },
-    );
     startTransition(async () => {
       const uploadedPaths: string[] = [];
       let versionId: string | undefined;
+      let exportFinalized = false;
       try {
         const prepared = await prepareShareImageVersion({
           exportId: mode === "replace_existing" ? (imageState?.exportId ?? null) : null,
@@ -121,6 +110,7 @@ export function useLongImageExport({
           versionId,
         });
         if ("error" in finalized) throw new Error(finalized.error);
+        exportFinalized = true;
         const now = new Date().toISOString();
         onImageStateChange({
           createdAt: mode === "replace_existing" ? (imageState?.createdAt ?? now) : now,
@@ -146,16 +136,25 @@ export function useLongImageExport({
           setProgress(t("Image ready. Open it from this panel."));
         }
       } catch (caught) {
-        if (uploadedPaths.length)
-          await createClient().storage.from("share-images").remove(uploadedPaths);
-        if (versionId)
-          await failShareImageVersion(
-            versionId,
-            caught instanceof Error ? caught.message : "Timeline export failed",
-            operationId,
-            exportMode,
-          );
-        else await reportShareImageExportFailure(operationId, exportMode);
+        if (uploadedPaths.length) {
+          try {
+            await createClient().storage.from("share-images").remove(uploadedPaths);
+          } catch {
+            // Cleanup failure must not suppress the authoritative export failure outcome.
+          }
+        }
+        if (versionId && !exportFinalized) {
+          try {
+            await failShareImageVersion(
+              versionId,
+              caught instanceof Error ? caught.message : "Timeline export failed",
+              operationId,
+              exportMode,
+            );
+          } catch {
+            // Failure reporting cannot prevent the export UI from recovering.
+          }
+        }
         setProgress(undefined);
         setError(t(caught instanceof Error ? caught.message : "Timeline export failed."));
       }

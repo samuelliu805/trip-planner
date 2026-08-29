@@ -6,7 +6,42 @@ import {
   serverProductTelemetryEnabled,
 } from "@/lib/telemetry/product-server";
 
+import {
+  captureAuthenticatedShareExportEvent,
+  type ShareExportTelemetryCapture,
+} from "./share-export-telemetry";
+
 type SharingMutation = "publish" | "settings" | "revoke" | "export";
+
+const captureShareExportTelemetry: ShareExportTelemetryCapture = async (
+  eventName,
+  properties,
+  context,
+) => {
+  const { error_code: errorCode, ...base } = properties;
+  if (eventName === "share_export_failed") {
+    if (!errorCode) return;
+    await captureServerProductEvent(eventName, { ...base, error_code: errorCode }, context);
+    return;
+  }
+  if (eventName === "share_export_started") {
+    await captureServerProductEvent(eventName, base, context);
+    return;
+  }
+  await captureServerProductEvent("share_exported", base, context);
+};
+
+export async function reportShareExportStarted(options: {
+  exportMode: ExportMode;
+  operationId: unknown;
+  supabaseUserId: string;
+}): Promise<void> {
+  if (!serverProductTelemetryEnabled()) return;
+  await captureAuthenticatedShareExportEvent(
+    { ...options, outcome: "started" },
+    captureShareExportTelemetry,
+  );
+}
 
 export async function reportSharingMutation<Result extends object>(options: {
   artifact: ShareArtifact;
@@ -14,16 +49,19 @@ export async function reportSharingMutation<Result extends object>(options: {
   mutation: SharingMutation;
   operationId?: unknown;
   result: Result;
+  supabaseUserId?: string;
 }): Promise<Result> {
   const operationId = telemetryOperationId(options.operationId);
   if (!operationId || !serverProductTelemetryEnabled()) return options.result;
-  let supabaseUserId: string | undefined;
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    supabaseUserId = data.user?.id;
-  } catch {
-    // Identity lookup cannot replace an authoritative sharing result.
+  let supabaseUserId = options.supabaseUserId;
+  if (!supabaseUserId) {
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      supabaseUserId = data.user?.id;
+    } catch {
+      // Identity lookup cannot replace an authoritative sharing result.
+    }
   }
   const context = {
     actorType: supabaseUserId ? ("authenticated" as const) : ("anonymous" as const),
@@ -38,18 +76,24 @@ export async function reportSharingMutation<Result extends object>(options: {
   if (options.mutation === "export") {
     const exportMode = options.exportMode ?? "new";
     return reportAuthoritativeMutationOutcome(options.result, {
-      failed: (errorCode) =>
-        captureServerProductEvent(
-          "share_export_failed",
-          { ...base, error_code: errorCode, export_mode: exportMode, share_artifact: "image" },
-          context,
-        ),
-      succeeded: () =>
-        captureServerProductEvent(
-          "share_exported",
-          { ...base, export_mode: exportMode, share_artifact: "image" },
-          context,
-        ),
+      failed: async (errorCode) => {
+        await captureAuthenticatedShareExportEvent(
+          {
+            errorCode,
+            exportMode,
+            operationId,
+            outcome: "failed",
+            supabaseUserId,
+          },
+          captureShareExportTelemetry,
+        );
+      },
+      succeeded: async () => {
+        await captureAuthenticatedShareExportEvent(
+          { exportMode, operationId, outcome: "succeeded", supabaseUserId },
+          captureShareExportTelemetry,
+        );
+      },
     });
   }
   if (options.mutation === "revoke")

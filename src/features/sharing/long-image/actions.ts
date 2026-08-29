@@ -16,7 +16,7 @@ import {
   shareImagePartInputSchema,
 } from "./schema";
 import { longImageScopeFromPage, scopePublicItinerary } from "./scope";
-import { reportSharingMutation } from "../telemetry.server";
+import { reportShareExportStarted, reportSharingMutation } from "../telemetry.server";
 
 const prepareImageInputSchema = z
   .object({
@@ -49,76 +49,96 @@ export async function prepareShareImageVersion(
   if (!userData.user || pageResult.error) return { error: imageError(pageResult.error?.message) };
   const page = publicItineraryLinkSchema.safeParse(pageResult.data);
   if (!page.success) return { error: "The Share Page could not be read." };
-
-  let destinationPage = page.data;
-  if (page.data.longImageQrDestination === "share_page") {
-    const destinationResult = page.data.longImageQrSharePageId
-      ? await supabase.rpc("owner_share_page_v2", {
-          target_share_page_id: page.data.longImageQrSharePageId,
-        })
-      : { data: null, error: null };
-    const destination = publicItineraryLinkSchema.safeParse(destinationResult.data);
-    if (!destination.success) return { error: "Choose an active Share Page for the QR code." };
-    destinationPage = destination.data;
-  }
-  const siteUrl = await getRequestSiteUrl();
-  const qrDestinationType =
-    page.data.longImageQrDestination === "homepage" ? "homepage" : "share_page";
-  const qrDestinationUrl =
-    qrDestinationType === "homepage"
-      ? `${siteUrl}/?utm_source=shared_image&utm_medium=qr`
-      : `${siteUrl}/share/${destinationPage.publicToken}`;
-  const renderConfig = {
-    locale: input.data.locale,
-    renderer: "timeline" as const,
-    scope: input.data.scope ?? longImageScopeFromPage(page.data),
-    version: 1 as const,
-    width: 1080 as const,
-  };
-  const { data, error } = await supabase.rpc("prepare_share_image_version_v2", {
-    requested_mode: input.data.mode,
-    requested_qr_destination_type: qrDestinationType,
-    requested_qr_destination_url: qrDestinationUrl,
-    requested_render_config: renderConfig,
-    // The RPC intentionally accepts null for a new export; generated types lose that nullability.
-    target_export_id: input.data.exportId as string,
-    target_share_page_id: page.data.id,
+  const exportMode = input.data.mode === "replace_existing" ? "replace" : "new";
+  await reportShareExportStarted({
+    exportMode,
+    operationId: input.data.operationId,
+    supabaseUserId: userData.user.id,
   });
-  if (error || !data) return { error: imageError(error?.message) };
-  const rpcData = data as Record<string, unknown>;
-  const enrichedSnapshot = await getPublicItinerary(page.data.publicToken);
-  const parsedRenderConfig = longImageRenderConfigSchema.safeParse(rpcData.renderConfig);
-  if (!parsedRenderConfig.success) return { error: "The image settings could not be read." };
-  const attachmentFreeSnapshot = enrichedSnapshot
-    ? {
-        ...enrichedSnapshot,
-        days: enrichedSnapshot.days.map((day) => ({
-          ...day,
-          items: day.items.map((item) => {
-            const media = item.media?.filter(({ source }) => source !== "attachment");
-            return { ...item, media: media?.length ? media : undefined };
-          }),
-        })),
-      }
-    : rpcData.sourceSnapshot;
-  const parsedSnapshot = publicItinerarySchema.safeParse(attachmentFreeSnapshot);
-  if (!parsedSnapshot.success) return { error: "The image snapshot could not be read." };
-  let sourceSnapshot;
+  const failPreparation = (error: string) =>
+    reportSharingMutation({
+      artifact: "image",
+      exportMode,
+      mutation: "export",
+      operationId: input.data.operationId,
+      result: { error },
+      supabaseUserId: userData.user.id,
+    });
   try {
-    sourceSnapshot = scopePublicItinerary(parsedSnapshot.data, parsedRenderConfig.data.scope);
-  } catch (caught) {
-    return {
-      error: caught instanceof Error ? caught.message : "The image date range is unavailable.",
+    let destinationPage = page.data;
+    if (page.data.longImageQrDestination === "share_page") {
+      const destinationResult = page.data.longImageQrSharePageId
+        ? await supabase.rpc("owner_share_page_v2", {
+            target_share_page_id: page.data.longImageQrSharePageId,
+          })
+        : { data: null, error: null };
+      const destination = publicItineraryLinkSchema.safeParse(destinationResult.data);
+      if (!destination.success)
+        return failPreparation("Choose an active Share Page for the QR code.");
+      destinationPage = destination.data;
+    }
+    const siteUrl = await getRequestSiteUrl();
+    const qrDestinationType =
+      page.data.longImageQrDestination === "homepage" ? "homepage" : "share_page";
+    const qrDestinationUrl =
+      qrDestinationType === "homepage"
+        ? `${siteUrl}/?utm_source=shared_image&utm_medium=qr`
+        : `${siteUrl}/share/${destinationPage.publicToken}`;
+    const renderConfig = {
+      locale: input.data.locale,
+      renderer: "timeline" as const,
+      scope: input.data.scope ?? longImageScopeFromPage(page.data),
+      version: 1 as const,
+      width: 1080 as const,
     };
+    const { data, error } = await supabase.rpc("prepare_share_image_version_v2", {
+      requested_mode: input.data.mode,
+      requested_qr_destination_type: qrDestinationType,
+      requested_qr_destination_url: qrDestinationUrl,
+      requested_render_config: renderConfig,
+      // The RPC intentionally accepts null for a new export; generated types lose that nullability.
+      target_export_id: input.data.exportId as string,
+      target_share_page_id: page.data.id,
+    });
+    if (error || !data) return failPreparation(imageError(error?.message));
+    const rpcData = data as Record<string, unknown>;
+    const enrichedSnapshot = await getPublicItinerary(page.data.publicToken);
+    const parsedRenderConfig = longImageRenderConfigSchema.safeParse(rpcData.renderConfig);
+    if (!parsedRenderConfig.success)
+      return failPreparation("The image settings could not be read.");
+    const attachmentFreeSnapshot = enrichedSnapshot
+      ? {
+          ...enrichedSnapshot,
+          days: enrichedSnapshot.days.map((day) => ({
+            ...day,
+            items: day.items.map((item) => {
+              const media = item.media?.filter(({ source }) => source !== "attachment");
+              return { ...item, media: media?.length ? media : undefined };
+            }),
+          })),
+        }
+      : rpcData.sourceSnapshot;
+    const parsedSnapshot = publicItinerarySchema.safeParse(attachmentFreeSnapshot);
+    if (!parsedSnapshot.success) return failPreparation("The image snapshot could not be read.");
+    let sourceSnapshot;
+    try {
+      sourceSnapshot = scopePublicItinerary(parsedSnapshot.data, parsedRenderConfig.data.scope);
+    } catch (caught) {
+      return failPreparation(
+        caught instanceof Error ? caught.message : "The image date range is unavailable.",
+      );
+    }
+    const prepared = prepareShareImageSchema.safeParse({
+      ...rpcData,
+      sourceSnapshot,
+      uploadPathPrefix: `${userData.user.id}/${rpcData.exportId}/${rpcData.versionId}`,
+    });
+    return prepared.success
+      ? { data: prepared.data }
+      : failPreparation("The image render request could not be prepared.");
+  } catch (caught) {
+    return failPreparation(imageError(caught instanceof Error ? caught.message : undefined));
   }
-  const prepared = prepareShareImageSchema.safeParse({
-    ...rpcData,
-    sourceSnapshot,
-    uploadPathPrefix: `${userData.user.id}/${rpcData.exportId}/${rpcData.versionId}`,
-  });
-  return prepared.success
-    ? { data: prepared.data }
-    : { error: "The image render request could not be prepared." };
 }
 
 export async function finalizeShareImageVersion(rawInput: {
@@ -138,10 +158,13 @@ export async function finalizeShareImageVersion(rawInput: {
     .safeParse(rawInput);
   if (!input.success) return { error: "The rendered image parts are invalid." };
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("finalize_share_image_version_v1", {
-    requested_parts: input.data.parts,
-    target_version_id: input.data.versionId,
-  });
+  const [{ data: userData }, { data, error }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.rpc("finalize_share_image_version_v1", {
+      requested_parts: input.data.parts,
+      target_version_id: input.data.versionId,
+    }),
+  ]);
   const parsed = z
     .object({
       expiresAt: z.string().optional(),
@@ -150,24 +173,22 @@ export async function finalizeShareImageVersion(rawInput: {
     })
     .passthrough()
     .safeParse(data);
-  const result =
-    error || !parsed.success
-      ? { error: imageError(error?.message) }
-      : {
-          data: {
-            expiresAt:
-              parsed.data.expiresAt ??
-              new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString(),
-            partCount: parsed.data.partCount,
-            permanentSlug: parsed.data.permanentSlug,
-          },
-        };
+  if (error || !parsed.success) return { error: imageError(error?.message) };
+  const result = {
+    data: {
+      expiresAt:
+        parsed.data.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1_000).toISOString(),
+      partCount: parsed.data.partCount,
+      permanentSlug: parsed.data.permanentSlug,
+    },
+  };
   return reportSharingMutation({
     artifact: "image",
     exportMode: input.data.exportMode,
     mutation: "export",
     operationId: input.data.operationId,
     result,
+    supabaseUserId: userData.user?.id,
   });
 }
 
@@ -178,30 +199,27 @@ export async function failShareImageVersion(
   exportMode?: "new" | "replace",
 ) {
   if (!z.uuid().safeParse(versionId).success) return;
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("fail_share_image_version_v1", {
-    requested_error_message: message,
-    target_version_id: versionId,
-  });
+  let failureMessage = "Timeline export failed.";
+  let supabaseUserId: string | undefined;
+  try {
+    const supabase = await createClient();
+    const { data: userData } = await supabase.auth.getUser();
+    supabaseUserId = userData.user?.id;
+    const { error } = await supabase.rpc("fail_share_image_version_v1", {
+      requested_error_message: message,
+      target_version_id: versionId,
+    });
+    failureMessage = error?.message ?? failureMessage;
+  } catch {
+    // State cleanup failure must not suppress the authoritative telemetry outcome.
+  }
   await reportSharingMutation({
     artifact: "image",
     exportMode,
     mutation: "export",
     operationId,
-    result: { error: error?.message ?? "Timeline export failed." },
-  });
-}
-
-export async function reportShareImageExportFailure(
-  operationId: string,
-  exportMode: "new" | "replace",
-) {
-  await reportSharingMutation({
-    artifact: "image",
-    exportMode,
-    mutation: "export",
-    operationId,
-    result: { error: "Timeline export failed." },
+    result: { error: failureMessage },
+    supabaseUserId,
   });
 }
 

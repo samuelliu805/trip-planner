@@ -512,7 +512,6 @@ test("advanced intent events and authoritative outcome events keep exact ownersh
     "share_publish_started",
     "share_link_copied",
     "share_link_opened",
-    "share_export_started",
     "public_share_viewed",
     "public_share_view_changed",
     "attachment_upload_started",
@@ -545,6 +544,7 @@ test("advanced intent events and authoritative outcome events keep exact ownersh
     "share_settings_update_failed",
     "share_revoked",
     "share_revoke_failed",
+    "share_export_started",
     "share_exported",
     "share_export_failed",
     "attachment_uploaded",
@@ -1209,22 +1209,24 @@ test("Public Share owns one anonymous exception handler without contaminating ow
     surface: "public_share",
     telemetry_region: "global",
   });
-  analyticsBoundaryForRoute("/trips/[tripId]", owner, publicShare).capture("share_export_started", {
-    actor_type: "authenticated",
-    environment: "preview",
-    export_mode: "new",
-    feature_area: "sharing",
-    operation_id: productOperationId,
-    route: "/trips/[tripId]",
-    screen: "trip_plan",
-    share_artifact: "image",
-    surface: "export_panel",
-    telemetry_region: "global",
-  });
+  analyticsBoundaryForRoute("/trips/[tripId]", owner, publicShare).capture(
+    "share_publish_started",
+    {
+      actor_type: "authenticated",
+      environment: "preview",
+      feature_area: "sharing",
+      operation_id: productOperationId,
+      route: "/trips/[tripId]",
+      screen: "trip_plan",
+      share_artifact: "page",
+      surface: "share_dialog",
+      telemetry_region: "global",
+    },
+  );
 
   assert.deepEqual(captures, [
     { actor: "anonymous", event: "public_share_viewed", identity: "anonymous" },
-    { actor: "authenticated", event: "share_export_started", identity: ownerId },
+    { actor: "authenticated", event: "share_publish_started", identity: ownerId },
   ]);
   assert.equal(persistedOwnerId, ownerId);
   assert.equal(publicMemoryId, undefined);
