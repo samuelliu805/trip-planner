@@ -1,7 +1,11 @@
 import { T } from "@/features/i18n/i18n-provider";
 export function UnsavedAttachmentsSection() {
   return (
-    <section className="space-y-2 border-t pt-4" aria-labelledby="attachments-heading">
+    <section
+      aria-labelledby="attachments-heading"
+      className="space-y-2 border-t pt-4"
+      data-attachment-editor=""
+    >
       <div>
         <h3 className="text-base font-bold" id="attachments-heading">
           <T message={" Attachments "} />

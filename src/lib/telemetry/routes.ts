@@ -120,7 +120,11 @@ export function ideasCategoryForPath(value: string): IdeasCategory | undefined {
 }
 
 export function isAnonymousTelemetryRoute(route: string): boolean {
-  return route === "/login" || route === "/signup" || route.startsWith("/share/");
+  return route === "/login" || route === "/signup";
+}
+
+export function isPublicShareTelemetryRoute(route: string): boolean {
+  return route.startsWith("/share/");
 }
 
 export function sanitizedCurrentUrl(

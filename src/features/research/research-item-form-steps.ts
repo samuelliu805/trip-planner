@@ -13,28 +13,28 @@ const primaryTitles: Record<ResearchCategory, string> = {
 };
 
 const priceSteps: Record<ResearchCategory, ResearchItemFormStep["id"]> = {
-  flight: "details",
-  rental: "details",
-  stay: "details",
-  train: "details",
+  flight: "primary",
+  rental: "primary",
+  stay: "primary",
+  train: "primary",
 };
 
 const stepDescriptions: Record<ResearchCategory, Record<ResearchItemFormStep["id"], string>> = {
   flight: {
-    primary: "Add the route, departure, and arrival for each flight.",
-    details: "Add the price, airline and flight numbers, and any booking records.",
+    primary: "Add the price, route, departure, and arrival for each flight.",
+    details: "Add airline and flight numbers and any booking records.",
   },
   rental: {
-    primary: "Add the locations, pick-up, and return. Times start at 12:00 PM.",
-    details: "Add the price, rental company, notes, and any booking records.",
+    primary: "Add the price, locations, pick-up, and return. Times start at 12:00 PM.",
+    details: "Add the rental company, notes, and any booking records.",
   },
   stay: {
-    primary: "Add a hotel or area and the check-in and check-out dates.",
-    details: "Add the total price first, then booking records, a helpful name, and notes.",
+    primary: "Add the price, hotel or area, and the check-in and check-out dates.",
+    details: "Add booking records, a helpful name, and notes.",
   },
   train: {
-    primary: "Add the route, departure, and arrival.",
-    details: "Add the price, train number, and any booking records or notes.",
+    primary: "Add the price, route, departure, and arrival.",
+    details: "Add the train number and any booking records or notes.",
   },
 };
 

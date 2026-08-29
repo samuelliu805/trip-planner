@@ -12,6 +12,10 @@ import { MAX_ATTACHMENTS_PER_ITEM, MAX_ITEM_ATTACHMENT_BYTES } from "@/features/
 import type { OwnerAttachment } from "@/features/attachments/schema";
 import { captureAttachmentIntent } from "@/features/attachments/telemetry-client";
 import { uploadFileAttachment } from "@/features/attachments/upload-client";
+import {
+  attachmentUploadWasAborted,
+  reportUnacknowledgedAttachmentFailure,
+} from "@/features/attachments/upload-failure";
 import type { ResearchItem } from "@/features/research/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
@@ -95,14 +99,16 @@ export function SavedResearchAttachments({
       setError(undefined);
       router.refresh();
     } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") {
+      if (attachmentUploadWasAborted(caught)) {
         setTasks((current) => current.filter(({ id }) => id !== task.id));
         return;
       }
       updateTask(task.id, {
         error: caught instanceof Error ? caught.message : "The upload failed.",
       });
-      await reportAttachmentUploadFailure({ operationId: task.operationId, target: "research" });
+      await reportUnacknowledgedAttachmentFailure(caught, () =>
+        reportAttachmentUploadFailure({ operationId: task.operationId, target: "research" }),
+      );
     }
   }
 
@@ -157,7 +163,11 @@ export function SavedResearchAttachments({
   }
 
   return (
-    <section className="min-w-0 space-y-3 border-t pt-4" aria-labelledby="attachments-heading">
+    <section
+      aria-labelledby="attachments-heading"
+      className="min-w-0 space-y-3 border-t pt-4"
+      data-attachment-editor=""
+    >
       <AttachmentsSectionHeader
         count={counted.length}
         disabled={!remaining || activeTasks.length > 0}

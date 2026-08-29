@@ -21,7 +21,6 @@ export function PlannerStatus({
   fillLabel,
   fillThroughDay,
   interactionError,
-  isEmpty,
   isFillDragging,
   onDismissError,
   workspaceError,
@@ -30,7 +29,6 @@ export function PlannerStatus({
   fillLabel: string;
   fillThroughDay?: number;
   interactionError?: string;
-  isEmpty: boolean;
   isFillDragging: boolean;
   onDismissError: () => void;
   workspaceError: boolean;
@@ -59,11 +57,6 @@ export function PlannerStatus({
       {deleteError ? (
         <p className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
           <T message={" The trip could not be deleted. "} />
-        </p>
-      ) : null}
-      {isEmpty ? (
-        <p className="border-b bg-primary/5 px-4 py-2 text-xs text-muted-foreground" role="status">
-          <T message={" This itinerary is empty. Select a category cell, then choose Add item. "} />
         </p>
       ) : null}
       {isFillDragging ? (

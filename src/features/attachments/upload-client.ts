@@ -16,6 +16,12 @@ import {
   preparedAttachmentSchema,
   type OwnerAttachment,
 } from "./schema";
+import {
+  acknowledgeAttachmentFailure,
+  attachmentFailureWasReported,
+  attachmentUploadResponseError,
+  attachmentUploadWasAborted,
+} from "./upload-failure";
 
 export type AttachmentUploadStage =
   "hashing" | "preparing" | "uploading" | "finalizing" | "complete";
@@ -234,7 +240,7 @@ export async function uploadFileAttachment({
   });
   const preparePayload: unknown = await prepareResponse.json().catch(() => null);
   if (!prepareResponse.ok)
-    throw new Error(responseError(preparePayload, "The upload could not be prepared."));
+    throw attachmentUploadResponseError(preparePayload, "The upload could not be prepared.");
   const prepared = preparedAttachmentSchema.safeParse(preparePayload);
   if (!prepared.success) throw new Error("The private upload authorization is invalid.");
   if (!prepared.data.uploadRequired) {
@@ -298,22 +304,34 @@ export async function uploadFileAttachment({
     });
     const finalizePayload: unknown = await finalizeResponse.json().catch(() => null);
     if (!finalizeResponse.ok)
-      throw new Error(responseError(finalizePayload, "The upload could not be verified."));
+      throw attachmentUploadResponseError(finalizePayload, "The upload could not be verified.");
     const finalized = finalizedAttachmentSchema.safeParse(finalizePayload);
     if (!finalized.success) throw new Error("The verified attachment response is invalid.");
     onProgress({ percent: 100, stage: "complete" });
     return finalized.data.attachment;
   } catch (error) {
-    await fetch(lifecycleUrl, {
-      body: JSON.stringify({
-        failure: !(error instanceof DOMException && error.name === "AbortError"),
-        operationId,
-      }),
-      headers: { "Content-Type": "application/json" },
-      keepalive: true,
-      method: "DELETE",
-    }).catch(() => undefined);
-    throw error;
+    if (attachmentFailureWasReported(error)) throw error;
+    const aborted = attachmentUploadWasAborted(error);
+    let failureReported = false;
+    try {
+      const cleanupResponse = await fetch(lifecycleUrl, {
+        body: JSON.stringify({ failure: !aborted, operationId }),
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        method: "DELETE",
+      });
+      if (!aborted) {
+        const cleanupPayload: unknown = cleanupResponse.ok
+          ? null
+          : await cleanupResponse.json().catch(() => null);
+        failureReported =
+          cleanupResponse.ok ||
+          attachmentFailureWasReported(attachmentUploadResponseError(cleanupPayload, ""));
+      }
+    } catch {
+      // The component fallback owns reporting when the lifecycle request cannot acknowledge it.
+    }
+    throw failureReported ? acknowledgeAttachmentFailure(error) : error;
   }
 }
 

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,7 @@ export function ManageRouteVariantsDialog({
   const primaryMutation = useSetPrimaryRouteVariant(tripId);
   const deleteMutation = useDeleteRouteVariant(tripId);
   const limitReached = variants.length >= 3;
+  useAutoDismiss(notice, () => setNotice(undefined));
 
   async function setPrimary(variant: PlannerVariant) {
     setError(undefined);

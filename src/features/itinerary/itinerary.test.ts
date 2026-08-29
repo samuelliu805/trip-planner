@@ -2579,6 +2579,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-grid-elements.tsx", import.meta.url),
     "utf8",
   );
+  workspace += await readFile(
+    new URL("./components/planner-add-item-button.tsx", import.meta.url),
+    "utf8",
+  );
   workspace += await readFile(new URL("./components/insert-row-icon.tsx", import.meta.url), "utf8");
   workspace += await readFile(
     new URL("./components/planner-item-row.tsx", import.meta.url),
@@ -2963,7 +2967,14 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
   const queries = await readItineraryQueryModules();
   let actions = await readItineraryItemActions();
   actions += await readFile(new URL("./action-helpers.ts", import.meta.url), "utf8");
-  assert.match(workspace, /This itinerary is empty/);
+  workspace += await readFile(
+    new URL("./components/planner-add-item-button.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /Add your first activity or another day/);
+  assert.match(workspace, /newTripStarter/);
+  assert.match(workspace, /workspace\.days\.length \+ 1/);
   assert.match(workspace, /planner could not refresh/);
   assert.match(workspace, /Saving…[\s\S]*Saved/);
   assert.match(workspace, /Unsupported clipboard data/);

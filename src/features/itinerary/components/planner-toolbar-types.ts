@@ -25,7 +25,6 @@ export type PlannerToolbarProps = {
   fillThroughDay?: number;
   insertDay: (position: number) => Promise<void>;
   interactionError?: string;
-  isEmpty: boolean;
   isFillDragging: boolean;
   mutating: boolean;
   planCostLines: ConvertedPlanCostLine[];

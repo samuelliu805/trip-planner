@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAnalyticsBoundary, type BrowserTelemetryAdapter } from "./client.ts";
+import {
+  analyticsBoundaryForRoute,
+  createAnalyticsBoundary,
+  type BrowserTelemetryAdapter,
+} from "./client.ts";
 import { resolveTelemetryConfig, type TelemetryConfig } from "./config.ts";
 import {
   safeAuthErrorCode,
@@ -444,7 +448,7 @@ test("product events reject missing required fields and telemetry-disabled captu
   assert.equal(captures, 0);
 });
 
-test("advanced product enums, public anonymity, and operation deduplication stay bounded", () => {
+test("advanced product enums, public anonymity, and operation correlation stay bounded", () => {
   const route = validProductProperties("route_calculation_started");
   assert.ok(
     sanitizeTelemetryProperties("route_calculation_started", route, enabledPreviewConfig()),
@@ -1053,6 +1057,87 @@ test("identity is deduplicated, reset on user switches, and reset on logout boun
   boundary.identify(second, personProperties);
   boundary.reset();
   assert.deepEqual(calls, [`identify:${first}`, "reset", `identify:${second}`, "reset"]);
+});
+
+test("a public-share tab keeps anonymous memory identity without resetting its owner tab", () => {
+  const ownerId = `tpv1_${"c".repeat(64)}`;
+  let persistedOwnerId: string | undefined;
+  let publicMemoryId: string | undefined;
+  const captures: { actor: string | undefined; event: string; identity: string }[] = [];
+  const owner = createAnalyticsBoundary(true, {
+    capture(event, properties) {
+      captures.push({
+        actor: properties.actor_type as string | undefined,
+        event,
+        identity: persistedOwnerId ?? "anonymous",
+      });
+    },
+    currentIdentifiedId: () => persistedOwnerId,
+    identify(id) {
+      persistedOwnerId = id;
+    },
+    reset() {
+      persistedOwnerId = undefined;
+    },
+  });
+  const publicShare = createAnalyticsBoundary(true, {
+    capture(event, properties) {
+      captures.push({
+        actor: properties.actor_type as string | undefined,
+        event,
+        identity: publicMemoryId ?? "anonymous",
+      });
+    },
+    currentIdentifiedId: () => publicMemoryId,
+    identify(id) {
+      publicMemoryId = id;
+    },
+    reset() {
+      publicMemoryId = undefined;
+    },
+  });
+
+  owner.identify(ownerId, personProperties);
+  analyticsBoundaryForRoute("/share/[token]", owner, publicShare).capture("public_share_viewed", {
+    actor_type: "anonymous",
+    environment: "preview",
+    feature_area: "sharing",
+    operation_id: productOperationId,
+    public_view: "overview",
+    route: "/share/[token]",
+    screen: "public_share",
+    surface: "public_share",
+    telemetry_region: "global",
+  });
+  analyticsBoundaryForRoute("/trips/[tripId]", owner, publicShare).capture("share_export_started", {
+    actor_type: "authenticated",
+    environment: "preview",
+    export_mode: "new",
+    feature_area: "sharing",
+    operation_id: productOperationId,
+    route: "/trips/[tripId]",
+    screen: "trip_plan",
+    share_artifact: "image",
+    surface: "export_panel",
+    telemetry_region: "global",
+  });
+
+  assert.deepEqual(captures, [
+    { actor: "anonymous", event: "public_share_viewed", identity: "anonymous" },
+    { actor: "authenticated", event: "share_export_started", identity: ownerId },
+  ]);
+  assert.equal(persistedOwnerId, ownerId);
+  assert.equal(publicMemoryId, undefined);
+  const sanitized = sanitizeTelemetryProperties(
+    "public_share_viewed",
+    {
+      ...validProductProperties("public_share_viewed"),
+      route: `/share/${productOperationId}?token=private-share-token`,
+    },
+    enabledPreviewConfig(),
+  );
+  assert.equal(sanitized?.route, "/share/[token]");
+  assert.equal(JSON.stringify(sanitized).includes("private-share-token"), false);
 });
 
 test("disabled and failing browser telemetry remain no-ops", () => {

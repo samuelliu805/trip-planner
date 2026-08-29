@@ -5,6 +5,7 @@ import { ExternalLink, LoaderCircle, Plus, Share2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
 import { Label } from "@/components/ui/label";
 import { PullUpPanelHandle, useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import {
@@ -82,6 +83,7 @@ export function PublicShareDialog({
     Boolean(activeLink) &&
     shareSettingsSignature(settings, variantId) ===
       shareSettingsSignature(settingsFromLink(activeLink), activeLink?.variantId ?? variantId);
+  useAutoDismiss(notice, () => setNotice(undefined));
 
   useExclusivePullUpPanel("share-settings", open, setOpen);
 

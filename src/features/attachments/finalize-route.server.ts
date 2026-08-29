@@ -46,7 +46,10 @@ export async function deleteAttachmentUpload(request: Request, route: Attachment
         supabaseUserId: authData.user.id,
         target: attachmentTarget(route),
       });
-    return Response.json({ error: attachmentError(error.message) }, { status: 400 });
+    return Response.json(
+      { error: attachmentError(error.message), failureReported: body.success && body.data.failure },
+      { status: 400 },
+    );
   }
   if (body.success && body.data.failure)
     await reportAttachmentMutation({
@@ -109,7 +112,7 @@ export async function finalizeAttachmentUpload(request: Request, route: Attachme
       supabaseUserId: authData.user?.id,
       target: attachmentTarget(route),
     });
-    return Response.json({ error: reason }, { status });
+    return Response.json({ error: reason, failureReported: true }, { status });
   }
 
   if (asset.status !== "pending" && asset.status !== "ready")

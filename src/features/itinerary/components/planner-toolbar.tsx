@@ -60,7 +60,6 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         fillLabel={props.fillLabel}
         fillThroughDay={props.fillThroughDay}
         interactionError={props.interactionError}
-        isEmpty={props.isEmpty}
         isFillDragging={props.isFillDragging}
         onDismissError={() => props.setInteractionError(undefined)}
         workspaceError={props.workspaceError}

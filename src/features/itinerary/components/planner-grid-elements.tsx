@@ -1,7 +1,7 @@
 "use client";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { ListOrdered, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ListOrdered, MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -23,48 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { InsertRowIcon } from "@/features/itinerary/components/insert-row-icon";
-import type { PlannerCategory } from "@/features/itinerary/components/planner-config";
 import type { PlannerDay } from "@/features/itinerary/types";
-
-export function AddItemButton({
-  category,
-  day,
-  disabled,
-  onAdd,
-}: {
-  category: PlannerCategory;
-  day: PlannerDay;
-  disabled?: boolean;
-  onAdd: () => void;
-}) {
-  const { t } = useI18n();
-  if (disabled) return null;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          aria-label={t("Add {item} on day {day}", {
-            day: day.day_number,
-            item: t(category.label.toLowerCase()),
-          })}
-          className="mt-auto flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded border border-dashed bg-background text-xs font-medium text-muted-foreground min-[1200px]:text-[13px] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          data-add-item
-          onClick={(event) => {
-            event.stopPropagation();
-            onAdd();
-          }}
-          type="button"
-        >
-          <Plus className="size-3.5" />
-          <T message={" Add "} />
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {t("Add another {item}", { item: t(category.label.toLowerCase()) })}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 export function DayActions({
   day,

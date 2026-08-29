@@ -4,6 +4,7 @@ import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ArrowUpRight, CircleAlert, CircleCheckBig, X } from "lucide-react";
 import { createPortal } from "react-dom";
 
+import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
 import type { ItineraryItem } from "@/features/itinerary/types";
 
 export type PlannerItemSaveFeedback =
@@ -20,6 +21,7 @@ export function PlannerItemSaveFeedbackAlert({
   onView: (item: ItineraryItem) => void;
 }) {
   const { t } = useI18n();
+  useAutoDismiss(feedback?.status === "created" ? feedback : undefined, onDismiss);
   if (!feedback || typeof document === "undefined") return null;
   const success = feedback.status === "created";
 

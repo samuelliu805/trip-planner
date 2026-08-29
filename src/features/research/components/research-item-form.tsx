@@ -46,7 +46,7 @@ export function ResearchItemForm({
   const steps = researchItemFormSteps(category);
   const [stepId, setStepId] = useState<ResearchItemFormStep["id"]>("primary");
   const [mutationPending, setMutationPending] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const [formDirty, setFormDirty] = useState(false);
   const [canSave, setCanSave] = useState(Boolean(item));
   const [error, setError] = useState<string>();
   const [exitOpen, setExitOpen] = useState(false);
@@ -67,6 +67,7 @@ export function ResearchItemForm({
     discard: discardAttachments,
     discardDialogOpen,
     discardPending,
+    draftCount,
     error: attachmentError,
     requestCancel,
     setAttachmentPending,
@@ -76,6 +77,8 @@ export function ResearchItemForm({
     uploadSessionSignal,
   } = attachmentSession;
   const pending = mutationPending || attachmentPending;
+  const dirty = formDirty || draftCount > 0;
+  const attachmentOnlySave = Boolean(item && !formDirty && draftCount > 0);
 
   const requestExit = useCallback(() => {
     if (pending) return;
@@ -89,9 +92,8 @@ export function ResearchItemForm({
   const handleDraftCountChange = useCallback(
     (count: number) => {
       setDraftCount(count);
-      if (count) setDirty(true);
     },
-    [setDirty, setDraftCount],
+    [setDraftCount],
   );
 
   useEffect(() => {
@@ -106,8 +108,9 @@ export function ResearchItemForm({
     scrollNodeRef.current?.scrollTo({ behavior: "smooth", top: 0 });
   }
 
-  function refreshDraftState() {
-    setDirty(true);
+  function refreshDraftState(event: React.FormEvent<HTMLFormElement>) {
+    if ((event.target as Element).closest("[data-attachment-editor]")) return;
+    setFormDirty(true);
     window.setTimeout(() => {
       if (formRef.current)
         setCanSave(researchDraftCanSave(new FormData(formRef.current), category));
@@ -117,27 +120,32 @@ export function ResearchItemForm({
   async function save() {
     if (!formRef.current || pending) return;
     const form = new FormData(formRef.current);
-    if (!researchDraftCanSave(form, category)) return;
-    const input = researchItemInputFromForm({ category, context, form, item, tripId });
-    const operationId = newTelemetryOperationId();
-    if (!item)
-      captureBrowserProductEvent(
-        "research_create_started",
-        { ideas_category: category, operation_id: operationId, surface: "research_editor" },
-        { actorType: "authenticated" },
-      );
+    if (!attachmentOnlySave && !researchDraftCanSave(form, category)) return;
     setMutationPending(true);
     setError(undefined);
-    const result = item
-      ? await updateResearchItem({ ...input, id: item.id, operationId })
-      : await createResearchItem({ ...input, operationId });
-    if (result.error || !result.data) {
-      setMutationPending(false);
-      setError(result.error ?? "This idea could not be saved.");
-      return;
+    let savedItem = item;
+    if (!attachmentOnlySave) {
+      const input = researchItemInputFromForm({ category, context, form, item, tripId });
+      const operationId = newTelemetryOperationId();
+      if (!item)
+        captureBrowserProductEvent(
+          "research_create_started",
+          { ideas_category: category, operation_id: operationId, surface: "research_editor" },
+          { actorType: "authenticated" },
+        );
+      const result = item
+        ? await updateResearchItem({ ...input, id: item.id, operationId })
+        : await createResearchItem({ ...input, operationId });
+      if (result.error || !result.data) {
+        setMutationPending(false);
+        setError(result.error ?? "This idea could not be saved.");
+        return;
+      }
+      savedItem = result.data;
     }
+    if (!savedItem) return setMutationPending(false);
     try {
-      const saved = await commitAttachments(result.data);
+      const saved = await commitAttachments(savedItem);
       setMutationPending(false);
       onSaved(saved);
       onCancel();
@@ -201,7 +209,7 @@ export function ResearchItemForm({
       }}
       pending={pending}
       pendingLabel={attachmentPending ? "Updating attachments…" : "Saving…"}
-      saveDisabled={!canSave}
+      saveDisabled={!canSave && !attachmentOnlySave}
     >
       <ResearchItemFields
         activeStepId={stepId}

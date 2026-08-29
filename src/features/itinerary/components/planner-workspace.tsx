@@ -103,7 +103,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         fillThroughDay={c.workspace.days[c.selectionEnd.row]?.day_number}
         insertDay={c.insertDay}
         interactionError={c.interactionError}
-        isEmpty={c.itemCount === 0}
         isFillDragging={c.isFillDragging}
         mutating={c.mutating}
         onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}

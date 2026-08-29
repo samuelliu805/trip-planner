@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,8 @@ export function PlannerResearchActions({
   const [error, setError] = useState<string>();
   const [feedback, setFeedback] = useState<string>();
   const count = matchingPlanResearchItems(items, context).length;
+  useAutoDismiss(feedback, () => setFeedback(undefined));
+  useAutoDismiss(error && !open ? error : undefined, () => setError(undefined), 8_000);
 
   async function savePlanSnapshot() {
     if (!sourceItem || pending) return;
