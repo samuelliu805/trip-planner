@@ -25,6 +25,7 @@ import {
   type ProductEventName,
   type PersonProperties,
   type TelemetryEventName,
+  type TelemetryEventProperties,
 } from "./events.ts";
 import { createAnonymousIdentityResetTracker } from "./identity-boundary.ts";
 import { createPseudonymousAnalyticsId } from "./identity.server.ts";
@@ -34,7 +35,11 @@ import {
   postHogLogProviderOptions,
   type PostHogLogProviderOptions,
 } from "./otel-logs.server.ts";
-import { createPostHogServerAdapter, type PostHogServerClient } from "./posthog-server.adapter.ts";
+import {
+  createPostHogServerAdapter,
+  type PostHogServerAdapter,
+  type PostHogServerClient,
+} from "./posthog-server.adapter.ts";
 import {
   isProhibitedTelemetryKey,
   sanitizeProviderEvent,
@@ -57,6 +62,7 @@ import {
   telemetryScreenForRoute,
 } from "./routes.ts";
 import { handleTelemetrySmokeRequest } from "./smoke.ts";
+import { createServerCaptureBoundary } from "./server.ts";
 import { createItemEditorTelemetrySession } from "../../features/itinerary/item-editor-telemetry.ts";
 import {
   createPlannerViewReporter,
@@ -495,6 +501,43 @@ test("advanced product enums, public anonymity, and operation correlation stay b
   );
 });
 
+test("the authoritative share export start retains only a validated release", () => {
+  const release = "500d89293a9be3521abc3a3144d210454cbb2c6a";
+  const started = sanitizeTelemetryProperties(
+    "share_export_started",
+    { ...validProductProperties("share_export_started"), release },
+    enabledPreviewConfig(),
+  );
+  assert.ok(started);
+  assert.equal(started.release, release);
+  for (const terminalEvent of ["share_exported", "share_export_failed"] as const) {
+    const terminal = sanitizeTelemetryProperties(
+      terminalEvent,
+      { ...validProductProperties(terminalEvent), release },
+      enabledPreviewConfig(),
+    );
+    assert.ok(terminal);
+    assert.equal(terminal.operation_id, started.operation_id);
+    assert.equal(terminal.release, started.release);
+  }
+
+  const invalidRelease = sanitizeTelemetryProperties(
+    "share_export_started",
+    { ...validProductProperties("share_export_started"), release: "preview-private-release" },
+    enabledPreviewConfig(),
+  );
+  assert.ok(invalidRelease);
+  assert.equal("release" in invalidRelease, false);
+
+  const unrelatedStart = sanitizeTelemetryProperties(
+    "share_publish_started",
+    { ...validProductProperties("share_publish_started"), release },
+    enabledPreviewConfig(),
+  );
+  assert.ok(unrelatedStart);
+  assert.equal("release" in unrelatedStart, false);
+});
+
 test("advanced intent events and authoritative outcome events keep exact ownership", () => {
   const expectedBrowser = [
     "ideas_viewed",
@@ -792,6 +835,122 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   assert.equal("$exception_fingerprint" in wrongRoute.properties!, false);
 });
 
+test("server product adapter waits for captureImmediate delivery", async () => {
+  const calls: string[] = [];
+  let captured: Parameters<PostHogServerClient["captureImmediate"]>[0] | undefined;
+  let releaseCapture!: () => void;
+  const captureGate = new Promise<void>((resolve) => {
+    releaseCapture = resolve;
+  });
+  const adapter = createPostHogServerAdapter({
+    async captureImmediate(event) {
+      calls.push("captureImmediate:start");
+      captured = event;
+      await captureGate;
+      calls.push("captureImmediate:resolved");
+    },
+    async captureExceptionImmediate() {
+      assert.fail("product events must not use exception capture");
+    },
+    async flush() {
+      assert.fail("immediate product capture must not shut down or flush the shared client");
+    },
+  });
+  let settled = false;
+  const delivery = adapter
+    .capture("share_exported", `tpv1_${"a".repeat(64)}`, {
+      operation_id: productOperationId,
+      route: "/trips/[tripId]",
+    })
+    .then(() => {
+      settled = true;
+    });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(settled, false);
+  assert.deepEqual(calls, ["captureImmediate:start"]);
+  releaseCapture();
+  await delivery;
+  assert.equal(settled, true);
+  assert.equal(captured?.disableGeoip, true);
+  assert.equal(captured?.distinctId, `tpv1_${"a".repeat(64)}`);
+  assert.equal(captured?.event, "share_exported");
+  assert.deepEqual(calls, ["captureImmediate:start", "captureImmediate:resolved"]);
+});
+
+test("serverAnalytics.capture awaits delivery and keeps delivery failures fail-safe", async () => {
+  const eventProperties = {
+    actor_type: "authenticated",
+    environment: "preview",
+    export_mode: "new",
+    feature_area: "sharing",
+    operation_id: productOperationId,
+    release: "500d89293a9be3521abc3a3144d210454cbb2c6a",
+    route: "/trips/[tripId]",
+    screen: "trip_plan",
+    share_artifact: "image",
+    surface: "export_panel",
+    telemetry_region: "global",
+  } satisfies TelemetryEventProperties["share_exported"];
+  let releaseDelivery!: () => void;
+  const deliveryGate = new Promise<void>((resolve) => {
+    releaseDelivery = resolve;
+  });
+  const delivered: string[] = [];
+  let deliveredDistinctId: string | undefined;
+  let deliveredProperties: Record<string, unknown> | undefined;
+  const adapter: PostHogServerAdapter = {
+    async capture(eventName, distinctId, properties) {
+      delivered.push(`${eventName}:started`);
+      deliveredDistinctId = distinctId;
+      deliveredProperties = properties;
+      await deliveryGate;
+      delivered.push(`${eventName}:delivered`);
+    },
+    async captureException() {
+      assert.fail("product events must not use exception capture");
+    },
+    async flush() {
+      assert.fail("normal product capture must not flush the shared client");
+    },
+  };
+  const captureServerEvent = createServerCaptureBoundary({
+    resolveAdapter: async () => adapter,
+    resolveConfig: enabledPreviewConfig,
+  });
+  let settled = false;
+  const capture = captureServerEvent("share_exported", eventProperties, {
+    analyticsId: `tpv1_${"b".repeat(64)}`,
+  }).then(() => {
+    settled = true;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(settled, false);
+  assert.deepEqual(delivered, ["share_exported:started"]);
+  releaseDelivery();
+  await capture;
+  assert.equal(settled, true);
+  assert.deepEqual(delivered, ["share_exported:started", "share_exported:delivered"]);
+  assert.equal(deliveredDistinctId, `tpv1_${"b".repeat(64)}`);
+  assert.equal(deliveredProperties?.operation_id, productOperationId);
+  assert.equal(deliveredProperties?.release, eventProperties.release);
+  assert.equal(deliveredProperties?.route, "/trips/[tripId]");
+
+  const failingCapture = createServerCaptureBoundary({
+    resolveAdapter: async () => ({
+      ...adapter,
+      async capture() {
+        throw new Error("raw delivery failure with person@example.com");
+      },
+    }),
+    resolveConfig: enabledPreviewConfig,
+  });
+  await assert.doesNotReject(
+    failingCapture("share_exported", eventProperties, {
+      analyticsId: `tpv1_${"b".repeat(64)}`,
+    }),
+  );
+});
+
 test("server exception adapter uses only the SDK immediate exception API", async () => {
   const calls: string[] = [];
   let capturedError: unknown;
@@ -801,8 +960,8 @@ test("server exception adapter uses only the SDK immediate exception API", async
     releaseCapture = resolve;
   });
   const client: PostHogServerClient = {
-    capture() {
-      calls.push("capture");
+    async captureImmediate() {
+      calls.push("captureImmediate");
     },
     async captureExceptionImmediate(error, distinctId, properties) {
       calls.push(`captureExceptionImmediate:start:${distinctId}`);
@@ -843,7 +1002,7 @@ test("server exception adapter uses only the SDK immediate exception API", async
 
 test("server exception adapter surfaces capture and flush failures to its safe boundary", async () => {
   const captureFailure = createPostHogServerAdapter({
-    capture() {},
+    async captureImmediate() {},
     async captureExceptionImmediate() {
       throw new Error("raw capture failure with person@example.com");
     },
@@ -856,7 +1015,7 @@ test("server exception adapter surfaces capture and flush failures to its safe b
   );
 
   const flushFailure = createPostHogServerAdapter({
-    capture() {},
+    async captureImmediate() {},
     async captureExceptionImmediate() {},
     async flush() {
       throw new Error("raw flush failure with a private token");

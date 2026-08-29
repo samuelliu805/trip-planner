@@ -10,7 +10,7 @@ export type PostHogServerAdapter = {
     eventName: ServerTelemetryEventName,
     distinctId: string,
     properties: Record<string, unknown>,
-  ) => void;
+  ) => Promise<void>;
   captureException: (
     error: Error,
     distinctId: string,
@@ -19,14 +19,17 @@ export type PostHogServerAdapter = {
   flush: () => Promise<void>;
 };
 
-export type PostHogServerClient = Pick<PostHog, "capture" | "captureExceptionImmediate" | "flush">;
+export type PostHogServerClient = Pick<
+  PostHog,
+  "captureImmediate" | "captureExceptionImmediate" | "flush"
+>;
 
 let singleton: PostHogServerClient | null = null;
 
 export function createPostHogServerAdapter(client: PostHogServerClient): PostHogServerAdapter {
   return {
-    capture(eventName, distinctId, properties) {
-      client.capture({
+    async capture(eventName, distinctId, properties) {
+      await client.captureImmediate({
         disableGeoip: true,
         distinctId,
         event: eventName,

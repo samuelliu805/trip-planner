@@ -51,7 +51,7 @@ export const advancedProductEventPropertyAllowlists = {
   share_revoke_failed: [...advanced, ...share, ...failure],
   share_link_copied: [...advanced, ...share],
   share_link_opened: [...advanced, ...share],
-  share_export_started: [...advanced, ...share, "export_mode"],
+  share_export_started: [...advanced, ...share, "export_mode", ...success],
   share_exported: [...advanced, ...share, "export_mode", ...success],
   share_export_failed: [...advanced, ...share, "export_mode", ...failure],
   public_share_viewed: [...advanced, "public_view"],

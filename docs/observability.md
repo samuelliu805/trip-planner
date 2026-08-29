@@ -17,7 +17,7 @@ The implementation follows the stable [PostHog Next.js integration](https://post
 - `logger.ts` emits allowlisted one-line JSON to stdout and lazily resolves a route-local forwarder. `otel-logs.server.ts` forwards only selected records through direct OTLP.
 - `instrumentation.ts` pre-registers the Node log exporter and implements Next.js `onRequestError`. Route-local lazy initialization is also required because Next.js can bundle instrumentation and Route Handlers as separate module instances.
 
-Telemetry failures are swallowed at each normal application adapter boundary. Authentication, rendering, navigation, cleanup, and application mutations do not depend on telemetry delivery. The Preview-only smoke endpoint is the deliberate exception: it returns a bounded `503` when controlled exception delivery does not complete.
+Telemetry failures are swallowed at each normal application adapter boundary. Authentication, rendering, navigation, cleanup, and application mutations do not depend on telemetry delivery. Authoritative server product events still await `posthog-node`'s `captureImmediate` delivery before their action returns, so a serverless request cannot finish with the event only queued in memory. The reusable warm-instance client is not shut down after each event. The Preview-only smoke endpoint is the deliberate exception: it returns a bounded `503` when controlled exception delivery does not complete.
 
 ## Environment isolation
 
