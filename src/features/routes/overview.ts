@@ -3,7 +3,7 @@ import { translateMessage } from "../i18n/translate.ts";
 import type { PlannerMapLine } from "@/features/maps/planner-map-model";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { PlannerDay } from "@/features/itinerary/types";
-import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
+import { routeGeometryCoordinates } from "../../lib/providers/routes/geometry.ts";
 import { compareManualDayOrder, deriveDayOverviewClusters } from "../itinerary/locality.ts";
 
 import { neighboringCityConflict, type CityOccurrence } from "./city-order.ts";
@@ -143,20 +143,10 @@ export function buildOverviewRouteLines(
     const calculated = calculatedByPosition.get(position);
     try {
       const path = calculated
-        ? calculated.geometry.source === "google"
-          ? decodeEncodedPolyline(calculated.geometry.encodedPolyline).map(
-              ({ latitude, longitude }) => ({ lat: latitude, lng: longitude }),
-            )
-          : [
-              {
-                lat: calculated.geometry.origin.latitude,
-                lng: calculated.geometry.origin.longitude,
-              },
-              {
-                lat: calculated.geometry.destination.latitude,
-                lng: calculated.geometry.destination.longitude,
-              },
-            ]
+        ? routeGeometryCoordinates(calculated.geometry).map(({ latitude, longitude }) => ({
+            lat: latitude,
+            lng: longitude,
+          }))
         : [
             { lat: previous.latitude, lng: previous.longitude },
             { lat: stage.latitude, lng: stage.longitude },

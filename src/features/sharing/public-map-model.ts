@@ -1,7 +1,7 @@
 import type { Locale } from "../i18n/config.ts";
 import { translateMessage } from "../i18n/translate.ts";
 
-import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
+import { routeGeometryCoordinates } from "../../lib/providers/routes/geometry.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model.ts";
 
 import type {
@@ -112,10 +112,7 @@ export function buildPublicRouteLines(
   return legs.flatMap((leg) => {
     if (!leg.geometry) return [];
     try {
-      const points =
-        leg.geometry.source === "google"
-          ? decodeEncodedPolyline(leg.geometry.encodedPolyline)
-          : [leg.geometry.origin, leg.geometry.destination];
+      const points = routeGeometryCoordinates(leg.geometry);
       if (points.length < 2) return [];
       return [
         {

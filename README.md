@@ -273,16 +273,19 @@ The `dev` and `start` scripts enable Node's environment-proxy support. When outb
 
 ## Environment variables
 
-| Variable                               | Scope                                                               |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | Browser/server                                                      |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/server                                                      |
-| `NEXT_PUBLIC_SITE_URL`                 | Authentication redirects and canonical public-share metadata origin |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`      | Browser Maps/Places only                                            |
-| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`       | Browser Advanced Markers                                            |
-| `GOOGLE_ROUTES_API_KEY`                | Server-only Google Routes API                                       |
+| Variable                               | Scope                                                                |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Browser/server                                                       |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser/server                                                       |
+| `NEXT_PUBLIC_SITE_URL`                 | Authentication redirects and canonical public-share metadata origin  |
+| `NEXT_PUBLIC_MAPS_PROVIDER`            | Shared maps/places/routes provider ID (`google`; `amap` unavailable) |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`      | Browser Maps/Places only                                             |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`       | Browser Advanced Markers                                             |
+| `GOOGLE_ROUTES_API_KEY`                | Server-only Google Routes API                                        |
 
 For Phase 3, enable Maps JavaScript API and Places API (New), create a Map ID, and restrict the browser key by HTTP referrer and those APIs.
+
+`NEXT_PUBLIC_MAPS_PROVIDER` is the single client/server provider selection source. Missing configuration defaults to `google` for backward compatibility. `amap` is a valid reserved ID but fails closed until its adapter is implemented; it never falls back to Google.
 
 For Phase 4, enable Routes API in the same Google Cloud project and create a separate server key restricted to Routes API only. Do not reuse the browser key, do not prefix the Routes key with `NEXT_PUBLIC_`, and do not apply browser-referrer restrictions to it. Stable server egress may use matching IP restrictions; typical serverless deployments do not guarantee a stable outbound IP, so retain the Routes-only API restriction and configure conservative quotas, monitoring, and budget alerts.
 

@@ -1,6 +1,6 @@
-import type { RouteLegMode } from "../../../features/routes/types";
+import type { RouteLegMode } from "../../../../features/routes/types.ts";
 
-import type { GoogleRouteTravelMode } from "./types";
+import type { GoogleRouteTravelMode } from "./types.ts";
 
 const googleModes: Record<RouteLegMode, GoogleRouteTravelMode | null> = {
   bike: "BICYCLE",

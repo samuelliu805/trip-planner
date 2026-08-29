@@ -42,6 +42,7 @@ import {
   newTelemetryOperationId,
 } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { placeSnapshotFromJson } from "@/lib/providers/places/types";
 
 export function useCreateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
@@ -66,6 +67,7 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const day = previous?.days.find(({ id }) => id === input.dayId);
+      const optimisticPlace = placeSnapshotFromJson(input.placeSnapshot);
       const optimistic: ItineraryItem = {
         booking_url: input.links?.[0]?.url ?? input.bookingUrl ?? null,
         attachments: [],
@@ -82,8 +84,8 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
         })),
         notes: input.notes || null,
         place_id: input.placeId ?? null,
-        place: input.placeSnapshot
-          ? { ...input.placeSnapshot, id: `optimistic-place-${crypto.randomUUID()}` }
+        place: optimisticPlace
+          ? { ...optimisticPlace, id: `optimistic-place-${crypto.randomUUID()}` }
           : null,
         price_amount: input.priceAmount ?? null,
         price_currency:
@@ -141,6 +143,7 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const existing = plannerWorkspaceItems(previous).find(({ id }) => id === input.id);
+      const optimisticPlace = placeSnapshotFromJson(input.placeSnapshot);
       if (existing) {
         const optimistic = {
           ...existing,
@@ -161,9 +164,9 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
           ...(input.notes !== undefined && { notes: input.notes || null }),
           ...(input.placeId !== undefined && { place_id: input.placeId }),
           ...(input.placeSnapshot !== undefined && {
-            place: input.placeSnapshot
+            place: optimisticPlace
               ? {
-                  ...input.placeSnapshot,
+                  ...optimisticPlace,
                   id: existing.place_id ?? `optimistic-place-${crypto.randomUUID()}`,
                 }
               : null,

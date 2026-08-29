@@ -39,6 +39,7 @@ function toPlaceSnapshot(value?: StoredPlace | null): PlaceSnapshot | null {
       administrativeAreaName: value.administrative_area_name,
     }),
     ...(value.country_code && { countryCode: value.country_code }),
+    coordinateSystem: "wgs84",
     displayName: value.display_name,
     ...(value.formatted_address && { formattedAddress: value.formatted_address }),
     latitude: value.latitude,

@@ -157,12 +157,14 @@ export const validationErrorsZhCN: Record<string, string> = {
   "The original Plan item no longer exists. Choose another matching item.":
     "原方案项目已不存在，请选择其他匹配项目。",
   "The Overview route calculation request is invalid.": "全程路线计算请求无效。",
+  "The place provider ID is required.": "缺少地点服务商 ID。",
   "The Plan changed, but its saved change record could not be refreshed.":
     "方案已更改，但无法刷新已保存的更改记录。",
   "The private upload path is unavailable.": "私有上传路径不可用。",
   "The public link request is invalid.": "公开链接请求无效。",
   "The rendered image parts are invalid.": "已渲染的长图分片无效。",
   "The route calculation request is invalid.": "路线计算请求无效。",
+  "The route geometry is invalid.": "路线几何数据无效。",
   "The route clear request is invalid.": "清除路线的请求无效。",
   "The saved public link could not be read.": "无法读取已保存的公开链接。",
   "The saved route has a missing or deleted stop and needs editing.":

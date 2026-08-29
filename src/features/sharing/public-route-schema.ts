@@ -1,20 +1,16 @@
 import { z } from "zod";
 
+import { routeGeometryFromJson } from "../../lib/providers/routes/geometry.ts";
+
 import { itineraryItemTypes } from "../itinerary/item-schema.ts";
 import { overviewRouteModes, routeLegModes } from "../routes/types.ts";
 
-const coordinatesSchema = z.object({ latitude: z.number(), longitude: z.number() }).strict();
-
-const routeGeometrySchema = z.discriminatedUnion("source", [
-  z.object({ encodedPolyline: z.string(), source: z.literal("google") }).strict(),
-  z
-    .object({
-      destination: coordinatesSchema,
-      origin: coordinatesSchema,
-      source: z.literal("straight"),
-    })
-    .strict(),
-]);
+const routeGeometrySchema = z.unknown().transform((value, context) => {
+  const geometry = routeGeometryFromJson(value);
+  if (geometry) return geometry;
+  context.addIssue({ code: "custom", message: "The route geometry is invalid." });
+  return z.NEVER;
+});
 
 const publicRouteLegSchema = z
   .object({

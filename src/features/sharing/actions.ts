@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import { calculateGoogleRouteLeg } from "@/lib/providers/routes/google-routes.server";
+import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
+import { wgs84Coordinates } from "@/lib/providers/maps/types";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
+import { calculateRouteLeg } from "@/lib/providers/routes/resolver.server";
 import { createClient } from "@/lib/supabase/server";
 import { buildRouteLegSignature } from "@/features/routes/signatures";
 import { mapWithConcurrency } from "@/features/routes/calculator";
@@ -200,11 +202,8 @@ async function calculatePublicStops({
     const tasks = legModes.map((mode, index) => {
       const origin = stops[index];
       const destination = stops[index + 1];
-      const originCoordinates = { latitude: origin.latitude, longitude: origin.longitude };
-      const destinationCoordinates = {
-        latitude: destination.latitude,
-        longitude: destination.longitude,
-      };
+      const originCoordinates = wgs84Coordinates(origin.latitude, origin.longitude);
+      const destinationCoordinates = wgs84Coordinates(destination.latitude, destination.longitude);
       const legSignature = buildRouteLegSignature(
         { dayId: signatureScope, tripId: "public", variantId: "public" },
         index + 1,
@@ -213,7 +212,7 @@ async function calculatePublicStops({
         mode,
       );
       return () =>
-        calculateGoogleRouteLeg({
+        calculateRouteLeg({
           destination: destinationCoordinates,
           legSignature,
           mode,
@@ -238,6 +237,7 @@ async function calculatePublicStops({
     const parsed = publicRouteCalculationSchema.safeParse(safeResult);
     return parsed.success ? { data: parsed.data } : { error: "Route unavailable. Try again." };
   } catch (error) {
+    if (error instanceof MapsProviderConfigurationError) return { error: error.message };
     if (error instanceof RouteProviderError) return { error: error.message };
     return { error: "Route unavailable. Keep the stop sequence and try again." };
   }

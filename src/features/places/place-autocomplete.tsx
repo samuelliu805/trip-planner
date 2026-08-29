@@ -1,14 +1,14 @@
-/// <reference types="google.maps" />
 "use client";
 
-import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { LoaderCircle, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { normalizeGooglePlace } from "@/lib/providers/places/normalize";
-import { placeFields, type PlaceSnapshot } from "@/lib/providers/places/types";
+import type { PlaceSearchSession } from "@/lib/providers/places/contracts";
+import { PlaceProviderError } from "@/lib/providers/places/errors";
+import { usePlacesProvider } from "@/lib/providers/places/resolver.client";
+import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 import { PlaceSelectionSummary } from "./place-selection-summary";
 import { PlaceSuggestionList, type PlaceSuggestion } from "./place-suggestion-list";
@@ -52,11 +52,12 @@ export function PlaceAutocomplete({
   showAvailabilityMessage?: boolean;
   value?: PlaceSnapshot | null;
 }) {
-  const places = useMapsLibrary("places");
+  const { error: providerError, provider } = usePlacesProvider();
   const { t } = useI18n();
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const sessionToken = useRef<google.maps.places.AutocompleteSessionToken>(null);
+  const session = useRef<PlaceSearchSession>(null);
+  const requestAbort = useRef<AbortController>(null);
   const requestGeneration = useRef(0);
   const selectedValue = value ?? null;
   const [query, setQuery] = useState(initialQuery);
@@ -74,40 +75,38 @@ export function PlaceAutocomplete({
   // Serialised so an inline includedPrimaryTypes array cannot restart the search every render.
   const typesKey = includedPrimaryTypes?.length ? includedPrimaryTypes.join(",") : "";
 
+  useEffect(
+    () => () => {
+      requestAbort.current?.abort();
+      session.current?.close();
+    },
+    [provider],
+  );
+
   useEffect(() => {
     const input = query.trim();
-    if (optionsDismissed || !places || !input) return;
+    if (optionsDismissed || !provider || !input) return;
     const generation = requestGeneration.current;
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (generation !== requestGeneration.current) return;
       setSearching(true);
+      const controller = new AbortController();
+      requestAbort.current?.abort();
+      requestAbort.current = controller;
       try {
-        sessionToken.current ??= new places.AutocompleteSessionToken();
-        const { suggestions: results } =
-          await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-            input,
-            sessionToken: sessionToken.current,
-            ...(typesKey ? { includedPrimaryTypes: typesKey.split(",") } : null),
-          });
+        session.current ??= provider.createSession();
+        const results = await session.current.fetchSuggestions({
+          input,
+          signal: controller.signal,
+          ...(typesKey ? { includedPrimaryTypes: typesKey.split(",") } : null),
+        });
         if (cancelled || generation !== requestGeneration.current) return;
         setError(undefined);
         setActiveIndex(-1);
-        setSuggestions(
-          results.flatMap(({ placePrediction }: google.maps.places.AutocompleteSuggestion) =>
-            placePrediction
-              ? [
-                  {
-                    id: placePrediction.placeId,
-                    prediction: placePrediction,
-                    primary: placePrediction.mainText?.text ?? placePrediction.text.text,
-                    secondary: placePrediction.secondaryText?.text,
-                  },
-                ]
-              : [],
-          ),
-        );
-      } catch {
+        setSuggestions(results);
+      } catch (cause) {
+        if (cause instanceof PlaceProviderError && cause.code === "cancelled") return;
         if (!cancelled && generation === requestGeneration.current)
           setError("Places search is unavailable right now.");
       } finally {
@@ -118,24 +117,18 @@ export function PlaceAutocomplete({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [optionsDismissed, places, query, typesKey]);
+  }, [optionsDismissed, provider, query, typesKey]);
 
   async function choose(suggestion: PlaceSuggestion) {
     if (resolving) return;
     setResolving(true);
     try {
-      const place = suggestion.prediction.toPlace();
-      await place.fetchFields({ fields: [...placeFields] });
-      const normalized = normalizeGooglePlace({
-        addressComponents: place.addressComponents,
-        displayName: place.displayName,
-        formattedAddress: place.formattedAddress,
-        id: place.id,
-        location: place.location,
-      });
+      const activeSession = session.current;
+      if (!activeSession) throw new PlaceProviderError("invalid_response");
+      const normalized = await activeSession.resolveSuggestion(suggestion.id);
       // fetchFields ends the billed session, so the next search needs a fresh token.
       requestGeneration.current += 1;
-      sessionToken.current = null;
+      session.current = null;
       setSuggestions([]);
       setSearching(false);
       setQuery("");
@@ -153,7 +146,9 @@ export function PlaceAutocomplete({
   function chooseCustomValue() {
     if (!onCustomValue || !customQuery || resolving) return;
     requestGeneration.current += 1;
-    sessionToken.current = null;
+    requestAbort.current?.abort();
+    session.current?.close();
+    session.current = null;
     setSuggestions([]);
     setActiveIndex(-1);
     setError(undefined);
@@ -183,7 +178,7 @@ export function PlaceAutocomplete({
           autoComplete="off"
           autoFocus={autoFocus}
           className="pl-9 pr-9"
-          disabled={disabled || resolving || (!places && !onCustomValue)}
+          disabled={disabled || resolving || (!provider && !onCustomValue)}
           id={id}
           onChange={(event) => {
             const nextQuery = event.target.value;
@@ -210,10 +205,12 @@ export function PlaceAutocomplete({
               if (suggestion) void choose(suggestion);
             } else if (event.key === "Enter") {
               event.preventDefault();
+              if (hasCustomOption) chooseCustomValue();
             }
             if (event.key === "Escape") {
               event.stopPropagation();
               requestGeneration.current += 1;
+              requestAbort.current?.abort();
               setActiveIndex(-1);
               setOptionsDismissed(true);
               setSearching(false);
@@ -272,13 +269,15 @@ export function PlaceAutocomplete({
           value={selectedValue}
         />
       ) : null}
-      {!places && showAvailabilityMessage ? (
+      {!provider && showAvailabilityMessage ? (
         <p className="mt-1 text-xs text-muted-foreground">
-          {onCustomValue
-            ? t("Google Maps is unavailable. You can still type a {label}.", {
-                label: t(customValueLabel ?? "value"),
-              })
-            : t("Places search loads when Google Maps is configured.")}
+          {providerError
+            ? t(providerError.message)
+            : onCustomValue
+              ? t("Google Maps is unavailable. You can still type a {label}.", {
+                  label: t(customValueLabel ?? "value"),
+                })
+              : t("Places search loads when Google Maps is configured.")}
         </p>
       ) : null}
       {error ? (

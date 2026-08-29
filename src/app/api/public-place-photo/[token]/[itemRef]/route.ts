@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-import {
-  fetchGooglePhotoMedia,
-  verifyGooglePhotoSignature,
-} from "@/features/sharing/google-place-photo.server";
 import { getPublicPlaceMediaSources } from "@/features/sharing/public-media-data";
+import {
+  fetchPublicPhotoMedia,
+  verifyPublicPhotoSignature,
+} from "@/lib/providers/places/public-photo.server";
 
 const requestSchema = z
   .object({
@@ -32,17 +32,11 @@ export async function GET(
   const source = sources.find(({ itemRef }) => itemRef === parsed.data.itemRef);
   if (
     !source ||
-    !verifyGooglePhotoSignature(
-      parsed.data.token,
-      parsed.data.itemRef,
-      source.providerPlaceId,
-      parsed.data.photo,
-      parsed.data.signature,
-    )
+    !verifyPublicPhotoSignature(source, parsed.data.token, parsed.data.photo, parsed.data.signature)
   )
     return new Response(null, { status: 404 });
 
-  const photo = await fetchGooglePhotoMedia(parsed.data.photo, source.providerPlaceId);
+  const photo = await fetchPublicPhotoMedia(source, parsed.data.photo);
   if (!photo) return new Response(null, { status: 404 });
   return new Response(photo.body, {
     headers: {

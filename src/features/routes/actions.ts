@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { getPlannerWorkspace } from "@/features/itinerary/data";
-import { calculateGoogleRouteLeg } from "@/lib/providers/routes/google-routes.server";
+import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
+import { wgs84Coordinates } from "@/lib/providers/maps/types";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
+import { calculateRouteLeg } from "@/lib/providers/routes/resolver.server";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database";
@@ -37,6 +39,7 @@ import {
 } from "./types";
 
 const actionError = (error: unknown) => {
+  if (error instanceof MapsProviderConfigurationError) return error.message;
   if (error instanceof RouteProviderError) return error.message;
   if (error instanceof Error) {
     if (/permission|row-level security|owner/i.test(error.message))
@@ -83,7 +86,7 @@ export async function saveDayRoutePlan(
         const item = itemsById.get(itemId);
         return {
           coordinates: item?.place
-            ? { latitude: item.place.latitude, longitude: item.place.longitude }
+            ? wgs84Coordinates(item.place.latitude, item.place.longitude)
             : null,
           dayId: item?.day_id ?? "",
           itemId,
@@ -162,7 +165,7 @@ export async function calculateDayRoute(
     const calculated = await calculateRouteConfiguration(
       resolved.config,
       plan.calculation,
-      calculateGoogleRouteLeg,
+      calculateRouteLeg,
       3,
     );
     if (calculated.cache !== "full") {
@@ -245,11 +248,11 @@ export async function calculateOverviewRoute(
           variantId: workspace.variant.id,
         };
         const origin = {
-          coordinates: { latitude: from.latitude, longitude: from.longitude },
+          coordinates: wgs84Coordinates(from.latitude, from.longitude),
           itemId: from.entries[0].itemId,
         };
         const destination = {
-          coordinates: { latitude: to.latitude, longitude: to.longitude },
+          coordinates: wgs84Coordinates(to.latitude, to.longitude),
           itemId: to.entries[0].itemId,
         };
         const legSignature = buildRouteLegSignature(
@@ -260,7 +263,7 @@ export async function calculateOverviewRoute(
           mode,
         );
         return () =>
-          calculateGoogleRouteLeg({
+          calculateRouteLeg({
             destination: destination.coordinates,
             legSignature,
             mode,

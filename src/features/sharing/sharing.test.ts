@@ -953,8 +953,9 @@ test("temporary route candidates are shared eligible placed items only", () => {
     [
       {
         geometry: {
-          destination: { latitude: 35.02, longitude: 135.78 },
-          origin: { latitude: 35.01, longitude: 135.77 },
+          coordinateSystem: "wgs84",
+          destination: { coordinateSystem: "wgs84", latitude: 35.02, longitude: 135.78 },
+          origin: { coordinateSystem: "wgs84", latitude: 35.01, longitude: 135.77 },
           source: "straight",
         },
         mode: "walk",
@@ -2312,7 +2313,7 @@ test("sharing and public route security use real QR, safe new tabs, and no-store
 
 test("Google place photos stay server-only, attributed, no-store, and public-token scoped", async () => {
   const photoServer = await readFile(
-    new URL("./google-place-photo.server.ts", import.meta.url),
+    new URL("../../lib/providers/google/sharing/google-place-photo.server.ts", import.meta.url),
     "utf8",
   );
   const photoRoute = await readFile(
@@ -2339,7 +2340,7 @@ test("Google place photos stay server-only, attributed, no-store, and public-tok
   assert.match(photoServer, /cache: "no-store"/);
   assert.match(photoServer, /mapWithConcurrency/);
   assert.doesNotMatch(clientMediaSources, /GOOGLE_PLACES_API_KEY|X-Goog-Api-Key/);
-  assert.match(photoRoute, /verifyGooglePhotoSignature/);
+  assert.match(photoRoute, /verifyPublicPhotoSignature/);
   assert.match(photoRoute, /private, no-store, max-age=0/);
   assert.match(media, /Photo by/);
   assert.match(media, /Google Maps/);

@@ -2,7 +2,7 @@
 
 import { AdvancedMarker, Pin } from "@vis.gl/react-google-maps";
 
-import type { MarkerKind, PlannerMapMarker } from "@/features/maps/planner-map-model";
+import type { MarkerKind, PlannerMapMarker } from "@/lib/providers/maps/contracts";
 
 const markerStyles: Record<MarkerKind, { background: string; glyph: string; label: string }> = {
   activity: { background: "#d97706", glyph: "A", label: "activity" },
@@ -20,7 +20,7 @@ const markerOffsets: Record<MarkerKind, [number, number]> = {
   meal: [7, 7],
 };
 
-export function PlannerMapMarkerOverlay({
+export function GooglePlannerMapMarkerOverlay({
   marker,
   onMarkerClick,
   selectedId,

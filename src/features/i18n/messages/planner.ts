@@ -130,6 +130,7 @@ export const plannerZhCN: Record<string, string> = {
   "Places search loads when Google Maps is configured.": "配置 Google 地图后即可搜索地点。",
   "Search Google Maps": "搜索 Google 地图",
   "The place could not be selected.": "无法选择该地点。",
+  "The configured map provider is unavailable.": "已配置的地图服务暂不可用。",
   "Use “{query}”": "使用“{query}”",
   "Use “{query}” as {label}": "将“{query}”作为{label}",
   entry: "内容",

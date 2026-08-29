@@ -6,6 +6,7 @@ import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/iti
 import type { RouteMode } from "@/lib/telemetry/events";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { wgs84Coordinates } from "@/lib/providers/maps/types";
 
 import { eligibleDayRouteItems } from "./day-route-map";
 import { defaultDayRouteDraft } from "./day-route-default-draft";
@@ -202,7 +203,7 @@ export function useDayRoute(
         const item = itemsById.get(itemId);
         return {
           coordinates: item?.place
-            ? { latitude: item.place.latitude, longitude: item.place.longitude }
+            ? wgs84Coordinates(item.place.latitude, item.place.longitude)
             : null,
           dayId: item?.day_id ?? "",
           itemId,

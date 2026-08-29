@@ -1,5 +1,5 @@
 import type { PlannerWorkspace } from "../itinerary/types.ts";
-import type { Coordinates } from "../../lib/providers/maps/types.ts";
+import { wgs84Coordinates, type Coordinates } from "../../lib/providers/maps/types.ts";
 
 import { validateDayRouteDraft } from "./route-config.ts";
 import type { DayRouteDraft, DayRoutePlan, RouteCalculationConfig } from "./types.ts";
@@ -38,7 +38,7 @@ export function plannerRouteConfigProjection(
     items: workspace.days.flatMap((day) =>
       day.items.map((item) => ({
         coordinates: item.place
-          ? { latitude: item.place.latitude, longitude: item.place.longitude }
+          ? wgs84Coordinates(item.place.latitude, item.place.longitude)
           : null,
         dayId: item.day_id,
         itemId: item.id,

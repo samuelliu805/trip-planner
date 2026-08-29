@@ -1,17 +1,12 @@
-/// <reference types="google.maps" />
 "use client";
 
 import { MapPin, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { T } from "@/features/i18n/i18n-provider";
+import type { PlaceSuggestion } from "@/lib/providers/places/contracts";
 
-export type PlaceSuggestion = {
-  id: string;
-  prediction: google.maps.places.PlacePrediction;
-  primary: string;
-  secondary?: string;
-};
+export type { PlaceSuggestion } from "@/lib/providers/places/contracts";
 
 /** Anchored under the field and scrolled into view, so a modal scroller never clips it. */
 export function PlaceSuggestionList({

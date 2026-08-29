@@ -33,6 +33,7 @@ export const placeSnapshotSchema = z
       .string()
       .regex(/^[A-Z]{2}$/)
       .optional(),
+    coordinateSystem: z.literal("wgs84").optional().default("wgs84"),
     displayName: z.string().trim().min(1).max(300),
     formattedAddress: z.string().trim().max(500).optional(),
     latitude: z.number().finite().min(-90).max(90),
@@ -45,14 +46,21 @@ export const placeSnapshotSchema = z
         "administrative_area_level_2",
         "sublocality_level_1",
         "sublocality",
+        "legacy_city",
       ])
       .optional(),
     localityName: z.string().trim().min(1).max(300).optional(),
-    localitySource: z.literal("google_address_component").optional(),
-    provider: z.literal("google"),
-    providerPlaceId: z.string().trim().min(1).max(300),
+    localitySource: z.enum(["google_address_component", "legacy_city"]).optional(),
+    provider: z.enum(["google", "amap", "custom"]),
+    providerPlaceId: z.string().trim().min(1).max(300).optional(),
   })
   .superRefine((value, context) => {
+    if (value.provider !== "custom" && !value.providerPlaceId)
+      context.addIssue({
+        code: "custom",
+        message: "The place provider ID is required.",
+        path: ["providerPlaceId"],
+      });
     if (Boolean(value.localityName) !== Boolean(value.localityKind))
       context.addIssue({
         code: "custom",

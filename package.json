@@ -9,6 +9,7 @@
     "build": "next build",
     "check:auth-routes": "node scripts/check-auth-routes.mjs",
     "check:i18n": "node scripts/check-i18n.mjs",
+    "check:maps-provider-boundary": "node scripts/check-maps-provider-boundary.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prebuild": "npm run validate:public-templates",

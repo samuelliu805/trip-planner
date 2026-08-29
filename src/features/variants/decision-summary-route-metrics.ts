@@ -3,6 +3,7 @@ import { isRouteLegMode } from "../routes/route-config.ts";
 import { parseCalculatedRouteLegs } from "../routes/results.ts";
 import { dayRouteStatusFromProjection } from "../routes/status.ts";
 import { canonicalRouteLegMode, routeLegModes, type RouteLegMode } from "../routes/types.ts";
+import { wgs84Coordinates } from "../../lib/providers/maps/types.ts";
 
 import { validDecisionSummaryCoordinates } from "./decision-summary-normalization.ts";
 import type {
@@ -42,7 +43,7 @@ function plansForVariant(
     items: items.map((item) => ({
       coordinates:
         item.place_id === item.place?.id && validDecisionSummaryCoordinates(item.place)
-          ? { latitude: item.place.latitude!, longitude: item.place.longitude! }
+          ? wgs84Coordinates(item.place.latitude!, item.place.longitude!)
           : null,
       dayId: item.day_id,
       itemId: item.id,

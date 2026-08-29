@@ -1,5 +1,5 @@
 import { haversineDistanceMeters } from "./geo.ts";
-import type { CalculatedRouteLeg, RouteLegRequest, RouteLegWarning } from "./types";
+import type { CalculatedRouteLeg, RouteLegRequest, RouteLegWarning } from "./types.ts";
 
 const safetyWarnings = (request: RouteLegRequest): RouteLegWarning[] => {
   if (request.mode === "walk") {
@@ -29,25 +29,21 @@ export function routeModeWarnings(request: RouteLegRequest): RouteLegWarning[] {
 export function straightFallbackLeg(
   request: RouteLegRequest,
   reason: "unsupported_mode" | "no_route",
+  warningMessage: string,
   computedAt = new Date().toISOString(),
 ): CalculatedRouteLeg {
-  const reasonWarning: RouteLegWarning =
-    reason === "unsupported_mode"
-      ? {
-          code: "unsupported_mode",
-          message:
-            "This travel mode uses a straight distance because Google routing is unsupported.",
-        }
-      : {
-          code: "no_route",
-          message: "Google could not find a route for this leg, so a straight fallback is shown.",
-        };
+  const reasonWarning: RouteLegWarning = { code: reason, message: warningMessage };
   return {
     computedAt,
     distanceMeters: haversineDistanceMeters(request.origin, request.destination),
     durationSeconds: null,
     fallbackReason: reason,
-    geometry: { destination: request.destination, origin: request.origin, source: "straight" },
+    geometry: {
+      coordinateSystem: "wgs84",
+      destination: request.destination,
+      origin: request.origin,
+      source: "straight",
+    },
     legSignature: request.legSignature,
     mode: request.mode,
     position: request.position,
