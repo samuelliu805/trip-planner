@@ -1,7 +1,8 @@
 "use client";
 
-import { analytics } from "./client.ts";
+import { analyticsBoundaryForRoute } from "./client.ts";
 import { browserTelemetryConfig, type TelemetryConfig } from "./config.ts";
+import { featureAreaForProductEvent } from "./events.ts";
 import type {
   BrowserProductEventName,
   ProductContext,
@@ -47,6 +48,9 @@ export function captureBrowserProductEvent<EventName extends BrowserProductEvent
   const eventProperties = {
     ...properties,
     ...(insertId ? { $insert_id: insertId } : {}),
+    ...(featureAreaForProductEvent(eventName)
+      ? { feature_area: featureAreaForProductEvent(eventName) }
+      : {}),
     actor_type: options.actorType,
     environment: config.environment,
     route,
@@ -57,7 +61,7 @@ export function captureBrowserProductEvent<EventName extends BrowserProductEvent
     if (options.capture) {
       options.capture(eventName, eventProperties);
     } else {
-      analytics.capture(eventName, eventProperties);
+      analyticsBoundaryForRoute(route).capture(eventName, eventProperties);
     }
     return true;
   } catch {

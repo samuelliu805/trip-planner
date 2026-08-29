@@ -22,6 +22,7 @@ import {
 } from "./schema";
 import type { PublicRouteCalculation, ShareActionResult } from "./types";
 import { registeredPublicTemplateKey } from "./templates/registry";
+import { reportSharingMutation } from "./telemetry.server";
 
 type PublicCalculationStop = {
   latitude: number;
@@ -72,17 +73,38 @@ export async function createPublicItineraryLink(
   rawInput: PublicItinerarySettingsInput,
 ): Promise<ShareActionResult> {
   const parsed = publicItinerarySettingsSchema.safeParse(rawInput);
-  if (
-    !parsed.success ||
-    !registeredPublicTemplateKey(parsed.data.templateId, parsed.data.templateVersion)
-  )
-    return { error: "Review the public link settings." };
+  if (!parsed.success)
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "publish",
+      operationId: rawInput.operationId,
+      result: { error: "Review the public link settings." },
+    });
+  if (!registeredPublicTemplateKey(parsed.data.templateId, parsed.data.templateVersion))
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "publish",
+      operationId: parsed.data.operationId,
+      result: { error: "Review the public link settings." },
+    });
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_share_page_v3", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
-  if (error) return { error: managementError(error.message) };
+  if (error)
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "publish",
+      operationId: parsed.data.operationId,
+      result: { error: managementError(error.message) },
+    });
+  await reportSharingMutation({
+    artifact: "page",
+    mutation: "publish",
+    operationId: parsed.data.operationId,
+    result: { data: true },
+  });
   const link = publicItineraryLinkSchema.safeParse(data);
   if (!link.success) return { error: "The new public link could not be read." };
   if (link.data.tripId) revalidatePath(`/trips/${link.data.tripId}`);
@@ -94,17 +116,38 @@ export async function updatePublicItineraryLink(
   rawInput: PublicItinerarySettingsInput,
 ): Promise<ShareActionResult> {
   const settings = publicItinerarySettingsSchema.safeParse(rawInput);
-  if (
-    !settings.success ||
-    !registeredPublicTemplateKey(settings.data.templateId, settings.data.templateVersion)
-  )
-    return { error: "Review the public link settings." };
+  if (!settings.success)
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "settings",
+      operationId: rawInput.operationId,
+      result: { error: "Review the public link settings." },
+    });
+  if (!registeredPublicTemplateKey(settings.data.templateId, settings.data.templateVersion))
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "settings",
+      operationId: settings.data.operationId,
+      result: { error: "Review the public link settings." },
+    });
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("update_share_page_v3", {
     target_share_page_id: linkId,
     ...rpcSettings(settings.data),
   });
-  if (error) return { error: managementError(error.message) };
+  if (error)
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "settings",
+      operationId: settings.data.operationId,
+      result: { error: managementError(error.message) },
+    });
+  await reportSharingMutation({
+    artifact: "page",
+    mutation: "settings",
+    operationId: settings.data.operationId,
+    result: { data: true },
+  });
   const link = publicItineraryLinkSchema.safeParse(data);
   if (!link.success) return { error: "The saved public link could not be read." };
   if (link.data.tripId) revalidatePath(`/trips/${link.data.tripId}`);
@@ -113,17 +156,35 @@ export async function updatePublicItineraryLink(
 
 export async function revokePublicItineraryLink(rawInput: {
   linkId: string;
+  operationId?: string;
   tripId: string;
 }): Promise<ShareActionResult<null>> {
   const input = linkMutationSchema.safeParse(rawInput);
-  if (!input.success) return { error: "The public link request is invalid." };
+  if (!input.success)
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "revoke",
+      operationId: rawInput.operationId,
+      result: { error: "The public link request is invalid." },
+    });
   const supabase = await createClient();
   const { error } = await supabase.rpc("revoke_share_page_v1", {
     target_share_page_id: input.data.linkId,
   });
-  if (error) return { error: managementError(error.message) };
+  if (error)
+    return reportSharingMutation({
+      artifact: "page",
+      mutation: "revoke",
+      operationId: input.data.operationId,
+      result: { error: managementError(error.message) },
+    });
   revalidatePath(`/trips/${input.data.tripId}`);
-  return { data: null };
+  return reportSharingMutation({
+    artifact: "page",
+    mutation: "revoke",
+    operationId: input.data.operationId,
+    result: { data: null },
+  });
 }
 
 async function calculatePublicStops({

@@ -1,20 +1,20 @@
-import { resolveServerTelemetryConfig } from "./config";
-import { isNodeTelemetryRuntime, serverTelemetryContext } from "./context";
+import { resolveServerTelemetryConfig, type TelemetryConfig } from "./config.ts";
+import { isNodeTelemetryRuntime, serverTelemetryContext } from "./context.ts";
 import {
   markExceptionCaptured,
   safeErrorCode,
   sanitizedError,
   syntheticPreviewExceptionFingerprint,
   type SyntheticPreviewExceptionFingerprint,
-} from "./errors";
+} from "./errors.ts";
 import type {
   ServerTelemetryEventName,
   TelemetryErrorCode,
   TelemetryEventProperties,
-} from "./events";
-import { systemAnalyticsId } from "./identity";
-import type { PostHogServerAdapter } from "./posthog-server.adapter";
-import { normalizeTelemetryRoute } from "./routes";
+} from "./events.ts";
+import { systemAnalyticsId } from "./identity.ts";
+import type { PostHogServerAdapter } from "./posthog-server.adapter.ts";
+import { normalizeTelemetryRoute } from "./routes.ts";
 
 let adapterPromise: Promise<PostHogServerAdapter | null> | null = null;
 
@@ -23,24 +23,31 @@ export type ExceptionDeliveryResult = "captured" | "disabled" | "duplicate" | "f
 async function serverAdapter(): Promise<PostHogServerAdapter | null> {
   const config = resolveServerTelemetryConfig();
   if (!config.enabled || !isNodeTelemetryRuntime()) return null;
-  adapterPromise ??= import("./posthog-server.adapter").then(({ getPostHogServerAdapter }) =>
+  adapterPromise ??= import("./posthog-server.adapter.ts").then(({ getPostHogServerAdapter }) =>
     getPostHogServerAdapter(config),
   );
   return adapterPromise;
 }
 
-export const serverAnalytics = {
-  async capture<EventName extends ServerTelemetryEventName>(
+type ServerCaptureDependencies = {
+  resolveAdapter: () => Promise<PostHogServerAdapter | null>;
+  resolveConfig: () => TelemetryConfig;
+};
+
+export function createServerCaptureBoundary(dependencies: Partial<ServerCaptureDependencies> = {}) {
+  const resolveAdapter = dependencies.resolveAdapter ?? serverAdapter;
+  const resolveConfig = dependencies.resolveConfig ?? resolveServerTelemetryConfig;
+  return async function capture<EventName extends ServerTelemetryEventName>(
     eventName: EventName,
     properties: TelemetryEventProperties[EventName],
     options: { analyticsId?: string } = {},
   ): Promise<void> {
     try {
-      const config = resolveServerTelemetryConfig();
-      const adapter = await serverAdapter();
+      const config = resolveConfig();
+      const adapter = await resolveAdapter();
       if (!adapter || !config.enabled) return;
       const authenticated = /^tpv1_[0-9a-f]{64}$/.test(options.analyticsId ?? "");
-      adapter.capture(
+      await adapter.capture(
         eventName,
         authenticated ? options.analyticsId! : systemAnalyticsId(config.environment),
         {
@@ -52,7 +59,11 @@ export const serverAnalytics = {
     } catch {
       // Cleanup and application work must not depend on analytics delivery.
     }
-  },
+  };
+}
+
+export const serverAnalytics = {
+  capture: createServerCaptureBoundary(),
   async captureException(
     error: unknown,
     context: {

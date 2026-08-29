@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import "./templates/templates.test.ts";
 
+import { createPseudonymousAnalyticsId } from "../../lib/telemetry/identity.server.ts";
 import { matrixCategoryColumns } from "../itinerary/components/matrix-columns.ts";
 import {
   actionLabel,
@@ -59,6 +60,10 @@ import {
 } from "./long-image/layout.ts";
 import { longImageScopeSchema } from "./long-image/schema.ts";
 import { scopePublicItinerary } from "./long-image/scope.ts";
+import {
+  captureAuthenticatedShareExportEvent,
+  type ShareExportTelemetryCapture,
+} from "./share-export-telemetry.ts";
 
 async function readAppStyles() {
   const templateStyleDirectories = ["bento", "ethereal", "journal", "neon", "traverse"].map(
@@ -1150,6 +1155,152 @@ test("owner share controls keep a stable key across the server/client toolbar bo
     "utf8",
   );
   assert.match(tripPage, /<PublicShareDialog[\s\S]*key="trip-share-controls"/);
+});
+
+test("authenticated share exports keep one start and one matching terminal identity", async () => {
+  const operationId = "123e4567-e89b-42d3-a456-426614174001";
+  const supabaseUserId = "123e4567-e89b-42d3-a456-426614174002";
+  const hmacSecret = "preview-test-secret-that-is-at-least-32-characters";
+  const captures: {
+    eventName: string;
+    identity: string | null;
+    properties: Record<string, unknown>;
+    route: string;
+  }[] = [];
+  const capture: ShareExportTelemetryCapture = (eventName, properties, context) => {
+    captures.push({
+      eventName,
+      identity: createPseudonymousAnalyticsId(context.supabaseUserId, hmacSecret, "preview"),
+      properties,
+      route: context.route,
+    });
+  };
+
+  await captureAuthenticatedShareExportEvent(
+    { exportMode: "new", operationId, outcome: "started", supabaseUserId },
+    capture,
+  );
+  await captureAuthenticatedShareExportEvent(
+    { exportMode: "new", operationId, outcome: "succeeded", supabaseUserId },
+    capture,
+  );
+  assert.deepEqual(
+    captures.map(({ eventName }) => eventName),
+    ["share_export_started", "share_exported"],
+  );
+  assert.equal(new Set(captures.map(({ identity }) => identity)).size, 1);
+  assert.match(captures[0].identity ?? "", /^tpv1_[0-9a-f]{64}$/);
+  assert.deepEqual(
+    captures.map(({ properties, route }) => ({
+      exportMode: properties.export_mode,
+      operationId: properties.operation_id,
+      route,
+      shareArtifact: properties.share_artifact,
+      surface: properties.surface,
+    })),
+    Array(2).fill({
+      exportMode: "new",
+      operationId,
+      route: "/trips/[tripId]",
+      shareArtifact: "image",
+      surface: "export_panel",
+    }),
+  );
+
+  captures.length = 0;
+  await captureAuthenticatedShareExportEvent(
+    { exportMode: "replace", operationId, outcome: "started", supabaseUserId },
+    capture,
+  );
+  await captureAuthenticatedShareExportEvent(
+    {
+      errorCode: "storage_unavailable",
+      exportMode: "replace",
+      operationId,
+      outcome: "failed",
+      supabaseUserId,
+    },
+    capture,
+  );
+  assert.deepEqual(
+    captures.map(({ eventName }) => eventName),
+    ["share_export_started", "share_export_failed"],
+  );
+  assert.equal(new Set(captures.map(({ identity }) => identity)).size, 1);
+  assert.equal(captures[1].properties.error_code, "storage_unavailable");
+  assert.equal(
+    captures.some(({ eventName }) => eventName === "share_exported"),
+    false,
+  );
+
+  captures.length = 0;
+  assert.equal(
+    await captureAuthenticatedShareExportEvent(
+      { exportMode: "new", operationId: "invalid", outcome: "started", supabaseUserId },
+      capture,
+    ),
+    false,
+  );
+  assert.equal(
+    await captureAuthenticatedShareExportEvent(
+      { exportMode: "new", operationId, outcome: "started" },
+      capture,
+    ),
+    false,
+  );
+  assert.equal(
+    await captureAuthenticatedShareExportEvent(
+      { exportMode: "new", operationId, outcome: "started", supabaseUserId: "anonymous" },
+      capture,
+    ),
+    false,
+  );
+  assert.equal(captures.length, 0);
+  assert.equal(
+    await captureAuthenticatedShareExportEvent(
+      { exportMode: "new", operationId, outcome: "started", supabaseUserId },
+      () => {
+        throw new Error("telemetry delivery failed");
+      },
+    ),
+    false,
+  );
+});
+
+test("long-image export start and terminal reporters have one authoritative owner", async () => {
+  const [actions, controller, serverTelemetry] = await Promise.all([
+    readFile(new URL("./long-image/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("./components/use-long-image-export.ts", import.meta.url), "utf8"),
+    readFile(new URL("./telemetry.server.ts", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(controller, /captureBrowserProductEvent|share_export_started/);
+  assert.doesNotMatch(controller + actions, /reportShareImageExportFailure/);
+  assert.match(
+    controller,
+    /const operationId = newTelemetryOperationId\(\)[\s\S]*prepareShareImageVersion\([\s\S]*operationId[\s\S]*finalizeShareImageVersion\([\s\S]*operationId[\s\S]*failShareImageVersion\([\s\S]*operationId/,
+  );
+  assert.match(
+    controller,
+    /let exportFinalized = false[\s\S]*exportFinalized = true[\s\S]*if \(versionId && !exportFinalized\)/,
+  );
+  assert.equal(actions.match(/await reportShareExportStarted\(/g)?.length, 1);
+  const authenticated = actions.indexOf("if (!userData.user || pageResult.error)");
+  const ownershipValidated = actions.indexOf("if (!page.success)");
+  const start = actions.indexOf("await reportShareExportStarted(");
+  assert.ok(authenticated >= 0 && ownershipValidated > authenticated && start > ownershipValidated);
+  assert.match(
+    actions,
+    /const failPreparation = \(error: string\) =>[\s\S]*reportSharingMutation\([\s\S]*supabaseUserId: userData\.user\.id/,
+  );
+  assert.match(
+    actions,
+    /if \(error \|\| !parsed\.success\) return \{ error: imageError\(error\?\.message\) \};[\s\S]*return reportSharingMutation\(/,
+  );
+  assert.match(
+    actions,
+    /export async function failShareImageVersion[\s\S]*reportSharingMutation\([\s\S]*result: \{ error: failureMessage \}/,
+  );
+  assert.equal(serverTelemetry.match(/outcome: "started"/g)?.length, 1);
 });
 
 test("long-image regeneration is explicit and nested overlays stay above the share dialog", async () => {

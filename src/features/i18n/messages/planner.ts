@@ -5,10 +5,12 @@ export const plannerZhCN: Record<string, string> = {
   "Activity or place": "活动或地点",
   "Add Activities to this Day first.": "请先为当天添加活动。",
   "Add activity": "添加活动",
+  "Add day": "添加一天",
   "Add day after": "在后面添加一天",
   "Add day at end": "在末尾添加一天",
   "Add day before": "在前面添加一天",
   "Add item": "添加项目",
+  "Add your first activity.": "添加第一个活动。",
   "Add link": "添加链接",
   "Add to route": "加入路线",
   "Add an untimed Activity or Meal to choose a manual position.":

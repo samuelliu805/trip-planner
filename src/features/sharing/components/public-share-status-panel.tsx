@@ -16,6 +16,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { copyTextToClipboard } from "./copy-to-clipboard";
 import type { PublicItineraryLink } from "../types";
@@ -34,6 +36,22 @@ export function PublicShareStatusPanel({
 }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
+
+  function copyLink() {
+    captureBrowserProductEvent(
+      "share_link_copied",
+      {
+        operation_id: newTelemetryOperationId(),
+        share_artifact: "page",
+        surface: "share_dialog",
+      },
+      { actorType: "authenticated" },
+    );
+    void copyTextToClipboard(publicUrl).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   if (!activeLink)
     return (
@@ -76,12 +94,7 @@ export function PublicShareStatusPanel({
       <div className="flex min-w-0 items-stretch border bg-background">
         <Button
           className="h-auto min-h-11 min-w-0 flex-1 justify-start overflow-hidden rounded-none px-3 text-left font-mono text-xs font-normal whitespace-normal"
-          onClick={() => {
-            void copyTextToClipboard(publicUrl).then(() => {
-              setCopied(true);
-              window.setTimeout(() => setCopied(false), 2000);
-            });
-          }}
+          onClick={copyLink}
           type="button"
           variant="ghost"
         >
@@ -90,12 +103,7 @@ export function PublicShareStatusPanel({
         <Button
           aria-label={t(copied ? "Link copied" : "Copy shareable page URL")}
           className="min-h-11 w-11 shrink-0 rounded-none border-l p-0"
-          onClick={() => {
-            void copyTextToClipboard(publicUrl).then(() => {
-              setCopied(true);
-              window.setTimeout(() => setCopied(false), 2000);
-            });
-          }}
+          onClick={copyLink}
           type="button"
           variant="ghost"
         >

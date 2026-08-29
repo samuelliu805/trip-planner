@@ -6,12 +6,14 @@ import { z } from "zod";
 import { drainAssetDeletionQueue } from "./cleanup.server";
 import { attachmentError, ownerAttachmentSchema } from "./schema";
 import { createClient } from "../../lib/supabase/server";
+import { reportAttachmentMutation } from "./telemetry.server";
 
 const attachmentMutationSchema = z
   .object({
     itemId: z.uuid(),
     publicRef: z.string().regex(/^[0-9a-f]{64}$/),
     tripId: z.uuid(),
+    operationId: z.uuid().optional(),
   })
   .strict();
 
@@ -44,13 +46,25 @@ export async function detachAttachment(rawInput: z.input<typeof attachmentMutati
     target_item_id: input.data.itemId,
     target_trip_id: input.data.tripId,
   });
-  if (result.error) return { error: attachmentError(result.error.message) };
+  if (result.error)
+    return reportAttachmentMutation({
+      mutation: "delete",
+      operationId: input.data.operationId,
+      result: { error: attachmentError(result.error.message) },
+      target: "itinerary",
+    });
   await drainAssetDeletionQueue(10);
   revalidatePath(`/trips/${input.data.tripId}`);
-  return { data: { publicRef: input.data.publicRef } };
+  return reportAttachmentMutation({
+    mutation: "delete",
+    operationId: input.data.operationId,
+    result: { data: { publicRef: input.data.publicRef } },
+    target: "itinerary",
+  });
 }
 
 export async function detachResearchAttachment(rawInput: {
+  operationId?: string;
   publicRef: string;
   researchItemId: string;
   tripId: string;
@@ -66,8 +80,31 @@ export async function detachResearchAttachment(rawInput: {
     target_research_item_id: input.data.researchItemId,
     target_trip_id: input.data.tripId,
   });
-  if (result.error) return { error: attachmentError(result.error.message) };
+  if (result.error)
+    return reportAttachmentMutation({
+      mutation: "delete",
+      operationId: input.data.operationId,
+      result: { error: attachmentError(result.error.message) },
+      target: "research",
+    });
   await drainAssetDeletionQueue(10);
   revalidatePath(`/trips/${input.data.tripId}/compare`);
-  return { data: { publicRef: input.data.publicRef } };
+  return reportAttachmentMutation({
+    mutation: "delete",
+    operationId: input.data.operationId,
+    result: { data: { publicRef: input.data.publicRef } },
+    target: "research",
+  });
+}
+
+export async function reportAttachmentUploadFailure(input: {
+  operationId: string;
+  target: "itinerary" | "research";
+}) {
+  await reportAttachmentMutation({
+    mutation: "upload",
+    operationId: input.operationId,
+    result: { error: "The attachment could not be changed. Please try again." },
+    target: input.target,
+  });
 }

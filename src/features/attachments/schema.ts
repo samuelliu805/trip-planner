@@ -43,6 +43,7 @@ export const prepareAttachmentInputSchema = z
     mimeType: z.enum(attachmentMimeTypes),
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
     uploadSessionId: z.uuid(),
+    operationId: z.uuid().optional(),
   })
   .strict()
   .superRefine((value, context) => {

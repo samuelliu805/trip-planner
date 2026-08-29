@@ -103,6 +103,10 @@ html[lang="zh-CN"] .public-header-actions {
   pointer-events: auto;
 }
 
+[data-empty-trip-actions] [data-add-item] {
+  pointer-events: auto;
+}
+
 [data-fill-dragging="true"] [data-add-item] {
   opacity: 0 !important;
   pointer-events: none !important;

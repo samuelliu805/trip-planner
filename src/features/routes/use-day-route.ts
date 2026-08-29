@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
+import type { RouteMode } from "@/lib/telemetry/events";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { eligibleDayRouteItems } from "./day-route-map";
 import { defaultDayRouteDraft } from "./day-route-default-draft";
@@ -50,6 +53,11 @@ const savedDraft = (plan: DayRoutePlan): DayRouteEditorDraft => ({
     .sort((a, b) => a.position - b.position)
     .map(({ mode }) => canonicalRouteLegMode(mode)),
 });
+
+const telemetryRouteMode = (modes: RouteLegMode[]): RouteMode => {
+  const values = new Set(modes.map(canonicalRouteLegMode));
+  return values.size === 0 ? "unset" : values.size === 1 ? ([...values][0] as RouteMode) : "mixed";
+};
 
 export function useDayRoute(
   workspace: PlannerWorkspace,
@@ -164,6 +172,17 @@ export function useDayRoute(
 
   function setLegMode(index: number, mode: RouteLegMode) {
     const canonicalMode = canonicalRouteLegMode(mode);
+    if (draft?.legModes[index] === canonicalMode) return;
+    captureBrowserProductEvent(
+      "route_mode_changed",
+      {
+        operation_id: newTelemetryOperationId(),
+        route_mode: canonicalMode,
+        route_view: "day",
+        surface: "route_panel",
+      },
+      { actorType: "authenticated" },
+    );
     updateDraft((current) => ({
       ...current,
       legModes: current.legModes.map((candidate, candidateIndex) =>
@@ -201,6 +220,18 @@ export function useDayRoute(
       return;
     }
     setError(undefined);
+    const operationId = newTelemetryOperationId();
+    const routeMode = telemetryRouteMode(draft.legModes);
+    captureBrowserProductEvent(
+      "route_calculation_started",
+      {
+        operation_id: operationId,
+        route_mode: routeMode,
+        route_view: "day",
+        surface: "route_panel",
+      },
+      { actorType: "authenticated" },
+    );
     try {
       const saved = await saveMutation.mutateAsync({
         dayId: activeDay.id,
@@ -208,8 +239,16 @@ export function useDayRoute(
         legModes: draft.legModes,
         tripId,
         variantId: workspace.variant.id,
+        operationId,
+        telemetryRouteMode: routeMode,
       });
-      await calculateMutation.mutateAsync({ planId: saved.id, tripId, variantId });
+      await calculateMutation.mutateAsync({
+        operationId,
+        planId: saved.id,
+        telemetryRouteMode: routeMode,
+        tripId,
+        variantId,
+      });
       setDraft(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The day route could not be calculated.");

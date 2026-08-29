@@ -1,34 +1,29 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { LoaderCircle, Paperclip, UploadCloud } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { detachAttachment, setAttachmentShare } from "@/features/attachments/actions";
-import {
-  ATTACHMENT_ACCEPT,
-  MAX_ATTACHMENTS_PER_ITEM,
-  MAX_ITEM_ATTACHMENT_BYTES,
-  attachmentAcceptedTypeCopy,
-} from "@/features/attachments/config";
+  detachAttachment,
+  reportAttachmentUploadFailure,
+  setAttachmentShare,
+} from "@/features/attachments/actions";
+import { MAX_ATTACHMENTS_PER_ITEM, MAX_ITEM_ATTACHMENT_BYTES } from "@/features/attachments/config";
 import type { OwnerAttachment } from "@/features/attachments/schema";
+import { captureAttachmentIntent } from "@/features/attachments/telemetry-client";
 import { uploadFileAttachment } from "@/features/attachments/upload-client";
+import {
+  attachmentUploadWasAborted,
+  reportUnacknowledgedAttachmentFailure,
+} from "@/features/attachments/upload-failure";
 import type { ItineraryItem } from "@/features/itinerary/types";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { AttachmentViewer } from "./attachment-viewer";
+import { AttachmentDeleteDialog } from "./attachment-delete-dialog";
 import { viewerAttachment } from "./attachment-presentation";
+import { AttachmentsSectionHeader } from "./attachments-section-header";
 import { AttachmentUploadTask, type UploadTask } from "./attachment-upload-task";
 import { OwnerAttachmentCard } from "./owner-attachment-card";
 import { ShareAttachmentsCallout } from "./share-attachments-callout";
@@ -109,6 +104,7 @@ export function SavedItemAttachmentsSection({
         file: task.file,
         itemId: item.id,
         onProgress: (progress) => updateTask(task.id, { progress }),
+        operationId: task.operationId,
         signal: task.controller.signal,
         tripId,
         uploadSessionId,
@@ -122,13 +118,16 @@ export function SavedItemAttachmentsSection({
       setError(undefined);
       router.refresh();
     } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") {
+      if (attachmentUploadWasAborted(caught)) {
         setTasks((current) => current.filter(({ id }) => id !== task.id));
         return;
       }
       updateTask(task.id, {
         error: caught instanceof Error ? caught.message : "The upload failed.",
       });
+      await reportUnacknowledgedAttachmentFailure(caught, () =>
+        reportAttachmentUploadFailure({ operationId: task.operationId, target: "itinerary" }),
+      );
     }
   }
 
@@ -145,12 +144,16 @@ export function SavedItemAttachmentsSection({
       setError("These files would exceed this item’s 50 MB attachment limit.");
       return;
     }
-    const queued = files.map((file): UploadTask => ({
-      controller: new AbortController(),
-      file,
-      id: crypto.randomUUID(),
-      progress: { percent: 0, stage: "hashing" },
-    }));
+    const queued = files.map((file): UploadTask => {
+      const operationId = captureAttachmentIntent("attachment_upload_started", "itinerary");
+      return {
+        controller: new AbortController(),
+        file,
+        id: crypto.randomUUID(),
+        operationId,
+        progress: { percent: 0, stage: "hashing" },
+      };
+    });
     setTasks((current) => [...current, ...queued]);
     void queued.reduce((previous, task) => previous.then(() => runUpload(task)), Promise.resolve());
   }
@@ -182,6 +185,7 @@ export function SavedItemAttachmentsSection({
     startMutation(async () => {
       const result = await detachAttachment({
         itemId: item.id,
+        operationId: newTelemetryOperationId(),
         publicRef: target.publicRef,
         tripId,
       });
@@ -198,42 +202,17 @@ export function SavedItemAttachmentsSection({
   }
 
   return (
-    <section className="min-w-0 space-y-3 border-t pt-4" aria-labelledby="attachments-heading">
-      <div className="flex min-w-0 items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="flex items-center gap-1.5 text-base font-bold" id="attachments-heading">
-            <Paperclip aria-hidden="true" className="size-4" /> <T message={" Attachments "} />
-            <span className="font-normal text-muted-foreground">
-              {countedAttachments.length}/{MAX_ATTACHMENTS_PER_ITEM}
-            </span>
-          </h3>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            <Localized value={attachmentAcceptedTypeCopy} />
-          </p>
-        </div>
-        <input
-          accept={ATTACHMENT_ACCEPT}
-          className="sr-only"
-          disabled={!remaining || activeTasks.length > 0}
-          multiple
-          onChange={(event) => {
-            queueFiles(Array.from(event.target.files ?? []));
-            event.target.value = "";
-          }}
-          ref={inputRef}
-          type="file"
-        />
-        <Button
-          className="min-h-11 shrink-0"
-          disabled={!remaining || activeTasks.length > 0}
-          onClick={() => inputRef.current?.click()}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <UploadCloud aria-hidden="true" className="size-4" /> <T message={" Add files "} />
-        </Button>
-      </div>
+    <section
+      aria-labelledby="attachments-heading"
+      className="min-w-0 space-y-3 border-t pt-4"
+      data-attachment-editor=""
+    >
+      <AttachmentsSectionHeader
+        count={countedAttachments.length}
+        disabled={!remaining || activeTasks.length > 0}
+        inputRef={inputRef}
+        onFiles={queueFiles}
+      />
 
       {tasks.map((task) => (
         <AttachmentUploadTask
@@ -241,7 +220,13 @@ export function SavedItemAttachmentsSection({
           onCancel={() => task.controller.abort()}
           onDismiss={() => setTasks((current) => current.filter(({ id }) => id !== task.id))}
           onRetry={() => {
-            const retry = { ...task, controller: new AbortController(), error: undefined };
+            const operationId = captureAttachmentIntent("attachment_upload_started", "itinerary");
+            const retry = {
+              ...task,
+              controller: new AbortController(),
+              error: undefined,
+              operationId,
+            };
             updateTask(task.id, retry);
             void runUpload(retry);
           }}
@@ -256,6 +241,7 @@ export function SavedItemAttachmentsSection({
           key={attachment.publicRef}
           onDelete={() => setDeleteTarget(attachment)}
           onOpen={(trigger) => {
+            captureAttachmentIntent("attachment_opened", "itinerary");
             setViewerTrigger(trigger);
             setViewerId(attachment.publicRef);
           }}
@@ -292,36 +278,14 @@ export function SavedItemAttachmentsSection({
         open={Boolean(viewerId)}
         trigger={viewerTrigger}
       />
-      <AlertDialog
-        onOpenChange={(open) => !open && setDeleteTarget(undefined)}
+      <AttachmentDeleteDialog
+        fileName={deleteTarget?.fileName}
+        onConfirm={confirmDelete}
+        onOpenChange={(nextOpen) => !nextOpen && setDeleteTarget(undefined)}
         open={Boolean(deleteTarget)}
-      >
-        <AlertDialogContent data-attachment-overlay="">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <T message={"Delete this attachment?"} />
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <T message={" This removes “"} />
-              {deleteTarget?.fileName}
-              <T
-                message={
-                  "” from this itinerary item and its shared page. A deduplicated copy remains only if another item still uses it. "
-                }
-              />
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={mutationPending}>
-              <T message={"Cancel"} />
-            </AlertDialogCancel>
-            <AlertDialogAction disabled={mutationPending} onClick={confirmDelete}>
-              {mutationPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-              <T message={" Delete attachment "} />
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        pending={mutationPending}
+        target="itinerary"
+      />
     </section>
   );
 }

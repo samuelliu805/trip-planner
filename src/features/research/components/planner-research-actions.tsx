@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,8 @@ import {
 import { Input } from "@/components/ui/input";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import { tripCurrencyCodes } from "@/features/trips/currencies";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { nativeSelectClass, ResearchField } from "./form-controls";
 import { createResearchItem } from "../actions";
@@ -56,19 +59,28 @@ export function PlannerResearchActions({
   const [error, setError] = useState<string>();
   const [feedback, setFeedback] = useState<string>();
   const count = matchingPlanResearchItems(items, context).length;
+  useAutoDismiss(feedback, () => setFeedback(undefined));
+  useAutoDismiss(error && !open ? error : undefined, () => setError(undefined), 8_000);
 
   async function savePlanSnapshot() {
     if (!sourceItem || pending) return;
     setPending(true);
     setError(undefined);
-    const result = await createResearchItem(
-      capturePlanItemAsResearch({
+    const operationId = newTelemetryOperationId();
+    captureBrowserProductEvent(
+      "research_create_started",
+      { ideas_category: context.category, operation_id: operationId, surface: "research_editor" },
+      { actorType: "authenticated" },
+    );
+    const result = await createResearchItem({
+      ...capturePlanItemAsResearch({
         category: context.category,
         days,
         item: sourceItem,
         tripId,
       }),
-    );
+      operationId,
+    });
     setPending(false);
     if (result.error) return setError(result.error);
     setFeedback("Saved all Plan details · Plan unchanged");
@@ -81,6 +93,12 @@ export function PlannerResearchActions({
     const hasPrice = price.trim() !== "";
     setPending(true);
     setError(undefined);
+    const operationId = newTelemetryOperationId();
+    captureBrowserProductEvent(
+      "research_create_started",
+      { ideas_category: context.category, operation_id: operationId, surface: "research_editor" },
+      { actorType: "authenticated" },
+    );
     const result = await createResearchItem({
       category: context.category,
       currency: hasPrice ? selectedCurrency : null,
@@ -90,6 +108,7 @@ export function PlannerResearchActions({
       title: isUrl ? null : value,
       totalPriceAmount: hasPrice ? Number(price) : null,
       tripId,
+      operationId,
     });
     setPending(false);
     if (result.error) return setError(result.error);

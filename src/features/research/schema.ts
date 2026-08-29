@@ -25,6 +25,7 @@ const optionalUrl = z
   .transform((value) => value || null);
 
 const optionalUuid = z.uuid().optional().nullable();
+const telemetryOperationId = z.uuid().optional();
 const optionalTime = z
   .union([z.literal(""), z.iso.time({ precision: -1 })])
   .optional()
@@ -84,6 +85,7 @@ const researchItemFields = {
   title: optionalText(300),
   totalPriceAmount: z.number().min(0).max(9_999_999_999.99).optional().nullable(),
   tripId: z.uuid(),
+  operationId: telemetryOperationId,
 };
 
 function validateResearchItem(
@@ -128,18 +130,27 @@ export const createResearchItemSchema = z
 export const updateResearchItemSchema = z
   .object({ ...researchItemFields, id: z.uuid() })
   .superRefine(validateResearchItem);
-export const deleteResearchItemSchema = z.object({ id: z.uuid(), tripId: z.uuid() });
+export const deleteResearchItemSchema = z.object({
+  category: z.enum(researchCategories),
+  id: z.uuid(),
+  operationId: telemetryOperationId,
+  tripId: z.uuid(),
+});
 export const researchSelectionSchema = z.object({
   researchItemId: z.uuid(),
   tripId: z.uuid(),
   variantId: z.uuid(),
 });
 export const researchApplySchema = researchSelectionSchema.extend({
+  category: z.enum(researchCategories),
+  operationId: telemetryOperationId,
   scheduleChoice: z.enum(["automatic", "keep_extra_days"]).default("automatic"),
   targetItemId: z.uuid().optional().nullable(),
 });
 export const researchApplicationSchema = z.object({
   applicationId: z.uuid(),
+  category: z.enum(researchCategories),
+  operationId: telemetryOperationId,
   tripId: z.uuid(),
 });
 export const researchWorkspaceSchema = z.object({ tripId: z.uuid(), variantId: z.uuid() });

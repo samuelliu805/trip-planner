@@ -87,14 +87,11 @@ export function PlannerItemForm({
   const {
     attachmentSession,
     canCreateAnother,
-    confirmSave,
-    dismissSaveConfirmation,
     itemMutationPending,
     mutationError,
     pending,
     pendingLabel,
     requestSave,
-    saveConfirmation,
   } = saveFlow;
   const orderSlots = useMemo(
     () => itemOrderSlots(orderPreviewItems, item?.id),
@@ -122,7 +119,11 @@ export function PlannerItemForm({
   const [exitOpen, setExitOpen] = useState(false);
   const activeStep = steps.find(({ id }) => id === stepId) ?? steps[0];
   const stepIndex = steps.indexOf(activeStep);
-  const saveAction = plannerItemSaveAction({ activeStepId: activeStep.id, includeOrder });
+  const saveAction = plannerItemSaveAction({
+    activeStepId: activeStep.id,
+    creating: !item,
+    includeOrder,
+  });
   const formError = plannerItemFormError({
     creating: !item,
     place: state.place,
@@ -219,13 +220,8 @@ export function PlannerItemForm({
           attachmentSession={attachmentSession}
           editing={Boolean(item)}
           exitOpen={exitOpen}
-          itemLabel={copy.label}
-          itemTitle={saveConfirmation?.values.title ?? copy.label}
           onExit={requestCancel}
           onExitOpenChange={setExitOpen}
-          onSaveConfirm={confirmSave}
-          onSaveConfirmationOpenChange={(open) => !open && dismissSaveConfirmation()}
-          saveIntent={saveConfirmation?.intent ?? null}
         />
       }
       alternateSaveLabel={
@@ -243,7 +239,7 @@ export function PlannerItemForm({
             step: t(activeStep.title),
             total: steps.length,
           })} ${t(
-            includeOrder
+            !item && includeOrder
               ? "Confirm the Order step before saving."
               : "The item can be saved from any step.",
           )}`}

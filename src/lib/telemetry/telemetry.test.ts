@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAnalyticsBoundary, type BrowserTelemetryAdapter } from "./client.ts";
+import {
+  analyticsBoundaryForRoute,
+  createAnalyticsBoundary,
+  initializeTelemetryInstanceForRoute,
+  type BrowserTelemetryAdapter,
+} from "./client.ts";
+import { browserExceptionContext, installBrowserExceptionCapture } from "./browser-exceptions.ts";
 import { resolveTelemetryConfig, type TelemetryConfig } from "./config.ts";
 import {
   safeAuthErrorCode,
@@ -12,12 +18,14 @@ import {
 } from "./errors.ts";
 import {
   browserProductEventNames,
+  featureAreaForProductEvent,
   serverProductEventNames,
   telemetryEventNames,
   telemetryEventRegistry,
   type ProductEventName,
   type PersonProperties,
   type TelemetryEventName,
+  type TelemetryEventProperties,
 } from "./events.ts";
 import { createAnonymousIdentityResetTracker } from "./identity-boundary.ts";
 import { createPseudonymousAnalyticsId } from "./identity.server.ts";
@@ -27,7 +35,11 @@ import {
   postHogLogProviderOptions,
   type PostHogLogProviderOptions,
 } from "./otel-logs.server.ts";
-import { createPostHogServerAdapter, type PostHogServerClient } from "./posthog-server.adapter.ts";
+import {
+  createPostHogServerAdapter,
+  type PostHogServerAdapter,
+  type PostHogServerClient,
+} from "./posthog-server.adapter.ts";
 import {
   isProhibitedTelemetryKey,
   sanitizeProviderEvent,
@@ -50,6 +62,7 @@ import {
   telemetryScreenForRoute,
 } from "./routes.ts";
 import { handleTelemetrySmokeRequest } from "./smoke.ts";
+import { createServerCaptureBoundary } from "./server.ts";
 import { createItemEditorTelemetrySession } from "../../features/itinerary/item-editor-telemetry.ts";
 import {
   createPlannerViewReporter,
@@ -255,6 +268,48 @@ function validProductProperties(eventName: ProductEventName): Record<string, unk
     screen: "account",
     surface: "planner",
   };
+  const featureArea = featureAreaForProductEvent(eventName);
+  if (featureArea) {
+    properties.feature_area = featureArea;
+    properties.surface =
+      featureArea === "ideas"
+        ? "ideas_options"
+        : featureArea === "research"
+          ? "research_editor"
+          : featureArea === "routes"
+            ? "route_panel"
+            : featureArea === "variants"
+              ? "variant_controls"
+              : featureArea === "sharing"
+                ? "share_dialog"
+                : "attachment_editor";
+  }
+  if (featureArea === "ideas" || featureArea === "research") properties.ideas_category = "stay";
+  if (featureArea === "routes") {
+    properties.route_mode = "walk";
+    properties.route_view = "day";
+  }
+  if (eventName === "variant_created" || eventName === "variant_create_failed")
+    properties.variant_action = "blank";
+  if (eventName.startsWith("variant_comparison_")) {
+    properties.comparison_scope = eventName.endsWith("summary_viewed") ? "summary" : "trip";
+    properties.surface = "variant_comparison";
+  }
+  if (eventName === "variant_comparison_selection_changed") properties.selection_state = "selected";
+  if (eventName.startsWith("share_") || eventName.startsWith("public_share_")) {
+    if (eventName.startsWith("share_")) properties.share_artifact = "page";
+    if (eventName.includes("export")) {
+      properties.export_mode = "new";
+      properties.share_artifact = "image";
+      properties.surface = "export_panel";
+    }
+    if (eventName.startsWith("public_share_")) {
+      properties.actor_type = "anonymous";
+      properties.public_view = "overview";
+      properties.surface = "public_share";
+    }
+  }
+  if (featureArea === "attachments") properties.attachment_target = "itinerary";
   if (eventName.startsWith("auth_")) {
     properties.auth_flow = "login";
     properties.auth_method = "password";
@@ -285,7 +340,7 @@ function validProductProperties(eventName: ProductEventName): Record<string, unk
   return properties;
 }
 
-test("the Phase 2A product registry and per-event property allowlists are exhaustive", () => {
+test("the product registry and per-event property allowlists are exhaustive", () => {
   const catalog = [...browserProductEventNames, ...serverProductEventNames];
   assert.equal(new Set(catalog).size, catalog.length);
   assert.deepEqual(Object.keys(productEventPropertyAllowlists).sort(), [...catalog].sort());
@@ -399,6 +454,155 @@ test("product events reject missing required fields and telemetry-disabled captu
     false,
   );
   assert.equal(captures, 0);
+});
+
+test("advanced product enums, public anonymity, and operation correlation stay bounded", () => {
+  const route = validProductProperties("route_calculation_started");
+  assert.ok(
+    sanitizeTelemetryProperties("route_calculation_started", route, enabledPreviewConfig()),
+  );
+  assert.equal(
+    sanitizeTelemetryProperties(
+      "route_calculation_started",
+      { ...route, route_mode: "private-provider-mode" },
+      enabledPreviewConfig(),
+    ),
+    null,
+  );
+  const publicView = validProductProperties("public_share_viewed");
+  const sanitizedPublicView = sanitizeTelemetryProperties(
+    "public_share_viewed",
+    {
+      ...publicView,
+      route: `/share/${productOperationId}?token=private-share-token`,
+      share_token: "private-share-token",
+    },
+    enabledPreviewConfig(),
+  );
+  assert.ok(sanitizedPublicView);
+  assert.equal(sanitizedPublicView.actor_type, "anonymous");
+  assert.equal(sanitizedPublicView.route, "/share/[token]");
+  assert.equal(JSON.stringify(sanitizedPublicView).includes("private-share-token"), false);
+  assert.equal(
+    sanitizeTelemetryProperties(
+      "public_share_viewed",
+      { ...publicView, actor_type: "authenticated" },
+      enabledPreviewConfig(),
+    ),
+    null,
+  );
+  assert.equal(
+    telemetryInsertId("route_calculated", productOperationId),
+    telemetryInsertId("route_calculated", productOperationId),
+  );
+  assert.notEqual(
+    telemetryInsertId("route_calculated", productOperationId),
+    telemetryInsertId("route_calculation_failed", productOperationId),
+  );
+});
+
+test("the authoritative share export start retains only a validated release", () => {
+  const release = "500d89293a9be3521abc3a3144d210454cbb2c6a";
+  const started = sanitizeTelemetryProperties(
+    "share_export_started",
+    { ...validProductProperties("share_export_started"), release },
+    enabledPreviewConfig(),
+  );
+  assert.ok(started);
+  assert.equal(started.release, release);
+  for (const terminalEvent of ["share_exported", "share_export_failed"] as const) {
+    const terminal = sanitizeTelemetryProperties(
+      terminalEvent,
+      { ...validProductProperties(terminalEvent), release },
+      enabledPreviewConfig(),
+    );
+    assert.ok(terminal);
+    assert.equal(terminal.operation_id, started.operation_id);
+    assert.equal(terminal.release, started.release);
+  }
+
+  const invalidRelease = sanitizeTelemetryProperties(
+    "share_export_started",
+    { ...validProductProperties("share_export_started"), release: "preview-private-release" },
+    enabledPreviewConfig(),
+  );
+  assert.ok(invalidRelease);
+  assert.equal("release" in invalidRelease, false);
+
+  const unrelatedStart = sanitizeTelemetryProperties(
+    "share_publish_started",
+    { ...validProductProperties("share_publish_started"), release },
+    enabledPreviewConfig(),
+  );
+  assert.ok(unrelatedStart);
+  assert.equal("release" in unrelatedStart, false);
+});
+
+test("advanced intent events and authoritative outcome events keep exact ownership", () => {
+  const expectedBrowser = [
+    "ideas_viewed",
+    "ideas_category_changed",
+    "research_create_started",
+    "research_apply_started",
+    "research_revert_started",
+    "route_calculation_started",
+    "route_mode_changed",
+    "route_view_changed",
+    "variant_switched",
+    "variant_comparison_viewed",
+    "variant_comparison_selection_changed",
+    "variant_comparison_summary_viewed",
+    "share_publish_started",
+    "share_link_copied",
+    "share_link_opened",
+    "public_share_viewed",
+    "public_share_view_changed",
+    "attachment_upload_started",
+    "attachment_opened",
+  ];
+  const expectedServer = [
+    "research_created",
+    "research_create_failed",
+    "research_updated",
+    "research_update_failed",
+    "research_deleted",
+    "research_delete_failed",
+    "research_applied",
+    "research_apply_failed",
+    "research_reverted",
+    "research_revert_failed",
+    "route_calculated",
+    "route_calculation_failed",
+    "variant_created",
+    "variant_create_failed",
+    "variant_updated",
+    "variant_update_failed",
+    "variant_deleted",
+    "variant_delete_failed",
+    "variant_primary_set",
+    "variant_primary_set_failed",
+    "share_published",
+    "share_publish_failed",
+    "share_settings_updated",
+    "share_settings_update_failed",
+    "share_revoked",
+    "share_revoke_failed",
+    "share_export_started",
+    "share_exported",
+    "share_export_failed",
+    "attachment_uploaded",
+    "attachment_upload_failed",
+    "attachment_deleted",
+    "attachment_delete_failed",
+  ];
+  const foundationBrowserCount = 6;
+  const foundationServerCount = 16;
+  assert.deepEqual(browserProductEventNames.slice(foundationBrowserCount), expectedBrowser);
+  assert.deepEqual(serverProductEventNames.slice(foundationServerCount), expectedServer);
+  for (const eventName of expectedBrowser)
+    assert.equal(serverProductEventNames.includes(eventName as never), false);
+  for (const eventName of expectedServer)
+    assert.equal(browserProductEventNames.includes(eventName as never), false);
 });
 
 test("authentication failures cannot identify or create a person profile", () => {
@@ -631,6 +835,122 @@ test("server exception sanitization preserves SDK issue and Source Map metadata 
   assert.equal("$exception_fingerprint" in wrongRoute.properties!, false);
 });
 
+test("server product adapter waits for captureImmediate delivery", async () => {
+  const calls: string[] = [];
+  let captured: Parameters<PostHogServerClient["captureImmediate"]>[0] | undefined;
+  let releaseCapture!: () => void;
+  const captureGate = new Promise<void>((resolve) => {
+    releaseCapture = resolve;
+  });
+  const adapter = createPostHogServerAdapter({
+    async captureImmediate(event) {
+      calls.push("captureImmediate:start");
+      captured = event;
+      await captureGate;
+      calls.push("captureImmediate:resolved");
+    },
+    async captureExceptionImmediate() {
+      assert.fail("product events must not use exception capture");
+    },
+    async flush() {
+      assert.fail("immediate product capture must not shut down or flush the shared client");
+    },
+  });
+  let settled = false;
+  const delivery = adapter
+    .capture("share_exported", `tpv1_${"a".repeat(64)}`, {
+      operation_id: productOperationId,
+      route: "/trips/[tripId]",
+    })
+    .then(() => {
+      settled = true;
+    });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(settled, false);
+  assert.deepEqual(calls, ["captureImmediate:start"]);
+  releaseCapture();
+  await delivery;
+  assert.equal(settled, true);
+  assert.equal(captured?.disableGeoip, true);
+  assert.equal(captured?.distinctId, `tpv1_${"a".repeat(64)}`);
+  assert.equal(captured?.event, "share_exported");
+  assert.deepEqual(calls, ["captureImmediate:start", "captureImmediate:resolved"]);
+});
+
+test("serverAnalytics.capture awaits delivery and keeps delivery failures fail-safe", async () => {
+  const eventProperties = {
+    actor_type: "authenticated",
+    environment: "preview",
+    export_mode: "new",
+    feature_area: "sharing",
+    operation_id: productOperationId,
+    release: "500d89293a9be3521abc3a3144d210454cbb2c6a",
+    route: "/trips/[tripId]",
+    screen: "trip_plan",
+    share_artifact: "image",
+    surface: "export_panel",
+    telemetry_region: "global",
+  } satisfies TelemetryEventProperties["share_exported"];
+  let releaseDelivery!: () => void;
+  const deliveryGate = new Promise<void>((resolve) => {
+    releaseDelivery = resolve;
+  });
+  const delivered: string[] = [];
+  let deliveredDistinctId: string | undefined;
+  let deliveredProperties: Record<string, unknown> | undefined;
+  const adapter: PostHogServerAdapter = {
+    async capture(eventName, distinctId, properties) {
+      delivered.push(`${eventName}:started`);
+      deliveredDistinctId = distinctId;
+      deliveredProperties = properties;
+      await deliveryGate;
+      delivered.push(`${eventName}:delivered`);
+    },
+    async captureException() {
+      assert.fail("product events must not use exception capture");
+    },
+    async flush() {
+      assert.fail("normal product capture must not flush the shared client");
+    },
+  };
+  const captureServerEvent = createServerCaptureBoundary({
+    resolveAdapter: async () => adapter,
+    resolveConfig: enabledPreviewConfig,
+  });
+  let settled = false;
+  const capture = captureServerEvent("share_exported", eventProperties, {
+    analyticsId: `tpv1_${"b".repeat(64)}`,
+  }).then(() => {
+    settled = true;
+  });
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(settled, false);
+  assert.deepEqual(delivered, ["share_exported:started"]);
+  releaseDelivery();
+  await capture;
+  assert.equal(settled, true);
+  assert.deepEqual(delivered, ["share_exported:started", "share_exported:delivered"]);
+  assert.equal(deliveredDistinctId, `tpv1_${"b".repeat(64)}`);
+  assert.equal(deliveredProperties?.operation_id, productOperationId);
+  assert.equal(deliveredProperties?.release, eventProperties.release);
+  assert.equal(deliveredProperties?.route, "/trips/[tripId]");
+
+  const failingCapture = createServerCaptureBoundary({
+    resolveAdapter: async () => ({
+      ...adapter,
+      async capture() {
+        throw new Error("raw delivery failure with person@example.com");
+      },
+    }),
+    resolveConfig: enabledPreviewConfig,
+  });
+  await assert.doesNotReject(
+    failingCapture("share_exported", eventProperties, {
+      analyticsId: `tpv1_${"b".repeat(64)}`,
+    }),
+  );
+});
+
 test("server exception adapter uses only the SDK immediate exception API", async () => {
   const calls: string[] = [];
   let capturedError: unknown;
@@ -640,8 +960,8 @@ test("server exception adapter uses only the SDK immediate exception API", async
     releaseCapture = resolve;
   });
   const client: PostHogServerClient = {
-    capture() {
-      calls.push("capture");
+    async captureImmediate() {
+      calls.push("captureImmediate");
     },
     async captureExceptionImmediate(error, distinctId, properties) {
       calls.push(`captureExceptionImmediate:start:${distinctId}`);
@@ -682,7 +1002,7 @@ test("server exception adapter uses only the SDK immediate exception API", async
 
 test("server exception adapter surfaces capture and flush failures to its safe boundary", async () => {
   const captureFailure = createPostHogServerAdapter({
-    capture() {},
+    async captureImmediate() {},
     async captureExceptionImmediate() {
       throw new Error("raw capture failure with person@example.com");
     },
@@ -695,7 +1015,7 @@ test("server exception adapter surfaces capture and flush failures to its safe b
   );
 
   const flushFailure = createPostHogServerAdapter({
-    capture() {},
+    async captureImmediate() {},
     async captureExceptionImmediate() {},
     async flush() {
       throw new Error("raw flush failure with a private token");
@@ -898,6 +1218,252 @@ test("identity is deduplicated, reset on user switches, and reset on logout boun
   boundary.identify(second, personProperties);
   boundary.reset();
   assert.deepEqual(calls, [`identify:${first}`, "reset", `identify:${second}`, "reset"]);
+});
+
+test("Public Share owns one anonymous exception handler without contaminating owner identity", () => {
+  const ownerId = `tpv1_${"c".repeat(64)}`;
+  const shareToken = "share_private-token.abcdef123456";
+  let persistedOwnerId: string | undefined;
+  let publicMemoryId: string | undefined;
+  let currentLocation = {
+    href: `https://preview.example.test/share/${shareToken}?email=person@example.com`,
+    pathname: `/share/${shareToken}`,
+  };
+  const captures: { actor: string | undefined; event: string; identity: string }[] = [];
+  const exceptions: {
+    error: unknown;
+    identity: string;
+    properties: Record<string, unknown>;
+    target: "owner" | "public";
+  }[] = [];
+  const initializationCalls: string[] = [];
+  initializeTelemetryInstanceForRoute(normalizeTelemetryRoute(currentLocation.pathname), {
+    owner: () => initializationCalls.push("owner"),
+    publicShare: () => initializationCalls.push("public"),
+  });
+  assert.deepEqual(initializationCalls, ["public"]);
+  const owner = createAnalyticsBoundary(true, {
+    capture(event, properties) {
+      captures.push({
+        actor: properties.actor_type as string | undefined,
+        event,
+        identity: persistedOwnerId ?? "anonymous",
+      });
+    },
+    captureException(error, properties) {
+      exceptions.push({
+        error,
+        identity: persistedOwnerId ?? "anonymous",
+        properties,
+        target: "owner",
+      });
+    },
+    currentIdentifiedId: () => persistedOwnerId,
+    identify(id) {
+      persistedOwnerId = id;
+    },
+    reset() {
+      persistedOwnerId = undefined;
+    },
+  });
+  const publicShare = createAnalyticsBoundary(true, {
+    capture(event, properties) {
+      captures.push({
+        actor: properties.actor_type as string | undefined,
+        event,
+        identity: publicMemoryId ?? "anonymous",
+      });
+    },
+    captureException(error, properties) {
+      exceptions.push({
+        error,
+        identity: publicMemoryId ?? "anonymous",
+        properties,
+        target: "public",
+      });
+    },
+    currentIdentifiedId: () => publicMemoryId,
+    identify(id) {
+      publicMemoryId = id;
+    },
+    reset() {
+      publicMemoryId = undefined;
+    },
+  });
+
+  owner.identify(ownerId, personProperties);
+  const listeners = new Map<string, Set<(event: never) => void>>();
+  const target = {
+    addEventListener(type: string, listener: (event: never) => void) {
+      const registered = listeners.get(type) ?? new Set();
+      registered.add(listener);
+      listeners.set(type, registered);
+    },
+    removeEventListener(type: string, listener: (event: never) => void) {
+      listeners.get(type)?.delete(listener);
+    },
+  } as unknown as Window;
+  const dispose = installBrowserExceptionCapture(target, (error) => {
+    const context = browserExceptionContext(currentLocation);
+    analyticsBoundaryForRoute(context.route, owner, publicShare).captureException(error, context);
+  });
+  const emit = (type: "error" | "unhandledrejection", event: unknown) =>
+    listeners.get(type)?.forEach((listener) => listener(event as never));
+
+  assert.equal(listeners.get("error")?.size, 1);
+  assert.equal(listeners.get("unhandledrejection")?.size, 1);
+  emit("error", { error: new TypeError("private share content") });
+  emit("unhandledrejection", { reason: new Error("private rejection") });
+  assert.equal(exceptions.length, 2);
+  assert.equal(
+    exceptions.filter(({ error }) => error instanceof TypeError).length,
+    1,
+    "the initial Public Share exception has exactly one application owner",
+  );
+  assert.equal(
+    exceptions.filter(
+      ({ error }) => error instanceof Error && error.message === "private rejection",
+    ).length,
+    1,
+    "the Public Share rejection has exactly one application owner",
+  );
+  assert.deepEqual(
+    exceptions.map(({ identity, target: captureTarget }) => ({ identity, target: captureTarget })),
+    [
+      { identity: "anonymous", target: "public" },
+      { identity: "anonymous", target: "public" },
+    ],
+  );
+  assert.equal(exceptions[0].properties.route, "/share/[token]");
+  assert.equal(JSON.stringify(exceptions).includes(shareToken), false);
+  assert.equal(JSON.stringify(exceptions).includes("person@example.com"), false);
+
+  currentLocation = {
+    href: "https://preview.example.test/trips/123e4567-e89b-42d3-a456-426614174000?private=yes",
+    pathname: "/trips/123e4567-e89b-42d3-a456-426614174000",
+  };
+  initializeTelemetryInstanceForRoute(normalizeTelemetryRoute(currentLocation.pathname), {
+    owner: () => initializationCalls.push("owner"),
+    publicShare: () => initializationCalls.push("public"),
+  });
+  assert.deepEqual(initializationCalls, ["public", "owner"]);
+  emit("error", { error: new Error("owner exception") });
+  assert.equal(exceptions.length, 3);
+  assert.deepEqual(
+    { identity: exceptions[2].identity, target: exceptions[2].target },
+    { identity: ownerId, target: "owner" },
+  );
+  assert.equal(persistedOwnerId, ownerId);
+  assert.equal(listeners.get("error")?.size, 1);
+  assert.equal(listeners.get("unhandledrejection")?.size, 1);
+
+  analyticsBoundaryForRoute("/share/[token]", owner, publicShare).capture("public_share_viewed", {
+    actor_type: "anonymous",
+    environment: "preview",
+    feature_area: "sharing",
+    operation_id: productOperationId,
+    public_view: "overview",
+    route: "/share/[token]",
+    screen: "public_share",
+    surface: "public_share",
+    telemetry_region: "global",
+  });
+  analyticsBoundaryForRoute("/trips/[tripId]", owner, publicShare).capture(
+    "share_publish_started",
+    {
+      actor_type: "authenticated",
+      environment: "preview",
+      feature_area: "sharing",
+      operation_id: productOperationId,
+      route: "/trips/[tripId]",
+      screen: "trip_plan",
+      share_artifact: "page",
+      surface: "share_dialog",
+      telemetry_region: "global",
+    },
+  );
+
+  assert.deepEqual(captures, [
+    { actor: "anonymous", event: "public_share_viewed", identity: "anonymous" },
+    { actor: "authenticated", event: "share_publish_started", identity: ownerId },
+  ]);
+  assert.equal(persistedOwnerId, ownerId);
+  assert.equal(publicMemoryId, undefined);
+  const sanitized = sanitizeProviderEvent(
+    {
+      event: "$exception",
+      properties: {
+        ...browserExceptionContext({
+          href: `https://preview.example.test/share/${shareToken}?query=private`,
+          pathname: `/share/${shareToken}`,
+        }),
+        $exception_list: [
+          {
+            mechanism: { handled: false, type: "onunhandledrejection" },
+            stacktrace: {
+              frames: [
+                {
+                  filename: `https://preview.example.test/_next/app.js?token=${shareToken}`,
+                  function: "renderPublicShare",
+                  platform: "web:javascript",
+                },
+              ],
+            },
+            type: "TypeError",
+            value: `Private content for ${shareToken}`,
+          },
+        ],
+        headers: { authorization: "private" },
+        request_body: "private",
+        user: { email: "person@example.com" },
+      },
+    },
+    enabledPreviewConfig(),
+  );
+  assert.ok(sanitized);
+  assert.equal(sanitized.properties?.route, "/share/[token]");
+  const serialized = JSON.stringify(sanitized);
+  for (const privateValue of [
+    shareToken,
+    "?query=",
+    "authorization",
+    "request_body",
+    "person@example.com",
+  ])
+    assert.equal(serialized.includes(privateValue), false, privateValue);
+
+  dispose();
+  assert.equal(listeners.get("error")?.size, 0);
+  assert.equal(listeners.get("unhandledrejection")?.size, 0);
+});
+
+test("browser exception initialization and delivery failures remain fail-safe", () => {
+  let removals = 0;
+  const partiallyFailingTarget = {
+    addEventListener(type: string) {
+      if (type === "unhandledrejection") throw new Error("listener installation failed");
+    },
+    removeEventListener(type: string) {
+      if (type === "error") removals += 1;
+    },
+  } as unknown as Window;
+  assert.doesNotThrow(() => installBrowserExceptionCapture(partiallyFailingTarget, () => {}));
+  assert.equal(removals, 1);
+
+  const listeners = new Map<string, (event: never) => void>();
+  const target = {
+    addEventListener(type: string, listener: (event: never) => void) {
+      listeners.set(type, listener);
+    },
+    removeEventListener() {},
+  } as unknown as Window;
+  installBrowserExceptionCapture(target, () => {
+    throw new Error("provider delivery failed");
+  });
+  assert.doesNotThrow(() => listeners.get("error")?.({ error: new Error("application") } as never));
+  assert.doesNotThrow(() =>
+    listeners.get("unhandledrejection")?.({ reason: new Error("rejection") } as never),
+  );
 });
 
 test("disabled and failing browser telemetry remain no-ops", () => {

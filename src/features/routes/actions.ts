@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { calculateGoogleRouteLeg } from "@/lib/providers/routes/google-routes.server";
@@ -20,9 +19,14 @@ import { neighboringCityError } from "./city-order";
 import { resolveRouteCalculationConfig } from "./plan-config";
 import { validateDayRouteDraft } from "./route-config";
 import { buildRouteLegSignature } from "./signatures";
+import { reportRouteCalculation, reportRouteCalculationFailure } from "./telemetry.server";
 import {
-  overviewRouteModes,
-  routeLegModes,
+  calculateOverviewRouteSchema,
+  calculateRouteSchema,
+  clearRouteSchema,
+  saveRouteSchema,
+} from "./action-schemas";
+import {
   type CalculateDayRouteInput,
   type CalculateOverviewRouteInput,
   type ClearDayRouteInput,
@@ -31,42 +35,6 @@ import {
   type RouteActionResult,
   type SaveDayRoutePlanInput,
 } from "./types";
-
-const identitySchema = z.string().uuid();
-const saveSchema = z.object({
-  dayId: identitySchema,
-  itemIds: z.array(identitySchema).min(2).max(20),
-  legModes: z.array(z.enum(routeLegModes)),
-  tripId: identitySchema,
-  variantId: identitySchema,
-});
-const calculateSchema = z.object({
-  planId: identitySchema,
-  tripId: identitySchema,
-  variantId: identitySchema,
-});
-const calculateOverviewSchema = z.object({
-  legs: z
-    .array(
-      z.object({
-        mode: z.enum(overviewRouteModes),
-        position: z.number().int().min(1).max(50),
-      }),
-    )
-    .min(1)
-    .max(50)
-    .superRefine((legs, context) => {
-      if (new Set(legs.map(({ position }) => position)).size !== legs.length)
-        context.addIssue({ code: "custom", message: "Overview leg positions must be unique." });
-    }),
-  tripId: identitySchema,
-  variantId: identitySchema,
-});
-const clearSchema = z.object({
-  dayId: identitySchema,
-  tripId: identitySchema,
-  variantId: identitySchema,
-});
 
 const actionError = (error: unknown) => {
   if (error instanceof RouteProviderError) return error.message;
@@ -87,11 +55,16 @@ const loadWorkspace = async (tripId: string, variantId: string) => {
 export async function saveDayRoutePlan(
   input: SaveDayRoutePlanInput,
 ): Promise<RouteActionResult<DayRoutePlan>> {
-  const parsed = saveSchema.safeParse(input);
+  const parsed = saveRouteSchema.safeParse(input);
   if (!parsed.success)
     return { error: parsed.error.issues[0]?.message ?? "Check the route stops." };
   if (parsed.data.legModes.length !== parsed.data.itemIds.length - 1)
-    return { error: "Leg mode count must equal stop count minus one." };
+    return reportRouteCalculation({
+      operationId: parsed.data.operationId,
+      result: { error: "Leg mode count must equal stop count minus one." },
+      routeMode: parsed.data.telemetryRouteMode,
+      routeView: "day",
+    });
 
   try {
     const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
@@ -123,7 +96,15 @@ export async function saveDayRoutePlan(
       variantId: parsed.data.variantId,
     };
     const validationError = validateDayRouteDraft(draft);
-    if (validationError) return { error: validationError };
+    if (validationError) {
+      await reportRouteCalculationFailure({
+        error: validationError,
+        operationId: parsed.data.operationId,
+        routeMode: parsed.data.telemetryRouteMode,
+        routeView: "day",
+      });
+      return { error: validationError };
+    }
 
     const supabase = await createClient();
     const { data: planId, error } = await supabase.rpc("save_day_route_plan", {
@@ -140,14 +121,21 @@ export async function saveDayRoutePlan(
     revalidatePath(`/trips/${parsed.data.tripId}`);
     return { data: plan };
   } catch (error) {
-    return { error: actionError(error) };
+    const message = actionError(error);
+    await reportRouteCalculationFailure({
+      error: message,
+      operationId: parsed.data.operationId,
+      routeMode: parsed.data.telemetryRouteMode,
+      routeView: "day",
+    });
+    return { error: message };
   }
 }
 
 export async function calculateDayRoute(
   input: CalculateDayRouteInput,
 ): Promise<RouteActionResult<DayRoutePlan>> {
-  const parsed = calculateSchema.safeParse(input);
+  const parsed = calculateRouteSchema.safeParse(input);
   if (!parsed.success) return { error: "The route calculation request is invalid." };
 
   try {
@@ -163,7 +151,13 @@ export async function calculateDayRoute(
     );
     if (!plan) throw new Error("The saved day route was not found.");
     const resolved = resolveRouteCalculationConfig(workspace, plan);
-    if (!resolved.config) return { error: resolved.error ?? "The saved route needs editing." };
+    if (!resolved.config)
+      return reportRouteCalculation({
+        operationId: parsed.data.operationId,
+        result: { error: resolved.error ?? "The saved route needs editing." },
+        routeMode: parsed.data.telemetryRouteMode,
+        routeView: "day",
+      });
 
     const calculated = await calculateRouteConfiguration(
       resolved.config,
@@ -189,16 +183,26 @@ export async function calculateDayRoute(
     const refreshedPlan = refreshed.routePlans.find(({ id }) => id === plan.id);
     if (!refreshedPlan) throw new Error("The calculated route could not be reloaded.");
     revalidatePath(`/trips/${parsed.data.tripId}`);
-    return { cache: calculated.cache, data: refreshedPlan };
+    return reportRouteCalculation({
+      operationId: parsed.data.operationId,
+      result: { cache: calculated.cache, data: refreshedPlan },
+      routeMode: parsed.data.telemetryRouteMode,
+      routeView: "day",
+    });
   } catch (error) {
-    return { error: actionError(error) };
+    return reportRouteCalculation({
+      operationId: parsed.data.operationId,
+      result: { error: actionError(error) },
+      routeMode: parsed.data.telemetryRouteMode,
+      routeView: "day",
+    });
   }
 }
 
 export async function calculateOverviewRoute(
   input: CalculateOverviewRouteInput,
 ): Promise<RouteActionResult<CalculatedRouteLeg[]>> {
-  const parsed = calculateOverviewSchema.safeParse(input);
+  const parsed = calculateOverviewRouteSchema.safeParse(input);
   if (!parsed.success) return { error: "The Overview route calculation request is invalid." };
 
   try {
@@ -211,8 +215,19 @@ export async function calculateOverviewRoute(
     const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
     const stages = deriveOverviewStages(workspace.days);
     if (stages.length < 2)
-      return { error: "Add at least two city/town stages before calculating." };
-    if (neighboringOverviewCityConflict(stages)) return { error: neighboringCityError() };
+      return reportRouteCalculation({
+        operationId: parsed.data.operationId,
+        result: { error: "Add at least two city/town stages before calculating." },
+        routeMode: parsed.data.telemetryRouteMode,
+        routeView: "overview",
+      });
+    if (neighboringOverviewCityConflict(stages))
+      return reportRouteCalculation({
+        operationId: parsed.data.operationId,
+        result: { error: neighboringCityError() },
+        routeMode: parsed.data.telemetryRouteMode,
+        routeView: "overview",
+      });
 
     const tasks = parsed.data.legs
       .slice()
@@ -254,16 +269,26 @@ export async function calculateOverviewRoute(
           });
       });
 
-    return { data: await mapWithConcurrency(tasks, 3) };
+    return reportRouteCalculation({
+      operationId: parsed.data.operationId,
+      result: { data: await mapWithConcurrency(tasks, 3) },
+      routeMode: parsed.data.telemetryRouteMode,
+      routeView: "overview",
+    });
   } catch (error) {
-    return { error: actionError(error) };
+    return reportRouteCalculation({
+      operationId: parsed.data.operationId,
+      result: { error: actionError(error) },
+      routeMode: parsed.data.telemetryRouteMode,
+      routeView: "overview",
+    });
   }
 }
 
 export async function clearDayRoutePlan(
   input: ClearDayRouteInput,
 ): Promise<RouteActionResult<{ dayId: string }>> {
-  const parsed = clearSchema.safeParse(input);
+  const parsed = clearRouteSchema.safeParse(input);
   if (!parsed.success) return { error: "The route clear request is invalid." };
   try {
     const supabase = await createClient();

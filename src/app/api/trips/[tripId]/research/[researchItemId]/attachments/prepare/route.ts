@@ -8,6 +8,7 @@ import {
 } from "@/features/attachments/schema";
 import { createSignedAssetUpload } from "@/features/attachments/storage.server";
 import { createClient } from "@/lib/supabase/server";
+import { reportAttachmentMutation } from "@/features/attachments/telemetry.server";
 
 const paramsSchema = z.object({ researchItemId: z.uuid(), tripId: z.uuid() });
 
@@ -39,10 +40,28 @@ export async function POST(
     target_trip_id: routeParams.data.tripId,
   });
   const reservation = preparedAssetReservationSchema.safeParse(result.data);
-  if (result.error || !reservation.success)
-    return Response.json({ error: attachmentError(result.error?.message) }, { status: 400 });
+  if (result.error || !reservation.success) {
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId: input.data.operationId,
+      result: { error: attachmentError(result.error?.message) },
+      supabaseUserId: authData.user.id,
+      target: "research",
+    });
+    return Response.json(
+      { error: attachmentError(result.error?.message), failureReported: true },
+      { status: 400 },
+    );
+  }
 
-  if (!reservation.data.uploadRequired)
+  if (!reservation.data.uploadRequired) {
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId: input.data.operationId,
+      result: { data: true },
+      supabaseUserId: authData.user.id,
+      target: "research",
+    });
     return Response.json(
       {
         assetId: reservation.data.assetId,
@@ -53,8 +72,27 @@ export async function POST(
       },
       { headers: { "Cache-Control": "no-store" } },
     );
+  }
+  const assetId = reservation.data.assetId;
+  const operationId = input.data.operationId;
+  const userId = authData.user.id;
+  async function failReservation(reason: string) {
+    await supabase.rpc("fail_item_asset_v1", {
+      requested_reason: reason,
+      target_asset_id: assetId,
+    });
+    await drainAssetDeletionQueue(10);
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId,
+      result: { error: reason },
+      supabaseUserId: userId,
+      target: "research",
+    });
+    return Response.json({ error: reason, failureReported: true }, { status: 500 });
+  }
   if (!reservation.data.objectKey)
-    return Response.json({ error: "The private upload path is unavailable." }, { status: 500 });
+    return failReservation("The private upload path is unavailable.");
 
   try {
     const upload = await createSignedAssetUpload(reservation.data.objectKey);
@@ -75,14 +113,6 @@ export async function POST(
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    await supabase.rpc("fail_item_asset_v1", {
-      requested_reason: error instanceof Error ? error.message : "Upload authorization failed",
-      target_asset_id: reservation.data.assetId,
-    });
-    await drainAssetDeletionQueue(10);
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Upload authorization failed." },
-      { status: 500 },
-    );
+    return failReservation(error instanceof Error ? error.message : "Upload authorization failed.");
   }
 }

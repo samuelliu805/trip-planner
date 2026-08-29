@@ -40,7 +40,7 @@ import {
 } from "./components/planner-item-form-steps.ts";
 import {
   itemFormCapabilities,
-  plannerItemCreationNeedsConfirmation,
+  plannerItemCreationReportsFeedback,
 } from "./components/planner-item-form-config.ts";
 import type { PlaceSnapshot } from "../../lib/providers/places/types.ts";
 import { plannerJourneyFieldCapabilities } from "./transport-form-fields.ts";
@@ -584,15 +584,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     "utf8",
   );
   const editorStyles = await readAppStyles();
-  const [
-    itemSaveConfirmation,
-    itemSaveFeedback,
-    itemSaveFlow,
-    tripActions,
-    tripAppBar,
-    tripBarMenu,
-  ] = await Promise.all([
-    readFile(new URL("./components/planner-item-save-confirmation.tsx", import.meta.url), "utf8"),
+  const [itemSaveFeedback, itemSaveFlow, tripActions, tripAppBar, tripBarMenu] = await Promise.all([
     readFile(new URL("./components/planner-item-save-feedback.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/use-planner-item-save-flow.ts", import.meta.url), "utf8"),
     readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
@@ -695,8 +687,12 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.doesNotMatch(placeAutocomplete, /Enter" && hasCustomOption/);
   assert.match(itemSaveFlow, /showViewLink: intent === "save-and-create-another"/);
   assert.match(itemSaveFeedback, /success && feedback\.showViewLink/);
-  assert.match(itemSaveConfirmation, /createAnother[\s\S]*success message will include a link/);
-  assert.doesNotMatch(itemSaveConfirmation, /a link will take you directly/);
+  assert.doesNotMatch(itemSaveFlow, /saveConfirmation|setSaveConfirmation|confirmSave/);
+  assert.match(
+    itemSaveFlow,
+    /if \(reportsCreationFeedback\) onSaveFeedback\(undefined\);\s*await persistSave\(intent, values\)/,
+  );
+  assert.doesNotMatch(itemForm, /onSaveConfirm|saveConfirmation/);
   assert.doesNotMatch(
     editor + itemDialog + settingsEditor,
     /headerScrolls|itemViewportMatchesProduction/,
@@ -2579,6 +2575,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     new URL("./components/planner-grid-elements.tsx", import.meta.url),
     "utf8",
   );
+  workspace += await readFile(
+    new URL("./components/planner-add-item-button.tsx", import.meta.url),
+    "utf8",
+  );
   workspace += await readFile(new URL("./components/insert-row-icon.tsx", import.meta.url), "utf8");
   workspace += await readFile(
     new URL("./components/planner-item-row.tsx", import.meta.url),
@@ -2678,6 +2678,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   const styles = await readAppStyles();
   const plannerDialogRule = styles.match(/\.planner-item-dialog \{([\s\S]*?)\n\}/)?.[1] ?? "";
   const queries = await readItineraryQueryModules();
+  const dayActions = await readFile(
+    new URL("./components/planner-grid-elements.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(workspace, /Arrange Activities/);
   assert.doesNotMatch(workspace, /Arrange Days/);
   assert.doesNotMatch(workspace, /PlannerContentTabs/);
@@ -2713,8 +2717,12 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /<InsertRowIcon className="size-5 shrink-0" direction="below"/);
   assert.match(workspace, /Add day before/);
   assert.match(workspace, /Add day after/);
-  assert.match(workspace, /insertIcon\("up"\)/);
-  assert.match(workspace, /insertIcon\("down"\)/);
+  assert.match(dayActions, /onInsert\(day\.day_number \+ 1\)/);
+  assert.doesNotMatch(dayActions, /onInsert\(day\.day_number\)/);
+  assert.doesNotMatch(dayActions, /onArrange/);
+  assert.match(workspace, /visible=\{workspace\.days\.length === 1 \|\| selectedDayRow === row\}/);
+  assert.match(dayActions, /if \(isOnlyDay\)[\s\S]*min-h-11 w-full[\s\S]*message=\{"Add day"\}/);
+  assert.match(dayActions, /grid grid-cols-2[\s\S]*<Trash2/);
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /aria-label="Trip menu"/);
   assert.match(
@@ -2739,7 +2747,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
   assert.match(styles, /\.planner-matrix \.matrix-grid-header \{[\s\S]*?z-index: 70;/);
-  assert.match(workspace, /Insert day above/);
+  assert.doesNotMatch(dayActions, /Insert day above|Add day before/);
   assert.match(workspace, /Insert day below/);
   assert.match(workspace, /Remove Day/);
   assert.match(styles, /aria-selected="true"[\s\S]*data-add-item/);
@@ -2963,7 +2971,14 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
   const queries = await readItineraryQueryModules();
   let actions = await readItineraryItemActions();
   actions += await readFile(new URL("./action-helpers.ts", import.meta.url), "utf8");
-  assert.match(workspace, /This itinerary is empty/);
+  workspace += await readFile(
+    new URL("./components/planner-add-item-button.tsx", import.meta.url),
+    "utf8",
+  );
+  workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /Add your first activity/);
+  assert.match(workspace, /newTripStarter/);
+  assert.doesNotMatch(workspace, /onAddDay/);
   assert.match(workspace, /planner could not refresh/);
   assert.match(workspace, /Saving…[\s\S]*Saved/);
   assert.match(workspace, /Unsupported clipboard data/);
@@ -3806,13 +3821,23 @@ test("the Order step responds to legal slots and entered times", () => {
   assert.equal(plannerItemNeedsOrderStep({ ...base, type: "transport" }), false);
 });
 
-test("saving routes through Order and confirms deliberate item creation", () => {
+test("creating routes through Order while final saves persist directly", () => {
   assert.equal(
-    plannerItemSaveAction({ activeStepId: "basics", includeOrder: true }),
+    plannerItemSaveAction({ activeStepId: "basics", creating: true, includeOrder: true }),
     "confirm-order",
   );
-  assert.equal(plannerItemSaveAction({ activeStepId: "order", includeOrder: true }), "save");
-  assert.equal(plannerItemSaveAction({ activeStepId: "basics", includeOrder: false }), "save");
+  assert.equal(
+    plannerItemSaveAction({ activeStepId: "order", creating: true, includeOrder: true }),
+    "save",
+  );
+  assert.equal(
+    plannerItemSaveAction({ activeStepId: "basics", creating: true, includeOrder: false }),
+    "save",
+  );
+  assert.equal(
+    plannerItemSaveAction({ activeStepId: "basics", creating: false, includeOrder: true }),
+    "save",
+  );
 
   for (const type of [
     "activity",
@@ -3823,7 +3848,11 @@ test("saving routes through Order and confirms deliberate item creation", () => 
     "train",
     "transport",
   ] as const)
-    assert.equal(plannerItemCreationNeedsConfirmation(type), true, `${type} confirms creation`);
-  assert.equal(plannerItemCreationNeedsConfirmation("location"), false);
-  assert.equal(plannerItemCreationNeedsConfirmation("note"), false);
+    assert.equal(
+      plannerItemCreationReportsFeedback(type),
+      true,
+      `${type} reports its direct creation result`,
+    );
+  assert.equal(plannerItemCreationReportsFeedback("location"), false);
+  assert.equal(plannerItemCreationReportsFeedback("note"), false);
 });

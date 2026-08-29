@@ -216,7 +216,7 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
   );
 });
 
-test("all research editors use two pages with scheduling first and price on Details", () => {
+test("all research editors use two pages with price first on the primary step", () => {
   assert.deepEqual(
     researchItemFormSteps("flight").map(({ id, title }) => [id, title]),
     [
@@ -235,10 +235,10 @@ test("all research editors use two pages with scheduling first and price on Deta
   assert.equal(researchItemFormSteps("rental")[0].title, "Rental car");
   assert.equal(researchItemFormSteps("train").length, 2);
   assert.equal(researchItemFormSteps("rental").length, 2);
-  assert.equal(researchItemPriceStep("flight"), "details");
-  assert.equal(researchItemPriceStep("train"), "details");
-  assert.equal(researchItemPriceStep("rental"), "details");
-  assert.equal(researchItemPriceStep("stay"), "details");
+  assert.equal(researchItemPriceStep("flight"), "primary");
+  assert.equal(researchItemPriceStep("train"), "primary");
+  assert.equal(researchItemPriceStep("rental"), "primary");
+  assert.equal(researchItemPriceStep("stay"), "primary");
 });
 
 test("route-only journey drafts normalize blank dates before ISO validation", () => {

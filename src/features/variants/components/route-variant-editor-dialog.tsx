@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { PlannerVariant } from "@/features/itinerary/types";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { cn } from "@/lib/utils";
 
 import { useCreateRouteVariant, useDuplicateRouteVariant, useUpdateRouteVariant } from "../queries";
@@ -114,6 +115,7 @@ export function RouteVariantEditorDialog({
 
   async function submit() {
     setError(undefined);
+    const operationId = newTelemetryOperationId();
     try {
       const result =
         mode === "blank"
@@ -122,14 +124,22 @@ export function RouteVariantEditorDialog({
               name,
               sourceVariantId: activeVariant.id,
               tripId,
+              operationId,
             })
           : mode === "duplicate"
-            ? await duplicateMutation.mutateAsync({ color, name, sourceVariantId, tripId })
+            ? await duplicateMutation.mutateAsync({
+                color,
+                name,
+                operationId,
+                sourceVariantId,
+                tripId,
+              })
             : await updateMutation.mutateAsync({
                 color,
                 name,
                 tripId,
                 variantId: activeVariant.id,
+                operationId,
               });
       onOpenChange(false);
       onSaved?.(result.variantId);

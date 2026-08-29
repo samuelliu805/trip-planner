@@ -19,6 +19,8 @@ import { deriveOverviewDefaultModes } from "@/features/routes/overview-transport
 import type { DayMapLayer } from "@/features/routes/day-city-map";
 import { useVariantComparison } from "@/features/variants/use-variant-comparison";
 import { useVariantDecisionSummary } from "@/features/variants/use-variant-decision-summary";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -181,11 +183,31 @@ export function usePlannerMap(
     if (mode === "comparison" && comparison.blockingReason) return;
     if (mode === "comparison") {
       const returnMode = comparisonScope ?? (mapMode === "day_route" ? "day_route" : "overview");
+      captureBrowserProductEvent(
+        "variant_comparison_viewed",
+        {
+          comparison_scope: returnMode === "day_route" ? "day" : "trip",
+          operation_id: newTelemetryOperationId(),
+          surface: "variant_comparison",
+        },
+        { actorType: "authenticated" },
+      );
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
         returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,
       );
     }
+    if (mode !== "comparison")
+      captureBrowserProductEvent(
+        "route_view_changed",
+        {
+          operation_id: newTelemetryOperationId(),
+          route_mode: "unset",
+          route_view: mode === "day_route" ? "day" : "overview",
+          surface: "route_panel",
+        },
+        { actorType: "authenticated" },
+      );
     setMapMode(mode);
     setSelectedItemId(undefined);
     if (mode === "comparison") return;
@@ -250,6 +272,15 @@ export function usePlannerMap(
     enterComparison: (scope?: PlannerComparisonScope) => {
       if (comparison.blockingReason) return;
       const returnMode = scope ?? (mapMode === "day_route" ? "day_route" : "overview");
+      captureBrowserProductEvent(
+        "variant_comparison_viewed",
+        {
+          comparison_scope: returnMode === "day_route" ? "day" : "trip",
+          operation_id: newTelemetryOperationId(),
+          surface: "variant_comparison",
+        },
+        { actorType: "authenticated" },
+      );
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
         returnMode === "day_route" ? dayRoute.activeDay?.day_number : undefined,
@@ -275,8 +306,32 @@ export function usePlannerMap(
     selectMarker,
     selectedItemId,
     setComparisonSheetOpen,
-    setDecisionSummaryPanelOpen,
-    setDecisionSummarySheetOpen,
+    setDecisionSummaryPanelOpen: (open: boolean) => {
+      if (open && !decisionSummaryPanelOpen)
+        captureBrowserProductEvent(
+          "variant_comparison_summary_viewed",
+          {
+            comparison_scope: "summary",
+            operation_id: newTelemetryOperationId(),
+            surface: "variant_comparison",
+          },
+          { actorType: "authenticated" },
+        );
+      setDecisionSummaryPanelOpen(open);
+    },
+    setDecisionSummarySheetOpen: (open: boolean) => {
+      if (open && !decisionSummarySheetOpen)
+        captureBrowserProductEvent(
+          "variant_comparison_summary_viewed",
+          {
+            comparison_scope: "summary",
+            operation_id: newTelemetryOperationId(),
+            surface: "variant_comparison",
+          },
+          { actorType: "authenticated" },
+        );
+      setDecisionSummarySheetOpen(open);
+    },
     setMapModeFromSelection: (mode: PlannerMapMode) =>
       setMapMode((current) => (current === "comparison" ? current : mode)),
     setDayMapLayer: (layer: DayMapLayer) => {

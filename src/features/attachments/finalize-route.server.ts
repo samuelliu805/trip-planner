@@ -11,15 +11,25 @@ import {
 } from "@/features/attachments/storage.server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { reportAttachmentMutation } from "@/features/attachments/telemetry.server";
 
-const finalizeBodySchema = z.object({ posterUploaded: z.boolean().default(false) }).strict();
+const finalizeBodySchema = z
+  .object({ operationId: z.uuid().optional(), posterUploaded: z.boolean().default(false) })
+  .strict();
+const deleteBodySchema = z
+  .object({ failure: z.boolean().default(false), operationId: z.uuid().optional() })
+  .strict();
 
 type AttachmentRouteTarget =
   { itemId: string; researchItemId?: never } | { itemId?: never; researchItemId: string };
 
 type AttachmentRoute = AttachmentRouteTarget & { assetId: string; tripId: string };
 
-export async function deleteAttachmentUpload(route: AttachmentRoute) {
+const attachmentTarget = (route: AttachmentRoute) =>
+  route.researchItemId ? ("research" as const) : ("itinerary" as const);
+
+export async function deleteAttachmentUpload(request: Request, route: AttachmentRoute) {
+  const body = deleteBodySchema.safeParse(await request.json().catch(() => ({})));
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) return new Response(null, { status: 401 });
@@ -27,7 +37,28 @@ export async function deleteAttachmentUpload(route: AttachmentRoute) {
     requested_reason: "Upload canceled or interrupted",
     target_asset_id: route.assetId,
   });
-  if (error) return Response.json({ error: attachmentError(error.message) }, { status: 400 });
+  if (error) {
+    if (body.success && body.data.failure)
+      await reportAttachmentMutation({
+        mutation: "upload",
+        operationId: body.data.operationId,
+        result: { error: attachmentError(error.message) },
+        supabaseUserId: authData.user.id,
+        target: attachmentTarget(route),
+      });
+    return Response.json(
+      { error: attachmentError(error.message), failureReported: body.success && body.data.failure },
+      { status: 400 },
+    );
+  }
+  if (body.success && body.data.failure)
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId: body.data.operationId,
+      result: { error: "The attachment could not be changed. Please try again." },
+      supabaseUserId: authData.user.id,
+      target: attachmentTarget(route),
+    });
   await drainAssetDeletionQueue(10);
   return new Response(null, { status: 204 });
 }
@@ -37,6 +68,7 @@ export async function finalizeAttachmentUpload(request: Request, route: Attachme
   const body = finalizeBodySchema.safeParse(rawBody);
   if (!body.success)
     return Response.json({ error: "The finalize request is invalid." }, { status: 400 });
+  const operationId = body.data.operationId;
 
   const supabase = await createClient();
   const { data: authData } = await supabase.auth.getUser();
@@ -73,7 +105,14 @@ export async function finalizeAttachmentUpload(request: Request, route: Attachme
       target_asset_id: route.assetId,
     });
     await drainAssetDeletionQueue(10);
-    return Response.json({ error: reason }, { status });
+    await reportAttachmentMutation({
+      mutation: "upload",
+      operationId,
+      result: { error: reason },
+      supabaseUserId: authData.user?.id,
+      target: attachmentTarget(route),
+    });
+    return Response.json({ error: reason, failureReported: true }, { status });
   }
 
   if (asset.status !== "pending" && asset.status !== "ready")
@@ -151,5 +190,12 @@ export async function finalizeAttachmentUpload(request: Request, route: Attachme
   if (result.error || !finalized.success) return fail(attachmentError(result.error?.message), 409);
 
   if (finalized.data.deduplicated) await drainAssetDeletionQueue(10);
+  await reportAttachmentMutation({
+    mutation: "upload",
+    operationId,
+    result: { data: true },
+    supabaseUserId: authData.user.id,
+    target: attachmentTarget(route),
+  });
   return Response.json(finalized.data, { headers: { "Cache-Control": "no-store" } });
 }

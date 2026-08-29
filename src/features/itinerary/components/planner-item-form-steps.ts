@@ -55,12 +55,14 @@ export function plannerItemNeedsOrderStep({
 
 export function plannerItemSaveAction({
   activeStepId,
+  creating,
   includeOrder,
 }: {
   activeStepId: ItemFormStep["id"];
+  creating: boolean;
   includeOrder: boolean;
 }) {
-  return includeOrder && activeStepId !== "order" ? "confirm-order" : "save";
+  return creating && includeOrder && activeStepId !== "order" ? "confirm-order" : "save";
 }
 
 function basicsBlocks(

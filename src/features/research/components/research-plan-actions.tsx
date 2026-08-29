@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { ResearchApplicationDialog, ResearchApplyReviewDialog } from "./research-apply-dialogs";
 
 import { applyResearchItem, revertResearchApplication } from "../plan-actions";
@@ -84,9 +86,21 @@ export function ResearchPlanActions({
   }
 
   async function apply(resolvedTargetId = targetItemId) {
+    const operationId = newTelemetryOperationId();
+    captureBrowserProductEvent(
+      "research_apply_started",
+      {
+        ideas_category: item.category as "flight" | "rental" | "stay" | "train",
+        operation_id: operationId,
+        surface: "research_editor",
+      },
+      { actorType: "authenticated" },
+    );
     setPending(true);
     setError(undefined);
     const result = await applyResearchItem({
+      category: item.category as "flight" | "rental" | "stay" | "train",
+      operationId,
       researchItemId: item.id,
       scheduleChoice:
         impact.planAction === "remove_days_first" &&
@@ -110,10 +124,22 @@ export function ResearchPlanActions({
 
   async function revert() {
     if (!application) return;
+    const operationId = newTelemetryOperationId();
+    captureBrowserProductEvent(
+      "research_revert_started",
+      {
+        ideas_category: item.category as "flight" | "rental" | "stay" | "train",
+        operation_id: operationId,
+        surface: "research_editor",
+      },
+      { actorType: "authenticated" },
+    );
     setPending(true);
     setError(undefined);
     const result = await revertResearchApplication({
       applicationId: application.id,
+      category: item.category as "flight" | "rental" | "stay" | "train",
+      operationId,
       tripId: item.trip_id,
     });
     setPending(false);

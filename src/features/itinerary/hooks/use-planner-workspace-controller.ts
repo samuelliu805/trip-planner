@@ -110,7 +110,6 @@ export function usePlannerWorkspaceController({
       visibleSelectionBounds.top,
     ],
   );
-  const itemCount = projectedWorkspace.days.reduce((count, day) => count + day.items.length, 0);
   const gridTemplate = `minmax(520px, ${split}fr) 4px minmax(360px, ${100 - split}fr)`;
   const routeDay = activeDay ?? selectedDay ?? projectedWorkspace.days[0];
   const dayRoute = useDayRoute(projectedWorkspace, routeDay, trip.id);
@@ -254,7 +253,6 @@ export function usePlannerWorkspaceController({
     interactionError,
     interactions,
     isFillDragging,
-    itemCount,
     itemOrderPending,
     map,
     mapExpanded,

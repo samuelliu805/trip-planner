@@ -6,7 +6,8 @@ import { zhCN } from "date-fns/locale";
 import { Map } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { AddItemButton, DayActions } from "@/features/itinerary/components/planner-grid-elements";
+import { AddItemButton } from "@/features/itinerary/components/planner-add-item-button";
+import { DayActions } from "@/features/itinerary/components/planner-grid-elements";
 import { PlannerItemRow } from "@/features/itinerary/components/planner-item-row";
 import { MatrixCityList } from "@/features/itinerary/components/matrix-city-list";
 import {
@@ -45,7 +46,6 @@ export function PlannerMatrix({
   mapLines,
   mapMode,
   mapMarkers,
-  onArrangeActivities,
   onMapExpand,
   onComparisonSheetOpen,
   onDecisionSummaryOpen,
@@ -83,6 +83,7 @@ export function PlannerMatrix({
   const matrixRef = useInitialMatrixScrollPosition<HTMLElement>();
   const { locale, t } = useI18n();
   useMobileMatrixTopContainment(matrixRef);
+  const tripIsEmpty = workspace.days.every(({ items }) => items.length === 0);
 
   return (
     <div
@@ -152,12 +153,10 @@ export function PlannerMatrix({
                   <DayActions
                     day={day}
                     isOnlyDay={workspace.days.length === 1}
-                    location="cell"
-                    onArrange={onArrangeActivities}
                     onInsert={(position) => void insertDay(position)}
                     onRemove={(dayId) => void removeDay(dayId)}
                     pending={dayMutationPending}
-                    visible={selectedDayRow === row}
+                    visible={workspace.days.length === 1 || selectedDayRow === row}
                   />
                 </div>
                 <div
@@ -179,6 +178,7 @@ export function PlannerMatrix({
                   const lastSelected =
                     row === visibleSelectionBounds.bottom &&
                     column === visibleSelectionBounds.right;
+                  const newTripStarter = tripIsEmpty && row === 0 && category.id === "activities";
                   return (
                     <div
                       aria-selected={selected}
@@ -228,11 +228,12 @@ export function PlannerMatrix({
                           />
                         ))}
                       </div>
-                      {active && category.id !== "city" ? (
+                      {(active || newTripStarter) && category.id !== "city" ? (
                         <AddItemButton
                           category={category}
                           day={day}
                           disabled={category.id === "hotel" && items.length > 0}
+                          newTripStarter={newTripStarter}
                           onAdd={() => setEditor({ dayId: day.id, type: category.defaultType })}
                         />
                       ) : null}

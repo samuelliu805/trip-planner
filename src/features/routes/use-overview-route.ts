@@ -3,6 +3,9 @@
 import { useState } from "react";
 
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
+import type { RouteMode } from "@/lib/telemetry/events";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { isOverviewRouteLeg, type OverviewStage } from "./overview";
 import { useCalculateOverviewRoute } from "./queries";
@@ -95,11 +98,27 @@ export function useOverviewRoute(
       return;
     }
     updateState((current) => ({ ...current, error: undefined }));
+    const operationId = newTelemetryOperationId();
+    const uniqueModes = new Set(changed.map(({ mode }) => mode));
+    const routeMode: RouteMode =
+      uniqueModes.size === 1 ? ([...uniqueModes][0] as RouteMode) : "mixed";
+    captureBrowserProductEvent(
+      "route_calculation_started",
+      {
+        operation_id: operationId,
+        route_mode: routeMode,
+        route_view: "overview",
+        surface: "route_panel",
+      },
+      { actorType: "authenticated" },
+    );
     try {
       const calculated = await mutation.mutateAsync({
         legs: changed.map(({ mode, position }) => ({ mode: mode!, position })),
         tripId,
         variantId,
+        operationId,
+        telemetryRouteMode: routeMode,
       });
       updateState((current) => {
         const changedPositions = new Set(calculated.map(({ position }) => position));
@@ -134,7 +153,18 @@ export function useOverviewRoute(
     },
     segments,
     setEditing,
-    setMode: (position, mode) =>
+    setMode: (position, mode) => {
+      if (currentState.modes[position - 1] === mode) return;
+      captureBrowserProductEvent(
+        "route_mode_changed",
+        {
+          operation_id: newTelemetryOperationId(),
+          route_mode: mode ?? "unset",
+          route_view: "overview",
+          surface: "route_panel",
+        },
+        { actorType: "authenticated" },
+      );
       updateState((current) => ({
         ...current,
         calculatedLegs: current.calculatedLegs.filter(
@@ -142,7 +172,8 @@ export function useOverviewRoute(
         ),
         error: undefined,
         modes: current.modes.map((candidate, index) => (index === position - 1 ? mode : candidate)),
-      })),
+      }));
+    },
     stages,
   };
 }

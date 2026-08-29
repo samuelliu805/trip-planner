@@ -12,12 +12,12 @@ async function routeParams(params: Promise<{ assetId: string; itemId: string; tr
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ assetId: string; itemId: string; tripId: string }> },
 ) {
   const route = await routeParams(params);
   if (!route.success) return new Response(null, { status: 404 });
-  return deleteAttachmentUpload(route.data);
+  return deleteAttachmentUpload(request, route.data);
 }
 
 export async function POST(

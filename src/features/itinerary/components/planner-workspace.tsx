@@ -103,7 +103,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         fillThroughDay={c.workspace.days[c.selectionEnd.row]?.day_number}
         insertDay={c.insertDay}
         interactionError={c.interactionError}
-        isEmpty={c.itemCount === 0}
         isFillDragging={c.isFillDragging}
         mutating={c.mutating}
         onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
@@ -169,7 +168,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         mapMarkers={c.map.mapMarkers}
         mapMode={c.map.mapMode}
         mapViewportKey={c.map.mapViewportKey}
-        onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
         onComparisonSheetOpen={() => c.map.setComparisonSheetOpen(true)}
         onDayMapLayerChange={c.map.setDayMapLayer}
         onDecisionSummaryOpen={() => c.map.setDecisionSummaryPanelOpen(true)}

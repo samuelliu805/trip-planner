@@ -1,0 +1,46 @@
+import { createClient } from "@/lib/supabase/server";
+import type { AttachmentTarget } from "@/lib/telemetry/events";
+import { reportAuthoritativeMutationOutcome, telemetryOperationId } from "@/lib/telemetry/product";
+import {
+  captureServerProductEvent,
+  serverProductTelemetryEnabled,
+} from "@/lib/telemetry/product-server";
+
+export async function reportAttachmentMutation<Result extends object>(options: {
+  mutation: "upload" | "delete";
+  operationId?: unknown;
+  result: Result;
+  supabaseUserId?: string;
+  target: AttachmentTarget;
+}): Promise<Result> {
+  const operationId = telemetryOperationId(options.operationId);
+  if (!operationId || !serverProductTelemetryEnabled()) return options.result;
+  let supabaseUserId = options.supabaseUserId;
+  if (!supabaseUserId)
+    try {
+      const supabase = await createClient();
+      const { data } = await supabase.auth.getUser();
+      supabaseUserId = data.user?.id;
+    } catch {
+      // Identity lookup cannot replace an authoritative attachment result.
+    }
+  const context = {
+    actorType: supabaseUserId ? ("authenticated" as const) : ("anonymous" as const),
+    route: "/trips/[tripId]",
+    supabaseUserId,
+  };
+  const properties = {
+    attachment_target: options.target,
+    operation_id: operationId,
+    surface: "attachment_editor" as const,
+  };
+  const names =
+    options.mutation === "upload"
+      ? { failed: "attachment_upload_failed" as const, succeeded: "attachment_uploaded" as const }
+      : { failed: "attachment_delete_failed" as const, succeeded: "attachment_deleted" as const };
+  return reportAuthoritativeMutationOutcome(options.result, {
+    failed: (errorCode) =>
+      captureServerProductEvent(names.failed, { ...properties, error_code: errorCode }, context),
+    succeeded: () => captureServerProductEvent(names.succeeded, properties, context),
+  });
+}

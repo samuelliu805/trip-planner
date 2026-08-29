@@ -1,5 +1,6 @@
 import { resolveServerTelemetryConfig } from "./config.ts";
 import { telemetryRelease } from "./context.ts";
+import { featureAreaForProductEvent } from "./events.ts";
 import type {
   ProductContext,
   ServerProductEventName,
@@ -47,6 +48,9 @@ export async function captureServerProductEvent<EventName extends ServerProductE
     const eventProperties = {
       ...properties,
       ...(insertId ? { $insert_id: insertId } : {}),
+      ...(featureAreaForProductEvent(eventName)
+        ? { feature_area: featureAreaForProductEvent(eventName) }
+        : {}),
       actor_type: options.actorType,
       environment: config.environment,
       ...(telemetryRelease() ? { release: telemetryRelease() } : {}),

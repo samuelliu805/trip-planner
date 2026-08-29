@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -11,6 +11,8 @@ import { ResearchItemList } from "./research-item-list";
 import { ResearchSortMenu } from "./research-sort-menu";
 import { TripMobileTabBar } from "@/features/trips/components/trip-app-bar";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { researchDecisionSlotKey } from "../decision-slot";
 import { isReadyToCompare } from "../readiness";
 import { matchingPlanResearchItems, parseResearchCategoryRouteSegment } from "../urls";
@@ -69,6 +71,20 @@ export function CompareWorkspace({
   const queryKey = researchWorkspaceQueryKey(tripId, plan.variantId);
   const pathname = usePathname();
   const category = parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? activeCategory;
+  const exposureReported = useRef(false);
+  useEffect(() => {
+    if (exposureReported.current) return;
+    exposureReported.current = true;
+    captureBrowserProductEvent(
+      "ideas_viewed",
+      {
+        ideas_category: category,
+        operation_id: newTelemetryOperationId(),
+        surface: "ideas_options",
+      },
+      { actorType: "authenticated" },
+    );
+  }, [category]);
   const visible =
     context?.dayId || context?.itemId
       ? matchingPlanResearchItems(items, {
@@ -140,6 +156,15 @@ export function CompareWorkspace({
                 hrefs={categoryHrefs}
                 onNavigate={(nextCategory) => {
                   if (nextCategory === category) return;
+                  captureBrowserProductEvent(
+                    "ideas_category_changed",
+                    {
+                      ideas_category: nextCategory,
+                      operation_id: newTelemetryOperationId(),
+                      surface: "ideas_options",
+                    },
+                    { actorType: "authenticated" },
+                  );
                   window.history.pushState(null, "", categoryHrefs[nextCategory]);
                 }}
               />

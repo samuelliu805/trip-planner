@@ -21,6 +21,15 @@ const surfaces = new Set<ProductSurface>([
   "planner",
   "planner_app_bar",
   "trip_list",
+  "ideas_options",
+  "research_editor",
+  "route_panel",
+  "variant_controls",
+  "variant_comparison",
+  "share_dialog",
+  "public_share",
+  "attachment_editor",
+  "export_panel",
 ]);
 
 export function newTelemetryOperationId(): string {

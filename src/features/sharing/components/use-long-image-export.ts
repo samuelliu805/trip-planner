@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
 import { createClient } from "@/lib/supabase/client";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import {
   failShareImageVersion,
@@ -44,14 +45,18 @@ export function useLongImageExport({
     setError(undefined);
     setCopied(false);
     setProgress(t("Preparing snapshot…"));
+    const operationId = newTelemetryOperationId();
+    const exportMode = mode === "replace_existing" ? "replace" : "new";
     startTransition(async () => {
       const uploadedPaths: string[] = [];
       let versionId: string | undefined;
+      let exportFinalized = false;
       try {
         const prepared = await prepareShareImageVersion({
           exportId: mode === "replace_existing" ? (imageState?.exportId ?? null) : null,
           locale,
           mode,
+          operationId,
           sharePageId: sharePage.id,
           scope,
         });
@@ -98,8 +103,14 @@ export function useLongImageExport({
         }
 
         setProgress(t("Publishing permanent image link…"));
-        const finalized = await finalizeShareImageVersion({ parts: metadata, versionId });
+        const finalized = await finalizeShareImageVersion({
+          exportMode,
+          operationId,
+          parts: metadata,
+          versionId,
+        });
         if ("error" in finalized) throw new Error(finalized.error);
+        exportFinalized = true;
         const now = new Date().toISOString();
         onImageStateChange({
           createdAt: mode === "replace_existing" ? (imageState?.createdAt ?? now) : now,
@@ -125,13 +136,25 @@ export function useLongImageExport({
           setProgress(t("Image ready. Open it from this panel."));
         }
       } catch (caught) {
-        if (uploadedPaths.length)
-          await createClient().storage.from("share-images").remove(uploadedPaths);
-        if (versionId)
-          await failShareImageVersion(
-            versionId,
-            caught instanceof Error ? caught.message : "Timeline export failed",
-          );
+        if (uploadedPaths.length) {
+          try {
+            await createClient().storage.from("share-images").remove(uploadedPaths);
+          } catch {
+            // Cleanup failure must not suppress the authoritative export failure outcome.
+          }
+        }
+        if (versionId && !exportFinalized) {
+          try {
+            await failShareImageVersion(
+              versionId,
+              caught instanceof Error ? caught.message : "Timeline export failed",
+              operationId,
+              exportMode,
+            );
+          } catch {
+            // Failure reporting cannot prevent the export UI from recovering.
+          }
+        }
         setProgress(undefined);
         setError(t(caught instanceof Error ? caught.message : "Timeline export failed."));
       }
@@ -180,7 +203,7 @@ export function useLongImageExport({
     if (!imageState) return;
     setError(undefined);
     startTransition(async () => {
-      const result = await revokeShareImageExport(imageState.exportId);
+      const result = await revokeShareImageExport(imageState.exportId, newTelemetryOperationId());
       if ("error" in result) {
         setError(result.error);
         return;

@@ -15,6 +15,7 @@ import {
 import { detectAttachmentType } from "./file-signature.ts";
 import { ownerAttachmentsFromRows } from "./owner-attachment-records.ts";
 import { attachmentError, prepareAttachmentInputSchema } from "./schema.ts";
+import { AttachmentUploadError, reportUnacknowledgedAttachmentFailure } from "./upload-failure.ts";
 
 const encoder = new TextEncoder();
 
@@ -129,6 +130,50 @@ test("database lifecycle errors remain actionable", () => {
   assert.match(attachmentError("ATTACHMENT_ITEM_BYTES_LIMIT"), /50 MB/i);
   assert.match(attachmentError("ATTACHMENT_OWNER_BYTES_LIMIT"), /250 MB/i);
   assert.match(attachmentError("ATTACHMENT_TYPE_UNSUPPORTED"), /HEIC is not supported/i);
+});
+
+test("lifecycle acknowledgement suppresses the component attachment failure fallback", async () => {
+  const lifecycleReports = 1;
+  let componentFallbacks = 0;
+  const acknowledged = new AttachmentUploadError("Storage rejected the upload.", true);
+
+  assert.equal(
+    await reportUnacknowledgedAttachmentFailure(acknowledged, async () => {
+      componentFallbacks += 1;
+    }),
+    false,
+  );
+  assert.equal(lifecycleReports + componentFallbacks, 1);
+
+  assert.equal(
+    await reportUnacknowledgedAttachmentFailure(
+      new Error("Lifecycle request failed."),
+      async () => {
+        componentFallbacks += 1;
+      },
+    ),
+    true,
+  );
+  assert.equal(componentFallbacks, 1);
+
+  assert.equal(
+    await reportUnacknowledgedAttachmentFailure(
+      new Error("Lifecycle request failed."),
+      async () => {
+        throw new Error("Fallback request failed.");
+      },
+    ),
+    false,
+  );
+
+  const abort = new DOMException("Upload canceled", "AbortError");
+  assert.equal(
+    await reportUnacknowledgedAttachmentFailure(abort, async () => {
+      componentFallbacks += 1;
+    }),
+    false,
+  );
+  assert.equal(componentFallbacks, 1);
 });
 
 test("owner attachment query rows remain attached to saved planner items", () => {
@@ -276,7 +321,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(upload, /x-signature/);
   assert.match(upload, /retryDelays/);
   assert.match(upload, /findPreviousUploads/);
-  assert.match(upload, /keepalive: true, method: "DELETE"/);
+  assert.match(upload, /keepalive: true,[\s\S]{0,80}method: "DELETE"/);
   assert.match(viewer, /handlePreviewError/);
   assert.match(viewer, /ArrowLeft/);
   assert.match(viewer, /playsInline/);
