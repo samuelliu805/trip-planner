@@ -12,8 +12,11 @@ with `provider_unavailable` until real CloudBase PG/Auth/PG Storage adapters exi
 legacy entrypoints still bypass that composition root and can instead fail because Supabase
 configuration is intentionally absent; their inventory is therefore release-blocking for CN.
 
-There is no fake Realtime implementation. CloudBase Realtime capability is `false`. There is no
-Global/CN data, account, session, credential, or token synchronization, and there is no dual write.
+There is no fake Realtime implementation. CloudBase Realtime capability is `false`. CloudBase PG
+Storage supports signed URLs, so the CN `signedUrls` capability is `true`; the separate Phase 1
+status remains `storageImplemented: false` and `runtimeReady: false`. Capability describes the real
+backend, while status describes what this repository currently implements. There is no Global/CN
+data, account, session, credential, or token synchronization, and there is no dual write.
 
 ## Deployment provider matrix
 
@@ -64,8 +67,13 @@ phase does not call Vercel or modify online project settings.
 The server composition root is `src/platform/composition/server.ts`. It resolves the immutable
 deployment matrix and selects a contract implementation:
 
-- `AuthenticationSessionProvider` covers current user, required user, password sign-in, sign-out,
-  sign-up, OAuth start, and authorization-code exchange.
+- Core `AuthProvider` contains only current user, required user, discriminated password sign-in, and
+  sign-out. `SignInInput` distinguishes `email_password` from `username_password`; the Supabase
+  adapter rejects the latter with `unsupported_operation` rather than treating a username as email.
+- `PublicSelfRegistrationProvider`, `RedirectOAuthProvider`,
+  `AuthorizationCodeExchangeProvider`, and `ProviderTokenSignInProvider` are optional extension
+  contracts. A backend core adapter is not required to implement registration, redirect OAuth,
+  Supabase-style PKCE code exchange, or provider-token sign-in.
 - `TripRepository` covers list/get/create/update/remove without exposing PostgREST responses.
 - `ItineraryRepository`, `PlaceRouteRepository`, `AttachmentMetadataRepository`, and
   `ShareSnapshotRepository` describe existing domain operations without a generic database client.
@@ -139,30 +147,36 @@ anywhere in `.next`. It never prints secret values.
 
 ## Later phase boundaries
 
-### Phase 2 — CloudBase PG and Auth correctness
+### Phase 2 — CloudBase PG schema and security foundation
 
-- Create the real CloudBase PG schema/baseline and repository adapters in an approved environment.
-- Implement CloudBase Auth and provider-neutral session/cookie behavior.
-- Port trip, account, itinerary, research, route-variant, and place/route persistence in vertical
-  slices, with equivalent authorization and error semantics.
-- Keep public registration disabled and keep Global/CN identities independent.
+- Create and review the CloudBase PG schema baseline and region-specific schema overlays.
+- Add deployment tooling for applying and verifying that database baseline in approved environments.
+- Perform database security validation for ownership, grants, RLS-equivalent controls, functions,
+  and storage metadata boundaries.
+- Do not implement Auth, repositories, session behavior, or UI runtime in Phase 2.
 
-### Phase 3 — Storage, attachments, public media, and AMap
+### Phase 3 — CloudBase Database and Auth adapters
 
-- Implement CloudBase PG Storage and signed access contracts.
-- Port attachment reservation/finalization, TUS or its real replacement, thumbnails/posters,
-  long-image uploads/downloads, public asset access, and cleanup queues.
-- Implement AMap maps/places/routes/photos without rewriting legacy Google/WGS-84 snapshots.
-- Keep `realtime: false`; do not simulate Supabase channels or dual write.
+- Implement CloudBase Database repositories for trips, itinerary, places/routes, attachments
+  metadata, and public/share snapshots against the approved baseline.
+- Implement the core CloudBase Auth/session adapter and only the extension contracts supported by
+  the configured CN authentication product.
+- Preserve Global/CN identity separation, provider-neutral errors, and current Global behavior.
 
-### Phase 4 — Remaining RPC/admin migration and deployment readiness
+### Phase 4 — Storage, cleanup, and dual deployment workflow
 
-- Remove remaining compatibility imports feature by feature.
-- Port public snapshot/share RPCs, route calculation persistence, maintenance scripts, and cron jobs.
-- Replace Supabase-generated database types at provider-neutral boundaries and add CloudBase-specific
-  generated types inside its adapter only.
-- Run full CN build/runtime acceptance with real non-production CloudBase resources, then perform a
-  separate deployment review. No production deployment is implied by code completion.
+- Implement CloudBase PG Storage upload, signed access, removal, and attachment/public-media flows.
+- Implement cleanup/admin jobs and their scheduler/runtime integration.
+- Add reviewed Global and CN deployment workflows without request-time switching, dual write, or
+  cross-region account/token synchronization.
+
+### Phase 5 — Test matrix and rollout preparation
+
+- Run the complete Global/CN build and runtime test matrix with approved non-production resources.
+- Perform adversarial Auth, authorization, storage, public snapshot, secret-isolation, and provider
+  selection security tests.
+- Prepare rollback, monitoring, operational ownership, and rollout evidence for a separate release
+  decision. Phase completion does not itself route production traffic.
 
 ## Manual configuration required
 

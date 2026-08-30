@@ -6,12 +6,34 @@ export type AppUser = Readonly<{
   metadata: Readonly<Record<string, unknown>>;
 }>;
 
-export type SignInInput = Readonly<{ email: string; password: string }>;
-export type SignUpInput = SignInInput & Readonly<{ emailRedirectTo?: string }>;
-export type OAuthSignInInput = Readonly<{
-  provider: "google";
+export type SignInInput =
+  | Readonly<{
+      email: string;
+      method: "email_password";
+      password: string;
+    }>
+  | Readonly<{
+      method: "username_password";
+      password: string;
+      username: string;
+    }>;
+
+export type PublicSelfRegistrationInput = Readonly<{
+  email: string;
+  method: "email_password";
+  password: string;
+  verificationRedirectTo?: string;
+}>;
+
+export type RedirectOAuthSignInInput = Readonly<{
+  authorizationParameters?: Readonly<Record<string, string>>;
+  provider: string;
   redirectTo: string;
-  selectAccount?: boolean;
+}>;
+
+export type ProviderTokenSignInInput = Readonly<{
+  provider: string;
+  token: string;
 }>;
 
 export interface AuthProvider {
@@ -21,8 +43,20 @@ export interface AuthProvider {
   signOut(): Promise<void>;
 }
 
-export interface AuthenticationSessionProvider extends AuthProvider {
+export interface PublicSelfRegistrationProvider {
+  signUp(
+    input: PublicSelfRegistrationInput,
+  ): Promise<{ sessionCreated: boolean; user: AppUser | null }>;
+}
+
+export interface RedirectOAuthProvider {
+  startOAuthSignIn(input: RedirectOAuthSignInInput): Promise<{ redirectUrl: string }>;
+}
+
+export interface AuthorizationCodeExchangeProvider {
   exchangeAuthorizationCode(code: string): Promise<AppUser>;
-  signUp(input: SignUpInput): Promise<{ sessionCreated: boolean; user: AppUser | null }>;
-  startOAuthSignIn(input: OAuthSignInInput): Promise<{ redirectUrl: string }>;
+}
+
+export interface ProviderTokenSignInProvider {
+  signInWithProviderToken(input: ProviderTokenSignInInput): Promise<AppUser>;
 }

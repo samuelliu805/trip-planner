@@ -2,13 +2,17 @@ import "server-only";
 
 import type {
   AppUser,
-  AuthenticationSessionProvider,
-  OAuthSignInInput,
+  AuthProvider,
+  AuthorizationCodeExchangeProvider,
+  PublicSelfRegistrationInput,
+  PublicSelfRegistrationProvider,
+  RedirectOAuthProvider,
+  RedirectOAuthSignInInput,
   SignInInput,
-  SignUpInput,
 } from "@/platform/contracts/auth";
 import { PlatformOperationError } from "@/platform/contracts/errors";
 
+import { supabasePasswordCredentials } from "./auth-input";
 import { createSupabaseServerClient } from "./server";
 
 type SupabaseUserShape = {
@@ -29,7 +33,13 @@ function operationFailed(message: string, cause?: unknown) {
   return new PlatformOperationError("unexpected", message, { cause });
 }
 
-export class SupabaseAuthProvider implements AuthenticationSessionProvider {
+export class SupabaseAuthProvider
+  implements
+    AuthProvider,
+    AuthorizationCodeExchangeProvider,
+    PublicSelfRegistrationProvider,
+    RedirectOAuthProvider
+{
   async getCurrentUser() {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.getUser();
@@ -45,8 +55,9 @@ export class SupabaseAuthProvider implements AuthenticationSessionProvider {
   }
 
   async signIn(input: SignInInput) {
+    const credentials = supabasePasswordCredentials(input);
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.signInWithPassword(input);
+    const { data, error } = await supabase.auth.signInWithPassword(credentials);
     if (error || !data.user) throw operationFailed("Authentication failed.", error);
     return appUser(data.user);
   }
@@ -64,12 +75,14 @@ export class SupabaseAuthProvider implements AuthenticationSessionProvider {
     return appUser(data.user);
   }
 
-  async signUp(input: SignUpInput) {
+  async signUp(input: PublicSelfRegistrationInput) {
     const supabase = await createSupabaseServerClient();
-    const { emailRedirectTo, ...credentials } = input;
     const { data, error } = await supabase.auth.signUp({
-      ...credentials,
-      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+      email: input.email,
+      password: input.password,
+      options: input.verificationRedirectTo
+        ? { emailRedirectTo: input.verificationRedirectTo }
+        : undefined,
     });
     if (error) throw operationFailed("Account creation failed.", error);
     return {
@@ -78,12 +91,18 @@ export class SupabaseAuthProvider implements AuthenticationSessionProvider {
     };
   }
 
-  async startOAuthSignIn(input: OAuthSignInInput) {
+  async startOAuthSignIn(input: RedirectOAuthSignInInput) {
+    if (input.provider !== "google") {
+      throw new PlatformOperationError(
+        "unsupported_operation",
+        `Supabase redirect OAuth is not configured for ${input.provider}.`,
+      );
+    }
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: input.provider,
+      provider: "google",
       options: {
-        queryParams: input.selectAccount ? { prompt: "select_account" } : undefined,
+        queryParams: input.authorizationParameters,
         redirectTo: input.redirectTo,
       },
     });

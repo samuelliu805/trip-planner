@@ -1,11 +1,6 @@
 import { PlatformOperationError } from "@/platform/contracts/errors";
 
-export const cloudBasePhase1Status = Object.freeze({
-  authImplemented: false,
-  dataImplemented: false,
-  runtimeReady: false,
-  storageImplemented: false,
-});
+export { cloudBasePhase1Status } from "./status";
 
 export function cloudBaseProviderUnavailable(): never {
   throw new PlatformOperationError(

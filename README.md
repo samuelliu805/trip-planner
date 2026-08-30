@@ -38,6 +38,12 @@ Backend deployment selection and Phase 1 migration boundaries are documented in
 transition path. CloudBase DB/Auth/Storage adapters are not implemented and CN is not ready for
 traffic.
 
+The dual-backend migration remains a five-phase program: Phase 2 is limited to the CloudBase PG
+schema baseline, overlays, deployment tooling, and database security validation; Phase 3 implements
+Database repositories and Auth/session adapters; Phase 4 implements Storage, cleanup jobs, and dual
+deployment workflows; Phase 5 provides the Global/CN test matrix, adversarial security testing, and
+rollout preparation. Phase 2 does not promise an Auth, repository, or UI runtime.
+
 ## Architecture
 
 The application is a modular monolith:

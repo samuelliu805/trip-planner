@@ -21,6 +21,7 @@ import {
 } from "../../lib/providers/google/routes/google-routes-core.ts";
 import { googleTravelMode } from "../../lib/providers/google/routes/mode-mapping.ts";
 import type { RouteLegRequest, RouteProvider } from "../../lib/providers/routes/types.ts";
+import { shouldRestorePlannerDocumentScroll } from "./hooks/use-planner-viewport-containment.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
@@ -2812,8 +2813,9 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /visible=\{workspace\.days\.length === 1 \|\| selectedDayRow === row\}/);
   assert.match(
     dayActions,
-    /if \(isOnlyDay\)[\s\S]*mt-auto min-h-11 w-full[\s\S]*message=\{"Add day"\}/,
+    /if \(isOnlyDay\)[\s\S]*mt-auto min-h-11 w-full gap-1\.5 px-2 font-sans[\s\S]*message=\{"Add day"\}/,
   );
+  assert.match(dayActions, /InsertRowIcon className="size-4 shrink-0" direction="below"/);
   assert.match(dayActions, /grid grid-cols-2[\s\S]*<Trash2/);
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /aria-label="Trip menu"/);
@@ -2894,6 +2896,15 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(form, /requestAnimationFrame[\s\S]*scrollIntoView[\s\S]*preventScroll: true/);
   assert.match(queries, /useCopyItineraryItems[\s\S]*onMutate/);
   assert.match(queries, /onError:[\s\S]*context\?\.previous/);
+});
+
+test("planner restores document scroll after iPad browser chrome moves the visual viewport", () => {
+  const input = { matches: (selector: string) => selector.includes("input") };
+  const page = { matches: () => false };
+
+  assert.equal(shouldRestorePlannerDocumentScroll(input), false);
+  assert.equal(shouldRestorePlannerDocumentScroll(page), true);
+  assert.equal(shouldRestorePlannerDocumentScroll(null), true);
 });
 
 test("mobile and tablet workspaces contain scrolling and keep frozen Matrix layers", async () => {
@@ -3016,6 +3027,8 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.doesNotMatch(mobileMatrixContainment, /min-width: 640px/);
   assert.match(viewportContainment, /visualViewport/);
   assert.match(viewportContainment, /focusout/);
+  assert.match(viewportContainment, /if \(isEditing\(\)\) return/);
+  assert.doesNotMatch(viewportContainment, /innerHeight - visualViewport\.height/);
   assert.match(viewportContainment, /window\.scrollTo\(\{ left: 0, top: 0/);
   assert.doesNotMatch(viewportContainment + styles, /planner-visual-viewport/);
   assert.match(styles, /min-width: 900px[\s\S]*planner-workspace[\s\S]*padding: 0 16px;/);

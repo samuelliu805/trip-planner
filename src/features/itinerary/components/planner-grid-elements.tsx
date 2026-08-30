@@ -45,13 +45,13 @@ export function DayActions({
     return (
       <Button
         aria-label={t("Insert day below Day {day}", { day: day.day_number })}
-        className="mt-auto min-h-11 w-full gap-1 px-1"
+        className="mt-auto min-h-11 w-full gap-1.5 px-2 font-sans"
         disabled={pending}
         onClick={addDay}
         size="sm"
         type="button"
       >
-        <InsertRowIcon direction="below" />
+        <InsertRowIcon className="size-4 shrink-0" direction="below" />
         <T message={"Add day"} />
       </Button>
     );

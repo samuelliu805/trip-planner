@@ -3,7 +3,7 @@ import "server-only";
 import { capabilitiesForRegion } from "@/platform/capabilities/backend-capabilities";
 import { cloudBaseProviderUnavailable } from "@/platform/cloudbase/unavailable";
 import { getServerProviderConfig } from "@/platform/config/server";
-import type { AuthenticationSessionProvider } from "@/platform/contracts/auth";
+import type { AuthProvider } from "@/platform/contracts/auth";
 import type { StorageProvider } from "@/platform/contracts/storage";
 import type { TripRepository } from "@/platform/contracts/trips";
 import { SupabaseAuthProvider } from "@/platform/supabase/auth-provider";
@@ -14,7 +14,7 @@ export function getBackendCapabilities() {
   return capabilitiesForRegion(getServerProviderConfig().appRegion);
 }
 
-export function getAuthProvider(): AuthenticationSessionProvider {
+export function getAuthProvider(): AuthProvider {
   const config = getServerProviderConfig();
   if (config.authProvider === "supabase") return new SupabaseAuthProvider();
   return cloudBaseProviderUnavailable();

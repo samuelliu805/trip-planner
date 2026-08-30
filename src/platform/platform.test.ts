@@ -10,7 +10,10 @@ import {
   type ProviderEnvironment,
 } from "./config/provider-matrix.ts";
 import { backendCapabilitiesByRegion } from "./capabilities/backend-capabilities.ts";
-import type { AppUserId } from "./contracts/auth.ts";
+import { cloudBasePhase1Status } from "./cloudbase/status.ts";
+import type { AppUserId, SignInInput } from "./contracts/auth.ts";
+import { PlatformOperationError } from "./contracts/errors.ts";
+import { supabasePasswordCredentials } from "./supabase/auth-input.ts";
 import {
   directProviderSdkImports,
   findBackendProviderBoundaryViolations,
@@ -100,9 +103,33 @@ test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.global.realtime, true);
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
   assert.equal(backendCapabilitiesByRegion.cn.selfRegistration, false);
-  assert.equal(backendCapabilitiesByRegion.cn.signedUrls, false);
+  assert.equal(backendCapabilitiesByRegion.cn.signedUrls, true);
   assert.equal(Object.isFrozen(backendCapabilitiesByRegion), true);
   assert.equal(Object.isFrozen(backendCapabilitiesByRegion.cn), true);
+});
+
+test("shared sign-in inputs distinguish email and username credentials", () => {
+  const emailPassword: SignInInput = {
+    email: "traveler@example.com",
+    method: "email_password",
+    password: "secret",
+  };
+  const usernamePassword: SignInInput = {
+    method: "username_password",
+    password: "secret",
+    username: "traveler",
+  };
+
+  assert.equal(emailPassword.method, "email_password");
+  assert.equal(usernamePassword.method, "username_password");
+  assert.deepEqual(supabasePasswordCredentials(emailPassword), {
+    email: "traveler@example.com",
+    password: "secret",
+  });
+  assert.throws(
+    () => supabasePasswordCredentials(usernamePassword),
+    (error) => error instanceof PlatformOperationError && error.code === "unsupported_operation",
+  );
 });
 
 test("provider-neutral user IDs accept non-UUID identifiers", () => {
@@ -122,7 +149,40 @@ test("provider SDK imports are restricted to the exact adapter and maintenance a
 
 test("CloudBase Phase 1 remains an explicit fail-closed scaffold", async () => {
   const source = await readFile(new URL("./cloudbase/unavailable.ts", import.meta.url), "utf8");
-  assert.match(source, /runtimeReady: false/);
+  assert.equal(cloudBasePhase1Status.runtimeReady, false);
+  assert.equal(cloudBasePhase1Status.storageImplemented, false);
+  assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
   assert.match(source, /provider_unavailable/);
   assert.doesNotMatch(source, /@cloudbase\//);
+});
+
+test("Phase 2 is schema-only and does not promise backend runtime adapters", async () => {
+  const architecture = await readFile(
+    new URL("../../docs/backend-provider-architecture-phase-1.md", import.meta.url),
+    "utf8",
+  );
+  const phase2 = architecture.match(/### Phase 2[\s\S]*?(?=### Phase 3)/)?.[0];
+  assert.ok(phase2);
+  assert.match(phase2, /schema baseline/);
+  assert.match(phase2, /overlays/);
+  assert.match(phase2, /deployment tooling/);
+  assert.match(phase2, /database security validation/);
+  assert.match(phase2, /Do not implement Auth, repositories, session behavior, or UI runtime/);
+  assert.doesNotMatch(phase2, /Implement CloudBase Auth|repository adapters/);
+});
+
+test("Global auth actions, PKCE callback, and proxy cookie refresh stay on legacy paths", async () => {
+  const [actions, callback, proxy] = await Promise.all([
+    readFile(new URL("../features/auth/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/callback/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("./supabase/proxy.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(actions, /signInWithPassword\(parsed\.data\)/);
+  assert.match(actions, /signInWithOAuth\(\{[\s\S]*provider: "google"/);
+  assert.match(actions, /signUp\(\{[\s\S]*\.\.\.parsed\.data/);
+  assert.match(callback, /exchangeCodeForSession\(code\)/);
+  assert.match(proxy, /getAll: \(\) => request\.cookies\.getAll\(\)/);
+  assert.match(proxy, /setAll\(cookiesToSet\)/);
+  assert.match(proxy, /supabase\.auth\.getUser\(\)/);
 });

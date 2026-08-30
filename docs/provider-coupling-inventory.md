@@ -16,66 +16,73 @@ covered application source, scripts, workflows, generated types, tests, and all 
 - Coupling includes 15 Server Action files, 9 Route Handlers, 6 App Router Server Components, one
   direct browser Storage flow, repository/services, admin cleanup, SQL tests, and generated types.
 - No application `.channel()`/Realtime subscription was found. Global capability remains true
-  because Supabase provides it; CN capability is explicitly false.
+  because Supabase provides it; CN capability is explicitly false. CN signed URL capability is true
+  because CloudBase PG Storage supports it, while Phase 1 implementation status remains
+  `storageImplemented: false` and `runtimeReady: false`.
 
 Risk labels: **H** changes auth/security, multi-step storage, RPC transaction, RLS, or public snapshot
 compatibility; **M** changes one or more provider queries but has a bounded domain surface; **L** is a
 factory/telemetry read or a source-level compatibility check.
 
+Planned phases use the backend-migration sequence: Phase 2 is schema baseline, overlays, deployment
+tooling, and database security validation only; Phase 3 is Database repositories and Auth/session;
+Phase 4 is Storage, cleanup jobs, and dual deployment workflow; Phase 5 is the Global/CN test
+matrix, adversarial security testing, and rollout preparation.
+
 ## Browser/client
 
-| File                                                       | Current purpose and coupling                                                                                   | Risk                                           | Planned phase                     |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------- |
-| `src/lib/supabase/client.ts`                               | Compatibility re-export for the cookie-aware browser singleton.                                                | L                                              | 4, remove after consumers migrate |
-| `src/features/sharing/components/use-long-image-export.ts` | Uploads/removes `share-images` directly with the browser Supabase Storage client.                              | H: signed upload lifecycle and failure cleanup | 3                                 |
-| `src/features/attachments/upload-client.ts`                | No SDK import, but consumes Supabase signed PUT and TUS protocol fields and hard-codes `trip-assets` metadata. | H: resumability and storage protocol           | 3                                 |
+| File                                                       | Current purpose and coupling                                                                                   | Risk                                           | Planned phase                       |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------- |
+| `src/lib/supabase/client.ts`                               | Compatibility re-export for the cookie-aware browser singleton.                                                | L                                              | 3–4, remove after consumers migrate |
+| `src/features/sharing/components/use-long-image-export.ts` | Uploads/removes `share-images` directly with the browser Supabase Storage client.                              | H: signed upload lifecycle and failure cleanup | 4                                   |
+| `src/features/attachments/upload-client.ts`                | No SDK import, but consumes Supabase signed PUT and TUS protocol fields and hard-codes `trip-assets` metadata. | H: resumability and storage protocol           | 4                                   |
 
 ## Server Components and server reads
 
 | File                                      | Current purpose and coupling                                                                  | Risk                        | Planned phase    |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------- | ---------------- |
-| `src/app/(auth)/login/page.tsx`           | Reads current Supabase user before redirecting.                                               | M: auth redirect            | 2                |
-| `src/app/(auth)/signup/page.tsx`          | Reads current Supabase user before redirecting.                                               | M: auth/registration policy | 2                |
-| `src/app/account/page.tsx`                | Reads user and `profiles`, including Supabase user metadata fallback.                         | H: identity/profile mapping | 2                |
-| `src/app/home/page.tsx`                   | Reads optional current user for navigation and telemetry identity.                            | M                           | 2                |
-| `src/app/trips/layout.tsx`                | Auth guard plus user email/telemetry identity.                                                | H: protected shell          | 2                |
-| `src/app/trips/[tripId]/page.tsx`         | Reads current user to compute owner controls after repository reads.                          | H: owner authorization      | 2                |
-| `src/features/research/compare-route.tsx` | Creates a server client and checks ownership while loading comparison state.                  | H                           | 2                |
-| `src/features/i18n/server.ts`             | Reads user profile locale after `getUser()`, with cookie fallback.                            | M                           | 2                |
+| `src/app/(auth)/login/page.tsx`           | Reads current Supabase user before redirecting.                                               | M: auth redirect            | 3                |
+| `src/app/(auth)/signup/page.tsx`          | Reads current Supabase user before redirecting.                                               | M: auth/registration policy | 3                |
+| `src/app/account/page.tsx`                | Reads user and `profiles`, including Supabase user metadata fallback.                         | H: identity/profile mapping | 3                |
+| `src/app/home/page.tsx`                   | Reads optional current user for navigation and telemetry identity.                            | M                           | 3                |
+| `src/app/trips/layout.tsx`                | Auth guard plus user email/telemetry identity.                                                | H: protected shell          | 3                |
+| `src/app/trips/[tripId]/page.tsx`         | Reads current user to compute owner controls after repository reads.                          | H: owner authorization      | 3                |
+| `src/features/research/compare-route.tsx` | Creates a server client and checks ownership while loading comparison state.                  | H                           | 3                |
+| `src/features/i18n/server.ts`             | Reads user profile locale after `getUser()`, with cookie fallback.                            | M                           | 3                |
 | `src/features/trips/data.ts`              | **Migrated:** composition-root `TripRepository` list/get slice; legacy result shape retained. | L                           | Phase 1 complete |
 
 ## Server Actions
 
 | File                                           | Current purpose and coupling                                                                    | Risk                               | Planned phase    |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------- | ---------------- |
-| `src/features/auth/actions.ts`                 | Password login/signup, Google OAuth, sign-out, redirects, and auth telemetry.                   | H: cookies/OAuth/error semantics   | 2                |
-| `src/features/account/actions.ts`              | Authenticates and upserts `profiles`.                                                           | M                                  | 2                |
-| `src/features/trips/actions.ts`                | Auth, profile default, `create_trip`, status/delete queries, telemetry, redirects, and cleanup. | H                                  | 2 then 4 cleanup |
-| `src/features/trips/update-trip-action.ts`     | Auth plus transactional `update_trip_plan` RPC and revalidation.                                | H                                  | 2                |
-| `src/features/itinerary/actions.ts`            | Clears/reorders variants and performs direct itinerary mutations.                               | H: order invariants                | 2                |
-| `src/features/itinerary/day-actions.ts`        | Day insert/remove/reorder/copy RPC and table sequence.                                          | H: multi-write ordering            | 2                |
-| `src/features/itinerary/item-create-action.ts` | Multi-step item/link/place creation with rollback and reorder.                                  | H                                  | 2                |
-| `src/features/itinerary/item-delete-action.ts` | Owner-scoped item deletion and side effects.                                                    | H                                  | 2                |
-| `src/features/attachments/actions.ts`          | Attachment share/detach RPC actions.                                                            | H: metadata/storage lifecycle      | 3                |
-| `src/features/research/actions.ts`             | Research-item CRUD.                                                                             | M                                  | 2                |
-| `src/features/research/plan-actions.ts`        | Apply/revert research plan RPCs and dependent reads.                                            | H: transactional projection        | 2                |
-| `src/features/routes/actions.ts`               | Owner checks and saved route plan/calculation RPCs.                                             | H: legacy route JSON compatibility | 2                |
-| `src/features/sharing/actions.ts`              | Create/update/revoke share-page RPCs.                                                           | H: public snapshot contract        | 4                |
-| `src/features/sharing/long-image/actions.ts`   | Auth, long-image lifecycle RPCs, Storage removal, and revalidation.                             | H                                  | 3 then 4         |
-| `src/features/variants/actions.ts`             | Route variant create/duplicate/update/primary/delete RPCs.                                      | H                                  | 2                |
+| `src/features/auth/actions.ts`                 | Password login/signup, Google OAuth, sign-out, redirects, and auth telemetry.                   | H: cookies/OAuth/error semantics   | 3                |
+| `src/features/account/actions.ts`              | Authenticates and upserts `profiles`.                                                           | M                                  | 3                |
+| `src/features/trips/actions.ts`                | Auth, profile default, `create_trip`, status/delete queries, telemetry, redirects, and cleanup. | H                                  | 3 then 4 cleanup |
+| `src/features/trips/update-trip-action.ts`     | Auth plus transactional `update_trip_plan` RPC and revalidation.                                | H                                  | 3                |
+| `src/features/itinerary/actions.ts`            | Clears/reorders variants and performs direct itinerary mutations.                               | H: order invariants                | 3                |
+| `src/features/itinerary/day-actions.ts`        | Day insert/remove/reorder/copy RPC and table sequence.                                          | H: multi-write ordering            | 3                |
+| `src/features/itinerary/item-create-action.ts` | Multi-step item/link/place creation with rollback and reorder.                                  | H                                  | 3                |
+| `src/features/itinerary/item-delete-action.ts` | Owner-scoped item deletion and side effects.                                                    | H                                  | 3                |
+| `src/features/attachments/actions.ts`          | Attachment share/detach RPC actions.                                                            | H: metadata/storage lifecycle      | 4                |
+| `src/features/research/actions.ts`             | Research-item CRUD.                                                                             | M                                  | 3                |
+| `src/features/research/plan-actions.ts`        | Apply/revert research plan RPCs and dependent reads.                                            | H: transactional projection        | 3                |
+| `src/features/routes/actions.ts`               | Owner checks and saved route plan/calculation RPCs.                                             | H: legacy route JSON compatibility | 3                |
+| `src/features/sharing/actions.ts`              | Create/update/revoke share-page RPCs.                                                           | H: public snapshot contract        | 3                |
+| `src/features/sharing/long-image/actions.ts`   | Auth, long-image lifecycle RPCs, Storage removal, and revalidation.                             | H                                  | 4                |
+| `src/features/variants/actions.ts`             | Route variant create/duplicate/update/primary/delete RPCs.                                      | H                                  | 3                |
 
 ## Route Handlers
 
 | File                                                                                            | Current purpose and coupling                                                              | Risk                               | Planned phase |
 | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------- | ------------- |
-| `src/app/auth/callback/route.ts`                                                                | PKCE `exchangeCodeForSession`, auth telemetry, and redirect.                              | H: cookie/OAuth callback           | 2             |
-| `src/app/api/trips/[tripId]/assets/[publicRef]/route.ts`                                        | Auth + owner asset RPC + signed Storage redirect.                                         | H                                  | 3             |
-| `src/app/api/share/[token]/assets/[publicRef]/route.ts`                                         | Admin RPC authorizes public asset, then signs Storage URL.                                | H: public token and admin boundary | 3             |
-| `src/app/api/trips/[tripId]/items/[itemId]/attachments/prepare/route.ts`                        | Auth, reservation RPC, signed upload(s), failure cleanup.                                 | H                                  | 3             |
-| `src/app/api/trips/[tripId]/items/[itemId]/attachments/session/[sessionId]/route.ts`            | Auth plus commit/discard draft attachment session RPCs.                                   | H                                  | 3             |
-| `src/app/api/trips/[tripId]/research/[researchItemId]/attachments/prepare/route.ts`             | Research attachment reservation and signed upload lifecycle.                              | H                                  | 3             |
-| `src/app/api/trips/[tripId]/research/[researchItemId]/attachments/session/[sessionId]/route.ts` | Research attachment commit/discard session RPCs.                                          | H                                  | 3             |
-| `src/app/share/image/[slug]/part/[part]/route.ts`                                               | Downloads a public share-image part from Supabase Storage.                                | H: public download/cache contract  | 3             |
+| `src/app/auth/callback/route.ts`                                                                | PKCE `exchangeCodeForSession`, auth telemetry, and redirect.                              | H: cookie/OAuth callback           | 3             |
+| `src/app/api/trips/[tripId]/assets/[publicRef]/route.ts`                                        | Auth + owner asset RPC + signed Storage redirect.                                         | H                                  | 4             |
+| `src/app/api/share/[token]/assets/[publicRef]/route.ts`                                         | Admin RPC authorizes public asset, then signs Storage URL.                                | H: public token and admin boundary | 4             |
+| `src/app/api/trips/[tripId]/items/[itemId]/attachments/prepare/route.ts`                        | Auth, reservation RPC, signed upload(s), failure cleanup.                                 | H                                  | 4             |
+| `src/app/api/trips/[tripId]/items/[itemId]/attachments/session/[sessionId]/route.ts`            | Auth plus commit/discard draft attachment session RPCs.                                   | H                                  | 4             |
+| `src/app/api/trips/[tripId]/research/[researchItemId]/attachments/prepare/route.ts`             | Research attachment reservation and signed upload lifecycle.                              | H                                  | 4             |
+| `src/app/api/trips/[tripId]/research/[researchItemId]/attachments/session/[sessionId]/route.ts` | Research attachment commit/discard session RPCs.                                          | H                                  | 4             |
+| `src/app/share/image/[slug]/part/[part]/route.ts`                                               | Downloads a public share-image part from Supabase Storage.                                | H: public download/cache contract  | 4             |
 | `src/app/api/cron/share-image-cleanup/route.ts`                                                 | `CRON_SECRET`, admin cleanup RPCs, Storage deletion, telemetry, and Vercel cron response. | H                                  | 4             |
 
 The two attachment finalize `route.ts` files delegate their coupling to
@@ -86,11 +93,11 @@ no direct client creation.
 
 | File                              | Current purpose and coupling                                                              | Risk                 | Planned phase       |
 | --------------------------------- | ----------------------------------------------------------------------------------------- | -------------------- | ------------------- |
-| `src/proxy.ts`                    | Skips public share routes and delegates all other requests to the Supabase session proxy. | H: request-wide auth | 2                   |
-| `src/lib/supabase/proxy.ts`       | Compatibility re-export only.                                                             | L                    | 4                   |
-| `src/lib/supabase/server.ts`      | Compatibility re-export used by legacy Server Components/actions/handlers.                | L                    | 2–4 by consumer     |
-| `src/lib/supabase/admin.ts`       | Compatibility re-export for privileged RPC/Storage work.                                  | H                    | 3–4                 |
-| `src/lib/supabase/config.ts`      | Compatibility re-export for Supabase public URL/key validation.                           | L                    | 4                   |
+| `src/proxy.ts`                    | Skips public share routes and delegates all other requests to the Supabase session proxy. | H: request-wide auth | 3                   |
+| `src/lib/supabase/proxy.ts`       | Compatibility re-export only.                                                             | L                    | 3                   |
+| `src/lib/supabase/server.ts`      | Compatibility re-export used by legacy Server Components/actions/handlers.                | L                    | 3–4 by consumer     |
+| `src/lib/supabase/admin.ts`       | Compatibility re-export for privileged RPC/Storage work.                                  | H                    | 4                   |
+| `src/lib/supabase/config.ts`      | Compatibility re-export for Supabase public URL/key validation.                           | L                    | 3–4                 |
 | `src/platform/supabase/client.ts` | Approved `createBrowserClient` adapter, behavior moved unchanged.                         | L                    | Retained for Global |
 | `src/platform/supabase/server.ts` | Approved cookie-backed `createServerClient` adapter.                                      | H                    | Retained for Global |
 | `src/platform/supabase/proxy.ts`  | Approved request/response cookie refresh adapter using `getUser()`.                       | H                    | Retained for Global |
@@ -100,33 +107,33 @@ no direct client creation.
 
 | File                                                | Current purpose and coupling                                                                     | Risk | Planned phase |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---- | ------------- |
-| `src/features/itinerary/data.ts`                    | Workspace variants, days, items, routes, places, links, and attachments across parallel queries. | H    | 2             |
-| `src/features/itinerary/action-helpers.ts`          | Place snapshot RPC and itinerary link diff writes; accepts a Supabase client type.               | H    | 2             |
-| `src/features/itinerary/item-action-validation.ts`  | Validates variant/day existence through direct queries.                                          | M    | 2             |
-| `src/features/itinerary/item-telemetry.server.ts`   | Reads user only for telemetry attribution.                                                       | L    | 2             |
-| `src/features/research/data.ts`                     | Research workspace tables and current-application RPC.                                           | H    | 2             |
-| `src/features/research/action-helpers.ts`           | Shared research mutation helpers typed to the Supabase client.                                   | H    | 2             |
-| `src/features/research/telemetry.server.ts`         | Reads user only for telemetry attribution.                                                       | L    | 2             |
-| `src/features/variants/comparison-data.ts`          | Multi-table variant comparison projection.                                                       | H    | 2             |
-| `src/features/variants/decision-summary-data.ts`    | Multi-table summary with route calculations.                                                     | H    | 2             |
-| `src/features/variants/telemetry.server.ts`         | Reads user only for telemetry attribution.                                                       | L    | 2             |
-| `src/features/routes/telemetry.server.ts`           | Reads user only for telemetry attribution.                                                       | L    | 2             |
-| `src/features/sharing/data.ts`                      | Public/owner snapshot and share-image manifest RPCs plus schema parsing.                         | H    | 4             |
-| `src/features/sharing/public-media-data.ts`         | Public itinerary RPC used to authorize place media.                                              | H    | 4             |
-| `src/features/sharing/telemetry.server.ts`          | Reads user only for telemetry attribution.                                                       | L    | 2             |
-| `src/features/attachments/storage.server.ts`        | Admin download, signed upload/access URL, and Supabase TUS origin derivation.                    | H    | 3             |
-| `src/features/attachments/finalize-route.server.ts` | Auth, metadata reads, admin download/thumbnail upload/remove, finalize RPC/retry.                | H    | 3             |
+| `src/features/itinerary/data.ts`                    | Workspace variants, days, items, routes, places, links, and attachments across parallel queries. | H    | 3             |
+| `src/features/itinerary/action-helpers.ts`          | Place snapshot RPC and itinerary link diff writes; accepts a Supabase client type.               | H    | 3             |
+| `src/features/itinerary/item-action-validation.ts`  | Validates variant/day existence through direct queries.                                          | M    | 3             |
+| `src/features/itinerary/item-telemetry.server.ts`   | Reads user only for telemetry attribution.                                                       | L    | 3             |
+| `src/features/research/data.ts`                     | Research workspace tables and current-application RPC.                                           | H    | 3             |
+| `src/features/research/action-helpers.ts`           | Shared research mutation helpers typed to the Supabase client.                                   | H    | 3             |
+| `src/features/research/telemetry.server.ts`         | Reads user only for telemetry attribution.                                                       | L    | 3             |
+| `src/features/variants/comparison-data.ts`          | Multi-table variant comparison projection.                                                       | H    | 3             |
+| `src/features/variants/decision-summary-data.ts`    | Multi-table summary with route calculations.                                                     | H    | 3             |
+| `src/features/variants/telemetry.server.ts`         | Reads user only for telemetry attribution.                                                       | L    | 3             |
+| `src/features/routes/telemetry.server.ts`           | Reads user only for telemetry attribution.                                                       | L    | 3             |
+| `src/features/sharing/data.ts`                      | Public/owner snapshot and share-image manifest RPCs plus schema parsing.                         | H    | 3             |
+| `src/features/sharing/public-media-data.ts`         | Public itinerary RPC used to authorize place media.                                              | H    | 3             |
+| `src/features/sharing/telemetry.server.ts`          | Reads user only for telemetry attribution.                                                       | L    | 3             |
+| `src/features/attachments/storage.server.ts`        | Admin download, signed upload/access URL, and Supabase TUS origin derivation.                    | H    | 4             |
+| `src/features/attachments/finalize-route.server.ts` | Auth, metadata reads, admin download/thumbnail upload/remove, finalize RPC/retry.                | H    | 4             |
 | `src/features/attachments/cleanup.server.ts`        | Admin cleanup RPC queue and Storage deletes.                                                     | H    | 4             |
-| `src/features/attachments/telemetry.server.ts`      | Reads user only for telemetry attribution.                                                       | L    | 2             |
-| `src/features/trips/auto-title.ts`                  | Accepts a Supabase client and conditionally renames a default trip.                              | M    | 2             |
+| `src/features/attachments/telemetry.server.ts`      | Reads user only for telemetry attribution.                                                       | L    | 3             |
+| `src/features/trips/auto-title.ts`                  | Accepts a Supabase client and conditionally renames a default trip.                              | M    | 3             |
 
 ## Admin, cron, deployment, and scripts
 
-| File                                     | Current purpose and coupling                                                       | Risk                           | Planned phase                            |
-| ---------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------- |
-| `vercel.json`                            | Schedules the existing Global cleanup endpoint daily.                              | H: platform-specific scheduler | 4; retain Global schedule                |
-| `.github/workflows/observability-ci.yml` | Supplies Global placeholder env and runs build/test checks.                        | M                              | Phase 1 updated; add CN adapter CI later |
-| `scripts/backfill-place-localities.ts`   | Direct admin Supabase SDK plus Google Places backfill. Exact lint allowlist entry. | H: privileged bulk write       | 4                                        |
+| File                                     | Current purpose and coupling                                                       | Risk                           | Planned phase                              |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------ |
+| `vercel.json`                            | Schedules the existing Global cleanup endpoint daily.                              | H: platform-specific scheduler | 4; retain Global schedule                  |
+| `.github/workflows/observability-ci.yml` | Supplies Global placeholder env and runs build/test checks.                        | M                              | Phase 4 dual workflow; Phase 5 full matrix |
+| `scripts/backfill-place-localities.ts`   | Direct admin Supabase SDK plus Google Places backfill. Exact lint allowlist entry. | H: privileged bulk write       | 4                                          |
 
 No production infrastructure, Vercel setting, Supabase project, or CloudBase resource was accessed or
 modified during this inventory.
@@ -135,7 +142,7 @@ modified during this inventory.
 
 `src/types/database.ts` is a Supabase-generated Data API contract for `public` tables, enums, and
 RPCs. TypeScript represents database UUID columns as `string`, but table/RPC names and generated
-shapes are provider-specific. Global adapters may continue using it internally. Phase 2–4 domain
+shapes are provider-specific. Global adapters may continue using it internally. Phase 3–4 domain
 contracts must not expose it to CloudBase adapters; later generated CloudBase types belong inside
 `src/platform/cloudbase` only. Phase 1 did not regenerate this file.
 
@@ -189,7 +196,8 @@ baseline rather than editing or bypassing this history. The abandoned AnalyticDB
 - Supabase SQL tests under `supabase/tests/*.sql` create `auth.users`, exercise RLS/RPCs, and in
   attachment tests assert `service_role` privileges. Keep as Global regression coverage.
 - `src/features/attachments/attachments.test.ts` asserts private/signed/resumable Storage and no
-  public service-role exposure. Extend with a separate CloudBase adapter suite in Phase 3.
+  public service-role exposure. Add CloudBase adapter coverage with implementation in Phase 4 and
+  include it in the full adversarial matrix in Phase 5.
 - itinerary, research, sharing, comparison, and decision-summary tests contain source/SQL assertions
   for current RPC and public snapshot behavior. Preserve them while moving one vertical slice at a
   time.
