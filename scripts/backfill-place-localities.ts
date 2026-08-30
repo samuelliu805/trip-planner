@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   resolveGooglePlaceLocality,
   type GoogleAddressComponent,
-} from "../src/lib/providers/places/normalize.ts";
+} from "../src/lib/providers/google/places/normalize-google-place.ts";
 
 const applyChanges = process.argv.includes("--apply");
 const unknownArguments = process.argv.slice(2).filter((argument) => argument !== "--apply");

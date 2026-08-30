@@ -2,9 +2,9 @@
 
 import { Polyline } from "@vis.gl/react-google-maps";
 
-import type { PlannerMapLine } from "@/features/maps/planner-map-model";
+import type { PlannerMapLine } from "@/lib/providers/maps/contracts";
 
-export function PlannerMapPolyline({ line }: { line: PlannerMapLine }) {
+export function GooglePlannerMapPolyline({ line }: { line: PlannerMapLine }) {
   return (
     <Polyline
       geodesic={line.geodesic ?? true}

@@ -1,5 +1,6 @@
 import type { ItineraryItem } from "@/features/itinerary/types";
 import { nameTripAfterFirstPlace } from "@/features/trips/auto-title";
+import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -22,6 +23,12 @@ export async function persistPlaceSnapshot(
   snapshot?: PlaceSnapshot | null,
 ) {
   if (!snapshot) return null;
+  if (snapshot.provider === "amap")
+    throw new MapsProviderConfigurationError({
+      capability: "places",
+      code: "provider_unavailable",
+      providerId: "amap",
+    });
   if (snapshot.provider !== "google" || !snapshot.providerPlaceId)
     throw new Error("Only normalized Google place snapshots can be persisted here.");
   const { data, error } = await supabase.rpc("upsert_google_place_snapshot_v2", {

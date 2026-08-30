@@ -8,6 +8,7 @@ import type { PublicItinerary } from "./types";
 
 export type PublicPlaceMediaSource = {
   itemRef: string;
+  provider: "google";
   providerPlaceId: string;
 };
 
@@ -16,7 +17,13 @@ export function publicPlaceMediaSources(itinerary: PublicItinerary): PublicPlace
   return itinerary.days.flatMap((day) => {
     const item = publicGoogleCoverItem(day);
     return item?.place?.googlePlaceId
-      ? [{ itemRef: item.ref, providerPlaceId: item.place.googlePlaceId }]
+      ? [
+          {
+            itemRef: item.ref,
+            provider: "google" as const,
+            providerPlaceId: item.place.googlePlaceId,
+          },
+        ]
       : [];
   });
 }

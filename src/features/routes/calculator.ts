@@ -1,9 +1,9 @@
-import type { CalculatedRouteLeg, RouteLegRequest } from "../../lib/providers/routes/types.ts";
+import type { CalculatedRouteLeg, RouteProvider } from "../../lib/providers/routes/types.ts";
 
 import { buildRouteConfigSignature, buildRouteLegSignature } from "./signatures.ts";
 import type { DayRouteCalculation, RouteCalculationConfig } from "./types.ts";
 
-export type RouteLegCalculator = (request: RouteLegRequest) => Promise<CalculatedRouteLeg>;
+export type RouteProviderResolver = () => RouteProvider;
 
 type CalculationResult = {
   cache: "full" | "partial" | "miss";
@@ -42,10 +42,12 @@ const totals = (legs: CalculatedRouteLeg[]) => ({
 export async function calculateRouteConfiguration(
   config: RouteCalculationConfig,
   previous: DayRouteCalculation | null,
-  calculateLeg: RouteLegCalculator,
+  resolveProvider: RouteProviderResolver,
   concurrency = 3,
 ): Promise<CalculationResult> {
-  const configSignature = buildRouteConfigSignature(config);
+  // Resolve before inspecting any cache so unavailable providers always fail closed.
+  const provider = resolveProvider();
+  const configSignature = buildRouteConfigSignature(config, provider.id);
   if (previous?.config_signature === configSignature) {
     return {
       cache: "full",
@@ -62,14 +64,21 @@ export async function calculateRouteConfiguration(
   const tasks = config.legModes.map((mode, index) => {
     const origin = config.stops[index];
     const destination = config.stops[index + 1];
-    const legSignature = buildRouteLegSignature(config, index + 1, origin, destination, mode);
+    const legSignature = buildRouteLegSignature(
+      config,
+      index + 1,
+      origin,
+      destination,
+      mode,
+      provider.id,
+    );
     const cached = previousBySignature.get(legSignature);
     if (cached) {
       reused += 1;
       return async () => cached;
     }
     return () =>
-      calculateLeg({
+      provider.calculateLeg({
         destination: destination.coordinates,
         legSignature,
         mode,

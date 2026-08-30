@@ -3,9 +3,9 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-import { mapWithConcurrency } from "../routes/calculator";
-import type { PublicItemMedia, PublicItineraryItem } from "./types";
-import type { PublicPlaceMediaSource } from "./public-media-data";
+import { mapWithConcurrency } from "@/features/routes/calculator";
+import type { PublicPlaceMediaSource } from "@/features/sharing/public-media-data";
+import type { PublicItemMedia, PublicItineraryItem } from "@/features/sharing/types";
 
 const googleAuthorSchema = z
   .object({

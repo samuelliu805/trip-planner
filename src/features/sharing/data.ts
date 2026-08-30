@@ -8,7 +8,7 @@ import {
   publicItinerarySchema,
   unavailablePublicItinerarySchema,
 } from "./schema";
-import { resolveGooglePlaceMedia } from "./google-place-photo.server";
+import { resolvePublicPlaceMedia } from "@/lib/providers/places/public-photo.server";
 import { publicPlaceMediaSources } from "./public-media-data";
 import type {
   OwnerShareImageState,
@@ -29,7 +29,7 @@ export async function getPublicItinerary(token: string): Promise<PublicItinerary
 
   const items = parsed.data.days.flatMap(({ items: dayItems }) => dayItems);
   const sources = publicPlaceMediaSources(parsed.data);
-  const mediaByItem = await resolveGooglePlaceMedia(token, sources, items);
+  const mediaByItem = await resolvePublicPlaceMedia(token, sources, items);
   if (!mediaByItem.size) return parsed.data;
   const withMedia = {
     ...parsed.data,

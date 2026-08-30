@@ -1,4 +1,5 @@
 import { transportModeLabels } from "../itinerary/types.ts";
+import type { RouteLegGeometry } from "../../lib/providers/routes/geometry.ts";
 import type { RouteLegMode } from "./types.ts";
 
 type Translate = (message: string, values?: Record<string, number | string>) => string;
@@ -16,7 +17,7 @@ export type RouteLegDetail = {
   estimateKind?: "transit_current_service";
   fallbackReason?: "unsupported_mode" | "no_route";
   fromLabel?: string;
-  geometry?: { source: "google" | "straight" };
+  geometry?: Pick<RouteLegGeometry, "source">;
   mode: RouteLegMode;
   position: number;
   toLabel?: string;

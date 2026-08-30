@@ -1,4 +1,8 @@
 import type { PlannerWorkspace } from "../itinerary/types.ts";
+import {
+  configuredMapsProviderId,
+  type MapsProviderId,
+} from "../../lib/providers/maps/provider.ts";
 
 import {
   plannerRouteConfigProjection,
@@ -19,12 +23,14 @@ export type RouteStatusPlanInput = RouteConfigPlanInput & {
 export function dayRouteStatusFromProjection(
   projection: RouteConfigProjectionInput,
   plan: RouteStatusPlanInput,
+  providerId: MapsProviderId = configuredMapsProviderId(),
 ): DayRouteStatus {
   const resolved = resolveRouteCalculationConfigFromProjection(projection, plan);
   if (!resolved.config) return "needs_edit";
   if (plan.calculationState === "updating") return "updating";
   if (!plan.calculation) return "uncalculated";
-  return plan.calculation.config_signature === buildRouteConfigSignature(resolved.config)
+  return plan.calculation.config_signature ===
+    buildRouteConfigSignature(resolved.config, providerId)
     ? "current"
     : "stale";
 }

@@ -4,7 +4,7 @@ import { zhCN } from "date-fns/locale";
 import type { Locale } from "../i18n/config.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
-import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
+import { routeGeometryCoordinates } from "../../lib/providers/routes/geometry.ts";
 import { orderedCityOccurrencesFromDays, type OrderedCitySourceDay } from "../routes/city-order.ts";
 import {
   deriveOverviewStagesFromOccurrences,
@@ -227,19 +227,10 @@ function calculatedDayRouteComparisonLines(
 ) {
   return route.calculatedLegs.flatMap((leg): PlannerMapLine[] => {
     try {
-      const path =
-        leg.geometry.source === "google"
-          ? decodeEncodedPolyline(leg.geometry.encodedPolyline).map(({ latitude, longitude }) => ({
-              lat: latitude,
-              lng: longitude,
-            }))
-          : [
-              { lat: leg.geometry.origin.latitude, lng: leg.geometry.origin.longitude },
-              {
-                lat: leg.geometry.destination.latitude,
-                lng: leg.geometry.destination.longitude,
-              },
-            ];
+      const path = routeGeometryCoordinates(leg.geometry).map(({ latitude, longitude }) => ({
+        lat: latitude,
+        lng: longitude,
+      }));
       if (path.length < 2) return [];
       return [
         {

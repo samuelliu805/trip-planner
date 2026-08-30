@@ -103,6 +103,7 @@ export function plannerItemSaveValues({
       ? {
           administrativeAreaName: place.administrativeAreaName,
           countryCode: place.countryCode,
+          coordinateSystem: "wgs84" as const,
           displayName: place.displayName,
           formattedAddress: place.formattedAddress,
           latitude: place.latitude,

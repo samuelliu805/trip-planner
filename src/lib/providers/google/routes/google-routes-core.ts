@@ -1,12 +1,11 @@
-import { RouteProviderError } from "./errors.ts";
-import { routeModeWarnings, straightFallbackLeg } from "./fallback.ts";
+import { RouteProviderError } from "../../routes/errors.ts";
+import { routeModeWarnings } from "../../routes/fallback.ts";
+import type { CalculatedRouteLeg, RouteLegRequest, RouteProvider } from "../../routes/types.ts";
+
+import { googleRouteProviderError } from "./errors.ts";
+import { googleStraightFallbackLeg } from "./fallback.ts";
 import { googleTravelMode } from "./mode-mapping.ts";
-import type {
-  CalculatedRouteLeg,
-  GoogleRouteTravelMode,
-  RouteLegRequest,
-  RouteProvider,
-} from "./types";
+import type { GoogleRouteTravelMode } from "./types.ts";
 
 export const googleRoutesEndpoint = "https://routes.googleapis.com/directions/v2:computeRoutes";
 export const googleRoutesFieldMask =
@@ -29,31 +28,42 @@ type GoogleRoutesProviderOptions = {
 
 export function parseGoogleDurationSeconds(value: unknown): number {
   if (typeof value !== "string" || !/^\d+(?:\.\d+)?s$/.test(value)) {
-    throw new RouteProviderError("invalid_response");
+    throw googleRouteProviderError("invalid_response");
   }
   const seconds = Number(value.slice(0, -1));
-  if (!Number.isFinite(seconds) || seconds < 0) throw new RouteProviderError("invalid_response");
+  if (!Number.isFinite(seconds) || seconds < 0) throw googleRouteProviderError("invalid_response");
   return Math.round(seconds);
 }
 
 function routeRequestBody(request: RouteLegRequest, travelMode: GoogleRouteTravelMode) {
   return {
     computeAlternativeRoutes: false,
-    destination: { location: { latLng: request.destination } },
-    origin: { location: { latLng: request.origin } },
+    destination: {
+      location: {
+        latLng: {
+          latitude: request.destination.latitude,
+          longitude: request.destination.longitude,
+        },
+      },
+    },
+    origin: {
+      location: {
+        latLng: { latitude: request.origin.latitude, longitude: request.origin.longitude },
+      },
+    },
     ...(travelMode === "DRIVE" ? { routingPreference: "TRAFFIC_UNAWARE" } : {}),
     travelMode,
   };
 }
 
 function providerErrorForStatus(status: number): RouteProviderError {
-  if (status === 400 || status === 422) return new RouteProviderError("invalid_request");
-  if (status === 401) return new RouteProviderError("authentication");
-  if (status === 403) return new RouteProviderError("permission");
-  if (status === 429) return new RouteProviderError("quota");
-  if (status === 408 || status === 504) return new RouteProviderError("timeout");
-  if (status >= 500) return new RouteProviderError("provider_unavailable");
-  return new RouteProviderError("invalid_response");
+  if (status === 400 || status === 422) return googleRouteProviderError("invalid_request");
+  if (status === 401) return googleRouteProviderError("authentication");
+  if (status === 403) return googleRouteProviderError("permission");
+  if (status === 429) return googleRouteProviderError("quota");
+  if (status === 408 || status === 504) return googleRouteProviderError("timeout");
+  if (status >= 500) return googleRouteProviderError("provider_unavailable");
+  return googleRouteProviderError("invalid_response");
 }
 
 export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions): RouteProvider {
@@ -62,10 +72,11 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
   const timeoutMs = options.timeoutMs ?? 12_000;
 
   return {
+    id: "google",
     async calculateLeg(request): Promise<CalculatedRouteLeg> {
       const travelMode = googleTravelMode(request.mode);
-      if (!travelMode) return straightFallbackLeg(request, "unsupported_mode", now());
-      if (!options.apiKey) throw new RouteProviderError("missing_key");
+      if (!travelMode) return googleStraightFallbackLeg(request, "unsupported_mode", now());
+      if (!options.apiKey) throw googleRouteProviderError("missing_key");
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -83,9 +94,9 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
         });
       } catch (error) {
         if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError")) {
-          throw new RouteProviderError("timeout", { cause: error });
+          throw googleRouteProviderError("timeout", error);
         }
-        throw new RouteProviderError("network", { cause: error });
+        throw googleRouteProviderError("network", error);
       } finally {
         clearTimeout(timeout);
       }
@@ -96,11 +107,11 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
       try {
         payload = (await response.json()) as GoogleRoutesResponse;
       } catch (error) {
-        throw new RouteProviderError("invalid_response", { cause: error });
+        throw googleRouteProviderError("invalid_response", error);
       }
 
       const route = payload.routes?.[0];
-      if (!route) return straightFallbackLeg(request, "no_route", now());
+      if (!route) return googleStraightFallbackLeg(request, "no_route", now());
       if (
         typeof route.distanceMeters !== "number" ||
         !Number.isInteger(route.distanceMeters) ||
@@ -108,7 +119,7 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
         typeof route.polyline?.encodedPolyline !== "string" ||
         route.polyline.encodedPolyline.length === 0
       ) {
-        throw new RouteProviderError("invalid_response");
+        throw googleRouteProviderError("invalid_response");
       }
 
       return {
@@ -116,7 +127,13 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
         distanceMeters: route.distanceMeters,
         durationSeconds: parseGoogleDurationSeconds(route.duration),
         ...(travelMode === "TRANSIT" ? { estimateKind: "transit_current_service" as const } : {}),
-        geometry: { encodedPolyline: route.polyline.encodedPolyline, source: "google" },
+        geometry: {
+          coordinateSystem: "wgs84",
+          encodedPolyline: route.polyline.encodedPolyline,
+          encoding: "polyline5",
+          provider: "google",
+          source: "encoded",
+        },
         legSignature: request.legSignature,
         mode: request.mode,
         position: request.position,

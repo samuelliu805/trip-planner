@@ -2,7 +2,7 @@ import type { Locale } from "../i18n/config.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import type { ItineraryItem, PlannerDay } from "../itinerary/types.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model.ts";
-import { decodeEncodedPolyline } from "../../lib/providers/routes/geo.ts";
+import { routeGeometryCoordinates } from "../../lib/providers/routes/geometry.ts";
 
 import { isEligibleRouteStopType } from "./route-config.ts";
 import type { DayRouteCalculation } from "./types.ts";
@@ -88,10 +88,7 @@ export function buildDayRouteLines(calculation: DayRouteCalculation | null): Pla
   if (!calculation) return [];
   return calculation.calculatedLegs.flatMap((leg) => {
     try {
-      const coordinates =
-        leg.geometry.source === "google"
-          ? decodeEncodedPolyline(leg.geometry.encodedPolyline)
-          : [leg.geometry.origin, leg.geometry.destination];
+      const coordinates = routeGeometryCoordinates(leg.geometry);
       if (coordinates.length < 2) return [];
       return [
         {

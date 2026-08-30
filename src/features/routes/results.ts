@@ -1,4 +1,5 @@
 import type { Json } from "../../types/database.ts";
+import { routeGeometryFromJson } from "../../lib/providers/routes/geometry.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 
 import { isRouteLegMode } from "./route-config.ts";
@@ -8,10 +9,8 @@ export function parseCalculatedRouteLegs(value: Json): CalculatedRouteLeg[] | nu
   const legs: CalculatedRouteLeg[] = [];
   for (const entry of value) {
     if (!entry || Array.isArray(entry) || typeof entry !== "object") return null;
-    const geometry = entry.geometry;
-    if (!geometry || Array.isArray(geometry) || typeof geometry !== "object") return null;
-    const source = geometry.source;
-    if (source !== "google" && source !== "straight") return null;
+    const geometry = routeGeometryFromJson(entry.geometry);
+    if (!geometry) return null;
     if (
       typeof entry.computedAt !== "string" ||
       typeof entry.distanceMeters !== "number" ||
@@ -25,7 +24,17 @@ export function parseCalculatedRouteLegs(value: Json): CalculatedRouteLeg[] | nu
     ) {
       return null;
     }
-    legs.push(entry as unknown as CalculatedRouteLeg);
+    if (
+      entry.providerMode !== undefined &&
+      entry.providerMode !== null &&
+      typeof entry.providerMode !== "string"
+    )
+      return null;
+    legs.push({
+      ...(entry as unknown as Omit<CalculatedRouteLeg, "geometry" | "providerMode">),
+      geometry,
+      providerMode: entry.providerMode ?? null,
+    });
   }
   return legs;
 }

@@ -1,4 +1,5 @@
 import type { Coordinates } from "../../lib/providers/maps/types.ts";
+import type { MapsProviderId } from "../../lib/providers/maps/provider.ts";
 
 import type { RouteCalculationConfig, RouteLegMode } from "./types.ts";
 
@@ -23,8 +24,9 @@ export function buildRouteLegSignature(
   from: RouteCalculationConfig["stops"][number],
   to: RouteCalculationConfig["stops"][number],
   mode: RouteLegMode,
+  providerId: MapsProviderId,
 ): string {
-  return `leg-v1-${stableHash(
+  return `leg-v2-${stableHash(
     JSON.stringify({
       dayId: config.dayId,
       from: {
@@ -34,6 +36,7 @@ export function buildRouteLegSignature(
       },
       mode,
       position,
+      providerId,
       to: {
         coordinates: normalizedCoordinateSignature(to.coordinates),
         itemId: to.itemId,
@@ -45,14 +48,18 @@ export function buildRouteLegSignature(
   )}`;
 }
 
-export function buildRouteConfigSignature(config: RouteCalculationConfig): string {
-  return `route-v1-${stableHash(
+export function buildRouteConfigSignature(
+  config: RouteCalculationConfig,
+  providerId: MapsProviderId,
+): string {
+  return `route-v2-${stableHash(
     JSON.stringify({
       dayId: config.dayId,
       legs: config.legModes.map((mode, index) => ({
         mode,
         position: index + 1,
       })),
+      providerId,
       stops: config.stops.map((stop, index) => ({
         coordinates: normalizedCoordinateSignature(stop.coordinates),
         itemId: stop.itemId,

@@ -121,6 +121,7 @@ export async function getPlannerWorkspace(
         snapshot?.display_name && snapshot.latitude !== null && snapshot.longitude !== null
           ? {
               id: snapshot.id,
+              coordinateSystem: "wgs84" as const,
               provider: snapshot.source,
               ...(snapshot.google_place_id && { providerPlaceId: snapshot.google_place_id }),
               displayName: snapshot.display_name,

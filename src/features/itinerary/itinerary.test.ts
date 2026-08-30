@@ -2,22 +2,25 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import "../../lib/telemetry/telemetry.test.ts";
+import "../../lib/providers/provider-foundation.test.ts";
 import {
-  deduplicatePlaceSnapshots,
   normalizeGooglePlace,
   resolveGooglePlaceLocality,
-} from "../../lib/providers/places/normalize.ts";
+} from "../../lib/providers/google/places/normalize-google-place.ts";
+import { deduplicatePlaceSnapshots } from "../../lib/providers/places/normalize.ts";
+import { wgs84Coordinates } from "../../lib/providers/maps/types.ts";
+import type { MapsProviderId } from "../../lib/providers/maps/provider.ts";
 import { RouteProviderError } from "../../lib/providers/routes/errors.ts";
-import { straightFallbackLeg } from "../../lib/providers/routes/fallback.ts";
+import { googleStraightFallbackLeg } from "../../lib/providers/google/routes/fallback.ts";
 import { decodeEncodedPolyline, haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
 import {
   createGoogleRoutesProvider,
   googleRoutesEndpoint,
   googleRoutesFieldMask,
   parseGoogleDurationSeconds,
-} from "../../lib/providers/routes/google-routes-core.ts";
-import { googleTravelMode } from "../../lib/providers/routes/mode-mapping.ts";
-import type { RouteLegRequest } from "../../lib/providers/routes/types.ts";
+} from "../../lib/providers/google/routes/google-routes-core.ts";
+import { googleTravelMode } from "../../lib/providers/google/routes/mode-mapping.ts";
+import type { RouteLegRequest, RouteProvider } from "../../lib/providers/routes/types.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
@@ -210,7 +213,7 @@ const routeStop = (
   latitude: number,
   longitude: number,
 ): DayRouteDraft["stops"][number] => ({
-  coordinates: { latitude, longitude },
+  coordinates: wgs84Coordinates(latitude, longitude),
   dayId: ids.day,
   itemId,
   tripId: ids.trip,
@@ -231,10 +234,10 @@ const routeDraft = (overrides: Partial<DayRouteDraft> = {}): DayRouteDraft => ({
 });
 
 const providerLeg = (mode: DayRouteDraft["legModes"][number] = "walk"): RouteLegRequest => ({
-  destination: { latitude: 34.0522, longitude: -118.2437 },
+  destination: wgs84Coordinates(34.0522, -118.2437),
   legSignature: "leg-signature",
   mode,
-  origin: { latitude: 37.7749, longitude: -122.4194 },
+  origin: wgs84Coordinates(37.7749, -122.4194),
   position: 1,
 });
 
@@ -861,9 +864,9 @@ const calculationConfig = (): RouteCalculationConfig => ({
   dayId: ids.day,
   legModes: ["walk", "taxi"],
   stops: [
-    { coordinates: { latitude: 37.7749, longitude: -122.4194 }, itemId: "hotel" },
-    { coordinates: { latitude: 37.7849, longitude: -122.4094 }, itemId: "museum" },
-    { coordinates: { latitude: 37.7949, longitude: -122.3994 }, itemId: "restaurant" },
+    { coordinates: wgs84Coordinates(37.7749, -122.4194), itemId: "hotel" },
+    { coordinates: wgs84Coordinates(37.7849, -122.4094), itemId: "museum" },
+    { coordinates: wgs84Coordinates(37.7949, -122.3994), itemId: "restaurant" },
   ],
   tripId: ids.trip,
   variantId: ids.variant,
@@ -876,13 +879,25 @@ const calculatedLeg = (
   computedAt: "2026-08-02T00:00:00.000Z",
   distanceMeters: 1_000,
   durationSeconds,
-  geometry: { destination: request.destination, origin: request.origin, source: "straight" },
+  geometry: {
+    coordinateSystem: "wgs84",
+    destination: request.destination,
+    origin: request.origin,
+    source: "straight",
+  },
   legSignature: request.legSignature,
   mode: request.mode,
   position: request.position,
   providerMode: null,
   warnings: [],
 });
+
+const routeProviderResolver =
+  (
+    calculateLeg: RouteProvider["calculateLeg"],
+    id: MapsProviderId = "google",
+  ): (() => RouteProvider) =>
+  () => ({ calculateLeg, id });
 
 test("route signatures ignore display and schedule metadata but track route inputs", () => {
   const config = calculationConfig();
@@ -896,36 +911,53 @@ test("route signatures ignore display and schedule metadata but track route inpu
       title: `Stop ${index}`,
     })),
   };
-  assert.equal(buildRouteConfigSignature(config), buildRouteConfigSignature(decorated));
-  assert.notEqual(
-    buildRouteConfigSignature(config),
-    buildRouteConfigSignature({
-      ...config,
-      stops: [config.stops[1], config.stops[0], config.stops[2]],
-    }),
+  assert.equal(
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(decorated, "google"),
   );
   assert.notEqual(
-    buildRouteConfigSignature(config),
-    buildRouteConfigSignature({ ...config, legModes: ["bike", "taxi"] }),
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(
+      {
+        ...config,
+        stops: [config.stops[1], config.stops[0], config.stops[2]],
+      },
+      "google",
+    ),
   );
   assert.notEqual(
-    buildRouteConfigSignature(config),
-    buildRouteConfigSignature({
-      ...config,
-      stops: config.stops.map((stop, index) =>
-        index === 1 ? { ...stop, coordinates: { ...stop.coordinates, latitude: 37.785 } } : stop,
-      ),
-    }),
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature({ ...config, legModes: ["bike", "taxi"] }, "google"),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(
+      {
+        ...config,
+        stops: config.stops.map((stop, index) =>
+          index === 1 ? { ...stop, coordinates: { ...stop.coordinates, latitude: 37.785 } } : stop,
+        ),
+      },
+      "google",
+    ),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(config, "amap"),
   );
 });
 
 test("route calculation uses full cache hits and only recalculates changed legs", async () => {
   const config = calculationConfig();
   let calls = 0;
-  const first = await calculateRouteConfiguration(config, null, async (request) => {
-    calls += 1;
-    return calculatedLeg(request);
-  });
+  const first = await calculateRouteConfiguration(
+    config,
+    null,
+    routeProviderResolver(async (request) => {
+      calls += 1;
+      return calculatedLeg(request);
+    }),
+  );
   assert.equal(first.cache, "miss");
   assert.equal(calls, 2);
   const previous: DayRouteCalculation = {
@@ -939,19 +971,50 @@ test("route calculation uses full cache hits and only recalculates changed legs"
   };
 
   calls = 0;
-  const full = await calculateRouteConfiguration(config, previous, async (request) => {
-    calls += 1;
-    return calculatedLeg(request);
+  let resolverCalls = 0;
+  const full = await calculateRouteConfiguration(config, previous, () => {
+    resolverCalls += 1;
+    return {
+      calculateLeg: async (request) => {
+        calls += 1;
+        return calculatedLeg(request);
+      },
+      id: "google",
+    };
   });
   assert.equal(full.cache, "full");
+  assert.equal(resolverCalls, 1);
   assert.equal(calls, 0);
+  await assert.rejects(
+    calculateRouteConfiguration(config, previous, () => {
+      throw new Error("provider unavailable");
+    }),
+    /provider unavailable/,
+  );
+
+  calls = 0;
+  const providerChanged = await calculateRouteConfiguration(
+    config,
+    previous,
+    routeProviderResolver(async (request) => {
+      calls += 1;
+      return calculatedLeg(request);
+    }, "amap"),
+  );
+  assert.equal(providerChanged.cache, "miss");
+  assert.equal(calls, 2);
+  assert.notEqual(providerChanged.configSignature, previous.config_signature);
 
   const changed: RouteCalculationConfig = { ...config, legModes: ["walk", "rideshare"] };
   calls = 0;
-  const partial = await calculateRouteConfiguration(changed, previous, async (request) => {
-    calls += 1;
-    return calculatedLeg(request);
-  });
+  const partial = await calculateRouteConfiguration(
+    changed,
+    previous,
+    routeProviderResolver(async (request) => {
+      calls += 1;
+      return calculatedLeg(request);
+    }),
+  );
   assert.equal(partial.cache, "partial");
   assert.equal(calls, 1);
 });
@@ -961,7 +1024,7 @@ test("failed recalculation leaves the prior snapshot untouched and caps concurre
     ...calculationConfig(),
     legModes: ["walk", "walk", "walk", "walk", "walk"],
     stops: Array.from({ length: 6 }, (_, index) => ({
-      coordinates: { latitude: 37.7 + index * 0.01, longitude: -122.4 + index * 0.01 },
+      coordinates: wgs84Coordinates(37.7 + index * 0.01, -122.4 + index * 0.01),
       itemId: `item-${index}`,
     })),
   };
@@ -970,13 +1033,13 @@ test("failed recalculation leaves the prior snapshot untouched and caps concurre
   const result = await calculateRouteConfiguration(
     config,
     null,
-    async (request) => {
+    routeProviderResolver(async (request) => {
       active += 1;
       maximumActive = Math.max(maximumActive, active);
       await new Promise((resolve) => setTimeout(resolve, 1));
       active -= 1;
       return calculatedLeg(request, request.position === 3 ? null : 600);
-    },
+    }),
     3,
   );
   assert.equal(maximumActive, 3);
@@ -995,9 +1058,9 @@ test("failed recalculation leaves the prior snapshot untouched and caps concurre
         total_distance_meters: result.totalDistanceMeters,
         total_duration_seconds: result.totalDurationSeconds,
       },
-      async () => {
-        throw new RouteProviderError("quota");
-      },
+      routeProviderResolver(async () => {
+        throw new RouteProviderError("quota", "Quota reached.");
+      }),
     ),
     (error) => error instanceof RouteProviderError && error.code === "quota",
   );
@@ -1116,9 +1179,9 @@ test("route geometry utilities use Haversine distance and decode Google polyline
     ) < 2_000,
   );
   assert.deepEqual(decodeEncodedPolyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@"), [
-    { latitude: 38.5, longitude: -120.2 },
-    { latitude: 40.7, longitude: -120.95 },
-    { latitude: 43.252, longitude: -126.453 },
+    { coordinateSystem: "wgs84", latitude: 38.5, longitude: -120.2 },
+    { coordinateSystem: "wgs84", latitude: 40.7, longitude: -120.95 },
+    { coordinateSystem: "wgs84", latitude: 43.252, longitude: -126.453 },
   ]);
   assert.throws(() => decodeEncodedPolyline("~"), /invalid/);
 });
@@ -1142,15 +1205,21 @@ test("Google route provider sends one narrow primary-route request per leg", asy
   assert.equal(new Headers(requestInit?.headers).get("X-Goog-FieldMask"), googleRoutesFieldMask);
   assert.equal(new Headers(requestInit?.headers).get("X-Goog-Api-Key"), "server-secret");
   const body = JSON.parse(String(requestInit?.body));
-  assert.deepEqual(body.origin.location.latLng, providerLeg().origin);
-  assert.deepEqual(body.destination.location.latLng, providerLeg().destination);
+  assert.deepEqual(body.origin.location.latLng, {
+    latitude: providerLeg().origin.latitude,
+    longitude: providerLeg().origin.longitude,
+  });
+  assert.deepEqual(body.destination.location.latLng, {
+    latitude: providerLeg().destination.latitude,
+    longitude: providerLeg().destination.longitude,
+  });
   assert.equal(body.travelMode, "DRIVE");
   assert.equal(body.routingPreference, "TRAFFIC_UNAWARE");
   assert.equal(body.computeAlternativeRoutes, false);
   assert.equal("intermediates" in body, false);
   assert.equal("optimizeWaypointOrder" in body, false);
   assert.equal("departureTime" in body, false);
-  assert.equal(result.geometry.source, "google");
+  assert.equal(result.geometry.source, "encoded");
   assert.equal(result.durationSeconds, 901);
   assert.equal(result.distanceMeters, 12_345);
 });
@@ -1172,7 +1241,10 @@ test("unsupported route modes use straight fallback without fetch or invented du
     assert.equal(result.fallbackReason, "unsupported_mode");
   }
   assert.equal(fetchCount, 0);
-  assert.equal(straightFallbackLeg(providerLeg("flight"), "unsupported_mode").providerMode, null);
+  assert.equal(
+    googleStraightFallbackLeg(providerLeg("flight"), "unsupported_mode").providerMode,
+    null,
+  );
 });
 
 test("no-route falls back while Transit omits schedule fields and carries estimate metadata", async () => {
@@ -1816,7 +1888,13 @@ test("Overview previews straight connections and renders explicitly calculated r
       computedAt: "2026-08-02T00:00:00.000Z",
       distanceMeters: 1_000,
       durationSeconds: 600,
-      geometry: { encodedPolyline: "_p~iF~ps|U_ulLnnqC", source: "google" },
+      geometry: {
+        coordinateSystem: "wgs84",
+        encodedPolyline: "_p~iF~ps|U_ulLnnqC",
+        encoding: "polyline5",
+        provider: "google",
+        source: "encoded",
+      },
       legSignature: "overview-leg",
       mode: "walk",
       position: 1,
@@ -2061,7 +2139,7 @@ test("route status ignores display changes and detects coordinate, deletion, and
   plan.calculation = {
     calculatedLegs: [],
     computed_at: now,
-    config_signature: buildRouteConfigSignature(resolved.config),
+    config_signature: buildRouteConfigSignature(resolved.config, "google"),
     plan_id: plan.id,
     provider_schema_version: "routes-v1",
     total_distance_meters: 0,
@@ -2121,8 +2199,14 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   routeUi += await readFile(new URL("../routes/day-route-editor.tsx", import.meta.url), "utf8");
   routeUi += await readFile(new URL("../routes/route-icon-button.tsx", import.meta.url), "utf8");
   let canvas = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
-  canvas += await readFile(new URL("../maps/planner-map-marker.tsx", import.meta.url), "utf8");
-  canvas += await readFile(new URL("../maps/planner-map-line.tsx", import.meta.url), "utf8");
+  canvas += await readFile(
+    new URL("../../lib/providers/google/maps/google-planner-map-marker.tsx", import.meta.url),
+    "utf8",
+  );
+  canvas += await readFile(
+    new URL("../../lib/providers/google/maps/google-planner-map-line.tsx", import.meta.url),
+    "utf8",
+  );
   assert.doesNotMatch(overview, /fetch\(|computeRoutes|calculateGoogleRouteLeg/);
   assert.match(mapHook, /useState<PlannerMapMode>\("overview"\)/);
   assert.doesNotMatch(mapHook, /calculateDayRoute|routes\.googleapis/);
@@ -2200,7 +2284,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
 
 test("Routes server key stays in the server-only provider and out of client modules", async () => {
   const serverProvider = await readFile(
-    new URL("../../lib/providers/routes/google-routes.server.ts", import.meta.url),
+    new URL("../../lib/providers/google/routes/google-routes.server.ts", import.meta.url),
     "utf8",
   );
   const packageJson = JSON.parse(
@@ -2215,8 +2299,8 @@ test("Routes server key stays in the server-only provider and out of client modu
       "./hooks/use-planner-map.ts",
       "./components/planner-map-shell.tsx",
       "../maps/planner-map-canvas.tsx",
-      "../maps/planner-map-line.tsx",
-      "../maps/planner-map-marker.tsx",
+      "../../lib/providers/google/maps/google-planner-map-line.tsx",
+      "../../lib/providers/google/maps/google-planner-map-marker.tsx",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
   assert.match(serverProvider, /import "server-only"/);
@@ -2721,7 +2805,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.doesNotMatch(dayActions, /onInsert\(day\.day_number\)/);
   assert.doesNotMatch(dayActions, /onArrange/);
   assert.match(workspace, /visible=\{workspace\.days\.length === 1 \|\| selectedDayRow === row\}/);
-  assert.match(dayActions, /if \(isOnlyDay\)[\s\S]*min-h-11 w-full[\s\S]*message=\{"Add day"\}/);
+  assert.match(
+    dayActions,
+    /if \(isOnlyDay\)[\s\S]*mt-auto min-h-11 w-full[\s\S]*message=\{"Add day"\}/,
+  );
   assert.match(dayActions, /grid grid-cols-2[\s\S]*<Trash2/);
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /aria-label="Trip menu"/);
@@ -2746,6 +2833,11 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
+  assert.match(workspace, /data-empty-trip-actions[\s\S]*mt-auto min-h-11 w-full/);
+  assert.match(
+    workspace,
+    /sticky left-24[\s\S]*text-\[15px\] font-medium leading-\[1\.25\] min-\[1200px\]:text-\[13px\]/,
+  );
   assert.match(styles, /\.planner-matrix \.matrix-grid-header \{[\s\S]*?z-index: 70;/);
   assert.doesNotMatch(dayActions, /Insert day above|Add day before/);
   assert.match(workspace, /Insert day below/);
@@ -2995,6 +3087,7 @@ test("Google place normalization keeps only provider-neutral requested fields", 
       location: { lat: () => 37.7955, lng: () => -122.3937 },
     }),
     {
+      coordinateSystem: "wgs84",
       provider: "google",
       providerPlaceId: "ChIJ123",
       displayName: "Ferry Building",
@@ -3443,7 +3536,14 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
     "utf8",
   );
   let map = await readFile(new URL("../maps/planner-map-canvas.tsx", import.meta.url), "utf8");
-  map += await readFile(new URL("../maps/planner-map-marker.tsx", import.meta.url), "utf8");
+  map += await readFile(
+    new URL("../../lib/providers/google/maps/google-planner-map-marker.tsx", import.meta.url),
+    "utf8",
+  );
+  map += await readFile(
+    new URL("../../lib/providers/google/maps/google-planner-map-canvas.tsx", import.meta.url),
+    "utf8",
+  );
   let mapShell = await readFile(
     new URL("./components/planner-map-shell.tsx", import.meta.url),
     "utf8",
@@ -3459,8 +3559,9 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   workspace += mapShell;
   workspace += await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
   workspace += await readFile(new URL("../routes/day-route-map.ts", import.meta.url), "utf8");
-  const places = await readFile(
-    new URL("../places/place-autocomplete.tsx", import.meta.url),
+  let places = await readFile(new URL("../places/place-autocomplete.tsx", import.meta.url), "utf8");
+  places += await readFile(
+    new URL("../../lib/providers/google/places/google-places-provider.ts", import.meta.url),
     "utf8",
   );
   assert.match(workspace, /selectedItemId/);
@@ -3478,7 +3579,7 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.doesNotMatch(places, /new places\.PlaceAutocompleteElement|gmp-select/);
   assert.match(places, /fetchAutocompleteSuggestions/);
   assert.match(places, /AutocompleteSessionToken/);
-  assert.match(places, /placeFields/);
+  assert.match(places, /googlePlaceFields/);
   assert.match(workspace, /kind:/);
   assert.match(map, /markerStyles/);
   assert.match(map, /const glyph =/);

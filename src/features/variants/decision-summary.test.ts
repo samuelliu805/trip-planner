@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
+import { wgs84Coordinates } from "../../lib/providers/maps/types.ts";
 import type { CalculatedRouteLeg } from "../../lib/providers/routes/types.ts";
 import type { Json } from "../../types/database.ts";
 import {
@@ -217,10 +218,17 @@ function routeLeg(
     fallbackReason,
     geometry:
       source === "google"
-        ? { encodedPolyline: "encoded", source }
+        ? {
+            coordinateSystem: "wgs84",
+            encodedPolyline: "encoded",
+            encoding: "polyline5",
+            provider: "google",
+            source: "encoded",
+          }
         : {
-            destination: { latitude: 2, longitude: 2 },
-            origin: { latitude: 1, longitude: 1 },
+            coordinateSystem: "wgs84",
+            destination: wgs84Coordinates(2, 2),
+            origin: wgs84Coordinates(1, 1),
             source,
           },
     legSignature: "leg-" + position,
@@ -462,9 +470,7 @@ test("Phase 5C route totals exclude fallback metrics while retaining fallback di
   const projection: RouteConfigProjectionInput = {
     days: days.map((row) => ({ dayNumber: row.day_number, id: row.id })),
     items: items.map((row) => ({
-      coordinates: row.place
-        ? { latitude: row.place.latitude!, longitude: row.place.longitude! }
-        : null,
+      coordinates: row.place ? wgs84Coordinates(row.place.latitude!, row.place.longitude!) : null,
       dayId: row.day_id,
       itemId: row.id,
       tripId: row.trip_id,
@@ -494,7 +500,7 @@ test("Phase 5C route totals exclude fallback metrics while retaining fallback di
     calculations: [
       {
         calculated_legs: calculated as unknown as Json,
-        config_signature: buildRouteConfigSignature(resolved.config!),
+        config_signature: buildRouteConfigSignature(resolved.config!, "google"),
         plan_id: "current",
       },
       {
@@ -536,7 +542,7 @@ test("shared route status signature reacts to coordinates, stop order, and modes
     ],
     items: [
       {
-        coordinates: { latitude: 1, longitude: 1 },
+        coordinates: wgs84Coordinates(1, 1),
         dayId: "day-1",
         itemId: "hotel",
         tripId,
@@ -544,7 +550,7 @@ test("shared route status signature reacts to coordinates, stop order, and modes
         variantId: "route-a",
       },
       {
-        coordinates: { latitude: 2, longitude: 2 },
+        coordinates: wgs84Coordinates(2, 2),
         dayId: "day-2",
         itemId: "activity",
         tripId,
@@ -573,10 +579,11 @@ test("shared route status signature reacts to coordinates, stop order, and modes
   const resolved = resolveRouteCalculationConfigFromProjection(projection, plan);
   const current = {
     ...plan,
-    calculation: { config_signature: buildRouteConfigSignature(resolved.config!) },
+    calculation: { config_signature: buildRouteConfigSignature(resolved.config!, "google") },
   };
 
   assert.equal(dayRouteStatusFromProjection(projection, current), "current");
+  assert.equal(dayRouteStatusFromProjection(projection, current, "amap"), "stale");
   assert.equal(
     dayRouteStatusFromProjection(projection, { ...current, calculationState: "updating" }),
     "updating",
@@ -590,9 +597,7 @@ test("shared route status signature reacts to coordinates, stop order, and modes
       {
         ...projection,
         items: projection.items.map((entry) =>
-          entry.itemId === "activity"
-            ? { ...entry, coordinates: { latitude: 2.5, longitude: 2 } }
-            : entry,
+          entry.itemId === "activity" ? { ...entry, coordinates: wgs84Coordinates(2.5, 2) } : entry,
         ),
       },
       current,

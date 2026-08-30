@@ -1,10 +1,13 @@
-import type { Coordinates } from "../maps/types";
+import { wgs84Coordinates, type CoordinateInput, type Coordinates } from "../maps/types.ts";
 
 const earthRadiusMeters = 6_371_008.8;
 
 const radians = (degrees: number) => (degrees * Math.PI) / 180;
 
-export function haversineDistanceMeters(origin: Coordinates, destination: Coordinates): number {
+export function haversineDistanceMeters(
+  origin: CoordinateInput,
+  destination: CoordinateInput,
+): number {
   const latitudeDelta = radians(destination.latitude - origin.latitude);
   const longitudeDelta = radians(destination.longitude - origin.longitude);
   const originLatitude = radians(origin.latitude);
@@ -39,7 +42,7 @@ export function decodeEncodedPolyline(encoded: string): Coordinates[] {
   while (index < encoded.length) {
     latitude += decodeValue();
     longitude += decodeValue();
-    coordinates.push({ latitude: latitude / 1e5, longitude: longitude / 1e5 });
+    coordinates.push(wgs84Coordinates(latitude / 1e5, longitude / 1e5));
   }
 
   return coordinates;
