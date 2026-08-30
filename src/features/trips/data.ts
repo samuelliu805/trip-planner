@@ -1,19 +1,30 @@
 import type { TripStatusFilter } from "@/features/trips/status";
-import { createClient } from "@/lib/supabase/server";
+import type { TripListEntry } from "@/features/trips/types";
+import { getTripRepository } from "@/platform/composition/server";
+import type { Tables } from "@/types/database";
+
+function repositoryError(error: unknown) {
+  return {
+    message: error instanceof Error ? error.message : "The trip repository is unavailable.",
+  };
+}
 
 export async function listTrips(filter: TripStatusFilter = "open") {
-  const supabase = await createClient();
-  const trips = supabase
-    .from("trips")
-    .select("*, route_variants(id, name, color, is_primary)")
-    .eq("route_variants.is_primary", true);
-
-  return (filter === "all" ? trips : trips.eq("status", filter)).order("start_date", {
-    ascending: true,
-  });
+  try {
+    const data = await getTripRepository().listForCurrentUser({
+      status: filter === "all" ? undefined : filter,
+    });
+    return { data: data as TripListEntry[], error: null };
+  } catch (error) {
+    return { data: null, error: repositoryError(error) };
+  }
 }
 
 export async function getTrip(tripId: string) {
-  const supabase = await createClient();
-  return supabase.from("trips").select("*").eq("id", tripId).maybeSingle();
+  try {
+    const data = await getTripRepository().getById(tripId);
+    return { data: data as Tables<"trips"> | null, error: null };
+  } catch (error) {
+    return { data: null, error: repositoryError(error) };
+  }
 }

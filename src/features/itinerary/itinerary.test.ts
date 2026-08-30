@@ -790,6 +790,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     "utf8",
   );
   const tripsData = await readFile(new URL("../trips/data.ts", import.meta.url), "utf8");
+  const tripRepository = await readFile(
+    new URL("../../platform/supabase/trip-repository.ts", import.meta.url),
+    "utf8",
+  );
 
   assert.match(page, /resolveActiveVariant\(variantsResult\.data, query\.variant\)/);
   assert.match(page, /getPlannerWorkspace\(\s*tripId,\s*resolution\.activeVariant\.id/);
@@ -827,8 +831,9 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     variantUi,
     /wasActive[\s\S]*find\(\(\{ is_primary \}\) => is_primary\)[\s\S]*router\.push/,
   );
-  assert.match(tripsData, /route_variants\(id, name, color, is_primary\)/);
-  assert.match(tripsData, /\.eq\("route_variants\.is_primary", true\)/);
+  assert.match(tripsData, /getTripRepository\(\)\.listForCurrentUser/);
+  assert.match(tripRepository, /route_variants\(id, name, color, is_primary\)/);
+  assert.match(tripRepository, /\.eq\("route_variants\.is_primary", true\)/);
   assert.match(tripCard, /primary\.name/);
   assert.match(tripCard, /backgroundColor: primary\.color/);
   assert.match(tripCard, /\?share=1/);
