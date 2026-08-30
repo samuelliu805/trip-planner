@@ -2749,7 +2749,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.doesNotMatch(dayActions, /onInsert\(day\.day_number\)/);
   assert.doesNotMatch(dayActions, /onArrange/);
   assert.match(workspace, /visible=\{workspace\.days\.length === 1 \|\| selectedDayRow === row\}/);
-  assert.match(dayActions, /if \(isOnlyDay\)[\s\S]*min-h-11 w-full[\s\S]*message=\{"Add day"\}/);
+  assert.match(
+    dayActions,
+    /if \(isOnlyDay\)[\s\S]*mt-auto min-h-11 w-full[\s\S]*message=\{"Add day"\}/,
+  );
   assert.match(dayActions, /grid grid-cols-2[\s\S]*<Trash2/);
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /aria-label="Trip menu"/);
@@ -2774,6 +2777,11 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /text-destructive focus:text-destructive/);
   assert.match(workspace, /window\.innerWidth < 1200/);
   assert.match(workspace, /data-add-item/);
+  assert.match(workspace, /data-empty-trip-actions[\s\S]*mt-auto min-h-11 w-full/);
+  assert.match(
+    workspace,
+    /sticky left-24[\s\S]*text-\[15px\] font-medium leading-\[1\.25\] min-\[1200px\]:text-\[13px\]/,
+  );
   assert.match(styles, /\.planner-matrix \.matrix-grid-header \{[\s\S]*?z-index: 70;/);
   assert.doesNotMatch(dayActions, /Insert day above|Add day before/);
   assert.match(workspace, /Insert day below/);

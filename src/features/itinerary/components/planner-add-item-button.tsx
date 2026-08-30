@@ -31,7 +31,7 @@ export function AddItemButton({
   if (newTripStarter)
     return (
       <div
-        className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-left"
+        className="flex h-full flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-left"
         data-empty-trip-actions=""
       >
         <div className="px-1">
@@ -42,7 +42,13 @@ export function AddItemButton({
             <T message={" Add your first activity. "} />
           </p>
         </div>
-        <Button className="min-h-11 w-full" data-add-item onClick={add} size="sm" type="button">
+        <Button
+          className="mt-auto min-h-11 w-full"
+          data-add-item
+          onClick={add}
+          size="sm"
+          type="button"
+        >
           <Plus aria-hidden="true" className="size-4" /> <T message={" Add activity "} />
         </Button>
       </div>

@@ -16,6 +16,7 @@ import { PlaceProviderError } from "./places/errors.ts";
 import { publicPhotoProviderEnabled } from "./places/photo-gating.ts";
 import { placeSnapshotFromJson } from "./places/types.ts";
 import { routeGeometryFromJson } from "./routes/geometry.ts";
+import { serializeRoutesV1CalculatedLegs } from "./routes/persistence.ts";
 import { findMapsProviderBoundaryViolations } from "../../../scripts/check-maps-provider-boundary.ts";
 
 test("maps provider resolution defaults every capability to Google", () => {
@@ -153,6 +154,54 @@ test("legacy Google and straight route geometry normalize without inventing AMap
   assert.equal(routeGeometryFromJson({ provider: "amap", source: "amap" }), null);
 });
 
+test("routes-v1 persistence keeps the deployed Google and straight geometry shapes", () => {
+  const common = {
+    computedAt: "2026-08-29T00:00:00.000Z",
+    distanceMeters: 100,
+    durationSeconds: 60,
+    legSignature: "leg-signature",
+    mode: "walk" as const,
+    position: 1,
+    providerMode: "WALK",
+    warnings: [],
+  };
+  const serialized = serializeRoutesV1CalculatedLegs([
+    {
+      ...common,
+      geometry: {
+        coordinateSystem: "wgs84",
+        encodedPolyline: "encoded",
+        encoding: "polyline5",
+        provider: "google",
+        source: "encoded",
+      },
+    },
+    {
+      ...common,
+      position: 2,
+      geometry: {
+        coordinateSystem: "wgs84",
+        destination: { coordinateSystem: "wgs84", latitude: 2, longitude: 2 },
+        origin: { coordinateSystem: "wgs84", latitude: 1, longitude: 1 },
+        source: "straight",
+      },
+    },
+  ]);
+  assert.deepEqual(
+    serialized.map(({ geometry }) => geometry),
+    [
+      { encodedPolyline: "encoded", source: "google" },
+      {
+        destination: { latitude: 2, longitude: 2 },
+        origin: { latitude: 1, longitude: 1 },
+        source: "straight",
+      },
+    ],
+  );
+  assert.equal(routeGeometryFromJson(serialized[0].geometry)?.source, "encoded");
+  assert.equal(routeGeometryFromJson(serialized[1].geometry)?.source, "straight");
+});
+
 test("Google Places adapter exposes DTOs, one session token, and normalized WGS-84 places", async () => {
   let tokenCount = 0;
   let fetchFieldsCount = 0;
@@ -224,6 +273,7 @@ test("route actions use the resolver and provider work adds no telemetry identif
     assert.match(actions, /calculateRouteLeg/);
     assert.doesNotMatch(actions, /calculateGoogleRouteLeg/);
   }
+  assert.match(routes, /serializeRoutesV1CalculatedLegs/);
   assert.doesNotMatch(
     routeTelemetry + sharingTelemetry,
     /providerPlaceId|googlePlaceId|google_place_id|shared_token|GOOGLE_(?:PLACES|ROUTES)_API_KEY/,

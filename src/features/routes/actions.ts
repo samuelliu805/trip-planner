@@ -6,6 +6,7 @@ import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import { wgs84Coordinates } from "@/lib/providers/maps/types";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
+import { serializeRoutesV1CalculatedLegs } from "@/lib/providers/routes/persistence";
 import { calculateRouteLeg } from "@/lib/providers/routes/resolver.server";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import { createClient } from "@/lib/supabase/server";
@@ -169,7 +170,9 @@ export async function calculateDayRoute(
       3,
     );
     if (calculated.cache !== "full") {
-      const normalized = JSON.parse(JSON.stringify(calculated.legs)) as Json;
+      const normalized = JSON.parse(
+        JSON.stringify(serializeRoutesV1CalculatedLegs(calculated.legs)),
+      ) as Json;
       const { error } = await supabase.rpc("save_day_route_calculation", {
         calculated_config_signature: calculated.configSignature,
         calculated_provider_schema_version: "routes-v1",

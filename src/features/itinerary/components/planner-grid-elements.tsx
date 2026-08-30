@@ -45,7 +45,7 @@ export function DayActions({
     return (
       <Button
         aria-label={t("Insert day below Day {day}", { day: day.day_number })}
-        className="mt-2 min-h-11 w-full gap-1 px-1 text-xs"
+        className="mt-auto min-h-11 w-full gap-1 px-1"
         disabled={pending}
         onClick={addDay}
         size="sm"
