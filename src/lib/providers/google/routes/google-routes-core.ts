@@ -72,6 +72,7 @@ export function createGoogleRoutesProvider(options: GoogleRoutesProviderOptions)
   const timeoutMs = options.timeoutMs ?? 12_000;
 
   return {
+    id: "google",
     async calculateLeg(request): Promise<CalculatedRouteLeg> {
       const travelMode = googleTravelMode(request.mode);
       if (!travelMode) return googleStraightFallbackLeg(request, "unsupported_mode", now());

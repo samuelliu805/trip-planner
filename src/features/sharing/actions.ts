@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import { wgs84Coordinates } from "@/lib/providers/maps/types";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
-import { calculateRouteLeg } from "@/lib/providers/routes/resolver.server";
+import { resolveRouteProvider } from "@/lib/providers/routes/resolver.server";
 import { createClient } from "@/lib/supabase/server";
 import { buildRouteLegSignature } from "@/features/routes/signatures";
 import { mapWithConcurrency } from "@/features/routes/calculator";
@@ -199,6 +199,7 @@ async function calculatePublicStops({
   stops: PublicCalculationStop[];
 }): Promise<ShareActionResult<PublicRouteCalculation>> {
   try {
+    const routeProvider = resolveRouteProvider();
     const tasks = legModes.map((mode, index) => {
       const origin = stops[index];
       const destination = stops[index + 1];
@@ -210,9 +211,10 @@ async function calculatePublicStops({
         { coordinates: originCoordinates, itemId: origin.ref },
         { coordinates: destinationCoordinates, itemId: destination.ref },
         mode,
+        routeProvider.id,
       );
       return () =>
-        calculateRouteLeg({
+        routeProvider.calculateLeg({
           destination: destinationCoordinates,
           legSignature,
           mode,

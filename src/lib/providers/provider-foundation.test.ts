@@ -270,9 +270,10 @@ test("route actions use the resolver and provider work adds no telemetry identif
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
   for (const actions of [routes, sharing]) {
-    assert.match(actions, /calculateRouteLeg/);
+    assert.match(actions, /resolveRouteProvider/);
     assert.doesNotMatch(actions, /calculateGoogleRouteLeg/);
   }
+  assert.match(routes, /calculateRouteConfiguration\([\s\S]*resolveRouteProvider/);
   assert.match(routes, /serializeRoutesV1CalculatedLegs/);
   assert.doesNotMatch(
     routeTelemetry + sharingTelemetry,

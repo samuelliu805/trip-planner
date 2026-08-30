@@ -7,7 +7,7 @@ import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import { wgs84Coordinates } from "@/lib/providers/maps/types";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
 import { serializeRoutesV1CalculatedLegs } from "@/lib/providers/routes/persistence";
-import { calculateRouteLeg } from "@/lib/providers/routes/resolver.server";
+import { resolveRouteProvider } from "@/lib/providers/routes/resolver.server";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/types/database";
@@ -166,7 +166,7 @@ export async function calculateDayRoute(
     const calculated = await calculateRouteConfiguration(
       resolved.config,
       plan.calculation,
-      calculateRouteLeg,
+      resolveRouteProvider,
       3,
     );
     if (calculated.cache !== "full") {
@@ -235,6 +235,7 @@ export async function calculateOverviewRoute(
         routeView: "overview",
       });
 
+    const routeProvider = resolveRouteProvider();
     const tasks = parsed.data.legs
       .slice()
       .sort((a, b) => a.position - b.position)
@@ -264,9 +265,10 @@ export async function calculateOverviewRoute(
           origin,
           destination,
           mode,
+          routeProvider.id,
         );
         return () =>
-          calculateRouteLeg({
+          routeProvider.calculateLeg({
             destination: destination.coordinates,
             legSignature,
             mode,

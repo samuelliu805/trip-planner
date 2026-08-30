@@ -50,5 +50,6 @@ export type CalculatedRouteLeg = {
 };
 
 export interface RouteProvider {
+  readonly id: MapsProviderId;
   calculateLeg(request: RouteLegRequest): Promise<CalculatedRouteLeg>;
 }

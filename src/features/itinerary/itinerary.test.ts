@@ -9,6 +9,7 @@ import {
 } from "../../lib/providers/google/places/normalize-google-place.ts";
 import { deduplicatePlaceSnapshots } from "../../lib/providers/places/normalize.ts";
 import { wgs84Coordinates } from "../../lib/providers/maps/types.ts";
+import type { MapsProviderId } from "../../lib/providers/maps/provider.ts";
 import { RouteProviderError } from "../../lib/providers/routes/errors.ts";
 import { googleStraightFallbackLeg } from "../../lib/providers/google/routes/fallback.ts";
 import { decodeEncodedPolyline, haversineDistanceMeters } from "../../lib/providers/routes/geo.ts";
@@ -19,7 +20,7 @@ import {
   parseGoogleDurationSeconds,
 } from "../../lib/providers/google/routes/google-routes-core.ts";
 import { googleTravelMode } from "../../lib/providers/google/routes/mode-mapping.ts";
-import type { RouteLegRequest } from "../../lib/providers/routes/types.ts";
+import type { RouteLegRequest, RouteProvider } from "../../lib/providers/routes/types.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
@@ -891,6 +892,13 @@ const calculatedLeg = (
   warnings: [],
 });
 
+const routeProviderResolver =
+  (
+    calculateLeg: RouteProvider["calculateLeg"],
+    id: MapsProviderId = "google",
+  ): (() => RouteProvider) =>
+  () => ({ calculateLeg, id });
+
 test("route signatures ignore display and schedule metadata but track route inputs", () => {
   const config = calculationConfig();
   const decorated = {
@@ -903,36 +911,53 @@ test("route signatures ignore display and schedule metadata but track route inpu
       title: `Stop ${index}`,
     })),
   };
-  assert.equal(buildRouteConfigSignature(config), buildRouteConfigSignature(decorated));
-  assert.notEqual(
-    buildRouteConfigSignature(config),
-    buildRouteConfigSignature({
-      ...config,
-      stops: [config.stops[1], config.stops[0], config.stops[2]],
-    }),
+  assert.equal(
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(decorated, "google"),
   );
   assert.notEqual(
-    buildRouteConfigSignature(config),
-    buildRouteConfigSignature({ ...config, legModes: ["bike", "taxi"] }),
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(
+      {
+        ...config,
+        stops: [config.stops[1], config.stops[0], config.stops[2]],
+      },
+      "google",
+    ),
   );
   assert.notEqual(
-    buildRouteConfigSignature(config),
-    buildRouteConfigSignature({
-      ...config,
-      stops: config.stops.map((stop, index) =>
-        index === 1 ? { ...stop, coordinates: { ...stop.coordinates, latitude: 37.785 } } : stop,
-      ),
-    }),
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature({ ...config, legModes: ["bike", "taxi"] }, "google"),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(
+      {
+        ...config,
+        stops: config.stops.map((stop, index) =>
+          index === 1 ? { ...stop, coordinates: { ...stop.coordinates, latitude: 37.785 } } : stop,
+        ),
+      },
+      "google",
+    ),
+  );
+  assert.notEqual(
+    buildRouteConfigSignature(config, "google"),
+    buildRouteConfigSignature(config, "amap"),
   );
 });
 
 test("route calculation uses full cache hits and only recalculates changed legs", async () => {
   const config = calculationConfig();
   let calls = 0;
-  const first = await calculateRouteConfiguration(config, null, async (request) => {
-    calls += 1;
-    return calculatedLeg(request);
-  });
+  const first = await calculateRouteConfiguration(
+    config,
+    null,
+    routeProviderResolver(async (request) => {
+      calls += 1;
+      return calculatedLeg(request);
+    }),
+  );
   assert.equal(first.cache, "miss");
   assert.equal(calls, 2);
   const previous: DayRouteCalculation = {
@@ -946,19 +971,50 @@ test("route calculation uses full cache hits and only recalculates changed legs"
   };
 
   calls = 0;
-  const full = await calculateRouteConfiguration(config, previous, async (request) => {
-    calls += 1;
-    return calculatedLeg(request);
+  let resolverCalls = 0;
+  const full = await calculateRouteConfiguration(config, previous, () => {
+    resolverCalls += 1;
+    return {
+      calculateLeg: async (request) => {
+        calls += 1;
+        return calculatedLeg(request);
+      },
+      id: "google",
+    };
   });
   assert.equal(full.cache, "full");
+  assert.equal(resolverCalls, 1);
   assert.equal(calls, 0);
+  await assert.rejects(
+    calculateRouteConfiguration(config, previous, () => {
+      throw new Error("provider unavailable");
+    }),
+    /provider unavailable/,
+  );
+
+  calls = 0;
+  const providerChanged = await calculateRouteConfiguration(
+    config,
+    previous,
+    routeProviderResolver(async (request) => {
+      calls += 1;
+      return calculatedLeg(request);
+    }, "amap"),
+  );
+  assert.equal(providerChanged.cache, "miss");
+  assert.equal(calls, 2);
+  assert.notEqual(providerChanged.configSignature, previous.config_signature);
 
   const changed: RouteCalculationConfig = { ...config, legModes: ["walk", "rideshare"] };
   calls = 0;
-  const partial = await calculateRouteConfiguration(changed, previous, async (request) => {
-    calls += 1;
-    return calculatedLeg(request);
-  });
+  const partial = await calculateRouteConfiguration(
+    changed,
+    previous,
+    routeProviderResolver(async (request) => {
+      calls += 1;
+      return calculatedLeg(request);
+    }),
+  );
   assert.equal(partial.cache, "partial");
   assert.equal(calls, 1);
 });
@@ -977,13 +1033,13 @@ test("failed recalculation leaves the prior snapshot untouched and caps concurre
   const result = await calculateRouteConfiguration(
     config,
     null,
-    async (request) => {
+    routeProviderResolver(async (request) => {
       active += 1;
       maximumActive = Math.max(maximumActive, active);
       await new Promise((resolve) => setTimeout(resolve, 1));
       active -= 1;
       return calculatedLeg(request, request.position === 3 ? null : 600);
-    },
+    }),
     3,
   );
   assert.equal(maximumActive, 3);
@@ -1002,9 +1058,9 @@ test("failed recalculation leaves the prior snapshot untouched and caps concurre
         total_distance_meters: result.totalDistanceMeters,
         total_duration_seconds: result.totalDurationSeconds,
       },
-      async () => {
+      routeProviderResolver(async () => {
         throw new RouteProviderError("quota", "Quota reached.");
-      },
+      }),
     ),
     (error) => error instanceof RouteProviderError && error.code === "quota",
   );
@@ -2083,7 +2139,7 @@ test("route status ignores display changes and detects coordinate, deletion, and
   plan.calculation = {
     calculatedLegs: [],
     computed_at: now,
-    config_signature: buildRouteConfigSignature(resolved.config),
+    config_signature: buildRouteConfigSignature(resolved.config, "google"),
     plan_id: plan.id,
     provider_schema_version: "routes-v1",
     total_distance_meters: 0,

@@ -500,7 +500,7 @@ test("Phase 5C route totals exclude fallback metrics while retaining fallback di
     calculations: [
       {
         calculated_legs: calculated as unknown as Json,
-        config_signature: buildRouteConfigSignature(resolved.config!),
+        config_signature: buildRouteConfigSignature(resolved.config!, "google"),
         plan_id: "current",
       },
       {
@@ -579,10 +579,11 @@ test("shared route status signature reacts to coordinates, stop order, and modes
   const resolved = resolveRouteCalculationConfigFromProjection(projection, plan);
   const current = {
     ...plan,
-    calculation: { config_signature: buildRouteConfigSignature(resolved.config!) },
+    calculation: { config_signature: buildRouteConfigSignature(resolved.config!, "google") },
   };
 
   assert.equal(dayRouteStatusFromProjection(projection, current), "current");
+  assert.equal(dayRouteStatusFromProjection(projection, current, "amap"), "stale");
   assert.equal(
     dayRouteStatusFromProjection(projection, { ...current, calculationState: "updating" }),
     "updating",
