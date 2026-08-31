@@ -1,13 +1,11 @@
 # CloudBase PG compatibility report — Phase 2
 
-## Status and scope
+## Outcome and scope
 
-Phase 2 is deployed to the disposable CN development target only. It establishes the CloudBase PG
-schema/security baseline and controlled Auth test readiness. It does not add a CloudBase runtime
-adapter, session integration, repository implementation, signup surface, Storage workflow, cleanup
-job, CN deployment, data migration, synchronization, or dual write.
-
-Target guard:
+Phase 2 is deployed only to the disposable CN development target. It establishes the CloudBase PG
+schema, RLS, RPC boundary, controlled A/B identities, deterministic migration artifacts, and
+repeatable security verification. It does not add the Phase 3 runtime adapter, public registration,
+Storage, Realtime, data migration, synchronization, dual write, or a CN application deployment.
 
 | Property         | Verified value                                  |
 | ---------------- | ----------------------------------------------- |
@@ -19,318 +17,204 @@ Target guard:
 | Runtime mode     | `postgresql`                                    |
 | Runtime backends | PostgreSQL `true`, NoSQL `false`, MySQL `false` |
 
-No other CloudBase environment or PG instance was queried or modified. No Global Supabase or
-Vercel resource was queried or modified.
+No other CloudBase environment or instance was queried or modified. No Global Supabase or Vercel
+resource was queried or modified.
 
-## Capability probe
+## Bootstrap and future migrations
 
-The read-only probe ran before any database write.
+The existing 63 `supabase/migrations/*.sql` files remain byte-for-byte unchanged. Their ordered
+filenames and SHA-256 hashes are frozen in `database/cloudbase/bootstrap-manifest.json`.
+`check:cloudbase-pg-baseline` regenerates the expected content in memory and byte-compares:
 
-| Capability                     | Result                                                                    |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| PostgreSQL                     | `17.11`                                                                   |
-| Initially installed extensions | `plpgsql 1.0`                                                             |
-| Available required extension   | `pgcrypto 1.3`                                                            |
-| Auth helpers                   | `auth.uid()` → `text`; `auth.jwt()` → `jsonb`; both invoker               |
-| Managed Auth ID                | `auth.users.id` is `bigint`                                               |
-| Managed Storage owner ID       | `storage.objects.owner_id` is `text`                                      |
-| API roles                      | `anon`, `authenticated`, `service_role` present                           |
-| RLS bypass                     | `anon=false`, `authenticated=false`, `service_role=true`, DMC user `true` |
-| Managed schemas                | `auth`, `storage`, `extensions`; `public` initially had no objects        |
-| Initial business data          | no business tables or rows                                                |
-| Initial controlled users       | administrator plus `trip-planner-cn-test-a` and `trip-planner-cn-test-b`  |
-| Initial storage data           | zero buckets, zero objects                                                |
-| Realtime                       | unsupported by this baseline; `realtime=false`                            |
+- `database/shared/baseline.sql`;
+- `database/cloudbase/baseline.sql`;
+- `cloudbase/migrations/20260831030000_trip_planner_baseline.sql`;
+- the RPC-grant overlay against migration `20260831031000`;
+- the security-hardening overlay against migration `20260831032000`.
 
-CloudBase exposes business tables through the PG/PostgREST surface used by JS SDK v3 `app.rdb()`.
-Current CloudBase RPC gateway behavior does not enforce PostgreSQL `GRANT EXECUTE` as a gateway
-authorization boundary. Function grants are defense in depth only; every definer mutation must
-validate CloudBase claims and business authorization internally.
+Static verification does not read `.env.local`. Deployment target validation is a separate command.
+Migration 64+ uses a provider-neutral source plus minimal provider overlays and generated Supabase
+and CloudBase artifacts; it never regenerates the deployed bootstrap. See
+`docs/cloudbase-pg-migration-process.md`.
 
-## Source migration audit
+Remote migration history:
 
-The repository contains exactly 63 immutable SQL files under `supabase/migrations`, totaling 17,207
-lines. The source-history scan found 27 `CREATE TABLE` statements, 180 function definitions, 65
-policy definitions, 95 explicit index definitions, 8 enum definitions, 154 `SECURITY DEFINER`
-occurrences, 119 `auth.uid()` calls, 8 direct `auth.users` references, and 11 `storage.objects`
-references. Historical create/drop/replace operations resolve to the deployed final catalog below.
+| Version          | Name                               | Result                   |
+| ---------------- | ---------------------------------- | ------------------------ |
+| `20260831030000` | `trip_planner_baseline`            | applied and verified     |
+| `20260831031000` | `cloudbase_rpc_grants`             | applied and verified     |
+| `20260831032000` | `cloudbase_security_hardening`     | applied and verified     |
+| `20260831040000` | `cloudbase_rpc_boundary_hardening` | `task-5aaa8899`, Succeed |
 
-The generator preserved all 63 Supabase migration files unchanged. It emitted a reviewed business
-history while omitting 388 statements that belong to Supabase/CloudBase managed Auth or Storage,
-Supabase platform grants, or Phase 4 storage/cleanup behavior. It never runs `supabase db push` and
-never restores `supabase_migrations`, Vault, Realtime, Supabase platform roles, `auth` tables, or
-`storage` tables.
+The final migration had no schema/data conflict in `planMigration`, was the only pending version,
+and was applied with both Env ID and instance ID explicit. It removed
+`phase2_rename_owned_trip(uuid,text)`, moved three internal helpers to `app_private`, rewrote their
+qualified references, and reapplied the exact external allowlist.
 
-## Deployed catalog
+## Identity and managed-schema compatibility
 
-Remote migration history contains:
+CloudBase `auth.uid()` returns `text`; managed `auth.users.id` is `bigint`. User ownership columns
+therefore use `varchar(64)`, while Trip/Variant/Item/share business identifiers remain UUIDs:
 
-| Version          | Name                           | Task/result                          |
-| ---------------- | ------------------------------ | ------------------------------------ |
-| `20260831030000` | `trip_planner_baseline`        | `task-738ca6fd`, `Succeed`, verified |
-| `20260831031000` | `cloudbase_rpc_grants`         | `task-b554ec5d`, `Succeed`, verified |
-| `20260831032000` | `cloudbase_security_hardening` | `task-1293320e`, `Succeed`, verified |
+| Table                        | Column       |
+| ---------------------------- | ------------ |
+| `profiles`                   | `id`         |
+| `trips`                      | `owner_id`   |
+| `trip_members`               | `user_id`    |
+| `public_itinerary_links`     | `created_by` |
+| `research_plan_applications` | `applied_by` |
+| `share_image_exports`        | `owner_id`   |
+| `assets`                     | `owner_id`   |
+| `asset_links`                | `owner_id`   |
+| `asset_deletion_queue`       | `owner_id`   |
 
-The first baseline attempt, `task-59c7f881`, failed on an obsolete fixed `create_trip` grant
-signature. The transaction rolled back completely; the public catalog and remote migration history
-were both verified empty before the corrected retry.
+`app_private.app_current_user_id()` is the only maintained direct call to `auth.uid()`.
+`app_private.is_trip_member(uuid)` and `app_private.variant_trip_id(uuid)` are also outside the
+exposed `public` RPC schema. Static migration checks fail if project SQL creates, alters, grants on,
+or writes to CloudBase-managed `auth` or `storage` schemas.
 
-Final public catalog:
+## Final RPC boundary
 
-| Object                                | Count/result                |
-| ------------------------------------- | --------------------------- |
-| Business tables                       | 26                          |
-| Project migration table               | 1 (`app_schema_migrations`) |
-| Functions                             | 135                         |
-| `SECURITY DEFINER` functions          | 109 after invoker hardening |
-| Enums                                 | 7                           |
-| Views/materialized views              | 0                           |
-| Policies                              | 57                          |
-| Triggers                              | 28                          |
-| Indexes, including constraint indexes | 153                         |
+The earlier report incorrectly inferred that the gateway ignored PostgreSQL `GRANT EXECUTE`.
+Pinned official `@cloudbase/js-sdk@3.9.0` tests now prove the opposite: the CloudBase PG RPC gateway
+enforces function ACLs for anonymous and authenticated callers.
 
-All 27 public tables have both RLS enabled and forced. Anonymous has zero table privileges. All 12
-active update policies have both `USING` and `WITH CHECK` expressions.
+The checked-in `rpc-catalog.json` enumerates and exclusively classifies all 131 final public
+functions:
 
-## Shared SQL and CloudBase overlays
+| Classification                    | Count |
+| --------------------------------- | ----: |
+| Externally callable authenticated |    26 |
+| Externally callable anonymous     |     2 |
+| Trigger                           |    12 |
+| Internal helper                   |    31 |
+| Obsolete legacy                   |    32 |
+| Phase 4                           |    28 |
 
-- `database/shared/baseline.sql` is generated from the immutable business history.
-- `database/cloudbase/overlays/identity.sql` owns CloudBase claim adaptation and project migration
-  tracking.
-- `database/cloudbase/overlays/security.sql` owns RLS forcing, API table grants, and the Phase 2
-  guarded test RPC.
-- `database/cloudbase/overlays/rpc-grants.sql` owns the current non-storage application RPC ACL.
-- `database/cloudbase/overlays/security-hardening.sql` removes direct access to private tables and
-  converts six helpers that do not require caller-independent privileges to invoker mode.
-- `database/cloudbase/baseline.sql` and `cloudbase/migrations/20260831030000_...sql` are the checked
-  single-file deployment artifact.
+The authenticated role also receives the two anonymous snapshot functions, so live catalog counts
+are PUBLIC `0`, anon `2`, and authenticated `28`. The SDK invoked all 103 non-allowlisted public
+functions as anon and again as controlled user A; every call was denied. It also proved that the
+three private helpers and removed Phase 2 probe are not exposed as public RPCs.
 
-The CloudBase identity overlay exposes `app_current_user_id()` as an invoker function returning
-`varchar(64)`. Shared policies and functions call that helper. The helper is the only maintained
-place that calls CloudBase `auth.uid()` directly.
+The allowlist uses exact signatures, not names. Static and live checks assert:
 
-## UUID-to-text identity differences
+- every public/app-private definer has `search_path=''` (108/108 live);
+- PUBLIC has no function execute privilege;
+- only the reviewed role has each external signature;
+- authenticated external RPCs reach the claim helper and reviewed owner/business authorization;
+- no external function accepts an owner/user identity argument as authority;
+- anonymous RPCs are only `get_public_itinerary_v4(uuid)` and
+  `get_public_share_page_v3(uuid)`, both returning persisted public-token snapshots.
 
-Business UUIDs remain UUIDs. Only user identity values become `varchar(64)` and no CloudBase
-business column has a foreign key to managed `auth.users`, because `auth.uid()` is text while
-`auth.users.id` is bigint.
+Legacy and Phase 4 functions remain for schema compatibility, but ACL enforcement plus the real SDK
+matrix proves they are unavailable to browser roles. Future cleanup may drop obsolete versions in a
+separately reviewed migration.
 
-| Table                        | Column       | CloudBase type |
-| ---------------------------- | ------------ | -------------- |
-| `profiles`                   | `id`         | `varchar(64)`  |
-| `trips`                      | `owner_id`   | `varchar(64)`  |
-| `trip_members`               | `user_id`    | `varchar(64)`  |
-| `public_itinerary_links`     | `created_by` | `varchar(64)`  |
-| `research_plan_applications` | `applied_by` | `varchar(64)`  |
-| `share_image_exports`        | `owner_id`   | `varchar(64)`  |
-| `assets`                     | `owner_id`   | `varchar(64)`  |
-| `asset_links`                | `owner_id`   | `varchar(64)`  |
-| `asset_deletion_queue`       | `owner_id`   | `varchar(64)`  |
+## RLS and A/B evidence
 
-The 87 active functions whose definitions use `app_current_user_id()` are the complete function
-identity adaptation inventory:
+Username/password login is enabled. `trip-planner-cn-test-a` and
+`trip-planner-cn-test-b` are admin-created controlled users. Email, phone, SMS, WeChat, and
+anonymous public registration remain off; no signup UI/API was added and
+`backendCapabilitiesByRegion.cn.selfRegistration` remains `false`. Passwords and the publishable
+key are ignored local/CI secrets and are never printed or committed.
 
-```text
-app_current_user_id()
-apply_research_item_to_variant(uuid,uuid,uuid)
-apply_research_item_to_variant_phase_6b_p0(uuid,uuid,uuid)
-apply_research_item_to_variant_v2_phase_6b_canonical_price(uuid,uuid,uuid,uuid,text)
-apply_research_item_to_variant_v2_phase_6b_complete_fields(uuid,uuid,uuid,uuid,text)
-apply_research_item_to_variant_v2_phase_6b_legacy_journey(uuid,uuid,uuid,uuid,text)
-apply_research_item_to_variant_v2_phase_6b_nightly_costs(uuid,uuid,uuid,uuid,text)
-apply_research_item_to_variant_v2_phase_6b_p05(uuid,uuid,uuid,uuid,text)
-apply_research_item_to_variant_v2_phase_6b_schedule(uuid,uuid,uuid,uuid,text)
-apply_research_item_to_variant_v2_phase_attachment_transfer(uuid,uuid,uuid,uuid,text)
-apply_selected_research_item(uuid,uuid,uuid)
-clear_day_route_plan(uuid,uuid)
-clear_research_item_selection(uuid,uuid,uuid)
-clear_route_variant_items(uuid,uuid,uuid[])
-commit_item_asset_session_v1(uuid,uuid,uuid)
-commit_research_asset_session_v1(uuid,uuid,uuid)
-copy_research_assets_to_items_v1(uuid,uuid,uuid,uuid[])
-create_public_itinerary_link(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,text,text)
-create_public_itinerary_link_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text)
-create_public_itinerary_link_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)
-create_public_itinerary_link_v4(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)
-create_route_variant(uuid,uuid,text,text)
-create_share_page_v1(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid)
-create_share_page_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer)
-create_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)
-create_trip(text,date,date,text,text,integer)
-current_research_plan_application_ids(uuid,uuid)
-delete_route_variant(uuid,uuid)
-detach_item_asset_v1(uuid,uuid,text)
-detach_research_asset_v1(uuid,uuid,text)
-discard_item_asset_session_v1(uuid,uuid,uuid)
-discard_research_asset_session_v1(uuid,uuid,uuid)
-duplicate_route_variant(uuid,uuid,text,text)
-fail_item_asset_v1(uuid,text)
-fail_share_image_version_v1(uuid,text)
-finalize_item_asset_v1(uuid,text,bigint,asset_media_kind,text,integer,integer,numeric,boolean)
-finalize_research_asset_v1(uuid,text,bigint,asset_media_kind,text,integer,integer,numeric,boolean)
-insert_variant_day(uuid,uuid,integer)
-is_trip_member(uuid)
-is_trip_owner(uuid)
-list_public_itinerary_links(uuid)
-list_public_itinerary_links_v2(uuid)
-list_public_itinerary_links_v3(uuid)
-list_share_pages_v1(uuid)
-list_share_pages_v2(uuid)
-owner_asset_access_v1(uuid,text)
-owner_share_image_export_paths_v1(uuid)
-owner_share_page_by_token_v1(uuid)
-owner_share_page_by_token_v2(uuid)
-owner_share_page_image_state_v1(uuid)
-owner_share_page_v1(uuid)
-owner_share_page_v2(uuid)
-phase2_rename_owned_trip(uuid,text)
-prepare_item_asset_v1(uuid,uuid,text,text,bigint,asset_media_kind,text)
-prepare_item_asset_v2(uuid,uuid,text,text,bigint,asset_media_kind,text)
-prepare_item_asset_v3(uuid,uuid,text,text,bigint,asset_media_kind,text,uuid)
-prepare_research_asset_v1(uuid,uuid,text,text,bigint,asset_media_kind,text,uuid)
-prepare_share_image_version_v1(uuid,text,uuid,text,text,jsonb)
-prepare_share_image_version_v2(uuid,text,uuid,text,text,jsonb)
-remove_variant_day(uuid,uuid,uuid)
-reorder_variant_days(uuid,uuid,uuid[])
-revert_research_plan_application_phase_6b_complete_price(uuid,uuid)
-revert_research_plan_application_phase_6b_p0(uuid,uuid)
-revert_research_plan_application_phase_6b_p05(uuid,uuid)
-revert_research_plan_application_phase_6b_schedule(uuid,uuid)
-revert_research_plan_application_phase_attachment_transfer(uuid,uuid)
-revoke_public_itinerary_link(uuid)
-revoke_share_image_export_v1(uuid)
-revoke_share_page_v1(uuid)
-rotate_public_itinerary_link(uuid)
-rotate_public_itinerary_link_v2(uuid)
-rotate_public_itinerary_link_v3(uuid)
-save_day_route_calculation(uuid,text,jsonb,integer,integer,text)
-save_day_route_plan(uuid,uuid,uuid[],text[])
-select_research_item_for_variant(uuid,uuid,uuid)
-select_research_item_for_variant_phase_6b_p05(uuid,uuid,uuid)
-set_item_asset_share_v1(uuid,uuid,text,boolean)
-set_item_asset_share_v2(uuid,uuid,text,boolean)
-set_primary_route_variant(uuid,uuid)
-update_public_itinerary_link(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,text,text)
-update_public_itinerary_link_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text)
-update_public_itinerary_link_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)
-update_public_itinerary_link_v4(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)
-update_route_variant_metadata(uuid,uuid,text,text)
-update_share_page_v1(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid)
-update_share_page_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer)
-update_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)
+Two repeatable layers passed:
+
+1. `database/cloudbase/verify/rls-session-claims.sql` creates A/B trips and a Share Page inside a
+   transaction, asserts the complete private/public matrix, and rolls back even the fixtures on a
+   successful run.
+2. `test:cloudbase-pg-security` logs in through the pinned SDK, creates uniquely named A/B fixtures,
+   asserts real JWT RLS and the real `update_trip_plan` business-RPC boundary, and removes both
+   users' fixtures in `finally` (with unique-title recovery after partial failure).
+
+| Assertion                               | SQL claims | Live SDK JWT |
+| --------------------------------------- | ---------- | ------------ |
+| A reads its own trip                    | pass       | pass         |
+| A reads/updates/deletes B trip          | denied     | denied       |
+| A forges `owner_id`                     | denied     | denied       |
+| A invokes business RPC against B        | denied     | denied       |
+| Anonymous reads private Trips           | denied     | denied       |
+| Valid public token returns one snapshot | pass       | rollback SQL |
+| Unknown token is unavailable            | pass       | rollback SQL |
+| Revoked token is unavailable            | pass       | rollback SQL |
+
+The SDK currently tries to JSON-parse scalar UUID results from `create_trip`. The RPC commits, so
+the live test resolves the fixture by its unique title in the same authenticated RLS session. This
+is a compatibility risk for the Phase 3 adapter, not a security bypass.
+
+After all SQL and SDK tests, `trips`, `trip_members`, `profiles`, `public_itinerary_links`, and
+`assets` each contain zero rows. Two Share Page rows left by intermediate test development were
+identified by both controlled creator ID and unique title prefix and explicitly removed; the final
+repeatable path leaves no orphan Share Page.
+
+## Fail-closed verification
+
+`database/cloudbase/verify/security.sql` raises on any of the following:
+
+- a public table without ENABLE and FORCE RLS;
+- an UPDATE policy without both `USING` and `WITH CHECK`;
+- unexpected anon table access or authenticated access to reviewed private tables;
+- unsafe definer search path or PUBLIC execute;
+- any exact-signature callable-catalog drift;
+- a non-`varchar(64)` ownership column;
+- the probe or private helpers appearing in `public`.
+
+The live result was `cloudbase_security_verified`. The remote final catalog is 131 public functions,
+3 private helpers, 108 security definers with 108 safe search paths, 2 anon callable functions, and
+28 authenticated callable functions.
+
+## Reproduction
+
+Non-secret CI/local commands:
+
+```sh
+npm ci
+npm run check:cloudbase-pg-baseline
+npm run check:database-pg-migrations
+npm run check:cloudbase-pg-rpc-surface
+npm run lint
+npm run typecheck
+npm test
+npm run check:backend-provider-boundary
+npm run check:maps-provider-boundary
+npm run check:build-secret-boundary
+npm run format:check
+npm run build
 ```
 
-Function parameters that represent business objects, trips, variants, items, plans, shares, or assets
-remain UUID. No RPC accepts a caller-supplied user/owner identity as authority.
+After Device Login, `auth/set_env`, `queryEnv(info)`, and read-only database/empty-data checks, the
+manual secret-backed layer is:
 
-## Extensions
+```sh
+npm run check:cloudbase-pg-target -- \
+  --env-id trip-planner-cn-dev-d3bz94038b26 \
+  --region ap-shanghai \
+  --instance-id pgdb-l4lhtrv7
+npm run test:cloudbase-pg-rpc-surface
+npm run test:cloudbase-pg-security
+```
 
-`pgcrypto 1.3` is available on the CloudBase PG 17 instance and is installed by the baseline into
-the existing `extensions` schema because public snapshot hashes use `extensions.digest`. Built-in
-`gen_random_uuid()` was also catalog-verified. No other extension is installed by Phase 2.
+Run the two assertion SQL files through the CloudBase PG management surface with the same explicit
+Env/instance pair. CI keeps these network/secret tests in the manually dispatched
+`cloudbase-pg-dev` protected environment; global pull-request CI needs no CloudBase secret.
 
-## Managed Auth and Storage boundary
+The Global regression build also passed with the existing Global provider selectors. Production
+smoke checks returned HTTP 200 and the expected forms for both `/login` and `/signup`. No source
+route, Global provider configuration, or Supabase migration changed in this follow-up.
 
-The baseline never creates, alters, grants on, or writes to CloudBase managed `auth` or `storage`
-tables. It reads `auth.uid()` only through the identity helper. It does not add an Auth trigger to
-`auth.users`; profile creation remains a Phase 3 adapter responsibility. Asset metadata tables stay
-in the business schema, while buckets, objects, object policies, signed URLs, cleanup, and scheduled
-deletion remain Phase 4.
+## Remaining risks
 
-After all tests, managed state was unchanged: three Auth users remain, and Storage still has zero
-buckets and zero objects. Business tables contain zero trips, members, profiles, or share links.
+- Phase 3 must handle the SDK scalar-UUID response behavior and reverify the actual session and
+  repository adapters.
+- Internal business authorization remains mandatory even though the gateway enforces EXECUTE.
+- Storage metadata exists, but buckets, objects, signed URLs, cleanup, and jobs remain Phase 4.
+- Realtime remains unavailable and must not be faked.
+- The disposable free/shared instance still lacks a proven unattended backup/restore path.
+- `npm audit` reports six high-severity findings in the repository's existing Next.js, Sharp, and
+  transitive tooling dependency graph. None is on a CloudBase SDK dependency path; remediation is
+  outside this schema-only phase and should be handled as a separate dependency update.
+- **免费实例无法提供无人值守直连 migration credential**. Phase 2 uses authenticated CloudBase
+  plugin migrations with explicit targets and does not require `CLOUDBASE_PG_MIGRATION_URL`.
 
-## SECURITY DEFINER audit
-
-| Category                          | Result                                       |
-| --------------------------------- | -------------------------------------------- |
-| Definer functions                 | 109                                          |
-| Fixed empty `search_path`         | 109/109                                      |
-| Anon-executable definers          | 2 current public snapshot RPCs               |
-| Authenticated-executable definers | 29 current application/security RPCs         |
-| No client EXECUTE ACL             | verified by the post-hardening catalog check |
-| Phase 4 service-role cleanup RPCs | omitted from baseline                        |
-
-The two anonymous RPCs are `get_public_itinerary_v4(uuid)` and
-`get_public_share_page_v3(uuid)`. They return published snapshot projections only. The guarded
-`phase2_rename_owned_trip(uuid,text)` RPC proves that definer execution re-checks the caller and trip
-ownership instead of trusting a parameter or relying on grants.
-
-## RLS and Auth test evidence
-
-Provider state after testing:
-
-- username/password login is enabled;
-- email, phone, and anonymous login are disabled;
-- `trip-planner-cn-test-a` and `trip-planner-cn-test-b` exist as admin-created controlled users;
-- no signup UI/API was added;
-- `backendCapabilitiesByRegion.cn.selfRegistration` remains `false`;
-- test passwords remain only in `.env.local`/the user's password manager;
-- a publishable key was created for the controlled live SDK test and was not printed or committed.
-
-SQL/session-claim verification used the two real CloudBase user IDs, switched to the
-`authenticated` and `anon` database roles, and rolled the complete test transaction back. Live JWT
-verification used temporary `@cloudbase/js-sdk 3.9.0`, real password logins, and the same two
-controlled rows; those rows were deleted immediately afterward.
-
-| Assertion                     | SQL/session claims          | Live JWT                                   |
-| ----------------------------- | --------------------------- | ------------------------------------------ |
-| A reads own trip              | pass                        | pass                                       |
-| A reads B trip                | denied/zero rows            | denied/zero rows                           |
-| A updates B trip              | denied/zero rows            | denied/zero rows                           |
-| A deletes B trip              | denied/zero rows            | denied/zero rows                           |
-| A forges `owner_id`           | `WITH CHECK` denied         | denied                                     |
-| A calls definer RPC against B | internal owner check denied | SQL-level coverage; no guessed raw RPC URL |
-| Valid owner update            | pass                        | pass                                       |
-| Anonymous private table read  | denied                      | denied after sign-out                      |
-| Valid public snapshot token   | expected snapshot only      | SQL-level coverage                         |
-| Unknown public token          | unavailable                 | SQL-level coverage                         |
-
-The documented explicit-instance raw REST route returned `404`; the test stopped using that path
-instead of guessing a variant and switched to the official JS SDK, as required by the PG skill.
-Phase 3 must verify the final application session/RPC composition again when its actual adapter is
-implemented.
-
-## Fresh deployment and verification
-
-1. Put only the three non-secret target identifiers in `.env.local` and keep all existing variables.
-2. Run `npm run build:cloudbase-pg-baseline` and `npm run check:cloudbase-pg-baseline`.
-3. Device-login through the CloudBase plugin, call `auth(set_env)` with the exact Env ID, and rerun
-   `envQuery(info)` plus the read-only PG context/database/user probe.
-4. Confirm the environment is approved and contains no business data.
-5. Plan and apply the three files in `cloudbase/migrations` in version order with
-   `managePgDatabase(planMigration/applyMigration)`, explicitly passing the Env ID and
-   `pgdb-l4lhtrv7` on every call.
-6. Run the SQL in `database/cloudbase/verify/catalog.sql` and `security.sql`, then the controlled
-   session-claim/live-JWT matrix.
-
-The tooling prints only Env ID, Region, PG instance ID, and database. It does not require or inspect
-a direct PostgreSQL URL, password, token, or Global credential.
-
-## Rollback, backup, and recreation
-
-These migrations are fresh-environment baselines. Do not run a destructive rollback after business
-data exists. Before a later migration, use whatever snapshot/export facility the CloudBase plan
-actually exposes and verify restoration in a separate approved environment; the free shared PG
-instance did not expose a direct unattended backup/migration credential during this phase.
-
-For this disposable development environment while it is still business-empty, the safe rollback is
-to create/recreate an approved fresh CloudBase PG environment and reapply the last known-good
-versioned migration set. A SQL rollback must be separately reviewed, explicitly target the same Env
-ID and instance ID, and enumerate every object; no broad `DROP SCHEMA ... CASCADE` rollback is
-checked in.
-
-## Remaining risks and blockers
-
-- Phase 3 must implement and retest the real CloudBase Auth/session and repository adapters.
-- CloudBase's RPC gateway does not enforce `GRANT EXECUTE`; internal authorization remains
-  mandatory and every newly exposed definer RPC needs the same audit.
-- The baseline retains legacy/transition functions for schema equivalence; 85 are intentionally not
-  in the client ACL and should be pruned only in a separately reviewed migration.
-- Storage metadata exists but Storage behavior, policies, buckets, signed URLs, cleanup, and jobs are
-  Phase 4 only.
-- Realtime remains `false`; no fake replacement exists.
-- **免费实例无法提供无人值守直连 migration credential**. Phase 2 therefore uses authenticated
-  CloudBase plugin migrations and does not require `CLOUDBASE_PG_MIGRATION_URL`.
-
-See [CloudBase Phase 4 risks](cloudbase-phase-4-risks.md) for the storage/deployment implications.
+DMC remains a manual fallback only when MCP is unavailable. Do not create/reset a management
+password or make a direct PostgreSQL URL a Phase 2 prerequisite.
