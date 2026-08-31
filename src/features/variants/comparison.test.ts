@@ -209,7 +209,8 @@ test("variant comparison derives current destination localities with legacy fall
     /place:places\(id, google_place_id, formatted_address, latitude, longitude, locality_name, country_code\)/,
   );
   assert.match(loader, /\.in\("variant_id", variantIds\)/);
-  assert.match(loader, /createClient\(\)/);
+  assert.match(loader, /getRelationalDatabase\(\)/);
+  assert.doesNotMatch(loader, /createClient\(\)|@\/lib\/supabase\/server/);
   assert.doesNotMatch(loader, /service[_-]?role|admin|createService/iu);
   assert.doesNotMatch(loader, /item_links|day_route_legs|provider_data/);
   assert.match(loader, /dayNumber === undefined/);

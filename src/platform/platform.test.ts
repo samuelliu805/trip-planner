@@ -21,6 +21,7 @@ import { PlatformOperationError } from "./contracts/errors.ts";
 import { supabasePasswordCredentials } from "./supabase/auth-input.ts";
 import {
   directProviderSdkImports,
+  directProviderPathImports,
   findBackendProviderBoundaryViolations,
 } from "../../scripts/check-backend-provider-boundary.ts";
 
@@ -109,6 +110,8 @@ test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
   assert.equal(backendCapabilitiesByRegion.cn.selfRegistration, false);
   assert.equal(backendCapabilitiesByRegion.cn.signedUrls, false);
+  assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, false);
+  assert.equal(backendCapabilitiesByRegion.global.itineraryItemLinks, true);
   assert.equal(backendCapabilitiesByRegion.cn.passwordSignInIdentifier, "username");
   assert.equal(backendCapabilitiesByRegion.global.passwordSignInIdentifier, "email");
   assert.equal(Object.isFrozen(backendCapabilitiesByRegion), true);
@@ -149,6 +152,16 @@ test("provider SDK imports are restricted to the exact adapter and maintenance a
   assert.deepEqual(directProviderSdkImports('import { createClient } from "@supabase/ssr"'), [
     "@supabase/ssr",
   ]);
+  assert.deepEqual(
+    directProviderPathImports('import { createClient } from "@/lib/supabase/server"'),
+    ["@/lib/supabase/server"],
+  );
+  assert.deepEqual(
+    directProviderPathImports(
+      'import { CloudBaseTripRepository } from "@/platform/cloudbase/trip-repository"',
+    ),
+    ["@/platform/cloudbase/trip-repository"],
+  );
   const eslintConfig = await readFile(new URL("../../eslint.config.mjs", import.meta.url), "utf8");
   assert.match(eslintConfig, /no-restricted-imports/);
   assert.match(eslintConfig, /@cloudbase\/js-sdk/);
@@ -200,11 +213,11 @@ test("Global Supabase auth adapter and proxy retain the existing auth operations
 });
 
 test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK surface", async () => {
-  const [auth, trips, client, session] = await Promise.all([
+  const [auth, trips, client, sessionRuntime] = await Promise.all([
     readFile(new URL("./cloudbase/auth-provider.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/trip-repository.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/client.ts", import.meta.url), "utf8"),
-    readFile(new URL("./cloudbase/session.ts", import.meta.url), "utf8"),
+    readFile(new URL("./cloudbase/session-runtime.ts", import.meta.url), "utf8"),
   ]);
   for (const method of [
     "listForCurrentUser",
@@ -220,8 +233,9 @@ test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK sur
   }
   assert.match(auth, /signInWithPassword\(\{[\s\S]*username: input\.username/);
   assert.match(auth, /getSession\(\)/);
-  assert.match(session, /setSession\(/);
-  assert.match(session, /refreshSession\(/);
+  assert.match(sessionRuntime, /setSession\(/);
+  assert.match(sessionRuntime, /getSession\(/);
+  assert.match(sessionRuntime, /refreshSession\(/);
   assert.match(client, /app\.rdb\(\)/);
   assert.doesNotMatch(trips, /\.where\(|\.orderBy\(|\.count\(/);
   assert.doesNotMatch(auth, /getUser\(/);

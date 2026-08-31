@@ -6,7 +6,7 @@ import type {
   PlanResearchItem,
   VariantResearchSelection,
 } from "../../research/types";
-import type { Tables } from "../../../types/database";
+import type { Trip } from "@/platform/contracts/trips";
 
 export type PlannerWorkspaceProps = {
   accountEmail: string;
@@ -20,5 +20,5 @@ export type PlannerWorkspaceProps = {
   settings: ReactNode;
   shareAttachmentsEnabled: boolean;
   shareControls?: ReactNode;
-  trip: Tables<"trips">;
+  trip: Trip;
 };

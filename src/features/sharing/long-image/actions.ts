@@ -3,7 +3,12 @@
 import { z } from "zod";
 
 import { supportedLocales } from "@/features/i18n/config";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getAuthProvider,
+  getBackendCapabilities,
+  getRelationalDatabase,
+  getStorageProvider,
+} from "@/platform/composition/server";
 
 import { getPublicItinerary } from "../data";
 import { getRequestSiteUrl } from "../request-site-url";
@@ -39,21 +44,24 @@ function imageError(error?: string) {
 export async function prepareShareImageVersion(
   rawInput: unknown,
 ): Promise<ShareActionResult<PreparedShareImage>> {
+  if (!getBackendCapabilities().signedUrls)
+    return { error: "Permanent image exports are not supported by this backend." };
   const input = prepareImageInputSchema.safeParse(rawInput);
   if (!input.success) return { error: "Review the image version request." };
-  const supabase = await createClient();
-  const [{ data: userData }, pageResult] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.rpc("owner_share_page_v2", { target_share_page_id: input.data.sharePageId }),
-  ]);
-  if (!userData.user || pageResult.error) return { error: imageError(pageResult.error?.message) };
+  const user = await getAuthProvider().getCurrentUser();
+  if (!user) return { error: "Sign in to generate a permanent image." };
+  const database = await getRelationalDatabase();
+  const pageResult = await database.rpc("owner_share_page_v2", {
+    target_share_page_id: input.data.sharePageId,
+  });
+  if (pageResult.error) return { error: imageError(pageResult.error.message) };
   const page = publicItineraryLinkSchema.safeParse(pageResult.data);
   if (!page.success) return { error: "The Share Page could not be read." };
   const exportMode = input.data.mode === "replace_existing" ? "replace" : "new";
   await reportShareExportStarted({
     exportMode,
     operationId: input.data.operationId,
-    appUserId: userData.user.id,
+    appUserId: user.id,
   });
   const failPreparation = (error: string) =>
     reportSharingMutation({
@@ -62,13 +70,13 @@ export async function prepareShareImageVersion(
       mutation: "export",
       operationId: input.data.operationId,
       result: { error },
-      appUserId: userData.user.id,
+      appUserId: user.id,
     });
   try {
     let destinationPage = page.data;
     if (page.data.longImageQrDestination === "share_page") {
       const destinationResult = page.data.longImageQrSharePageId
-        ? await supabase.rpc("owner_share_page_v2", {
+        ? await database.rpc("owner_share_page_v2", {
             target_share_page_id: page.data.longImageQrSharePageId,
           })
         : { data: null, error: null };
@@ -91,7 +99,7 @@ export async function prepareShareImageVersion(
       version: 1 as const,
       width: 1080 as const,
     };
-    const { data, error } = await supabase.rpc("prepare_share_image_version_v2", {
+    const { data, error } = await database.rpc("prepare_share_image_version_v2", {
       requested_mode: input.data.mode,
       requested_qr_destination_type: qrDestinationType,
       requested_qr_destination_url: qrDestinationUrl,
@@ -131,7 +139,7 @@ export async function prepareShareImageVersion(
     const prepared = prepareShareImageSchema.safeParse({
       ...rpcData,
       sourceSnapshot,
-      uploadPathPrefix: `${userData.user.id}/${rpcData.exportId}/${rpcData.versionId}`,
+      uploadPathPrefix: `${user.id}/${rpcData.exportId}/${rpcData.versionId}`,
     });
     return prepared.success
       ? { data: prepared.data }
@@ -147,6 +155,8 @@ export async function finalizeShareImageVersion(rawInput: {
   parts: ShareImagePartInput[];
   versionId: string;
 }): Promise<ShareActionResult<{ expiresAt: string; permanentSlug: string; partCount: number }>> {
+  if (!getBackendCapabilities().signedUrls)
+    return { error: "Permanent image exports are not supported by this backend." };
   const input = z
     .object({
       exportMode: z.enum(["new", "replace"]).optional(),
@@ -157,14 +167,13 @@ export async function finalizeShareImageVersion(rawInput: {
     .strict()
     .safeParse(rawInput);
   if (!input.success) return { error: "The rendered image parts are invalid." };
-  const supabase = await createClient();
-  const [{ data: userData }, { data, error }] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase.rpc("finalize_share_image_version_v1", {
-      requested_parts: input.data.parts,
-      target_version_id: input.data.versionId,
-    }),
-  ]);
+  const user = await getAuthProvider().getCurrentUser();
+  if (!user) return { error: "Sign in to publish a permanent image." };
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("finalize_share_image_version_v1", {
+    requested_parts: input.data.parts,
+    target_version_id: input.data.versionId,
+  });
   const parsed = z
     .object({
       expiresAt: z.string().optional(),
@@ -188,7 +197,7 @@ export async function finalizeShareImageVersion(rawInput: {
     mutation: "export",
     operationId: input.data.operationId,
     result,
-    appUserId: userData.user?.id,
+    appUserId: user.id,
   });
 }
 
@@ -199,13 +208,15 @@ export async function failShareImageVersion(
   exportMode?: "new" | "replace",
 ) {
   if (!z.uuid().safeParse(versionId).success) return;
+  if (!getBackendCapabilities().signedUrls) return;
   let failureMessage = "Timeline export failed.";
   let appUserId: string | undefined;
   try {
-    const supabase = await createClient();
-    const { data: userData } = await supabase.auth.getUser();
-    appUserId = userData.user?.id;
-    const { error } = await supabase.rpc("fail_share_image_version_v1", {
+    const user = await getAuthProvider().getCurrentUser();
+    if (!user) return;
+    appUserId = user.id;
+    const database = await getRelationalDatabase();
+    const { error } = await database.rpc("fail_share_image_version_v1", {
       requested_error_message: message,
       target_version_id: versionId,
     });
@@ -227,9 +238,13 @@ export async function revokeShareImageExport(
   exportId: string,
   operationId?: string,
 ): Promise<ShareActionResult<{ revoked: true }>> {
+  if (!getBackendCapabilities().signedUrls)
+    return { error: "Permanent image exports are not supported by this backend." };
   if (!z.uuid().safeParse(exportId).success) return { error: "The image link is invalid." };
-  const supabase = await createClient();
-  const pathsResult = await supabase.rpc("owner_share_image_export_paths_v1", {
+  const user = await getAuthProvider().getCurrentUser();
+  if (!user) return { error: "Sign in to revoke a permanent image." };
+  const database = await getRelationalDatabase();
+  const pathsResult = await database.rpc("owner_share_image_export_paths_v1", {
     target_export_id: exportId,
   });
   const paths = z.array(z.string().min(1).max(1_000)).max(5_000).safeParse(pathsResult.data);
@@ -241,18 +256,18 @@ export async function revokeShareImageExport(
       result: { error: imageError(pathsResult.error?.message) },
     });
   for (let index = 0; index < paths.data.length; index += 100) {
-    const { error } = await supabase.storage
-      .from("share-images")
-      .remove(paths.data.slice(index, index + 100));
-    if (error)
+    try {
+      await getStorageProvider("share-images").remove(paths.data.slice(index, index + 100));
+    } catch {
       return reportSharingMutation({
         artifact: "image",
         mutation: "revoke",
         operationId,
         result: { error: "The stored image could not be deleted. Try again." },
       });
+    }
   }
-  const { error } = await supabase.rpc("revoke_share_image_export_v1", {
+  const { error } = await database.rpc("revoke_share_image_export_v1", {
     target_export_id: exportId,
   });
   return reportSharingMutation({

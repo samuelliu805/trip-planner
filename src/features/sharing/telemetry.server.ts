@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/platform/composition/server";
 import type { ExportMode, ShareArtifact } from "@/lib/telemetry/events";
 import { reportAuthoritativeMutationOutcome, telemetryOperationId } from "@/lib/telemetry/product";
 import {
@@ -56,9 +56,7 @@ export async function reportSharingMutation<Result extends object>(options: {
   let appUserId = options.appUserId;
   if (!appUserId) {
     try {
-      const supabase = await createClient();
-      const { data } = await supabase.auth.getUser();
-      appUserId = data.user?.id;
+      appUserId = (await getAuthProvider().getCurrentUser())?.id;
     } catch {
       // Identity lookup cannot replace an authoritative sharing result.
     }

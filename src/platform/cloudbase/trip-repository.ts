@@ -20,6 +20,11 @@ import type { CloudBaseDatabase } from "./client";
 import { createCloudBaseUserContext } from "./database";
 import { cloudBaseData } from "./errors";
 import { cloudBaseScalarUuidRpc } from "./rpc-compat";
+import {
+  removeCloudBaseTrip,
+  renameCloudBaseTripIfTitle,
+  setCloudBaseTripStatus,
+} from "./trip-mutations";
 
 async function rows(query: PromiseLike<{ data: unknown; error: unknown }>, message: string) {
   return cloudBaseData(await query, message);
@@ -47,15 +52,6 @@ async function attachPrimaryVariant(db: CloudBaseDatabase, trip: Trip) {
     "The trip route could not be loaded.",
   );
   return normalizeTrip({ ...trip, route_variants: normalizeRouteVariants(data) });
-}
-
-function assertOwner(trip: Trip, userId: string) {
-  if (trip.owner_id !== userId) {
-    throw new PlatformOperationError(
-      "forbidden",
-      "You do not have permission to modify this trip.",
-    );
-  }
 }
 
 export class CloudBaseTripRepository implements TripRepository {
@@ -163,37 +159,16 @@ export class CloudBaseTripRepository implements TripRepository {
 
   async setStatus(id: string, status: TripStatus) {
     const { db, user } = await createCloudBaseUserContext();
-    const trip = await tripById(db, id);
-    if (!trip) throw new PlatformOperationError("not_found", "The trip was not found.");
-    assertOwner(trip, user.id);
-    await rows(
-      db.from("trips").update({ status }).eq("id", id),
-      "The trip status could not be updated.",
-    );
-    return { ...trip, status };
+    return setCloudBaseTripStatus(db, user.id, id, status);
   }
 
   async renameIfTitle(id: string, currentTitle: string, nextTitle: string) {
     const { db, user } = await createCloudBaseUserContext();
-    const trip = await tripById(db, id);
-    if (!trip) return false;
-    assertOwner(trip, user.id);
-    if (trip.title !== currentTitle) return false;
-    await rows(
-      db.from("trips").update({ title: nextTitle }).eq("id", id).eq("title", currentTitle),
-      "The trip title could not be updated.",
-    );
-    return true;
+    return renameCloudBaseTripIfTitle(db, user.id, id, currentTitle, nextTitle);
   }
 
   async remove(id: string) {
     const { db, user } = await createCloudBaseUserContext();
-    const trip = await tripById(db, id);
-    if (!trip) throw new PlatformOperationError("not_found", "The trip was not found.");
-    assertOwner(trip, user.id);
-    await rows(db.from("trips").delete().eq("id", id), "The trip could not be removed.");
-    if (await tripById(db, id)) {
-      throw new PlatformOperationError("unexpected", "The trip could not be removed.");
-    }
+    await removeCloudBaseTrip(db, user.id, id);
   }
 }

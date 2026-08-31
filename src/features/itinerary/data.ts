@@ -1,17 +1,46 @@
-import { createClient } from "@/lib/supabase/server";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
 import { isRouteLegMode } from "@/features/routes/route-config";
 import { parseCalculatedRouteLegs } from "@/features/routes/results";
 import type { DayRouteCalculation, DayRouteLeg, DayRoutePlan } from "@/features/routes/types";
-import type { Tables } from "@/types/database";
+import type { AppRow } from "@/platform/contracts/database";
 import { ownerAttachmentsFromRows } from "@/features/attachments/owner-attachment-records";
+import type { OwnerAttachmentRow } from "@/features/attachments/owner-attachment-records";
 
 import type { PlannerWorkspace } from "./types";
+
+type StoredPlaceRow = Pick<
+  AppRow<"places">,
+  | "administrative_area_name"
+  | "country_code"
+  | "display_name"
+  | "formatted_address"
+  | "google_place_id"
+  | "id"
+  | "latitude"
+  | "locality_kind"
+  | "locality_name"
+  | "locality_source"
+  | "longitude"
+  | "source"
+>;
+
+type WorkspaceItemRow = AppRow<"itinerary_items"> & {
+  attachments?: OwnerAttachmentRow[] | null;
+  links?: AppRow<"itinerary_item_links">[] | null;
+  place?: StoredPlaceRow | null;
+};
+
+const placeSelection =
+  "place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)";
+const linkSelection = "links:itinerary_item_links(id, item_id, label, url, sort_order)";
+const attachmentSelection =
+  "attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))";
 
 export async function getPlannerVariants(
   tripId: string,
 ): Promise<{ data: import("./types").PlannerVariant[] | null; error: string | null }> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const database = await getRelationalDatabase();
+  const { data, error } = await database
     .from("route_variants")
     .select("id, trip_id, name, color, is_primary")
     .eq("trip_id", tripId)
@@ -26,8 +55,9 @@ export async function getPlannerWorkspace(
   tripId: string,
   variantId: string,
 ): Promise<{ data: PlannerWorkspace | null; error: string | null }> {
-  const supabase = await createClient();
-  const { data: variant, error: variantError } = await supabase
+  const database = await getRelationalDatabase();
+  const capabilities = getBackendCapabilities();
+  const { data: variant, error: variantError } = await database
     .from("route_variants")
     .select("id, trip_id, name, color, is_primary")
     .eq("trip_id", tripId)
@@ -45,21 +75,26 @@ export async function getPlannerWorkspace(
     { data: items, error: itemsError },
     { data: routePlans, error: routePlansError },
   ] = await Promise.all([
-    supabase
+    database
       .from("trip_days")
       .select("id, variant_id, day_number, date, title, notes")
       .eq("variant_id", variant.id)
       .order("day_number", { ascending: true }),
-    supabase
+    database
       .from("itinerary_items")
-      .select(
-        "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)), links:itinerary_item_links(id, item_id, label, url, sort_order), place:places(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)",
+      .select<WorkspaceItemRow>(
+        [
+          "*",
+          placeSelection,
+          ...(capabilities.itineraryItemLinks ? [linkSelection] : []),
+          ...(capabilities.signedUrls ? [attachmentSelection] : []),
+        ].join(", "),
       )
       .eq("trip_id", tripId)
       .eq("variant_id", variant.id)
       .order("day_id", { ascending: true })
       .order("sort_order", { ascending: true }),
-    supabase
+    database
       .from("day_route_plans")
       .select("*")
       .eq("trip_id", tripId)
@@ -78,22 +113,22 @@ export async function getPlannerWorkspace(
     };
 
   const planIds = (routePlans ?? []).map(({ id }) => id);
-  let routeStops: Tables<"day_route_stops">[] = [];
-  let routeLegs: Tables<"day_route_legs">[] = [];
-  let routeCalculations: Tables<"day_route_calculations">[] = [];
+  let routeStops: AppRow<"day_route_stops">[] = [];
+  let routeLegs: AppRow<"day_route_legs">[] = [];
+  let routeCalculations: AppRow<"day_route_calculations">[] = [];
   if (planIds.length) {
     const [stopsResult, legsResult, calculationsResult] = await Promise.all([
-      supabase
+      database
         .from("day_route_stops")
         .select("*")
         .in("plan_id", planIds)
         .order("position", { ascending: true }),
-      supabase
+      database
         .from("day_route_legs")
         .select("*")
         .in("plan_id", planIds)
         .order("position", { ascending: true }),
-      supabase.from("day_route_calculations").select("*").in("plan_id", planIds),
+      database.from("day_route_calculations").select("*").in("plan_id", planIds),
     ]);
     if (stopsResult.error || legsResult.error || calculationsResult.error) {
       return {

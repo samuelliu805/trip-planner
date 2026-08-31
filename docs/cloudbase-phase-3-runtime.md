@@ -39,12 +39,14 @@ Production and Preview origins must be reviewed independently.
 CN sign-in calls only `signInWithPassword({ username, password })`. The server stores the returned
 access and refresh tokens in the distinct HttpOnly `tp-cn-access-token` and
 `tp-cn-refresh-token` cookies. Sign-in verifies the created session with `getSession`. On later
-requests, the proxy first verifies the access token through a read-only `app.rdb()` query governed
-by RLS, then normalizes identity from that verified token; it uses `setSession` and
-`refreshSession` only after access verification fails and persists any rotated pair. Avoiding an
-unconditional token rotation on every React Server Component request prevents concurrent requests
-from invalidating one another. Cookie values and credentials are never logged or returned through
-platform contracts.
+requests, the proxy verifies the RS256 access-token signature against the environment-scoped
+CloudBase OIDC/JWKS endpoint, checks issuer, subject, issued-at, and expiry, and forwards only the
+verified provider-neutral identity. It enters the SDK `refreshSession` / `setSession` /
+`getSession` path only for an expired or nearly expired access token and persists the rotated pair.
+Avoiding unconditional `setSession` calls prevents concurrent React Server Component and Server
+Action requests from invalidating one another's rotating refresh tokens. A transient JWKS failure
+fails closed without deleting otherwise valid cookies. Cookie values and credentials are never
+logged or returned through platform contracts.
 
 The CloudBase JS SDK keeps auth state per environment. All server auth-state changes are serialized
 through one narrow mutex, while every PostgreSQL request gets a fresh SDK application initialized
@@ -71,7 +73,7 @@ provider-neutral platform error codes and no SDK response shape escapes the adap
 ## Verification and operations
 
 Static CI runs lint, typecheck, unit/contract tests, provider/map boundaries, formatting, the Global
-build, a CN build with empty Supabase variables, and the build secret-boundary check. The guarded
+build, a CN build with no Supabase configuration, and the build secret-boundary check. The guarded
 manual job targets only:
 
 - Env ID `trip-planner-cn-dev-d3bz94038b26`
@@ -79,7 +81,11 @@ manual job targets only:
 - PostgreSQL instance `pgdb-l4lhtrv7`
 
 Before every live operation, re-check the authenticated CloudBase account, current Env ID, region,
-and explicit PG instance. Live tests use controlled users A and B, validate own CRUD and cross-user,
-anonymous, and forged-owner denial, restore/refresh/logout, remove only exact run IDs, then verify
-that application and admin/read-only fixture counts are zero. Phase 3 does not deploy or route CN
-traffic.
+and explicit PG instance. The live job first runs the raw SDK RLS/RPC tests, then starts the actual
+CN production build. Its browser E2E signs in through `/login`, checks `tp-cn-*` cookies and restore,
+executes A's list/create/detail/update/status/delete flow, denies B's read/update/delete attempts,
+rejects forged internal identity and Supabase cookies, verifies logout, and checks exact fixture
+cleanup. It also scrolls a 12-day owner Matrix in both axes at 820×600 and asserts that opaque
+frozen headers cover ordinary cells. A final Global build proves the reverse `tp-cn-*` cookie
+isolation when controlled Supabase dev configuration is available. Phase 3 does not deploy or route
+CN traffic.

@@ -26,6 +26,10 @@ export type CloudBaseQuery = PromiseLike<{ data: unknown; error: unknown }> & {
   insert(values: Readonly<Record<string, unknown>>): CloudBaseQuery;
   select(columns?: string): CloudBaseQuery;
   update(values: Readonly<Record<string, unknown>>): CloudBaseQuery;
+  upsert(
+    values: Readonly<Record<string, unknown>>,
+    options?: Readonly<{ onConflict?: string }>,
+  ): CloudBaseQuery;
 };
 
 export type CloudBaseDatabase = Readonly<{
@@ -34,6 +38,7 @@ export type CloudBaseDatabase = Readonly<{
 }>;
 
 let adaptersRegistered = false;
+let clients: ReturnType<typeof initializeCloudBaseClients> | undefined;
 
 function registerAdapter() {
   if (adaptersRegistered) return;
@@ -47,11 +52,11 @@ function registerAdapter() {
   adaptersRegistered = true;
 }
 
-export function createCloudBaseClients(accessKey?: string) {
+function initializeCloudBaseClients() {
   registerAdapter();
   const config = getCloudBaseConfig();
   const app = cloudbase.init({
-    accessKey: accessKey ?? config.publishableKey,
+    accessKey: config.publishableKey,
     auth: { detectSessionInUrl: false },
     env: config.env,
     persistence: "none",
@@ -59,6 +64,24 @@ export function createCloudBaseClients(accessKey?: string) {
   });
   return {
     auth: app.auth as unknown as CloudBaseAuthClient,
-    db: app.rdb() as unknown as CloudBaseDatabase,
+    rdb: () => app.rdb() as unknown as CloudBaseDatabase,
   };
+}
+
+export function createCloudBaseClients() {
+  clients ??= initializeCloudBaseClients();
+  return clients;
+}
+
+export function createCloudBaseDatabase(accessToken: string) {
+  registerAdapter();
+  const config = getCloudBaseConfig();
+  const app = cloudbase.init({
+    accessKey: accessToken,
+    auth: { detectSessionInUrl: false },
+    env: config.env,
+    persistence: "none",
+    region: config.region,
+  });
+  return app.rdb() as unknown as CloudBaseDatabase;
 }

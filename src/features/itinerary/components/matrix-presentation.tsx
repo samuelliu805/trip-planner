@@ -103,22 +103,26 @@ export function MatrixGridHeader({
         className="matrix-date-column sticky left-0 top-0 z-20 flex w-24 shrink-0 items-center border-r bg-muted px-2"
         role="columnheader"
       >
-        {mobileDateLabel ? (
-          <>
-            <span className="sm:hidden">{mobileDateLabel}</span>
-            <span className="hidden sm:inline">
-              <T message={"Date"} />
-            </span>
-          </>
-        ) : (
-          <T message="Date" />
-        )}
+        <span className="matrix-frozen-content">
+          {mobileDateLabel ? (
+            <>
+              <span className="sm:hidden">{mobileDateLabel}</span>
+              <span className="hidden sm:inline">
+                <T message={"Date"} />
+              </span>
+            </>
+          ) : (
+            <T message="Date" />
+          )}
+        </span>
       </div>
       <div
         className="matrix-day-column sticky left-24 z-10 flex w-16 shrink-0 items-center border-r bg-muted px-2"
         role="columnheader"
       >
-        <T message={" Day "} />
+        <span className="matrix-frozen-content">
+          <T message={" Day "} />
+        </span>
       </div>
       {columns.map((column) => (
         <div

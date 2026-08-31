@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 import {
   convertPlanCostBreakdown,
   knownCostFromBreakdown,
@@ -23,16 +23,16 @@ import {
 export async function getVariantDecisionSummary(
   tripId: string,
 ): Promise<{ data: VariantDecisionSummaryProjection[] | null; error: string | null }> {
-  const supabase = await createClient();
+  const database = await getRelationalDatabase();
   const [variantsResult, tripResult, exchangeRates] = await Promise.all([
-    supabase
+    database
       .from("route_variants")
       .select("id, name, color, is_primary, created_at")
       .eq("trip_id", tripId)
       .order("is_primary", { ascending: false })
       .order("created_at", { ascending: true })
       .order("id", { ascending: true }),
-    supabase.from("trips").select("currency").eq("id", tripId).maybeSingle(),
+    database.from("trips").select("currency").eq("id", tripId).maybeSingle(),
     getExchangeRateTable(),
   ]);
   const { data: variants, error: variantsError } = variantsResult;
@@ -50,16 +50,16 @@ export async function getVariantDecisionSummary(
 
   const variantIds = variants.map(({ id }) => id);
   const [daysResult, itemsResult, plansResult, pricesResult] = await Promise.all([
-    supabase
+    database
       .from("trip_days")
       .select("id, variant_id, day_number, date")
       .in("variant_id", variantIds)
       .order("variant_id", { ascending: true })
       .order("day_number", { ascending: true })
       .order("id", { ascending: true }),
-    supabase
+    database
       .from("itinerary_items")
-      .select(
+      .select<DecisionSummaryItemRow>(
         "id, trip_id, variant_id, day_id, type, title, sort_order, place_id, details, place:places(id, google_place_id, latitude, longitude, locality_name, country_code)",
       )
       .eq("trip_id", tripId)
@@ -69,7 +69,7 @@ export async function getVariantDecisionSummary(
       .order("day_id", { ascending: true })
       .order("sort_order", { ascending: true })
       .order("id", { ascending: true }),
-    supabase
+    database
       .from("day_route_plans")
       .select("id, trip_id, variant_id, day_id")
       .eq("trip_id", tripId)
@@ -77,7 +77,7 @@ export async function getVariantDecisionSummary(
       .order("variant_id", { ascending: true })
       .order("day_id", { ascending: true })
       .order("id", { ascending: true }),
-    supabase
+    database
       .from("itinerary_items")
       .select("id, variant_id, day_id, type, title, price_amount, price_currency")
       .eq("trip_id", tripId)
@@ -102,20 +102,20 @@ export async function getVariantDecisionSummary(
   let calculations: DecisionSummaryCalculationRow[] = [];
   if (planIds.length) {
     const [stopsResult, legsResult, calculationsResult] = await Promise.all([
-      supabase
+      database
         .from("day_route_stops")
         .select("id, plan_id, item_id, position")
         .in("plan_id", planIds)
         .order("plan_id", { ascending: true })
         .order("position", { ascending: true })
         .order("id", { ascending: true }),
-      supabase
+      database
         .from("day_route_legs")
         .select("plan_id, position, from_stop_id, to_stop_id, mode")
         .in("plan_id", planIds)
         .order("plan_id", { ascending: true })
         .order("position", { ascending: true }),
-      supabase
+      database
         .from("day_route_calculations")
         .select("plan_id, config_signature, calculated_legs")
         .in("plan_id", planIds)
@@ -171,7 +171,7 @@ export async function getVariantDecisionSummary(
         ]),
       ),
       days: (daysResult.data ?? []) as DecisionSummaryDayRow[],
-      items: (itemsResult.data ?? []) as DecisionSummaryItemRow[],
+      items: itemsResult.data ?? [],
       legs,
       knownCosts: Object.fromEntries(
         variantIds.map((variantId) => [

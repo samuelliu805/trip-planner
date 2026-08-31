@@ -14,8 +14,20 @@ export type StoredFile = Readonly<{
   path: string;
 }>;
 
+export type SignedUploadAuthorization = Readonly<{
+  signedUrl: string;
+  token: string;
+}>;
+
 export interface StorageProvider {
   upload(input: UploadInput): Promise<StoredFile>;
-  createSignedUrl(path: string): Promise<string>;
+  createSignedUrl(path: string, options?: { download?: string }): Promise<string>;
+  createSignedUploadUrl(path: string): Promise<SignedUploadAuthorization>;
+  download(path: string): Promise<Blob>;
+  remove(paths: string[]): Promise<void>;
+}
+
+export interface BrowserStorageProvider {
+  upload(input: UploadInput): Promise<StoredFile>;
   remove(paths: string[]): Promise<void>;
 }

@@ -2,7 +2,11 @@ import "server-only";
 
 import { z } from "zod";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getBackendCapabilities,
+  getPrivilegedRelationalDatabase,
+  getStorageProvider,
+} from "@/platform/composition/server";
 
 const cleanupBatchSchema = z.array(
   z
@@ -25,7 +29,15 @@ const untrackedStorageBatchSchema = z
   .max(100);
 
 export async function drainAssetDeletionQueue(limit = 100) {
-  const admin = createAdminClient();
+  if (!getBackendCapabilities().signedUrls)
+    return {
+      deletedAssets: 0,
+      deletedFiles: 0,
+      error: "Asset cleanup is not supported by this backend",
+      untrackedFiles: 0,
+    };
+  const admin = getPrivilegedRelationalDatabase();
+  const storage = getStorageProvider("trip-assets");
   const batchResult = await admin.rpc("asset_cleanup_batch_v2", { requested_limit: limit });
   const batch = cleanupBatchSchema.safeParse(batchResult.data);
   if (batchResult.error || !batch.success)
@@ -39,12 +51,11 @@ export async function drainAssetDeletionQueue(limit = 100) {
   const completed: string[] = [];
   let deletedFiles = 0;
   for (const candidate of batch.data) {
-    const { error } = candidate.paths.length
-      ? await admin.storage.from(candidate.bucket).remove(candidate.paths)
-      : { error: null };
-    if (error) {
+    try {
+      await storage.remove(candidate.paths);
+    } catch (caught) {
       await admin.rpc("fail_asset_cleanup_v1", {
-        requested_error: error.message,
+        requested_error: caught instanceof Error ? caught.message : "Storage removal failed",
         target_asset_id: candidate.assetId,
       });
       continue;
@@ -80,14 +91,16 @@ export async function drainAssetDeletionQueue(limit = 100) {
       untrackedFiles: 0,
     };
   if (untracked.data.length) {
-    const removed = await admin.storage.from("trip-assets").remove(untracked.data);
-    if (removed.error)
+    try {
+      await storage.remove(untracked.data);
+    } catch {
       return {
         deletedAssets,
         deletedFiles,
         error: "Untracked asset storage cleanup failed",
         untrackedFiles: 0,
       };
+    }
   }
   return {
     deletedAssets,

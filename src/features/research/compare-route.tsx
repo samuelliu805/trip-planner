@@ -11,7 +11,7 @@ import { getPlannerVariants } from "@/features/itinerary/data";
 import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
 
 import { CompareWorkspace } from "./components/compare-workspace";
 import { TripDetailRoute } from "./components/trip-detail-route";
@@ -34,28 +34,26 @@ export async function ResearchCompareRoute({
   query: ResearchCompareQuery;
   tripId: string;
 }) {
-  const [{ data: trip, error }, variantsResult, itemsResult, supabase, siteUrl] = await Promise.all(
-    [
-      getTrip(tripId),
-      getPlannerVariants(tripId),
-      getCompareItems(tripId),
-      createClient(),
-      getRequestSiteUrl(),
-    ],
-  );
+  const [{ data: trip, error }, variantsResult, itemsResult, user, siteUrl] = await Promise.all([
+    getTrip(tripId),
+    getPlannerVariants(tripId),
+    getCompareItems(tripId),
+    getAuthProvider().getCurrentUser(),
+    getRequestSiteUrl(),
+  ]);
   if (error || !trip) notFound();
-  const { data: authData } = await supabase.auth.getUser();
-  if (authData.user?.id !== trip.owner_id) notFound();
+  if (user?.id !== trip.owner_id) notFound();
   if (variantsResult.error || !variantsResult.data)
     throw new Error(variantsResult.error ?? "Trip variants could not be loaded.");
   if (itemsResult.error) throw new Error(itemsResult.error);
 
   const resolution = resolveActiveVariant(variantsResult.data, query.variant);
   if (!resolution.activeVariant) throw new Error(resolution.error);
+  const sharingEnabled = getBackendCapabilities().signedUrls;
   const [planResult, planState, shareLinks] = await Promise.all([
     getResearchPlanSnapshot(trip.id, resolution.activeVariant.id),
     getResearchPlanState(trip.id, resolution.activeVariant.id),
-    listPublicItineraryLinks(trip.id),
+    sharingEnabled ? listPublicItineraryLinks(trip.id) : Promise.resolve({ data: [], error: null }),
   ]);
   if (planResult.error || !planResult.data)
     throw new Error(planResult.error ?? "The selected Plan could not be loaded.");
@@ -78,18 +76,20 @@ export async function ResearchCompareRoute({
     <TripDetailRoute
       appBar={
         <TripSettingsAppBar
-          accountEmail={authData.user?.email ?? "Account"}
+          accountEmail={user.email ?? String(user.metadata.username ?? "Account")}
           active="compare"
           researchCategory={category}
           shareControls={
-            <PublicShareDialog
-              activeVariantId={resolution.activeVariant.id}
-              initialLinks={shareLinks.data}
-              renderTrigger={false}
-              siteUrl={siteUrl}
-              trip={trip}
-              variants={variantsResult.data}
-            />
+            sharingEnabled ? (
+              <PublicShareDialog
+                activeVariantId={resolution.activeVariant.id}
+                initialLinks={shareLinks.data}
+                renderTrigger={false}
+                siteUrl={siteUrl}
+                trip={trip}
+                variants={variantsResult.data}
+              />
+            ) : null
           }
           title={trip.title}
           tripId={trip.id}

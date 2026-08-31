@@ -1,5 +1,15 @@
 # CloudBase PG compatibility report — Phase 2
 
+> Phase 3 runtime addendum (2026-08-31): the Phase 2 schema/RLS evidence below remains immutable.
+> The application now consumes it through provider-neutral Auth, Trip, profile, and relational
+> contracts. The CN production-path test signs in via the real `/login` form, loads the real
+> `/trips/[tripId]` planner without Supabase configuration, exercises A's complete Trip lifecycle,
+> denies B's access and mutations, verifies the `tp-cn-*` cookie boundary and logout, and removes
+> only its exact fixture ID. Normal request restoration verifies CloudBase RS256 access tokens via
+> the environment OIDC/JWKS endpoint; CloudBase SDK 3.9 session refresh APIs run only at token
+> expiry, avoiding request races caused by unconditional refresh-token rotation. Storage, public
+> sharing, signed URLs, and attachments remain capability-gated Phase 4 work.
+
 ## Outcome and scope
 
 Phase 2 is deployed only to the disposable CN development target. It establishes the CloudBase PG

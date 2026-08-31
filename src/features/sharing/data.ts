@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
 
 import { ownerShareImageStateSchema, shareImageManifestSchema } from "./long-image/schema";
 import {
@@ -18,8 +18,9 @@ import type {
 } from "./types";
 
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_share_page_v3", {
+  if (!getBackendCapabilities().signedUrls) return null;
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("get_public_share_page_v3", {
     shared_token: token,
   });
   if (error) return null;
@@ -48,8 +49,10 @@ export async function getPublicItinerary(token: string): Promise<PublicItinerary
 export async function listPublicItineraryLinks(
   tripId: string,
 ): Promise<{ data: PublicItineraryLink[]; error: string | null }> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("list_share_pages_v2", {
+  if (!getBackendCapabilities().signedUrls)
+    return { data: [], error: "Public sharing is not supported by this backend." };
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("list_share_pages_v2", {
     target_trip_id: tripId,
   });
   if (error) return { data: [], error: error.message };
@@ -60,8 +63,9 @@ export async function listPublicItineraryLinks(
 }
 
 export async function getPublicShareImage(token: string): Promise<ShareImageManifest | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("public_share_page_image_v1", {
+  if (!getBackendCapabilities().signedUrls) return null;
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("public_share_page_image_v1", {
     shared_token: token,
   });
   if (error) return null;
@@ -72,8 +76,9 @@ export async function getPublicShareImage(token: string): Promise<ShareImageMani
 export async function getShareImageManifest(
   permanentSlug: string,
 ): Promise<ShareImageManifest | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("public_share_image_manifest_v1", {
+  if (!getBackendCapabilities().signedUrls) return null;
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("public_share_image_manifest_v1", {
     requested_slug: permanentSlug,
   });
   if (error) return null;
@@ -84,8 +89,9 @@ export async function getShareImageManifest(
 export async function getOwnerShareImageState(
   sharePageId: string,
 ): Promise<OwnerShareImageState | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_share_page_image_state_v1", {
+  if (!getBackendCapabilities().signedUrls) return null;
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("owner_share_page_image_state_v1", {
     target_share_page_id: sharePageId,
   });
   if (error || data === null) return null;
@@ -94,8 +100,9 @@ export async function getOwnerShareImageState(
 }
 
 export async function getOwnerSharePageByToken(token: string): Promise<PublicItineraryLink | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("owner_share_page_by_token_v2", {
+  if (!getBackendCapabilities().signedUrls) return null;
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("owner_share_page_by_token_v2", {
     shared_token: token,
   });
   if (error || data === null) return null;

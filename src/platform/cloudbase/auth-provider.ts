@@ -1,6 +1,6 @@
 import "server-only";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import type { AuthProvider, SignInInput } from "@/platform/contracts/auth";
 import { PlatformOperationError } from "@/platform/contracts/errors";
@@ -9,7 +9,9 @@ import { createCloudBaseClients } from "./client";
 import { cloudBaseData, normalizeCloudBaseError } from "./errors";
 import {
   clearCloudBaseSession,
-  restoreCloudBaseSession,
+  readCloudBaseCookieSession,
+  readCloudBaseVerifiedCookieSession,
+  readCloudBaseVerifiedUser,
   sessionFromData,
   withCloudBaseAuthLock,
   writeCloudBaseSession,
@@ -17,20 +19,8 @@ import {
 
 export class CloudBaseAuthProvider implements AuthProvider {
   async getCurrentUser() {
-    const store = await cookies();
-    try {
-      return (await restoreCloudBaseSession(store))?.user ?? null;
-    } catch (error) {
-      if (error instanceof PlatformOperationError && error.code === "authentication_required") {
-        try {
-          clearCloudBaseSession(store);
-        } catch {
-          // The proxy clears invalid cookies when the current context cannot mutate them.
-        }
-        return null;
-      }
-      throw error;
-    }
+    const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+    return readCloudBaseVerifiedCookieSession(cookieStore, headerStore)?.user ?? null;
   }
 
   async requireUser() {
@@ -65,7 +55,9 @@ export class CloudBaseAuthProvider implements AuthProvider {
   async signOut() {
     const store = await cookies();
     try {
-      const stored = await restoreCloudBaseSession(store);
+      const stored = readCloudBaseVerifiedUser(await headers())
+        ? readCloudBaseCookieSession(store)
+        : null;
       if (stored) {
         await withCloudBaseAuthLock(async () => {
           const { auth } = createCloudBaseClients();

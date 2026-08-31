@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
 import {
   ownerAttachmentsFromRows,
   type OwnerAttachmentRow,
@@ -10,26 +10,44 @@ import type {
   ResearchPlanApplication,
   ResearchPlanSnapshot,
   VariantResearchSelection,
+  ResearchItem,
+  StoredResearchPlace,
 } from "./types";
+import type { AppRow } from "@/platform/contracts/database";
 
-export const researchItemSelection =
-  "*, attachments:asset_links!asset_links_research_trip_fkey(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)), location_place:places!research_items_location_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), origin_place:places!research_items_origin_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), destination_place:places!research_items_destination_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)";
+export type ResearchItemRow = AppRow<"research_items"> & {
+  attachments?: OwnerAttachmentRow[] | null;
+  destination_place: StoredResearchPlace | null;
+  location_place: StoredResearchPlace | null;
+  origin_place: StoredResearchPlace | null;
+};
 
-export function researchItemFromRow<Row extends { attachments?: OwnerAttachmentRow[] | null }>(
-  row: Row,
-) {
+const researchPlaceSelection =
+  "location_place:places!research_items_location_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), origin_place:places!research_items_origin_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source), destination_place:places!research_items_destination_place_trip_fkey(id, source, google_place_id, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)";
+const researchAttachmentSelection =
+  "attachments:asset_links!asset_links_research_trip_fkey(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))";
+
+export function getResearchItemSelection() {
+  return [
+    "*",
+    ...(getBackendCapabilities().signedUrls ? [researchAttachmentSelection] : []),
+    researchPlaceSelection,
+  ].join(", ");
+}
+
+export function researchItemFromRow(row: ResearchItemRow): ResearchItem {
   return { ...row, attachments: ownerAttachmentsFromRows(row.attachments) };
 }
 
 export async function getResearchPlanSnapshot(tripId: string, variantId: string) {
-  const supabase = await createClient();
+  const database = await getRelationalDatabase();
   const [daysResult, itemsResult] = await Promise.all([
-    supabase
+    database
       .from("trip_days")
       .select("id, date, day_number")
       .eq("variant_id", variantId)
       .order("day_number", { ascending: true }),
-    supabase
+    database
       .from("itinerary_items")
       .select("id, day_id, details, place_id, price_amount, price_currency, title, type")
       .eq("trip_id", tripId)
@@ -67,42 +85,42 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
 }
 
 export async function getCompareItems(tripId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const database = await getRelationalDatabase();
+  const { data, error } = await database
     .from("research_items")
-    .select(researchItemSelection)
+    .select<ResearchItemRow>(getResearchItemSelection())
     .eq("trip_id", tripId)
     .order("observed_at", { ascending: false });
   return {
-    data: (data ?? []).map((row) => researchItemFromRow(row)) as PlanResearchItem[],
+    data: (data ?? []).map((row) => researchItemFromRow(row)),
     error: error?.message ?? null,
   };
 }
 
 export async function getPlanResearchItems(tripId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase.from("research_items").select("*").eq("trip_id", tripId);
-  if (error) return [] satisfies PlanResearchItem[];
-  return data as PlanResearchItem[];
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.from("research_items").select("*").eq("trip_id", tripId);
+  if (error) return { data: null, error: error.message };
+  return { data: (data ?? []) satisfies PlanResearchItem[], error: null };
 }
 
 export async function getResearchPlanState(tripId: string, variantId: string) {
-  const supabase = await createClient();
+  const database = await getRelationalDatabase();
   const [selectionsResult, applicationsResult, currentApplicationsResult] = await Promise.all([
-    supabase
+    database
       .from("variant_research_selections")
       .select("*")
       .eq("trip_id", tripId)
       .eq("route_variant_id", variantId)
       .order("updated_at", { ascending: false }),
-    supabase
+    database
       .from("research_plan_applications")
       .select("*")
       .eq("trip_id", tripId)
       .eq("route_variant_id", variantId)
       .order("applied_at", { ascending: false })
       .limit(100),
-    supabase.rpc("current_research_plan_application_ids", {
+    database.rpc("current_research_plan_application_ids", {
       target_trip_id: tripId,
       target_variant_id: variantId,
     }),

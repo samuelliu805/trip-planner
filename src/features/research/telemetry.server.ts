@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/platform/composition/server";
 import type {
   IdeasCategory,
   ServerProductEventName,
@@ -34,9 +34,7 @@ export async function reportResearchMutation<Result extends object>(options: {
   if (!operationId || !serverProductTelemetryEnabled()) return options.result;
   let appUserId: string | undefined;
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    appUserId = data.user?.id;
+    appUserId = (await getAuthProvider().getCurrentUser())?.id;
   } catch {
     // Identity lookup cannot replace an authoritative mutation result.
   }

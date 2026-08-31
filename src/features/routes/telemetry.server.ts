@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/platform/composition/server";
 import type { RouteMode, RouteView } from "@/lib/telemetry/events";
 import { reportAuthoritativeMutationOutcome, telemetryOperationId } from "@/lib/telemetry/product";
 import {
@@ -16,9 +16,7 @@ export async function reportRouteCalculation<Result extends object>(options: {
   if (!operationId || !options.routeMode || !serverProductTelemetryEnabled()) return options.result;
   let appUserId: string | undefined;
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    appUserId = data.user?.id;
+    appUserId = (await getAuthProvider().getCurrentUser())?.id;
   } catch {
     // Identity lookup cannot replace an authoritative route result.
   }

@@ -2,6 +2,7 @@ import type { AppRegion } from "../config/provider-matrix";
 
 export type BackendCapabilities = Readonly<{
   googleOAuth: boolean;
+  itineraryItemLinks: boolean;
   passwordSignInIdentifier: "email" | "username";
   realtime: boolean;
   selfRegistration: boolean;
@@ -12,6 +13,7 @@ export type BackendCapabilities = Readonly<{
 export const backendCapabilitiesByRegion = Object.freeze({
   global: Object.freeze({
     googleOAuth: true,
+    itineraryItemLinks: true,
     passwordSignInIdentifier: "email",
     realtime: true,
     selfRegistration: true,
@@ -20,6 +22,7 @@ export const backendCapabilitiesByRegion = Object.freeze({
   }),
   cn: Object.freeze({
     googleOAuth: false,
+    itineraryItemLinks: false,
     passwordSignInIdentifier: "username",
     realtime: false,
     selfRegistration: false,

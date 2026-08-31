@@ -7,7 +7,7 @@ export type CloudBaseSession = Readonly<{
   user: AppUser;
 }>;
 
-type CloudBaseJwtClaims = Readonly<{
+export type CloudBaseJwtClaims = Readonly<{
   email?: unknown;
   exp?: unknown;
   is_anonymous?: unknown;
@@ -74,6 +74,13 @@ export function cloudBaseSessionFromVerifiedTokens(input: {
   if (typeof claims.exp !== "number" || claims.exp * 1000 <= Date.now()) {
     throw new PlatformOperationError("authentication_required", "Authentication is required.");
   }
+  return cloudBaseSessionFromVerifiedClaims(input, claims);
+}
+
+export function cloudBaseSessionFromVerifiedClaims(
+  input: { accessToken: string; refreshToken: string },
+  claims: CloudBaseJwtClaims,
+): CloudBaseSession {
   return Object.freeze({
     accessToken: input.accessToken,
     refreshToken: input.refreshToken,

@@ -1,13 +1,13 @@
 import type { OwnerAttachment } from "./schema";
-import type { Tables } from "@/types/database";
+import type { AppRow } from "@/platform/contracts/database";
 
 type AttachmentAssetRow = Pick<
-  Tables<"assets">,
+  AppRow<"assets">,
   "byte_size" | "duration_seconds" | "height" | "media_kind" | "mime_type" | "status" | "width"
 >;
 
 export type OwnerAttachmentRow = Pick<
-  Tables<"asset_links">,
+  AppRow<"asset_links">,
   | "created_at"
   | "display_filename"
   | "draft_session_id"

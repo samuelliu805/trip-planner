@@ -2999,12 +2999,18 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   );
   assert.match(
     styles,
-    /\.planner-matrix \[role="row"\] > \[role="rowheader"\]:first-child::before,[\s\S]*background: var\(--background\)/,
+    /\.planner-matrix \[role="row"\] > \[role="rowheader"\]:first-child::before,[\s\S]*z-index: 0;[\s\S]*background: inherit/,
   );
   assert.match(
     styles,
     /\.planner-matrix \.matrix-grid-header > \[role="columnheader"\]:first-child \{[\s\S]*z-index: 80/,
   );
+  assert.match(
+    styles,
+    /\.planner-matrix \.matrix-frozen-content \{[\s\S]*position: relative;[\s\S]*z-index: 1/,
+  );
+  assert.match(styles, /\[role="rowheader"\]:nth-child\(2\)[\s\S]*overflow: hidden/);
+  assert.match(workspace, /matrix-frozen-content/);
   assert.match(styles, /planner-mobile-map-fab[\s\S]*display: inline-flex/);
   assert.match(
     styles,

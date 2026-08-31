@@ -8,6 +8,7 @@ import type {
 
 import { createCloudBaseUserContext } from "./database";
 import { cloudBaseData } from "./errors";
+import { saveCloudBaseProfile } from "./profile-mutations";
 
 function profile(value: unknown): AccountProfile | null {
   if (!Array.isArray(value) || !value.length) return null;
@@ -32,20 +33,6 @@ export class CloudBaseAccountProfileRepository implements AccountProfileReposito
 
   async saveForCurrentUser(input: UpdateAccountProfileInput) {
     const { db, user } = await createCloudBaseUserContext();
-    const current = await this.getForCurrentUser();
-    const values = {
-      default_currency: input.defaultCurrency,
-      home_city: input.homeCity,
-      preferred_locale: input.preferredLocale,
-    };
-    const query = current
-      ? db.from("profiles").update(values).eq("id", user.id)
-      : db.from("profiles").insert({ id: user.id, ...values });
-    cloudBaseData(await query, "Account preferences could not be saved.");
-    return Object.freeze({
-      defaultCurrency: input.defaultCurrency,
-      homeCity: input.homeCity,
-      preferredLocale: input.preferredLocale,
-    });
+    return saveCloudBaseProfile(db, user.id, input);
   }
 }

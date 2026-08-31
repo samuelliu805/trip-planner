@@ -1285,13 +1285,13 @@ test("long-image export start and terminal reporters have one authoritative owne
     /let exportFinalized = false[\s\S]*exportFinalized = true[\s\S]*if \(versionId && !exportFinalized\)/,
   );
   assert.equal(actions.match(/await reportShareExportStarted\(/g)?.length, 1);
-  const authenticated = actions.indexOf("if (!userData.user || pageResult.error)");
+  const authenticated = actions.indexOf("if (!user) return");
   const ownershipValidated = actions.indexOf("if (!page.success)");
   const start = actions.indexOf("await reportShareExportStarted(");
   assert.ok(authenticated >= 0 && ownershipValidated > authenticated && start > ownershipValidated);
   assert.match(
     actions,
-    /const failPreparation = \(error: string\) =>[\s\S]*reportSharingMutation\([\s\S]*appUserId: userData\.user\.id/,
+    /const failPreparation = \(error: string\) =>[\s\S]*reportSharingMutation\([\s\S]*appUserId: user\.id/,
   );
   assert.match(
     actions,
@@ -1425,8 +1425,8 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(imageExpiryMigration, /expired_share_image_cleanup_batch_v1/);
   assert.match(imageExpiryMigration, /to service_role/);
   assert.match(cronCleanup, /Bearer \$\{cronSecret\}/);
-  assert.match(cronCleanup, /\.from\("share-images"\)[\s\S]*\.remove/);
-  assert.match(privateImagePart, /\.from\("share-images"\)\.download/);
+  assert.match(cronCleanup, /getStorageProvider\("share-images"\)[\s\S]*storage\.remove/);
+  assert.match(privateImagePart, /getStorageProvider\("share-images"\)\.download/);
   assert.doesNotMatch(privateImagePart, /object\/public/);
   assert.match(exportRenderer, /getFontEmbedCSS/);
   assert.match(exportRenderer, /documentHeight\(node\)/);
@@ -1682,7 +1682,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
-    /\.public-matrix \.matrix-date-column::before,[\s\S]*background: var\(--background\)/,
+    /\.public-matrix \.matrix-date-column::before,[\s\S]*z-index: 0;[\s\S]*background: inherit/,
   );
   assert.match(
     styles,
@@ -1696,6 +1696,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     styles,
     /\.public-matrix \[role="row"\]:not\(\.matrix-grid-header\) \.matrix-date-column \{[\s\S]*z-index: 60/,
   );
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-frozen-content \{[\s\S]*position: relative;[\s\S]*z-index: 1/,
+  );
+  assert.match(publicTable, /matrix-frozen-content/);
   assert.match(
     styles,
     /\.public-template-bento \.public-matrix > \[role="grid"\] \{[\s\S]*overflow: visible/,

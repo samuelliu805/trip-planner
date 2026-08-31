@@ -6,7 +6,7 @@ import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import { wgs84Coordinates } from "@/lib/providers/maps/types";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
 import { resolveRouteProvider } from "@/lib/providers/routes/resolver.server";
-import { createClient } from "@/lib/supabase/server";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
 import { buildRouteLegSignature } from "@/features/routes/signatures";
 import { mapWithConcurrency } from "@/features/routes/calculator";
 import type { RouteLegMode } from "@/features/routes/types";
@@ -74,6 +74,8 @@ const rpcSettings = (input: PublicItinerarySettingsInput) => ({
 export async function createPublicItineraryLink(
   rawInput: PublicItinerarySettingsInput,
 ): Promise<ShareActionResult> {
+  if (!getBackendCapabilities().signedUrls)
+    return { error: "Public sharing is not supported by this backend." };
   const parsed = publicItinerarySettingsSchema.safeParse(rawInput);
   if (!parsed.success)
     return reportSharingMutation({
@@ -89,8 +91,8 @@ export async function createPublicItineraryLink(
       operationId: parsed.data.operationId,
       result: { error: "Review the public link settings." },
     });
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_share_page_v3", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("create_share_page_v3", {
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
@@ -117,6 +119,8 @@ export async function updatePublicItineraryLink(
   linkId: string,
   rawInput: PublicItinerarySettingsInput,
 ): Promise<ShareActionResult> {
+  if (!getBackendCapabilities().signedUrls)
+    return { error: "Public sharing is not supported by this backend." };
   const settings = publicItinerarySettingsSchema.safeParse(rawInput);
   if (!settings.success)
     return reportSharingMutation({
@@ -132,8 +136,8 @@ export async function updatePublicItineraryLink(
       operationId: settings.data.operationId,
       result: { error: "Review the public link settings." },
     });
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_share_page_v3", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("update_share_page_v3", {
     target_share_page_id: linkId,
     ...rpcSettings(settings.data),
   });
@@ -161,6 +165,8 @@ export async function revokePublicItineraryLink(rawInput: {
   operationId?: string;
   tripId: string;
 }): Promise<ShareActionResult<null>> {
+  if (!getBackendCapabilities().signedUrls)
+    return { error: "Public sharing is not supported by this backend." };
   const input = linkMutationSchema.safeParse(rawInput);
   if (!input.success)
     return reportSharingMutation({
@@ -169,8 +175,8 @@ export async function revokePublicItineraryLink(rawInput: {
       operationId: rawInput.operationId,
       result: { error: "The public link request is invalid." },
     });
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("revoke_share_page_v1", {
+  const database = await getRelationalDatabase();
+  const { error } = await database.rpc("revoke_share_page_v1", {
     target_share_page_id: input.data.linkId,
   });
   if (error)

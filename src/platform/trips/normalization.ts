@@ -1,5 +1,5 @@
-import { PlatformOperationError } from "@/platform/contracts/errors";
-import type { Trip } from "@/platform/contracts/trips";
+import { PlatformOperationError } from "../contracts/errors.ts";
+import type { Trip } from "../contracts/trips.ts";
 
 function record(value: unknown, label: string): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {

@@ -98,7 +98,7 @@ body:has(.planner-map-sheet) {
 .planner-matrix [role="row"] > [role="rowheader"]:nth-child(2) {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  background-clip: padding-box;
+  background-clip: border-box;
   transform: translateZ(0);
 }
 
@@ -107,6 +107,7 @@ body:has(.planner-map-sheet) {
 .planner-matrix [role="row"] > [role="rowheader"]:first-child,
 .planner-matrix [role="row"] > [role="rowheader"]:nth-child(2) {
   isolation: isolate;
+  overflow: hidden;
 }
 
 .planner-matrix [role="row"] > [role="columnheader"]:first-child::before,
@@ -114,10 +115,17 @@ body:has(.planner-map-sheet) {
 .planner-matrix [role="row"] > [role="rowheader"]:first-child::before,
 .planner-matrix [role="row"] > [role="rowheader"]:nth-child(2)::before {
   position: absolute;
-  z-index: -1;
+  z-index: 0;
   inset: 0;
-  background: var(--background);
+  background: inherit;
   content: "";
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.planner-matrix .matrix-frozen-content {
+  position: relative;
+  z-index: 1;
 }
 
 .planner-matrix .matrix-grid-header > [role="columnheader"]:first-child {

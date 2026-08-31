@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/platform/composition/server";
 import {
   itemKindForTelemetry,
   reportAuthoritativeMutationOutcome,
@@ -41,9 +41,7 @@ export async function reportItemMutations<Result extends { error?: string }>(opt
   if (!itemKinds.length || !serverProductTelemetryEnabled()) return options.result;
   let appUserId: string | undefined;
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    appUserId = data.user?.id;
+    appUserId = (await getAuthProvider().getCurrentUser())?.id;
   } catch {
     // An analytics identity lookup must not replace the mutation result.
   }

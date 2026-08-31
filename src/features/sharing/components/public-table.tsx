@@ -82,29 +82,33 @@ export function PublicTable({
                 className="matrix-date-column sticky left-0 z-30 w-24 shrink-0 border-r bg-background px-2 py-1 text-[13px] leading-[1.35] min-[1200px]:text-[11px]"
                 role="rowheader"
               >
-                <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
-                  <T message={"Day {day}"} values={{ day: day.dayNumber }} />
-                </span>
-                <span className="block font-mono text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
-                  {day.date
-                    ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
-                        locale: locale === "zh-CN" ? zhCN : undefined,
-                      })
-                    : t("Date TBD")}
-                </span>
-                {day.date ? (
-                  <span className="block text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
-                    {format(parseISO(day.date), "EEE", {
-                      locale: locale === "zh-CN" ? zhCN : undefined,
-                    })}
+                <div className="matrix-frozen-content">
+                  <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
+                    <T message={"Day {day}"} values={{ day: day.dayNumber }} />
                   </span>
-                ) : null}
+                  <span className="block font-mono text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
+                    {day.date
+                      ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                          locale: locale === "zh-CN" ? zhCN : undefined,
+                        })
+                      : t("Date TBD")}
+                  </span>
+                  {day.date ? (
+                    <span className="block text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
+                      {format(parseISO(day.date), "EEE", {
+                        locale: locale === "zh-CN" ? zhCN : undefined,
+                      })}
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div
                 className="matrix-day-column sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px]"
                 role="rowheader"
               >
-                {locale === "zh-CN" ? t("Day {day}", { day: day.dayNumber }) : day.dayNumber}
+                <span className="matrix-frozen-content">
+                  {locale === "zh-CN" ? t("Day {day}", { day: day.dayNumber }) : day.dayNumber}
+                </span>
               </div>
               {columns.map((column, columnIndex) => {
                 const items = day.items

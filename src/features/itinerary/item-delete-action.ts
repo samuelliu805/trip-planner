@@ -10,7 +10,7 @@ import {
 } from "@/features/itinerary/item-schema";
 import { reportItemMutation } from "@/features/itinerary/item-telemetry.server";
 import type { MutationResult } from "@/features/itinerary/types";
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 
 type DeleteMutation = {
   itemType?: unknown;
@@ -36,8 +36,8 @@ async function deleteItineraryItemMutation(
   const parsed = deleteItineraryItemSchema.safeParse(input);
   if (!parsed.success) return { result: { error: firstIssue(parsed.error) } };
 
-  const supabase = await createClient();
-  const { data: currentItem, error: readError } = await supabase
+  const database = await getRelationalDatabase();
+  const { data: currentItem, error: readError } = await database
     .from("itinerary_items")
     .select("id, type")
     .eq("id", parsed.data.id)
@@ -59,7 +59,7 @@ async function deleteItineraryItemMutation(
         error: "Legacy City data is retained for compatibility and cannot be deleted here.",
       },
     };
-  const { data, error } = await supabase
+  const { data, error } = await database
     .from("itinerary_items")
     .delete()
     .eq("id", parsed.data.id)

@@ -2,8 +2,8 @@ import type { ItineraryItem } from "@/features/itinerary/types";
 import { nameTripAfterFirstPlace } from "@/features/trips/auto-title";
 import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
-import { createClient } from "@/lib/supabase/server";
-import type { Tables } from "@/types/database";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
+import type { AppRow } from "@/platform/contracts/database";
 
 export function firstIssue(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Check the item and try again.";
@@ -18,7 +18,7 @@ export function mutationError(message?: string) {
 }
 
 export async function persistPlaceSnapshot(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  database: Awaited<ReturnType<typeof getRelationalDatabase>>,
   tripId: string,
   snapshot?: PlaceSnapshot | null,
 ) {
@@ -31,7 +31,7 @@ export async function persistPlaceSnapshot(
     });
   if (snapshot.provider !== "google" || !snapshot.providerPlaceId)
     throw new Error("Only normalized Google place snapshots can be persisted here.");
-  const { data, error } = await supabase.rpc("upsert_google_place_snapshot_v2", {
+  const { data, error } = await database.rpc("upsert_google_place_snapshot_v2", {
     place_administrative_area_name: snapshot.administrativeAreaName,
     place_country_code: snapshot.countryCode,
     place_display_name: snapshot.displayName,
@@ -50,7 +50,7 @@ export async function persistPlaceSnapshot(
 }
 
 export function withPlace(
-  item: Tables<"itinerary_items">,
+  item: AppRow<"itinerary_items">,
   snapshot?: PlaceSnapshot | null,
   placeId?: string | null,
 ): ItineraryItem {
@@ -58,11 +58,17 @@ export function withPlace(
 }
 
 export async function replaceItemLinks(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  database: Awaited<ReturnType<typeof getRelationalDatabase>>,
   itemId: string,
   links: { label: string; url: string }[],
 ) {
-  const { data: existing, error: readError } = await supabase
+  if (!getBackendCapabilities().itineraryItemLinks) {
+    if (links.length > 1) {
+      throw new Error("This backend currently supports one booking link per itinerary item.");
+    }
+    return [];
+  }
+  const { data: existing, error: readError } = await database
     .from("itinerary_item_links")
     .select("id")
     .eq("item_id", itemId);
@@ -70,12 +76,12 @@ export async function replaceItemLinks(
   const existingIds = (existing ?? []).map(({ id }) => id);
   if (!links.length) {
     if (existingIds.length) {
-      const { error } = await supabase.from("itinerary_item_links").delete().in("id", existingIds);
+      const { error } = await database.from("itinerary_item_links").delete().in("id", existingIds);
       if (error) throw new Error(mutationError(error.message));
     }
     return [];
   }
-  const { data, error } = await supabase
+  const { data, error } = await database
     .from("itinerary_item_links")
     .insert(
       links.map((link, sort_order) => ({
@@ -88,12 +94,12 @@ export async function replaceItemLinks(
     .select("id, item_id, label, url, sort_order");
   if (error) throw new Error(mutationError(error.message));
   if (existingIds.length) {
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await database
       .from("itinerary_item_links")
       .delete()
       .in("id", existingIds);
     if (deleteError) {
-      await supabase
+      await database
         .from("itinerary_item_links")
         .delete()
         .in(

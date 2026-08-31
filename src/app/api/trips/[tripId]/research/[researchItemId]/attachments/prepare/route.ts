@@ -7,7 +7,11 @@ import {
   preparedAssetReservationSchema,
 } from "@/features/attachments/schema";
 import { createSignedAssetUpload } from "@/features/attachments/storage.server";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getAuthProvider,
+  getBackendCapabilities,
+  getRelationalDatabase,
+} from "@/platform/composition/server";
 import { reportAttachmentMutation } from "@/features/attachments/telemetry.server";
 
 const paramsSchema = z.object({ researchItemId: z.uuid(), tripId: z.uuid() });
@@ -16,6 +20,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ researchItemId: string; tripId: string }> },
 ) {
+  if (!getBackendCapabilities().signedUrls)
+    return Response.json({ error: "Attachments are unavailable." }, { status: 404 });
   const [routeParams, body] = await Promise.all([
     paramsSchema.safeParseAsync(await params),
     request.json().catch(() => null),
@@ -24,12 +30,11 @@ export async function POST(
   if (!routeParams.success || !input.success)
     return Response.json({ error: "Review the selected attachment." }, { status: 400 });
 
-  const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user)
-    return Response.json({ error: "Sign in to add attachments." }, { status: 401 });
+  const user = await getAuthProvider().getCurrentUser();
+  if (!user) return Response.json({ error: "Sign in to add attachments." }, { status: 401 });
+  const database = await getRelationalDatabase();
 
-  const result = await supabase.rpc("prepare_research_asset_v1", {
+  const result = await database.rpc("prepare_research_asset_v1", {
     requested_byte_size: input.data.byteSize,
     requested_draft_session_id: input.data.uploadSessionId,
     requested_filename: input.data.fileName,
@@ -45,7 +50,7 @@ export async function POST(
       mutation: "upload",
       operationId: input.data.operationId,
       result: { error: attachmentError(result.error?.message) },
-      appUserId: authData.user.id,
+      appUserId: user.id,
       target: "research",
     });
     return Response.json(
@@ -59,7 +64,7 @@ export async function POST(
       mutation: "upload",
       operationId: input.data.operationId,
       result: { data: true },
-      appUserId: authData.user.id,
+      appUserId: user.id,
       target: "research",
     });
     return Response.json(
@@ -75,9 +80,9 @@ export async function POST(
   }
   const assetId = reservation.data.assetId;
   const operationId = input.data.operationId;
-  const userId = authData.user.id;
+  const userId = user.id;
   async function failReservation(reason: string) {
-    await supabase.rpc("fail_item_asset_v1", {
+    await database.rpc("fail_item_asset_v1", {
       requested_reason: reason,
       target_asset_id: assetId,
     });

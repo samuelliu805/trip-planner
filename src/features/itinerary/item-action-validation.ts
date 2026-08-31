@@ -8,7 +8,7 @@ import {
   neighboringCityError,
   prospectiveNeighboringCityConflict,
 } from "@/features/routes/city-order";
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 
 export function prospectiveCityError(
   workspace: PlannerWorkspace,
@@ -41,16 +41,16 @@ export function prospectiveCityError(
 }
 
 export async function validateVariantDay(tripId: string, variantId: string, dayId: string) {
-  const supabase = await createClient();
+  const database = await getRelationalDatabase();
   const [{ data: variant, error: variantError }, { data: day, error: dayError }] =
     await Promise.all([
-      supabase
+      database
         .from("route_variants")
         .select("id")
         .eq("id", variantId)
         .eq("trip_id", tripId)
         .maybeSingle(),
-      supabase
+      database
         .from("trip_days")
         .select("id")
         .eq("id", dayId)

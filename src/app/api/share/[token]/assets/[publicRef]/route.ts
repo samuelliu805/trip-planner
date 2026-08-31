@@ -2,7 +2,10 @@ import { z } from "zod";
 
 import { assetAccessSchema } from "@/features/attachments/schema";
 import { createAssetAccessRedirect } from "@/features/attachments/storage.server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getBackendCapabilities,
+  getPrivilegedRelationalDatabase,
+} from "@/platform/composition/server";
 
 const paramsSchema = z.object({
   publicRef: z.string().regex(/^[0-9a-f]{64}$/),
@@ -13,9 +16,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ publicRef: string; token: string }> },
 ) {
+  if (!getBackendCapabilities().signedUrls) return new Response("Not found", { status: 404 });
   const parsed = paramsSchema.safeParse(await params);
   if (!parsed.success) return new Response("Not found", { status: 404 });
-  const admin = createAdminClient();
+  const admin = getPrivilegedRelationalDatabase();
   const result = await admin.rpc("service_public_asset_access_v2", {
     requested_public_ref: parsed.data.publicRef,
     shared_token: parsed.data.token,

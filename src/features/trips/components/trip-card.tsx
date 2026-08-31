@@ -66,12 +66,19 @@ function PrimaryRouteSummary({ trip }: { trip: TripListEntry }) {
   );
 }
 
-export function TripCard({ trip }: { trip: TripListEntry }) {
+export function TripCard({
+  sharingEnabled,
+  trip,
+}: {
+  sharingEnabled: boolean;
+  trip: TripListEntry;
+}) {
   const { locale, t } = useI18n();
   const router = useRouter();
   const [editorOpen, setEditorOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sharePageCount, setSharePageCount] = useState<number | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const [statusPending, startStatusChange] = useTransition();
   const setTripListLoading = useTripListLoading();
   const status = tripStatusOf(trip);
@@ -94,12 +101,17 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
 
   function changeStatus() {
     startStatusChange(async () => {
-      await setTripStatus({
+      setStatusError(null);
+      const result = await setTripStatus({
         operationId: newTelemetryOperationId(),
         status: toggle.next,
         surface: "trip_list",
         tripId: trip.id,
       });
+      if (result.error) {
+        setStatusError(result.error);
+        return;
+      }
       router.refresh();
     });
   }
@@ -153,12 +165,14 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
               <DropdownMenuItem onSelect={() => afterMenu(() => setEditorOpen(true))}>
                 <Pencil aria-hidden="true" className="size-4" /> <T message={" Edit trip "} />
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/trips/${trip.id}?share=1`}>
-                  <Share2 aria-hidden="true" className="size-4" />{" "}
-                  <T message={" Share settings "} />
-                </Link>
-              </DropdownMenuItem>
+              {sharingEnabled ? (
+                <DropdownMenuItem asChild>
+                  <Link href={`/trips/${trip.id}?share=1`}>
+                    <Share2 aria-hidden="true" className="size-4" />{" "}
+                    <T message={" Share settings "} />
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem disabled={statusPending} onSelect={changeStatus}>
                 {status === "done" ? (
                   <RotateCcw aria-hidden="true" className="size-4" />
@@ -191,6 +205,11 @@ export function TripCard({ trip }: { trip: TripListEntry }) {
             <PrimaryRouteSummary trip={trip} />
           </div>
         </CardContent>
+        {statusError ? (
+          <p className="border-t px-6 py-3 text-sm font-medium text-destructive" role="alert">
+            <Localized value={statusError} />
+          </p>
+        ) : null}
       </Card>
 
       <TripSettingsEditor

@@ -9,7 +9,7 @@ import type {
   VariantResearchSelection,
 } from "../../research/types";
 import type { PlanResearchContext } from "../../research/urls";
-import type { Tables } from "../../../types/database";
+import type { Trip } from "@/platform/contracts/trips";
 
 export type PlannerToolbarProps = {
   activeCategory?: PlannerCategory;
@@ -46,7 +46,7 @@ export type PlannerToolbarProps = {
   setSettingsOpen: Dispatch<SetStateAction<boolean>>;
   shareControls?: ReactNode;
   accountEmail: string;
-  trip: Tables<"trips">;
+  trip: Trip;
   variantControls: ReactNode;
   variantId: string;
   workspaceDayCount: number;

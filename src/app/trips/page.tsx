@@ -10,7 +10,7 @@ import { listTrips } from "@/features/trips/data";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { resolveTripStatusFilter, type TripStatusFilter } from "@/features/trips/status";
-import type { TripListEntry } from "@/features/trips/types";
+import { getBackendCapabilities } from "@/platform/composition/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -41,6 +41,7 @@ export default async function TripsPage({
   const filter = resolveTripStatusFilter(status);
   const { data: trips, error } = await listTrips(filter);
   const empty = emptyCopy[filter];
+  const sharingEnabled = getBackendCapabilities().signedUrls;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
@@ -80,7 +81,7 @@ export default async function TripsPage({
           ) : null}
           <div className="grid gap-4 md:grid-cols-2 lg:gap-6">
             {trips?.map((trip) => (
-              <TripCard key={trip.id} trip={trip as TripListEntry} />
+              <TripCard key={trip.id} sharingEnabled={sharingEnabled} trip={trip} />
             ))}
           </div>
         </TripStatusFilterTabs>
