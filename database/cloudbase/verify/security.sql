@@ -37,6 +37,7 @@ DECLARE
   ];
   actual_authenticated oid[];
   actual_anon oid[];
+  migration_owner oid;
 BEGIN
   IF array_position(expected_authenticated, NULL) IS NOT NULL OR array_position(expected_anon, NULL) IS NOT NULL THEN
     RAISE EXCEPTION 'Reviewed RPC allowlist contains a missing function';
@@ -81,6 +82,33 @@ BEGIN
     WHERE n.nspname IN ('public', 'app_private')
       AND has_function_privilege('public', p.oid, 'EXECUTE')
   ) THEN RAISE EXCEPTION 'PUBLIC has unexpected function EXECUTE'; END IF;
+
+  SELECT p.proowner INTO migration_owner
+  FROM pg_catalog.pg_proc p
+  WHERE p.oid = to_regprocedure('public.create_trip(text,date,date,text,text,integer)');
+  IF migration_owner IS NULL
+    OR NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_default_acl d
+      WHERE d.defaclrole = migration_owner AND d.defaclobjtype = 'f'
+        AND d.defaclnamespace = 0
+    )
+    OR NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_default_acl d
+      JOIN pg_catalog.pg_namespace n ON n.oid = d.defaclnamespace
+      WHERE d.defaclrole = migration_owner AND d.defaclobjtype = 'f'
+        AND n.nspname = 'public'
+    )
+  THEN RAISE EXCEPTION 'Migration owner lacks fail-closed function default privileges'; END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_default_acl d
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = d.defaclnamespace
+    CROSS JOIN LATERAL pg_catalog.aclexplode(d.defaclacl) acl
+    LEFT JOIN pg_catalog.pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE d.defaclrole = migration_owner AND d.defaclobjtype = 'f'
+      AND (d.defaclnamespace = 0 OR n.nspname IN ('public', 'app_private'))
+      AND acl.privilege_type = 'EXECUTE'
+      AND (acl.grantee = 0 OR grantee.rolname IN ('anon', 'authenticated'))
+  ) THEN RAISE EXCEPTION 'A browser role has unsafe default function EXECUTE'; END IF;
 
   SELECT coalesce(array_agg(p.oid ORDER BY p.oid), ARRAY[]::oid[]) INTO actual_authenticated
   FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace

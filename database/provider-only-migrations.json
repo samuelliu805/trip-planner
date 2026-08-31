@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "migrations": [
+    {
+      "provider": "cloudbase",
+      "file": "20260831030000_trip_planner_baseline.sql",
+      "kind": "frozen_bootstrap_artifact",
+      "sha256": "d71814e08b19b0479c7c888b0b41994690e2b02430b8064c056ef3be55b3fc4a"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831031000_cloudbase_rpc_grants.sql",
+      "kind": "phase_2_provider_overlay",
+      "sha256": "4c5bf80c3b2ef7dd52a02bc30f6e00d53c4038a34629e5fba6e3f8f42ce807ea"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831032000_cloudbase_security_hardening.sql",
+      "kind": "phase_2_provider_overlay",
+      "sha256": "36306c3de94630061a332c5b1e9feecd7f9dfebc8544a85cfa96ea5e616d802c"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831040000_cloudbase_rpc_boundary_hardening.sql",
+      "kind": "phase_2_repair",
+      "sha256": "241a2adb75664416d4fe41d513576402d1fdb1544bc42b685d6eeea4f6ebdbc8"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831052839_future_function_acl_defaults.sql",
+      "kind": "phase_2_repair",
+      "sha256": "9f5c669a27029644b4d83019fd741c1194523d162b6afe3a1d258ec89f12cc03"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831053729_global_function_acl_defaults.sql",
+      "kind": "phase_2_repair",
+      "sha256": "148488fd158a9bd22f231ad796177d41167355b511d0cac582aac7f335053de8"
+    }
+  ]
+}
