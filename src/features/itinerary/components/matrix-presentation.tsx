@@ -96,7 +96,7 @@ export function MatrixGridHeader({
 }) {
   return (
     <div
-      className="matrix-grid-header sticky top-0 z-[70] flex h-9 border-b bg-muted/95 text-[13px] font-semibold leading-[1.35] text-muted-foreground min-[1200px]:h-10 min-[1200px]:text-[11px]"
+      className="matrix-grid-header sticky top-0 z-[70] flex h-9 border-b bg-muted text-[13px] font-semibold leading-[1.35] text-muted-foreground min-[1200px]:h-10 min-[1200px]:text-[11px]"
       role="row"
     >
       <div

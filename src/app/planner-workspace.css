@@ -84,6 +84,7 @@ body:has(.planner-map-sheet) {
 }
 
 .planner-matrix .matrix-grid-header {
+  background-color: var(--muted);
   position: -webkit-sticky;
   position: sticky;
   top: 0;
@@ -99,6 +100,54 @@ body:has(.planner-map-sheet) {
   backface-visibility: hidden;
   background-clip: padding-box;
   transform: translateZ(0);
+}
+
+.planner-matrix [role="row"] > [role="columnheader"]:first-child,
+.planner-matrix [role="row"] > [role="columnheader"]:nth-child(2),
+.planner-matrix [role="row"] > [role="rowheader"]:first-child,
+.planner-matrix [role="row"] > [role="rowheader"]:nth-child(2) {
+  isolation: isolate;
+}
+
+.planner-matrix [role="row"] > [role="columnheader"]:first-child::before,
+.planner-matrix [role="row"] > [role="columnheader"]:nth-child(2)::before,
+.planner-matrix [role="row"] > [role="rowheader"]:first-child::before,
+.planner-matrix [role="row"] > [role="rowheader"]:nth-child(2)::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: var(--background);
+  content: "";
+}
+
+.planner-matrix .matrix-grid-header > [role="columnheader"]:first-child {
+  left: 0;
+  z-index: 80;
+}
+
+.planner-matrix .matrix-grid-header > [role="columnheader"]:nth-child(2) {
+  left: 6rem;
+  z-index: 75;
+}
+
+.planner-matrix .matrix-grid-header > [role="columnheader"]:first-child::before,
+.planner-matrix .matrix-grid-header > [role="columnheader"]:nth-child(2)::before {
+  background: var(--muted);
+}
+
+.planner-matrix [role="row"]:not(.matrix-grid-header) > [role="rowheader"]:first-child {
+  left: 0;
+  z-index: 60;
+}
+
+.planner-matrix [role="row"]:not(.matrix-grid-header) > [role="rowheader"]:nth-child(2) {
+  left: 6rem;
+  z-index: 50;
+}
+
+.planner-matrix .matrix-frozen-selected {
+  background-color: var(--background);
+  background-color: color-mix(in srgb, var(--primary) 10%, var(--background));
 }
 
 .planner-matrix [role="row"] > [role="columnheader"]:first-child,
@@ -264,13 +313,13 @@ body:has(.planner-map-sheet) {
     left: 0;
     width: 5.5rem;
     flex: 0 0 5.5rem;
-    z-index: 50;
+    z-index: 60;
   }
 
   .planner-matrix [role="row"] > [role="columnheader"]:first-child {
     background-color: var(--muted);
     top: 0;
-    z-index: 60;
+    z-index: 80;
   }
 }
 

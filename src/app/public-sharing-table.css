@@ -23,6 +23,7 @@
 }
 
 .public-matrix .matrix-grid-header {
+  background-color: var(--muted);
   position: -webkit-sticky;
   position: sticky;
   top: 0;
@@ -42,6 +43,21 @@
   box-shadow: 1px 0 0 var(--border);
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+  isolation: isolate;
+}
+
+.public-matrix .matrix-date-column::before,
+.public-matrix .matrix-day-column::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: var(--background);
+  content: "";
+}
+
+.public-matrix .matrix-grid-header .matrix-date-column::before,
+.public-matrix .matrix-grid-header .matrix-day-column::before {
+  background: var(--muted);
 }
 
 .public-matrix .matrix-date-column {
