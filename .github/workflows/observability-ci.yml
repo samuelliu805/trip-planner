@@ -19,10 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      APP_REGION: global
+      AUTH_PROVIDER: supabase
+      DATA_PROVIDER: supabase
+      NEXT_PUBLIC_MAPS_PROVIDER: google
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
       NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
       NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
       NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      STORAGE_PROVIDER: supabase
       TELEMETRY_SMOKE_TEST_ENABLED: "false"
     steps:
       - uses: actions/checkout@v5
@@ -35,7 +40,9 @@ jobs:
       - run: npm ci
       - run: npm run test:telemetry
       - run: npm test
+      - run: npm run check:backend-provider-boundary
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm run format:check
       - run: npm run check:i18n
       - run: npm run validate:public-templates
@@ -59,4 +66,5 @@ jobs:
           fi
           npm run check:auth-routes
       - run: npm run build
+      - run: npm run check:build-secret-boundary
       - run: git diff --check

@@ -1,6 +1,10 @@
-export const mapsProviderIds = ["google", "amap"] as const;
+import {
+  mapsProviders,
+  type MapsProviderId as DeploymentMapsProviderId,
+} from "../../../platform/config/provider-matrix.ts";
 
-export type MapsProviderId = (typeof mapsProviderIds)[number];
+export const mapsProviderIds = mapsProviders;
+export type MapsProviderId = DeploymentMapsProviderId;
 export type MapsProviderCapability = "maps" | "photos" | "places" | "routes";
 export type MapsProviderConfigurationErrorCode = "invalid_provider" | "provider_unavailable";
 

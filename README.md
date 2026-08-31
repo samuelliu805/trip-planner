@@ -32,6 +32,18 @@ The Trip-level user architecture is now **Plan | Ideas & Options**, implemented 
 
 Google SDK and API responses are normalized at provider boundaries. Browser Maps credentials and the server-only Routes credential have separate scopes.
 
+Backend deployment selection and Phase 1 migration boundaries are documented in
+[Dual-backend provider boundaries](docs/backend-provider-architecture-phase-1.md). The complete
+[provider coupling inventory](docs/provider-coupling-inventory.md) tracks every retained Supabase
+transition path. CloudBase DB/Auth/Storage adapters are not implemented and CN is not ready for
+traffic.
+
+The dual-backend migration remains a five-phase program: Phase 2 is limited to the CloudBase PG
+schema baseline, overlays, deployment tooling, and database security validation; Phase 3 implements
+Database repositories and Auth/session adapters; Phase 4 implements Storage, cleanup jobs, and dual
+deployment workflows; Phase 5 provides the Global/CN test matrix, adversarial security testing, and
+rollout preparation. Phase 2 does not promise an Auth, repository, or UI runtime.
+
 ## Architecture
 
 The application is a modular monolith:
@@ -55,6 +67,7 @@ src/
       routes/                  Server-only Google provider plus pure geometry/mapping
       travel/
   types/                       Generated database types
+  platform/                    Backend config, contracts, composition, and provider adapters
 supabase/
   migrations/                  Forward-only schema, RPCs, RLS, and grants
 ```
@@ -352,10 +365,13 @@ Validate the temporary type file before replacing `src/types/database.ts`. Never
 
 ```bash
 npm test
-npx tsc --noEmit
+npm run test:platform
+npm run check:backend-provider-boundary
+npm run typecheck
 npm run lint
 npm run format:check
 npm run build
+npm run check:build-secret-boundary
 ```
 
 The latest Phase 5A verification completed with `npm test` (57/57 tests), `npx tsc --noEmit`, `npm run lint`, `npm run format:check`, and `npm run build`. Linked database lint reported no schema errors. The rollback-wrapped database suite contains 38 assertions covering new IDs/mappings, shared place IDs, duplicate and previous-day Hotel occurrences, leg modes, omitted calculations, source isolation, maximum/unique/primary/delete/cross-trip rules, atomic cell clearing, grants, and RLS. Provider tests mock `fetch` and never call Google.

@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 import { withPostHogConfig } from "@posthog/nextjs-config";
 
 import { resolveTelemetryConfig } from "./src/lib/telemetry/config";
+import { resolveDeploymentProviderConfig } from "./src/platform/config/provider-matrix";
+
+// Validate only deployment selectors here. Provider credentials stay lazy in their entrypoints.
+resolveDeploymentProviderConfig(process.env);
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,

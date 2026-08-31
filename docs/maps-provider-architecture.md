@@ -2,7 +2,7 @@
 
 ## Selection and contracts
 
-`NEXT_PUBLIC_MAPS_PROVIDER` is the single provider-selection input for browser and server workflows. The bounded IDs are `google` and `amap`. A missing value resolves to `google`, preserving the current global behavior. An invalid value raises a typed configuration error. `amap` is reserved but unavailable in this phase, so maps, Places, and Routes fail closed instead of falling back to Google.
+`NEXT_PUBLIC_MAPS_PROVIDER` is the single provider-selection input for browser and server workflows. The bounded IDs are `google` and `amap`. A missing value resolves to `google` only in the explicit development/test compatibility path, preserving the current local Global behavior; Preview and Production builds validate the complete deployment matrix and require it explicitly. An invalid value raises a typed configuration error. `amap` is reserved but unavailable in this phase, so maps, Places, and Routes fail closed instead of falling back to Google.
 
 Provider-neutral contracts and resolvers live under:
 

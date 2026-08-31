@@ -4,8 +4,16 @@ import { useEffect } from "react";
 
 const EDITABLE_SELECTOR = "input, textarea, select, [contenteditable='true']";
 
+type ActiveElementMatch = {
+  matches(selectors: string): boolean;
+};
+
+export function shouldRestorePlannerDocumentScroll(activeElement: ActiveElementMatch | null) {
+  return !(activeElement?.matches(EDITABLE_SELECTOR) ?? false);
+}
+
 function isEditing() {
-  return document.activeElement?.matches(EDITABLE_SELECTOR) ?? false;
+  return !shouldRestorePlannerDocumentScroll(document.activeElement);
 }
 
 export function usePlannerViewportContainment() {
@@ -13,13 +21,8 @@ export function usePlannerViewportContainment() {
     const visualViewport = window.visualViewport;
     const timers = new Set<number>();
 
-    function keyboardIsClosed() {
-      if (!visualViewport) return !isEditing();
-      return !isEditing() && window.innerHeight - visualViewport.height < 80;
-    }
-
     function resetDocumentScroll() {
-      if (!keyboardIsClosed()) return;
+      if (isEditing()) return;
       window.scrollTo({ left: 0, top: 0, behavior: "auto" });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
