@@ -55,7 +55,10 @@ test("CloudBase access tokens require a valid issuer-bound RS256 signature", asy
   assert.equal(claims.sub, "user-a");
   assert.equal(claims.email, "traveler@example.com");
 
-  const tampered = `${fixture.token.slice(0, -1)}${fixture.token.endsWith("a") ? "b" : "a"}`;
+  const [encodedHeader, encodedPayload, encodedSignature] = fixture.token.split(".");
+  const tamperedSignature = Buffer.from(encodedSignature, "base64url");
+  tamperedSignature[0] ^= 1;
+  const tampered = `${encodedHeader}.${encodedPayload}.${tamperedSignature.toString("base64url")}`;
   await assert.rejects(
     () =>
       verifyCloudBaseAccessToken(tampered, environment, {

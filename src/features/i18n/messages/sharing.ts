@@ -1,4 +1,10 @@
 export const sharingZhCN: Record<string, string> = {
+  "Permanent image exports are not supported by this backend.": "当前后端不支持永久长图导出。",
+  "Public sharing is not supported by this backend.": "当前后端不支持公开分享。",
+  "Share-image cleanup unavailable": "分享长图清理功能不可用。",
+  "Sign in to generate a permanent image.": "请登录后生成永久长图。",
+  "Sign in to publish a permanent image.": "请登录后发布永久长图。",
+  "Sign in to revoke a permanent image.": "请登录后撤销永久长图。",
   "Itinerary place": "行程地点",
   "Available until": "有效期至",
   "Content included in the shareable page": "分享页面包含的内容",
