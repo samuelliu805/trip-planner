@@ -14,6 +14,10 @@ function rows(result, label) {
   return Array.isArray(data) ? data : data == null ? [] : [data];
 }
 
+function failureMessage(error) {
+  return error instanceof Error ? error.message : "unknown cleanup failure";
+}
+
 async function createTrip(db, title) {
   const rpc = await db.rpc("create_trip", {
     trip_title: title,
@@ -36,32 +40,95 @@ async function createTrip(db, title) {
   return created[0].id;
 }
 
-async function deleteOwnedFixtures(auth, db, username, password, knownTripId) {
-  try {
-    await auth.signOut();
-    await signIn(auth, username, password);
-    let ids = knownTripId ? [knownTripId] : [];
-    if (!ids.length) {
-      ids = rows(
-        await db.from("trips").select("id").like("title", `${runLabel}%`),
-        "cleanup lookup",
-      ).map((trip) => trip.id);
-    }
-    for (const id of ids) dataOrThrow(await db.from("trips").delete().eq("id", id), "cleanup trip");
-  } catch {
-    // The caller reports cleanup failure after trying the other controlled identity.
-    return false;
-  }
-  return true;
+async function fixtureGraph(db, tripIds) {
+  if (!tripIds.length) return { memberIds: [], variantIds: [], dayIds: [] };
+  const members = rows(
+    await db.from("trip_members").select("trip_id,user_id").in("trip_id", tripIds),
+    "cleanup membership lookup",
+  );
+  const variants = rows(
+    await db.from("route_variants").select("id,trip_id").in("trip_id", tripIds),
+    "cleanup variant lookup",
+  );
+  const variantIds = variants.map((row) => row.id);
+  const days = variantIds.length
+    ? rows(
+        await db.from("trip_days").select("id,variant_id").in("variant_id", variantIds),
+        "cleanup day lookup",
+      )
+    : [];
+  return {
+    memberIds: members.map((row) => `${row.trip_id}:${row.user_id}`),
+    variantIds,
+    dayIds: days.map((row) => row.id),
+  };
 }
 
-async function run() {
-  const config = loadLiveConfig();
-  const { auth, db } = initializeLiveClient(config);
+async function deleteOwnedFixtures(auth, db, username, password, knownTripId) {
+  const failures = [];
+  try {
+    await auth.signOut();
+  } catch (error) {
+    failures.push(`${username} pre-cleanup sign-out: ${failureMessage(error)}`);
+  }
+  try {
+    await signIn(auth, username, password);
+    const discovered = rows(
+      await db.from("trips").select("id").like("title", `${runLabel}%`),
+      `${username} cleanup lookup`,
+    ).map((trip) => trip.id);
+    const tripIds = [...new Set([knownTripId, ...discovered].filter(Boolean))];
+    const graph = await fixtureGraph(db, tripIds);
+
+    for (const id of tripIds) {
+      try {
+        const deleted = rows(
+          await db.from("trips").delete().eq("id", id).select("id"),
+          `${username} cleanup delete`,
+        );
+        if (deleted.length !== 1 || deleted[0].id !== id) {
+          failures.push(`${username} cleanup delete returned no exact row for ${id}`);
+        }
+      } catch (error) {
+        failures.push(`${username} cleanup delete ${id}: ${failureMessage(error)}`);
+      }
+    }
+
+    const remainingTrips = rows(
+      await db.from("trips").select("id").like("title", `${runLabel}%`),
+      `${username} final prefix query`,
+    );
+    if (remainingTrips.length) failures.push(`${username} still sees controlled trips`);
+
+    if (tripIds.length) {
+      const remainingMembers = rows(
+        await db.from("trip_members").select("trip_id,user_id").in("trip_id", tripIds),
+        `${username} final membership query`,
+      );
+      const remainingVariants = rows(
+        await db.from("route_variants").select("id").in("trip_id", tripIds),
+        `${username} final variant query`,
+      );
+      const remainingDays = graph.variantIds.length
+        ? rows(
+            await db.from("trip_days").select("id").in("variant_id", graph.variantIds),
+            `${username} final day query`,
+          )
+        : [];
+      if (remainingMembers.length || remainingVariants.length || remainingDays.length) {
+        failures.push(`${username} still sees cascading fixtures`);
+      }
+    }
+  } catch (error) {
+    failures.push(`${username} cleanup verification: ${failureMessage(error)}`);
+  }
+  return failures;
+}
+
+async function runAssertions(auth, db, config) {
   let aTrip = null;
   let bTrip = null;
-  let cleanupA = false;
-  let cleanupB = false;
+  let assertionFailure = null;
   try {
     const aId = await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
     aTrip = await createTrip(db, `${runLabel}-a`);
@@ -112,7 +179,6 @@ async function run() {
     if (!crossRpc.error) throw new Error("A business RPC mutated B's trip");
 
     dataOrThrow(await auth.signOut(), "A sign out before public checks");
-
     const anonymousPrivate = await db.from("trips").select("id").in("id", [aTrip, bTrip]);
     if (!anonymousPrivate.error && rows(anonymousPrivate, "anonymous private read").length) {
       throw new Error("Anonymous read private resources");
@@ -122,28 +188,37 @@ async function run() {
     if (bOwn.length !== 1 || bOwn[0].title !== `${runLabel}-b`) {
       throw new Error("B fixture changed after A's mutation attempts");
     }
-  } finally {
-    cleanupA = await deleteOwnedFixtures(
-      auth,
-      db,
-      userA,
-      config.CLOUDBASE_TEST_USER_A_PASSWORD,
-      aTrip,
-    );
-    cleanupB = await deleteOwnedFixtures(
-      auth,
-      db,
-      userB,
-      config.CLOUDBASE_TEST_USER_B_PASSWORD,
-      bTrip,
-    );
-    try {
-      await auth.signOut();
-    } catch {}
-    if (!cleanupA || !cleanupB) throw new Error("Controlled fixture cleanup failed");
+  } catch (error) {
+    assertionFailure = failureMessage(error);
   }
+
+  const cleanupFailures = [];
+  cleanupFailures.push(
+    ...(await deleteOwnedFixtures(auth, db, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD, aTrip)),
+  );
+  cleanupFailures.push(
+    ...(await deleteOwnedFixtures(auth, db, userB, config.CLOUDBASE_TEST_USER_B_PASSWORD, bTrip)),
+  );
+  try {
+    await auth.signOut();
+  } catch (error) {
+    cleanupFailures.push(`final sign-out: ${failureMessage(error)}`);
+  }
+  if (assertionFailure || cleanupFailures.length) {
+    throw new Error(
+      [assertionFailure && `security assertion: ${assertionFailure}`, ...cleanupFailures]
+        .filter(Boolean)
+        .join("\n"),
+    );
+  }
+}
+
+async function run() {
+  const config = loadLiveConfig();
+  const { auth, db } = initializeLiveClient(config);
+  await runAssertions(auth, db, config);
   console.log("CloudBase live A/B JWT RLS and business RPC security matrix passed.");
-  console.log("All controlled fixtures were removed.");
+  console.log("Both identities proved exact deletion and zero controlled/cascading fixtures.");
 }
 
 run().then(

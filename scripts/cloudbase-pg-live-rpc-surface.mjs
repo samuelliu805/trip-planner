@@ -2,9 +2,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { root } from "./lib/cloudbase-pg-baseline-lib.mjs";
 import {
+  functionAclDenied,
+  gatewayFunctionUnavailable,
   initializeLiveClient,
   loadLiveConfig,
-  permissionDenied,
   signIn,
 } from "./lib/cloudbase-pg-live.mjs";
 
@@ -29,7 +30,7 @@ async function proveDenied(db, routines, actor) {
       routine.arguments.map((argument) => [argument.name, valueFor(argument.type)]),
     );
     const result = await db.rpc(name, args);
-    if (!permissionDenied(result)) {
+    if (!functionAclDenied(result, name) && !gatewayFunctionUnavailable(result, name)) {
       const code = String(result?.error?.code ?? "no_error");
       const reason = String(result?.error?.message ?? "no error").slice(0, 120);
       throw new Error(`${actor} unexpectedly reached ${routine.signature} (${code}: ${reason})`);
@@ -44,6 +45,14 @@ async function run() {
     readFileSync(join(root, "database/cloudbase/rpc-catalog.json"), "utf8"),
   );
   const denied = manifest.catalog.filter((routine) => !routine.category.startsWith("external_"));
+  const knownDenied = denied[0].signature.slice(0, denied[0].signature.indexOf("("));
+  const knownArgs = Object.fromEntries(
+    denied[0].arguments.map((argument) => [argument.name, valueFor(argument.type)]),
+  );
+  const knownResult = await db.rpc(knownDenied, knownArgs);
+  if (!functionAclDenied(knownResult, knownDenied)) {
+    throw new Error("Known denied function did not produce the reviewed ACL denial");
+  }
   await proveDenied(db, denied, "anonymous");
 
   await signIn(auth, "trip-planner-cn-test-a", config.CLOUDBASE_TEST_USER_A_PASSWORD);
@@ -56,13 +65,14 @@ async function run() {
     ["phase2_rename_owned_trip", { target_trip_id: dummyUuid, requested_title: "denied" }],
   ]) {
     const result = await db.rpc(name, args);
-    if (!permissionDenied(result))
+    if (!gatewayFunctionUnavailable(result, name))
       throw new Error(`Private or removed helper was exposed: ${name}`);
   }
   await auth.signOut();
   console.log(
     `CloudBase SDK proved ${denied.length} non-allowlisted public functions inaccessible to anon and authenticated.`,
   );
+  console.log(`Known denied function ${knownDenied} produced DATABASE_42501.`);
   console.log(
     "Three private helpers and the removed Phase 2 probe are not exposed as public RPCs.",
   );

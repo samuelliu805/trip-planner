@@ -75,11 +75,20 @@ export function scalar(data) {
   return data;
 }
 
-export function permissionDenied(result) {
+export function functionAclDenied(result, functionName) {
   const code = String(result?.error?.code ?? "");
   const message = String(result?.error?.message ?? "");
+  return code === "DATABASE_42501" && message === `permission denied for function ${functionName}`;
+}
+
+export function gatewayFunctionUnavailable(result, functionName) {
+  const code = String(result?.error?.code ?? "");
+  const message = String(result?.error?.message ?? "");
+  const escaped = functionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return (
-    code === "DATABASE_42501" ||
-    /permission denied|not found|does not exist|schema cache/i.test(message)
+    code === "DATABASE_PGRST202" &&
+    new RegExp(
+      `^Could not find the function public\\.${escaped}(?: without parameters|\\([^)]*\\)) in the schema cache$`,
+    ).test(message)
   );
 }

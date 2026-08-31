@@ -1,0 +1,11 @@
+{
+  "frozen": ["20260826060350_default_public_template_neon.sql"],
+  "shared": ["20260901000000_shared_change.sql"],
+  "supabase": [
+    "20260826060350_default_public_template_neon.sql",
+    "20260901000000_shared_change.sql",
+    "20260901000100_unreviewed_direct_change.sql"
+  ],
+  "cloudbase": ["20260901000000_shared_change.sql"],
+  "providerOnly": []
+}
