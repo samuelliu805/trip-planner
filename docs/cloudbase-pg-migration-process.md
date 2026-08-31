@@ -12,12 +12,23 @@ approved empty database; future changes never rebuild or redeploy it to an exist
    `database/supabase/overlays/migrations/` or `database/cloudbase/overlays/migrations/` using the
    same filename. Never duplicate the complete schema in an overlay.
 4. Run `npm run build:database-pg-migrations`. This creates byte-derived Supabase and CloudBase
-   migration artifacts with the same filename. Commit all sources and artifacts.
+   migration artifacts with the same filename. If the shared or CloudBase overlay creates a
+   function, the CloudBase artifact emits exact-signature revokes for PUBLIC, anon, and
+   authenticated before the transaction commits. It regrants only signatures already present in
+   the reviewed RPC allowlist and rejects an unsafe `SECURITY DEFINER` search path. Commit all
+   sources and artifacts.
 5. Run `npm run check:database-pg-migrations` and the normal schema/security checks.
 
 CloudBase-only operational repair migrations may be checked in directly under
 `cloudbase/migrations/`. They must be versioned, transactional where PostgreSQL permits, and must
-not alter CloudBase-managed `auth` or `storage` schemas.
+not alter CloudBase-managed `auth` or `storage` schemas. Every direct provider migration must also
+appear in `database/provider-only-migrations.json` with its provider, review category, filename,
+and SHA-256. The migration check compares the complete post-bootstrap Supabase and CloudBase file
+sets against shared sources plus this manifest; an unmatched direct file fails CI.
+
+The CloudBase migration owner has fail-closed global function defaults. This protects future
+functions at creation time, while the generated exact-signature revokes remain mandatory defense
+in depth for every migration 64+.
 
 ## Deployment guard
 

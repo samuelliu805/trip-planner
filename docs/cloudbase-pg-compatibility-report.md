@@ -37,6 +37,12 @@ Migration 64+ uses a provider-neutral source plus minimal provider overlays and 
 and CloudBase artifacts; it never regenerates the deployed bootstrap. See
 `docs/cloudbase-pg-migration-process.md`.
 
+`database/provider-only-migrations.json` is the explicit, hashed exception list for direct provider
+artifacts. The migration check compares full provider file sets rather than iterating only existing
+shared sources, so a later direct Supabase or CloudBase migration fails unless it is reviewed and
+listed. Generated CloudBase migrations place exact per-function revokes inside the same
+transaction and regrant only a signature already present in `rpc-allowlist.json`.
+
 Remote migration history:
 
 | Version          | Name                               | Result                   |
@@ -45,11 +51,20 @@ Remote migration history:
 | `20260831031000` | `cloudbase_rpc_grants`             | applied and verified     |
 | `20260831032000` | `cloudbase_security_hardening`     | applied and verified     |
 | `20260831040000` | `cloudbase_rpc_boundary_hardening` | `task-5aaa8899`, Succeed |
+| `20260831052839` | `future_function_acl_defaults`     | `task-135bab63`, Succeed |
+| `20260831053729` | `global_function_acl_defaults`     | `task-f362a1df`, Succeed |
 
 The final migration had no schema/data conflict in `planMigration`, was the only pending version,
 and was applied with both Env ID and instance ID explicit. It removed
 `phase2_rename_owned_trip(uuid,text)`, moved three internal helpers to `app_private`, rewrote their
 qualified references, and reapplied the exact external allowlist.
+
+The two later immutable repairs close PostgreSQL's future-function default boundary. The first
+removes CloudBase's schema-specific anon/authenticated defaults in `public`; the second removes the
+owner's global implicit PUBLIC default (which cannot be revoked by an `IN SCHEMA` command). Final
+defaults for the migration owner grant global function execution only to the owner, and public
+schema defaults only to `service_role` plus the owner. Platform-managed Storage defaults were not
+changed.
 
 ## Identity and managed-schema compatibility
 
@@ -95,6 +110,12 @@ The authenticated role also receives the two anonymous snapshot functions, so li
 are PUBLIC `0`, anon `2`, and authenticated `28`. The SDK invoked all 103 non-allowlisted public
 functions as anon and again as controlled user A; every call was denied. It also proved that the
 three private helpers and removed Phase 2 probe are not exposed as public RPCs.
+
+The live checker now accepts only the exact observed ACL result (`DATABASE_42501` with
+`permission denied for function <expected-name>`) or the exact gateway schema-cache result
+(`DATABASE_PGRST202` naming that same expected function). It explicitly proves a known legacy
+function returns `DATABASE_42501`. A business error such as `DATABASE_22023 / Day not found` is not
+a permission denial and fails the regression test.
 
 The allowlist uses exact signatures, not names. Static and live checks assert:
 
@@ -147,6 +168,11 @@ After all SQL and SDK tests, `trips`, `trip_members`, `profiles`, `public_itiner
 identified by both controlled creator ID and unique title prefix and explicitly removed; the final
 repeatable path leaves no orphan Share Page.
 
+Cleanup now requests and validates each deleted Trip ID, attempts both identities even after an
+earlier assertion or cleanup failure, preserves all cleanup diagnostics, and runs the unique-prefix
+final query as both A and B. It also checks membership, Route Variant, and Trip Day cascade fixtures
+for the controlled Trip IDs.
+
 ## Fail-closed verification
 
 `database/cloudbase/verify/security.sql` raises on any of the following:
@@ -155,6 +181,7 @@ repeatable path leaves no orphan Share Page.
 - an UPDATE policy without both `USING` and `WITH CHECK`;
 - unexpected anon table access or authenticated access to reviewed private tables;
 - unsafe definer search path or PUBLIC execute;
+- missing or unsafe migration-owner global/schema function defaults;
 - any exact-signature callable-catalog drift;
 - a non-`varchar(64)` ownership column;
 - the probe or private helpers appearing in `public`.
