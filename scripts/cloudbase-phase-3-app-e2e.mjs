@@ -520,6 +520,19 @@ async function verifyTabletFrozenLayers(browser) {
     "updated twelve-day planner",
     45_000,
   );
+  await waitFor(
+    browser,
+    `(() => {
+      const matrix = document.querySelector(
+        '[data-i18n-aria-label="Editable trip planning matrix"]'
+      );
+      return matrix
+        && matrix.scrollWidth > matrix.clientWidth + 1
+        && matrix.scrollHeight > matrix.clientHeight + 1;
+    })()`,
+    "tablet planner overflow layout",
+    45_000,
+  );
   const result = await evaluate(
     browser,
     `(async () => {
