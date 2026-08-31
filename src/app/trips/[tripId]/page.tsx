@@ -12,7 +12,7 @@ import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
 import { getPlanResearchItems, getResearchPlanState } from "@/features/research/data";
 import { getExchangeRateTable } from "@/features/research/exchange-rates.server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/platform/composition/server";
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
@@ -47,16 +47,15 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     throw new Error(workspaceError ?? "The selected route variant could not be loaded.");
   if (planState.error) throw new Error(planState.error);
 
-  const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  const owner = authData.user?.id === trip.owner_id;
+  const user = await getAuthProvider().getCurrentUser();
+  const owner = user?.id === trip.owner_id;
   const shareLinks = owner ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
   return (
     <main className="trip-detail-page trip-planner-page flex h-dvh min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <PlannerMapProvider>
           <PlannerWorkspace
-            accountEmail={authData.user?.email ?? "Account"}
+            accountEmail={user?.email ?? String(user?.metadata.username ?? "Account")}
             exchangeRates={exchangeRates}
             initialResearchItems={researchItems}
             initialResearchSelections={planState.selections}

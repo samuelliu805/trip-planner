@@ -8,8 +8,8 @@ import { logout } from "@/features/auth/actions";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
-import { createClient } from "@/lib/supabase/server";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
+import { getAuthProvider } from "@/platform/composition/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -36,14 +36,11 @@ const capabilities = [
 
 export default async function HomePage() {
   const locale = await getRequestLocale();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthProvider().getCurrentUser();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      {user ? <AuthenticatedTelemetryIdentity locale={locale} supabaseUserId={user.id} /> : null}
+      {user ? <AuthenticatedTelemetryIdentity locale={locale} appUserId={user.id} /> : null}
       <nav
         className="border-b bg-background/95"
         aria-label="Primary navigation"
@@ -59,7 +56,9 @@ export default async function HomePage() {
               <Button asChild className="min-h-11 min-w-0 px-2 sm:px-3" variant="ghost">
                 <Link href="/account">
                   <UserRound aria-hidden="true" className="size-4 shrink-0" />
-                  <span className="hidden max-w-40 truncate sm:inline">{user.email}</span>
+                  <span className="hidden max-w-40 truncate sm:inline">
+                    {user.email ?? String(user.metadata.username ?? "Account")}
+                  </span>
                   <span className="sm:hidden">
                     <T message={"Account"} />
                   </span>

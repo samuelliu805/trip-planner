@@ -45,7 +45,7 @@ export async function POST(
       mutation: "upload",
       operationId: input.data.operationId,
       result: { error: attachmentError(result.error?.message) },
-      supabaseUserId: authData.user.id,
+      appUserId: authData.user.id,
       target: "research",
     });
     return Response.json(
@@ -59,7 +59,7 @@ export async function POST(
       mutation: "upload",
       operationId: input.data.operationId,
       result: { data: true },
-      supabaseUserId: authData.user.id,
+      appUserId: authData.user.id,
       target: "research",
     });
     return Response.json(
@@ -86,7 +86,7 @@ export async function POST(
       mutation: "upload",
       operationId,
       result: { error: reason },
-      supabaseUserId: userId,
+      appUserId: userId,
       target: "research",
     });
     return Response.json({ error: reason, failureReported: true }, { status: 500 });

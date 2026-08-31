@@ -45,7 +45,7 @@ export async function persistPlaceSnapshot(
   });
   if (error || !data)
     throw new Error(mutationError(error?.message ?? "The map place could not be saved."));
-  await nameTripAfterFirstPlace(supabase, tripId, snapshot);
+  await nameTripAfterFirstPlace(tripId, snapshot);
   return data;
 }
 

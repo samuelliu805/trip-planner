@@ -428,8 +428,8 @@ test("trip creation uses the old branch defaults and opens the planner directly"
 
   assert.match(createButton, /<form action=\{action\}/);
   assert.doesNotMatch(createButton, /Dialog|TripForm|href="\/trips\/new"/);
-  assert.match(actions, /trip_title: defaultTripTitle\(today\)/);
-  assert.match(actions, /redirect\(`\/trips\/\$\{data\}`\)/);
+  assert.match(actions, /title: defaultTripTitle\(today\)/);
+  assert.match(actions, /redirect\(`\/trips\/\$\{createdTripId\}`\)/);
   assert.match(migration, /status text not null default 'open'/);
 });
 
@@ -2996,6 +2996,14 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(
     styles,
     /\.planner-matrix \.matrix-grid-header \{[\s\S]*position: -webkit-sticky;[\s\S]*position: sticky;[\s\S]*top: 0;/,
+  );
+  assert.match(
+    styles,
+    /\.planner-matrix \[role="row"\] > \[role="rowheader"\]:first-child::before,[\s\S]*background: var\(--background\)/,
+  );
+  assert.match(
+    styles,
+    /\.planner-matrix \.matrix-grid-header > \[role="columnheader"\]:first-child \{[\s\S]*z-index: 80/,
   );
   assert.match(styles, /planner-mobile-map-fab[\s\S]*display: inline-flex/);
   assert.match(

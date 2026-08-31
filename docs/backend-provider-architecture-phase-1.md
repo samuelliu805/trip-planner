@@ -1,5 +1,8 @@
 # Dual-backend provider boundaries — Phase 1
 
+> Historical Phase 1 design record. The current CloudBase Auth/PostgreSQL runtime status is
+> documented in [cloudbase-phase-3-runtime.md](./cloudbase-phase-3-runtime.md).
+
 ## Status and scope
 
 Phase 1 establishes build/deployment-time provider selection and provider-neutral contracts while

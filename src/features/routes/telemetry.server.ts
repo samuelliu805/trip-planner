@@ -14,18 +14,18 @@ export async function reportRouteCalculation<Result extends object>(options: {
 }): Promise<Result> {
   const operationId = telemetryOperationId(options.operationId);
   if (!operationId || !options.routeMode || !serverProductTelemetryEnabled()) return options.result;
-  let supabaseUserId: string | undefined;
+  let appUserId: string | undefined;
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
-    supabaseUserId = data.user?.id;
+    appUserId = data.user?.id;
   } catch {
     // Identity lookup cannot replace an authoritative route result.
   }
   const context = {
-    actorType: supabaseUserId ? ("authenticated" as const) : ("anonymous" as const),
+    actorType: appUserId ? ("authenticated" as const) : ("anonymous" as const),
     route: "/trips/[tripId]",
-    supabaseUserId,
+    appUserId,
   };
   const properties = {
     operation_id: operationId,

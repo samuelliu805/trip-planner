@@ -1,11 +1,15 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { updateCloudBaseSession } from "@/platform/cloudbase/proxy";
+import { getServerProviderConfig } from "@/platform/config/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/share/")) return NextResponse.next();
-  return updateSession(request);
+  return getServerProviderConfig().authProvider === "supabase"
+    ? updateSession(request)
+    : updateCloudBaseSession(request);
 }
 
 export const config = {

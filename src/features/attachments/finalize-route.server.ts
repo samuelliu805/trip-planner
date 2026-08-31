@@ -43,7 +43,7 @@ export async function deleteAttachmentUpload(request: Request, route: Attachment
         mutation: "upload",
         operationId: body.data.operationId,
         result: { error: attachmentError(error.message) },
-        supabaseUserId: authData.user.id,
+        appUserId: authData.user.id,
         target: attachmentTarget(route),
       });
     return Response.json(
@@ -56,7 +56,7 @@ export async function deleteAttachmentUpload(request: Request, route: Attachment
       mutation: "upload",
       operationId: body.data.operationId,
       result: { error: "The attachment could not be changed. Please try again." },
-      supabaseUserId: authData.user.id,
+      appUserId: authData.user.id,
       target: attachmentTarget(route),
     });
   await drainAssetDeletionQueue(10);
@@ -109,7 +109,7 @@ export async function finalizeAttachmentUpload(request: Request, route: Attachme
       mutation: "upload",
       operationId,
       result: { error: reason },
-      supabaseUserId: authData.user?.id,
+      appUserId: authData.user?.id,
       target: attachmentTarget(route),
     });
     return Response.json({ error: reason, failureReported: true }, { status });
@@ -194,7 +194,7 @@ export async function finalizeAttachmentUpload(request: Request, route: Attachme
     mutation: "upload",
     operationId,
     result: { data: true },
-    supabaseUserId: authData.user.id,
+    appUserId: authData.user.id,
     target: attachmentTarget(route),
   });
   return Response.json(finalized.data, { headers: { "Cache-Control": "no-store" } });

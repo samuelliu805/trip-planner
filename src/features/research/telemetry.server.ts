@@ -32,11 +32,11 @@ export async function reportResearchMutation<Result extends object>(options: {
 }): Promise<Result> {
   const operationId = telemetryOperationId(options.operationId);
   if (!operationId || !serverProductTelemetryEnabled()) return options.result;
-  let supabaseUserId: string | undefined;
+  let appUserId: string | undefined;
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
-    supabaseUserId = data.user?.id;
+    appUserId = data.user?.id;
   } catch {
     // Identity lookup cannot replace an authoritative mutation result.
   }
@@ -52,9 +52,9 @@ export async function reportResearchMutation<Result extends object>(options: {
           surface: "research_editor",
         },
         {
-          actorType: supabaseUserId ? "authenticated" : "anonymous",
+          actorType: appUserId ? "authenticated" : "anonymous",
           route: "/trips/[tripId]/ideas/[category]",
-          supabaseUserId,
+          appUserId,
         },
       ),
     succeeded: () =>
@@ -66,9 +66,9 @@ export async function reportResearchMutation<Result extends object>(options: {
           surface: "research_editor",
         },
         {
-          actorType: supabaseUserId ? "authenticated" : "anonymous",
+          actorType: appUserId ? "authenticated" : "anonymous",
           route: "/trips/[tripId]/ideas/[category]",
-          supabaseUserId,
+          appUserId,
         },
       ),
   });

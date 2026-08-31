@@ -1,5 +1,7 @@
 export const authAccountZhCN: Record<string, string> = {
   "Account preferences saved.": "账户偏好已保存。",
+  "Accounts are created by your organization.": "账户由你的组织统一创建。",
+  "Account creation is managed by your organization.": "账户创建由你的组织统一管理。",
   "Already have an account?": "已有账户？",
   "At least 8 characters": "至少 8 个字符",
   "Check the form and try again.": "请检查表单后重试。",
@@ -24,11 +26,15 @@ export const authAccountZhCN: Record<string, string> = {
   "Save preferences": "保存偏好",
   "Search a city": "搜索城市",
   "Sign in to continue planning your trips.": "登录后继续规划行程。",
+  "Sign-in could not be completed. Please try again.": "无法完成登录，请重试。",
   "Sign in to update your account.": "请先登录，再更新账户。",
   "Start with your first trip in a few minutes.": "只需几分钟，即可开始规划第一段行程。",
   "The confirmation link is invalid or expired. Please try again.":
     "确认链接无效或已过期，请重试。",
   "Welcome back": "欢迎回来",
+  Username: "用户名",
+  "Username or password is incorrect.": "用户名或密码不正确。",
+  "Complete the security check, then try again.": "请完成安全验证后重试。",
   "home city": "常住城市",
   "name@example.com": "name@example.com",
   "Connecting to Google…": "正在连接 Google…",

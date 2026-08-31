@@ -23,6 +23,7 @@
     "test:platform": "node src/platform/platform.test.ts",
     "test:cloudbase-pg-rpc-surface": "node scripts/cloudbase-pg-live-rpc-surface.mjs",
     "test:cloudbase-pg-security": "node scripts/cloudbase-pg-live-rls.mjs",
+    "test:cloudbase-phase-3-live": "npm run test:cloudbase-pg-rpc-surface && npm run test:cloudbase-pg-security",
     "test:cloudbase-pg-static": "node --test scripts/cloudbase-pg-security-regression.test.mjs",
     "start": "node --use-env-proxy node_modules/next/dist/bin/next start",
     "test:telemetry": "node src/lib/telemetry/telemetry.test.ts",
@@ -35,6 +36,8 @@
     "validate:public-templates": "node scripts/validate-public-templates.mjs"
   },
   "dependencies": {
+    "@cloudbase/adapter-node": "2.0.0",
+    "@cloudbase/js-sdk": "3.9.0",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/api-logs": "0.221.0",
     "@opentelemetry/exporter-logs-otlp-http": "0.221.0",
@@ -65,8 +68,6 @@
     "zod": "latest"
   },
   "devDependencies": {
-    "@cloudbase/adapter-node": "2.0.0",
-    "@cloudbase/js-sdk": "3.9.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "latest",
     "@types/qrcode": "^1.5.6",

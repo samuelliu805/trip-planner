@@ -118,7 +118,7 @@ export function PlannerMatrix({
               >
                 <div
                   aria-selected={selectedDayRow === row}
-                  className={`sticky left-0 z-20 flex w-24 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                  className={`sticky left-0 z-20 flex w-24 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "matrix-frozen-selected shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
                   onClick={() => selectDay(row)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {

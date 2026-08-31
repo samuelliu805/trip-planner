@@ -28,15 +28,15 @@ export async function captureServerProductEvent<EventName extends ServerProductE
   options: {
     actorType: TelemetryActorType;
     route: string;
-    supabaseUserId?: string;
+    appUserId?: string;
   },
 ): Promise<void> {
   try {
     const config = resolveServerTelemetryConfig();
     if (!config.enabled || !config.region) return;
     const route = normalizeTelemetryRoute(options.route);
-    const analyticsId = options.supabaseUserId
-      ? (authenticatedAnalyticsId(options.supabaseUserId) ?? undefined)
+    const analyticsId = options.appUserId
+      ? (authenticatedAnalyticsId(options.appUserId) ?? undefined)
       : undefined;
     const insertId = telemetryInsertId(
       eventName,

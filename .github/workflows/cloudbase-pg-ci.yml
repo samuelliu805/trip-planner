@@ -47,9 +47,34 @@ jobs:
       - run: npm run build
       - run: npm run check:build-secret-boundary
 
+  cn-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_REGION: cn
+      AUTH_PROVIDER: cloudbase
+      CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      CLOUDBASE_PUBLISHABLE_KEY: ci-placeholder
+      CLOUDBASE_REGION: ap-shanghai
+      DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_MAPS_PROVIDER: amap
+      NEXT_PUBLIC_SITE_URL: https://cn-preview.example.invalid
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      STORAGE_PROVIDER: cloudbase
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check:build-secret-boundary
+
   live-cloudbase-dev:
     if: github.event_name == 'workflow_dispatch'
-    needs: static
+    needs: [static, cn-build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: cloudbase-pg-dev
@@ -73,5 +98,4 @@ jobs:
           --env-id trip-planner-cn-dev-d3bz94038b26
           --region ap-shanghai
           --instance-id pgdb-l4lhtrv7
-      - run: npm run test:cloudbase-pg-rpc-surface
-      - run: npm run test:cloudbase-pg-security
+      - run: npm run test:cloudbase-phase-3-live

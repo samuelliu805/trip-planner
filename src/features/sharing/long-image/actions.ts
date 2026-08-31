@@ -53,7 +53,7 @@ export async function prepareShareImageVersion(
   await reportShareExportStarted({
     exportMode,
     operationId: input.data.operationId,
-    supabaseUserId: userData.user.id,
+    appUserId: userData.user.id,
   });
   const failPreparation = (error: string) =>
     reportSharingMutation({
@@ -62,7 +62,7 @@ export async function prepareShareImageVersion(
       mutation: "export",
       operationId: input.data.operationId,
       result: { error },
-      supabaseUserId: userData.user.id,
+      appUserId: userData.user.id,
     });
   try {
     let destinationPage = page.data;
@@ -188,7 +188,7 @@ export async function finalizeShareImageVersion(rawInput: {
     mutation: "export",
     operationId: input.data.operationId,
     result,
-    supabaseUserId: userData.user?.id,
+    appUserId: userData.user?.id,
   });
 }
 
@@ -200,11 +200,11 @@ export async function failShareImageVersion(
 ) {
   if (!z.uuid().safeParse(versionId).success) return;
   let failureMessage = "Timeline export failed.";
-  let supabaseUserId: string | undefined;
+  let appUserId: string | undefined;
   try {
     const supabase = await createClient();
     const { data: userData } = await supabase.auth.getUser();
-    supabaseUserId = userData.user?.id;
+    appUserId = userData.user?.id;
     const { error } = await supabase.rpc("fail_share_image_version_v1", {
       requested_error_message: message,
       target_version_id: versionId,
@@ -219,7 +219,7 @@ export async function failShareImageVersion(
     mutation: "export",
     operationId,
     result: { error: failureMessage },
-    supabaseUserId,
+    appUserId,
   });
 }
 

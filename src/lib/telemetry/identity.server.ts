@@ -2,24 +2,23 @@ import { createHmac } from "node:crypto";
 
 import { resolveServerTelemetryConfig, type TelemetryEnvironment } from "./config.ts";
 
-const supabaseUserIdPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const appUserIdPattern = /^(?=[^\u0000-\u001f\u007f]{1,128}$)(?=.*(?:\d|:)).+$/;
 
 export function createPseudonymousAnalyticsId(
-  supabaseUserId: string,
+  appUserId: string,
   hmacSecret: string,
   environment: TelemetryEnvironment,
 ): string | null {
-  if (!supabaseUserIdPattern.test(supabaseUserId) || hmacSecret.length < 32) return null;
+  if (!appUserIdPattern.test(appUserId) || hmacSecret.length < 32) return null;
   const digest = createHmac("sha256", hmacSecret)
-    .update(`trip-planner-web:${environment}:${supabaseUserId}`, "utf8")
+    .update(`trip-planner-web:${environment}:${appUserId}`, "utf8")
     .digest("hex");
   return `tpv1_${digest}`;
 }
 
-export function authenticatedAnalyticsId(supabaseUserId: string): string | null {
+export function authenticatedAnalyticsId(appUserId: string): string | null {
   const config = resolveServerTelemetryConfig();
   const secret = process.env.TELEMETRY_ID_HMAC_SECRET;
   if (!config.enabled || !secret) return null;
-  return createPseudonymousAnalyticsId(supabaseUserId, secret, config.environment);
+  return createPseudonymousAnalyticsId(appUserId, secret, config.environment);
 }

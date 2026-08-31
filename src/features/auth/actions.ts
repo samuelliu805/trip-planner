@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase/server";
 import type { AuthActionState } from "@/features/auth/types";
 import { siteUrlFromHeaders } from "@/features/sharing/site-url";
 import { safeAuthErrorCode } from "@/lib/telemetry/errors";
@@ -15,11 +14,31 @@ import {
   reportSuccessfulSignOut,
 } from "@/lib/telemetry/product";
 import { captureServerProductEvent } from "@/lib/telemetry/product-server";
+import {
+  getAuthProvider,
+  getBackendCapabilities,
+  getPublicSelfRegistrationProvider,
+  getRedirectOAuthProvider,
+} from "@/platform/composition/server";
+import { PlatformOperationError } from "@/platform/contracts/errors";
 
-const credentialsSchema = z.object({
-  email: z.email("Enter a valid email address."),
-  password: z.string().min(8, "Password must be at least 8 characters."),
+const emailCredentialSchema = z.object({
+  credential: z.email("Enter a valid email address."),
+  password: z.string().min(1, "Enter your password."),
 });
+
+const usernameCredentialSchema = z.object({
+  credential: z.string().trim().min(1, "Enter your username.").max(128, "Username is too long."),
+  password: z.string().min(1, "Enter your password."),
+});
+
+function loginError(error: unknown) {
+  if (error instanceof PlatformOperationError) {
+    if (error.code === "captcha_required") return error.message;
+    if (error.code === "invalid_credentials") return "Username or password is incorrect.";
+  }
+  return "Sign-in could not be completed. Please try again.";
+}
 
 function authMetadata(formData: FormData, fallbackFlow: "login" | "signup") {
   return {
@@ -30,7 +49,15 @@ function authMetadata(formData: FormData, fallbackFlow: "login" | "signup") {
 
 export async function login(_state: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const metadata = authMetadata(formData, "login");
-  const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
+  const capabilities = getBackendCapabilities();
+  const parsed = (
+    capabilities.passwordSignInIdentifier === "username"
+      ? usernameCredentialSchema
+      : emailCredentialSchema
+  ).safeParse({
+    credential: formData.get("credential"),
+    password: formData.get("password"),
+  });
   if (!parsed.success) {
     await captureServerProductEvent(
       "auth_failed",
@@ -46,9 +73,31 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
     return { error: parsed.error.issues[0]?.message ?? "Invalid credentials." };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) {
+  try {
+    const user = await getAuthProvider().signIn(
+      capabilities.passwordSignInIdentifier === "username"
+        ? {
+            method: "username_password",
+            password: parsed.data.password,
+            username: parsed.data.credential,
+          }
+        : {
+            email: parsed.data.credential,
+            method: "email_password",
+            password: parsed.data.password,
+          },
+    );
+    await captureServerProductEvent(
+      "auth_succeeded",
+      {
+        auth_flow: metadata.authFlow,
+        auth_method: "password",
+        operation_id: metadata.operationId,
+        surface: "auth_form",
+      },
+      { actorType: "authenticated", appUserId: user.id, route: "/login" },
+    );
+  } catch (error) {
     await captureServerProductEvent(
       "auth_failed",
       {
@@ -60,38 +109,26 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
       },
       { actorType: "anonymous", route: "/login" },
     );
-    return { error: "Email or password is incorrect." };
+    return { error: loginError(error) };
   }
-  await captureServerProductEvent(
-    "auth_succeeded",
-    {
-      auth_flow: metadata.authFlow,
-      auth_method: "password",
-      operation_id: metadata.operationId,
-      surface: "auth_form",
-    },
-    { actorType: "authenticated", route: "/login", supabaseUserId: data.user.id },
-  );
   redirect("/trips");
 }
 
 export async function continueWithGoogle(formData: FormData) {
   const metadata = authMetadata(formData, "login");
-  const supabase = await createClient();
   const siteUrl = siteUrlFromHeaders(await headers());
   const callbackUrl = new URL("/auth/callback", siteUrl);
   callbackUrl.searchParams.set("auth_flow", metadata.authFlow);
   callbackUrl.searchParams.set("auth_method", "google");
   if (metadata.operationId) callbackUrl.searchParams.set("operation_id", metadata.operationId);
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
+  let redirectUrl: string;
+  try {
+    ({ redirectUrl } = await getRedirectOAuthProvider().startOAuthSignIn({
+      authorizationParameters: { prompt: "select_account" },
+      provider: "google",
       redirectTo: callbackUrl.toString(),
-      queryParams: { prompt: "select_account" },
-    },
-  });
-
-  if (error || !data.url) {
+    }));
+  } catch (error) {
     await captureServerProductEvent(
       "auth_failed",
       {
@@ -105,7 +142,7 @@ export async function continueWithGoogle(formData: FormData) {
     );
     redirect("/login?error=google");
   }
-  redirect(data.url);
+  redirect(redirectUrl);
 }
 
 export async function signup(
@@ -113,7 +150,12 @@ export async function signup(
   formData: FormData,
 ): Promise<AuthActionState> {
   const metadata = authMetadata(formData, "signup");
-  const parsed = credentialsSchema.safeParse(Object.fromEntries(formData));
+  if (!getBackendCapabilities().selfRegistration) {
+    return { error: "Account creation is managed by your organization." };
+  }
+  const parsed = emailCredentialSchema
+    .extend({ password: z.string().min(8, "Password must be at least 8 characters.") })
+    .safeParse({ credential: formData.get("credential"), password: formData.get("password") });
   if (!parsed.success) {
     await captureServerProductEvent(
       "auth_failed",
@@ -130,17 +172,34 @@ export async function signup(
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  const supabase = await createClient();
   const confirmationUrl = siteUrl ? new URL("/auth/callback", siteUrl) : undefined;
   confirmationUrl?.searchParams.set("auth_flow", "confirmation");
   confirmationUrl?.searchParams.set("auth_method", "email_link");
   if (metadata.operationId) confirmationUrl?.searchParams.set("operation_id", metadata.operationId);
-  const { data, error } = await supabase.auth.signUp({
-    ...parsed.data,
-    options: confirmationUrl ? { emailRedirectTo: confirmationUrl.toString() } : undefined,
-  });
-
-  if (error) {
+  let sessionCreated = false;
+  try {
+    const result = await getPublicSelfRegistrationProvider().signUp({
+      email: parsed.data.credential,
+      method: "email_password",
+      password: parsed.data.password,
+      verificationRedirectTo: confirmationUrl?.toString(),
+    });
+    await captureServerProductEvent(
+      "auth_succeeded",
+      {
+        auth_flow: metadata.authFlow,
+        auth_method: "password",
+        operation_id: metadata.operationId,
+        surface: "auth_form",
+      },
+      {
+        actorType: result.user ? "authenticated" : "anonymous",
+        appUserId: result.user?.id,
+        route: "/signup",
+      },
+    );
+    sessionCreated = result.sessionCreated;
+  } catch (error) {
     await captureServerProductEvent(
       "auth_failed",
       {
@@ -152,34 +211,21 @@ export async function signup(
       },
       { actorType: "anonymous", route: "/signup" },
     );
-    return { error: error.message };
+    return { error: error instanceof Error ? error.message : "Account creation failed." };
   }
-  await captureServerProductEvent(
-    "auth_succeeded",
-    {
-      auth_flow: metadata.authFlow,
-      auth_method: "password",
-      operation_id: metadata.operationId,
-      surface: "auth_form",
-    },
-    {
-      actorType: data.user ? "authenticated" : "anonymous",
-      route: "/signup",
-      supabaseUserId: data.user?.id,
-    },
-  );
-  if (data.session) redirect("/trips");
+  if (sessionCreated) redirect("/trips");
 
   return { success: "Check your email to confirm your account, then sign in." };
 }
 
 export async function logout(formData?: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const auth = getAuthProvider();
+  const user = await auth.getCurrentUser();
   await reportSuccessfulSignOut(
-    () => supabase.auth.signOut(),
+    async () => {
+      await auth.signOut();
+      return { error: null };
+    },
     () =>
       captureServerProductEvent(
         "signed_out",
@@ -187,7 +233,7 @@ export async function logout(formData?: FormData) {
         {
           actorType: user ? "authenticated" : "anonymous",
           route: "/login",
-          supabaseUserId: user?.id,
+          appUserId: user?.id,
         },
       ),
   );

@@ -2,6 +2,7 @@ import type { AppRegion } from "../config/provider-matrix";
 
 export type BackendCapabilities = Readonly<{
   googleOAuth: boolean;
+  passwordSignInIdentifier: "email" | "username";
   realtime: boolean;
   selfRegistration: boolean;
   signedUrls: boolean;
@@ -11,6 +12,7 @@ export type BackendCapabilities = Readonly<{
 export const backendCapabilitiesByRegion = Object.freeze({
   global: Object.freeze({
     googleOAuth: true,
+    passwordSignInIdentifier: "email",
     realtime: true,
     selfRegistration: true,
     signedUrls: true,
@@ -18,9 +20,10 @@ export const backendCapabilitiesByRegion = Object.freeze({
   }),
   cn: Object.freeze({
     googleOAuth: false,
+    passwordSignInIdentifier: "username",
     realtime: false,
     selfRegistration: false,
-    signedUrls: true,
+    signedUrls: false,
     wechatAuth: false,
   }),
 }) satisfies Readonly<Record<AppRegion, BackendCapabilities>>;

@@ -39,11 +39,11 @@ export async function reportItemMutations<Result extends { error?: string }>(opt
     ...new Set(options.itemTypes.map(itemKindForTelemetry).filter((kind) => kind !== undefined)),
   ];
   if (!itemKinds.length || !serverProductTelemetryEnabled()) return options.result;
-  let supabaseUserId: string | undefined;
+  let appUserId: string | undefined;
   try {
     const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
-    supabaseUserId = data.user?.id;
+    appUserId = data.user?.id;
   } catch {
     // An analytics identity lookup must not replace the mutation result.
   }
@@ -57,9 +57,9 @@ export async function reportItemMutations<Result extends { error?: string }>(opt
           names.failed,
           { error_code: errorCode, item_kind: itemKind, operation_id: operationId, surface },
           {
-            actorType: supabaseUserId ? "authenticated" : "anonymous",
+            actorType: appUserId ? "authenticated" : "anonymous",
             route: "/trips/[tripId]",
-            supabaseUserId,
+            appUserId,
           },
         ),
       succeeded: () =>
@@ -67,9 +67,9 @@ export async function reportItemMutations<Result extends { error?: string }>(opt
           names.succeeded,
           { item_kind: itemKind, operation_id: operationId, surface },
           {
-            actorType: supabaseUserId ? "authenticated" : "anonymous",
+            actorType: appUserId ? "authenticated" : "anonymous",
             route: "/trips/[tripId]",
-            supabaseUserId,
+            appUserId,
           },
         ),
     });

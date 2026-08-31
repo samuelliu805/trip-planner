@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { cache } from "react";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAccountProfileRepository, getAuthProvider } from "@/platform/composition/server";
 
 import { defaultLocale, localeCookieName, parseLocale, type Locale } from "./config";
 
@@ -18,18 +18,11 @@ export const getRequestLocaleState = cache(async (): Promise<RequestLocaleState>
   if (browserLocale) return { locale: browserLocale, source: "browser" };
 
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getAuthProvider().getCurrentUser();
     if (!user) return { locale: defaultLocale, source: "default" };
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("preferred_locale")
-      .eq("id", user.id)
-      .maybeSingle();
-    const profileLocale = parseLocale(profile?.preferred_locale);
+    const profile = await getAccountProfileRepository().getForCurrentUser();
+    const profileLocale = parseLocale(profile?.preferredLocale);
     return profileLocale
       ? { locale: profileLocale, source: "profile" }
       : { locale: defaultLocale, source: "default" };

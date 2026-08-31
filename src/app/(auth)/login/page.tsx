@@ -5,7 +5,7 @@ import { continueWithGoogle, login } from "@/features/auth/actions";
 import { AuthForm } from "@/features/auth/components/auth-form";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -17,14 +17,9 @@ type LoginPageProps = {
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const supabase = await createClient();
-  const [
-    { error },
-    {
-      data: { user },
-    },
-  ] = await Promise.all([searchParams, supabase.auth.getUser()]);
+  const [{ error }, user] = await Promise.all([searchParams, getAuthProvider().getCurrentUser()]);
   if (user) redirect("/trips");
+  const capabilities = getBackendCapabilities();
 
   const errorMessage =
     error === "google"
@@ -36,14 +31,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <AuthForm
       action={login}
-      alternateHref="/signup"
-      alternateLead="Don’t have an account?"
-      alternateLabel="Create account"
+      alternateHref={capabilities.selfRegistration ? "/signup" : undefined}
+      alternateLead={capabilities.selfRegistration ? "Don’t have an account?" : undefined}
+      alternateLabel={capabilities.selfRegistration ? "Create account" : undefined}
       description="Sign in to continue planning your trips."
       errorMessage={errorMessage}
       heading="Welcome back"
+      identifier={capabilities.passwordSignInIdentifier}
       mode="login"
-      oauthAction={continueWithGoogle}
+      oauthAction={capabilities.googleOAuth ? continueWithGoogle : undefined}
       submitLabel="Log in"
     />
   );

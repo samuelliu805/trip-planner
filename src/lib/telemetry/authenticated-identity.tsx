@@ -5,11 +5,11 @@ import { authenticatedAnalyticsId } from "./identity.server";
 
 export function AuthenticatedTelemetryIdentity({
   locale,
-  supabaseUserId,
+  appUserId,
 }: {
   locale: Locale;
-  supabaseUserId: string;
+  appUserId: string;
 }) {
-  const analyticsId = authenticatedAnalyticsId(supabaseUserId);
+  const analyticsId = authenticatedAnalyticsId(appUserId);
   return analyticsId ? <TelemetryIdentityBridge analyticsId={analyticsId} locale={locale} /> : null;
 }

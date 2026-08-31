@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { updateAccountSchema } from "@/features/account/schema";
 import type { AccountActionState } from "@/features/account/types";
-import { createClient } from "@/lib/supabase/server";
+import { getAccountProfileRepository, getAuthProvider } from "@/platform/composition/server";
 
 export async function updateAccount(
   _state: AccountActionState,
@@ -19,27 +19,18 @@ export async function updateAccount(
     return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthProvider().getCurrentUser();
   if (!user) return { error: "Sign in to update your account." };
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .upsert(
-      {
-        default_currency: parsed.data.currency,
-        home_city: parsed.data.homeCity || null,
-        id: user.id,
-        preferred_locale: parsed.data.locale,
-      },
-      { onConflict: "id" },
-    )
-    .select("default_currency, preferred_locale")
-    .maybeSingle();
-
-  if (error || !data) return { error: error?.message ?? "Could not save your preferences." };
+  try {
+    await getAccountProfileRepository().saveForCurrentUser({
+      defaultCurrency: parsed.data.currency,
+      homeCity: parsed.data.homeCity || null,
+      preferredLocale: parsed.data.locale,
+    });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not save your preferences." };
+  }
   revalidatePath("/account");
   return { success: "Account preferences saved." };
 }

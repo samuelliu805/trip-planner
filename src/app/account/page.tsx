@@ -8,8 +8,8 @@ import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { defaultTripCurrency } from "@/features/trips/create-defaults";
-import { createClient } from "@/lib/supabase/server";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
+import { getAccountProfileRepository, getAuthProvider } from "@/platform/composition/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -18,27 +18,22 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AccountPage() {
   const requestLocale = await getRequestLocale();
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthProvider().getCurrentUser();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("default_currency, home_city, preferred_locale")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await getAccountProfileRepository().getForCurrentUser();
 
   return (
     <main className="min-h-dvh bg-muted">
-      <AuthenticatedTelemetryIdentity locale={requestLocale} supabaseUserId={user.id} />
+      <AuthenticatedTelemetryIdentity locale={requestLocale} appUserId={user.id} />
       <PlannerMapProvider>
         <AccountEditor
-          currency={profile?.default_currency ?? defaultTripCurrency}
-          email={user.email ?? translateMessage(requestLocale, "Email unavailable")}
-          homeCity={profile?.home_city ?? inferredHomeCity(user.user_metadata)}
-          locale={normalizeLocale(profile?.preferred_locale)}
+          currency={profile?.defaultCurrency ?? defaultTripCurrency}
+          email={
+            user.email ??
+            String(user.metadata.username ?? translateMessage(requestLocale, "Email unavailable"))
+          }
+          homeCity={profile?.homeCity ?? inferredHomeCity(user.metadata)}
+          locale={normalizeLocale(profile?.preferredLocale)}
         />
       </PlannerMapProvider>
     </main>

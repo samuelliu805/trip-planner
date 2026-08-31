@@ -16,14 +16,15 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 type AuthFormProps = {
   action: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
-  alternateHref: string;
-  alternateLead: string;
-  alternateLabel: string;
+  alternateHref?: string;
+  alternateLead?: string;
+  alternateLabel?: string;
   description: string;
   errorMessage?: string;
   heading: string;
+  identifier: "email" | "username";
   mode: "login" | "signup";
-  oauthAction: (formData: FormData) => Promise<void>;
+  oauthAction?: (formData: FormData) => Promise<void>;
   submitLabel: string;
 };
 
@@ -80,6 +81,7 @@ export function AuthForm({
   description,
   errorMessage,
   heading,
+  identifier,
   mode,
   oauthAction,
   submitLabel,
@@ -153,21 +155,25 @@ export function AuthForm({
             </p>
           </div>
         ) : null}
-        <form
-          action={oauthAction}
-          onSubmit={() => captureAuthStart("google", googleOperationRef.current)}
-        >
-          <input name="auth_flow" type="hidden" value={mode} />
-          <input name="operation_id" ref={googleOperationRef} type="hidden" />
-          <GoogleAuthButton />
-        </form>
-        <div className="my-5 flex items-center gap-3" role="separator">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <T message={" Or continue with email "} />
-          </span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
+        {oauthAction ? (
+          <>
+            <form
+              action={oauthAction}
+              onSubmit={() => captureAuthStart("google", googleOperationRef.current)}
+            >
+              <input name="auth_flow" type="hidden" value={mode} />
+              <input name="operation_id" ref={googleOperationRef} type="hidden" />
+              <GoogleAuthButton />
+            </form>
+            <div className="my-5 flex items-center gap-3" role="separator">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <T message={" Or continue with email "} />
+              </span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          </>
+        ) : null}
         <form
           action={formAction}
           className="space-y-4"
@@ -188,18 +194,18 @@ export function AuthForm({
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label htmlFor="email">
-              <T message={"Email address"} />
+            <Label htmlFor="credential">
+              <T message={identifier === "username" ? "Username" : "Email address"} />
             </Label>
             <Input
-              autoComplete="email"
+              autoComplete={identifier === "username" ? "username" : "email"}
               className="h-11 text-base"
-              id="email"
-              name="email"
-              placeholder="name@example.com"
-              data-i18n-placeholder={"name@example.com"}
+              id="credential"
+              name="credential"
+              placeholder={identifier === "username" ? t("Username") : "name@example.com"}
+              data-i18n-placeholder={identifier === "username" ? "Username" : "name@example.com"}
               required
-              type="email"
+              type={identifier === "username" ? "text" : "email"}
             />
           </div>
           <div className="space-y-2">
@@ -211,7 +217,7 @@ export function AuthForm({
                 autoComplete={mode === "signup" ? "new-password" : "current-password"}
                 className="h-11 pr-12 text-base"
                 id="password"
-                minLength={8}
+                minLength={mode === "signup" ? 8 : 1}
                 name="password"
                 placeholder={t(mode === "signup" ? "Create a password" : "Enter your password")}
                 required
@@ -247,12 +253,14 @@ export function AuthForm({
               <Localized value={submitLabel} />
             )}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            <Localized value={alternateLead} />{" "}
-            <Link className="font-semibold text-primary hover:underline" href={alternateHref}>
-              <Localized value={alternateLabel} />
-            </Link>
-          </p>
+          {alternateHref && alternateLead && alternateLabel ? (
+            <p className="text-center text-sm text-muted-foreground">
+              <Localized value={alternateLead} />{" "}
+              <Link className="font-semibold text-primary hover:underline" href={alternateHref}>
+                <Localized value={alternateLabel} />
+              </Link>
+            </p>
+          ) : null}
         </form>
       </CardContent>
     </Card>

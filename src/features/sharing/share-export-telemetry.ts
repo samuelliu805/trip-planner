@@ -1,8 +1,7 @@
 import type { ExportMode, TelemetryErrorCode } from "../../lib/telemetry/events.ts";
 import { telemetryOperationId } from "../../lib/telemetry/product.ts";
 
-const supabaseUserIdPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const appUserIdPattern = /^(?=[^\u0000-\u001f\u007f]{1,128}$)(?=.*(?:\d|:)).+$/;
 
 export type ShareExportTelemetryCapture = (
   eventName: "share_export_started" | "share_exported" | "share_export_failed",
@@ -16,7 +15,7 @@ export type ShareExportTelemetryCapture = (
   context: {
     actorType: "authenticated";
     route: "/trips/[tripId]";
-    supabaseUserId: string;
+    appUserId: string;
   },
 ) => Promise<void> | void;
 
@@ -26,15 +25,15 @@ export async function captureAuthenticatedShareExportEvent(
     exportMode: ExportMode;
     operationId: unknown;
     outcome: "started" | "succeeded" | "failed";
-    supabaseUserId?: string;
+    appUserId?: string;
   },
   capture: ShareExportTelemetryCapture,
 ): Promise<boolean> {
   const operationId = telemetryOperationId(options.operationId);
   if (
     !operationId ||
-    !options.supabaseUserId ||
-    !supabaseUserIdPattern.test(options.supabaseUserId) ||
+    !options.appUserId ||
+    !appUserIdPattern.test(options.appUserId) ||
     (options.outcome === "failed" && !options.errorCode)
   )
     return false;
@@ -55,7 +54,7 @@ export async function captureAuthenticatedShareExportEvent(
     await capture(eventName, properties, {
       actorType: "authenticated",
       route: "/trips/[tripId]",
-      supabaseUserId: options.supabaseUserId,
+      appUserId: options.appUserId,
     });
     return true;
   } catch {

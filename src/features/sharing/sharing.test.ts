@@ -1160,7 +1160,7 @@ test("owner share controls keep a stable key across the server/client toolbar bo
 
 test("authenticated share exports keep one start and one matching terminal identity", async () => {
   const operationId = "123e4567-e89b-42d3-a456-426614174001";
-  const supabaseUserId = "123e4567-e89b-42d3-a456-426614174002";
+  const appUserId = "123e4567-e89b-42d3-a456-426614174002";
   const hmacSecret = "preview-test-secret-that-is-at-least-32-characters";
   const captures: {
     eventName: string;
@@ -1171,18 +1171,18 @@ test("authenticated share exports keep one start and one matching terminal ident
   const capture: ShareExportTelemetryCapture = (eventName, properties, context) => {
     captures.push({
       eventName,
-      identity: createPseudonymousAnalyticsId(context.supabaseUserId, hmacSecret, "preview"),
+      identity: createPseudonymousAnalyticsId(context.appUserId, hmacSecret, "preview"),
       properties,
       route: context.route,
     });
   };
 
   await captureAuthenticatedShareExportEvent(
-    { exportMode: "new", operationId, outcome: "started", supabaseUserId },
+    { exportMode: "new", operationId, outcome: "started", appUserId },
     capture,
   );
   await captureAuthenticatedShareExportEvent(
-    { exportMode: "new", operationId, outcome: "succeeded", supabaseUserId },
+    { exportMode: "new", operationId, outcome: "succeeded", appUserId },
     capture,
   );
   assert.deepEqual(
@@ -1210,7 +1210,7 @@ test("authenticated share exports keep one start and one matching terminal ident
 
   captures.length = 0;
   await captureAuthenticatedShareExportEvent(
-    { exportMode: "replace", operationId, outcome: "started", supabaseUserId },
+    { exportMode: "replace", operationId, outcome: "started", appUserId },
     capture,
   );
   await captureAuthenticatedShareExportEvent(
@@ -1219,7 +1219,7 @@ test("authenticated share exports keep one start and one matching terminal ident
       exportMode: "replace",
       operationId,
       outcome: "failed",
-      supabaseUserId,
+      appUserId,
     },
     capture,
   );
@@ -1237,7 +1237,7 @@ test("authenticated share exports keep one start and one matching terminal ident
   captures.length = 0;
   assert.equal(
     await captureAuthenticatedShareExportEvent(
-      { exportMode: "new", operationId: "invalid", outcome: "started", supabaseUserId },
+      { exportMode: "new", operationId: "invalid", outcome: "started", appUserId },
       capture,
     ),
     false,
@@ -1251,7 +1251,7 @@ test("authenticated share exports keep one start and one matching terminal ident
   );
   assert.equal(
     await captureAuthenticatedShareExportEvent(
-      { exportMode: "new", operationId, outcome: "started", supabaseUserId: "anonymous" },
+      { exportMode: "new", operationId, outcome: "started", appUserId: "anonymous" },
       capture,
     ),
     false,
@@ -1259,7 +1259,7 @@ test("authenticated share exports keep one start and one matching terminal ident
   assert.equal(captures.length, 0);
   assert.equal(
     await captureAuthenticatedShareExportEvent(
-      { exportMode: "new", operationId, outcome: "started", supabaseUserId },
+      { exportMode: "new", operationId, outcome: "started", appUserId },
       () => {
         throw new Error("telemetry delivery failed");
       },
@@ -1291,7 +1291,7 @@ test("long-image export start and terminal reporters have one authoritative owne
   assert.ok(authenticated >= 0 && ownershipValidated > authenticated && start > ownershipValidated);
   assert.match(
     actions,
-    /const failPreparation = \(error: string\) =>[\s\S]*reportSharingMutation\([\s\S]*supabaseUserId: userData\.user\.id/,
+    /const failPreparation = \(error: string\) =>[\s\S]*reportSharingMutation\([\s\S]*appUserId: userData\.user\.id/,
   );
   assert.match(
     actions,
@@ -1679,6 +1679,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(
     styles,
     /\.public-matrix \.matrix-grid-header \{[\s\S]*position: -webkit-sticky;[\s\S]*position: sticky;[\s\S]*top: 0;/,
+  );
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-date-column::before,[\s\S]*background: var\(--background\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-matrix \.matrix-grid-header \.matrix-date-column::before,[\s\S]*background: var\(--muted\)/,
   );
   assert.match(
     styles,
