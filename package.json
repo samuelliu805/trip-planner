@@ -11,6 +11,9 @@
     "check:backend-provider-boundary": "node scripts/check-backend-provider-boundary.ts",
     "check:build-secret-boundary": "node scripts/check-build-secret-boundary.mjs",
     "check:cloudbase-pg-baseline": "node scripts/cloudbase-pg-baseline.mjs check",
+    "check:cloudbase-pg-rpc-surface": "node scripts/cloudbase-pg-rpc-surface.mjs check",
+    "check:cloudbase-pg-target": "node scripts/cloudbase-pg-target.mjs",
+    "check:database-pg-migrations": "node scripts/database-pg-migrations.mjs check",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:maps-provider-boundary": "node scripts/check-maps-provider-boundary.ts",
     "format": "prettier --write .",
@@ -18,11 +21,16 @@
     "prebuild": "npm run validate:public-templates",
     "test": "node src/features/itinerary/itinerary.test.ts && npm run test:platform",
     "test:platform": "node src/platform/platform.test.ts",
+    "test:cloudbase-pg-rpc-surface": "node scripts/cloudbase-pg-live-rpc-surface.mjs",
+    "test:cloudbase-pg-security": "node scripts/cloudbase-pg-live-rls.mjs",
     "start": "node --use-env-proxy node_modules/next/dist/bin/next start",
     "test:telemetry": "node src/lib/telemetry/telemetry.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "build:cloudbase-pg-baseline": "node scripts/cloudbase-pg-baseline.mjs build",
+    "build:cloudbase-pg-rpc-surface": "node scripts/cloudbase-pg-rpc-surface.mjs build",
+    "build:database-pg-migrations": "node scripts/database-pg-migrations.mjs build",
+    "new:database-pg-migration": "node scripts/database-pg-migrations.mjs new",
     "validate:public-templates": "node scripts/validate-public-templates.mjs"
   },
   "dependencies": {
@@ -56,6 +64,8 @@
     "zod": "latest"
   },
   "devDependencies": {
+    "@cloudbase/adapter-node": "2.0.0",
+    "@cloudbase/js-sdk": "3.9.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "latest",
     "@types/qrcode": "^1.5.6",

@@ -1,0 +1,77 @@
+name: CloudBase PG schema security
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudbase-pg-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_REGION: global
+      AUTH_PROVIDER: supabase
+      DATA_PROVIDER: supabase
+      NEXT_PUBLIC_MAPS_PROVIDER: google
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      STORAGE_PROVIDER: supabase
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - run: npm ci
+      - run: npm run check:cloudbase-pg-baseline
+      - run: npm run check:database-pg-migrations
+      - run: npm run check:cloudbase-pg-rpc-surface
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run check:backend-provider-boundary
+      - run: npm run check:maps-provider-boundary
+      - run: npm run check:build-secret-boundary
+      - run: npm run format:check
+      - run: npm run build
+
+  live-cloudbase-dev:
+    if: github.event_name == 'workflow_dispatch'
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: cloudbase-pg-dev
+    env:
+      CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      CLOUDBASE_REGION: ap-shanghai
+      CLOUDBASE_PG_INSTANCE_ID: pgdb-l4lhtrv7
+      CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+      CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
+      CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - run: npm ci
+      - name: Validate the approved disposable target
+        run: >-
+          npm run check:cloudbase-pg-target --
+          --env-id trip-planner-cn-dev-d3bz94038b26
+          --region ap-shanghai
+          --instance-id pgdb-l4lhtrv7
+      - run: npm run test:cloudbase-pg-rpc-surface
+      - run: npm run test:cloudbase-pg-security
