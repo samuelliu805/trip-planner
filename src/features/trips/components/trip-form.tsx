@@ -26,7 +26,7 @@ import {
   settleTripDateFields,
   type TripDateField,
 } from "@/features/trips/date-fields";
-import type { Tables } from "@/types/database";
+import type { Trip } from "@/platform/contracts/trips";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 /** Trip settings supply their fields and server action to the shared planner editor form. */
@@ -37,7 +37,7 @@ export function TripForm({
 }: {
   onSaved?: () => void;
   surface?: "planner_app_bar" | "trip_list";
-  trip: Tables<"trips">;
+  trip: Trip;
 }) {
   const [state, action, pending] = useActionState(updateTrip, {});
   const [dayCount, setDayCount] = useState(String(trip.day_count));
@@ -53,8 +53,10 @@ export function TripForm({
   }, [onSaved]);
 
   useEffect(() => {
-    if (state.success) savedRef.current?.();
-  }, [state.success]);
+    if (!state.success) return;
+    if (savedRef.current) savedRef.current();
+    else editor.onClose();
+  }, [editor, state.success]);
 
   function commitDateField(committed: TripDateField, value: string) {
     const settled = settleTripDateFields(

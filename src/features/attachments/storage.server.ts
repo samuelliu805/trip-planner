@@ -3,8 +3,11 @@ import "server-only";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getSupabaseConfig } from "@/lib/supabase/config";
+import {
+  getBackendCapabilities,
+  getResumableUploadEndpoint,
+  getStorageProvider,
+} from "@/platform/composition/server";
 
 import { ATTACHMENT_BUCKET, MAX_IMAGE_BYTES } from "./config";
 import { detectAttachmentType } from "./file-signature";
@@ -36,9 +39,13 @@ export async function createImageThumbnail(bytes: Uint8Array) {
 }
 
 export async function verifyStoredPoster(objectKey: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.storage.from(ATTACHMENT_BUCKET).download(objectKey);
-  if (error || !data) return false;
+  if (!getBackendCapabilities().signedUrls) return false;
+  let data: Blob;
+  try {
+    data = await getStorageProvider(ATTACHMENT_BUCKET).download(objectKey);
+  } catch {
+    return false;
+  }
   const bytes = new Uint8Array(await data.arrayBuffer());
   return (
     bytes.byteLength <= 2 * 1024 * 1024 && detectAttachmentType(bytes)?.mimeType === "image/webp"
@@ -46,23 +53,15 @@ export async function verifyStoredPoster(objectKey: string) {
 }
 
 export async function createSignedAssetUpload(objectKey: string) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.storage
-    .from(ATTACHMENT_BUCKET)
-    .createSignedUploadUrl(objectKey, { upsert: false });
-  if (error || !data) throw new Error("A private upload authorization could not be created.");
-  const { url } = getSupabaseConfig();
-  const projectUrl = new URL(url);
-  const projectRef = projectUrl.hostname.match(/^([^.]+)\.supabase\.co$/)?.[1];
-  const storageOrigin = projectRef
-    ? `${projectUrl.protocol}//${projectRef}.storage.supabase.co`
-    : projectUrl.origin;
+  if (!getBackendCapabilities().signedUrls)
+    throw new Error("Private uploads are not supported by this backend.");
+  const data = await getStorageProvider(ATTACHMENT_BUCKET).createSignedUploadUrl(objectKey);
   return {
     bucket: ATTACHMENT_BUCKET as typeof ATTACHMENT_BUCKET,
     objectKey,
     signedUrl: data.signedUrl,
     token: data.token,
-    tusEndpoint: `${storageOrigin}/storage/v1/upload/resumable`,
+    tusEndpoint: getResumableUploadEndpoint(),
   };
 }
 
@@ -75,10 +74,13 @@ export async function createAssetAccessRedirect({
   fileName: string;
   objectKey: string;
 }) {
-  const admin = createAdminClient();
-  const { data, error } = await admin.storage
-    .from(ATTACHMENT_BUCKET)
-    .createSignedUrl(objectKey, 60, download ? { download: fileName } : undefined);
-  if (error || !data) return null;
-  return data.signedUrl;
+  if (!getBackendCapabilities().signedUrls) return null;
+  try {
+    return await getStorageProvider(ATTACHMENT_BUCKET).createSignedUrl(
+      objectKey,
+      download ? { download: fileName } : undefined,
+    );
+  } catch {
+    return null;
+  }
 }

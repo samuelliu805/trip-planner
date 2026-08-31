@@ -1,6 +1,8 @@
 export const attachmentsZhCN: Record<string, string> = {
   "Add files": "添加文件",
+  "Asset cleanup is not supported by this backend": "当前后端不支持附件清理。",
   Attachments: "附件",
+  "Attachments are unavailable.": "附件功能暂不可用。",
   "Delete attachment": "删除附件",
   "Delete this attachment?": "要删除这个附件吗？",
   "Files stay private here and are copied into the Plan when you Apply this idea.":

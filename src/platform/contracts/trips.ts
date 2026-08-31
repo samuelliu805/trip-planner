@@ -36,7 +36,10 @@ export type UpdateTripInput = Readonly<{
 export interface TripRepository {
   listForCurrentUser(input?: { status?: TripStatus }): Promise<Trip[]>;
   getById(id: string): Promise<Trip | null>;
+  getDefaultCurrencyForCurrentUser(): Promise<string | null>;
   create(input: CreateTripInput): Promise<Trip>;
   update(id: string, input: UpdateTripInput): Promise<Trip>;
+  setStatus(id: string, status: TripStatus): Promise<Trip>;
+  renameIfTitle(id: string, currentTitle: string, nextTitle: string): Promise<boolean>;
   remove(id: string): Promise<void>;
 }

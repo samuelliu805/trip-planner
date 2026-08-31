@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 
 import { firstIssue, researchDomainError, revalidateResearch } from "./action-helpers";
 import { researchApplicationSchema, researchApplySchema } from "./schema";
@@ -23,8 +23,8 @@ export async function applyResearchItem(input: {
 }): Promise<ResearchMutationResult<AppliedResearchResult>> {
   const parsed = researchApplySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("apply_research_item_to_variant_v2", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("apply_research_item_to_variant_v2", {
     schedule_choice: parsed.data.scheduleChoice,
     target_item_id: parsed.data.targetItemId ?? undefined,
     target_research_item_id: parsed.data.researchItemId,
@@ -46,13 +46,13 @@ export async function applyResearchItem(input: {
     result: { data: result },
   });
   const [application, selection] = await Promise.all([
-    supabase
+    database
       .from("research_plan_applications")
       .select("*")
       .eq("id", result.applicationId)
       .eq("trip_id", parsed.data.tripId)
       .maybeSingle(),
-    supabase
+    database
       .from("variant_research_selections")
       .select("*")
       .eq("trip_id", parsed.data.tripId)
@@ -74,8 +74,8 @@ export async function revertResearchApplication(input: {
 }): Promise<ResearchMutationResult<RevertRpcResult>> {
   const parsed = researchApplicationSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("revert_research_plan_application", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("revert_research_plan_application", {
     target_application_id: parsed.data.applicationId,
     target_trip_id: parsed.data.tripId,
   });

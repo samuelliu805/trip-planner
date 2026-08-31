@@ -118,7 +118,7 @@ export function PlannerMatrix({
               >
                 <div
                   aria-selected={selectedDayRow === row}
-                  className={`sticky left-0 z-20 flex w-24 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "bg-primary/10 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                  className={`sticky left-0 z-20 flex w-24 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "matrix-frozen-selected shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
                   onClick={() => selectDay(row)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -129,41 +129,43 @@ export function PlannerMatrix({
                   role="rowheader"
                   tabIndex={0}
                 >
-                  <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
-                    <T message={"Day {day}"} values={{ day: day.day_number }} />
-                  </span>
-                  <span className="block text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
-                    {day.date
-                      ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                  <div className="matrix-frozen-content flex h-full flex-col">
+                    <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
+                      <T message={"Day {day}"} values={{ day: day.day_number }} />
+                    </span>
+                    <span className="block text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
+                      {day.date
+                        ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
+                            locale: locale === "zh-CN" ? zhCN : undefined,
+                          })
+                        : t("Date TBD")}
+                    </span>
+                    {day.date ? (
+                      <span className="block font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
+                        {format(parseISO(day.date), "EEE", {
                           locale: locale === "zh-CN" ? zhCN : undefined,
-                        })
-                      : t("Date TBD")}
-                  </span>
-                  {day.date ? (
-                    <span className="block font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
-                      {format(parseISO(day.date), "EEE", {
-                        locale: locale === "zh-CN" ? zhCN : undefined,
-                      })}
-                    </span>
-                  ) : (
-                    <span className="hidden font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px] sm:block">
-                      <T message={" Add dates later "} />
-                    </span>
-                  )}
-                  <DayActions
-                    day={day}
-                    isOnlyDay={workspace.days.length === 1}
-                    onInsert={(position) => void insertDay(position)}
-                    onRemove={(dayId) => void removeDay(dayId)}
-                    pending={dayMutationPending}
-                    visible={workspace.days.length === 1 || selectedDayRow === row}
-                  />
+                        })}
+                      </span>
+                    ) : (
+                      <span className="hidden font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px] sm:block">
+                        <T message={" Add dates later "} />
+                      </span>
+                    )}
+                    <DayActions
+                      day={day}
+                      isOnlyDay={workspace.days.length === 1}
+                      onInsert={(position) => void insertDay(position)}
+                      onRemove={(dayId) => void removeDay(dayId)}
+                      pending={dayMutationPending}
+                      visible={workspace.days.length === 1 || selectedDayRow === row}
+                    />
+                  </div>
                 </div>
                 <div
                   className="sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
                   role="rowheader"
                 >
-                  {day.day_number}
+                  <span className="matrix-frozen-content">{day.day_number}</span>
                 </div>
                 {categories.map((category, column) => {
                   const coordinate = { row, column };

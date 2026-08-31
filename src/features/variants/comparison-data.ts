@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 import { knownCostFromPrices } from "@/features/research/money";
 
 import {
@@ -19,8 +19,8 @@ export async function getVariantComparison(
   tripId: string,
   dayNumber?: number,
 ): Promise<{ data: VariantComparisonProjection[] | null; error: string | null }> {
-  const supabase = await createClient();
-  const { data: variants, error: variantsError } = await supabase
+  const database = await getRelationalDatabase();
+  const { data: variants, error: variantsError } = await database
     .from("route_variants")
     .select("id, name, color, is_primary, created_at")
     .eq("trip_id", tripId)
@@ -33,15 +33,15 @@ export async function getVariantComparison(
 
   const variantIds = variants.map(({ id }) => id);
   const [daysResult, activitiesResult, pricesResult] = await Promise.all([
-    supabase
+    database
       .from("trip_days")
       .select("id, variant_id, day_number, date")
       .in("variant_id", variantIds)
       .order("day_number", { ascending: true })
       .order("id", { ascending: true }),
-    supabase
+    database
       .from("itinerary_items")
-      .select(
+      .select<ComparisonCityRow>(
         "id, variant_id, day_id, type, title, sort_order, place_id, place:places(id, google_place_id, formatted_address, latitude, longitude, locality_name, country_code)",
       )
       .eq("trip_id", tripId)
@@ -50,7 +50,7 @@ export async function getVariantComparison(
       .order("day_id", { ascending: true })
       .order("sort_order", { ascending: true })
       .order("id", { ascending: true }),
-    supabase
+    database
       .from("itinerary_items")
       .select("variant_id, price_amount, price_currency")
       .eq("trip_id", tripId)
@@ -69,7 +69,7 @@ export async function getVariantComparison(
     };
 
   const days = (daysResult.data ?? []) as ComparisonDayRow[];
-  const activities = (activitiesResult.data ?? []) as ComparisonCityRow[];
+  const activities = activitiesResult.data ?? [];
   const projections = normalizeVariantComparisonProjection(
     variants as ComparisonVariantRow[],
     days,
@@ -89,7 +89,7 @@ export async function getVariantComparison(
 
   const dayIds = days.filter(({ day_number }) => day_number === dayNumber).map(({ id }) => id);
   if (!dayIds.length) return { data: projections, error: null };
-  const plansResult = await supabase
+  const plansResult = await database
     .from("day_route_plans")
     .select("id, variant_id, day_id")
     .eq("trip_id", tripId)
@@ -103,13 +103,13 @@ export async function getVariantComparison(
   let calculations: ComparisonRouteCalculationRow[] = [];
   if (planIds.length) {
     const [stopsResult, calculationsResult] = await Promise.all([
-      supabase
+      database
         .from("day_route_stops")
         .select("plan_id, item_id, position")
         .in("plan_id", planIds)
         .order("plan_id", { ascending: true })
         .order("position", { ascending: true }),
-      supabase
+      database
         .from("day_route_calculations")
         .select("plan_id, calculated_legs")
         .in("plan_id", planIds),

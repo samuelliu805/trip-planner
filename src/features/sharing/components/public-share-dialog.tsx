@@ -27,7 +27,7 @@ import {
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
-import type { Tables } from "@/types/database";
+import type { Trip } from "@/platform/contracts/trips";
 
 import {
   createPublicItineraryLink,
@@ -60,7 +60,7 @@ export function PublicShareDialog({
   initialLinks: PublicItineraryLink[];
   renderTrigger?: boolean;
   siteUrl: string;
-  trip: Tables<"trips">;
+  trip: Trip;
   variants: PlannerVariant[];
 }) {
   const { locale, t } = useI18n();

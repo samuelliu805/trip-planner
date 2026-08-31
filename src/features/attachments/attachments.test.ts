@@ -395,7 +395,7 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(sessionRoute, /discard_item_asset_session_v1/);
   assert.match(cleanup, /asset_cleanup_batch_v2/);
   assert.match(cleanup, /untracked_asset_storage_batch_v1/);
-  assert.match(cleanup, /storage\.from\("trip-assets"\)\.remove/);
+  assert.match(cleanup, /getStorageProvider\("trip-assets"\)[\s\S]*storage\.remove/);
   assert.equal(
     formControls.every((source) => /ring-inset/.test(source) && /max-w-full/.test(source)),
     true,

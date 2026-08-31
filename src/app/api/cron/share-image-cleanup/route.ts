@@ -3,7 +3,11 @@ import { after } from "next/server";
 import { z } from "zod";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getBackendCapabilities,
+  getPrivilegedRelationalDatabase,
+  getStorageProvider,
+} from "@/platform/composition/server";
 import { serverTelemetryContext } from "@/lib/telemetry/context";
 import type { CleanupProperties, TelemetryErrorCode } from "@/lib/telemetry/events";
 import { logger } from "@/lib/telemetry/logger";
@@ -18,8 +22,11 @@ const cleanupBatchSchema = z.array(
 );
 
 async function cleanupExpiredShareImages() {
-  const supabase = createAdminClient();
-  const batchResult = await supabase.rpc("expired_share_image_cleanup_batch_v1", {
+  if (!getBackendCapabilities().signedUrls)
+    return { deletedFiles: 0, error: "Share-image cleanup unavailable", revokedImages: 0 };
+  const database = getPrivilegedRelationalDatabase();
+  const storage = getStorageProvider("share-images");
+  const batchResult = await database.rpc("expired_share_image_cleanup_batch_v1", {
     requested_limit: 100,
   });
   const batch = cleanupBatchSchema.safeParse(batchResult.data);
@@ -29,15 +36,15 @@ async function cleanupExpiredShareImages() {
 
   const paths = [...new Set(batch.data.flatMap((candidate) => candidate.paths))];
   for (let index = 0; index < paths.length; index += 100) {
-    const { error } = await supabase.storage
-      .from("share-images")
-      .remove(paths.slice(index, index + 100));
-    if (error)
+    try {
+      await storage.remove(paths.slice(index, index + 100));
+    } catch {
       return { deletedFiles: 0, error: "Share-image storage cleanup failed", revokedImages: 0 };
+    }
   }
 
   const exportIds = batch.data.map((candidate) => candidate.exportId);
-  const finalizeResult = await supabase.rpc("finalize_expired_share_image_cleanup_v1", {
+  const finalizeResult = await database.rpc("finalize_expired_share_image_cleanup_v1", {
     target_export_ids: exportIds,
   });
   if (finalizeResult.error) {
@@ -113,11 +120,11 @@ export async function GET(request: Request) {
       assets_deleted: assets.deletedAssets,
       duration_ms: Date.now() - startedAt,
       share_files_deleted: shareImages.deletedFiles,
-      share_images_revoked: shareImages.revokedImages,
+      share_images_revoked: shareImages.revokedImages ?? 0,
       untracked_files_deleted: assets.untrackedFiles,
     };
     const backlog =
-      shareImages.revokedImages >= 100 ||
+      (shareImages.revokedImages ?? 0) >= 100 ||
       assets.deletedAssets >= 100 ||
       assets.untrackedFiles >= 100;
     const error = shareImages.error ?? assets.error;

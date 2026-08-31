@@ -1,11 +1,14 @@
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 
-import { updateSession } from "@/lib/supabase/proxy";
+import {
+  continueWithoutProviderSession,
+  updateProviderSession,
+} from "@/platform/composition/proxy";
 
 export async function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/share/")) return NextResponse.next();
-  return updateSession(request);
+  if (request.nextUrl.pathname.startsWith("/share/"))
+    return continueWithoutProviderSession(request);
+  return updateProviderSession(request);
 }
 
 export const config = {

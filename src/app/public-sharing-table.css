@@ -23,6 +23,7 @@
 }
 
 .public-matrix .matrix-grid-header {
+  background-color: var(--muted);
   position: -webkit-sticky;
   position: sticky;
   top: 0;
@@ -36,12 +37,35 @@
 .public-matrix .matrix-date-column,
 .public-matrix .matrix-day-column {
   box-sizing: border-box;
-  background-clip: padding-box;
+  background-clip: border-box;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   box-shadow: 1px 0 0 var(--border);
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.public-matrix .matrix-date-column::before,
+.public-matrix .matrix-day-column::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: inherit;
+  content: "";
+  pointer-events: none;
+  transform: translateZ(0);
+}
+
+.public-matrix .matrix-frozen-content {
+  position: relative;
+  z-index: 1;
+}
+
+.public-matrix .matrix-grid-header .matrix-date-column::before,
+.public-matrix .matrix-grid-header .matrix-day-column::before {
+  background: var(--muted);
 }
 
 .public-matrix .matrix-date-column {

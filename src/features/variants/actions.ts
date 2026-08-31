@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { getPlannerVariants } from "@/features/itinerary/data";
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 
 import { getVariantComparison } from "./comparison-data";
 import { getVariantDecisionSummary } from "./decision-summary-data";
@@ -88,8 +88,8 @@ export async function createRouteVariant(
 ): Promise<VariantMutationResult> {
   const parsed = createRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_route_variant", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("create_route_variant", {
     source_variant_id: parsed.data.sourceVariantId,
     target_trip_id: parsed.data.tripId,
     variant_color: parsed.data.color,
@@ -107,8 +107,8 @@ export async function duplicateRouteVariant(
 ): Promise<VariantMutationResult> {
   const parsed = duplicateRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("duplicate_route_variant", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("duplicate_route_variant", {
     source_variant_id: parsed.data.sourceVariantId,
     target_trip_id: parsed.data.tripId,
     variant_color: parsed.data.color,
@@ -126,8 +126,8 @@ export async function updateRouteVariant(
 ): Promise<VariantMutationResult> {
   const parsed = updateRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("update_route_variant_metadata", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("update_route_variant_metadata", {
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
     variant_color: parsed.data.color,
@@ -144,8 +144,8 @@ export async function setPrimaryRouteVariant(
 ): Promise<VariantMutationResult> {
   const parsed = routeVariantIdentitySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("set_primary_route_variant", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("set_primary_route_variant", {
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
   });
@@ -160,8 +160,8 @@ export async function deleteRouteVariant(
 ): Promise<VariantMutationResult> {
   const parsed = routeVariantIdentitySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("delete_route_variant", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("delete_route_variant", {
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
   });

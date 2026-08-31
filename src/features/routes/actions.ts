@@ -9,7 +9,7 @@ import { RouteProviderError } from "@/lib/providers/routes/errors";
 import { serializeRoutesV1CalculatedLegs } from "@/lib/providers/routes/persistence";
 import { resolveRouteProvider } from "@/lib/providers/routes/resolver.server";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 import type { Json } from "@/types/database";
 
 import { calculateRouteConfiguration, mapWithConcurrency } from "./calculator";
@@ -110,8 +110,8 @@ export async function saveDayRoutePlan(
       return { error: validationError };
     }
 
-    const supabase = await createClient();
-    const { data: planId, error } = await supabase.rpc("save_day_route_plan", {
+    const database = await getRelationalDatabase();
+    const { data: planId, error } = await database.rpc("save_day_route_plan", {
       ordered_item_ids: parsed.data.itemIds,
       requested_leg_modes: parsed.data.legModes,
       target_day_id: parsed.data.dayId,
@@ -143,8 +143,8 @@ export async function calculateDayRoute(
   if (!parsed.success) return { error: "The route calculation request is invalid." };
 
   try {
-    const supabase = await createClient();
-    const { data: owner, error: ownerError } = await supabase.rpc("is_trip_owner", {
+    const database = await getRelationalDatabase();
+    const { data: owner, error: ownerError } = await database.rpc("is_trip_owner", {
       target_trip_id: parsed.data.tripId,
     });
     if (ownerError || !owner) throw new Error("Trip owner access required.");
@@ -173,7 +173,7 @@ export async function calculateDayRoute(
       const normalized = JSON.parse(
         JSON.stringify(serializeRoutesV1CalculatedLegs(calculated.legs)),
       ) as Json;
-      const { error } = await supabase.rpc("save_day_route_calculation", {
+      const { error } = await database.rpc("save_day_route_calculation", {
         calculated_config_signature: calculated.configSignature,
         calculated_provider_schema_version: "routes-v1",
         calculated_total_distance_meters: calculated.totalDistanceMeters,
@@ -212,8 +212,8 @@ export async function calculateOverviewRoute(
   if (!parsed.success) return { error: "The Overview route calculation request is invalid." };
 
   try {
-    const supabase = await createClient();
-    const { data: owner, error: ownerError } = await supabase.rpc("is_trip_owner", {
+    const database = await getRelationalDatabase();
+    const { data: owner, error: ownerError } = await database.rpc("is_trip_owner", {
       target_trip_id: parsed.data.tripId,
     });
     if (ownerError || !owner) throw new Error("Trip owner access required.");
@@ -299,8 +299,8 @@ export async function clearDayRoutePlan(
   const parsed = clearRouteSchema.safeParse(input);
   if (!parsed.success) return { error: "The route clear request is invalid." };
   try {
-    const supabase = await createClient();
-    const { error } = await supabase.rpc("clear_day_route_plan", {
+    const database = await getRelationalDatabase();
+    const { error } = await database.rpc("clear_day_route_plan", {
       target_day_id: parsed.data.dayId,
       target_variant_id: parsed.data.variantId,
     });

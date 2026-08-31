@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
-import { ownerAttachmentsFromRows } from "@/features/attachments/owner-attachment-records";
+import {
+  ownerAttachmentsFromRows,
+  type OwnerAttachmentRow,
+} from "@/features/attachments/owner-attachment-records";
 import {
   updateItineraryItemSchema,
   type CreateItineraryItemInput,
@@ -17,8 +20,8 @@ import {
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { normalizedOptional, scheduleKind } from "@/features/itinerary/mutation-helpers";
 import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
-import { createClient } from "@/lib/supabase/server";
-import type { TablesUpdate } from "@/types/database";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
+import type { AppRow, AppUpdate } from "@/platform/contracts/database";
 import {
   firstIssue,
   mutationError,
@@ -34,6 +37,10 @@ import {
   reportItemMutation,
   reportItemMutations,
 } from "@/features/itinerary/item-telemetry.server";
+
+type SavedItineraryItemRow = AppRow<"itinerary_items"> & {
+  attachments?: OwnerAttachmentRow[] | null;
+};
 
 export async function loadPlannerWorkspace(tripId: string, variantId: string) {
   return getPlannerWorkspace(tripId, variantId);
@@ -74,8 +81,8 @@ export async function clearItineraryItems(
       error: "Legacy City data is retained for compatibility and cannot be cleared here.",
     });
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("clear_route_variant_items", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("clear_route_variant_items", {
     target_item_ids: parsed.data.itemIds,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
@@ -135,8 +142,8 @@ async function updateItineraryItemMutation(
     if (dayError) return { error: dayError };
   }
 
-  const supabase = await createClient();
-  const { data: existingItem, error: existingItemError } = await supabase
+  const database = await getRelationalDatabase();
+  const { data: existingItem, error: existingItemError } = await database
     .from("itinerary_items")
     .select("type, day_id, start_time, end_time, price_amount, price_currency")
     .eq("id", parsed.data.id)
@@ -158,7 +165,7 @@ async function updateItineraryItemMutation(
   let orderTargetItems:
     Array<{ id: string; sort_order: number; type: ItineraryItem["type"] }> | undefined;
   if (parsed.data.insertAfterItemId !== undefined) {
-    const { data: targetItems, error: orderReadError } = await supabase
+    const { data: targetItems, error: orderReadError } = await database
       .from("itinerary_items")
       .select("id, sort_order, type")
       .eq("day_id", orderTargetDayId)
@@ -178,7 +185,7 @@ async function updateItineraryItemMutation(
   let persistedPlaceId: string | null | undefined;
   try {
     persistedPlaceId = parsed.data.placeSnapshot
-      ? await persistPlaceSnapshot(supabase, parsed.data.tripId, parsed.data.placeSnapshot)
+      ? await persistPlaceSnapshot(database, parsed.data.tripId, parsed.data.placeSnapshot)
       : undefined;
   } catch (error) {
     return { error: error instanceof Error ? error.message : "The map place could not be saved." };
@@ -186,7 +193,7 @@ async function updateItineraryItemMutation(
   if (parsed.data.type === "transport" && parsed.data.details && "mode" in parsed.data.details) {
     const dayId = parsed.data.dayId ?? existingItem.day_id;
     const mode = parsed.data.details.mode as string;
-    const { count, error: transportError } = await supabase
+    const { count, error: transportError } = await database
       .from("itinerary_items")
       .select("id", { count: "exact", head: true })
       .eq("day_id", dayId)
@@ -199,7 +206,7 @@ async function updateItineraryItemMutation(
         error: `This day already has ${parsed.data.title ?? "that transport type"}. Choose a different transport type.`,
       };
   }
-  const values: TablesUpdate<"itinerary_items"> = {};
+  const values: AppUpdate<"itinerary_items"> = {};
   if (parsed.data.links !== undefined) values.booking_url = parsed.data.links[0]?.url ?? null;
   else if (parsed.data.bookingUrl !== undefined)
     values.booking_url = normalizedOptional(parsed.data.bookingUrl);
@@ -227,14 +234,16 @@ async function updateItineraryItemMutation(
     values.schedule_kind = scheduleKind(startTime, endTime);
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await database
     .from("itinerary_items")
     .update(values)
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
-    .select(
-      "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))",
+    .select<SavedItineraryItemRow>(
+      getBackendCapabilities().signedUrls
+        ? "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))"
+        : "*",
     )
     .maybeSingle();
   if (error || !data)
@@ -247,7 +256,7 @@ async function updateItineraryItemMutation(
     links =
       parsed.data.links === undefined
         ? undefined
-        : await replaceItemLinks(supabase, data.id, parsed.data.links);
+        : await replaceItemLinks(database, data.id, parsed.data.links);
   } catch (linkError) {
     return {
       error: linkError instanceof Error ? linkError.message : "The links could not be saved.",
@@ -267,7 +276,7 @@ async function updateItineraryItemMutation(
       { id: data.id, sort_order: data.sort_order, type: data.type },
       parsed.data.insertAfterItemId,
     );
-    const { error: reorderError } = await supabase.rpc("reorder_itinerary_items", {
+    const { error: reorderError } = await database.rpc("reorder_itinerary_items", {
       ordered_item_ids: orderedItemIds,
       target_day_id: orderTargetDayId,
     });

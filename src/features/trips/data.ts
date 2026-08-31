@@ -1,7 +1,6 @@
 import type { TripStatusFilter } from "@/features/trips/status";
 import type { TripListEntry } from "@/features/trips/types";
 import { getTripRepository } from "@/platform/composition/server";
-import type { Tables } from "@/types/database";
 
 function repositoryError(error: unknown) {
   return {
@@ -14,7 +13,11 @@ export async function listTrips(filter: TripStatusFilter = "open") {
     const data = await getTripRepository().listForCurrentUser({
       status: filter === "all" ? undefined : filter,
     });
-    return { data: data as TripListEntry[], error: null };
+    const trips: TripListEntry[] = data.map((trip) => ({
+      ...trip,
+      route_variants: trip.route_variants ?? [],
+    }));
+    return { data: trips, error: null };
   } catch (error) {
     return { data: null, error: repositoryError(error) };
   }
@@ -23,7 +26,7 @@ export async function listTrips(filter: TripStatusFilter = "open") {
 export async function getTrip(tripId: string) {
   try {
     const data = await getTripRepository().getById(tripId);
-    return { data: data as Tables<"trips"> | null, error: null };
+    return { data, error: null };
   } catch (error) {
     return { data: null, error: repositoryError(error) };
   }

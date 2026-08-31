@@ -12,7 +12,7 @@ import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
 import { getPlanResearchItems, getResearchPlanState } from "@/features/research/data";
 import { getExchangeRateTable } from "@/features/research/exchange-rates.server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
@@ -23,18 +23,26 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   const { tripId } = await params;
   if (!tripIdSchema.safeParse(tripId).success) notFound();
 
-  const [{ data: trip, error }, variantsResult, researchItems, query, exchangeRates, siteUrl] =
-    await Promise.all([
-      getTrip(tripId),
-      getPlannerVariants(tripId),
-      getPlanResearchItems(tripId),
-      searchParams,
-      getExchangeRateTable(),
-      getRequestSiteUrl(),
-    ]);
+  const [
+    { data: trip, error },
+    variantsResult,
+    researchItemsResult,
+    query,
+    exchangeRates,
+    siteUrl,
+  ] = await Promise.all([
+    getTrip(tripId),
+    getPlannerVariants(tripId),
+    getPlanResearchItems(tripId),
+    searchParams,
+    getExchangeRateTable(),
+    getRequestSiteUrl(),
+  ]);
   if (error || !trip) notFound();
   if (variantsResult.error || !variantsResult.data)
     throw new Error(variantsResult.error ?? "The route variants could not be loaded.");
+  if (researchItemsResult.error || !researchItemsResult.data)
+    throw new Error(researchItemsResult.error ?? "Research items could not be loaded.");
 
   const resolution = resolveActiveVariant(variantsResult.data, query.variant);
   if (!resolution.activeVariant) throw new Error(resolution.error);
@@ -47,18 +55,19 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     throw new Error(workspaceError ?? "The selected route variant could not be loaded.");
   if (planState.error) throw new Error(planState.error);
 
-  const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  const owner = authData.user?.id === trip.owner_id;
-  const shareLinks = owner ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
+  const user = await getAuthProvider().getCurrentUser();
+  const owner = user?.id === trip.owner_id;
+  const sharingEnabled = getBackendCapabilities().signedUrls;
+  const shareLinks =
+    owner && sharingEnabled ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
   return (
     <main className="trip-detail-page trip-planner-page flex h-dvh min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <PlannerMapProvider>
           <PlannerWorkspace
-            accountEmail={authData.user?.email ?? "Account"}
+            accountEmail={user?.email ?? String(user?.metadata.username ?? "Account")}
             exchangeRates={exchangeRates}
-            initialResearchItems={researchItems}
+            initialResearchItems={researchItemsResult.data}
             initialResearchSelections={planState.selections}
             initialSettingsOpen={query.settings === "1"}
             initialVariants={variantsResult.data}
@@ -66,7 +75,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             trip={trip}
             deleteError={query.error === "delete"}
             shareControls={
-              owner ? (
+              owner && sharingEnabled ? (
                 <PublicShareDialog
                   activeVariantId={workspace.variant.id}
                   initialOpen={query.share === "1"}

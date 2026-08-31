@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/platform/composition/server";
 import type { AttachmentTarget } from "@/lib/telemetry/events";
 import { reportAuthoritativeMutationOutcome, telemetryOperationId } from "@/lib/telemetry/product";
 import {
@@ -10,24 +10,22 @@ export async function reportAttachmentMutation<Result extends object>(options: {
   mutation: "upload" | "delete";
   operationId?: unknown;
   result: Result;
-  supabaseUserId?: string;
+  appUserId?: string;
   target: AttachmentTarget;
 }): Promise<Result> {
   const operationId = telemetryOperationId(options.operationId);
   if (!operationId || !serverProductTelemetryEnabled()) return options.result;
-  let supabaseUserId = options.supabaseUserId;
-  if (!supabaseUserId)
+  let appUserId = options.appUserId;
+  if (!appUserId)
     try {
-      const supabase = await createClient();
-      const { data } = await supabase.auth.getUser();
-      supabaseUserId = data.user?.id;
+      appUserId = (await getAuthProvider().getCurrentUser())?.id;
     } catch {
       // Identity lookup cannot replace an authoritative attachment result.
     }
   const context = {
-    actorType: supabaseUserId ? ("authenticated" as const) : ("anonymous" as const),
+    actorType: appUserId ? ("authenticated" as const) : ("anonymous" as const),
     route: "/trips/[tripId]",
-    supabaseUserId,
+    appUserId,
   };
   const properties = {
     attachment_target: options.target,

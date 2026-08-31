@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthProvider } from "@/platform/composition/server";
 import type { ExportMode, ShareArtifact } from "@/lib/telemetry/events";
 import { reportAuthoritativeMutationOutcome, telemetryOperationId } from "@/lib/telemetry/product";
 import {
@@ -34,7 +34,7 @@ const captureShareExportTelemetry: ShareExportTelemetryCapture = async (
 export async function reportShareExportStarted(options: {
   exportMode: ExportMode;
   operationId: unknown;
-  supabaseUserId: string;
+  appUserId: string;
 }): Promise<void> {
   if (!serverProductTelemetryEnabled()) return;
   await captureAuthenticatedShareExportEvent(
@@ -49,24 +49,22 @@ export async function reportSharingMutation<Result extends object>(options: {
   mutation: SharingMutation;
   operationId?: unknown;
   result: Result;
-  supabaseUserId?: string;
+  appUserId?: string;
 }): Promise<Result> {
   const operationId = telemetryOperationId(options.operationId);
   if (!operationId || !serverProductTelemetryEnabled()) return options.result;
-  let supabaseUserId = options.supabaseUserId;
-  if (!supabaseUserId) {
+  let appUserId = options.appUserId;
+  if (!appUserId) {
     try {
-      const supabase = await createClient();
-      const { data } = await supabase.auth.getUser();
-      supabaseUserId = data.user?.id;
+      appUserId = (await getAuthProvider().getCurrentUser())?.id;
     } catch {
       // Identity lookup cannot replace an authoritative sharing result.
     }
   }
   const context = {
-    actorType: supabaseUserId ? ("authenticated" as const) : ("anonymous" as const),
+    actorType: appUserId ? ("authenticated" as const) : ("anonymous" as const),
     route: "/trips/[tripId]",
-    supabaseUserId,
+    appUserId,
   };
   const base = {
     operation_id: operationId,
@@ -83,14 +81,14 @@ export async function reportSharingMutation<Result extends object>(options: {
             exportMode,
             operationId,
             outcome: "failed",
-            supabaseUserId,
+            appUserId,
           },
           captureShareExportTelemetry,
         );
       },
       succeeded: async () => {
         await captureAuthenticatedShareExportEvent(
-          { exportMode, operationId, outcome: "succeeded", supabaseUserId },
+          { exportMode, operationId, outcome: "succeeded", appUserId },
           captureShareExportTelemetry,
         );
       },

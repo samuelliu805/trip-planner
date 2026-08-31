@@ -14,21 +14,25 @@ import {
   type ReorderItineraryItemsInput,
 } from "@/features/itinerary/day-schema";
 import { buildCopyRows } from "@/features/itinerary/mutation-helpers";
-import type { ItineraryItem, MutationResult } from "@/features/itinerary/types";
-import { createClient } from "@/lib/supabase/server";
-import type { TablesInsert } from "@/types/database";
+import type { ItineraryItem, ItineraryItemLink, MutationResult } from "@/features/itinerary/types";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
+import type { AppInsert, AppRow } from "@/platform/contracts/database";
 import { firstIssue, mutationError } from "@/features/itinerary/action-helpers";
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { canonicalActivityOrderIds } from "@/features/itinerary/activity-order";
 import { reportItemMutations } from "@/features/itinerary/item-telemetry.server";
+
+type ItineraryItemWithLinksRow = AppRow<"itinerary_items"> & {
+  links?: ItineraryItemLink[] | null;
+};
 
 export async function insertTripDay(
   input: InsertTripDayInput,
 ): Promise<MutationResult<{ id: string }>> {
   const parsed = insertTripDaySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("insert_variant_day", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("insert_variant_day", {
     before_day_number: parsed.data.beforeDayNumber,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
@@ -44,8 +48,8 @@ export async function removeTripDay(
 ): Promise<MutationResult<{ id: string }>> {
   const parsed = removeTripDaySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("remove_variant_day", {
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("remove_variant_day", {
     target_day_id: parsed.data.dayId,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
@@ -61,8 +65,8 @@ export async function reorderVariantDays(
 ): Promise<MutationResult<import("@/features/itinerary/types").PlannerWorkspace>> {
   const parsed = reorderVariantDaysSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("reorder_variant_days", {
+  const database = await getRelationalDatabase();
+  const { error } = await database.rpc("reorder_variant_days", {
     ordered_day_ids: parsed.data.orderedDayIds,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
@@ -94,8 +98,8 @@ async function reorderItineraryItemsMutation(
   const parsed = reorderItineraryItemsSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("reorder_itinerary_items", {
+  const database = await getRelationalDatabase();
+  const { error } = await database.rpc("reorder_itinerary_items", {
     ordered_item_ids: parsed.data.items.map(({ id }) => id),
     target_day_id: parsed.data.dayId,
   });
@@ -128,16 +132,20 @@ async function copyItineraryItemsMutation(
   const parsed = copyItineraryItemsSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
-  const supabase = await createClient();
+  const database = await getRelationalDatabase();
   const [{ data: sources, error: sourceError }, { data: targetDay, error: dayError }] =
     await Promise.all([
-      supabase
+      database
         .from("itinerary_items")
-        .select("*, links:itinerary_item_links(id, item_id, label, url, sort_order)")
+        .select<ItineraryItemWithLinksRow>(
+          getBackendCapabilities().itineraryItemLinks
+            ? "*, links:itinerary_item_links(id, item_id, label, url, sort_order)"
+            : "*",
+        )
         .eq("trip_id", parsed.data.tripId)
         .eq("variant_id", parsed.data.variantId)
         .in("id", parsed.data.sourceItemIds),
-      supabase
+      database
         .from("trip_days")
         .select("id, variant_id")
         .eq("id", parsed.data.targetDayId)
@@ -161,7 +169,7 @@ async function copyItineraryItemsMutation(
   if (sources.some(({ variant_id }) => variant_id !== targetDay.variant_id))
     return { error: "Items can only be copied within the active route variant." };
 
-  const { data: targetItems, error: orderError } = await supabase
+  const { data: targetItems, error: orderError } = await database
     .from("itinerary_items")
     .select("id, sort_order, type")
     .eq("day_id", targetDay.id)
@@ -170,8 +178,11 @@ async function copyItineraryItemsMutation(
   if (orderError) return { error: mutationError(orderError.message) };
 
   const sourceById = new Map((sources ?? []).map((item) => [item.id, item]));
-  const orderedSources = parsed.data.sourceItemIds.map((id) => sourceById.get(id)!);
-  const copies: TablesInsert<"itinerary_items">[] = buildCopyRows(
+  const orderedSources = parsed.data.sourceItemIds.map((id) => {
+    const item = sourceById.get(id)!;
+    return { ...item, links: item.links ?? undefined };
+  });
+  const copies: AppInsert<"itinerary_items">[] = buildCopyRows(
     orderedSources,
     targetDay.id,
     Math.max(-1, ...(targetItems ?? []).map(({ sort_order }) => sort_order)) + 1,
@@ -179,7 +190,7 @@ async function copyItineraryItemsMutation(
   );
   if (orderedSources.some(({ type }) => type === "location"))
     return { error: "Legacy City data is retained for compatibility and cannot be copied." };
-  const { data, error } = await supabase.from("itinerary_items").insert(copies).select("*");
+  const { data, error } = await database.from("itinerary_items").insert(copies).select("*");
   if (error || !data || data.length !== copies.length)
     return { error: mutationError(error?.message ?? "Not all items could be copied.") };
 
@@ -191,10 +202,10 @@ async function copyItineraryItemsMutation(
       url: link.url,
     })),
   );
-  if (copiedLinks.length) {
-    const { error: linksError } = await supabase.from("itinerary_item_links").insert(copiedLinks);
+  if (copiedLinks.length && getBackendCapabilities().itineraryItemLinks) {
+    const { error: linksError } = await database.from("itinerary_item_links").insert(copiedLinks);
     if (linksError) {
-      await supabase
+      await database
         .from("itinerary_items")
         .delete()
         .in(
@@ -206,12 +217,12 @@ async function copyItineraryItemsMutation(
   }
 
   const orderedItemIds = canonicalActivityOrderIds([...(targetItems ?? []), ...data]);
-  const { error: reorderError } = await supabase.rpc("reorder_itinerary_items", {
+  const { error: reorderError } = await database.rpc("reorder_itinerary_items", {
     ordered_item_ids: orderedItemIds,
     target_day_id: targetDay.id,
   });
   if (reorderError) {
-    await supabase
+    await database
       .from("itinerary_items")
       .delete()
       .in(

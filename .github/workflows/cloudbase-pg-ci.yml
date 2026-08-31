@@ -34,6 +34,8 @@ jobs:
         with:
           cache: npm
           node-version: 24
+      - name: Verify exact workflow head
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - run: npm ci
       - run: npm run check:cloudbase-pg-baseline
       - run: npm run check:database-pg-migrations
@@ -47,25 +49,61 @@ jobs:
       - run: npm run build
       - run: npm run check:build-secret-boundary
 
-  live-cloudbase-dev:
-    if: github.event_name == 'workflow_dispatch'
-    needs: static
+  cn-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    environment: cloudbase-pg-dev
+    timeout-minutes: 30
     env:
+      APP_REGION: cn
+      AUTH_PROVIDER: cloudbase
       CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      CLOUDBASE_PUBLISHABLE_KEY: ci-placeholder
       CLOUDBASE_REGION: ap-shanghai
-      CLOUDBASE_PG_INSTANCE_ID: pgdb-l4lhtrv7
-      CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
-      CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
-      CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
+      DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_MAPS_PROVIDER: amap
+      NEXT_PUBLIC_SITE_URL: https://cn-preview.example.invalid
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      STORAGE_PROVIDER: cloudbase
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           cache: npm
           node-version: 24
+      - name: Verify exact workflow head
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - run: npm ci
+      - run: npm run build
+      - run: npm run check:build-secret-boundary
+
+  live-cloudbase-dev:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [static, cn-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: cloudbase-pg-dev
+    env:
+      APP_REGION: cn
+      AUTH_PROVIDER: cloudbase
+      CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      CLOUDBASE_REGION: ap-shanghai
+      CLOUDBASE_PG_INSTANCE_ID: pgdb-l4lhtrv7
+      CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+      DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_MAPS_PROVIDER: amap
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
+      PHASE3_APP_BASE_URL: http://127.0.0.1:3100
+      STORAGE_PROVIDER: cloudbase
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - name: Verify exact workflow head
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - run: npm ci
       - name: Validate the approved disposable target
         run: >-
@@ -73,5 +111,41 @@ jobs:
           --env-id trip-planner-cn-dev-d3bz94038b26
           --region ap-shanghai
           --instance-id pgdb-l4lhtrv7
-      - run: npm run test:cloudbase-pg-rpc-surface
-      - run: npm run test:cloudbase-pg-security
+      - name: Build the real CN application without Supabase configuration
+        run: npm run build
+      - name: Run raw RLS/RPC and real CN application paths
+        env:
+          CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
+          CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
+          PHASE3_START_APP: "1"
+        run: npm run test:cloudbase-phase-3-live
+      - name: Require controlled Global Supabase dev credentials
+        env:
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_DEV_URL }}
+        run: >-
+          test -n "$NEXT_PUBLIC_SUPABASE_URL" &&
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+      - name: Build the real Global application for reverse cookie isolation
+        env:
+          APP_REGION: global
+          AUTH_PROVIDER: supabase
+          DATA_PROVIDER: supabase
+          NEXT_PUBLIC_MAPS_PROVIDER: google
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_DEV_URL }}
+          STORAGE_PROVIDER: supabase
+        run: npm run build
+      - name: Prove Global rejects CN cookies on its real protected route
+        env:
+          APP_REGION: global
+          AUTH_PROVIDER: supabase
+          DATA_PROVIDER: supabase
+          NEXT_PUBLIC_MAPS_PROVIDER: google
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_DEV_URL }}
+          PHASE3_GLOBAL_BASE_URL: http://127.0.0.1:3100
+          STORAGE_PROVIDER: supabase
+        run: npm run test:global-cookie-isolation

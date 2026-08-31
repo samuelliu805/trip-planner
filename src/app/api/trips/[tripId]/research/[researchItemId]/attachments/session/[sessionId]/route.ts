@@ -3,7 +3,11 @@ import { z } from "zod";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import { attachmentError, attachmentSessionSchema } from "@/features/attachments/schema";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getAuthProvider,
+  getBackendCapabilities,
+  getRelationalDatabase,
+} from "@/platform/composition/server";
 
 const paramsSchema = z.object({
   researchItemId: z.uuid(),
@@ -14,12 +18,13 @@ const paramsSchema = z.object({
 async function authorizedRoute(
   params: Promise<{ researchItemId: string; sessionId: string; tripId: string }>,
 ) {
+  if (!getBackendCapabilities().signedUrls) return { error: new Response(null, { status: 404 }) };
   const route = paramsSchema.safeParse(await params);
   if (!route.success) return { error: new Response(null, { status: 404 }) };
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return { error: new Response(null, { status: 401 }) };
-  return { route: route.data, supabase };
+  const user = await getAuthProvider().getCurrentUser();
+  if (!user) return { error: new Response(null, { status: 401 }) };
+  const database = await getRelationalDatabase();
+  return { route: route.data, database };
 }
 
 export async function POST(
@@ -28,8 +33,8 @@ export async function POST(
 ) {
   const authorized = await authorizedRoute(params);
   if ("error" in authorized) return authorized.error;
-  const { route, supabase } = authorized;
-  const result = await supabase.rpc("commit_research_asset_session_v1", {
+  const { route, database } = authorized;
+  const result = await database.rpc("commit_research_asset_session_v1", {
     requested_draft_session_id: route.sessionId,
     target_research_item_id: route.researchItemId,
     target_trip_id: route.tripId,
@@ -47,8 +52,8 @@ export async function DELETE(
 ) {
   const authorized = await authorizedRoute(params);
   if ("error" in authorized) return authorized.error;
-  const { route, supabase } = authorized;
-  const result = await supabase.rpc("discard_research_asset_session_v1", {
+  const { route, database } = authorized;
+  const result = await database.rpc("discard_research_asset_session_v1", {
     requested_draft_session_id: route.sessionId,
     target_research_item_id: route.researchItemId,
     target_trip_id: route.tripId,

@@ -15,8 +15,9 @@ import { normalizedOptional, normalizedTimes, scheduleKind } from "./mutation-he
 import { createItineraryItemSchema, type CreateItineraryItemInput } from "./item-schema";
 import { reportItemMutation } from "./item-telemetry.server";
 import type { MutationResult } from "./types";
-import { createClient } from "../../lib/supabase/server";
-import type { Json, TablesInsert } from "../../types/database";
+import { getRelationalDatabase } from "@/platform/composition/server";
+import type { AppInsert } from "@/platform/contracts/database";
+import type { Json } from "../../types/database";
 
 export async function createItineraryItem(
   input: CreateItineraryItemInput,
@@ -46,8 +47,8 @@ async function createItineraryItemMutation(
   );
   if (dayError) return { error: dayError };
 
-  const supabase = await createClient();
-  const { data: dayItems, error: orderError } = await supabase
+  const database = await getRelationalDatabase();
+  const { data: dayItems, error: orderError } = await database
     .from("itinerary_items")
     .select("id, sort_order, type")
     .eq("day_id", parsed.data.dayId)
@@ -66,7 +67,7 @@ async function createItineraryItemMutation(
   let persistedPlaceId: string | null = null;
   try {
     persistedPlaceId = await persistPlaceSnapshot(
-      supabase,
+      database,
       parsed.data.tripId,
       parsed.data.placeSnapshot,
     );
@@ -74,7 +75,7 @@ async function createItineraryItemMutation(
     return { error: error instanceof Error ? error.message : "The map place could not be saved." };
   }
   if (parsed.data.type === "hotel") {
-    const { count, error: hotelError } = await supabase
+    const { count, error: hotelError } = await database
       .from("itinerary_items")
       .select("id", { count: "exact", head: true })
       .eq("day_id", parsed.data.dayId)
@@ -85,7 +86,7 @@ async function createItineraryItemMutation(
   }
   if (parsed.data.type === "transport") {
     const mode = parsed.data.details.mode;
-    const { count, error: transportError } = await supabase
+    const { count, error: transportError } = await database
       .from("itinerary_items")
       .select("id", { count: "exact", head: true })
       .eq("day_id", parsed.data.dayId)
@@ -98,7 +99,7 @@ async function createItineraryItemMutation(
       };
   }
   const times = normalizedTimes(parsed.data.startTime, parsed.data.endTime);
-  const values: TablesInsert<"itinerary_items"> = {
+  const values: AppInsert<"itinerary_items"> = {
     booking_url: parsed.data.links?.[0]?.url ?? normalizedOptional(parsed.data.bookingUrl),
     day_id: parsed.data.dayId,
     details: parsed.data.details as Json,
@@ -117,7 +118,7 @@ async function createItineraryItemMutation(
     type: parsed.data.type,
     variant_id: parsed.data.variantId,
   };
-  const { data, error } = await supabase
+  const { data, error } = await database
     .from("itinerary_items")
     .insert(values)
     .select("*")
@@ -126,9 +127,9 @@ async function createItineraryItemMutation(
 
   let links;
   try {
-    links = await replaceItemLinks(supabase, data.id, parsed.data.links ?? []);
+    links = await replaceItemLinks(database, data.id, parsed.data.links ?? []);
   } catch (linkError) {
-    await supabase.from("itinerary_items").delete().eq("id", data.id);
+    await database.from("itinerary_items").delete().eq("id", data.id);
     return {
       error: linkError instanceof Error ? linkError.message : "The links could not be saved.",
     };
@@ -139,12 +140,12 @@ async function createItineraryItemMutation(
     { id: data.id, sort_order: data.sort_order, type: data.type },
     parsed.data.insertAfterItemId,
   );
-  const { error: reorderError } = await supabase.rpc("reorder_itinerary_items", {
+  const { error: reorderError } = await database.rpc("reorder_itinerary_items", {
     ordered_item_ids: orderedItemIds,
     target_day_id: parsed.data.dayId,
   });
   if (reorderError) {
-    await supabase.from("itinerary_items").delete().eq("id", data.id);
+    await database.from("itinerary_items").delete().eq("id", data.id);
     return { error: mutationError(reorderError.message) };
   }
 

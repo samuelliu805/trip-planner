@@ -1,6 +1,6 @@
 import type { Coordinates } from "@/lib/providers/maps/types";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
-import type { Tables } from "@/types/database";
+import type { AppRow } from "@/platform/contracts/database";
 
 export const routeLegModes = [
   "walk",
@@ -54,12 +54,12 @@ export type DayRouteDraft = {
   variantId: string;
 };
 
-export type DayRouteStop = Tables<"day_route_stops">;
-export type DayRouteLeg = Omit<Tables<"day_route_legs">, "mode"> & { mode: RouteLegMode };
-export type DayRouteCalculation = Omit<Tables<"day_route_calculations">, "calculated_legs"> & {
+export type DayRouteStop = AppRow<"day_route_stops">;
+export type DayRouteLeg = Omit<AppRow<"day_route_legs">, "mode"> & { mode: RouteLegMode };
+export type DayRouteCalculation = Omit<AppRow<"day_route_calculations">, "calculated_legs"> & {
   calculatedLegs: CalculatedRouteLeg[];
 };
-export type DayRoutePlan = Tables<"day_route_plans"> & {
+export type DayRoutePlan = AppRow<"day_route_plans"> & {
   calculation: DayRouteCalculation | null;
   calculationState?: "updating";
   legs: DayRouteLeg[];

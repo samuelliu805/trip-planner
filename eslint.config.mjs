@@ -12,6 +12,7 @@ export default defineConfig([
     ],
     ignores: [
       "scripts/backfill-place-localities.ts",
+      "src/platform/cloudbase/client.ts",
       "src/platform/supabase/admin.ts",
       "src/platform/supabase/client.ts",
       "src/platform/supabase/proxy.ts",
@@ -33,8 +34,12 @@ export default defineConfig([
               name: "@supabase/supabase-js",
             },
             {
-              message: "CloudBase SDKs are reserved for a future src/platform/cloudbase adapter.",
+              message: "Import CloudBase only through the exact src/platform/cloudbase adapter.",
               name: "@cloudbase/js-sdk",
+            },
+            {
+              message: "Import CloudBase only through the exact src/platform/cloudbase adapter.",
+              name: "@cloudbase/adapter-node",
             },
             {
               message: "CloudBase SDKs are reserved for a future src/platform/cloudbase adapter.",
@@ -51,6 +56,7 @@ export default defineConfig([
                 "@supabase/ssr/*",
                 "@supabase/supabase-js/*",
                 "@cloudbase/js-sdk/*",
+                "@cloudbase/adapter-node/*",
                 "@cloudbase/node-sdk/*",
                 "@cloudbase/manager-node/*",
               ],

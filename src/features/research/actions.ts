@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 
 import {
   firstIssue,
@@ -18,10 +18,11 @@ import {
 } from "./schema";
 import {
   getCompareItems,
+  getResearchItemSelection,
   getResearchPlanSnapshot,
   getResearchPlanState,
   researchItemFromRow,
-  researchItemSelection,
+  type ResearchItemRow,
 } from "./data";
 import type { ResearchItem, ResearchMutationResult, ResearchWorkspaceSnapshot } from "./types";
 import { reportResearchMutation } from "./telemetry.server";
@@ -55,10 +56,10 @@ export async function createResearchItem(
 ): Promise<ResearchMutationResult<ResearchItem>> {
   const parsed = createResearchItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
+  const database = await getRelationalDatabase();
   let places;
   try {
-    places = await persistResearchPlaces(supabase, parsed.data);
+    places = await persistResearchPlaces(database, parsed.data);
   } catch (error) {
     return reportResearchMutation({
       category: parsed.data.category,
@@ -69,10 +70,10 @@ export async function createResearchItem(
       },
     });
   }
-  const { data, error } = await supabase
+  const { data, error } = await database
     .from("research_items")
     .insert(researchItemValues(parsed.data, places))
-    .select(researchItemSelection)
+    .select<ResearchItemRow>(getResearchItemSelection())
     .maybeSingle();
   if (error || !data)
     return reportResearchMutation({
@@ -86,7 +87,7 @@ export async function createResearchItem(
     category: parsed.data.category,
     mutation: "create",
     operationId: parsed.data.operationId,
-    result: { data: researchItemFromRow(data) as ResearchItem },
+    result: { data: researchItemFromRow(data) },
   });
 }
 
@@ -96,10 +97,10 @@ export async function updateResearchItem(
   const parsed = updateResearchItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const { id, ...values } = parsed.data;
-  const supabase = await createClient();
+  const database = await getRelationalDatabase();
   let places;
   try {
-    places = await persistResearchPlaces(supabase, values);
+    places = await persistResearchPlaces(database, values);
   } catch (error) {
     return reportResearchMutation({
       category: parsed.data.category,
@@ -110,12 +111,12 @@ export async function updateResearchItem(
       },
     });
   }
-  const { data, error } = await supabase
+  const { data, error } = await database
     .from("research_items")
     .update(researchItemValues(values, places))
     .eq("id", id)
     .eq("trip_id", values.tripId)
-    .select(researchItemSelection)
+    .select<ResearchItemRow>(getResearchItemSelection())
     .maybeSingle();
   if (error || !data)
     return reportResearchMutation({
@@ -129,7 +130,7 @@ export async function updateResearchItem(
     category: parsed.data.category,
     mutation: "update",
     operationId: parsed.data.operationId,
-    result: { data: researchItemFromRow(data) as ResearchItem },
+    result: { data: researchItemFromRow(data) },
   });
 }
 
@@ -141,8 +142,8 @@ export async function deleteResearchItem(input: {
 }): Promise<ResearchMutationResult<{ id: string }>> {
   const parsed = deleteResearchItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const database = await getRelationalDatabase();
+  const { data, error } = await database
     .from("research_items")
     .delete()
     .eq("id", parsed.data.id)

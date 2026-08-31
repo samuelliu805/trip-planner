@@ -1,25 +1,25 @@
-import type { Tables } from "@/types/database";
+import type { AppRow } from "@/platform/contracts/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import type { DayRoutePlan } from "@/features/routes/types";
 import type { OwnerAttachment } from "@/features/attachments/schema";
 
 export type ItineraryItemLink = Pick<
-  Tables<"itinerary_item_links">,
+  AppRow<"itinerary_item_links">,
   "id" | "item_id" | "label" | "url" | "sort_order"
 >;
-export type ItineraryItem = Tables<"itinerary_items"> & {
+export type ItineraryItem = AppRow<"itinerary_items"> & {
   attachments?: OwnerAttachment[];
   links?: ItineraryItemLink[];
   place?: PersistedPlaceSnapshot | null;
 };
 export type PersistedPlaceSnapshot = PlaceSnapshot & { id: string };
 export type TripDay = Pick<
-  Tables<"trip_days">,
+  AppRow<"trip_days">,
   "date" | "day_number" | "id" | "notes" | "title" | "variant_id"
 >;
 
 export type PlannerVariant = Pick<
-  Tables<"route_variants">,
+  AppRow<"route_variants">,
   "color" | "id" | "is_primary" | "name" | "trip_id"
 >;
 

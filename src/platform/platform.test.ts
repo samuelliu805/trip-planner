@@ -10,12 +10,18 @@ import {
   type ProviderEnvironment,
 } from "./config/provider-matrix.ts";
 import { backendCapabilitiesByRegion } from "./capabilities/backend-capabilities.ts";
-import { cloudBasePhase1Status } from "./cloudbase/status.ts";
+import { cloudBasePhase3Status } from "./cloudbase/status.ts";
+import { cloudBaseScalarUuidRpc } from "./cloudbase/rpc-compat.ts";
+import {
+  cloudBaseSessionFromData,
+  cloudBaseSessionFromVerifiedTokens,
+} from "./cloudbase/session-data.ts";
 import type { AppUserId, SignInInput } from "./contracts/auth.ts";
 import { PlatformOperationError } from "./contracts/errors.ts";
 import { supabasePasswordCredentials } from "./supabase/auth-input.ts";
 import {
   directProviderSdkImports,
+  directProviderPathImports,
   findBackendProviderBoundaryViolations,
 } from "../../scripts/check-backend-provider-boundary.ts";
 
@@ -103,7 +109,11 @@ test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.global.realtime, true);
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
   assert.equal(backendCapabilitiesByRegion.cn.selfRegistration, false);
-  assert.equal(backendCapabilitiesByRegion.cn.signedUrls, true);
+  assert.equal(backendCapabilitiesByRegion.cn.signedUrls, false);
+  assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, false);
+  assert.equal(backendCapabilitiesByRegion.global.itineraryItemLinks, true);
+  assert.equal(backendCapabilitiesByRegion.cn.passwordSignInIdentifier, "username");
+  assert.equal(backendCapabilitiesByRegion.global.passwordSignInIdentifier, "email");
   assert.equal(Object.isFrozen(backendCapabilitiesByRegion), true);
   assert.equal(Object.isFrozen(backendCapabilitiesByRegion.cn), true);
 });
@@ -142,18 +152,34 @@ test("provider SDK imports are restricted to the exact adapter and maintenance a
   assert.deepEqual(directProviderSdkImports('import { createClient } from "@supabase/ssr"'), [
     "@supabase/ssr",
   ]);
+  assert.deepEqual(
+    directProviderPathImports('import { createClient } from "@/lib/supabase/server"'),
+    ["@/lib/supabase/server"],
+  );
+  assert.deepEqual(
+    directProviderPathImports(
+      'import { CloudBaseTripRepository } from "@/platform/cloudbase/trip-repository"',
+    ),
+    ["@/platform/cloudbase/trip-repository"],
+  );
   const eslintConfig = await readFile(new URL("../../eslint.config.mjs", import.meta.url), "utf8");
   assert.match(eslintConfig, /no-restricted-imports/);
   assert.match(eslintConfig, /@cloudbase\/js-sdk/);
 });
 
-test("CloudBase Phase 1 remains an explicit fail-closed scaffold", async () => {
-  const source = await readFile(new URL("./cloudbase/unavailable.ts", import.meta.url), "utf8");
-  assert.equal(cloudBasePhase1Status.runtimeReady, false);
-  assert.equal(cloudBasePhase1Status.storageImplemented, false);
+test("CloudBase Phase 3 enables Auth and PG while Storage remains fail-closed", async () => {
+  const [storageBoundary, composition] = await Promise.all([
+    readFile(new URL("./cloudbase/unavailable.ts", import.meta.url), "utf8"),
+    readFile(new URL("./composition/server.ts", import.meta.url), "utf8"),
+  ]);
+  assert.equal(cloudBasePhase3Status.authImplemented, true);
+  assert.equal(cloudBasePhase3Status.dataImplemented, true);
+  assert.equal(cloudBasePhase3Status.runtimeReady, true);
+  assert.equal(cloudBasePhase3Status.storageImplemented, false);
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
-  assert.match(source, /provider_unavailable/);
-  assert.doesNotMatch(source, /@cloudbase\//);
+  assert.match(storageBoundary, /provider_unavailable/);
+  assert.match(composition, /new CloudBaseAuthProvider/);
+  assert.match(composition, /new CloudBaseTripRepository/);
 });
 
 test("Phase 2 is schema-only and does not promise backend runtime adapters", async () => {
@@ -171,18 +197,132 @@ test("Phase 2 is schema-only and does not promise backend runtime adapters", asy
   assert.doesNotMatch(phase2, /Implement CloudBase Auth|repository adapters/);
 });
 
-test("Global auth actions, PKCE callback, and proxy cookie refresh stay on legacy paths", async () => {
-  const [actions, callback, proxy] = await Promise.all([
-    readFile(new URL("../features/auth/actions.ts", import.meta.url), "utf8"),
-    readFile(new URL("../app/auth/callback/route.ts", import.meta.url), "utf8"),
+test("Global Supabase auth adapter and proxy retain the existing auth operations", async () => {
+  const [adapter, proxy] = await Promise.all([
+    readFile(new URL("./supabase/auth-provider.ts", import.meta.url), "utf8"),
     readFile(new URL("./supabase/proxy.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(actions, /signInWithPassword\(parsed\.data\)/);
-  assert.match(actions, /signInWithOAuth\(\{[\s\S]*provider: "google"/);
-  assert.match(actions, /signUp\(\{[\s\S]*\.\.\.parsed\.data/);
-  assert.match(callback, /exchangeCodeForSession\(code\)/);
+  assert.match(adapter, /signInWithPassword\(credentials\)/);
+  assert.match(adapter, /signInWithOAuth\(\{[\s\S]*provider: "google"/);
+  assert.match(adapter, /auth\.signUp/);
+  assert.match(adapter, /exchangeCodeForSession\(code\)/);
   assert.match(proxy, /getAll: \(\) => request\.cookies\.getAll\(\)/);
   assert.match(proxy, /setAll\(cookiesToSet\)/);
   assert.match(proxy, /supabase\.auth\.getUser\(\)/);
+});
+
+test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK surface", async () => {
+  const [auth, trips, client, sessionRuntime] = await Promise.all([
+    readFile(new URL("./cloudbase/auth-provider.ts", import.meta.url), "utf8"),
+    readFile(new URL("./cloudbase/trip-repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("./cloudbase/client.ts", import.meta.url), "utf8"),
+    readFile(new URL("./cloudbase/session-runtime.ts", import.meta.url), "utf8"),
+  ]);
+  for (const method of [
+    "listForCurrentUser",
+    "getById",
+    "getDefaultCurrencyForCurrentUser",
+    "create",
+    "update",
+    "setStatus",
+    "renameIfTitle",
+    "remove",
+  ]) {
+    assert.match(trips, new RegExp(`async ${method}\\(`));
+  }
+  assert.match(auth, /signInWithPassword\(\{[\s\S]*username: input\.username/);
+  assert.match(auth, /getSession\(\)/);
+  assert.match(sessionRuntime, /setSession\(/);
+  assert.match(sessionRuntime, /getSession\(/);
+  assert.match(sessionRuntime, /refreshSession\(/);
+  assert.match(client, /app\.rdb\(\)/);
+  assert.doesNotMatch(trips, /\.where\(|\.orderBy\(|\.count\(/);
+  assert.doesNotMatch(auth, /getUser\(/);
+});
+
+test("CloudBase scalar UUID compatibility recovers only the validated SDK parser failure", async () => {
+  const id = "123e4567-e89b-42d3-a456-426614174000";
+  assert.equal(
+    await cloudBaseScalarUuidRpc({
+      execute: async () => ({ data: id, error: null }),
+      recover: async () => null,
+      safeMessage: "failed",
+    }),
+    id,
+  );
+  assert.equal(
+    await cloudBaseScalarUuidRpc({
+      execute: async () => ({
+        data: null,
+        error: { message: "SyntaxError: value is not valid JSON" },
+      }),
+      recover: async () => ({ id }),
+      safeMessage: "failed",
+    }),
+    id,
+  );
+  await assert.rejects(() =>
+    cloudBaseScalarUuidRpc({
+      execute: async () => ({ data: null, error: { message: "network unavailable" } }),
+      recover: async () => ({ id }),
+      safeMessage: "failed",
+    }),
+  );
+});
+
+test("CloudBase session normalization supports the SDK 3.9 Node user ID accessor", () => {
+  const session = cloudBaseSessionFromData({
+    session: {
+      access_token: "access",
+      refresh_token: "refresh",
+      user: {
+        email: "traveler@example.com",
+        id() {
+          return "cloudbase-user-123";
+        },
+        user_metadata: { username: "traveler" },
+      },
+    },
+  });
+  assert.equal(session.user.id, "cloudbase-user-123");
+  assert.equal(session.user.email, "traveler@example.com");
+  assert.deepEqual(session.user.metadata, { username: "traveler" });
+  assert.throws(
+    () =>
+      cloudBaseSessionFromData({
+        access_token: "access",
+        refresh_token: "refresh",
+        user: { id: "anonymous-user", is_anonymous: true },
+      }),
+    (error) => error instanceof PlatformOperationError && error.code === "authentication_required",
+  );
+});
+
+test("CloudBase verified JWT normalization rejects expiry and keeps provider-neutral identity", () => {
+  const accessToken = [
+    "header",
+    Buffer.from(
+      JSON.stringify({
+        email: "traveler@example.com",
+        exp: Math.floor(Date.now() / 1000) + 60,
+        sub: "cloudbase-user-123",
+        user_metadata: { username: "traveler" },
+      }),
+    ).toString("base64url"),
+    "signature",
+  ].join(".");
+  assert.equal(
+    cloudBaseSessionFromVerifiedTokens({ accessToken, refreshToken: "refresh" }).user.id,
+    "cloudbase-user-123",
+  );
+  const expired = [
+    "header",
+    Buffer.from(JSON.stringify({ exp: 1, sub: "cloudbase-user-123" })).toString("base64url"),
+    "signature",
+  ].join(".");
+  assert.throws(
+    () => cloudBaseSessionFromVerifiedTokens({ accessToken: expired, refreshToken: "refresh" }),
+    (error) => error instanceof PlatformOperationError && error.code === "authentication_required",
+  );
 });

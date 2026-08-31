@@ -9,6 +9,7 @@ const secretNames = [
   "GOOGLE_ROUTES_API_KEY",
   "CLOUDBASE_SECRET_ID",
   "CLOUDBASE_SECRET_KEY",
+  "CLOUDBASE_PUBLISHABLE_KEY",
 ];
 
 async function filesBelow(directory) {

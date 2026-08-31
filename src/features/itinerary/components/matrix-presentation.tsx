@@ -96,29 +96,33 @@ export function MatrixGridHeader({
 }) {
   return (
     <div
-      className="matrix-grid-header sticky top-0 z-[70] flex h-9 border-b bg-muted/95 text-[13px] font-semibold leading-[1.35] text-muted-foreground min-[1200px]:h-10 min-[1200px]:text-[11px]"
+      className="matrix-grid-header sticky top-0 z-[70] flex h-9 border-b bg-muted text-[13px] font-semibold leading-[1.35] text-muted-foreground min-[1200px]:h-10 min-[1200px]:text-[11px]"
       role="row"
     >
       <div
         className="matrix-date-column sticky left-0 top-0 z-20 flex w-24 shrink-0 items-center border-r bg-muted px-2"
         role="columnheader"
       >
-        {mobileDateLabel ? (
-          <>
-            <span className="sm:hidden">{mobileDateLabel}</span>
-            <span className="hidden sm:inline">
-              <T message={"Date"} />
-            </span>
-          </>
-        ) : (
-          <T message="Date" />
-        )}
+        <span className="matrix-frozen-content">
+          {mobileDateLabel ? (
+            <>
+              <span className="sm:hidden">{mobileDateLabel}</span>
+              <span className="hidden sm:inline">
+                <T message={"Date"} />
+              </span>
+            </>
+          ) : (
+            <T message="Date" />
+          )}
+        </span>
       </div>
       <div
         className="matrix-day-column sticky left-24 z-10 flex w-16 shrink-0 items-center border-r bg-muted px-2"
         role="columnheader"
       >
-        <T message={" Day "} />
+        <span className="matrix-frozen-content">
+          <T message={" Day "} />
+        </span>
       </div>
       {columns.map((column) => (
         <div

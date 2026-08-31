@@ -3,7 +3,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 
 import { persistPlaceSnapshot } from "@/features/itinerary/action-helpers";
-import { createClient } from "@/lib/supabase/server";
+import { getRelationalDatabase } from "@/platform/composition/server";
 import type { Json } from "@/types/database";
 
 import { createResearchItemSchema } from "./schema";
@@ -77,18 +77,18 @@ export function researchItemValues(
 }
 
 export async function persistResearchPlaces(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  database: Awaited<ReturnType<typeof getRelationalDatabase>>,
   data: ReturnType<typeof createResearchItemSchema.parse>,
 ) {
   const [destination, location, origin] = await Promise.all([
     data.destinationPlaceSnapshot
-      ? persistPlaceSnapshot(supabase, data.tripId, data.destinationPlaceSnapshot)
+      ? persistPlaceSnapshot(database, data.tripId, data.destinationPlaceSnapshot)
       : Promise.resolve(data.destinationPlaceId ?? null),
     data.locationPlaceSnapshot
-      ? persistPlaceSnapshot(supabase, data.tripId, data.locationPlaceSnapshot)
+      ? persistPlaceSnapshot(database, data.tripId, data.locationPlaceSnapshot)
       : Promise.resolve(data.locationPlaceId ?? null),
     data.originPlaceSnapshot
-      ? persistPlaceSnapshot(supabase, data.tripId, data.originPlaceSnapshot)
+      ? persistPlaceSnapshot(database, data.tripId, data.originPlaceSnapshot)
       : Promise.resolve(data.originPlaceId ?? null),
   ]);
   return { destination, location, origin };

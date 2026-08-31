@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
+import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
 
 import { publicItinerarySchema } from "./schema";
 import { publicGoogleCoverItem } from "./public-media-presentation";
@@ -29,8 +29,9 @@ export function publicPlaceMediaSources(itinerary: PublicItinerary): PublicPlace
 }
 
 export async function getPublicPlaceMediaSources(token: string): Promise<PublicPlaceMediaSource[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_itinerary_v4", {
+  if (!getBackendCapabilities().signedUrls) return [];
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("get_public_itinerary_v4", {
     shared_token: token,
   });
   if (error) return [];

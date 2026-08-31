@@ -1,12 +1,12 @@
-import type { Tables } from "@/types/database";
+import type { AppRow } from "@/platform/contracts/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import type { OwnerAttachment } from "@/features/attachments/schema";
 
 export const researchCategories = ["flight", "stay", "train", "rental"] as const;
 
 export type ResearchCategory = (typeof researchCategories)[number];
-type StoredResearchPlace = Pick<
-  Tables<"places">,
+export type StoredResearchPlace = Pick<
+  AppRow<"places">,
   | "administrative_area_name"
   | "country_code"
   | "display_name"
@@ -20,7 +20,7 @@ type StoredResearchPlace = Pick<
   | "longitude"
   | "source"
 >;
-export type ResearchItem = Tables<"research_items"> & {
+export type ResearchItem = AppRow<"research_items"> & {
   attachments?: OwnerAttachment[];
   destination_place?: StoredResearchPlace | null;
   location_place?: StoredResearchPlace | null;
@@ -39,8 +39,8 @@ export type ResearchSegment = {
 };
 export type ResearchPlace = PlaceSnapshot & { id: string };
 export type ResearchLink = { label: string; url: string };
-export type ResearchPlanApplication = Tables<"research_plan_applications">;
-export type VariantResearchSelection = Tables<"variant_research_selections">;
+export type ResearchPlanApplication = AppRow<"research_plan_applications">;
+export type VariantResearchSelection = AppRow<"variant_research_selections">;
 
 export const researchCategoryLabels: Record<ResearchCategory, string> = {
   flight: "Flights",
@@ -72,7 +72,7 @@ export type PlanCostBreakdownLine = {
   dayNumber: number;
   itemId: string;
   title: string;
-  type: Tables<"itinerary_items">["type"];
+  type: AppRow<"itinerary_items">["type"];
 };
 
 export type ExchangeRateTable = {
@@ -98,7 +98,7 @@ export type PlanCostSummary = {
 };
 
 export type ResearchPlanItem = Pick<
-  Tables<"itinerary_items">,
+  AppRow<"itinerary_items">,
   "details" | "id" | "place_id" | "price_amount" | "price_currency" | "title" | "type"
 >;
 

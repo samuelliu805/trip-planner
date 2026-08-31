@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
-import { createClient } from "@/lib/supabase/client";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { getBrowserStorageProvider } from "@/platform/composition/client";
 
 import {
   failShareImageVersion,
@@ -74,7 +74,7 @@ export function useLongImageExport({
           templateVersion: sharePage.templateVersion,
         });
         const metadata: ShareImagePartInput[] = [];
-        const supabase = createClient();
+        const storage = getBrowserStorageProvider("share-images");
 
         for (const [index, rendered] of parts.entries()) {
           const storagePath = `${prepared.data.uploadPathPrefix}/part-${index + 1}.jpg`;
@@ -82,14 +82,13 @@ export function useLongImageExport({
           setProgress(
             t("Uploading part {part} of {total}…", { part: index + 1, total: parts.length }),
           );
-          const { error: uploadError } = await supabase.storage
-            .from("share-images")
-            .upload(storagePath, rendered.blob, {
-              cacheControl: "31536000",
-              contentType: "image/jpeg",
-              upsert: false,
-            });
-          if (uploadError) throw new Error(uploadError.message);
+          await storage.upload({
+            body: rendered.blob,
+            cacheControl: "31536000",
+            contentType: "image/jpeg",
+            path: storagePath,
+            upsert: false,
+          });
           uploadedPaths.push(storagePath);
           metadata.push({
             byteSize: rendered.blob.size,
@@ -138,7 +137,7 @@ export function useLongImageExport({
       } catch (caught) {
         if (uploadedPaths.length) {
           try {
-            await createClient().storage.from("share-images").remove(uploadedPaths);
+            await getBrowserStorageProvider("share-images").remove(uploadedPaths);
           } catch {
             // Cleanup failure must not suppress the authoritative export failure outcome.
           }

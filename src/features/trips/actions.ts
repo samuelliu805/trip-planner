@@ -15,19 +15,21 @@ import { createTripSchema, setTripStatusSchema, tripIdSchema } from "@/features/
 import type { TripStatus } from "@/features/trips/status";
 import type { TripActionState } from "@/features/trips/types";
 import { updateTrip as updateTripAction } from "@/features/trips/update-trip-action";
-import { createClient } from "@/lib/supabase/server";
 import { safeMutationErrorCode } from "@/lib/telemetry/errors";
 import { telemetryOperationId, telemetrySurface } from "@/lib/telemetry/product";
 import { captureServerProductEvent } from "@/lib/telemetry/product-server";
+import {
+  getAuthProvider,
+  getBackendCapabilities,
+  getTripRepository,
+} from "@/platform/composition/server";
 
 function firstIssue(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Check the form and try again.";
 }
 
-async function authenticatedClient() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  return data.user ? { supabase, userId: data.user.id } : null;
+async function authenticatedUser() {
+  return getAuthProvider().getCurrentUser();
 }
 
 export async function updateTrip(state: TripActionState, formData: FormData) {
@@ -52,9 +54,8 @@ export async function createTrip(
     return { error: firstIssue(parsed.error) };
   }
 
-  const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
-  if (!authData.user) {
+  const user = await authenticatedUser();
+  if (!user) {
     await captureServerProductEvent(
       "trip_create_failed",
       { error_code: "forbidden", operation_id: operationId, surface: "trip_list" },
@@ -62,21 +63,24 @@ export async function createTrip(
     );
     return { error: "Sign in to create a trip." };
   }
-  const userId = authData.user.id;
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("default_currency")
-    .eq("id", userId)
-    .maybeSingle();
   const today = parsed.data.today || tripDateInZone(parsed.data.timezone, new Date());
-  const { data, error } = await supabase.rpc("create_trip", {
-    trip_title: defaultTripTitle(today),
-    trip_day_count: defaultTripDayCount,
-    trip_timezone: parsed.data.timezone,
-    trip_currency: profile?.default_currency ?? defaultTripCurrency,
-  });
-
-  if (error || !data) {
+  let createdTripId: string;
+  try {
+    const repository = getTripRepository();
+    const currency = (await repository.getDefaultCurrencyForCurrentUser()) ?? defaultTripCurrency;
+    const trip = await repository.create({
+      currency,
+      dayCount: defaultTripDayCount,
+      timezone: parsed.data.timezone,
+      title: defaultTripTitle(today),
+    });
+    await captureServerProductEvent(
+      "trip_created",
+      { operation_id: operationId, surface: "trip_list" },
+      { actorType: "authenticated", appUserId: user.id, route: "/trips" },
+    );
+    createdTripId = trip.id;
+  } catch (error) {
     await captureServerProductEvent(
       "trip_create_failed",
       {
@@ -84,17 +88,12 @@ export async function createTrip(
         operation_id: operationId,
         surface: "trip_list",
       },
-      { actorType: "authenticated", route: "/trips", supabaseUserId: userId },
+      { actorType: "authenticated", route: "/trips", appUserId: user.id },
     );
-    return { error: error?.message ?? "Could not create the trip." };
+    return { error: error instanceof Error ? error.message : "Could not create the trip." };
   }
-  await captureServerProductEvent(
-    "trip_created",
-    { operation_id: operationId, surface: "trip_list" },
-    { actorType: "authenticated", route: "/trips", supabaseUserId: userId },
-  );
   revalidatePath("/trips");
-  redirect(`/trips/${data}`);
+  redirect(`/trips/${createdTripId}`);
 }
 
 /** Completing a trip only changes which Trips filter shows it. */
@@ -124,8 +123,8 @@ export async function setTripStatus(input: {
     return { error: firstIssue(parsed.error) };
   }
 
-  const auth = await authenticatedClient();
-  if (!auth) {
+  const user = await authenticatedUser();
+  if (!user) {
     await captureServerProductEvent(
       "trip_status_changed",
       {
@@ -139,28 +138,24 @@ export async function setTripStatus(input: {
     );
     return { error: "Sign in to update this trip." };
   }
-  const { supabase, userId } = auth;
-  const { data, error } = await supabase
-    .from("trips")
-    .update({ status: parsed.data.status })
-    .eq("id", parsed.data.tripId)
-    .eq("owner_id", userId)
-    .select("id")
-    .maybeSingle();
-
-  if (error || !data) {
+  try {
+    await getTripRepository().setStatus(parsed.data.tripId, parsed.data.status);
+  } catch (error) {
     await captureServerProductEvent(
       "trip_status_changed",
       {
-        error_code: error ? safeMutationErrorCode(error) : "forbidden",
+        error_code: safeMutationErrorCode(error),
         operation_id: operationId,
         outcome: "failed",
         surface,
         trip_status: parsed.data.status,
       },
-      { actorType: "authenticated", route: "/trips", supabaseUserId: userId },
+      { actorType: "authenticated", route: "/trips", appUserId: user.id },
     );
-    return { error: error?.message ?? "You do not have permission to update this trip." };
+    return {
+      error:
+        error instanceof Error ? error.message : "You do not have permission to update this trip.",
+    };
   }
   await captureServerProductEvent(
     "trip_status_changed",
@@ -170,7 +165,7 @@ export async function setTripStatus(input: {
       surface,
       trip_status: parsed.data.status,
     },
-    { actorType: "authenticated", route: "/trips", supabaseUserId: userId },
+    { actorType: "authenticated", route: "/trips", appUserId: user.id },
   );
   revalidatePath("/trips");
   revalidatePath(`/trips/${parsed.data.tripId}`);
@@ -183,7 +178,8 @@ export async function setTripStatus(input: {
 export async function countActiveSharePages(tripId: string) {
   const parsed = tripIdSchema.safeParse(tripId);
   if (!parsed.success) return 0;
-  if (!(await authenticatedClient())) return 0;
+  if (!(await authenticatedUser())) return 0;
+  if (!getBackendCapabilities().signedUrls) return 0;
   const { data } = await listPublicItineraryLinks(parsed.data);
   return data.length;
 }
@@ -204,8 +200,8 @@ export async function deleteTrip(
     return { error: firstIssue(parsed.error) };
   }
 
-  const auth = await authenticatedClient();
-  if (!auth) {
+  const user = await authenticatedUser();
+  if (!user) {
     await captureServerProductEvent(
       "trip_delete_failed",
       { error_code: "forbidden", operation_id: operationId, surface },
@@ -213,26 +209,20 @@ export async function deleteTrip(
     );
     redirect("/login");
   }
-  const { supabase, userId } = auth;
-  const { data, error } = await supabase
-    .from("trips")
-    .delete()
-    .eq("id", parsed.data)
-    .eq("owner_id", userId)
-    .select("id")
-    .maybeSingle();
-  if (error || !data) {
+  try {
+    await getTripRepository().remove(parsed.data);
+  } catch (error) {
     await captureServerProductEvent(
       "trip_delete_failed",
       {
-        error_code: error ? safeMutationErrorCode(error) : "forbidden",
+        error_code: safeMutationErrorCode(error),
         operation_id: operationId,
         surface,
       },
       {
         actorType: "authenticated",
         route: "/trips/[tripId]",
-        supabaseUserId: userId,
+        appUserId: user.id,
       },
     );
     redirect(`/trips/${parsed.data}?error=delete`);
@@ -240,8 +230,8 @@ export async function deleteTrip(
   await captureServerProductEvent(
     "trip_deleted",
     { operation_id: operationId, surface },
-    { actorType: "authenticated", route: "/trips/[tripId]", supabaseUserId: userId },
+    { actorType: "authenticated", route: "/trips/[tripId]", appUserId: user.id },
   );
-  await drainAssetDeletionQueue(100);
+  if (getBackendCapabilities().signedUrls) await drainAssetDeletionQueue(100);
   redirect("/trips");
 }
