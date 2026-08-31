@@ -43,9 +43,9 @@ jobs:
       - run: npm test
       - run: npm run check:backend-provider-boundary
       - run: npm run check:maps-provider-boundary
-      - run: npm run check:build-secret-boundary
       - run: npm run format:check
       - run: npm run build
+      - run: npm run check:build-secret-boundary
 
   live-cloudbase-dev:
     if: github.event_name == 'workflow_dispatch'
