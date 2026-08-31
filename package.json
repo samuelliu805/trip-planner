@@ -10,6 +10,7 @@
     "check:auth-routes": "node scripts/check-auth-routes.mjs",
     "check:backend-provider-boundary": "node scripts/check-backend-provider-boundary.ts",
     "check:build-secret-boundary": "node scripts/check-build-secret-boundary.mjs",
+    "check:cloudbase-pg-baseline": "node scripts/cloudbase-pg-baseline.mjs check",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check:maps-provider-boundary": "node scripts/check-maps-provider-boundary.ts",
     "format": "prettier --write .",
@@ -21,6 +22,7 @@
     "test:telemetry": "node src/lib/telemetry/telemetry.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "build:cloudbase-pg-baseline": "node scripts/cloudbase-pg-baseline.mjs build",
     "validate:public-templates": "node scripts/validate-public-templates.mjs"
   },
   "dependencies": {
