@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "authenticated": [
+    ["apply_research_item_to_variant_v2(uuid,uuid,uuid,uuid,text)", "owner_guard"],
+    ["clear_day_route_plan(uuid,uuid)", "owner_guard"],
+    ["clear_route_variant_items(uuid,uuid,uuid[])", "owner_guard"],
+    ["create_route_variant(uuid,uuid,text,text)", "owner_guard"],
+    [
+      "create_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
+      "owner_guard"
+    ],
+    ["create_trip(text,date,date,text,text,integer)", "claim_bound_create"],
+    ["current_research_plan_application_ids(uuid,uuid)", "owner_guard"],
+    ["delete_route_variant(uuid,uuid)", "owner_guard"],
+    ["duplicate_route_variant(uuid,uuid,text,text)", "owner_guard"],
+    ["insert_variant_day(uuid,uuid,integer)", "owner_guard"],
+    ["is_trip_owner(uuid)", "claim_bound_owner_check"],
+    ["list_share_pages_v2(uuid)", "owner_guard"],
+    ["owner_share_page_by_token_v2(uuid)", "owner_guard"],
+    ["owner_share_page_v2(uuid)", "owner_guard"],
+    ["remove_variant_day(uuid,uuid,uuid)", "owner_guard"],
+    ["reorder_itinerary_items(uuid,uuid[])", "owner_guard"],
+    ["reorder_variant_days(uuid,uuid,uuid[])", "owner_guard"],
+    ["revert_research_plan_application(uuid,uuid)", "owner_guard"],
+    ["revoke_share_page_v1(uuid)", "owner_guard"],
+    ["save_day_route_calculation(uuid,text,jsonb,integer,integer,text)", "owner_guard"],
+    ["save_day_route_plan(uuid,uuid,uuid[],text[])", "owner_guard"],
+    ["set_primary_route_variant(uuid,uuid)", "owner_guard"],
+    ["update_route_variant_metadata(uuid,uuid,text,text)", "owner_guard"],
+    [
+      "update_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
+      "owner_guard"
+    ],
+    ["update_trip_plan(uuid,text,date,date,integer,text,text)", "owner_guard"],
+    [
+      "upsert_google_place_snapshot_v2(uuid,text,text,text,double precision,double precision,text,text,text,text)",
+      "owner_guard"
+    ]
+  ],
+  "anonymous": [
+    ["get_public_itinerary_v4(uuid)", "public_token_snapshot"],
+    ["get_public_share_page_v3(uuid)", "public_token_snapshot"]
+  ],
+  "phase4": [
+    "asset_link_owner_json_v1",
+    "asset_link_owner_json_v2",
+    "commit_item_asset_session_v1",
+    "commit_research_asset_session_v1",
+    "copy_research_assets_to_items_v1",
+    "detach_item_asset_v1",
+    "detach_research_asset_v1",
+    "discard_item_asset_session_v1",
+    "discard_research_asset_session_v1",
+    "fail_item_asset_v1",
+    "fail_share_image_version_v1",
+    "finalize_item_asset_v1",
+    "finalize_item_asset_v2",
+    "finalize_research_asset_v1",
+    "owner_asset_access_v1",
+    "owner_share_image_export_paths_v1",
+    "owner_share_page_image_state_v1",
+    "prepare_item_asset_v1",
+    "prepare_item_asset_v2",
+    "prepare_item_asset_v3",
+    "prepare_research_asset_v1",
+    "prepare_share_image_version_v1",
+    "prepare_share_image_version_v2",
+    "public_share_image_manifest_v1",
+    "public_share_page_image_v1",
+    "revoke_share_image_export_v1",
+    "set_item_asset_share_v1",
+    "set_item_asset_share_v2"
+  ]
+}

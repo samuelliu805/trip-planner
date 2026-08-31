@@ -1,6 +1,62 @@
--- This is the complete externally callable CloudBase RPC allowlist. Signatures are exact so
--- adding an overload cannot silently expose it.
+-- Trip Planner CloudBase PG RPC boundary hardening version 20260831040000.
+-- Reusable SQL artifact: validate Env ID, region, database and PG instance at deployment time.
+BEGIN;
+
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '120s';
+
+CREATE SCHEMA IF NOT EXISTS app_private;
+REVOKE ALL ON SCHEMA app_private FROM PUBLIC, anon, authenticated;
+GRANT USAGE ON SCHEMA app_private TO anon, authenticated;
+
+-- This function was a Phase 2-only mutation probe and has no production caller.
+DROP FUNCTION IF EXISTS public.phase2_rename_owned_trip(uuid, text);
+
+DO $move_helpers$
+BEGIN
+  IF to_regprocedure('public.app_current_user_id()') IS NOT NULL THEN
+    ALTER FUNCTION public.app_current_user_id() SET SCHEMA app_private;
+  END IF;
+  IF to_regprocedure('public.is_trip_member(uuid)') IS NOT NULL THEN
+    ALTER FUNCTION public.is_trip_member(uuid) SET SCHEMA app_private;
+  END IF;
+  IF to_regprocedure('public.variant_trip_id(uuid)') IS NOT NULL THEN
+    ALTER FUNCTION public.variant_trip_id(uuid) SET SCHEMA app_private;
+  END IF;
+END;
+$move_helpers$;
+
+-- Function bodies store qualified names as text. Rewrite the three moved helper references while
+-- preserving each function's OID and dependency identity through CREATE OR REPLACE.
+DO $rewrite_references$
+DECLARE
+  routine record;
+  definition text;
+BEGIN
+  FOR routine IN
+    SELECT p.oid
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname IN ('public', 'app_private')
+      AND p.prokind = 'f'
+  LOOP
+    definition := pg_catalog.pg_get_functiondef(routine.oid);
+    definition := replace(definition, 'public.app_current_user_id', 'app_private.app_current_user_id');
+    definition := replace(definition, 'public.is_trip_member', 'app_private.is_trip_member');
+    definition := replace(definition, 'public.variant_trip_id', 'app_private.variant_trip_id');
+    IF definition IS DISTINCT FROM pg_catalog.pg_get_functiondef(routine.oid) THEN
+      EXECUTE definition;
+    END IF;
+  END LOOP;
+END;
+$rewrite_references$;
+
 REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA app_private FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION app_private.app_current_user_id() TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION app_private.is_trip_member(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION app_private.variant_trip_id(uuid) TO authenticated;
 
 GRANT EXECUTE ON FUNCTION public.apply_research_item_to_variant_v2(uuid, uuid, uuid, uuid, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.clear_day_route_plan(uuid, uuid) TO authenticated;
@@ -31,3 +87,8 @@ GRANT EXECUTE ON FUNCTION public.upsert_google_place_snapshot_v2(uuid, text, tex
 
 GRANT EXECUTE ON FUNCTION public.get_public_itinerary_v4(uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.get_public_share_page_v3(uuid) TO anon, authenticated;
+
+INSERT INTO public.app_schema_migrations (version, description)
+VALUES ('20260831040000', 'CloudBase RPC boundary hardening');
+
+COMMIT;

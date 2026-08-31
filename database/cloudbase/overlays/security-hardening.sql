@@ -12,4 +12,4 @@ ALTER FUNCTION public.asset_link_owner_json_v2(uuid) SECURITY INVOKER;
 ALTER FUNCTION public.itinerary_item_trip_id(uuid) SECURITY INVOKER;
 ALTER FUNCTION public.research_application_matches_current(uuid) SECURITY INVOKER;
 ALTER FUNCTION public.sync_trip_schedule_from_primary_days(uuid) SECURITY INVOKER;
-ALTER FUNCTION public.variant_trip_id(uuid) SECURITY INVOKER;
+ALTER FUNCTION app_private.variant_trip_id(uuid) SECURITY INVOKER;

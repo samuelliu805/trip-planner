@@ -165,7 +165,7 @@ create trigger itinerary_items_set_updated_at
 before update on public.itinerary_items
 for each row execute function public.set_updated_at();
 
-create or replace function public.is_trip_member(target_trip_id uuid)
+create or replace function app_private.is_trip_member(target_trip_id uuid)
 returns boolean
 language sql
 stable
@@ -176,7 +176,7 @@ as $$
     select 1
     from public.trip_members
     where trip_id = target_trip_id
-      and user_id = (select public.app_current_user_id())
+      and user_id = (select app_private.app_current_user_id())
   );
 $$;
 
@@ -191,12 +191,12 @@ as $$
     select 1
     from public.trip_members
     where trip_id = target_trip_id
-      and user_id = (select public.app_current_user_id())
+      and user_id = (select app_private.app_current_user_id())
       and role = 'owner'
   );
 $$;
 
-create or replace function public.variant_trip_id(target_variant_id uuid)
+create or replace function app_private.variant_trip_id(target_variant_id uuid)
 returns uuid
 language sql
 stable
@@ -219,7 +219,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   new_trip_id uuid;
   new_variant_id uuid;
 begin
@@ -285,25 +285,25 @@ alter table public.itinerary_items enable row level security;
 
 create policy "profiles_select_self" on public.profiles
 for select to authenticated
-using (id = (select public.app_current_user_id()));
+using (id = (select app_private.app_current_user_id()));
 
 create policy "profiles_insert_self" on public.profiles
 for insert to authenticated
-with check (id = (select public.app_current_user_id()));
+with check (id = (select app_private.app_current_user_id()));
 
 create policy "profiles_update_self" on public.profiles
 for update to authenticated
-using (id = (select public.app_current_user_id()))
-with check (id = (select public.app_current_user_id()));
+using (id = (select app_private.app_current_user_id()))
+with check (id = (select app_private.app_current_user_id()));
 
 create policy "trips_select_members" on public.trips
 for select to authenticated
-using (public.is_trip_member(id));
+using (app_private.is_trip_member(id));
 
 create policy "trips_update_owners" on public.trips
 for update to authenticated
 using (public.is_trip_owner(id))
-with check (owner_id = (select public.app_current_user_id()) and public.is_trip_owner(id));
+with check (owner_id = (select app_private.app_current_user_id()) and public.is_trip_owner(id));
 
 create policy "trips_delete_owners" on public.trips
 for delete to authenticated
@@ -311,7 +311,7 @@ using (public.is_trip_owner(id));
 
 create policy "trip_members_select_members" on public.trip_members
 for select to authenticated
-using (public.is_trip_member(trip_id));
+using (app_private.is_trip_member(trip_id));
 
 create policy "trip_members_insert_owners" on public.trip_members
 for insert to authenticated
@@ -328,7 +328,7 @@ using (public.is_trip_owner(trip_id));
 
 create policy "route_variants_select_members" on public.route_variants
 for select to authenticated
-using (public.is_trip_member(trip_id));
+using (app_private.is_trip_member(trip_id));
 
 create policy "route_variants_insert_owners" on public.route_variants
 for insert to authenticated
@@ -345,24 +345,24 @@ using (public.is_trip_owner(trip_id));
 
 create policy "trip_days_select_members" on public.trip_days
 for select to authenticated
-using (public.is_trip_member(public.variant_trip_id(variant_id)));
+using (app_private.is_trip_member(app_private.variant_trip_id(variant_id)));
 
 create policy "trip_days_insert_owners" on public.trip_days
 for insert to authenticated
-with check (public.is_trip_owner(public.variant_trip_id(variant_id)));
+with check (public.is_trip_owner(app_private.variant_trip_id(variant_id)));
 
 create policy "trip_days_update_owners" on public.trip_days
 for update to authenticated
-using (public.is_trip_owner(public.variant_trip_id(variant_id)))
-with check (public.is_trip_owner(public.variant_trip_id(variant_id)));
+using (public.is_trip_owner(app_private.variant_trip_id(variant_id)))
+with check (public.is_trip_owner(app_private.variant_trip_id(variant_id)));
 
 create policy "trip_days_delete_owners" on public.trip_days
 for delete to authenticated
-using (public.is_trip_owner(public.variant_trip_id(variant_id)));
+using (public.is_trip_owner(app_private.variant_trip_id(variant_id)));
 
 create policy "places_select_members" on public.places
 for select to authenticated
-using (public.is_trip_member(trip_id));
+using (app_private.is_trip_member(trip_id));
 
 create policy "places_insert_owners" on public.places
 for insert to authenticated
@@ -379,13 +379,13 @@ using (public.is_trip_owner(trip_id));
 
 create policy "itinerary_items_select_members" on public.itinerary_items
 for select to authenticated
-using (public.is_trip_member(trip_id));
+using (app_private.is_trip_member(trip_id));
 
 create policy "itinerary_items_insert_owners" on public.itinerary_items
 for insert to authenticated
 with check (
   public.is_trip_owner(trip_id)
-  and public.variant_trip_id(variant_id) = trip_id
+  and app_private.variant_trip_id(variant_id) = trip_id
   and exists (
     select 1 from public.trip_days
     where id = day_id and variant_id = itinerary_items.variant_id
@@ -401,7 +401,7 @@ for update to authenticated
 using (public.is_trip_owner(trip_id))
 with check (
   public.is_trip_owner(trip_id)
-  and public.variant_trip_id(variant_id) = trip_id
+  and app_private.variant_trip_id(variant_id) = trip_id
   and exists (
     select 1 from public.trip_days
     where id = day_id and variant_id = itinerary_items.variant_id
@@ -436,7 +436,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   new_trip_id uuid;
   new_variant_id uuid;
 begin
@@ -607,7 +607,7 @@ alter table public.itinerary_item_links enable row level security;
 
 create policy "itinerary_item_links_select_members" on public.itinerary_item_links
 for select to authenticated
-using (public.is_trip_member(public.itinerary_item_trip_id(item_id)));
+using (app_private.is_trip_member(public.itinerary_item_trip_id(item_id)));
 
 create policy "itinerary_item_links_insert_owners" on public.itinerary_item_links
 for insert to authenticated
@@ -734,7 +734,7 @@ create function public.create_trip(
 ) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   new_trip_id uuid;
   new_variant_id uuid;
   resolved_days integer;
@@ -958,20 +958,20 @@ alter table public.day_routes enable row level security;
 
 create policy "day_routes_select_members" on public.day_routes
 for select to authenticated
-using (public.is_trip_member(public.variant_trip_id(variant_id)));
+using (app_private.is_trip_member(app_private.variant_trip_id(variant_id)));
 
 create policy "day_routes_insert_owners" on public.day_routes
 for insert to authenticated
-with check (public.is_trip_owner(public.variant_trip_id(variant_id)));
+with check (public.is_trip_owner(app_private.variant_trip_id(variant_id)));
 
 create policy "day_routes_update_owners" on public.day_routes
 for update to authenticated
-using (public.is_trip_owner(public.variant_trip_id(variant_id)))
-with check (public.is_trip_owner(public.variant_trip_id(variant_id)));
+using (public.is_trip_owner(app_private.variant_trip_id(variant_id)))
+with check (public.is_trip_owner(app_private.variant_trip_id(variant_id)));
 
 create policy "day_routes_delete_owners" on public.day_routes
 for delete to authenticated
-using (public.is_trip_owner(public.variant_trip_id(variant_id)));
+using (public.is_trip_owner(app_private.variant_trip_id(variant_id)));
 
 create function public.configure_day_route(
   target_day_id uuid,
@@ -1165,7 +1165,7 @@ alter table public.day_route_calculations enable row level security;
 
 create policy "day_route_plans_select_members" on public.day_route_plans
 for select to authenticated
-using (public.is_trip_member(trip_id));
+using (app_private.is_trip_member(trip_id));
 
 create policy "day_route_stops_select_members" on public.day_route_stops
 for select to authenticated
@@ -1174,7 +1174,7 @@ using (
     select 1
     from public.day_route_plans plan
     where plan.id = day_route_stops.plan_id
-      and public.is_trip_member(plan.trip_id)
+      and app_private.is_trip_member(plan.trip_id)
   )
 );
 
@@ -1185,7 +1185,7 @@ using (
     select 1
     from public.day_route_plans plan
     where plan.id = day_route_legs.plan_id
-      and public.is_trip_member(plan.trip_id)
+      and app_private.is_trip_member(plan.trip_id)
   )
 );
 
@@ -1196,7 +1196,7 @@ using (
     select 1
     from public.day_route_plans plan
     where plan.id = day_route_calculations.plan_id
-      and public.is_trip_member(plan.trip_id)
+      and app_private.is_trip_member(plan.trip_id)
   )
 );
 
@@ -1219,7 +1219,7 @@ declare
   invalid_duplicate_count integer;
   distinct_location_count integer;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
@@ -1389,7 +1389,7 @@ declare
   target_trip_id uuid;
   expected_leg_count integer;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
@@ -1458,7 +1458,7 @@ as $$
 declare
   target_trip_id uuid;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
@@ -1607,7 +1607,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   locked_trip_id uuid;
   new_variant_id uuid;
   normalized_name text := btrim(variant_name);
@@ -1688,7 +1688,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   locked_trip_id uuid;
   normalized_name text := btrim(variant_name);
   normalized_color text := lower(variant_color);
@@ -1920,7 +1920,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   locked_trip_id uuid;
   normalized_name text := btrim(variant_name);
   normalized_color text := lower(variant_color);
@@ -1985,7 +1985,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   locked_trip_id uuid;
 begin
   if current_user_id is null then
@@ -2034,7 +2034,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   locked_trip_id uuid;
   target_is_primary boolean;
   variant_count integer;
@@ -2092,7 +2092,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   locked_trip_id uuid;
   new_day_id uuid;
   current_count integer;
@@ -2178,7 +2178,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   locked_trip_id uuid;
   removed_number integer;
   current_count integer;
@@ -2279,7 +2279,7 @@ declare
   invalid_duplicate_count integer;
   distinct_location_count integer;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
@@ -2443,7 +2443,7 @@ as $$
 declare
   target_trip_id uuid;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
@@ -2487,7 +2487,7 @@ declare
   invalid_duplicate_count integer;
   distinct_location_count integer;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
@@ -2664,7 +2664,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   submitted_count integer := coalesce(cardinality(target_item_ids), 0);
   deleted_count integer;
   locked_trip_id uuid;
@@ -2822,7 +2822,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   target_trip_id uuid;
   created_link public.public_itinerary_links%rowtype;
 begin
@@ -2915,7 +2915,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   updated_link public.public_itinerary_links%rowtype;
 begin
   if current_user_id is null then
@@ -2972,7 +2972,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   rotated_link public.public_itinerary_links%rowtype;
 begin
   if current_user_id is null then
@@ -3020,7 +3020,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   revoked_link_id uuid;
 begin
   if current_user_id is null then
@@ -3051,7 +3051,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   result jsonb;
 begin
   if current_user_id is null then
@@ -4022,7 +4022,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   existing_count integer;
   locked_trip_id uuid;
   current_start date;
@@ -5469,7 +5469,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   selected_item public.research_items%rowtype;
   selected_variant_id uuid;
   context_variant_id uuid;
@@ -5592,7 +5592,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   removed_id uuid;
 begin
   if current_user_id is null then
@@ -5657,7 +5657,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   selected_item public.research_items%rowtype;
   selected_row public.variant_research_selections%rowtype;
   target_item public.itinerary_items%rowtype;
@@ -6047,7 +6047,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   application_row public.research_plan_applications%rowtype;
   operation jsonb;
   operation_index integer;
@@ -6197,7 +6197,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   selected_item public.research_items%rowtype;
   selected_row public.variant_research_selections%rowtype;
   target_item public.itinerary_items%rowtype;
@@ -6435,7 +6435,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   selected_item public.research_items%rowtype;
   selected_row public.variant_research_selections%rowtype;
   target_variant public.route_variants%rowtype;
@@ -6842,7 +6842,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   application_row public.research_plan_applications%rowtype;
   current_day public.trip_days%rowtype;
   current_trip public.trips%rowtype;
@@ -7358,7 +7358,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   selected_item public.research_items%rowtype;
   context_variant_id uuid;
   saved_selection public.variant_research_selections%rowtype;
@@ -7471,7 +7471,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   selected_item public.research_items%rowtype;
   selected_row public.variant_research_selections%rowtype;
   target_variant public.route_variants%rowtype;
@@ -8170,7 +8170,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   application_row public.research_plan_applications%rowtype;
   operation jsonb;
   before_values jsonb;
@@ -8427,12 +8427,12 @@ set search_path = ''
 as $$
 declare selected_item public.research_items%rowtype;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'AUTHENTICATION_REQUIRED' using errcode = '42501';
   end if;
   if not exists (
     select 1 from public.trips trip
-    where trip.id = target_trip_id and trip.owner_id = public.app_current_user_id()
+    where trip.id = target_trip_id and trip.owner_id = app_private.app_current_user_id()
   ) then
     raise exception 'TRIP_OWNER_REQUIRED' using errcode = '42501';
   end if;
@@ -8468,12 +8468,12 @@ set search_path = ''
 as $$
 declare selected_item public.research_items%rowtype;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'AUTHENTICATION_REQUIRED' using errcode = '42501';
   end if;
   if not exists (
     select 1 from public.trips trip
-    where trip.id = target_trip_id and trip.owner_id = public.app_current_user_id()
+    where trip.id = target_trip_id and trip.owner_id = app_private.app_current_user_id()
   ) then
     raise exception 'TRIP_OWNER_REQUIRED' using errcode = '42501';
   end if;
@@ -8649,7 +8649,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   source_item public.research_items%rowtype;
   previous_application public.research_plan_applications%rowtype;
   saved_application public.research_plan_applications%rowtype;
@@ -8848,7 +8848,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   application_row public.research_plan_applications%rowtype;
   revert_result jsonb;
   operation jsonb;
@@ -8923,7 +8923,7 @@ stable
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   current_ids uuid[];
 begin
   if current_user_id is null then
@@ -9031,7 +9031,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   source_item public.research_items%rowtype;
   normalized_segments jsonb;
 begin
@@ -9165,7 +9165,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   source_item public.research_items%rowtype;
   canonical_item public.itinerary_items%rowtype;
   saved_application public.research_plan_applications%rowtype;
@@ -9399,7 +9399,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   application_row public.research_plan_applications%rowtype;
   revert_result jsonb;
   operation jsonb;
@@ -9575,7 +9575,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   source_item public.research_items%rowtype;
   saved_application public.research_plan_applications%rowtype;
   canonical_item public.itinerary_items%rowtype;
@@ -9928,7 +9928,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   source_item public.research_items%rowtype;
   target_variant public.route_variants%rowtype;
   saved_application public.research_plan_applications%rowtype;
@@ -10180,7 +10180,7 @@ begin
   update public.public_itinerary_links link
   set show_place_photos = requested_show_place_photos
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning link.* into managed_link;
 
@@ -10232,7 +10232,7 @@ begin
   update public.public_itinerary_links link
   set show_place_photos = requested_show_place_photos
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning link.* into managed_link;
 
@@ -10262,7 +10262,7 @@ begin
   select link.show_place_photos into show_photos
   from public.public_itinerary_links link
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null;
 
   if show_photos is null then
@@ -10297,7 +10297,7 @@ begin
   join public.public_itinerary_links link
     on link.id = (entry.value ->> 'id')::uuid
    and link.trip_id = target_trip_id
-   and link.created_by = public.app_current_user_id()
+   and link.created_by = app_private.app_current_user_id()
    and link.revoked_at is null;
 
   return result;
@@ -10479,7 +10479,7 @@ begin
     template_id = requested_template_id,
     template_version = requested_template_version
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning link.* into managed_link;
 
@@ -10546,7 +10546,7 @@ begin
     template_id = requested_template_id,
     template_version = requested_template_version
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning link.* into managed_link;
 
@@ -10577,7 +10577,7 @@ begin
   select link.* into managed_link
   from public.public_itinerary_links link
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null;
 
   if managed_link.id is null then
@@ -10617,7 +10617,7 @@ begin
   join public.public_itinerary_links link
     on link.id = (entry.value ->> 'id')::uuid
    and link.trip_id = target_trip_id
-   and link.created_by = public.app_current_user_id()
+   and link.created_by = app_private.app_current_user_id()
    and link.revoked_at is null;
 
   return result;
@@ -10725,7 +10725,7 @@ begin
     template_id = requested_template_id,
     template_version = requested_template_version
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning link.* into managed_link;
 
@@ -10794,7 +10794,7 @@ begin
     template_id = requested_template_id,
     template_version = requested_template_version
   where link.id = (legacy_result ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning link.* into managed_link;
 
@@ -11058,7 +11058,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   target_trip_id uuid;
   managed_link public.public_itinerary_links%rowtype;
   projection jsonb;
@@ -11154,7 +11154,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   managed_link public.public_itinerary_links%rowtype;
   projection jsonb;
 begin
@@ -11234,7 +11234,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   result jsonb;
 begin
   if current_user_id is null then
@@ -11268,7 +11268,7 @@ begin
   update public.public_itinerary_links link
   set revoked_at = now()
   where link.id = target_share_page_id
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null;
   if not found then
     raise exception 'PUBLIC_LINK_OWNER_REQUIRED' using errcode = '42501';
@@ -11400,7 +11400,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   managed_page public.public_itinerary_links%rowtype;
   managed_export public.share_image_exports%rowtype;
   managed_version public.share_image_versions%rowtype;
@@ -11487,7 +11487,7 @@ begin
   where version.id = target_version_id
     and version.export_id = export.id
     and version.status = 'pending'
-    and export.owner_id = public.app_current_user_id();
+    and export.owner_id = app_private.app_current_user_id();
 end;
 $$;
 
@@ -11501,7 +11501,7 @@ begin
   update public.share_image_exports export
   set revoked_at = now()
   where export.id = target_export_id
-    and export.owner_id = public.app_current_user_id()
+    and export.owner_id = app_private.app_current_user_id()
     and export.revoked_at is null;
   if not found then
     raise exception 'PUBLIC_IMAGE_EXPORT_OWNER_REQUIRED' using errcode = '42501';
@@ -11595,7 +11595,7 @@ as $$
       join public.share_image_exports export on export.share_page_id = page.id
       join public.share_image_versions version on version.id = export.current_version_id
       where page.id = target_share_page_id
-        and page.created_by = public.app_current_user_id()
+        and page.created_by = app_private.app_current_user_id()
         and page.revoked_at is null
         and export.revoked_at is null
       order by export.created_at desc
@@ -11615,7 +11615,7 @@ as $$
   select public.public_share_page_owner_json(page)
   from public.public_itinerary_links page
   where page.id = target_share_page_id
-    and page.created_by = public.app_current_user_id()
+    and page.created_by = app_private.app_current_user_id()
     and page.revoked_at is null;
 $$;
 
@@ -11629,7 +11629,7 @@ as $$
   select public.public_share_page_owner_json(page)
   from public.public_itinerary_links page
   where page.public_token = shared_token
-    and page.created_by = public.app_current_user_id()
+    and page.created_by = app_private.app_current_user_id()
     and page.revoked_at is null;
 $$;
 
@@ -11737,7 +11737,7 @@ begin
   select trip.day_count into target_day_count
   from public.route_variants variant
   join public.trips trip on trip.id = variant.trip_id
-  where variant.id = target_variant_id and trip.owner_id = public.app_current_user_id();
+  where variant.id = target_variant_id and trip.owner_id = app_private.app_current_user_id();
 
   if target_day_count is null then
     raise exception 'TRIP_OWNER_REQUIRED' using errcode = '42501';
@@ -11780,7 +11780,7 @@ begin
     long_image_start_day_number = requested_long_image_start_day_number,
     long_image_end_day_number = requested_long_image_end_day_number
   where link.id = (created_page ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
   returning * into managed_link;
 
   return public.public_share_page_owner_json(managed_link);
@@ -11819,7 +11819,7 @@ begin
   from public.public_itinerary_links link
   join public.trips trip on trip.id = link.trip_id
   where link.id = target_share_page_id
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null;
 
   if target_day_count is null then
@@ -11863,7 +11863,7 @@ begin
     long_image_start_day_number = requested_long_image_start_day_number,
     long_image_end_day_number = requested_long_image_end_day_number
   where link.id = target_share_page_id
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning * into managed_link;
 
@@ -11901,7 +11901,7 @@ begin
   into snapshot_day_count
   from public.public_itinerary_links page
   where page.id = target_share_page_id
-    and page.created_by = public.app_current_user_id()
+    and page.created_by = app_private.app_current_user_id()
     and page.revoked_at is null
     and page.published_snapshot @> '{"available":true}'::jsonb;
   if snapshot_day_count is null then
@@ -11940,7 +11940,7 @@ begin
   update public.share_image_exports export
   set render_config = requested_render_config
   where export.id = prepared_export_id
-    and export.owner_id = public.app_current_user_id()
+    and export.owner_id = app_private.app_current_user_id()
     and export.revoked_at is null;
   update public.share_image_versions version
   set render_config = requested_render_config
@@ -11976,7 +11976,7 @@ as $$
       join public.share_image_exports export on export.share_page_id = page.id
       join public.share_image_versions version on version.id = export.current_version_id
       where page.id = target_share_page_id
-        and page.created_by = public.app_current_user_id()
+        and page.created_by = app_private.app_current_user_id()
         and page.revoked_at is null
         and export.revoked_at is null
       order by export.created_at desc
@@ -12001,7 +12001,7 @@ as $$
       join public.share_image_versions version on version.export_id = export.id
       join public.share_image_parts part on part.version_id = version.id
       where export.id = target_export_id
-        and export.owner_id = public.app_current_user_id()
+        and export.owner_id = app_private.app_current_user_id()
         and export.revoked_at is null
     ),
     '[]'::jsonb
@@ -12116,7 +12116,7 @@ as $$
       join public.share_image_exports export on export.share_page_id = page.id
       join public.share_image_versions version on version.id = export.current_version_id
       where page.id = target_share_page_id
-        and page.created_by = public.app_current_user_id()
+        and page.created_by = app_private.app_current_user_id()
         and page.revoked_at is null
         and export.revoked_at is null
         and export.expires_at > now()
@@ -12158,7 +12158,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   target_trip_id uuid;
   managed_link public.public_itinerary_links%rowtype;
   projection jsonb;
@@ -12255,7 +12255,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   managed_link public.public_itinerary_links%rowtype;
   projection jsonb;
 begin
@@ -12360,7 +12360,7 @@ begin
   select trip.day_count into target_day_count
   from public.route_variants variant
   join public.trips trip on trip.id = variant.trip_id
-  where variant.id = target_variant_id and trip.owner_id = public.app_current_user_id();
+  where variant.id = target_variant_id and trip.owner_id = app_private.app_current_user_id();
 
   if target_day_count is null then
     raise exception 'TRIP_OWNER_REQUIRED' using errcode = '42501';
@@ -12403,7 +12403,7 @@ begin
     long_image_start_day_number = requested_long_image_start_day_number,
     long_image_end_day_number = requested_long_image_end_day_number
   where link.id = (created_page ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
   returning * into managed_link;
 
   return public.public_share_page_owner_json(managed_link);
@@ -12681,10 +12681,10 @@ alter table public.asset_links enable row level security;
 alter table public.asset_deletion_queue enable row level security;
 
 create policy "owners read their assets" on public.assets for select to authenticated
-using (owner_id = (select public.app_current_user_id()));
+using (owner_id = (select app_private.app_current_user_id()));
 
 create policy "owners read their asset links" on public.asset_links for select to authenticated
-using (owner_id = (select public.app_current_user_id()));
+using (owner_id = (select app_private.app_current_user_id()));
 
 comment on table public.assets is
   'Owner-scoped physical itinerary blobs; never project IDs, hashes, or object keys publicly.';
@@ -12736,7 +12736,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   canonical_asset public.assets%rowtype;
   prepared_asset public.assets%rowtype;
   prepared_link public.asset_links%rowtype;
@@ -12904,7 +12904,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   managed_asset public.assets%rowtype;
   canonical_asset public.assets%rowtype;
   managed_link public.asset_links%rowtype;
@@ -13052,7 +13052,7 @@ begin
     status = 'failed',
     pending_expires_at = null,
     failure_reason = left(coalesce(requested_reason, 'Verification failed'), 500)
-  where id = target_asset_id and owner_id = public.app_current_user_id() and status = 'pending';
+  where id = target_asset_id and owner_id = app_private.app_current_user_id() and status = 'pending';
   if found then delete from public.asset_links where asset_id = target_asset_id; end if;
 end;
 $$;
@@ -13075,7 +13075,7 @@ begin
   where link.public_ref = requested_public_ref
     and link.trip_id = target_trip_id
     and link.itinerary_item_id = target_item_id
-    and link.owner_id = public.app_current_user_id()
+    and link.owner_id = app_private.app_current_user_id()
     and asset.id = link.asset_id
     and asset.status = 'ready'
   returning link.* into managed_link;
@@ -13102,7 +13102,7 @@ begin
   where link.public_ref = requested_public_ref
     and link.trip_id = target_trip_id
     and link.itinerary_item_id = target_item_id
-    and link.owner_id = public.app_current_user_id()
+    and link.owner_id = app_private.app_current_user_id()
   returning link.asset_id into detached_asset_id;
   if detached_asset_id is null then
     raise exception 'ATTACHMENT_OWNER_REQUIRED' using errcode = '42501';
@@ -13134,8 +13134,8 @@ as $$
   join public.trips trip on trip.id = link.trip_id
   where link.trip_id = target_trip_id
     and link.public_ref = requested_public_ref
-    and trip.owner_id = public.app_current_user_id()
-    and link.owner_id = public.app_current_user_id()
+    and trip.owner_id = app_private.app_current_user_id()
+    and link.owner_id = app_private.app_current_user_id()
     and asset.status = 'ready';
 $$;
 
@@ -13206,7 +13206,7 @@ begin
   update public.public_itinerary_links link
   set show_attachments = requested_show_attachments
   where link.id = (created_page ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning * into managed_link;
   if managed_link.id is null then
@@ -13268,7 +13268,7 @@ begin
   update public.public_itinerary_links link
   set show_attachments = requested_show_attachments
   where link.id = (updated_page ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning * into managed_link;
   if managed_link.id is null then
@@ -13288,12 +13288,12 @@ as $$
 declare
   result jsonb;
 begin
-  if public.app_current_user_id() is null then
+  if app_private.app_current_user_id() is null then
     raise exception 'AUTHENTICATION_REQUIRED' using errcode = '42501';
   end if;
   if not exists (
     select 1 from public.trips trip
-    where trip.id = target_trip_id and trip.owner_id = public.app_current_user_id()
+    where trip.id = target_trip_id and trip.owner_id = app_private.app_current_user_id()
   ) then
     raise exception 'TRIP_OWNER_REQUIRED' using errcode = '42501';
   end if;
@@ -13303,7 +13303,7 @@ begin
   ) into result
   from public.public_itinerary_links link
   where link.trip_id = target_trip_id
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null;
   return result;
 end;
@@ -13319,7 +13319,7 @@ as $$
   select public.public_share_page_owner_json_v2(page)
   from public.public_itinerary_links page
   where page.id = target_share_page_id
-    and page.created_by = public.app_current_user_id()
+    and page.created_by = app_private.app_current_user_id()
     and page.revoked_at is null;
 $$;
 
@@ -13333,7 +13333,7 @@ as $$
   select public.public_share_page_owner_json_v2(page)
   from public.public_itinerary_links page
   where page.public_token = shared_token
-    and page.created_by = public.app_current_user_id()
+    and page.created_by = app_private.app_current_user_id()
     and page.revoked_at is null;
 $$;
 
@@ -13502,7 +13502,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   pending_asset public.assets%rowtype;
   pending_link public.asset_links%rowtype;
 begin
@@ -13667,7 +13667,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   existing_asset public.assets%rowtype;
   existing_link public.asset_links%rowtype;
   prepared jsonb;
@@ -13812,7 +13812,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   attachments jsonb;
 begin
   if current_user_id is null then
@@ -13866,7 +13866,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   deleted_count integer;
 begin
   if current_user_id is null then
@@ -13912,7 +13912,7 @@ begin
   where link.public_ref = requested_public_ref
     and link.trip_id = target_trip_id
     and link.itinerary_item_id = target_item_id
-    and link.owner_id = public.app_current_user_id()
+    and link.owner_id = app_private.app_current_user_id()
     and asset.id = link.asset_id
     and asset.status = 'ready'
   returning link.* into managed_link;
@@ -14156,7 +14156,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   canonical_asset public.assets%rowtype;
   existing_asset public.assets%rowtype;
   existing_link public.asset_links%rowtype;
@@ -14352,7 +14352,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   managed_asset public.assets%rowtype;
   canonical_asset public.assets%rowtype;
   managed_link public.asset_links%rowtype;
@@ -14474,7 +14474,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   attachments jsonb;
 begin
   perform 1
@@ -14523,7 +14523,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   deleted_count integer;
 begin
   perform 1
@@ -14562,7 +14562,7 @@ begin
   where link.public_ref = requested_public_ref
     and link.trip_id = target_trip_id
     and link.research_item_id = target_research_item_id
-    and link.owner_id = public.app_current_user_id()
+    and link.owner_id = app_private.app_current_user_id()
   returning link.asset_id into detached_asset_id;
   if detached_asset_id is null then
     raise exception 'ATTACHMENT_OWNER_REQUIRED' using errcode = '42501';
@@ -14582,7 +14582,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   target_item_id uuid;
   source_link record;
   next_order integer;
@@ -14881,7 +14881,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   target_trip_id uuid;
   managed_link public.public_itinerary_links%rowtype;
   projection jsonb;
@@ -14979,7 +14979,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  current_user_id varchar(64) := public.app_current_user_id();
+  current_user_id varchar(64) := app_private.app_current_user_id();
   managed_link public.public_itinerary_links%rowtype;
   projection jsonb;
 begin
@@ -15988,7 +15988,7 @@ begin
   update public.public_itinerary_links link
   set show_attachments = requested_show_attachments
   where link.id = (created_page ->> 'id')::uuid
-    and link.created_by = public.app_current_user_id()
+    and link.created_by = app_private.app_current_user_id()
     and link.revoked_at is null
   returning * into managed_link;
 

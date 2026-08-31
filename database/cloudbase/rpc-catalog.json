@@ -1,0 +1,1923 @@
+{
+  "version": 1,
+  "publicFunctionCount": 131,
+  "catalog": [
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_phase_6b_p0(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_6b_canonical_price(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_6b_complete_fields(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_6b_legacy_journey(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_6b_nightly_costs(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_6b_p05(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_6b_schedule(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_attachment_transfer(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2_phase_canonical_transport_tit(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant_v2(uuid,uuid,uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_item_to_variant(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_research_segment_carrier_v1()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_selected_research_item(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "asset_link_owner_json_v1(uuid)",
+      "arguments": [{ "name": "target_link_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "asset_link_owner_json_v2(uuid)",
+      "arguments": [{ "name": "target_link_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "clear_day_route_plan(uuid,uuid)",
+      "arguments": [
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "clear_research_item_selection(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "clear_route_variant_items(uuid,uuid,uuid[])",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_item_ids", "type": "uuid[]" }
+      ],
+      "returns": "integer",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "commit_item_asset_session_v1(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "commit_research_asset_session_v1(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "copy_itinerary_items_to_days(uuid[],uuid[])",
+      "arguments": [
+        { "name": "source_item_ids", "type": "uuid[]" },
+        { "name": "target_day_ids", "type": "uuid[]" }
+      ],
+      "returns": "integer",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "copy_research_assets_to_items_v1(uuid,uuid,uuid,uuid[])",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" },
+        { "name": "target_item_ids", "type": "uuid[]" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_public_itinerary_link_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_public_itinerary_link_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_public_itinerary_link_v4(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_public_itinerary_link(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,text,text)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_research_option(uuid,uuid,text,text,text,uuid,uuid,uuid,text,text,text,text,text,date,date,text,numeric,text,text,boolean,timestamptz,jsonb,text,uuid[])",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_topic_id", "type": "uuid" },
+        { "name": "topic_label", "type": "text" },
+        { "name": "topic_category", "type": "text" },
+        { "name": "topic_scope_kind", "type": "text" },
+        { "name": "topic_variant_id", "type": "uuid" },
+        { "name": "topic_day_id", "type": "uuid" },
+        { "name": "topic_itinerary_item_id", "type": "uuid" },
+        { "name": "topic_scope_label", "type": "text" },
+        { "name": "option_category", "type": "text" },
+        { "name": "option_title", "type": "text" },
+        { "name": "option_provider_label", "type": "text" },
+        { "name": "option_source_url", "type": "text" },
+        { "name": "option_relevant_start_date", "type": "date" },
+        { "name": "option_relevant_end_date", "type": "date" },
+        { "name": "option_search_context", "type": "text" },
+        { "name": "option_total_price", "type": "numeric" },
+        { "name": "option_currency", "type": "text" },
+        { "name": "option_price_basis", "type": "text" },
+        { "name": "option_taxes_included", "type": "boolean" },
+        { "name": "option_observed_at", "type": "timestamptz" },
+        { "name": "option_structured_details", "type": "jsonb" },
+        { "name": "option_notes", "type": "text" },
+        { "name": "source_entry_ids", "type": "uuid[]" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_route_variant(uuid,uuid,text,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "source_variant_id", "type": "uuid" },
+        { "name": "variant_name", "type": "text" },
+        { "name": "variant_color", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "create_share_page_v1(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_share_page_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" },
+        { "name": "requested_long_image_start_day_number", "type": "integer" },
+        { "name": "requested_long_image_end_day_number", "type": "integer" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" },
+        { "name": "requested_long_image_start_day_number", "type": "integer" },
+        { "name": "requested_long_image_end_day_number", "type": "integer" },
+        { "name": "requested_show_attachments", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "create_trip(text,date,date,text,text,integer)",
+      "arguments": [
+        { "name": "trip_title", "type": "text" },
+        { "name": "trip_start_date", "type": "date" },
+        { "name": "trip_end_date", "type": "date" },
+        { "name": "trip_timezone", "type": "text" },
+        { "name": "trip_currency", "type": "text" },
+        { "name": "trip_day_count", "type": "integer" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "claim_bound_create"
+    },
+    {
+      "schema": "public",
+      "signature": "current_research_plan_application_ids(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" }
+      ],
+      "returns": "uuid[]",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "delete_route_variant(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "detach_item_asset_v1(uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "detach_research_asset_v1(uuid,uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "discard_item_asset_session_v1(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
+      ],
+      "returns": "integer",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "discard_research_asset_session_v1(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
+      ],
+      "returns": "integer",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "duplicate_route_variant(uuid,uuid,text,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "source_variant_id", "type": "uuid" },
+        { "name": "variant_name", "type": "text" },
+        { "name": "variant_color", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "enforce_asset_link_limits()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "enforce_owner_ready_asset_quota()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "enforce_public_itinerary_link_owner()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "enforce_route_variant_limit()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "enforce_route_variant_primary()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "fail_item_asset_v1(uuid,text)",
+      "arguments": [
+        { "name": "target_asset_id", "type": "uuid" },
+        { "name": "requested_reason", "type": "text" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "fail_share_image_version_v1(uuid,text)",
+      "arguments": [
+        { "name": "target_version_id", "type": "uuid" },
+        { "name": "requested_error_message", "type": "text" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "finalize_item_asset_v1(uuid,text,bigint,asset_media_kind,text,integer,integer,numeric,boolean)",
+      "arguments": [
+        { "name": "target_asset_id", "type": "uuid" },
+        { "name": "verified_sha256", "type": "text" },
+        { "name": "verified_byte_size", "type": "bigint" },
+        { "name": "verified_media_kind", "type": "asset_media_kind" },
+        { "name": "verified_mime_type", "type": "text" },
+        { "name": "verified_width", "type": "integer" },
+        { "name": "verified_height", "type": "integer" },
+        { "name": "verified_duration_seconds", "type": "numeric" },
+        { "name": "thumbnail_ready", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "finalize_item_asset_v2(uuid,text,bigint,asset_media_kind,text,integer,integer,numeric,boolean)",
+      "arguments": [
+        { "name": "target_asset_id", "type": "uuid" },
+        { "name": "verified_sha256", "type": "text" },
+        { "name": "verified_byte_size", "type": "bigint" },
+        { "name": "verified_media_kind", "type": "asset_media_kind" },
+        { "name": "verified_mime_type", "type": "text" },
+        { "name": "verified_width", "type": "integer" },
+        { "name": "verified_height", "type": "integer" },
+        { "name": "verified_duration_seconds", "type": "numeric" },
+        { "name": "thumbnail_ready", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "finalize_research_asset_v1(uuid,text,bigint,asset_media_kind,text,integer,integer,numeric,boolean)",
+      "arguments": [
+        { "name": "target_asset_id", "type": "uuid" },
+        { "name": "verified_sha256", "type": "text" },
+        { "name": "verified_byte_size", "type": "bigint" },
+        { "name": "verified_media_kind", "type": "asset_media_kind" },
+        { "name": "verified_mime_type", "type": "text" },
+        { "name": "verified_width", "type": "integer" },
+        { "name": "verified_height", "type": "integer" },
+        { "name": "verified_duration_seconds", "type": "numeric" },
+        { "name": "thumbnail_ready", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_itinerary_v2(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_itinerary_v3(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_itinerary_v4(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_anonymous",
+      "authorization": "public_token_snapshot"
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_itinerary(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_share_page_v1(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_share_page_v2(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_share_page_v3(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_anonymous",
+      "authorization": "public_token_snapshot"
+    },
+    {
+      "schema": "public",
+      "signature": "insert_trip_day(uuid,integer)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "before_day_number", "type": "integer" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "insert_variant_day(uuid,uuid,integer)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "before_day_number", "type": "integer" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "invalidate_changed_research_selection()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "is_trip_owner(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "boolean",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "claim_bound_owner_check"
+    },
+    {
+      "schema": "public",
+      "signature": "itinerary_item_trip_id(uuid)",
+      "arguments": [{ "name": "target_item_id", "type": "uuid" }],
+      "returns": "uuid",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "list_public_itinerary_links_v2(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "list_public_itinerary_links_v3(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "list_public_itinerary_links(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "list_share_pages_v1(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "list_share_pages_v2(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "owner_asset_access_v1(uuid,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "owner_share_image_export_paths_v1(uuid)",
+      "arguments": [{ "name": "target_export_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "owner_share_page_by_token_v1(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "owner_share_page_by_token_v2(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "owner_share_page_image_state_v1(uuid)",
+      "arguments": [{ "name": "target_share_page_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "owner_share_page_v1(uuid)",
+      "arguments": [{ "name": "target_share_page_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "owner_share_page_v2(uuid)",
+      "arguments": [{ "name": "target_share_page_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_item_asset_v1(uuid,uuid,text,text,bigint,asset_media_kind,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_filename", "type": "text" },
+        { "name": "requested_sha256", "type": "text" },
+        { "name": "requested_byte_size", "type": "bigint" },
+        { "name": "requested_media_kind", "type": "asset_media_kind" },
+        { "name": "requested_mime_type", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_item_asset_v2(uuid,uuid,text,text,bigint,asset_media_kind,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_filename", "type": "text" },
+        { "name": "requested_sha256", "type": "text" },
+        { "name": "requested_byte_size", "type": "bigint" },
+        { "name": "requested_media_kind", "type": "asset_media_kind" },
+        { "name": "requested_mime_type", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_item_asset_v3(uuid,uuid,text,text,bigint,asset_media_kind,text,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_filename", "type": "text" },
+        { "name": "requested_sha256", "type": "text" },
+        { "name": "requested_byte_size", "type": "bigint" },
+        { "name": "requested_media_kind", "type": "asset_media_kind" },
+        { "name": "requested_mime_type", "type": "text" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_research_asset_v1(uuid,uuid,text,text,bigint,asset_media_kind,text,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_filename", "type": "text" },
+        { "name": "requested_sha256", "type": "text" },
+        { "name": "requested_byte_size", "type": "bigint" },
+        { "name": "requested_media_kind", "type": "asset_media_kind" },
+        { "name": "requested_mime_type", "type": "text" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_share_image_version_v1(uuid,text,uuid,text,text,jsonb)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "requested_mode", "type": "text" },
+        { "name": "target_export_id", "type": "uuid" },
+        { "name": "requested_qr_destination_type", "type": "text" },
+        { "name": "requested_qr_destination_url", "type": "text" },
+        { "name": "requested_render_config", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_share_image_version_v2(uuid,text,uuid,text,text,jsonb)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "requested_mode", "type": "text" },
+        { "name": "target_export_id", "type": "uuid" },
+        { "name": "requested_qr_destination_type", "type": "text" },
+        { "name": "requested_qr_destination_url", "type": "text" },
+        { "name": "requested_render_config", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "public_share_image_manifest_v1(text)",
+      "arguments": [{ "name": "requested_slug", "type": "text" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "public_share_page_image_v1(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "public_share_page_owner_json_v2(public_itinerary_links)",
+      "arguments": [{ "name": "managed_link", "type": "public_itinerary_links" }],
+      "returns": "jsonb",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "public_share_page_owner_json(public_itinerary_links)",
+      "arguments": [{ "name": "managed_link", "type": "public_itinerary_links" }],
+      "returns": "jsonb",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "queue_deleted_asset()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "queue_orphan_asset()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "remove_trip_day(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "remove_variant_day(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "reorder_itinerary_items(uuid,uuid[])",
+      "arguments": [
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "ordered_item_ids", "type": "uuid[]" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "reorder_variant_days(uuid,uuid,uuid[])",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "ordered_day_ids", "type": "uuid[]" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "research_application_matches_current(uuid)",
+      "arguments": [{ "name": "target_application_id", "type": "uuid" }],
+      "returns": "boolean",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "research_context_matches_trip(uuid,uuid,uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_end_day_id", "type": "uuid" },
+        { "name": "target_itinerary_item_id", "type": "uuid" }
+      ],
+      "returns": "boolean",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "research_created_item_snapshot(itinerary_items)",
+      "arguments": [{ "name": "target_item", "type": "itinerary_items" }],
+      "returns": "jsonb",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "research_decision_slot_key_v2(text,uuid,uuid,text,text,text,date,date,jsonb)",
+      "arguments": [
+        { "name": "target_category", "type": "text" },
+        { "name": "target_itinerary_item_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_origin", "type": "text" },
+        { "name": "target_destination", "type": "text" },
+        { "name": "target_location", "type": "text" },
+        { "name": "target_start_date", "type": "date" },
+        { "name": "target_end_date", "type": "date" },
+        { "name": "target_segments", "type": "jsonb" }
+      ],
+      "returns": "text",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "research_decision_slot_key(text,uuid,uuid,text,text,text,date,date)",
+      "arguments": [
+        { "name": "target_category", "type": "text" },
+        { "name": "target_itinerary_item_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_origin", "type": "text" },
+        { "name": "target_destination", "type": "text" },
+        { "name": "target_location", "type": "text" },
+        { "name": "target_start_date", "type": "date" },
+        { "name": "target_end_date", "type": "date" }
+      ],
+      "returns": "text",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "research_item_is_comparison_ready_v2(text,numeric,text,text,text,text,date,date,text,jsonb)",
+      "arguments": [
+        { "name": "target_category", "type": "text" },
+        { "name": "target_total_price", "type": "numeric" },
+        { "name": "target_currency", "type": "text" },
+        { "name": "target_origin", "type": "text" },
+        { "name": "target_destination", "type": "text" },
+        { "name": "target_location", "type": "text" },
+        { "name": "target_start_date", "type": "date" },
+        { "name": "target_end_date", "type": "date" },
+        { "name": "target_journey_type", "type": "text" },
+        { "name": "target_segments", "type": "jsonb" }
+      ],
+      "returns": "boolean",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "research_item_is_comparison_ready(text,numeric,text,text,text,text,date,date)",
+      "arguments": [
+        { "name": "target_category", "type": "text" },
+        { "name": "target_total_price", "type": "numeric" },
+        { "name": "target_currency", "type": "text" },
+        { "name": "target_origin", "type": "text" },
+        { "name": "target_destination", "type": "text" },
+        { "name": "target_location", "type": "text" },
+        { "name": "target_start_date", "type": "date" },
+        { "name": "target_end_date", "type": "date" }
+      ],
+      "returns": "boolean",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "research_owned_item_snapshot(itinerary_items)",
+      "arguments": [{ "name": "target_item", "type": "itinerary_items" }],
+      "returns": "jsonb",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revert_research_plan_application_phase_6b_complete_price(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revert_research_plan_application_phase_6b_p0(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revert_research_plan_application_phase_6b_p05(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revert_research_plan_application_phase_6b_schedule(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revert_research_plan_application_phase_attachment_transfer(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revert_research_plan_application(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "revoke_public_itinerary_link(uuid)",
+      "arguments": [{ "name": "target_link_id", "type": "uuid" }],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revoke_share_image_export_v1(uuid)",
+      "arguments": [{ "name": "target_export_id", "type": "uuid" }],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "revoke_share_page_v1(uuid)",
+      "arguments": [{ "name": "target_share_page_id", "type": "uuid" }],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "rotate_public_itinerary_link_v2(uuid)",
+      "arguments": [{ "name": "target_link_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "rotate_public_itinerary_link_v3(uuid)",
+      "arguments": [{ "name": "target_link_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "rotate_public_itinerary_link(uuid)",
+      "arguments": [{ "name": "target_link_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "save_day_route_calculation(uuid,text,jsonb,integer,integer,text)",
+      "arguments": [
+        { "name": "target_plan_id", "type": "uuid" },
+        { "name": "calculated_config_signature", "type": "text" },
+        { "name": "normalized_calculated_legs", "type": "jsonb" },
+        { "name": "calculated_total_distance_meters", "type": "integer" },
+        { "name": "calculated_total_duration_seconds", "type": "integer" },
+        { "name": "calculated_provider_schema_version", "type": "text" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "save_day_route_plan(uuid,uuid,uuid[],text[])",
+      "arguments": [
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "ordered_item_ids", "type": "uuid[]" },
+        { "name": "requested_leg_modes", "type": "text[]" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "select_research_item_for_variant_phase_6b_p05(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "select_research_item_for_variant(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "set_item_asset_share_v1(uuid,uuid,text,boolean)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" },
+        { "name": "requested_include_in_share", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "set_item_asset_share_v2(uuid,uuid,text,boolean)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" },
+        { "name": "requested_include_in_share", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "set_primary_route_variant(uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "set_updated_at()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "sync_trip_schedule_after_day_change()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "sync_trip_schedule_from_primary_days(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "void",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "update_public_itinerary_link_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text)",
+      "arguments": [
+        { "name": "target_link_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "update_public_itinerary_link_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)",
+      "arguments": [
+        { "name": "target_link_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "update_public_itinerary_link_v4(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer)",
+      "arguments": [
+        { "name": "target_link_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "update_public_itinerary_link(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,text,text)",
+      "arguments": [
+        { "name": "target_link_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "update_route_variant_metadata(uuid,uuid,text,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "variant_name", "type": "text" },
+        { "name": "variant_color", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "update_share_page_v1(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "update_share_page_v2(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" },
+        { "name": "requested_long_image_start_day_number", "type": "integer" },
+        { "name": "requested_long_image_end_day_number", "type": "integer" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "update_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" },
+        { "name": "requested_long_image_start_day_number", "type": "integer" },
+        { "name": "requested_long_image_end_day_number", "type": "integer" },
+        { "name": "requested_show_attachments", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "update_trip_plan(uuid,text,date,date,integer,text,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "trip_title", "type": "text" },
+        { "name": "trip_start_date", "type": "date" },
+        { "name": "trip_end_date", "type": "date" },
+        { "name": "trip_day_count", "type": "integer" },
+        { "name": "trip_timezone", "type": "text" },
+        { "name": "trip_currency", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "upsert_google_place_snapshot_v2(uuid,text,text,text,double precision,double precision,text,text,text,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "provider_place_id", "type": "text" },
+        { "name": "place_display_name", "type": "text" },
+        { "name": "place_formatted_address", "type": "text" },
+        { "name": "place_latitude", "type": "double precision" },
+        { "name": "place_longitude", "type": "double precision" },
+        { "name": "place_locality_name", "type": "text" },
+        { "name": "place_locality_kind", "type": "text" },
+        { "name": "place_country_code", "type": "text" },
+        { "name": "place_administrative_area_name", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "upsert_google_place_snapshot(uuid,text,text,text,double precision,double precision)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "provider_place_id", "type": "text" },
+        { "name": "place_display_name", "type": "text" },
+        { "name": "place_formatted_address", "type": "text" },
+        { "name": "place_latitude", "type": "double precision" },
+        { "name": "place_longitude", "type": "double precision" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": false,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "validate_trip_schedule_summary()",
+      "arguments": [],
+      "returns": "trigger",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "trigger",
+      "authorization": null
+    }
+  ],
+  "privateHelpers": ["app_current_user_id()", "is_trip_member(uuid)", "variant_trip_id(uuid)"]
+}
