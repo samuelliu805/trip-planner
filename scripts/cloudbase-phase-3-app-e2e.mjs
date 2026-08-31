@@ -539,10 +539,19 @@ async function verifyTabletFrozenLayers(browser) {
       const matrix = document.querySelector(
         '[data-i18n-aria-label="Editable trip planning matrix"]'
       );
-      matrix.scrollLeft = Math.min(360, matrix.scrollWidth - matrix.clientWidth);
-      matrix.scrollTop = Math.min(140, matrix.scrollHeight - matrix.clientHeight);
-      matrix.dispatchEvent(new Event("scroll", { bubbles: true }));
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      await nextFrame();
+      await nextFrame();
+      const targetLeft = Math.min(360, matrix.scrollWidth - matrix.clientWidth);
+      const targetTop = Math.min(140, matrix.scrollHeight - matrix.clientHeight);
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        matrix.scrollLeft = targetLeft;
+        matrix.scrollTop = targetTop;
+        matrix.dispatchEvent(new Event("scroll", { bubbles: true }));
+        await nextFrame();
+        if (matrix.scrollLeft > 0 && matrix.scrollTop > 0) break;
+      }
+      await nextFrame();
       const header = matrix.querySelector(".matrix-grid-header");
       const frozenHeader = header.querySelector('[role="columnheader"]:first-child');
       const matrixRect = matrix.getBoundingClientRect();
