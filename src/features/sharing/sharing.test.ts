@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import "./templates/templates.test.ts";
 
+import { isShareImageCleanupCronAuthorized } from "../../app/api/cron/share-image-cleanup/authorization.mjs";
 import { createPseudonymousAnalyticsId } from "../../lib/telemetry/identity.server.ts";
 import { matrixCategoryColumns } from "../itinerary/components/matrix-columns.ts";
 import {
@@ -1338,6 +1339,10 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
     new URL("../../app/public-sharing-timeline-export.css", import.meta.url),
     "utf8",
   );
+  const cleanupCore = await readFile(
+    new URL("../../../cloudbase/functions/shared/admin-cleanup.mjs", import.meta.url),
+    "utf8",
+  );
   const imageCleanupMigration = await readFile(
     new URL(
       "../../../supabase/migrations/20260816011414_hard_delete_revoked_share_images.sql",
@@ -1424,8 +1429,31 @@ test("long-image regeneration is explicit and nested overlays stay above the sha
   assert.match(imageExpiryMigration, /export\.expires_at > now\(\)/);
   assert.match(imageExpiryMigration, /expired_share_image_cleanup_batch_v1/);
   assert.match(imageExpiryMigration, /to service_role/);
-  assert.match(cronCleanup, /Bearer \$\{cronSecret\}/);
-  assert.match(cronCleanup, /getStorageProvider\("share-images"\)[\s\S]*storage\.remove/);
+  assert.match(cronCleanup, /isShareImageCleanupCronAuthorized/);
+  assert.equal(
+    isShareImageCleanupCronAuthorized(new Request("https://example.invalid"), "expected"),
+    false,
+  );
+  assert.equal(
+    isShareImageCleanupCronAuthorized(
+      new Request("https://example.invalid", {
+        headers: { authorization: "Bearer wrong" },
+      }),
+      "expected",
+    ),
+    false,
+  );
+  assert.equal(
+    isShareImageCleanupCronAuthorized(
+      new Request("https://example.invalid", {
+        headers: { authorization: "Bearer expected" },
+      }),
+      "expected",
+    ),
+    true,
+  );
+  assert.match(cronCleanup, /runCleanupJobs/);
+  assert.match(cleanupCore, /storage\("share-images"\)\.remove/);
   assert.match(privateImagePart, /getStorageProvider\("share-images"\)\.download/);
   assert.doesNotMatch(privateImagePart, /object\/public/);
   assert.match(exportRenderer, /getFontEmbedCSS/);

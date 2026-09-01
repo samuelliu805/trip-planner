@@ -5,6 +5,8 @@ import { CloudBaseAuthProvider } from "@/platform/cloudbase/auth-provider";
 import { createCloudBaseRelationalDatabase } from "@/platform/cloudbase/relational-database";
 import { CloudBaseTripRepository } from "@/platform/cloudbase/trip-repository";
 import { CloudBaseAccountProfileRepository } from "@/platform/cloudbase/profile-repository";
+import { CloudBaseStorageProvider } from "@/platform/cloudbase/storage-provider";
+import { createCloudBaseAdminClients } from "@/platform/cloudbase/client";
 import { cloudBaseProviderUnavailable } from "@/platform/cloudbase/unavailable";
 import { getServerProviderConfig } from "@/platform/config/server";
 import type {
@@ -78,21 +80,20 @@ export function getAccountProfileRepository(): AccountProfileRepository {
 export function getStorageProvider(bucket: string): StorageProvider {
   const config = getServerProviderConfig();
   if (config.storageProvider === "supabase") return new SupabaseStorageProvider(bucket);
-  return cloudBaseProviderUnavailable();
+  return new CloudBaseStorageProvider(bucket);
 }
 
-export function getResumableUploadEndpoint(): string {
+export function getResumableUploadEndpoint(): string | null {
   const config = getServerProviderConfig();
-  if (config.storageProvider !== "supabase" || !getBackendCapabilities().signedUrls) {
-    throw new Error("This backend does not support resumable uploads.");
-  }
-  return getSupabaseResumableUploadEndpoint();
+  return config.storageProvider === "supabase" ? getSupabaseResumableUploadEndpoint() : null;
 }
 
 export function getPrivilegedRelationalDatabase(): RelationalDatabase {
   const config = getServerProviderConfig();
-  if (config.dataProvider !== "supabase" || !getBackendCapabilities().signedUrls) {
+  if (!getBackendCapabilities().signedUrls) {
     throw new Error("This backend does not support privileged Phase 4 data operations.");
   }
-  return createSupabaseAdminRelationalDatabase();
+  return config.dataProvider === "supabase"
+    ? createSupabaseAdminRelationalDatabase()
+    : (createCloudBaseAdminClients().rdb() as unknown as RelationalDatabase);
 }

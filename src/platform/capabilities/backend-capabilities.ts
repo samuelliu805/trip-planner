@@ -26,7 +26,7 @@ export const backendCapabilitiesByRegion = Object.freeze({
     passwordSignInIdentifier: "username",
     realtime: false,
     selfRegistration: false,
-    signedUrls: false,
+    signedUrls: true,
     wechatAuth: false,
   }),
 }) satisfies Readonly<Record<AppRegion, BackendCapabilities>>;

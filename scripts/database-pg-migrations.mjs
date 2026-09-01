@@ -67,6 +67,45 @@ export function assertMigrationInventory({ frozen, shared, supabase, cloudbase, 
   );
 }
 
+function recordedApplicationMigrationVersions(sql) {
+  const versions = [];
+  for (const statement of splitStatements(sql)) {
+    const command = statement.replace(/^(?:\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)+/g, "").trim();
+    const match = command.match(
+      /^insert\s+into\s+public\.app_schema_migrations\s*\(\s*version\s*,\s*description\s*\)\s*values\s*\(\s*'(\d{14})'/i,
+    );
+    if (match) versions.push(match[1]);
+  }
+  return versions;
+}
+
+export function assertCloudbaseMigrationLedgerCoverage(providerOnly, readMigration) {
+  const migrations = providerOnly
+    .filter((entry) => entry.provider === "cloudbase")
+    .toSorted((left, right) => left.file.localeCompare(right.file));
+  const recorders = new Map();
+
+  migrations.forEach((entry, index) => {
+    for (const version of recordedApplicationMigrationVersions(readMigration(entry.file))) {
+      const positions = recorders.get(version) ?? [];
+      positions.push(index);
+      recorders.set(version, positions);
+    }
+  });
+
+  const missing = migrations.filter((entry, index) => {
+    const version = entry.file.match(/^(\d{14})_/)?.[1];
+    return !version || !(recorders.get(version) ?? []).some((position) => position >= index);
+  });
+  if (missing.length) {
+    throw new Error(
+      `CloudBase provider-only migration ledger coverage is missing: ${missing
+        .map((entry) => entry.file)
+        .join(", ")}`,
+    );
+  }
+}
+
 function transactionBody(file, sql) {
   const match = sql.trim().match(/^BEGIN\s*;\s*([\s\S]*?)\s*COMMIT\s*;$/i);
   if (!match) throw new Error(`Shared migration must be one explicit transaction: ${file}`);
@@ -177,6 +216,9 @@ function checkInventory(bootstrap, providerManifest) {
     if (unmatched.length)
       throw new Error(`${label} overlay lacks shared source: ${unmatched.join(", ")}`);
   }
+  assertCloudbaseMigrationLedgerCoverage(providerManifest.migrations, (file) =>
+    readFileSync(join(cloudbaseDir, file), "utf8"),
+  );
 }
 
 function build() {

@@ -1,0 +1,9 @@
+.git
+.github
+.next
+.vercel
+node_modules
+npm-debug.log*
+.env*
+grep
+supabase/.temp

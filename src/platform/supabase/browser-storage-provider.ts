@@ -1,6 +1,10 @@
 "use client";
 
-import type { BrowserStorageProvider, UploadInput } from "@/platform/contracts/storage";
+import type {
+  BrowserStorageProvider,
+  SignedUploadInput,
+  UploadInput,
+} from "@/platform/contracts/storage";
 import { PlatformOperationError } from "@/platform/contracts/errors";
 
 import { createSupabaseBrowserClient } from "./client";
@@ -19,6 +23,21 @@ export class SupabaseBrowserStorageProvider implements BrowserStorageProvider {
     if (error || !data)
       throw new PlatformOperationError("unexpected", "Storage upload failed.", { cause: error });
     return { fullPath: data.fullPath, id: data.id, path: data.path };
+  }
+
+  async uploadToSignedUrl(input: SignedUploadInput) {
+    const { data, error } = await createSupabaseBrowserClient()
+      .storage.from(this.bucket)
+      .uploadToSignedUrl(input.path, input.token, input.body, {
+        cacheControl: input.cacheControl,
+        contentType: input.contentType,
+        upsert: input.upsert ?? false,
+      });
+    if (error || !data)
+      throw new PlatformOperationError("unexpected", "Signed storage upload failed.", {
+        cause: error,
+      });
+    return { fullPath: data.fullPath, path: data.path };
   }
 
   async remove(paths: string[]) {

@@ -12,6 +12,8 @@ export default defineConfig([
     ],
     ignores: [
       "scripts/backfill-place-localities.ts",
+      "scripts/supabase-phase-4-storage-live.mjs",
+      "src/platform/cloudbase/browser-storage-provider.ts",
       "src/platform/cloudbase/client.ts",
       "src/platform/supabase/admin.ts",
       "src/platform/supabase/client.ts",

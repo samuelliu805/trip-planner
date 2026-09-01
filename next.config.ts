@@ -8,6 +8,7 @@ import { resolveDeploymentProviderConfig } from "./src/platform/config/provider-
 resolveDeploymentProviderConfig(process.env);
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   poweredByHeader: false,
   async headers() {
     return [

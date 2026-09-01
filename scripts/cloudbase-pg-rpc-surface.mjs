@@ -90,11 +90,11 @@ function buildCatalog() {
     .filter((routine) => routine.schema === "app_private")
     .map((routine) => routine.signature)
     .sort();
-  verifyCatalog({ allowlist, functions, catalog, privateHelpers });
+  verifyCatalog({ allowlist, functions, catalog, privateHelpers, baseline });
   return { version: 1, publicFunctionCount: catalog.length, catalog, privateHelpers };
 }
 
-function verifyCatalog({ allowlist, functions, catalog, privateHelpers }) {
+function verifyCatalog({ allowlist, functions, catalog, privateHelpers, baseline }) {
   const external = catalog.filter((routine) => routine.category.startsWith("external_"));
   const expectedCount = allowlist.authenticated.length + allowlist.anonymous.length;
   const anonymousSignatures = new Set(allowlist.anonymous.map(([signature]) => signature));
@@ -151,7 +151,7 @@ function verifyCatalog({ allowlist, functions, catalog, privateHelpers }) {
   ) {
     throw new Error("RPC grants do not fail closed before applying the allowlist");
   }
-  const normalizedGrants = grants.replaceAll(
+  const normalizedGrants = baseline.replaceAll(
     "public.public_itinerary_view",
     "public_itinerary_view",
   );
@@ -159,9 +159,11 @@ function verifyCatalog({ allowlist, functions, catalog, privateHelpers }) {
   for (const match of normalizedGrants.matchAll(
     /GRANT EXECUTE ON FUNCTION public\.([^;]+?) TO ([a-z, ]+);/gi,
   )) {
+    const roles = match[2].replace(/\s+/g, "");
+    if (!roles.split(",").some((role) => role === "anon" || role === "authenticated")) continue;
     actualGrants.set(
       match[1].replace(/\s+/g, "").replaceAll("doubleprecision", "double precision"),
-      match[2].replace(/\s+/g, ""),
+      roles,
     );
   }
   if (actualGrants.size !== expectedCount) throw new Error("Unexpected extra public RPC grant");

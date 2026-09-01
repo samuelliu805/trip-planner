@@ -36,6 +36,42 @@
       "file": "20260831053729_global_function_acl_defaults.sql",
       "kind": "phase_2_repair",
       "sha256": "148488fd158a9bd22f231ad796177d41167355b511d0cac582aac7f335053de8"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831170000_cloudbase_pg_storage_phase_four.sql",
+      "kind": "phase_4_pgstore",
+      "sha256": "9f0319fd7d1b2c4daaa24066854daeffd32d3aa9e18d40adf6c1c92f03719bff"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831203000_cloudbase_share_image_upload_authorization.sql",
+      "kind": "phase_4_authorization_repair",
+      "sha256": "e468b53529d55cbb9d91999594dad085161d1dac5b32c1682e0d7270a81c598c"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831204500_cloudbase_boolean_rpc_json_compat.sql",
+      "kind": "phase_4_gateway_compatibility_repair",
+      "sha256": "2562327098c9e85bf10398adcb9dfc3d96f1fb2051b9b19b3d572aefd6402359"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831210000_cloudbase_boolean_rpc_wire_envelope.sql",
+      "kind": "phase_4_gateway_compatibility_repair",
+      "sha256": "5681d5575df11c38626cfc71950aa105e6b9665a0ebc71257c52e37d964484e9"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831211500_cloudbase_cleanup_count_wire_envelopes.sql",
+      "kind": "phase_4_gateway_compatibility_repair",
+      "sha256": "66d0064f05605396c7305650054692b14d51fa9060f6139e7c337751a07fd557"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260831213000_cloudbase_phase_four_ledger_repair.sql",
+      "kind": "phase_4_ledger_repair",
+      "sha256": "035501fb60488ab7fa20e6668637525ba639ba4db4c205c407fb3417416534c7"
     }
   ]
 }

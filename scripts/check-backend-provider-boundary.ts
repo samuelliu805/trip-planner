@@ -14,9 +14,13 @@ const sdkImports = [
 
 export const providerSdkImportAllowlist = Object.freeze([
   "scripts/backfill-place-localities.ts",
+  "scripts/cloudbase-phase-4-storage-live.mjs",
+  "scripts/lib/cloudbase-phase-4-admin-storage-worker.mjs",
   "scripts/lib/cloudbase-pg-live.mjs",
+  "scripts/supabase-phase-4-storage-live.mjs",
   "src/platform/supabase/admin.ts",
   "src/platform/cloudbase/client.ts",
+  "src/platform/cloudbase/browser-storage-provider.ts",
   "src/platform/supabase/client.ts",
   "src/platform/supabase/proxy.ts",
   "src/platform/supabase/server.ts",

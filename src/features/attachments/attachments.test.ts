@@ -272,6 +272,10 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     "utf8",
   );
   const cleanup = await readFile(new URL("./cleanup.server.ts", import.meta.url), "utf8");
+  const cleanupCore = await readFile(
+    new URL("../../../cloudbase/functions/shared/admin-cleanup.mjs", import.meta.url),
+    "utf8",
+  );
   const formControls = await Promise.all(
     [
       "../../components/ui/input.tsx",
@@ -393,9 +397,10 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.match(attachmentSession, /discardAttachmentUploadSession/);
   assert.match(sessionRoute, /commit_item_asset_session_v1/);
   assert.match(sessionRoute, /discard_item_asset_session_v1/);
-  assert.match(cleanup, /asset_cleanup_batch_v2/);
-  assert.match(cleanup, /untracked_asset_storage_batch_v1/);
-  assert.match(cleanup, /getStorageProvider\("trip-assets"\)[\s\S]*storage\.remove/);
+  assert.match(cleanup, /drainQueue\(getAdminCleanupBackend\(\), limit\)/);
+  assert.match(cleanupCore, /asset_cleanup_batch_v2/);
+  assert.match(cleanupCore, /untracked_asset_storage_batch_v1/);
+  assert.match(cleanupCore, /storage\("trip-assets"\)\.remove/);
   assert.equal(
     formControls.every((source) => /ring-inset/.test(source) && /max-w-full/.test(source)),
     true,

@@ -12,6 +12,7 @@ import {
   prepareShareImageVersion,
   revokeShareImageExport,
 } from "../long-image/actions";
+import { authorizeShareImageUpload, removeShareImageUploads } from "../long-image/storage-actions";
 import type {
   LongImageScope,
   OwnerShareImageState,
@@ -82,11 +83,17 @@ export function useLongImageExport({
           setProgress(
             t("Uploading part {part} of {total}…", { part: index + 1, total: parts.length }),
           );
-          await storage.upload({
+          const authorization = await authorizeShareImageUpload({
+            path: storagePath,
+            versionId: prepared.data.versionId,
+          });
+          if ("error" in authorization) throw new Error(authorization.error);
+          await storage.uploadToSignedUrl({
             body: rendered.blob,
             cacheControl: "31536000",
             contentType: "image/jpeg",
             path: storagePath,
+            token: authorization.data.token,
             upsert: false,
           });
           uploadedPaths.push(storagePath);
@@ -137,7 +144,7 @@ export function useLongImageExport({
       } catch (caught) {
         if (uploadedPaths.length) {
           try {
-            await getBrowserStorageProvider("share-images").remove(uploadedPaths);
+            await removeShareImageUploads(uploadedPaths);
           } catch {
             // Cleanup failure must not suppress the authoritative export failure outcome.
           }
