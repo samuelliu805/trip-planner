@@ -5,7 +5,7 @@ const amapRouteMessages: Record<RouteProviderErrorCode, string> = {
   invalid_request:
     "AMap Routes rejected the route request. Check the saved places and travel modes; the previous route is unchanged.",
   invalid_response: "AMap Routes returned an invalid response. The previous route is unchanged.",
-  missing_key: "AMap Routes is not configured. Add AMAP_WEB_SERVICE_KEY to the server environment.",
+  missing_key: "AMap Routes is not configured on the server.",
   network:
     "The server could not reach AMap Routes. Check outbound HTTPS; the previous route is unchanged.",
   permission: "AMap Routes is not enabled or permitted for the Web Service API key.",

@@ -84,8 +84,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "AMap JS API loaded without its global API.": "高德地图 JS API 加载后未提供全局接口。",
   "AMap JS API loading was cancelled.": "已取消加载高德地图 JS API。",
   "AMap JS API was requested with conflicting settings.": "高德地图 JS API 收到了冲突的配置。",
-  "AMap Routes is not configured. Add AMAP_WEB_SERVICE_KEY to the server environment.":
-    "尚未配置高德路线服务，请在服务端环境中添加 AMAP_WEB_SERVICE_KEY。",
+  "AMap Routes is not configured on the server.": "尚未在服务端配置高德路线服务。",
   "AMap Routes is not enabled or permitted for the Web Service API key.":
     "高德路线服务未启用，或 Web 服务 Key 没有访问权限。",
   "AMap Routes is temporarily unavailable. Try calculating again later.":
