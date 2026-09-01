@@ -90,9 +90,11 @@ export function MatrixItemSummary({
 export function MatrixGridHeader({
   columns = matrixCategoryColumns,
   mobileDateLabel,
+  wideDateColumn = false,
 }: {
   columns?: MatrixCategoryColumn[];
   mobileDateLabel?: string;
+  wideDateColumn?: boolean;
 }) {
   return (
     <div
@@ -100,7 +102,7 @@ export function MatrixGridHeader({
       role="row"
     >
       <div
-        className="matrix-date-column sticky left-0 top-0 z-20 flex w-24 shrink-0 items-center border-r bg-muted px-2"
+        className={`matrix-date-column sticky left-0 top-0 z-20 flex shrink-0 items-center border-r bg-muted px-2 ${wideDateColumn ? "w-28" : "w-24"}`}
         role="columnheader"
       >
         <span className="matrix-frozen-content">
@@ -117,7 +119,7 @@ export function MatrixGridHeader({
         </span>
       </div>
       <div
-        className="matrix-day-column sticky left-24 z-10 flex w-16 shrink-0 items-center border-r bg-muted px-2"
+        className={`matrix-day-column sticky z-10 flex w-16 shrink-0 items-center border-r bg-muted px-2 ${wideDateColumn ? "left-28" : "left-24"}`}
         role="columnheader"
       >
         <span className="matrix-frozen-content">
