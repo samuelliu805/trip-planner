@@ -259,6 +259,49 @@ async function waitFor(browser, expression, label, timeoutMs = 30_000) {
   throw new Error(`Timed out waiting for ${label}; last result: ${String(last)}`);
 }
 
+async function assertRealAmapBrowserAdapter(browser) {
+  if (process.env.PHASE5_REQUIRE_AMAP_SMOKE !== "1") return;
+  await waitFor(
+    browser,
+    'Boolean(window.AMap && document.querySelector(".amap-container"))',
+    "real AMap JS map",
+    45_000,
+  );
+  const place = await evaluate(
+    browser,
+    `new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("AMap place smoke timed out")), 20000);
+      const fail = (message) => { clearTimeout(timer); reject(new Error(message)); };
+      const autocomplete = new window.AMap.AutoComplete({ city: "上海", citylimit: true });
+      autocomplete.search("上海外滩", (status, result) => {
+        const tip = status === "complete" && typeof result !== "string"
+          ? result.tips?.find((entry) => typeof entry.id === "string" && entry.id)
+          : null;
+        if (!tip) return fail("AMap autocomplete returned no POI");
+        const details = new window.AMap.PlaceSearch({ extensions: "all" });
+        details.getDetails(tip.id, (detailStatus, detailResult) => {
+          clearTimeout(timer);
+          const poi = detailStatus === "complete" && typeof detailResult !== "string"
+            ? detailResult.poiList?.pois?.find((entry) => entry.id === tip.id)
+            : null;
+          if (!poi?.location) return reject(new Error("AMap POI resolution failed"));
+          resolve({ id: poi.id, latitude: poi.location.getLat(), longitude: poi.location.getLng() });
+        });
+      });
+    })`,
+  );
+  assert.ok(place?.id && Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
+  const resources = await evaluate(
+    browser,
+    `performance.getEntriesByType("resource").map((entry) => entry.name)`,
+  );
+  assert.ok(resources.some((url) => /webapi\.amap\.com\/maps|\/_AMapService\//.test(url)));
+  assert.equal(
+    resources.some((url) => /googleapis|maps\.google|gstatic/i.test(url)),
+    false,
+  );
+}
+
 async function navigate(browser, path) {
   await evaluate(browser, "window.__phase3NavigationSentinel = true");
   await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
@@ -725,6 +768,28 @@ async function cleanupFixture(tripId) {
   return { deleted, remaining };
 }
 
+async function createPublicShareFixture(tripId) {
+  const config = loadLiveConfig();
+  const { auth, db } = initializeLiveClient(config);
+  try {
+    await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+    const variants = dataOrThrow(
+      await db.from("route_variants").select("id").eq("trip_id", tripId).eq("is_primary", true),
+      "application E2E share variant",
+    );
+    const variantId = Array.isArray(variants) ? variants[0]?.id : variants?.id;
+    if (!variantId) throw new Error("Application E2E share variant was unavailable.");
+    const share = dataOrThrow(
+      await db.rpc("create_share_page_v3", { target_variant_id: variantId }),
+      "application E2E public share",
+    );
+    if (!share?.publicToken) throw new Error("Application E2E public token was unavailable.");
+    return share.publicToken;
+  } finally {
+    await auth.signOut();
+  }
+}
+
 async function run() {
   requireProductionSelectors();
   let server;
@@ -831,6 +896,7 @@ async function run() {
       await evaluate(browser, 'Boolean(document.querySelector("[data-nextjs-dialog]"))'),
       false,
     );
+    await assertRealAmapBrowserAdapter(browser);
 
     const updatedTitle = `${runLabel}-owned-by-a`;
     await updateTripTitle(browser, updatedTitle);
@@ -888,6 +954,37 @@ async function run() {
       new RegExp(forgedTitle),
     );
 
+    const publicToken = await createPublicShareFixture(tripId);
+    await clearCookies(browser);
+    await navigate(browser, `/share/${publicToken}?view=overview`);
+    await waitFor(
+      browser,
+      `document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      "CN anonymous public share",
+    );
+    assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
+    assert.equal(
+      (await cookieNames(browser)).some((name) => name.startsWith("tp-cn-")),
+      false,
+    );
+    if (process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1") {
+      await waitFor(
+        browser,
+        'Boolean(window.AMap && document.querySelector(".amap-container"))',
+        "public AMap canvas",
+      );
+      const publicResources = await evaluate(
+        browser,
+        'performance.getEntriesByType("resource").map((entry) => entry.name)',
+      );
+      assert.equal(
+        publicResources.some((url) => /googleapis|maps\.google|gstatic/i.test(url)),
+        false,
+      );
+    }
+
+    await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
+    await navigate(browser, `/trips/${tripId}`);
     await deleteTripThroughUi(browser);
     await navigate(browser, "/trips");
     try {
@@ -958,7 +1055,13 @@ async function run() {
     "Tablet Matrix frozen header and column cover passed at 820x600 after two-axis scroll.",
   );
   console.log("CN accepted only tp-cn-* session cookies and logout cleared them.");
+  if (process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1") {
+    console.log(
+      "Authenticated AMap JS map/autocomplete/POI smoke passed with zero Google requests.",
+    );
+  }
   console.log("A list/create/detail/update/status/delete and B read/update/delete denial passed.");
+  console.log("CN anonymous public-share application smoke passed without a session cookie.");
 }
 
 run().then(

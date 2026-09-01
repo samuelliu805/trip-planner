@@ -138,6 +138,38 @@ async function run() {
       assert.equal(success(signedIn, "temporary user sign-in").user?.id, entry.id);
     }
 
+    const bAssetId = randomUUID();
+    const bPath = `${clients[1].id}/${bAssetId}/original`;
+    controlledPaths.push(["trip-assets", bPath]);
+    const bSignedUpload = success(
+      await stage("service authorizes user B upload", () =>
+        admin.storage.from("trip-assets").createSignedUploadUrl(bPath, { upsert: false }),
+      ),
+      "service authorizes user B upload",
+    );
+    success(
+      await stage("user B uploads private fixture", () =>
+        clients[1].client.storage
+          .from("trip-assets")
+          .uploadToSignedUrl(bPath, bSignedUpload.token, jpegA, { contentType: "image/jpeg" }),
+      ),
+      "user B uploads private fixture",
+    );
+    assert.ok(
+      (
+        await stage("user A cannot sign B object", () =>
+          clients[0].client.storage.from("trip-assets").createSignedUrl(bPath, 60),
+        )
+      ).error,
+    );
+    assert.ok(
+      (
+        await stage("user A cannot retrieve B object", () =>
+          clients[0].client.storage.from("trip-assets").download(bPath),
+        )
+      ).error,
+    );
+
     const assetId = randomUUID();
     const path = `${clients[0].id}/${assetId}/original`;
     controlledPaths.push(["trip-assets", path]);
@@ -185,6 +217,10 @@ async function run() {
       clients[1].client.storage.from("trip-assets").download(path),
     );
     assert.ok(bRead.error);
+    const bSignedUrl = await stage("user B signed URL denial", () =>
+      clients[1].client.storage.from("trip-assets").createSignedUrl(path, 60),
+    );
+    assert.ok(bSignedUrl.error);
     const bOverwrite = await stage("user B overwrite denial", () =>
       clients[1].client.storage
         .from("trip-assets")
