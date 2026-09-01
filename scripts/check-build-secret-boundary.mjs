@@ -10,6 +10,7 @@ const secretNames = [
   "CLOUDBASE_SECRET_ID",
   "CLOUDBASE_SECRET_KEY",
   "CLOUDBASE_API_KEY",
+  "CLOUDBASE_APIKEY",
 ];
 
 async function filesBelow(directory) {

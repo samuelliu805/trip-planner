@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PlatformOperationError } from "@/platform/contracts/errors";
+import { PlatformOperationError } from "../contracts/errors.ts";
 
 function required(name: string, value: string | undefined) {
   if (value?.trim()) return value.trim();
@@ -19,8 +19,10 @@ export function getCloudBaseConfig() {
 }
 
 export function getCloudBaseAdminConfig() {
+  const apiKey = process.env.CLOUDBASE_API_KEY?.trim() || process.env.CLOUDBASE_APIKEY?.trim();
+
   return Object.freeze({
     ...getCloudBaseConfig(),
-    apiKey: required("CLOUDBASE_API_KEY", process.env.CLOUDBASE_API_KEY),
+    apiKey: required("CLOUDBASE_API_KEY or CLOUDBASE_APIKEY", apiKey),
   });
 }

@@ -4,7 +4,7 @@
 
 `global-production` builds the Global selector with Supabase Auth, data, and storage plus Google Maps. Its GitHub Environment owns `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`, `NEXT_PUBLIC_SITE_URL`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`. Vercel Git integration remains the only production deployment owner; the workflow verifies the matching Git deployment instead of creating a duplicate.
 
-`cloudbase-cn-dev` builds the CN selector with CloudBase Auth, PG, and PG Storage plus AMap. It owns `CLOUDBASE_API_KEY` (server-only service-role key), `CLOUDBASE_PUBLISHABLE_KEY`, `CLOUDBASE_ENV_ID`, `CLOUDBASE_PG_INSTANCE_ID`, `CLOUDBASE_REGION`, the three corresponding `NEXT_PUBLIC_CLOUDBASE_*` values, and the eventual `NEXT_PUBLIC_SITE_URL`. It must not contain Supabase, Vercel, or Google credentials.
+`cloudbase-cn-dev` builds the CN selector with CloudBase Auth, PG, and PG Storage plus AMap. It owns `CLOUDBASE_API_KEY` (server-only service-role key), `CLOUDBASE_PUBLISHABLE_KEY`, `CLOUDBASE_ENV_ID`, `CLOUDBASE_PG_INSTANCE_ID`, `CLOUDBASE_REGION`, the three corresponding `NEXT_PUBLIC_CLOUDBASE_*` values, and the eventual `NEXT_PUBLIC_SITE_URL`. It must not contain Supabase, Vercel, or Google credentials. CloudBase's native API Key setting injects the same credential as `CLOUDBASE_APIKEY`; the server-only application runtime accepts that name alongside `CLOUDBASE_API_KEY` and prefers `CLOUDBASE_API_KEY` when both are present.
 
 `cloudbase-pg-dev` remains cross-provider live-test scope. Test user passwords and provider admin credentials must exist only there or in an operator's local environment, never in an application build.
 
@@ -14,15 +14,13 @@ The web service is stateless, listens on `0.0.0.0:$PORT`, and exposes `/api/heal
 
 ## Deployment gate
 
-Do not run the CN deployment workflow until all items below are complete and the user confirms deployment:
+Phase 4 code and live acceptance is complete. Actual CN deployment remains a separate user-confirmed gate. Do not run the CN deployment workflow until all items below are complete:
 
-- Initialize `trip-planner-cn` as a public-ingress CloudBase Run service and configure its server-only runtime variables.
-- Confirm CloudBase Run reports `Status=normal` before deployment.
-- Obtain the final runtime hostname, add it to CloudBase Auth safe domains, and set CN `NEXT_PUBLIC_SITE_URL` to the exact HTTPS origin.
-- Run the complete CloudBase storage A/B and independently invoked cleanup suites with zero fixture residue.
-- Run the equivalent Supabase storage, share-access, Cron-authorization, retry, and zero-residue suites without migrating or mirroring Global objects.
-- Confirm Global and CN workflow runs refer to the same commit SHA and record both workflow URLs/results.
-- Run CloudBase Code Review and resolve every executable P0/P1/P2 finding.
+- Initialize CloudBase Run and the `trip-planner-cn` service with its server-only runtime variables.
+- Obtain the final default CloudBase Run hostname.
+- Add that exact hostname to the CloudBase Auth safe-domain list.
+- Set the `cloudbase-cn-dev` `NEXT_PUBLIC_SITE_URL` to the exact HTTPS origin.
+- Obtain explicit user confirmation before manually dispatching the Deploy CN workflow.
 
 A custom domain remains out of scope until ICP filing, certificate readiness, another gate review, and explicit confirmation.
 
@@ -40,11 +38,10 @@ A custom domain remains out of scope until ICP filing, certificate readiness, an
 
 ## Current verification status (2026-08-31)
 
-- The repeatable Supabase Phase 4 live suite passed service-authorized signed upload and upsert, preview/download, user B and anonymous denial, service-role verification after an idempotent unauthorized remove, failed-asset retry and cleanup, Cron missing/wrong/valid authorization, and final zero-residue audits for objects, assets, queues, and temporary users.
-- The CloudBase cleanup handler completed successfully when invoked independently, returned the bounded number/boolean result shape, exited successfully, and finished with a PG read-only audit of `0 controlled object(s)`.
-- The latest complete CloudBase Storage live run did **not** pass. It progressed through service-authorized signed upload, A/B read and overwrite isolation, and B's idempotent delete attempt, then exhausted the bounded three-attempt retry at `user B list isolation` with the safe error `StorageError fetch failed`. The runner did not reinterpret that infrastructure failure as an authorization denial.
-- After that CloudBase Storage failure, all three isolated service cleanup requests completed and the PG read-only residue audit reported `0 controlled object(s)`. Service-role Storage operations run outside the user-auth SDK process so A/B sessions cannot contaminate cleanup; no cleanup used direct `DELETE` against `storage.objects`.
-- The first manually dispatched combined Phase 3/Phase 4 workflow run exposed CI harness blockers rather than a successful Storage result: the Phase 3 detail page queried the intentionally unavailable CN itinerary-link capability and reached `permission denied for function itinerary_item_trip_id`, the Phase 3 delete path lacked the server-only key now required for immediate asset-queue draining, and both Phase 4 PG residue audits lacked a non-interactive CloudBase CLI login. Source now keeps CN itinerary links disabled while retaining Phase 4 signed URLs/attachments, injects the server-only key only into the Phase 3 runtime step, authenticates the audit CLI with the environment-scoped API key before both independent suites, and preserves redacted Next.js/browser diagnostics. These repairs still require a new complete workflow run before the live gate can pass.
-- The current CloudBase Code Review scanned 1,834 files. Its raw regex report contains six errors and three warnings: eight findings are generated `.next` matches or Supabase/provider-contract false positives, and `STORAGE001` is the intentionally unperformed CloudBase browser safe-domain configuration. Semantic review found and fixed two executable hardening items: cleanup now verifies every returned Storage deletion object, and the isolated service worker no longer inherits unrelated server secrets. No executable P0/P1/P2 code finding remains, but the review is not an unconditional deployment pass while `STORAGE001` and the Storage live blocker remain open.
+- The manually dispatched [CloudBase PG CI run](https://github.com/samuelliu805/trip-planner/actions/runs/33476972986) verified exact SHA `c470c5c656beb5267e52090d2cf6373fb4dd7854`. Its `static`, `cn-build`, and `live-cloudbase-dev` jobs all succeeded.
+- The CloudBase Phase 4 Storage A/B suite passed, including service-authorized signed upload and the required cross-user and anonymous isolation checks. The independently invoked CloudBase cleanup handler also passed.
+- Final read-only audits reported `0` controlled CloudBase Storage objects. Supabase residue was also zero: `objects=0`, `assets=0`, `queues=0`, and `temporary_users=0`.
+- CloudBase migration history reports `Total=12` and `LatestVersion=20260831213000`; the existing dry-run evidence remains `pending=[]` and `conflicts=[]`.
+- CloudBase Code Review has no executable P0/P1/P2 finding remaining. Safe-domain configuration is intentionally deferred to the separate deployment gate because the final CloudBase Run hostname does not exist yet.
 
-Deployment remains blocked until the complete CloudBase Storage suite passes without an upstream fetch failure.
+Phase 4 code and live acceptance is complete. No CN deployment is authorized by this evidence.

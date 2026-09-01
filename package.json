@@ -21,7 +21,7 @@
     "prebuild": "npm run validate:public-templates",
     "prepare:cloudbase-run": "node scripts/prepare-cloudbase-run.mjs",
     "test": "node src/features/itinerary/itinerary.test.ts && node --test scripts/phase-4-storage-behavior.test.mjs && npm run test:platform && npm run test:cloudbase-pg-static",
-    "test:platform": "node --test src/platform/platform.test.ts src/platform/cloudbase/access-token.test.ts src/platform/cloudbase/mutations.test.ts",
+    "test:platform": "node --conditions=react-server --test src/platform/cloudbase/config.test.ts && node --test src/platform/platform.test.ts src/platform/cloudbase/access-token.test.ts src/platform/cloudbase/mutations.test.ts",
     "test:cloudbase-pg-rpc-surface": "node scripts/cloudbase-pg-live-rpc-surface.mjs",
     "test:cloudbase-pg-security": "node scripts/cloudbase-pg-live-rls.mjs",
     "test:cloudbase-phase-3-app-e2e": "node --env-file-if-exists=.env.local scripts/cloudbase-phase-3-app-e2e.mjs",
