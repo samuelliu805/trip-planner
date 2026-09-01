@@ -118,7 +118,7 @@ export function PlannerMatrix({
               >
                 <div
                   aria-selected={selectedDayRow === row}
-                  className={`sticky left-0 z-20 flex w-24 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "matrix-frozen-selected shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                  className={`sticky left-0 z-20 flex w-28 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "matrix-frozen-selected shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
                   onClick={() => selectDay(row)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -162,7 +162,7 @@ export function PlannerMatrix({
                   </div>
                 </div>
                 <div
-                  className="sticky left-24 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
+                  className="sticky left-28 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
                   role="rowheader"
                 >
                   <span className="matrix-frozen-content">{day.day_number}</span>

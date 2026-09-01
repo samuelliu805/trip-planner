@@ -172,7 +172,7 @@ export function PlannerMapPane({
 }
 
 export function PlannerGridHeader() {
-  return <MatrixGridHeader columns={categories} />;
+  return <MatrixGridHeader columns={categories} wideDateColumn />;
 }
 
 export function PlannerDivider({
