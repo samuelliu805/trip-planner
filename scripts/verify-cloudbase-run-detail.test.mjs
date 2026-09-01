@@ -30,11 +30,11 @@ function createRunner(t) {
   let fixture = 0;
   t.after(() => rmSync(root, { force: true, recursive: true }));
 
-  return (contents, expectedName = serviceName) => {
+  return (contents, expectedName = serviceName, ...args) => {
     const path = join(root, `detail-${fixture}.txt`);
     fixture += 1;
     writeFileSync(path, contents);
-    const result = spawnSync(process.execPath, [script, path, expectedName], {
+    const result = spawnSync(process.execPath, [script, path, expectedName, ...args], {
       encoding: "utf8",
     });
     assert.equal(result.error, undefined);
@@ -106,4 +106,24 @@ test("rejects missing and truncated JSON without exposing raw output", (t) => {
       `Retrieving Cloud Hosting Service Details...\n{"data":{"BaseInfo":{"ServerName":"${serviceName}","ServerConfig":{"EnvParams":"${fakeSecret}`,
     ),
   );
+});
+
+test("requires a fully online version for the post-deploy gate", (t) => {
+  const run = createRunner(t);
+
+  assertSafeFailure(
+    run(
+      JSON.stringify(detail({ extra: { OnlineVersionInfos: [] } })),
+      serviceName,
+      "--require-online-version",
+    ),
+  );
+
+  const result = run(
+    JSON.stringify(detail({ extra: { OnlineVersionInfos: [{ FlowRatio: 100 }] } })),
+    serviceName,
+    "--require-online-version",
+  );
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout.includes(fakeSecret), false);
 });
