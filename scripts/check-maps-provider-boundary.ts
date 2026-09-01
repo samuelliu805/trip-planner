@@ -4,9 +4,18 @@ import { pathToFileURL } from "node:url";
 
 const productionExtension = /\.(?:ts|tsx)$/;
 const googleBoundary = "src/lib/providers/google/";
-const forbidden = [
+const amapBoundary = "src/lib/providers/amap/";
+const googleForbidden = [
   { label: "@vis.gl/react-google-maps import", pattern: /@vis\.gl\/react-google-maps/ },
   { label: "Google Maps browser SDK type", pattern: /\bgoogle\.maps\b/ },
+] as const;
+const amapForbidden = [
+  { label: "AMap browser SDK package", pattern: /@amap\// },
+  {
+    label: "AMap browser SDK global",
+    pattern: /(?:window|globalThis)\.AMap\b|\bdeclare\s+(?:const|namespace)\s+AMap\b/,
+  },
+  { label: "AMap security global", pattern: /_AMapSecurityConfig/ },
 ] as const;
 
 async function sourceFiles(directory: string): Promise<string[]> {
@@ -28,10 +37,13 @@ export async function findMapsProviderBoundaryViolations(root = process.cwd()) {
   const violations: string[] = [];
   for (const path of files) {
     const projectPath = relative(root, path).replaceAll("\\", "/");
-    if (projectPath.startsWith(googleBoundary)) continue;
     const source = await readFile(path, "utf8");
-    for (const rule of forbidden)
-      if (rule.pattern.test(source)) violations.push(`${projectPath}: ${rule.label}`);
+    if (!projectPath.startsWith(googleBoundary))
+      for (const rule of googleForbidden)
+        if (rule.pattern.test(source)) violations.push(`${projectPath}: ${rule.label}`);
+    if (!projectPath.startsWith(amapBoundary))
+      for (const rule of amapForbidden)
+        if (rule.pattern.test(source)) violations.push(`${projectPath}: ${rule.label}`);
   }
   return violations;
 }

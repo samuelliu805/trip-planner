@@ -73,7 +73,7 @@ export function resolveMapsProvider(
       });
     throw error;
   }
-  if (providerId === "amap")
+  if (providerId === "amap" && capability === "photos")
     throw new MapsProviderConfigurationError({
       capability,
       code: "provider_unavailable",

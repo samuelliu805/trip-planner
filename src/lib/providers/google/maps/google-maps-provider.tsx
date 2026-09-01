@@ -4,12 +4,21 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 import { createContext, useContext, useState } from "react";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
+import { useGooglePlacesProvider } from "@/lib/providers/google/places/use-google-places-provider";
+import { PlacesProviderContext } from "@/lib/providers/places/client-context";
 
 type GoogleMapConfiguration = { apiError?: string; apiKey?: string; mapId?: string };
 const GoogleMapConfigurationContext = createContext<GoogleMapConfiguration>({});
 
 export function useGoogleMapConfiguration() {
   return useContext(GoogleMapConfigurationContext);
+}
+
+function GooglePlacesProviderBridge({ children }: { children: React.ReactNode }) {
+  const provider = useGooglePlacesProvider();
+  return (
+    <PlacesProviderContext.Provider value={{ provider }}>{children}</PlacesProviderContext.Provider>
+  );
 }
 
 export function GoogleMapsProvider({ children }: { children: React.ReactNode }) {
@@ -22,7 +31,9 @@ export function GoogleMapsProvider({ children }: { children: React.ReactNode }) 
   if (!apiKey || !mapId)
     return (
       <GoogleMapConfigurationContext.Provider value={value}>
-        {children}
+        <PlacesProviderContext.Provider value={{ provider: null }}>
+          {children}
+        </PlacesProviderContext.Provider>
       </GoogleMapConfigurationContext.Provider>
     );
 
@@ -38,7 +49,7 @@ export function GoogleMapsProvider({ children }: { children: React.ReactNode }) 
           setApiError(error instanceof Error ? error.message : "Google Maps could not be loaded.")
         }
       >
-        {children}
+        <GooglePlacesProviderBridge>{children}</GooglePlacesProviderBridge>
       </APIProvider>
     </GoogleMapConfigurationContext.Provider>
   );

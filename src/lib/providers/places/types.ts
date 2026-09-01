@@ -12,7 +12,7 @@ export const localityKinds = [
 ] as const;
 
 export type LocalityKind = (typeof localityKinds)[number];
-export type LocalitySource = "google_address_component" | "legacy_city";
+export type LocalitySource = "amap_poi" | "google_address_component" | "legacy_city";
 export type PlaceProviderId = MapsProviderId | "custom";
 
 export type PlaceSnapshot = Coordinates & {
