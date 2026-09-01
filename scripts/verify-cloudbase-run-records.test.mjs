@@ -73,6 +73,17 @@ test("rejects an unchanged DeployId", (t) => {
   assertSafeFailure(run(JSON.stringify(records(record())), "released", "004"));
 });
 
+test("permits a retry only while the latest DeployId is unchanged", (t) => {
+  const run = createRunner(t);
+  const unchanged = run(JSON.stringify(records(record())), "unchanged", "004");
+
+  assert.equal(unchanged.status, 0);
+  assert.equal(unchanged.stdout, "CloudBase Run did not register a deployment.\n");
+  assert.equal(unchanged.stderr, "");
+  assert.equal(unchanged.stdout.includes(fakeSecret), false);
+  assertSafeFailure(run(JSON.stringify(records(record())), "unchanged", "003"));
+});
+
 test("rejects build_failed and deploying records", async (t) => {
   await t.test("build_failed", (subtest) => {
     const run = createRunner(subtest);

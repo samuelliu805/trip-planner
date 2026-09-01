@@ -29,9 +29,9 @@ async function main() {
   const previousDeployId = process.argv[4];
   if (
     !path ||
-    !["latest", "released"].includes(mode) ||
+    !["latest", "unchanged", "released"].includes(mode) ||
     (mode === "latest" && previousDeployId !== undefined) ||
-    (mode === "released" && (!previousDeployId || process.argv[5]))
+    (mode !== "latest" && (!previousDeployId || process.argv[5]))
   ) {
     throw new Error();
   }
@@ -46,6 +46,11 @@ async function main() {
 
   if (mode === "latest") {
     process.stdout.write(`${latestDeployId}\n`);
+    return;
+  }
+  if (mode === "unchanged") {
+    if (latestDeployId !== previousDeployId) throw new Error();
+    process.stdout.write("CloudBase Run did not register a deployment.\n");
     return;
   }
 
