@@ -108,7 +108,7 @@ test("rejects missing and truncated JSON without exposing raw output", (t) => {
   );
 });
 
-test("requires a fully online version for the post-deploy gate", (t) => {
+test("requires a fully online version for the post-deploy gate", async (t) => {
   const run = createRunner(t);
 
   assertSafeFailure(
@@ -119,11 +119,31 @@ test("requires a fully online version for the post-deploy gate", (t) => {
     ),
   );
 
-  const result = run(
-    JSON.stringify(detail({ extra: { OnlineVersionInfos: [{ FlowRatio: 100 }] } })),
-    serviceName,
-    "--require-online-version",
+  await t.test("accepts a numeric 100% flow ratio", () => {
+    const result = run(
+      JSON.stringify(detail({ extra: { OnlineVersionInfos: [{ FlowRatio: 100 }] } })),
+      serviceName,
+      "--require-online-version",
+    );
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout.includes(fakeSecret), false);
+  });
+
+  await t.test("accepts the CloudBase string 100% flow ratio", () => {
+    const result = run(
+      JSON.stringify(detail({ extra: { OnlineVersionInfos: [{ FlowRatio: "100" }] } })),
+      serviceName,
+      "--require-online-version",
+    );
+    assert.equal(result.status, 0);
+    assert.equal(result.stdout.includes(fakeSecret), false);
+  });
+
+  assertSafeFailure(
+    run(
+      JSON.stringify(detail({ extra: { OnlineVersionInfos: [{ FlowRatio: "99" }] } })),
+      serviceName,
+      "--require-online-version",
+    ),
   );
-  assert.equal(result.status, 0);
-  assert.equal(result.stdout.includes(fakeSecret), false);
 });

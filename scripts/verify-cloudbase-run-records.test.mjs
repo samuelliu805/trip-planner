@@ -12,7 +12,7 @@ const fakeSecret = "FAKE_RECORD_ENV_SECRET_DO_NOT_PRINT";
 function record(overrides = {}) {
   return {
     DeployId: "004",
-    Status: "running",
+    Status: "normal",
     HasTraffic: true,
     FlowRatio: 100,
     IsReleasing: false,
@@ -84,7 +84,7 @@ test("permits a retry only while the latest DeployId is unchanged", (t) => {
   assertSafeFailure(run(JSON.stringify(records(record())), "unchanged", "003"));
 });
 
-test("rejects build_failed and deploying records", async (t) => {
+test("rejects non-normal deployment records", async (t) => {
   await t.test("build_failed", (subtest) => {
     const run = createRunner(subtest);
     assertSafeFailure(
@@ -97,9 +97,15 @@ test("rejects build_failed and deploying records", async (t) => {
       run(JSON.stringify(records(record({ Status: "deploying" }))), "released", "003"),
     );
   });
+  await t.test("running", (subtest) => {
+    const run = createRunner(subtest);
+    assertSafeFailure(
+      run(JSON.stringify(records(record({ Status: "running" }))), "released", "003"),
+    );
+  });
 });
 
-test("rejects a running deployment without traffic", async (t) => {
+test("rejects a normal deployment without traffic", async (t) => {
   await t.test("HasTraffic is false", (subtest) => {
     const run = createRunner(subtest);
     assertSafeFailure(
@@ -112,12 +118,12 @@ test("rejects a running deployment without traffic", async (t) => {
   });
 });
 
-test("accepts a new running deployment with 100% traffic", (t) => {
+test("accepts a new normal deployment with 100% traffic", (t) => {
   const run = createRunner(t);
   const result = run(JSON.stringify(records(record())), "released", "003");
 
   assert.equal(result.status, 0);
-  assert.equal(result.stdout, "CloudBase Run deployment is running with 100% traffic.\n");
+  assert.equal(result.stdout, "CloudBase Run deployment is normal with 100% traffic.\n");
   assert.equal(result.stderr, "");
   assert.equal(result.stdout.includes(fakeSecret), false);
 });

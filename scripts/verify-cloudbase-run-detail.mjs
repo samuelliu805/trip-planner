@@ -36,7 +36,7 @@ async function main() {
           version &&
           typeof version === "object" &&
           !Array.isArray(version) &&
-          version.FlowRatio === 100,
+          (version.FlowRatio === 100 || version.FlowRatio === "100"),
       )
     ) {
       throw new Error();
