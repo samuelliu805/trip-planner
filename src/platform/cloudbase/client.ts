@@ -2,10 +2,11 @@ import "server-only";
 
 import cloudbase from "@cloudbase/js-sdk";
 import nodeAdapter from "@cloudbase/adapter-node";
+import type { StorageClient } from "@cloudbase/js-sdk/storage";
 
 import { PlatformOperationError } from "@/platform/contracts/errors";
 
-import { getCloudBaseConfig } from "./config";
+import { getCloudBaseAdminConfig, getCloudBaseConfig } from "./config";
 
 export type CloudBaseSdkResult<T = unknown> = Promise<{
   data: T | null;
@@ -39,6 +40,7 @@ export type CloudBaseDatabase = Readonly<{
 
 let adaptersRegistered = false;
 let clients: ReturnType<typeof initializeCloudBaseClients> | undefined;
+let adminClients: ReturnType<typeof initializeCloudBaseAdminClients> | undefined;
 
 function registerAdapter() {
   if (adaptersRegistered) return;
@@ -68,9 +70,30 @@ function initializeCloudBaseClients() {
   };
 }
 
+function initializeCloudBaseAdminClients() {
+  registerAdapter();
+  const config = getCloudBaseAdminConfig();
+  const app = cloudbase.init({
+    accessKey: config.apiKey,
+    auth: { detectSessionInUrl: false },
+    env: config.env,
+    persistence: "none",
+    region: config.region,
+  });
+  return {
+    rdb: () => app.rdb() as unknown as CloudBaseDatabase,
+    storage: app.storage as StorageClient,
+  };
+}
+
 export function createCloudBaseClients() {
   clients ??= initializeCloudBaseClients();
   return clients;
+}
+
+export function createCloudBaseAdminClients() {
+  adminClients ??= initializeCloudBaseAdminClients();
+  return adminClients;
 }
 
 export function createCloudBaseDatabase(accessToken: string) {

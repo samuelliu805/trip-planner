@@ -43,6 +43,10 @@ const omittedPhase4Functions = [
   "untracked_asset_storage_batch_v1",
 ];
 
+const reviewedManagedSchemaMigrations = new Set([
+  "20260831170000_cloudbase_pg_storage_phase_four.sql",
+]);
+
 export function splitStatements(sql) {
   const statements = [];
   let start = 0;
@@ -216,13 +220,14 @@ export function verifyBootstrapManifest() {
       .replace(/--[^\n]*/g, "")
       .replace(/\/\*[\s\S]*?\*\//g, "");
     if (
-      /\b(?:create|alter|drop)\s+(?:schema|table|function|policy|trigger|type|view)\s+(?:if\s+(?:not\s+)?exists\s+)?(?:auth|storage)\b/i.test(
+      !reviewedManagedSchemaMigrations.has(file) &&
+      (/\b(?:create|alter|drop)\s+(?:schema|table|function|policy|trigger|type|view)\s+(?:if\s+(?:not\s+)?exists\s+)?(?:auth|storage)\b/i.test(
         sql,
       ) ||
-      /\b(?:insert\s+into|update|delete\s+from)\s+(?:auth|storage)\s*\./i.test(sql) ||
-      /\b(?:grant|revoke)\b[\s\S]{0,120}\bon\s+(?:table|function|schema)\s+(?:auth|storage)\b/i.test(
-        sql,
-      )
+        /\b(?:insert\s+into|update|delete\s+from)\s+(?:auth|storage)\s*\./i.test(sql) ||
+        /\b(?:grant|revoke)\b[\s\S]{0,120}\bon\s+(?:table|function|schema)\s+(?:auth|storage)\b/i.test(
+          sql,
+        ))
     ) {
       throw new Error(`Project migration modifies a managed schema: ${file}`);
     }

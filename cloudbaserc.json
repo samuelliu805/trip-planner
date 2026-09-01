@@ -1,0 +1,40 @@
+{
+  "version": "2.0",
+  "$schema": "https://static.cloudbase.net/cloudbase-config-schema/latest.json",
+  "envId": "trip-planner-cn-dev-d3bz94038b26",
+  "region": "ap-shanghai",
+  "functionRoot": "cloudbase/functions",
+  "functions": [
+    {
+      "name": "trip-planner-cleanup",
+      "description": "Private provider-neutral storage cleanup for the CN deployment",
+      "type": "Event",
+      "runtime": "Nodejs18.15",
+      "handler": "cleanup/index.main",
+      "timeout": 120,
+      "memorySize": 256,
+      "dir": "cloudbase/functions",
+      "installDependency": true,
+      "public": false,
+      "envVariables": {
+        "CLOUDBASE_APIKEY": "{{env.CLOUDBASE_API_KEY}}",
+        "CLOUDBASE_ENV_ID": "trip-planner-cn-dev-d3bz94038b26",
+        "CLOUDBASE_REGION": "ap-shanghai"
+      },
+      "triggers": [
+        {
+          "name": "daily-storage-cleanup",
+          "type": "timer",
+          "config": "0 17 3 * * * *"
+        }
+      ]
+    }
+  ],
+  "database": {
+    "type": "postgresql",
+    "migrations": "./cloudbase/migrations"
+  },
+  "cloudrun": {
+    "name": "trip-planner-cn"
+  }
+}

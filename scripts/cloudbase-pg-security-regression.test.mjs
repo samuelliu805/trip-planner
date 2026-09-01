@@ -4,6 +4,7 @@ import test from "node:test";
 import { join } from "node:path";
 import { functionAclDenied, gatewayFunctionUnavailable } from "./lib/cloudbase-pg-live.mjs";
 import {
+  assertCloudbaseMigrationLedgerCoverage,
   assertMigrationInventory,
   renderCloudbaseFunctionAcl,
   renderProviderMigration,
@@ -74,6 +75,39 @@ test("an unmatched direct provider migration fails the migration 64+ invariant",
     file: "20260901000100_unreviewed_direct_change.sql",
   });
   assert.doesNotThrow(() => assertMigrationInventory(fixture));
+});
+
+test("CloudBase provider-only migrations require application ledger coverage", () => {
+  const migrations = [
+    { provider: "cloudbase", file: "20260901000000_missing.sql" },
+    { provider: "cloudbase", file: "20260901000100_repair.sql" },
+  ];
+  const sql = new Map([
+    ["20260901000000_missing.sql", "BEGIN; COMMIT;"],
+    [
+      "20260901000100_repair.sql",
+      `BEGIN;
+       INSERT INTO public.app_schema_migrations (version, description)
+       VALUES ('20260901000000', 'repaired') ON CONFLICT (version) DO NOTHING;
+       INSERT INTO public.app_schema_migrations (version, description)
+       VALUES ('20260901000100', 'repair migration');
+       COMMIT;`,
+    ],
+  ]);
+  assert.doesNotThrow(() =>
+    assertCloudbaseMigrationLedgerCoverage(migrations, (file) => sql.get(file)),
+  );
+  sql.set(
+    "20260901000100_repair.sql",
+    `BEGIN;
+     INSERT INTO public.app_schema_migrations (version, description)
+     VALUES ('20260901000100', 'repair migration');
+     COMMIT;`,
+  );
+  assert.throws(
+    () => assertCloudbaseMigrationLedgerCoverage(migrations, (file) => sql.get(file)),
+    /20260901000000_missing\.sql/,
+  );
 });
 
 test("a generated unallowlisted SECURITY DEFINER is revoked before commit", () => {

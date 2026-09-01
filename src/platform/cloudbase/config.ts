@@ -17,3 +17,10 @@ export function getCloudBaseConfig() {
     region: required("CLOUDBASE_REGION", process.env.CLOUDBASE_REGION),
   });
 }
+
+export function getCloudBaseAdminConfig() {
+  return Object.freeze({
+    ...getCloudBaseConfig(),
+    apiKey: required("CLOUDBASE_API_KEY", process.env.CLOUDBASE_API_KEY),
+  });
+}

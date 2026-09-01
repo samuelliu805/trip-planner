@@ -70,7 +70,7 @@ const signedUploadSchema = z
     objectKey: z.string().min(1).max(500),
     signedUrl: z.url(),
     token: z.string().min(1),
-    tusEndpoint: z.url(),
+    tusEndpoint: z.url().nullable(),
   })
   .strict();
 

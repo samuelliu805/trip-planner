@@ -60,6 +60,24 @@ export function normalizeCloudBaseError(error: unknown, fallbackMessage: string)
   } else if (code.includes("23505") || combined.includes("duplicate")) {
     platformCode = "conflict";
   } else if (
+    combined.includes("storage_bucket_not_found") ||
+    combined.includes("storage_object_not_found") ||
+    combined.includes("not found")
+  ) {
+    platformCode = "not_found";
+  } else if (
+    combined.includes("storage_permission_denied") ||
+    combined.includes("not authorized")
+  ) {
+    platformCode = "forbidden";
+    safeMessage = "You do not have permission to perform this storage operation.";
+  } else if (
+    combined.includes("storage_content_length") ||
+    combined.includes("mime") ||
+    combined.includes("file size")
+  ) {
+    platformCode = "validation_failed";
+  } else if (
     code.includes("22023") ||
     code.includes("23514") ||
     combined.includes("invalid input")

@@ -22,11 +22,11 @@ export const backendCapabilitiesByRegion = Object.freeze({
   }),
   cn: Object.freeze({
     googleOAuth: false,
-    itineraryItemLinks: false,
+    itineraryItemLinks: true,
     passwordSignInIdentifier: "username",
     realtime: false,
     selfRegistration: false,
-    signedUrls: false,
+    signedUrls: true,
     wechatAuth: false,
   }),
 }) satisfies Readonly<Record<AppRegion, BackendCapabilities>>;

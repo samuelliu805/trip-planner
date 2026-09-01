@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 131,
+  "publicFunctionCount": 140,
   "catalog": [
     {
       "schema": "public",
@@ -192,6 +192,26 @@
         { "name": "target_variant_id", "type": "uuid" },
         { "name": "target_research_item_id", "type": "uuid" }
       ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "asset_cleanup_batch_v1(integer)",
+      "arguments": [{ "name": "requested_limit", "type": "integer" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "asset_cleanup_batch_v2(integer)",
+      "arguments": [{ "name": "requested_limit", "type": "integer" }],
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
@@ -708,6 +728,29 @@
     },
     {
       "schema": "public",
+      "signature": "expired_share_image_cleanup_batch_v1(integer)",
+      "arguments": [{ "name": "requested_limit", "type": "integer" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "fail_asset_cleanup_v1(uuid,text)",
+      "arguments": [
+        { "name": "target_asset_id", "type": "uuid" },
+        { "name": "requested_error", "type": "text" }
+      ],
+      "returns": "void",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
       "signature": "fail_item_asset_v1(uuid,text)",
       "arguments": [
         { "name": "target_asset_id", "type": "uuid" },
@@ -730,6 +773,26 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "finalize_asset_cleanup_v1(uuid[])",
+      "arguments": [{ "name": "target_asset_ids", "type": "uuid[]" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "finalize_expired_share_image_cleanup_v1(uuid[])",
+      "arguments": [{ "name": "target_export_ids", "type": "uuid[]" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
       "authorization": null
     },
     {
@@ -1036,6 +1099,16 @@
       "schema": "public",
       "signature": "owner_share_page_v2(uuid)",
       "arguments": [{ "name": "target_share_page_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "owns_pending_share_image_object_v1(text)",
+      "arguments": [{ "name": "requested_name", "type": "text" }],
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
@@ -1589,6 +1662,19 @@
     },
     {
       "schema": "public",
+      "signature": "service_public_asset_access_v2(uuid,text)",
+      "arguments": [
+        { "name": "shared_token", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
       "signature": "set_item_asset_share_v1(uuid,uuid,text,boolean)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -1658,6 +1744,16 @@
       "securityDefiner": false,
       "safeSearchPath": true,
       "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "untracked_asset_storage_batch_v1(integer)",
+      "arguments": [{ "name": "requested_limit", "type": "integer" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
       "authorization": null
     },
     {

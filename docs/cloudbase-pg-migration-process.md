@@ -20,8 +20,10 @@ approved empty database; future changes never rebuild or redeploy it to an exist
 5. Run `npm run check:database-pg-migrations` and the normal schema/security checks.
 
 CloudBase-only operational repair migrations may be checked in directly under
-`cloudbase/migrations/`. They must be versioned, transactional where PostgreSQL permits, and must
-not alter CloudBase-managed `auth` or `storage` schemas. Every direct provider migration must also
+`cloudbase/migrations/`. They must be versioned and transactional where PostgreSQL permits. A
+reviewed Phase 4 pgstore migration may manage `storage.buckets` and `storage.objects` policies;
+all other direct migrations remain forbidden from altering CloudBase-managed `auth` or `storage`
+schemas. Every direct provider migration must also
 appear in `database/provider-only-migrations.json` with its provider, review category, filename,
 and SHA-256. The migration check compares the complete post-bootstrap Supabase and CloudBase file
 sets against shared sources plus this manifest; an unmatched direct file fails CI.

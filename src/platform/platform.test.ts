@@ -10,7 +10,7 @@ import {
   type ProviderEnvironment,
 } from "./config/provider-matrix.ts";
 import { backendCapabilitiesByRegion } from "./capabilities/backend-capabilities.ts";
-import { cloudBasePhase3Status } from "./cloudbase/status.ts";
+import { cloudBasePhase4Status } from "./cloudbase/status.ts";
 import { cloudBaseScalarUuidRpc } from "./cloudbase/rpc-compat.ts";
 import {
   cloudBaseSessionFromData,
@@ -109,8 +109,8 @@ test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.global.realtime, true);
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
   assert.equal(backendCapabilitiesByRegion.cn.selfRegistration, false);
-  assert.equal(backendCapabilitiesByRegion.cn.signedUrls, false);
-  assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, false);
+  assert.equal(backendCapabilitiesByRegion.cn.signedUrls, true);
+  assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, true);
   assert.equal(backendCapabilitiesByRegion.global.itineraryItemLinks, true);
   assert.equal(backendCapabilitiesByRegion.cn.passwordSignInIdentifier, "username");
   assert.equal(backendCapabilitiesByRegion.global.passwordSignInIdentifier, "email");
@@ -167,19 +167,16 @@ test("provider SDK imports are restricted to the exact adapter and maintenance a
   assert.match(eslintConfig, /@cloudbase\/js-sdk/);
 });
 
-test("CloudBase Phase 3 enables Auth and PG while Storage remains fail-closed", async () => {
-  const [storageBoundary, composition] = await Promise.all([
-    readFile(new URL("./cloudbase/unavailable.ts", import.meta.url), "utf8"),
-    readFile(new URL("./composition/server.ts", import.meta.url), "utf8"),
-  ]);
-  assert.equal(cloudBasePhase3Status.authImplemented, true);
-  assert.equal(cloudBasePhase3Status.dataImplemented, true);
-  assert.equal(cloudBasePhase3Status.runtimeReady, true);
-  assert.equal(cloudBasePhase3Status.storageImplemented, false);
+test("CloudBase Phase 4 enables Auth, PG, private storage, and signed URLs", async () => {
+  const composition = await readFile(new URL("./composition/server.ts", import.meta.url), "utf8");
+  assert.equal(cloudBasePhase4Status.authImplemented, true);
+  assert.equal(cloudBasePhase4Status.dataImplemented, true);
+  assert.equal(cloudBasePhase4Status.runtimeReady, true);
+  assert.equal(cloudBasePhase4Status.storageImplemented, true);
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
-  assert.match(storageBoundary, /provider_unavailable/);
   assert.match(composition, /new CloudBaseAuthProvider/);
   assert.match(composition, /new CloudBaseTripRepository/);
+  assert.match(composition, /new CloudBaseStorageProvider/);
 });
 
 test("Phase 2 is schema-only and does not promise backend runtime adapters", async () => {

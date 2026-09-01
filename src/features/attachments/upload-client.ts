@@ -2,6 +2,8 @@
 
 import { Upload } from "tus-js-client";
 
+import { getBrowserStorageProvider } from "@/platform/composition/client";
+
 import {
   RESUMABLE_UPLOAD_THRESHOLD_BYTES,
   TUS_CHUNK_BYTES,
@@ -55,42 +57,25 @@ function responseError(payload: unknown, fallback: string) {
 
 async function signedStandardUpload({
   file,
-  onProgress,
+  objectKey,
   signal,
-  signedUrl,
+  token,
 }: {
   file: Blob;
-  onProgress: (percent: number) => void;
+  objectKey: string;
   signal: AbortSignal;
-  signedUrl: string;
+  token: string;
 }) {
-  return new Promise<void>((resolve, reject) => {
-    if (signal.aborted) {
-      reject(new DOMException("Upload canceled", "AbortError"));
-      return;
-    }
-    const body = new FormData();
-    body.append("cacheControl", "3600");
-    body.append("", file, "upload");
-    const request = new XMLHttpRequest();
-    request.open("PUT", signedUrl);
-    request.setRequestHeader("x-upsert", "false");
-    request.upload.onprogress = (event) => {
-      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
-    };
-    request.onerror = () => reject(new Error("The upload was interrupted. Try again."));
-    request.onload = () => {
-      if (request.status >= 200 && request.status < 300) resolve();
-      else reject(new Error("The private upload was rejected. Try again."));
-    };
-    const abort = () => {
-      request.abort();
-      reject(new DOMException("Upload canceled", "AbortError"));
-    };
-    signal.addEventListener("abort", abort, { once: true });
-    request.onloadend = () => signal.removeEventListener("abort", abort);
-    request.send(body);
+  if (signal.aborted) throw new DOMException("Upload canceled", "AbortError");
+  await getBrowserStorageProvider("trip-assets").uploadToSignedUrl({
+    body: file,
+    cacheControl: "3600",
+    contentType: file.type,
+    path: objectKey,
+    token,
+    upsert: false,
   });
+  if (signal.aborted) throw new DOMException("Upload canceled", "AbortError");
 }
 
 async function signedTusUpload({
@@ -256,7 +241,7 @@ export async function uploadFileAttachment({
       type: detected.mimeType,
     });
     onProgress({ percent: 12, stage: "uploading" });
-    if (file.size > RESUMABLE_UPLOAD_THRESHOLD_BYTES) {
+    if (file.size > RESUMABLE_UPLOAD_THRESHOLD_BYTES && prepared.data.upload.tusEndpoint) {
       await signedTusUpload({
         file: normalizedFile,
         mimeType: detected.mimeType,
@@ -270,10 +255,9 @@ export async function uploadFileAttachment({
     } else {
       await signedStandardUpload({
         file: normalizedFile,
-        onProgress: (percent) =>
-          onProgress({ percent: 12 + Math.round(percent * 0.72), stage: "uploading" }),
+        objectKey: prepared.data.upload.objectKey,
         signal,
-        signedUrl: prepared.data.upload.signedUrl,
+        token: prepared.data.upload.token,
       });
     }
 
@@ -284,9 +268,9 @@ export async function uploadFileAttachment({
         try {
           await signedStandardUpload({
             file: poster,
-            onProgress: () => undefined,
+            objectKey: prepared.data.posterUpload.objectKey,
             signal,
-            signedUrl: prepared.data.posterUpload.signedUrl,
+            token: prepared.data.posterUpload.token,
           });
           posterUploaded = true;
         } catch {

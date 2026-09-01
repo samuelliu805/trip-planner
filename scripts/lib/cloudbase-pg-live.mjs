@@ -48,7 +48,7 @@ export function initializeLiveClient(config) {
     accessKey: config.CLOUDBASE_PUBLISHABLE_KEY,
     auth: { detectSessionInUrl: false },
   });
-  return { auth: app.auth, db: app.rdb() };
+  return { app, auth: app.auth, db: app.rdb(), storage: app.storage };
 }
 
 export function dataOrThrow(result, label) {

@@ -80,7 +80,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     needs: [static, cn-build]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     environment: cloudbase-pg-dev
     env:
       APP_REGION: cn
@@ -149,3 +149,47 @@ jobs:
           PHASE3_GLOBAL_BASE_URL: http://127.0.0.1:3100
           STORAGE_PROVIDER: supabase
         run: npm run test:global-cookie-isolation
+      - name: Require Phase 4 live credentials
+        if: ${{ always() }}
+        env:
+          CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
+          CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+          CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
+          CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
+          CRON_SECRET: ${{ secrets.SUPABASE_DEV_CRON_SECRET }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_DEV_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
+        run: |
+          test -n "$CLOUDBASE_API_KEY"
+          test -n "$CLOUDBASE_PUBLISHABLE_KEY"
+          test -n "$CLOUDBASE_TEST_USER_A_PASSWORD"
+          test -n "$CLOUDBASE_TEST_USER_B_PASSWORD"
+          test -n "$NEXT_PUBLIC_SUPABASE_URL"
+          test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          test -n "$SUPABASE_SECRET_KEY"
+          test -n "$CRON_SECRET"
+      - name: Run CloudBase Phase 4 Storage A/B live suite
+        if: ${{ always() }}
+        env:
+          CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
+          CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+          CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
+          CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
+        run: npm run test:cloudbase-phase-4-storage
+      - name: Independently invoke CloudBase Phase 4 cleanup
+        if: ${{ always() }}
+        env:
+          CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
+          CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+          CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
+          CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
+        run: npm run test:cloudbase-phase-4-cleanup
+      - name: Run Supabase Phase 4 Storage and Cron live suite
+        if: ${{ always() }}
+        env:
+          CRON_SECRET: ${{ secrets.SUPABASE_DEV_CRON_SECRET }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_DEV_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
+        run: npm run test:supabase-phase-4-storage

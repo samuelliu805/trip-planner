@@ -18,6 +18,7 @@
     ["list_share_pages_v2(uuid)", "owner_guard"],
     ["owner_share_page_by_token_v2(uuid)", "owner_guard"],
     ["owner_share_page_v2(uuid)", "owner_guard"],
+    ["owns_pending_share_image_object_v1(text)", "owner_guard"],
     ["remove_variant_day(uuid,uuid,uuid)", "owner_guard"],
     ["reorder_itinerary_items(uuid,uuid[])", "owner_guard"],
     ["reorder_variant_days(uuid,uuid,uuid[])", "owner_guard"],
