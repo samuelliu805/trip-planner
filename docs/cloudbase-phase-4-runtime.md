@@ -67,7 +67,8 @@ current runtime state.
 ## Remaining operational warnings
 
 - At this closing SHA, AMap is still a fail-closed selector; Phase 5 must provide and live-smoke a
-  real AMap adapter before CN rollout can advance.
+  real AMap adapter before CN rollout can advance. The Phase 5 candidate now contains that adapter,
+  but its protected real-key CN smoke is still pending and is not retroactive Phase 4 evidence.
 - CloudBase Log Service (CLS) is disabled and alert routing is not configured. Enabling logging and
   the approved notification destination is a manual Phase 5 prerequisite, not completed evidence.
 - Backup/restore is not proven. A real restore into a disposable target is required before that
