@@ -22,7 +22,7 @@ export const backendCapabilitiesByRegion = Object.freeze({
   }),
   cn: Object.freeze({
     googleOAuth: false,
-    itineraryItemLinks: true,
+    itineraryItemLinks: false,
     passwordSignInIdentifier: "username",
     realtime: false,
     selfRegistration: false,

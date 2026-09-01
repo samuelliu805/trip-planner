@@ -59,6 +59,10 @@ jobs:
       CLOUDBASE_PUBLISHABLE_KEY: ci-placeholder
       CLOUDBASE_REGION: ap-shanghai
       DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_APP_REGION: cn
+      NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ci-placeholder
+      NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai
       NEXT_PUBLIC_MAPS_PROVIDER: amap
       NEXT_PUBLIC_SITE_URL: https://cn-preview.example.invalid
       NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
@@ -90,6 +94,10 @@ jobs:
       CLOUDBASE_PG_INSTANCE_ID: pgdb-l4lhtrv7
       CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
       DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_APP_REGION: cn
+      NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai
       NEXT_PUBLIC_MAPS_PROVIDER: amap
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
       NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
@@ -115,6 +123,7 @@ jobs:
         run: npm run build
       - name: Run raw RLS/RPC and real CN application paths
         env:
+          CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
           CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
           CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
           PHASE3_START_APP: "1"
@@ -169,6 +178,15 @@ jobs:
           test -n "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
           test -n "$SUPABASE_SECRET_KEY"
           test -n "$CRON_SECRET"
+      - name: Authenticate the Phase 4 CloudBase audit CLI
+        if: ${{ always() }}
+        env:
+          CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
+        run: >-
+          npx --yes --package @cloudbase/cli@3.8.1 tcb login
+          --cloudbase-api-key "$CLOUDBASE_API_KEY"
+          --env-id "$CLOUDBASE_ENV_ID"
+          --json
       - name: Run CloudBase Phase 4 Storage A/B live suite
         if: ${{ always() }}
         env:

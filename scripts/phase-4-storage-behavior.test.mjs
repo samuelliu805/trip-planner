@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -267,4 +268,32 @@ test("CloudBase live diagnostics redact multiline bearer credentials", () => {
   );
   assert.equal(diagnostic.includes("secret-value"), false);
   assert.match(diagnostic, /Bearer <redacted>/);
+});
+
+test("Phase 4 CI authenticates the CloudBase audit CLI before independent live suites", async () => {
+  const workflow = await readFile(
+    new URL("../.github/workflows/cloudbase-pg-ci.yml", import.meta.url),
+    "utf8",
+  );
+  const login = workflow.indexOf("- name: Authenticate the Phase 4 CloudBase audit CLI");
+  const storage = workflow.indexOf("- name: Run CloudBase Phase 4 Storage A/B live suite");
+  const cleanup = workflow.indexOf("- name: Independently invoke CloudBase Phase 4 cleanup");
+  assert(login >= 0 && storage > login && cleanup > storage);
+  const loginStep = workflow.slice(login, storage);
+  assert.match(loginStep, /if: \$\{\{ always\(\) \}\}/);
+  assert.match(loginStep, /CLOUDBASE_API_KEY: \$\{\{ secrets\.CLOUDBASE_API_KEY \}\}/);
+  assert.match(loginStep, /tcb login/);
+  assert.match(loginStep, /--cloudbase-api-key "\$CLOUDBASE_API_KEY"/);
+  assert.match(loginStep, /--env-id "\$CLOUDBASE_ENV_ID"/);
+  assert.doesNotMatch(loginStep, /continue-on-error/);
+  assert.match(workflow, /NEXT_PUBLIC_APP_REGION: cn/);
+  assert.match(workflow, /NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26/);
+  assert.match(workflow, /NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai/);
+  assert.doesNotMatch(workflow, /NEXT_PUBLIC_CLOUDBASE_API_KEY/);
+  const phaseThree = workflow.slice(
+    workflow.indexOf("- name: Run raw RLS/RPC and real CN application paths"),
+    workflow.indexOf("- name: Require controlled Global Supabase dev credentials"),
+  );
+  assert.match(phaseThree, /CLOUDBASE_API_KEY: \$\{\{ secrets\.CLOUDBASE_API_KEY \}\}/);
+  assert.doesNotMatch(phaseThree, /NEXT_PUBLIC_CLOUDBASE_API_KEY/);
 });

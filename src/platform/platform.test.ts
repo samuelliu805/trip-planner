@@ -110,7 +110,7 @@ test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
   assert.equal(backendCapabilitiesByRegion.cn.selfRegistration, false);
   assert.equal(backendCapabilitiesByRegion.cn.signedUrls, true);
-  assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, true);
+  assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, false);
   assert.equal(backendCapabilitiesByRegion.global.itineraryItemLinks, true);
   assert.equal(backendCapabilitiesByRegion.cn.passwordSignInIdentifier, "username");
   assert.equal(backendCapabilitiesByRegion.global.passwordSignInIdentifier, "email");

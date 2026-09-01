@@ -24,6 +24,18 @@ const baseUrl = process.env.PHASE3_APP_BASE_URL ?? "http://127.0.0.1:3100";
 const runLabel = `phase3-app-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const userA = "trip-planner-cn-test-a";
 const userB = "trip-planner-cn-test-b";
+let applicationServerDiagnostics = "";
+
+function safeApplicationDiagnostics(value) {
+  return String(value)
+    .replace(/Bearer\s+[^\s"']+/gi, "Bearer <redacted>")
+    .replace(
+      /((?:api[_-]?key|access[_-]?token|refresh[_-]?token)\s*[:=]\s*)[^\s,}]+/gi,
+      "$1<redacted>",
+    )
+    .replace(/https?:\/\/\S+/g, "<url>")
+    .slice(-4_000);
+}
 
 function requireProductionSelectors() {
   for (const [name, expected] of Object.entries(requiredSelectors)) {
@@ -182,6 +194,7 @@ async function launchBrowser() {
 
 async function startApplicationIfRequested() {
   if (process.env.PHASE3_START_APP !== "1") return null;
+  applicationServerDiagnostics = "";
   const applicationEnvironment = {
     ...process.env,
     PORT: new URL(baseUrl).port || "3100",
@@ -193,16 +206,17 @@ async function startApplicationIfRequested() {
     env: applicationEnvironment,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  let diagnostics = "";
   const capture = (chunk) => {
-    diagnostics = `${diagnostics}${chunk}`.slice(-8_000);
+    applicationServerDiagnostics = `${applicationServerDiagnostics}${chunk}`.slice(-8_000);
   };
   child.stdout.on("data", capture);
   child.stderr.on("data", capture);
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) {
-      throw new Error(`Next.js exited before becoming ready (${child.exitCode}). ${diagnostics}`);
+      throw new Error(
+        `Next.js exited before becoming ready (${child.exitCode}). ${safeApplicationDiagnostics(applicationServerDiagnostics)}`,
+      );
     }
     try {
       const response = await fetch(new URL("/login", baseUrl));
@@ -213,7 +227,9 @@ async function startApplicationIfRequested() {
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
   await stopChild(child, { processGroup: true });
-  throw new Error(`Next.js did not become ready. ${diagnostics}`);
+  throw new Error(
+    `Next.js did not become ready. ${safeApplicationDiagnostics(applicationServerDiagnostics)}`,
+  );
 }
 
 async function evaluate(browser, expression) {
@@ -790,12 +806,25 @@ async function run() {
       );
     }
     tripId = detailPath.split("/").at(-1);
-    await waitFor(
-      browser,
-      "Boolean(document.querySelector('[data-i18n-aria-label=\"Editable trip planning matrix\"]'))",
-      "real planner workspace",
-      60_000,
-    );
+    try {
+      await waitFor(
+        browser,
+        "Boolean(document.querySelector('[data-i18n-aria-label=\"Editable trip planning matrix\"]'))",
+        "real planner workspace",
+        60_000,
+      );
+    } catch (error) {
+      const page = await evaluate(
+        browser,
+        "({ body: document.body.innerText.slice(0, 2000), nextError: Boolean(document.querySelector('[data-nextjs-dialog]')), path: location.pathname })",
+      );
+      throw new Error(
+        `${error instanceof Error ? error.message : error} ${JSON.stringify({
+          browser: browser.cdp.diagnostics.slice(-10),
+          page,
+        })}`,
+      );
+    }
     const body = await evaluate(browser, "document.body.innerText");
     assert.doesNotMatch(body, /Missing required environment variable: (?:NEXT_PUBLIC_)?SUPABASE/);
     assert.equal(
@@ -890,7 +919,11 @@ async function run() {
     await navigate(browser, "/trips");
     assert.equal(await evaluate(browser, "location.pathname"), "/login");
   } catch (error) {
-    assertionError = error;
+    const diagnostics = safeApplicationDiagnostics(applicationServerDiagnostics);
+    const message = safeApplicationDiagnostics(error instanceof Error ? error.message : error);
+    assertionError = diagnostics
+      ? new Error(`${message}\nNext.js diagnostics:\n${diagnostics}`, { cause: error })
+      : new Error(message, { cause: error });
   } finally {
     const recordCleanupFailure = (error) => {
       assertionError = new AggregateError(
