@@ -78,12 +78,15 @@ jobs:
           --force
           --json
       - name: Require an initialized healthy CloudBase Run service
-        run: >-
-          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun detail
-          --env-id "$CLOUDBASE_ENV_ID"
-          --service-name trip-planner-cn
-          --json > cloudbase-run-before.json
-      - run: node scripts/verify-cloudbase-run-detail.mjs cloudbase-run-before.json
+        run: |
+          detail_output="$(mktemp)"
+          trap 'rm -f "$detail_output"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun detail \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --service-name trip-planner-cn \
+            --json > "$detail_output"
+          node scripts/verify-cloudbase-run-detail.mjs \
+            "$detail_output" trip-planner-cn
       - name: Deploy the same SHA to CloudBase Run
         run: >-
           npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun deploy
@@ -96,9 +99,12 @@ jobs:
           --wait
           --json
       - name: Verify the CloudBase Run service after deployment
-        run: >-
-          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun detail
-          --env-id "$CLOUDBASE_ENV_ID"
-          --service-name trip-planner-cn
-          --json > cloudbase-run-after.json
-      - run: node scripts/verify-cloudbase-run-detail.mjs cloudbase-run-after.json
+        run: |
+          detail_output="$(mktemp)"
+          trap 'rm -f "$detail_output"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun detail \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --service-name trip-planner-cn \
+            --json > "$detail_output"
+          node scripts/verify-cloudbase-run-detail.mjs \
+            "$detail_output" trip-planner-cn
