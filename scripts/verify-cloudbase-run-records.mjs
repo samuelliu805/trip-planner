@@ -56,7 +56,7 @@ async function main() {
 
   if (
     latestDeployId === previousDeployId ||
-    latest.Status !== "running" ||
+    latest.Status !== "normal" ||
     latest.HasTraffic !== true ||
     latest.FlowRatio !== 100 ||
     latest.IsReleasing !== false ||
@@ -66,7 +66,7 @@ async function main() {
     throw new Error();
   }
 
-  process.stdout.write("CloudBase Run deployment is running with 100% traffic.\n");
+  process.stdout.write("CloudBase Run deployment is normal with 100% traffic.\n");
 }
 
 main().catch(() => {
