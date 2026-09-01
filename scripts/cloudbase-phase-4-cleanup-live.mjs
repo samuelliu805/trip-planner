@@ -25,7 +25,9 @@ async function run() {
   let failure = null;
 
   try {
-    const { main } = await import("../cloudbase/functions/cleanup/index.mjs");
+    const cleanupEntry = await import("../cloudbase/functions/index.js");
+    const main = cleanupEntry.main ?? cleanupEntry.default?.main;
+    assert.equal(typeof main, "function");
     const result = await withCloudBaseHardTimeout(main, "cleanup handler", 45_000);
     assert.equal(result?.status, "ok");
     assert.equal(typeof result.backlog, "boolean");

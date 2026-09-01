@@ -1,7 +1,6 @@
 {
   "name": "trip-planner-cloudbase-functions",
   "private": true,
-  "type": "module",
   "dependencies": {
     "@cloudbase/adapter-node": "2.0.0",
     "@cloudbase/js-sdk": "3.9.0"
