@@ -141,6 +141,7 @@ test("the disposable Supabase target disables every public registration path", a
 test("the CN AMap smoke uses the real application UI and rejects Google requests", async () => {
   const smoke = await readFile(cnApplicationSmokeUrl, "utf8");
   assert.doesNotMatch(smoke, /window\.AMap\.(?:AutoComplete|PlaceSearch)/);
+  assert.doesNotMatch(smoke, /new URL\("\/_AMapService/);
   for (const contract of [
     "addAmapActivityThroughUi",
     'li[role="option"]',
@@ -162,7 +163,9 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(amapSmoke, /required\("NEXT_PUBLIC_AMAP_JS_API_KEY"\)/);
   assert.match(amapSmoke, /required\("AMAP_JS_SECURITY_CODE"\)/);
   assert.match(amapSmoke, /required\("AMAP_WEB_SERVICE_KEY"\)/);
-  assert.match(amapSmoke, /browser-key-platform-mismatch/);
+  assert.match(amapSmoke, /web-service-key-platform-mismatch/);
   assert.match(amapSmoke, /assert\.notEqual\(\s*browserKey,\s*key/);
+  assert.doesNotMatch(amapSmoke, /searchParams\.set\("key", browserKey\)/);
+  assert.doesNotMatch(amapSmoke, /searchParams\.set\("jscode"/);
   assert.match(globalSmoke, /select\("source,provider_place_id,coordinate_system"\)/);
 });

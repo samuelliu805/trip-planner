@@ -433,34 +433,28 @@ async function setInputValue(browser, selector, value) {
   assert.equal(changed, true, `${selector} was not available.`);
 }
 
-async function readBoundedAmapSuggestionDiagnostic(browser, query) {
-  const apiKey = process.env.NEXT_PUBLIC_AMAP_JS_API_KEY;
-  if (!apiKey) return { category: "missing-browser-key" };
+async function readBoundedAmapSuggestionDiagnostic(browser) {
   try {
     return await evaluate(
       browser,
-      `(async () => {
-        const url = new URL("/_AMapService/v3/assistant/inputtips", location.origin);
-        url.searchParams.set("city", "全国");
-        url.searchParams.set("datatype", "poi");
-        url.searchParams.set("key", ${JSON.stringify(apiKey)});
-        url.searchParams.set("keywords", ${JSON.stringify(query)});
-        url.searchParams.set("output", "JSON");
-        const response = await fetch(url, { credentials: "same-origin" });
-        const payload = await response.json().catch(() => null);
-        const providerStatus = ["0", "1"].includes(String(payload?.status))
-          ? String(payload.status)
-          : "unknown";
-        const infoCode = /^\\d{1,8}$/.test(String(payload?.infocode))
-          ? String(payload.infocode)
-          : "unknown";
+      `(() => {
+        const serviceRequests = performance.getEntriesByType("resource")
+          .flatMap((entry) => {
+            try {
+              const url = new URL(entry.name);
+              if (!url.pathname.startsWith("/_AMapService/")) return [];
+              return [{
+                path: url.pathname,
+                status: Number.isInteger(entry.responseStatus) ? entry.responseStatus : 0,
+              }];
+            } catch {
+              return [];
+            }
+          });
         return {
-          category:
-            infoCode === "10009" ? "browser-key-platform-mismatch" : "provider-response",
-          httpStatus: response.status,
-          infoCode,
-          providerStatus,
-          tipCount: Array.isArray(payload?.tips) ? payload.tips.length : 0,
+          amapLoaded: Boolean(window.AMap),
+          serviceRequestCount: serviceRequests.length,
+          serviceRequests: serviceRequests.slice(-5),
         };
       })()`,
     );
@@ -493,7 +487,7 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
       45_000,
     );
   } catch (error) {
-    const diagnostic = await readBoundedAmapSuggestionDiagnostic(browser, query);
+    const diagnostic = await readBoundedAmapSuggestionDiagnostic(browser);
     const visibleError = await evaluate(
       browser,
       `document.querySelector('[role="alert"]')?.textContent?.trim().slice(0, 160) ?? ""`,

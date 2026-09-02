@@ -11,7 +11,7 @@ function required(name) {
 }
 
 function providerFailureCategory(infoCode) {
-  if (infoCode === "10009") return "browser-key-platform-mismatch";
+  if (infoCode === "10009") return "web-service-key-platform-mismatch";
   if (["10001", "10002", "10007", "10012", "10013"].includes(infoCode))
     return "credential-or-permission";
   return "provider-response";
@@ -33,7 +33,7 @@ async function requireAmapSuccess(response, label) {
 
 const key = required("AMAP_WEB_SERVICE_KEY");
 const browserKey = required("NEXT_PUBLIC_AMAP_JS_API_KEY");
-const securityCode = required("AMAP_JS_SECURITY_CODE");
+required("AMAP_JS_SECURITY_CODE");
 assert.notEqual(
   browserKey,
   key,
@@ -71,22 +71,6 @@ assert.equal(route.geometry.provider, "amap");
 assert.equal(route.geometry.coordinateSystem, "wgs84");
 assert.ok(route.distanceMeters > 0);
 
-const browserTipsUrl = new URL("https://restapi.amap.com/v3/assistant/inputtips");
-browserTipsUrl.searchParams.set("key", browserKey);
-browserTipsUrl.searchParams.set("jscode", securityCode);
-browserTipsUrl.searchParams.set("keywords", "上海外滩");
-browserTipsUrl.searchParams.set("city", "全国");
-browserTipsUrl.searchParams.set("datatype", "poi");
-browserTipsUrl.searchParams.set("output", "JSON");
-const browserTips = await requireAmapSuccess(
-  await boundedFetch(browserTipsUrl),
-  "AMap JS browser-key/security-code preflight",
-);
-assert.ok(
-  browserTips.tips?.some((tip) => typeof tip.id === "string" && tip.id),
-  "AMap JS browser-key/security-code preflight returned no resolvable POI.",
-);
-
 const tipsUrl = new URL("https://restapi.amap.com/v3/assistant/inputtips");
 tipsUrl.searchParams.set("key", key);
 tipsUrl.searchParams.set("keywords", "上海外滩");
@@ -111,7 +95,7 @@ assert.equal(place.provider, "amap");
 assert.equal(place.coordinateSystem, "wgs84");
 assert.ok(place.providerPlaceId);
 
-assert.ok(requestedUrls.length >= 4);
+assert.ok(requestedUrls.length >= 3);
 assert.equal(
   requestedUrls.some((url) => /googleapis|google\.com|gstatic/.test(url)),
   false,
