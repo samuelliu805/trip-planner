@@ -22,15 +22,17 @@ function close(server) {
   });
 }
 
-function requestThroughProxy(url) {
+function requestThroughProxy(url, options = {}) {
   return new Promise((resolve, reject) => {
     const request = httpsRequest(
       url,
       {
+        headers: options.headers,
         lookup: (_hostname, options, callback) => {
           if (options.all) callback(null, [{ address: "127.0.0.1", family: 4 }]);
           else callback(null, "127.0.0.1", 4);
         },
+        method: options.method,
         rejectUnauthorized: false,
       },
       (response) => {
@@ -75,6 +77,48 @@ test("loopback TLS proxy preserves Secure cookies and the approved browser origi
       forwardedHost: new URL(proxy.browserBaseUrl).host,
       forwardedProtocol: "https",
     });
+  } finally {
+    await proxy.close();
+    await close(upstream);
+  }
+});
+
+test("loopback TLS proxy normalizes only its trusted Server Action origin", async () => {
+  const requests = [];
+  const upstream = createHttpServer((request, response) => {
+    requests.push({
+      forwardedHost: request.headers["x-forwarded-host"],
+      origin: request.headers.origin,
+    });
+    response.end("ok");
+  });
+  await listen(upstream);
+  const address = upstream.address();
+  assert.ok(address && typeof address !== "string");
+  const proxy = await startLoopbackTlsProxy({
+    browserHostname: approvedAmapBrowserHostname,
+    upstreamBaseUrl: `http://127.0.0.1:${address.port}/`,
+  });
+  try {
+    const browserOrigin = new URL(proxy.browserBaseUrl).origin;
+    await requestThroughProxy(new URL("/action", proxy.browserBaseUrl), {
+      headers: { "next-action": "fixture", origin: browserOrigin },
+      method: "POST",
+    });
+    await requestThroughProxy(new URL("/ordinary", proxy.browserBaseUrl), {
+      headers: { origin: browserOrigin },
+      method: "POST",
+    });
+    assert.deepEqual(requests, [
+      {
+        forwardedHost: approvedAmapBrowserHostname,
+        origin: `https://${approvedAmapBrowserHostname}`,
+      },
+      {
+        forwardedHost: new URL(proxy.browserBaseUrl).host,
+        origin: browserOrigin,
+      },
+    ]);
   } finally {
     await proxy.close();
     await close(upstream);
