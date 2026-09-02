@@ -87,7 +87,8 @@ new dispatch. The protected `cloudbase-pg-dev` environment must approve both liv
 - drive the real authenticated UI through AMap search, POI selection, save, full-page refresh,
   persisted WGS-84 marker verification, route calculation, publish, and public-route rendering,
   while observing zero Google requests for the complete CN browser session;
-- call real AMap place and route Web Services and require WGS-84 normalized route output;
+- preflight the Web端 (JS API) key with its paired `securityJsCode`, then call the distinct real
+  AMap place and route Web Service key and require WGS-84 normalized route output;
 - prove B cannot sign/read, overwrite, delete, or list A's private CloudBase object; prove anonymous
   denial and share-image isolation;
 - invoke the deployed cleanup function, independently execute the cleanup handler, and always run
@@ -171,6 +172,12 @@ route projection accepts only `provider=amap`, `source=encoded`, `encoding=polyl
 `coordinateSystem=wgs84`, and reconstructs the five-field geometry rather than exposing the stored
 provider object.
 
+Supabase additionally records provider-only operational migration `20260902102500`. It emits only
+`NOTIFY pgrst, 'reload schema'` after the mirrored schema migrations, so a Git-integrated Preview
+cannot retain a stale Data API schema that rejects `provider_place_id`. The Global live suite also
+performs a bounded, read-only `source`/`provider_place_id`/`coordinate_system` preflight before
+creating any temporary identity.
+
 Because CN live verification is intentionally read-only for schema, all candidate CloudBase
 migrations must be applied to the approved dev environment through a separately reviewed change
 before dispatch. A pending migration now fails at the migration gate, before the application build
@@ -196,7 +203,21 @@ only when all three jobs are green and every final residue count is zero.
 
 ## Current evidence status
 
-The entry workflow is green and reported CloudBase controlled residue `0` and Supabase
-`objects=0, assets=0, queues=0, temporary_users=0`. Phase 5 live evidence is **not yet complete**;
-it must run from the final PR commit after protected configuration and the manual prerequisites in
-the rollout runbook are satisfied.
+At candidate SHA `34e6cf1706c958fa45b2f2d41f2e3974ac421df1`, protected
+[run 33612404587](https://github.com/samuelliu805/trip-planner/actions/runs/33612404587) proved the
+static matrix, both selector builds/secret scans, the from-zero Supabase migration set, and all 440
+pgTAP assertions. Its Global job reached the exact-SHA Vercel Preview but exposed a stale controlled
+Supabase dev schema (`places.provider_place_id` was not visible); its CN job proved the A/B
+Auth/RLS/RPC matrix, Web Service route/place smoke, private Storage suite, and zero final PG/Storage
+residue, but the real UI returned bounded AMap `10009` and CAM cleanup login remained unauthorized.
+
+The three missing provider-neutral Supabase dev migrations and provider-only PostgREST refresh
+`20260902102500` were then applied to the linked controlled dev target. Remote migration dry-run is
+now empty, and a local Global production build plus full live browser/API suite passed against that
+target with `temporaryUsers=0` and `trips=0`. This is diagnostic repair evidence, not final
+exact-SHA workflow evidence.
+
+Phase 5 remains **incomplete** until a final-commit protected run has all three jobs green. Before
+that dispatch, replace `NEXT_PUBLIC_AMAP_JS_API_KEY` with a Web端 (JS API) key paired to the stored
+`AMAP_JS_SECURITY_CODE`, and repair the dedicated CAM identity until CLI login proves
+`tcb:CheckTcbService` authorization. No backup/restore or alert-routing completion is claimed.

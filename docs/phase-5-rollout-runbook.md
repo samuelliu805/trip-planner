@@ -35,7 +35,9 @@ Missing ownership, notification routing, or change record is a release blocker.
   keys by the appropriate Preview/CN hostname and API scope.
 - In AMap's console, confirm `NEXT_PUBLIC_AMAP_JS_API_KEY` is a **Web端 (JS API)** key and
   `AMAP_JS_SECURITY_CODE` belongs to that exact key record. Keep `AMAP_WEB_SERVICE_KEY` as a
-  distinct **Web服务** key. `infocode=10009` is a platform mismatch and blocks CN smoke.
+  distinct **Web服务** key. The live suite now tests the browser-key/security-code pair separately
+  before the Web Service route/place calls. `infocode=10009` is a platform mismatch and blocks CN
+  smoke; do not copy the passing Web Service key into the browser-key secret.
 - Configure `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, and `AMAP_WEB_SERVICE_KEY` in the
   `trip-planner-cn` CloudBase Run runtime through the approved platform change process. A GitHub
   environment variable does not configure CloudBase Run. Record names/presence only, never values.
@@ -59,6 +61,10 @@ Missing ownership, notification routing, or change record is a release blocker.
   separately authorized schema change before Phase 5 verification. The live workflow itself only
   lists and dry-runs migrations and requires `pending=[]`; it never applies DDL. For this candidate,
   remote history must include `20260902075444_fix_provider_place_upsert_conflict`.
+- Apply the mirrored provider-neutral migrations to controlled Supabase dev and then the
+  Supabase-only `20260902102500_reload_postgrest_provider_place_schema` notification. Require a
+  linked `db push --dry-run` with no pending versions before the Preview smoke. This refresh is not
+  a substitute for applying the schema migrations and does not belong in CloudBase.
 - Keep CN username/password accounts controlled. Do not enable anonymous, phone, email, or public
   self-registration.
 - Confirm a disposable restore target and backup method. Neither provider's restore is considered
