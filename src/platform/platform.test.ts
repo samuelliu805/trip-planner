@@ -220,10 +220,12 @@ test("Successful password login invalidates the Trips page before redirecting", 
 });
 
 test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK surface", async () => {
-  const [auth, trips, client, sessionRuntime] = await Promise.all([
+  const [auth, trips, client, relational, composition, sessionRuntime] = await Promise.all([
     readFile(new URL("./cloudbase/auth-provider.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/trip-repository.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/client.ts", import.meta.url), "utf8"),
+    readFile(new URL("./cloudbase/relational-database.ts", import.meta.url), "utf8"),
+    readFile(new URL("./composition/server.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/session-runtime.ts", import.meta.url), "utf8"),
   ]);
   for (const method of [
@@ -244,6 +246,12 @@ test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK sur
   assert.match(sessionRuntime, /getSession\(/);
   assert.match(sessionRuntime, /refreshSession\(/);
   assert.match(client, /app\.rdb\(\)/);
+  assert.match(client, /createCloudBasePublicDatabase/);
+  assert.match(client, /publicDatabase \?\?= initializeCloudBasePublicDatabase\(\)/);
+  assert.match(relational, /createCloudBasePublicRelationalDatabase/);
+  assert.match(relational, /createCloudBasePublicDatabase\(\)/);
+  assert.match(composition, /getPublicRelationalDatabase/);
+  assert.match(composition, /createCloudBasePublicRelationalDatabase\(\)/);
   assert.doesNotMatch(trips, /\.where\(|\.orderBy\(|\.count\(/);
   assert.doesNotMatch(auth, /getUser\(/);
 });

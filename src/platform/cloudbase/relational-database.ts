@@ -2,6 +2,7 @@ import "server-only";
 
 import type { RelationalDatabase } from "@/platform/contracts/relational";
 
+import { createCloudBasePublicDatabase } from "./client";
 import { createCloudBaseUserContext } from "./database";
 import { isCloudBaseScalarUuidParseError } from "./errors";
 import {
@@ -48,5 +49,13 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
   return {
     from: db.from.bind(db),
     rpc,
+  } as unknown as RelationalDatabase;
+}
+
+export function createCloudBasePublicRelationalDatabase(): RelationalDatabase {
+  const db = createCloudBasePublicDatabase();
+  return {
+    from: db.from.bind(db),
+    rpc: db.rpc.bind(db),
   } as unknown as RelationalDatabase;
 }

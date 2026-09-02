@@ -2,7 +2,10 @@ import "server-only";
 
 import { capabilitiesForRegion } from "@/platform/capabilities/backend-capabilities";
 import { CloudBaseAuthProvider } from "@/platform/cloudbase/auth-provider";
-import { createCloudBaseRelationalDatabase } from "@/platform/cloudbase/relational-database";
+import {
+  createCloudBasePublicRelationalDatabase,
+  createCloudBaseRelationalDatabase,
+} from "@/platform/cloudbase/relational-database";
 import { CloudBaseTripRepository } from "@/platform/cloudbase/trip-repository";
 import { CloudBaseAccountProfileRepository } from "@/platform/cloudbase/profile-repository";
 import { CloudBaseStorageProvider } from "@/platform/cloudbase/storage-provider";
@@ -68,6 +71,13 @@ export async function getRelationalDatabase(): Promise<RelationalDatabase> {
   return config.dataProvider === "supabase"
     ? createSupabaseRelationalDatabase()
     : createCloudBaseRelationalDatabase();
+}
+
+export async function getPublicRelationalDatabase(): Promise<RelationalDatabase> {
+  const config = getServerProviderConfig();
+  return config.dataProvider === "supabase"
+    ? createSupabaseRelationalDatabase()
+    : createCloudBasePublicRelationalDatabase();
 }
 
 export function getAccountProfileRepository(): AccountProfileRepository {

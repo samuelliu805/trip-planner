@@ -41,6 +41,7 @@ export type CloudBaseDatabase = Readonly<{
 let adaptersRegistered = false;
 let clients: ReturnType<typeof initializeCloudBaseClients> | undefined;
 let adminClients: ReturnType<typeof initializeCloudBaseAdminClients> | undefined;
+let publicDatabase: CloudBaseDatabase | undefined;
 
 function registerAdapter() {
   if (adaptersRegistered) return;
@@ -86,6 +87,19 @@ function initializeCloudBaseAdminClients() {
   };
 }
 
+function initializeCloudBasePublicDatabase() {
+  registerAdapter();
+  const config = getCloudBaseConfig();
+  const app = cloudbase.init({
+    accessKey: config.publishableKey,
+    auth: { detectSessionInUrl: false },
+    env: config.env,
+    persistence: "none",
+    region: config.region,
+  });
+  return app.rdb() as unknown as CloudBaseDatabase;
+}
+
 export function createCloudBaseClients() {
   clients ??= initializeCloudBaseClients();
   return clients;
@@ -94,6 +108,11 @@ export function createCloudBaseClients() {
 export function createCloudBaseAdminClients() {
   adminClients ??= initializeCloudBaseAdminClients();
   return adminClients;
+}
+
+export function createCloudBasePublicDatabase() {
+  publicDatabase ??= initializeCloudBasePublicDatabase();
+  return publicDatabase;
 }
 
 export function createCloudBaseDatabase(accessToken: string) {
