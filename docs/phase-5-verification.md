@@ -87,8 +87,9 @@ new dispatch. The protected `cloudbase-pg-dev` environment must approve both liv
 - drive the real authenticated UI through AMap search, POI selection, save, full-page refresh,
   persisted WGS-84 marker verification, route calculation, publish, and public-route rendering,
   while observing zero Google requests for the complete CN browser session;
-- preflight the Web端 (JS API) key with its paired `securityJsCode`, then call the distinct real
-  AMap place and route Web Service key and require WGS-84 normalized route output;
+- require distinct configured Web端 (JS API) and Web服务 keys, call real AMap place and route Web
+  Services only with the Web服务 key, and require WGS-84 normalized output; exercise the JS
+  key/`securityJsCode` pair only through the real UI, JS API, and `serviceHost` proxy;
 - prove B cannot sign/read, overwrite, delete, or list A's private CloudBase object; prove anonymous
   denial and share-image isolation;
 - invoke the deployed cleanup function, independently execute the cleanup handler, and always run
@@ -124,10 +125,13 @@ The CN target must not receive any Supabase or Google credential. Neither AMap s
 
 `NEXT_PUBLIC_AMAP_JS_API_KEY` must be a **Web端 (JS API)** key, and
 `AMAP_JS_SECURITY_CODE` must be the `securityJsCode` generated for that same key record.
-`AMAP_WEB_SERVICE_KEY` must be a separate **Web服务** key. AMap `infocode=10009` means the request
-key does not match its platform; replace the mis-scoped value rather than routing it through Google
-or substituting the server-only Web Service key into browser code. The live workflow runs the
-server-side place/route smoke before the real UI so the two key contracts are diagnosed separately.
+`AMAP_WEB_SERVICE_KEY` must be a separate **Web服务** key. Never switch these values. A raw Web
+Service request made with the JS API key is not a valid browser-key preflight and returns AMap
+`infocode=10009`; the workflow therefore never makes that request. The Web Service smoke uses only
+`AMAP_WEB_SERVICE_KEY`, while the following real UI flow proves the browser key and paired security
+code through AMap JS API 2.0 and the same-origin `serviceHost` proxy. A `10009` from the Web Service
+smoke means `AMAP_WEB_SERVICE_KEY` is mis-scoped. Do not route either path through Google or expose
+the server-only Web Service key to browser code.
 
 The public AMap browser key and the two server-only AMap names must also already exist in the
 `trip-planner-cn` CloudBase Run runtime environment. GitHub job variables are build/test inputs and
@@ -142,10 +146,11 @@ The environment API Key does not authorize `tcb fn invoke` for a private Event F
 deployed cleanup function is therefore invoked through CloudBase CLI `3.8.1` after a separate CAM
 login using `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY`. These must belong to a
 dedicated non-production sub-account. The pinned CLI first requires `tcb:CheckTcbService`, then
-uses `scf:GetFunction` and `scf:Invoke`. Tencent CAM currently classifies the SCF operations as
+reads the environment plan through `tcb:DescribeBillingInfo`, then uses `scf:GetFunction` and
+`scf:Invoke`. Tencent CAM currently classifies the SCF operations as
 operation-level APIs, so their policy resource must be `*`; a function ARN is rejected even when
 its main-account UIN is correct. Compensate for that platform granularity by granting only those
-three actions to a dev-only identity—never `scf:*` or an administrator policy—and by storing its
+four actions to a dev-only identity—never `scf:*` or an administrator policy—and by storing its
 credentials only in the protected environment. The workflow reports whether CAM login or invoke
 failed but captures and deletes CLI output rather than echoing it. Only a successful Event
 invocation and the bounded cleanup result shape are accepted. The independent handler and final
@@ -155,9 +160,11 @@ The database/storage residue audits use the environment-scoped CloudBase API Key
 identity. Their CLI login runs on an `always()` path so a missing CAM prerequisite cannot suppress
 the audit. Because the function invocation temporarily switches the CLI to CAM, the workflow
 restores the environment API Key identity before the independent final cleanup and residue audit.
-CAM login failures are reported only as a bounded category. `authorization` means the identity
-still lacks `tcb:CheckTcbService`; any `credential-*` category means both GitHub Environment secrets
-must be replaced from the same active SecretId/SecretKey pair. The raw CLI response is never logged.
+CAM login failures are reported only as a bounded category. The action-specific authorization
+categories identify missing `tcb:CheckTcbService` or `tcb:DescribeBillingInfo`; generic CAM
+authentication failures require checking both the active credential pair and those two TCB
+actions because CLI `3.8.1` may collapse a policy denial into a generic authentication error. The
+raw CLI response is never logged.
 
 Create or select the restricted sub-account under Tencent Cloud **CAM > Users**, then manage its
 API key under that sub-account's **API Keys** page. Store the two values only under GitHub
@@ -217,7 +224,8 @@ now empty, and a local Global production build plus full live browser/API suite 
 target with `temporaryUsers=0` and `trips=0`. This is diagnostic repair evidence, not final
 exact-SHA workflow evidence.
 
-Phase 5 remains **incomplete** until a final-commit protected run has all three jobs green. Before
-that dispatch, replace `NEXT_PUBLIC_AMAP_JS_API_KEY` with a Web端 (JS API) key paired to the stored
-`AMAP_JS_SECURITY_CODE`, and repair the dedicated CAM identity until CLI login proves
-`tcb:CheckTcbService` authorization. No backup/restore or alert-routing completion is claimed.
+Phase 5 remains **incomplete** until a final-commit protected run has all three jobs green. The
+manually reviewed AMap configuration now has the required Web端 JS key/security-code pairing and a
+separate Web服务 key; this still needs exact-SHA UI evidence. The dedicated CAM identity must allow
+both CLI login reads (`tcb:CheckTcbService` and `tcb:DescribeBillingInfo`) before its function
+permissions can be exercised. No backup/restore or alert-routing completion is claimed.
