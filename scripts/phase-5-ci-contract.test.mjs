@@ -156,6 +156,7 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   );
   assert.match(smoke, /bounded share-publish diagnostic/);
   assert.match(smoke, /loadPersistedShareCount\(tripId\)/);
+  assert.match(smoke, /visibleFrozenTop = Math\.max\(frozenRect\.top, headerRect\.bottom \+ 1\)/);
   assert.match(
     smoke,
     /querySelectorAll\('\[data-cell="0-1"\] \[data-edit-item\]'\)[\s\S]*?getClientRects\(\)\.length[\s\S]*?"first refreshed saved activity"/,

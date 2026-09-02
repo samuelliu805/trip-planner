@@ -1019,8 +1019,13 @@ async function verifyTabletFrozenLayers(browser) {
         const rect = cell.getBoundingClientRect();
         return rect.left < frozenRect.right && rect.right > frozenRect.left;
       });
+      const visibleFrozenTop = Math.max(frozenRect.top, headerRect.bottom + 1);
+      const visibleFrozenBottom = Math.min(frozenRect.bottom, matrixRect.bottom - 1);
       const rowHeaderAtFrozenPoint = document
-        .elementsFromPoint(frozenRect.left + frozenRect.width / 2, frozenRect.top + frozenRect.height / 2)
+        .elementsFromPoint(
+          frozenRect.left + frozenRect.width / 2,
+          visibleFrozenTop + (visibleFrozenBottom - visibleFrozenTop) / 2,
+        )
         .map((element) => element.closest('[role="rowheader"]'))
         .find(Boolean);
       const columnHeaderAtHeaderPoint = document
