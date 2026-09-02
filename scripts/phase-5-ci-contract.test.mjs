@@ -6,6 +6,7 @@ const workflowUrl = new URL("../.github/workflows/phase-5-dual-environment.yml",
 const entryWorkflowUrl = new URL("../.github/workflows/cloudbase-pg-ci.yml", import.meta.url);
 const configUrl = new URL("../supabase/config.toml", import.meta.url);
 const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
+const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 
 test("Phase 5 verification is manual, exact-SHA, protected, and fail-closed", async () => {
   const [entryWorkflow, workflow] = await Promise.all([
@@ -65,6 +66,12 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.match(workflow, /migration up[\s\\]*\n[\s\S]{0,100}--dry-run --json/);
   assert.match(workflow, /fn invoke trip-planner-cleanup/);
   assert.ok((workflow.match(/if: \$\{\{ always\(\) \}\}/g) ?? []).length >= 7);
+});
+
+test("the i18n check has no runner-specific file discovery dependency", async () => {
+  const check = await readFile(i18nCheckUrl, "utf8");
+  assert.doesNotMatch(check, /node:child_process|execFileSync|spawnSync|["']rg["']/);
+  assert.match(check, /readdirSync/);
 });
 
 test("the disposable Supabase target disables every public registration path", async () => {

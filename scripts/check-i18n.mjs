@@ -1,5 +1,5 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { extname, join } from "node:path";
 
 import ts from "typescript";
 
@@ -21,11 +21,23 @@ const copyPropertyNames = new Set([
 ]);
 const errors = [];
 
-function files(...args) {
-  return execFileSync("rg", ["--files", ...args], { encoding: "utf8" })
-    .trim()
-    .split("\n")
-    .filter(Boolean);
+function files(root, extensions) {
+  const results = [];
+
+  function visit(directory) {
+    const entries = readdirSync(directory, { withFileTypes: true }).sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+    for (const entry of entries) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) visit(path);
+      else if (entry.isFile() && extensions.has(extname(entry.name)))
+        results.push(path.replaceAll("\\", "/"));
+    }
+  }
+
+  visit(root);
+  return results;
 }
 
 function normalize(message) {
@@ -71,7 +83,7 @@ function literalChoices(expression) {
 
 const catalog = new Map();
 const normalizedCatalog = new Set();
-for (const file of files("src/features/i18n/messages", "-g", "*.ts")) {
+for (const file of files("src/features/i18n/messages", new Set([".ts"]))) {
   const parsed = sourceFile(file);
   function visit(node) {
     if (
@@ -98,7 +110,7 @@ function requireTranslation(file, parsed, node, rawMessage) {
     errors.push(`${location(file, parsed, node)} is missing a zh-CN translation for “${message}”.`);
 }
 
-const productionFiles = files("src", "-g", "*.ts", "-g", "*.tsx").filter(
+const productionFiles = files("src", new Set([".ts", ".tsx"])).filter(
   (file) =>
     !file.includes("/features/i18n/messages/") &&
     !file.includes("/generated/") &&
