@@ -113,7 +113,9 @@ jobs:
             --service-name trip-planner-cn \
             --json > "$detail_output"
           node scripts/verify-cloudbase-run-detail.mjs \
-            "$detail_output" trip-planner-cn
+            "$detail_output" trip-planner-cn \
+            --require-runtime-env AMAP_JS_SECURITY_CODE \
+            --require-runtime-env AMAP_WEB_SERVICE_KEY
       - name: Deploy the same SHA and require CloudBase Run release evidence
         run: |
           previous_records="$(mktemp)"
@@ -162,5 +164,8 @@ jobs:
             --service-name trip-planner-cn \
             --json > "$detail_output"
           node scripts/verify-cloudbase-run-detail.mjs \
-            "$detail_output" trip-planner-cn --require-online-version
+            "$detail_output" trip-planner-cn \
+            --require-online-version \
+            --require-runtime-env AMAP_JS_SECURITY_CODE \
+            --require-runtime-env AMAP_WEB_SERVICE_KEY
           node scripts/verify-cloudbase-run-health.mjs "$NEXT_PUBLIC_SITE_URL"

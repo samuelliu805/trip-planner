@@ -17,7 +17,7 @@ function detail({ name = serviceName, status = "normal", extra = {} } = {}) {
         ServerName: name,
         Status: status,
         ServerConfig: {
-          EnvParams: `CLOUDBASE_APIKEY=${fakeSecret}`,
+          EnvParams: JSON.stringify({ CLOUDBASE_APIKEY: fakeSecret }),
         },
       },
       ...extra,
@@ -144,6 +144,41 @@ test("requires a fully online version for the post-deploy gate", async (t) => {
       JSON.stringify(detail({ extra: { OnlineVersionInfos: [{ FlowRatio: "99" }] } })),
       serviceName,
       "--require-online-version",
+    ),
+  );
+});
+
+test("checks required runtime variable names without exposing values", (t) => {
+  const run = createRunner(t);
+  const payload = detail();
+  payload.data.BaseInfo.ServerConfig.EnvParams = JSON.stringify({
+    AMAP_JS_SECURITY_CODE: fakeSecret,
+    AMAP_WEB_SERVICE_KEY: `${fakeSecret}-web`,
+    EXISTING_RUNTIME_SETTING: "preserved",
+  });
+  const result = run(
+    JSON.stringify(payload),
+    serviceName,
+    "--require-runtime-env",
+    "AMAP_JS_SECURITY_CODE",
+    "--require-runtime-env",
+    "AMAP_WEB_SERVICE_KEY",
+  );
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /AMAP_JS_SECURITY_CODE, AMAP_WEB_SERVICE_KEY/);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
+
+  payload.data.BaseInfo.ServerConfig.EnvParams = JSON.stringify({
+    AMAP_JS_SECURITY_CODE: fakeSecret,
+  });
+  assertSafeFailure(
+    run(
+      JSON.stringify(payload),
+      serviceName,
+      "--require-runtime-env",
+      "AMAP_JS_SECURITY_CODE",
+      "--require-runtime-env",
+      "AMAP_WEB_SERVICE_KEY",
     ),
   );
 });

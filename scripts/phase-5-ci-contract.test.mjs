@@ -3,15 +3,29 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const workflowUrl = new URL("../.github/workflows/phase-5-dual-environment.yml", import.meta.url);
+const entryWorkflowUrl = new URL("../.github/workflows/cloudbase-pg-ci.yml", import.meta.url);
 const configUrl = new URL("../supabase/config.toml", import.meta.url);
+const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
 
 test("Phase 5 verification is manual, exact-SHA, protected, and fail-closed", async () => {
-  const workflow = await readFile(workflowUrl, "utf8");
-  assert.match(workflow, /workflow_dispatch:/);
+  const [entryWorkflow, workflow] = await Promise.all([
+    readFile(entryWorkflowUrl, "utf8"),
+    readFile(workflowUrl, "utf8"),
+  ]);
+  assert.match(entryWorkflow, /workflow_dispatch:/);
+  assert.match(entryWorkflow, /run_mode:[\s\S]*phase5/);
+  assert.match(entryWorkflow, /verification_gate == 'VERIFY'/);
+  assert.match(entryWorkflow, /uses: \.\/\.github\/workflows\/phase-5-dual-environment\.yml/);
+  assert.match(workflow, /workflow_call:/);
   assert.match(workflow, /verification_gate == 'VERIFY'/);
-  assert.equal(workflow.match(/test "\$\(git rev-parse HEAD\)" = "\$GITHUB_SHA"/g)?.length, 3);
+  assert.equal(
+    workflow.match(/test "\$\(git rev-parse HEAD\)" = "\$PHASE5_CANDIDATE_SHA"/g)?.length,
+    3,
+  );
+  assert.equal(workflow.match(/test "\$PHASE5_CANDIDATE_SHA" = "\$GITHUB_SHA"/g)?.length, 3);
+  assert.equal(workflow.match(/ref: \$\{\{ inputs\.candidate_ref \}\}/g)?.length, 3);
   assert.equal(workflow.match(/environment: cloudbase-pg-dev/g)?.length, 2);
-  assert.doesNotMatch(workflow, /continue-on-error/);
+  assert.doesNotMatch(`${entryWorkflow}\n${workflow}`, /continue-on-error/);
   assert.match(workflow, /cancel-in-progress: false/);
 });
 
@@ -41,6 +55,8 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "npm run test:amap-phase-5-live",
     "npm run test:cloudbase-phase-4-storage",
     "npm run test:cloudbase-phase-4-cleanup",
+    "--require-runtime-env AMAP_JS_SECURITY_CODE",
+    "--require-runtime-env AMAP_WEB_SERVICE_KEY",
   ]) {
     assert.match(workflow, new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
@@ -57,4 +73,20 @@ test("the disposable Supabase target disables every public registration path", a
   assert.match(config, /enable_anonymous_sign_ins = false/);
   assert.match(config, /\[auth\.email\][\s\S]*enable_signup = false/);
   assert.match(config, /\[auth\.sms\][\s\S]*enable_signup = false/);
+});
+
+test("the CN AMap smoke uses the real application UI and rejects Google requests", async () => {
+  const smoke = await readFile(cnApplicationSmokeUrl, "utf8");
+  assert.doesNotMatch(smoke, /window\.AMap\.(?:AutoComplete|PlaceSearch)/);
+  for (const contract of [
+    "addAmapActivityThroughUi",
+    'li[role="option"]',
+    'data-coordinate-system="wgs84"',
+    "calculateAmapRouteThroughUi",
+    "publishThroughUi",
+    "public AMap route canvas",
+    "/googleapis|maps\\.google|gstatic/i",
+  ]) {
+    assert.match(smoke, new RegExp(contract.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  }
 });

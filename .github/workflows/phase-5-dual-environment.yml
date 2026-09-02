@@ -1,10 +1,15 @@
 name: Phase 5 dual-environment verification
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       verification_gate:
-        description: Type VERIFY to run protected live tests against controlled dev targets
+        required: true
+        type: string
+      candidate_ref:
+        required: true
+        type: string
+      candidate_sha:
         required: true
         type: string
 
@@ -36,12 +41,18 @@ jobs:
       STORAGE_PROVIDER: supabase
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.candidate_ref }}
       - uses: actions/setup-node@v5
         with:
           cache: npm
           node-version: 24
       - name: Verify exact workflow head
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
       - run: npm ci
       - name: Shared lint, types, format, i18n, and contracts
         run: |
@@ -99,7 +110,7 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '## Phase 5 static evidence\n\n- SHA: `%s`\n- Run: `%s`\n' \
-            "$GITHUB_SHA" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            "${{ inputs.candidate_sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             >> "$GITHUB_STEP_SUMMARY"
 
   global-live:
@@ -131,6 +142,8 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.candidate_ref }}
       - uses: actions/setup-node@v5
         with:
           cache: npm
@@ -139,7 +152,11 @@ jobs:
         with:
           version: 2.58.5
       - name: Verify exact workflow head
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
       - run: npm ci
       - name: Require controlled Global Preview configuration
         run: |
@@ -163,6 +180,8 @@ jobs:
         run: supabase test db --local
       - name: Require an exact-SHA Git-integrated Vercel Preview
         id: preview
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
         run: node scripts/verify-vercel-preview-deployment.mjs
       - name: Run Global Auth, CRUD, RPC, RLS, share, browser, and residue suite
         env:
@@ -181,7 +200,7 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '## Phase 5 Global live evidence\n\n- SHA: `%s`\n- Target: controlled Supabase dev/Preview\n- Run: `%s`\n' \
-            "$GITHUB_SHA" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            "${{ inputs.candidate_sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             >> "$GITHUB_STEP_SUMMARY"
 
   cn-live:
@@ -218,12 +237,18 @@ jobs:
       STORAGE_PROVIDER: cloudbase
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.candidate_ref }}
       - uses: actions/setup-node@v5
         with:
           cache: npm
           node-version: 24
       - name: Verify exact workflow head
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
       - run: npm ci
       - name: Validate the approved CloudBase dev target and required secrets
         run: |
@@ -243,6 +268,18 @@ jobs:
           --cloudbase-api-key "$CLOUDBASE_API_KEY"
           --env-id "$CLOUDBASE_ENV_ID"
           --json
+      - name: Require AMap server variables in the CloudBase Run runtime
+        run: |
+          detail_output="$(mktemp)"
+          trap 'rm -f "$detail_output"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun detail \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --service-name trip-planner-cn \
+            --json > "$detail_output"
+          node scripts/verify-cloudbase-run-detail.mjs \
+            "$detail_output" trip-planner-cn \
+            --require-runtime-env AMAP_JS_SECURITY_CODE \
+            --require-runtime-env AMAP_WEB_SERVICE_KEY
       - name: Verify migration list and dry run without applying changes
         run: |
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
@@ -274,5 +311,5 @@ jobs:
         if: ${{ always() }}
         run: |
           printf '## Phase 5 CN live evidence\n\n- SHA: `%s`\n- Target: approved CloudBase dev\n- Run: `%s`\n' \
-            "$GITHUB_SHA" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            "${{ inputs.candidate_sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             >> "$GITHUB_STEP_SUMMARY"
