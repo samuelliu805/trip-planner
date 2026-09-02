@@ -1,12 +1,6 @@
 import { pathToFileURL } from "node:url";
 
-import { initializeAdminLiveApp } from "./lib/cloudbase-pg-live.mjs";
-
-function required(name, environment = process.env) {
-  const value = environment[name]?.trim();
-  if (!value) throw new Error(`Missing required CloudBase cleanup invocation value: ${name}`);
-  return value;
-}
+import { readFirstJsonObject } from "./cloudbase-cli-json.mjs";
 
 export function verifyCleanupInvocationResult(response) {
   let result = response?.result;
@@ -31,46 +25,27 @@ export function verifyCleanupInvocationResult(response) {
   return result;
 }
 
-export async function invokeCloudBaseCleanup(environment = process.env) {
-  const apiKey = required("CLOUDBASE_API_KEY", environment);
-  const env = required("CLOUDBASE_ENV_ID", environment);
-  const region = required("CLOUDBASE_REGION", environment);
-  if (apiKey !== environment.CLOUDBASE_API_KEY || /[\r\n{}]/.test(apiKey)) {
-    throw new Error("CLOUDBASE_API_KEY has an invalid format.");
+export async function verifyCloudBaseCleanupInvocation(path) {
+  if (!path) throw new Error("CloudBase cleanup invocation output is unavailable.");
+  const payload = await readFirstJsonObject(path);
+  const invocation = payload?.data;
+  if (
+    !invocation ||
+    typeof invocation !== "object" ||
+    Array.isArray(invocation) ||
+    invocation.functionType !== "Event" ||
+    invocation.InvokeResult !== 0
+  ) {
+    throw new Error("CloudBase cleanup function invocation was not successful.");
   }
-  const app = initializeAdminLiveApp({
-    CLOUDBASE_API_KEY: apiKey,
-    CLOUDBASE_ENV_ID: env,
-    CLOUDBASE_REGION: region,
-  });
-  let timeout;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeout = setTimeout(
-      () => reject(new Error("CloudBase cleanup function invocation timed out.")),
-      50_000,
-    );
-  });
-  let response;
-  try {
-    response = await Promise.race([
-      app.callFunction({
-        data: { source: "phase5-verification" },
-        name: "trip-planner-cleanup",
-        parse: true,
-      }),
-      timeoutPromise,
-    ]);
-  } finally {
-    clearTimeout(timeout);
-  }
-  verifyCleanupInvocationResult(response);
+  verifyCleanupInvocationResult({ result: invocation.RetMsg });
   process.stdout.write(
     "Deployed CloudBase cleanup function returned its bounded success result.\n",
   );
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await invokeCloudBaseCleanup().catch(() => {
+  await verifyCloudBaseCleanupInvocation(process.argv[2]).catch(() => {
     process.stderr.write("CloudBase cleanup function invocation failed.\n");
     process.exitCode = 1;
   });

@@ -37,6 +37,8 @@ function assertPublicProjection(projection, intendedTitle, privateTitle, ownerId
     "trip-assets/",
     "AMAP_WEB_SERVICE_KEY",
     "CLOUDBASE_API_KEY",
+    "CLOUDBASE_CAM_SECRET_ID",
+    "CLOUDBASE_CAM_SECRET_KEY",
     "SUPABASE_SECRET_KEY",
     "tp-cn-access-token",
     "sb-access-token",

@@ -8,6 +8,22 @@ class MissingRuntimeEnvironmentNamesError extends Error {
   }
 }
 
+class RuntimeEnvironmentMetadataError extends Error {
+  constructor(names) {
+    super(
+      `Unable to inspect CloudBase Run runtime environment metadata. Required variable names: ${names.join(", ")}.`,
+    );
+  }
+}
+
+class NonNormalServiceError extends Error {
+  constructor(serviceName) {
+    super(
+      `CloudBase Run service ${serviceName} is not Normal. Resume the approved dev service before live verification.`,
+    );
+  }
+}
+
 async function main() {
   const path = process.argv[2];
   const expectedServiceName = process.argv[3];
@@ -39,19 +55,21 @@ async function main() {
     throw new Error();
   }
   if (typeof baseInfo.Status !== "string" || baseInfo.Status.toLowerCase() !== "normal") {
-    throw new Error();
+    throw new NonNormalServiceError(expectedServiceName);
   }
   if (requiredRuntimeEnvironmentNames.length) {
     const rawEnvironment = baseInfo.ServerConfig?.EnvParams;
-    if (typeof rawEnvironment !== "string") throw new Error();
+    if (typeof rawEnvironment !== "string" || !rawEnvironment.trim()) {
+      throw new RuntimeEnvironmentMetadataError(requiredRuntimeEnvironmentNames);
+    }
     let environment;
     try {
       environment = JSON.parse(rawEnvironment);
     } catch {
-      throw new Error();
+      throw new RuntimeEnvironmentMetadataError(requiredRuntimeEnvironmentNames);
     }
     if (!environment || typeof environment !== "object" || Array.isArray(environment)) {
-      throw new Error();
+      throw new RuntimeEnvironmentMetadataError(requiredRuntimeEnvironmentNames);
     }
     const missingNames = requiredRuntimeEnvironmentNames.filter(
       (name) => !Object.prototype.hasOwnProperty.call(environment, name),
@@ -85,7 +103,9 @@ async function main() {
 
 main().catch((error) => {
   process.stderr.write(
-    error instanceof MissingRuntimeEnvironmentNamesError
+    error instanceof MissingRuntimeEnvironmentNamesError ||
+      error instanceof RuntimeEnvironmentMetadataError ||
+      error instanceof NonNormalServiceError
       ? `${failureMessage.trimEnd()} ${error.message}\n`
       : failureMessage,
   );

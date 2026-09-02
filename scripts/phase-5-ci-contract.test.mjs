@@ -47,6 +47,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "npm run check:phase-5-environment -- cn",
     "npm run check:build-secret-boundary",
     "git diff --check",
+    "supabase db start",
     "supabase db reset --local --no-seed",
     "supabase test db --local",
     "node scripts/verify-vercel-preview-deployment.mjs",
@@ -56,6 +57,9 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "npm run test:amap-phase-5-live",
     "npm run test:cloudbase-phase-4-storage",
     "npm run test:cloudbase-phase-4-cleanup",
+    "CLOUDBASE_CAM_SECRET_ID",
+    "CLOUDBASE_CAM_SECRET_KEY",
+    "tcb fn invoke",
     "--require-runtime-env AMAP_JS_SECURITY_CODE",
     "--require-runtime-env AMAP_WEB_SERVICE_KEY",
   ]) {
@@ -66,8 +70,9 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.doesNotMatch(workflow, /VERCEL_(?:TOKEN|ORG_ID|PROJECT_ID)/);
   assert.match(workflow, /version: 2\.58\.5/);
   assert.match(workflow, /migration up[\s\\]*\n[\s\S]{0,100}--dry-run --json/);
-  assert.match(workflow, /node scripts\/invoke-cloudbase-cleanup\.mjs/);
-  assert.doesNotMatch(workflow, /tcb fn invoke/);
+  assert.match(workflow, /node scripts\/invoke-cloudbase-cleanup\.mjs "\$invocation_output"/);
+  assert.match(workflow, /timeout 60s npx --yes --package @cloudbase\/cli@3\.8\.1 tcb fn invoke/);
+  assert.match(workflow, /tcb logout[\s\\]*\n[\s\S]{0,50}--json > \/dev\/null/);
   assert.ok((workflow.match(/if: \$\{\{ always\(\) \}\}/g) ?? []).length >= 7);
 });
 

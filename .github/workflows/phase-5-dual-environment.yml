@@ -165,7 +165,7 @@ jobs:
           npm run check:build-secret-boundary
       - name: Initialize every Supabase migration from zero
         run: |
-          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+          supabase db start
           supabase db reset --local --no-seed
       - name: Run every Supabase SQL test
         run: supabase test db --local
@@ -243,6 +243,9 @@ jobs:
           test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
       - run: npm ci
       - name: Validate the approved CloudBase dev target and required secrets
+        env:
+          CLOUDBASE_CAM_SECRET_ID: ${{ secrets.CLOUDBASE_CAM_SECRET_ID }}
+          CLOUDBASE_CAM_SECRET_KEY: ${{ secrets.CLOUDBASE_CAM_SECRET_KEY }}
         run: |
           npm run check:phase-5-environment -- cn --live
           npm run check:cloudbase-pg-target -- \
@@ -286,7 +289,27 @@ jobs:
         run: npm run test:cloudbase-phase-4-storage
       - name: Invoke the deployed cleanup function
         if: ${{ always() }}
-        run: node scripts/invoke-cloudbase-cleanup.mjs
+        env:
+          CLOUDBASE_CAM_SECRET_ID: ${{ secrets.CLOUDBASE_CAM_SECRET_ID }}
+          CLOUDBASE_CAM_SECRET_KEY: ${{ secrets.CLOUDBASE_CAM_SECRET_KEY }}
+        run: |
+          invocation_output="$(mktemp)"
+          trap 'rm -f "$invocation_output"' EXIT
+          timeout 30s npx --yes --package @cloudbase/cli@3.8.1 tcb logout \
+            --json > /dev/null 2>&1
+          timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
+            --apiKeyId "$CLOUDBASE_CAM_SECRET_ID" \
+            --apiKey "$CLOUDBASE_CAM_SECRET_KEY" \
+            --json > /dev/null 2>&1
+          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb fn invoke \
+            trip-planner-cleanup \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --params '{"source":"phase5-verification"}' \
+            --json > "$invocation_output" 2>&1; then
+            echo "CloudBase cleanup function invocation failed."
+            exit 1
+          fi
+          node scripts/invoke-cloudbase-cleanup.mjs "$invocation_output"
       - name: Independently execute cleanup and residue audit
         if: ${{ always() }}
         run: npm run test:cloudbase-phase-4-cleanup

@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
-import { verifyCleanupInvocationResult } from "./invoke-cloudbase-cleanup.mjs";
+import {
+  verifyCloudBaseCleanupInvocation,
+  verifyCleanupInvocationResult,
+} from "./invoke-cloudbase-cleanup.mjs";
 
 const validResult = {
   assets: { deletedAssets: 0 },
@@ -27,5 +33,32 @@ test("rejects malformed or unsuccessful cleanup function responses", () => {
     { ...validResult, backlog: "false" },
   ]) {
     assert.throws(() => verifyCleanupInvocationResult({ result }));
+  }
+});
+
+test("accepts only a successful bounded Event Function CLI response", async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "cloudbase-cleanup-invoke-"));
+  t.after(() => rmSync(directory, { force: true, recursive: true }));
+  const successPath = join(directory, "success.json");
+  writeFileSync(
+    successPath,
+    JSON.stringify({
+      data: {
+        functionType: "Event",
+        InvokeResult: 0,
+        RetMsg: JSON.stringify(validResult),
+      },
+    }),
+  );
+  await assert.doesNotReject(() => verifyCloudBaseCleanupInvocation(successPath));
+
+  for (const [index, invocation] of [
+    { functionType: "Event", InvokeResult: 1, RetMsg: JSON.stringify(validResult) },
+    { functionType: "HTTP", InvokeResult: 0, RetMsg: JSON.stringify(validResult) },
+    { functionType: "Event", InvokeResult: 0, RetMsg: "not-json" },
+  ].entries()) {
+    const path = join(directory, `failure-${index}.json`);
+    writeFileSync(path, JSON.stringify({ data: invocation }));
+    await assert.rejects(() => verifyCloudBaseCleanupInvocation(path));
   }
 });

@@ -82,7 +82,11 @@ test("rejects a detail response for the wrong service", (t) => {
 
 test("rejects an abnormal service status", (t) => {
   const run = createRunner(t);
-  assertSafeFailure(run(JSON.stringify(detail({ status: "deploying" }))));
+  const result = run(JSON.stringify(detail({ status: "paused" })));
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /CloudBase Run service trip-planner-cn is not Normal/);
+  assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(fakeSecret));
 });
 
 test("does not accept an unrelated nested normal status", (t) => {
@@ -184,4 +188,25 @@ test("checks required runtime variable names without exposing values", (t) => {
   assert.match(missing.stderr, /Missing required CloudBase Run runtime variable names/);
   assert.match(missing.stderr, /AMAP_WEB_SERVICE_KEY/);
   assert.doesNotMatch(`${missing.stdout}${missing.stderr}`, new RegExp(fakeSecret));
+});
+
+test("reports required names when runtime metadata is unavailable", (t) => {
+  const run = createRunner(t);
+  for (const unavailable of [undefined, "", "not-json", JSON.stringify([])]) {
+    const payload = detail();
+    payload.data.BaseInfo.ServerConfig.EnvParams = unavailable;
+    const result = run(
+      JSON.stringify(payload),
+      serviceName,
+      "--require-runtime-env",
+      "AMAP_JS_SECURITY_CODE",
+      "--require-runtime-env",
+      "AMAP_WEB_SERVICE_KEY",
+    );
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /Unable to inspect CloudBase Run runtime environment metadata/);
+    assert.match(result.stderr, /AMAP_JS_SECURITY_CODE, AMAP_WEB_SERVICE_KEY/);
+    assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
+  }
 });
