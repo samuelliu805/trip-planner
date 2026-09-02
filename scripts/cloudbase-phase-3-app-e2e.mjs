@@ -1144,7 +1144,7 @@ async function forgeForm(browser, path, entries, replacements = {}) {
       const replacements = ${JSON.stringify(replacements)};
       const body = new FormData();
       for (const [name, value] of entries) body.append(name, name in replacements ? replacements[name] : value);
-      const response = await fetch(${JSON.stringify(new URL(path, baseUrl).href)}, {
+      const response = await fetch(${JSON.stringify(path)}, {
         body,
         credentials: "include",
         method: "POST",
