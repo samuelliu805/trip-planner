@@ -159,6 +159,8 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   assert.match(smoke, /loadPersistedShareCount\(tripId\)/);
   assert.match(smoke, /Close published share dialog/);
   assert.match(smoke, /share dialog close/);
+  assert.match(smoke, /"B trip access denial"/);
+  assert.match(smoke, /deniedTripBody\.includes\(updatedTitle\), false/);
   assert.match(smoke, /visibleFrozenTop = Math\.max\(frozenRect\.top, headerRect\.bottom \+ 1\)/);
   assert.match(
     smoke,

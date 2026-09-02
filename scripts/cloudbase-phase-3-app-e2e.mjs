@@ -1517,10 +1517,14 @@ async function run() {
     await clearCookies(browser);
     await login(browser, userB, process.env.CLOUDBASE_TEST_USER_B_PASSWORD);
     await navigate(browser, `/trips/${tripId}`);
-    assert.match(
-      await evaluate(browser, "document.body.innerText"),
-      /This page could not be found|404/,
+    await waitFor(
+      browser,
+      "/This page could not be found|404/.test(document.body.innerText)",
+      "B trip access denial",
     );
+    const deniedTripBody = await evaluate(browser, "document.body.innerText");
+    assert.match(deniedTripBody, /This page could not be found|404/);
+    assert.equal(deniedTripBody.includes(updatedTitle), false);
 
     const forgedTitle = `${runLabel}-forged-by-b`;
     await forgeForm(browser, `/trips/${tripId}`, forms.updateEntries, { title: forgedTitle });
