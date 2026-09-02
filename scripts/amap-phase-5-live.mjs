@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { wgs84Coordinates } from "../src/lib/providers/maps/types.ts";
 import { createAmapRoutesProvider } from "../src/lib/providers/amap/routes/amap-routes-core.ts";
 import { normalizeAmapPlace } from "../src/lib/providers/amap/places/normalize-amap-place.ts";
+import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -48,19 +49,19 @@ const boundedFetch = async (input, init = {}) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   assert.equal(url.protocol, "https:");
   assert.equal(url.hostname, "restapi.amap.com");
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    requestedUrls.push(url.hostname);
-    const timeoutSignal = AbortSignal.timeout(12_000);
-    const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
-    try {
-      const response = await fetch(url, { ...init, redirect: "error", signal });
-      if (response.status < 500 || attempt === 3) return response;
-    } catch (error) {
-      if (init.signal?.aborted || attempt === 3) throw error;
-    }
-    await new Promise((resolve) => setTimeout(resolve, attempt * 250));
-  }
-  throw new Error("AMap request exhausted its bounded retry budget.");
+  return boundedRetryFetch(
+    url,
+    { ...init, redirect: "error" },
+    {
+      attempts: 6,
+      fetchImplementation: async (target, options) => {
+        requestedUrls.push(new URL(target).hostname);
+        return fetch(target, options);
+      },
+      retryDelayMs: 500,
+      timeoutMs: 15_000,
+    },
+  );
 };
 
 // Keep the provider deadline above the bounded transport retry window. The production adapter's
@@ -69,7 +70,7 @@ const boundedFetch = async (input, init = {}) => {
 const routeProvider = createAmapRoutesProvider({
   apiKey: key,
   fetchImplementation: boundedFetch,
-  timeoutMs: 40_000,
+  timeoutMs: 45_000,
 });
 const route = await routeProvider.calculateLeg({
   destination: wgs84Coordinates(39.908_722, 116.397_499),

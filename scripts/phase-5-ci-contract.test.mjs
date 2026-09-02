@@ -184,6 +184,9 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(amapSmoke, /required\("AMAP_WEB_SERVICE_KEY"\)/);
   assert.match(amapSmoke, /web-service-key-platform-mismatch/);
   assert.match(amapSmoke, /assert\.notEqual\(\s*browserKey,\s*key/);
+  assert.match(amapSmoke, /boundedRetryFetch/);
+  assert.match(amapSmoke, /attempts: 6/);
+  assert.match(amapSmoke, /timeoutMs: 15_000/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("key", browserKey\)/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("jscode"/);
   assert.match(globalSmoke, /select\("source,provider_place_id,coordinate_system"\)/);
