@@ -4,8 +4,41 @@ import { wgs84Coordinates } from "../src/lib/providers/maps/types.ts";
 import { createAmapRoutesProvider } from "../src/lib/providers/amap/routes/amap-routes-core.ts";
 import { normalizeAmapPlace } from "../src/lib/providers/amap/places/normalize-amap-place.ts";
 
-const key = process.env.AMAP_WEB_SERVICE_KEY?.trim();
-if (!key) throw new Error("AMAP_WEB_SERVICE_KEY is required for the real AMap smoke.");
+function required(name) {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is required for the real AMap smoke.`);
+  return value;
+}
+
+function providerFailureCategory(infoCode) {
+  if (infoCode === "10009") return "browser-key-platform-mismatch";
+  if (["10001", "10002", "10007", "10012", "10013"].includes(infoCode))
+    return "credential-or-permission";
+  return "provider-response";
+}
+
+async function requireAmapSuccess(response, label) {
+  if (!response.ok) throw new Error(`${label} failed (http-status=${response.status}).`);
+  const payload = await response.json();
+  if (payload?.status !== "1") {
+    const infoCode = /^\d{1,8}$/.test(String(payload?.infocode))
+      ? String(payload.infocode)
+      : "unknown";
+    throw new Error(
+      `${label} failed (category=${providerFailureCategory(infoCode)}, info-code=${infoCode}).`,
+    );
+  }
+  return payload;
+}
+
+const key = required("AMAP_WEB_SERVICE_KEY");
+const browserKey = required("NEXT_PUBLIC_AMAP_JS_API_KEY");
+const securityCode = required("AMAP_JS_SECURITY_CODE");
+assert.notEqual(
+  browserKey,
+  key,
+  "NEXT_PUBLIC_AMAP_JS_API_KEY must be a Web端(JS API) key, not the Web Service key.",
+);
 if (process.env.NEXT_PUBLIC_MAPS_PROVIDER !== "amap") {
   throw new Error("Real AMap smoke requires NEXT_PUBLIC_MAPS_PROVIDER=amap.");
 }
@@ -15,7 +48,7 @@ const boundedFetch = async (input, init = {}) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   assert.equal(url.protocol, "https:");
   assert.equal(url.hostname, "restapi.amap.com");
-  requestedUrls.push(url.toString().replace(key, "<redacted>"));
+  requestedUrls.push(url.hostname);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12_000);
   try {
@@ -38,16 +71,29 @@ assert.equal(route.geometry.provider, "amap");
 assert.equal(route.geometry.coordinateSystem, "wgs84");
 assert.ok(route.distanceMeters > 0);
 
+const browserTipsUrl = new URL("https://restapi.amap.com/v3/assistant/inputtips");
+browserTipsUrl.searchParams.set("key", browserKey);
+browserTipsUrl.searchParams.set("jscode", securityCode);
+browserTipsUrl.searchParams.set("keywords", "上海外滩");
+browserTipsUrl.searchParams.set("city", "全国");
+browserTipsUrl.searchParams.set("datatype", "poi");
+browserTipsUrl.searchParams.set("output", "JSON");
+const browserTips = await requireAmapSuccess(
+  await boundedFetch(browserTipsUrl),
+  "AMap JS browser-key/security-code preflight",
+);
+assert.ok(
+  browserTips.tips?.some((tip) => typeof tip.id === "string" && tip.id),
+  "AMap JS browser-key/security-code preflight returned no resolvable POI.",
+);
+
 const tipsUrl = new URL("https://restapi.amap.com/v3/assistant/inputtips");
 tipsUrl.searchParams.set("key", key);
 tipsUrl.searchParams.set("keywords", "上海外滩");
 tipsUrl.searchParams.set("city", "上海");
 tipsUrl.searchParams.set("citylimit", "true");
 tipsUrl.searchParams.set("output", "json");
-const tipsResponse = await boundedFetch(tipsUrl);
-assert.equal(tipsResponse.ok, true);
-const tips = await tipsResponse.json();
-assert.equal(tips.status, "1");
+const tips = await requireAmapSuccess(await boundedFetch(tipsUrl), "AMap Web Service place search");
 const poiId = tips.tips?.find((tip) => typeof tip.id === "string" && tip.id)?.id;
 assert.ok(poiId, "AMap input tips returned no resolvable POI");
 
@@ -56,16 +102,16 @@ detailUrl.searchParams.set("key", key);
 detailUrl.searchParams.set("id", poiId);
 detailUrl.searchParams.set("extensions", "all");
 detailUrl.searchParams.set("output", "json");
-const detailResponse = await boundedFetch(detailUrl);
-assert.equal(detailResponse.ok, true);
-const detail = await detailResponse.json();
-assert.equal(detail.status, "1");
+const detail = await requireAmapSuccess(
+  await boundedFetch(detailUrl),
+  "AMap Web Service POI resolution",
+);
 const place = normalizeAmapPlace(detail.pois?.[0]);
 assert.equal(place.provider, "amap");
 assert.equal(place.coordinateSystem, "wgs84");
 assert.ok(place.providerPlaceId);
 
-assert.ok(requestedUrls.length >= 3);
+assert.ok(requestedUrls.length >= 4);
 assert.equal(
   requestedUrls.some((url) => /googleapis|google\.com|gstatic/.test(url)),
   false,

@@ -6,6 +6,8 @@ const workflowUrl = new URL("../.github/workflows/phase-5-dual-environment.yml",
 const entryWorkflowUrl = new URL("../.github/workflows/cloudbase-pg-ci.yml", import.meta.url);
 const configUrl = new URL("../supabase/config.toml", import.meta.url);
 const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
+const amapLiveSmokeUrl = new URL("./amap-phase-5-live.mjs", import.meta.url);
+const globalLiveSmokeUrl = new URL("./global-phase-5-live.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
 const providerNeutralMigrationUrl = new URL(
@@ -150,4 +152,17 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   ]) {
     assert.match(smoke, new RegExp(contract.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+});
+
+test("live preflights distinguish provider schema and AMap key contracts", async () => {
+  const [amapSmoke, globalSmoke] = await Promise.all([
+    readFile(amapLiveSmokeUrl, "utf8"),
+    readFile(globalLiveSmokeUrl, "utf8"),
+  ]);
+  assert.match(amapSmoke, /required\("NEXT_PUBLIC_AMAP_JS_API_KEY"\)/);
+  assert.match(amapSmoke, /required\("AMAP_JS_SECURITY_CODE"\)/);
+  assert.match(amapSmoke, /required\("AMAP_WEB_SERVICE_KEY"\)/);
+  assert.match(amapSmoke, /browser-key-platform-mismatch/);
+  assert.match(amapSmoke, /assert\.notEqual\(\s*browserKey,\s*key/);
+  assert.match(globalSmoke, /select\("source,provider_place_id,coordinate_system"\)/);
 });
