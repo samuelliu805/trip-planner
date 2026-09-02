@@ -656,12 +656,6 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
 }
 
 async function calculateAmapRouteThroughUi(browser) {
-  await clickElement(browser, `document.querySelector('[data-edit-item]')`, "first saved activity");
-  await clickElement(
-    browser,
-    `document.querySelector('button[aria-label="Show the selected day"]')`,
-    "selected day map scope",
-  );
   await waitFor(
     browser,
     "Boolean(document.querySelector('button[aria-label=\"Create route\"]'))",
@@ -1257,10 +1251,42 @@ async function run() {
     await navigate(browser, `/trips/${tripId}`);
     await waitFor(
       browser,
-      `Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount) >= 2`,
-      "refreshed AMap markers",
+      `document.querySelectorAll('[data-cell="0-1"] [data-edit-item]').length >= 2`,
+      "refreshed saved activities",
       60_000,
     );
+    await clickElement(
+      browser,
+      `document.querySelector('[data-cell="0-1"] [data-edit-item]')`,
+      "first refreshed saved activity",
+    );
+    await clickElement(
+      browser,
+      `document.querySelector('button[aria-label="Show the selected day"]')`,
+      "selected day map scope",
+    );
+    try {
+      await waitFor(
+        browser,
+        `Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount) >= 2`,
+        "refreshed AMap markers",
+        60_000,
+      );
+    } catch (error) {
+      const diagnostic = await evaluate(
+        browser,
+        `({
+          activityCount: document.querySelectorAll('[data-cell="0-1"] [data-edit-item]').length,
+          mapMarkerCount: Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount ?? -1),
+          mapModeButtons: [...document.querySelectorAll('[aria-label^="Show the"]')]
+            .map((button) => ({ label: button.getAttribute('aria-label'), pressed: button.getAttribute('aria-pressed') })),
+          path: location.pathname,
+        })`,
+      );
+      throw new Error(
+        `${error instanceof Error ? error.message : error}; bounded refreshed-map diagnostic: ${JSON.stringify(diagnostic)}`,
+      );
+    }
     const amapEvidence = await loadPersistedAmapEvidence(tripId);
     assertPersistedAmapPlaces(amapEvidence);
     const renderedMarkers = await evaluate(
