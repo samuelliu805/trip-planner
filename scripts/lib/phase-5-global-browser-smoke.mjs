@@ -202,6 +202,11 @@ async function establishPreviewBypass(browser, baseUrl, secret) {
   }
 }
 
+export async function clearBrowserSessionForPublicShare(browser, baseUrl, bypassSecret) {
+  await browser.cdp.send("Network.clearBrowserCookies", {}, browser.sessionId);
+  if (bypassSecret) await establishPreviewBypass(browser, baseUrl, bypassSecret);
+}
+
 async function navigate(browser, baseUrl, path) {
   await evaluate(browser, "window.__phase5NavigationSentinel = true");
   await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
@@ -322,13 +327,20 @@ export async function runGlobalBrowserSmoke(options) {
       false,
     );
 
-    await browser.cdp.send("Network.clearBrowserCookies", {}, browser.sessionId);
+    await clearBrowserSessionForPublicShare(browser, baseUrl, bypassSecret);
     await navigate(browser, baseUrl, `/share/${options.publicToken}`);
-    await waitFor(
-      browser,
-      `document.body.innerText.includes(${JSON.stringify(options.intendedTitle)})`,
-      "anonymous public snapshot",
-    );
+    try {
+      await waitFor(
+        browser,
+        `document.body.innerText.includes(${JSON.stringify(options.intendedTitle)})`,
+        "anonymous public snapshot",
+      );
+    } catch (error) {
+      const diagnostic = await boundedPageDiagnostic(browser);
+      throw new Error(
+        `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
+      );
+    }
     const publicBody = await evaluate(browser, "document.body.innerText");
     assert.doesNotMatch(publicBody, new RegExp(options.privateTitle));
     assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
