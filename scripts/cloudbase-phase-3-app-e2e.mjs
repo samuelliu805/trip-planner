@@ -656,11 +656,50 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
 }
 
 async function calculateAmapRouteThroughUi(browser) {
-  await waitFor(
+  const selectedPlaceOpen = await evaluate(
     browser,
-    "Boolean(document.querySelector('button[aria-label=\"Create route\"]'))",
-    "create day route control",
+    `Boolean(document.querySelector('button[aria-label="Close place details"]'))`,
   );
+  if (selectedPlaceOpen) {
+    await clickElement(
+      browser,
+      `document.querySelector('button[aria-label="Close place details"]')`,
+      "close selected place details",
+    );
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector('button[aria-label="Open map details"]'))`,
+      "reopen day route panel control",
+    );
+    await clickElement(
+      browser,
+      `document.querySelector('button[aria-label="Open map details"]')`,
+      "reopen day route panel",
+    );
+  }
+  try {
+    await waitFor(
+      browser,
+      "Boolean(document.querySelector('button[aria-label=\"Create route\"]'))",
+      "create day route control",
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        controls: [...document.querySelectorAll('button[aria-label]')]
+          .filter((button) => button.getClientRects().length)
+          .map((button) => button.getAttribute('aria-label'))
+          .filter((label) => label?.toLowerCase().includes('route') || label?.toLowerCase().includes('map'))
+          .slice(-12),
+        mapMarkerCount: Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount ?? -1),
+        path: location.pathname,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded route-control diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
   await clickElement(
     browser,
     `document.querySelector('button[aria-label="Create route"]')`,
