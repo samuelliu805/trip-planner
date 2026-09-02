@@ -72,8 +72,10 @@ current runtime state.
 - Phase 5 also requires the server-only AMap variable names to be configured in the CloudBase Run
   runtime. GitHub environment entries alone do not satisfy that runtime prerequisite; no values may
   be recorded in closure evidence.
-- CloudBase Log Service (CLS) is disabled and alert routing is not configured. Enabling logging and
-  the approved notification destination is a manual Phase 5 prerequisite, not completed evidence.
+- Post-closure read-only inspection confirms that CloudBase Log Service (CLS) is now enabled and
+  the cleanup function has an assigned logset/topic. This is current operational state, not
+  retroactive Phase 4 evidence. Alert routing and a tested approved notification destination remain
+  manual Phase 5 prerequisites.
 - Backup/restore is not proven. A real restore into a disposable target is required before that
   control may be called complete.
 - Seed-user rollout remains blocked until the current CloudBase plan exposes the required runtime,

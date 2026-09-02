@@ -55,6 +55,12 @@ Missing ownership, notification routing, or change record is a release blocker.
   environment. The workflow uses it server-side against the fixed CloudBase HTTP API path for the
   approved dev cleanup function as well as the existing database and Storage audits. No dedicated
   CAM identity or SCF wildcard permission is required by Phase 5 verification.
+- Before rerunning CN live verification, update the approved dev cleanup function through a
+  separately authorized function deployment so its package matches the candidate's Node 18
+  CommonJS-to-ESM boundary. Read-only CLS evidence currently shows that the deployed package still
+  loads the SDK's ESM bundle as CommonJS and fails before the handler starts. This repository change
+  does not deploy that update; the live cleanup invocation must remain red until the deployed dev
+  function itself succeeds.
 - Add the protected secrets and variables listed in
   [phase-5-verification.md](./phase-5-verification.md), then prove secret scans are zero.
 - Apply all reviewed candidate migrations to the approved CloudBase dev environment through a
@@ -218,15 +224,16 @@ can supplement the evidence but cannot replace the required provider-supported r
 
 - Global: Vercel deployment/runtime logs, function error/timeout/rate and duration, Supabase Auth/DB
   and Storage dashboards, Google quota/errors, plus the configured notification path.
-- CN: CLS once enabled, CloudBase Run CPU/memory/instances/request latency/status, PG
+- CN: CLS, CloudBase Run CPU/memory/instances/request latency/status, PG
   connections/CPU/storage/slow queries, Storage request/error/bytes, cleanup function
   errors/duration, timer execution, and AMap quota/permission failures.
 - Record p50/p95 latency and error/resource baselines before internal use. Compare at 5, 15, and 60
   minutes. Page immediately on security isolation, secret leakage, health failure, nonzero residue,
   or repeated cleanup failure.
 
-CLS and alert routing remain manual blockers. This document does not claim that Vercel Drains,
-CloudBase alerts, dashboards, destinations, or external monitors have been configured.
+CLS is enabled, but alert routing and a tested destination remain manual blockers. This document
+does not claim that Vercel Drains, CloudBase alerts, dashboards, destinations, or external monitors
+have been configured.
 
 ## Risk and cost assessment
 
@@ -235,11 +242,11 @@ CloudBase alerts, dashboards, destinations, or external monitors have been confi
 | Auth/data isolation | Live matrix not yet run on final PR SHA                        | Temporary-user and request volume                  | Block until both live jobs pass                    |
 | AMap                | Key scope/quota, proxy availability, GCJ conversion edge cases | JS/Web Service calls and quota overages            | Internal smoke only after real AMap suite          |
 | Google/Global       | Preview configuration drift                                    | Maps/Places usage and Vercel/Supabase usage        | Preserve selector; block on cross-provider request |
-| CloudBase plan      | CLS, alerts, backup/restore/support unproven                   | Logging retention, Run/PG/Storage/function upgrade | Seed rollout blocked pending evidence/upgrade      |
+| CloudBase plan      | Alert routing and backup/restore/support unproven              | Logging retention, Run/PG/Storage/function upgrade | Seed rollout blocked pending evidence/upgrade      |
 | Cleanup             | Provider outage can leave residue                              | Function/Cron invocations and Storage operations   | Zero residue mandatory; page on retry backlog      |
 | Rollback            | App rollback cannot undo unsafe data migration                 | Retained versions/deployments and operator time    | No schema rollout without restore rehearsal        |
 | Public sharing      | Snapshot or attachment projection regression                   | Signed URL and Storage egress                      | Immutable/leak test mandatory on both providers    |
 
-Overall Phase 5 risk remains **high for rollout** until protected live jobs, logging/alerts, named
-owners, and an actual disposable restore are complete. The code change itself does not authorize
-production spend or plan upgrades.
+Overall Phase 5 risk remains **high for rollout** until protected live jobs, tested alert routing,
+named owners, and an actual disposable restore are complete. The code change itself does not
+authorize production spend or plan upgrades.
