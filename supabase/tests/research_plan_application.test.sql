@@ -382,8 +382,8 @@ where source_research_item_id = (select id from research_plan_state where key = 
 order by applied_at desc limit 1;
 select is(
   (select title from public.itinerary_items where id = (select id from research_plan_state where key = 'flight')),
-  'Global exact flight · SFO → NRT',
-  'global round-trip Flight Apply updates the deterministic outbound target'
+  'Flight',
+  'global round-trip Flight Apply preserves the canonical transport title'
 );
 select is(
   (select operation_type from public.research_plan_applications where id = (select id from research_plan_state where key = 'global_flight_application')),
@@ -612,8 +612,8 @@ select is(
 );
 select is(
   (select title from public.itinerary_items where id = (select id from research_plan_state where key = 'flight')),
-  'Longer ANA option · SFO → NRT',
-  'the longer Apply also updates the canonical Flight'
+  'Flight',
+  'the longer Apply preserves the canonical Flight title'
 );
 select ok(
   exists (
