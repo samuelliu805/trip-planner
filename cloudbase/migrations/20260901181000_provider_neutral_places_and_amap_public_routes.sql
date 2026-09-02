@@ -4,6 +4,8 @@
 
 BEGIN;
 
+CREATE SCHEMA IF NOT EXISTS app_private;
+
 ALTER TABLE public.places
   ADD COLUMN provider_place_id text,
   ADD COLUMN coordinate_system text NOT NULL DEFAULT 'wgs84';
