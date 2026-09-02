@@ -1326,18 +1326,21 @@ async function run() {
     await navigate(browser, `/trips/${tripId}`);
     await waitFor(
       browser,
-      `document.querySelectorAll('[data-cell="0-1"] [data-edit-item]').length >= 2`,
+      `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+        .filter((item) => item.getClientRects().length).length >= 2`,
       "refreshed saved activities",
       60_000,
     );
     await clickElement(
       browser,
-      `document.querySelector('[data-cell="0-1"] [data-edit-item]')`,
+      `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+        .find((item) => item.getClientRects().length)`,
       "first refreshed saved activity",
     );
     await clickElement(
       browser,
-      `document.querySelector('button[aria-label="Show the selected day"]')`,
+      `[...document.querySelectorAll('button[aria-label="Show the selected day"]')]
+        .find((button) => button.getClientRects().length)`,
       "selected day map scope",
     );
     try {

@@ -154,6 +154,10 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
     smoke,
     /async function publishThroughUi\(browser\)[\s\S]*?await openTripMenu\(browser\);[\s\S]*?"Share trip menu item"/,
   );
+  assert.match(
+    smoke,
+    /querySelectorAll\('\[data-cell="0-1"\] \[data-edit-item\]'\)[\s\S]*?getClientRects\(\)\.length[\s\S]*?"first refreshed saved activity"/,
+  );
   assert.match(browserOrigin, /trip-planner-cn-306129-11-1253819205\.sh\.run\.tcloudbase\.com/);
   assert.match(browserOrigin, /--host-resolver-rules=MAP/);
   assert.match(browserOrigin, /loopbackHostnames/);
