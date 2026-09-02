@@ -767,11 +767,19 @@ async function publishThroughUi(browser, tripId) {
   await waitFor(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
-      button.textContent.trim() === "Create and publish" && !button.disabled
+      button.textContent.trim() === "Create and publish" &&
+      !button.disabled &&
+      button.getClientRects().length
     )`,
     "share publish control",
   );
-  await clickButtonText(browser, "Create and publish");
+  await pressElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.trim() === "Create and publish" && button.getClientRects().length
+    )`,
+    "Create and publish",
+  );
   try {
     await waitFor(
       browser,

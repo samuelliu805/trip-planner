@@ -152,7 +152,7 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   }
   assert.match(
     smoke,
-    /async function publishThroughUi\(browser, tripId\)[\s\S]*?await openTripMenu\(browser\);[\s\S]*?"Share trip menu item"/,
+    /async function publishThroughUi\(browser, tripId\)[\s\S]*?await openTripMenu\(browser\);[\s\S]*?"Share trip menu item"[\s\S]*?await pressElement\(/,
   );
   assert.match(smoke, /bounded share-publish diagnostic/);
   assert.match(smoke, /loadPersistedShareCount\(tripId\)/);
