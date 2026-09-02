@@ -7,6 +7,7 @@ const entryWorkflowUrl = new URL("../.github/workflows/cloudbase-pg-ci.yml", imp
 const configUrl = new URL("../supabase/config.toml", import.meta.url);
 const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
+const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
 
 test("Phase 5 verification is manual, exact-SHA, protected, and fail-closed", async () => {
   const [entryWorkflow, workflow] = await Promise.all([
@@ -81,6 +82,12 @@ test("the i18n check has no runner-specific file discovery dependency", async ()
   const check = await readFile(i18nCheckUrl, "utf8");
   assert.doesNotMatch(check, /node:child_process|execFileSync|spawnSync|["']rg["']/);
   assert.match(check, /readdirSync/);
+});
+
+test("the root CloudBase image supports projects without public assets", async () => {
+  const dockerfile = await readFile(rootDockerfileUrl, "utf8");
+  assert.match(dockerfile, /COPY \. \.\nRUN mkdir -p public\nRUN APP_REGION=cn/);
+  assert.match(dockerfile, /COPY --from=build[^\n]+\/app\/public \.\/public/);
 });
 
 test("the disposable Supabase target disables every public registration path", async () => {

@@ -8,6 +8,7 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+RUN mkdir -p public
 RUN APP_REGION=cn \
   AUTH_PROVIDER=cloudbase \
   CLOUDBASE_ENV_ID=trip-planner-cn-dev-d3bz94038b26 \
