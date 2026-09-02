@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import "../../lib/telemetry/telemetry.test.ts";
-import "../../lib/providers/amap/amap-provider.test.ts";
 import "../../lib/providers/provider-foundation.test.ts";
 import {
   normalizeGooglePlace,

@@ -65,6 +65,7 @@ export function AmapMapsProvider({ children }: { children: React.ReactNode }) {
         value={{
           ...(apiError ? { error: new Error(apiError) } : null),
           provider: placesProvider,
+          providerId: "amap",
         }}
       >
         {children}

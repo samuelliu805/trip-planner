@@ -41,6 +41,9 @@ function markerContent(marker: PlannerMapMarker, selectedId?: string) {
   const button = document.createElement("button");
   button.type = "button";
   button.setAttribute("aria-label", markerLabel(marker, selectedId));
+  button.dataset.coordinateSystem = "wgs84";
+  button.dataset.wgs84Latitude = String(marker.latitude);
+  button.dataset.wgs84Longitude = String(marker.longitude);
   button.title = markerLabel(marker, selectedId);
   button.style.alignItems = "center";
   button.style.background = "transparent";

@@ -1,4 +1,5 @@
 import type { PlaceSnapshot } from "./types.ts";
+import type { MapsProviderId } from "../maps/provider.ts";
 
 export type PlaceSuggestion = {
   id: string;
@@ -25,4 +26,5 @@ export interface PlacesProvider {
 export type PlacesProviderState = {
   error?: Error;
   provider: PlacesProvider | null;
+  providerId?: MapsProviderId;
 };

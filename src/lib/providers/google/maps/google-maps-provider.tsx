@@ -17,7 +17,9 @@ export function useGoogleMapConfiguration() {
 function GooglePlacesProviderBridge({ children }: { children: React.ReactNode }) {
   const provider = useGooglePlacesProvider();
   return (
-    <PlacesProviderContext.Provider value={{ provider }}>{children}</PlacesProviderContext.Provider>
+    <PlacesProviderContext.Provider value={{ provider, providerId: "google" }}>
+      {children}
+    </PlacesProviderContext.Provider>
   );
 }
 
@@ -31,7 +33,7 @@ export function GoogleMapsProvider({ children }: { children: React.ReactNode }) 
   if (!apiKey || !mapId)
     return (
       <GoogleMapConfigurationContext.Provider value={value}>
-        <PlacesProviderContext.Provider value={{ provider: null }}>
+        <PlacesProviderContext.Provider value={{ provider: null, providerId: "google" }}>
           {children}
         </PlacesProviderContext.Provider>
       </GoogleMapConfigurationContext.Provider>

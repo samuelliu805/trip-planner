@@ -79,6 +79,9 @@ export function createAmapPlacesProvider(amap: AmapNamespace): PlacesProvider {
         async fetchSuggestions(request): Promise<PlaceSuggestion[]> {
           ensureActive(closed, request.signal);
           const requestGeneration = ++generation;
+          // Starting any new query invalidates every prior opaque suggestion ID,
+          // including when the newest request ends in no_data or an error.
+          suggestions.clear();
           autocomplete.setType?.(typeFilter(request.includedPrimaryTypes));
           try {
             const { result, status } = await callbackResult<{
@@ -97,7 +100,6 @@ export function createAmapPlacesProvider(amap: AmapNamespace): PlacesProvider {
             if (status === "no_data") return [];
             if (status !== "complete" || typeof result === "string")
               throw new PlaceProviderError("search_failed");
-            suggestions.clear();
             return (result.tips ?? []).flatMap((tip) => {
               const id = tip.id?.trim();
               const primary = tip.name?.trim();

@@ -31,7 +31,7 @@ export function PlaceAutocomplete({
   onCustomValue,
   onQueryChange,
   onSelected,
-  placeholder = "Search Google Maps",
+  placeholder,
   showAvailabilityMessage = true,
   value,
 }: {
@@ -52,7 +52,7 @@ export function PlaceAutocomplete({
   showAvailabilityMessage?: boolean;
   value?: PlaceSnapshot | null;
 }) {
-  const { error: providerError, provider } = usePlacesProvider();
+  const { error: providerError, provider, providerId } = usePlacesProvider();
   const { t } = useI18n();
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +71,9 @@ export function PlaceAutocomplete({
   const hasCustomOption = Boolean(onCustomValue && customQuery && !optionsDismissed);
   const optionCount = suggestions.length;
   const popupOpen = !resolving && (optionCount > 0 || hasCustomOption);
+  const providerName = providerId === "amap" ? "AMap" : "Google Maps";
+  const resolvedPlaceholder =
+    placeholder ?? (providerId === "amap" ? "Search AMap" : "Search Google Maps");
 
   // Serialised so an inline includedPrimaryTypes array cannot restart the search every render.
   const typesKey = includedPrimaryTypes?.length ? includedPrimaryTypes.join(",") : "";
@@ -217,7 +220,7 @@ export function PlaceAutocomplete({
               setSuggestions([]);
             }
           }}
-          placeholder={t(placeholder)}
+          placeholder={t(resolvedPlaceholder)}
           ref={inputRef}
           role="combobox"
           type="text"
@@ -248,6 +251,7 @@ export function PlaceAutocomplete({
             listId={listId}
             onChoose={choose}
             onHighlight={setActiveIndex}
+            providerLabel={providerId === "amap" ? "AMap places" : "Google Maps places"}
             suggestions={suggestions}
           />
         ) : null}
@@ -274,10 +278,13 @@ export function PlaceAutocomplete({
           {providerError
             ? t(providerError.message)
             : onCustomValue
-              ? t("Google Maps is unavailable. You can still type a {label}.", {
+              ? t("{provider} is unavailable. You can still type a {label}.", {
                   label: t(customValueLabel ?? "value"),
+                  provider: providerName,
                 })
-              : t("Places search loads when Google Maps is configured.")}
+              : t("Places search loads when {provider} is configured.", {
+                  provider: providerName,
+                })}
         </p>
       ) : null}
       {error ? (

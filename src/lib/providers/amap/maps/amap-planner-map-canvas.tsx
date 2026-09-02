@@ -105,7 +105,7 @@ export function AmapPlannerMapCanvas({
       if (marker) map.panTo(toAmapPosition(marker.latitude, marker.longitude));
     }
     return overlaySet.release;
-  }, [amap, lines, markers, onMarkerClick, selectedId, viewportKey]);
+  }, [amap, colorScheme, compact, lines, markers, onMarkerClick, selectedId, viewportKey]);
 
   if (!apiKey)
     return (
@@ -137,7 +137,11 @@ export function AmapPlannerMapCanvas({
   if (!amap) return <AmapMapState title="Loading map" />;
 
   return (
-    <div className="relative h-full">
+    <div
+      className="relative h-full"
+      data-amap-line-count={lines.length}
+      data-amap-marker-count={markers.length}
+    >
       <div className="h-full w-full" ref={containerRef} />
       {emptyState && markers.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">

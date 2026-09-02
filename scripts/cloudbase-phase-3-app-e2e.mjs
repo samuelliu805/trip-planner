@@ -267,30 +267,6 @@ async function assertRealAmapBrowserAdapter(browser) {
     "real AMap JS map",
     45_000,
   );
-  const place = await evaluate(
-    browser,
-    `new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("AMap place smoke timed out")), 20000);
-      const fail = (message) => { clearTimeout(timer); reject(new Error(message)); };
-      const autocomplete = new window.AMap.AutoComplete({ city: "上海", citylimit: true });
-      autocomplete.search("上海外滩", (status, result) => {
-        const tip = status === "complete" && typeof result !== "string"
-          ? result.tips?.find((entry) => typeof entry.id === "string" && entry.id)
-          : null;
-        if (!tip) return fail("AMap autocomplete returned no POI");
-        const details = new window.AMap.PlaceSearch({ extensions: "all" });
-        details.getDetails(tip.id, (detailStatus, detailResult) => {
-          clearTimeout(timer);
-          const poi = detailStatus === "complete" && typeof detailResult !== "string"
-            ? detailResult.poiList?.pois?.find((entry) => entry.id === tip.id)
-            : null;
-          if (!poi?.location) return reject(new Error("AMap POI resolution failed"));
-          resolve({ id: poi.id, latitude: poi.location.getLat(), longitude: poi.location.getLng() });
-        });
-      });
-    })`,
-  );
-  assert.ok(place?.id && Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
   const resources = await evaluate(
     browser,
     `performance.getEntriesByType("resource").map((entry) => entry.name)`,
@@ -439,6 +415,157 @@ async function clickButtonText(browser, text) {
     })()`,
     `Button ${text}`,
   );
+}
+
+async function setInputValue(browser, selector, value) {
+  const changed = await evaluate(
+    browser,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      if (!(input instanceof HTMLInputElement) || !input.getClientRects().length) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, ${JSON.stringify(value)});
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    })()`,
+  );
+  assert.equal(changed, true, `${selector} was not available.`);
+}
+
+async function addAmapActivityThroughUi(browser, query, expectedCount) {
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[data-add-item]')].find((button) =>
+      button.getClientRects().length && !button.disabled &&
+      (button.textContent.includes("Add activity") || button.getAttribute("aria-label")?.startsWith("Add activity on day 1"))
+    )`,
+    "Add activity",
+  );
+  const placeSelector = 'input[aria-label="Place or activity name"]';
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector(${JSON.stringify(placeSelector)}))`,
+    "activity place search",
+  );
+  await setInputValue(browser, placeSelector, query);
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length))`,
+    `AMap suggestions for ${query}`,
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length)`,
+    `AMap suggestion for ${query}`,
+  );
+  await waitFor(
+    browser,
+    "Boolean(document.querySelector('button[aria-label=\"Clear map place\"]'))",
+    `resolved AMap POI for ${query}`,
+    30_000,
+  );
+  const title = await evaluate(
+    browser,
+    `document.querySelector('input[id^="item-title-"]')?.value?.trim()`,
+  );
+  assert.ok(title, `AMap selection for ${query} did not populate the activity name.`);
+
+  const action = await evaluate(
+    browser,
+    `(() => [...document.querySelectorAll('[role="dialog"] button')]
+      .find((button) => ["Confirm order", "Save"].includes(button.textContent.trim()) && !button.disabled)
+      ?.textContent.trim())()`,
+  );
+  assert.ok(action, `The activity editor for ${query} was not saveable.`);
+  await clickButtonText(browser, action);
+  if (action === "Confirm order") {
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="dialog"] button')]
+        .some((button) => button.textContent.trim() === "Save" && !button.disabled)`,
+      "activity order confirmation",
+    );
+    await clickButtonText(browser, "Save");
+  }
+  await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "activity save", 45_000);
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-edit-item]').length >= ${expectedCount}`,
+    `saved activity ${expectedCount}`,
+    45_000,
+  );
+  return title;
+}
+
+async function calculateAmapRouteThroughUi(browser) {
+  await clickElement(browser, `document.querySelector('[data-edit-item]')`, "first saved activity");
+  await clickElement(
+    browser,
+    `document.querySelector('button[aria-label="Show the selected day"]')`,
+    "selected day map scope",
+  );
+  await waitFor(
+    browser,
+    "Boolean(document.querySelector('button[aria-label=\"Create route\"]'))",
+    "create day route control",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('button[aria-label="Create route"]')`,
+    "Create route",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('button')].some((button) =>
+      button.textContent.trim() === "Save & calculate" && !button.disabled
+    )`,
+    "save and calculate AMap route",
+  );
+  await clickButtonText(browser, "Save & calculate");
+  await waitFor(
+    browser,
+    `!document.querySelector('[data-i18n-aria-label="Edit Route A"]') &&
+      Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
+    "calculated AMap route",
+    60_000,
+  );
+}
+
+async function publishThroughUi(browser) {
+  await clickElement(
+    browser,
+    `document.querySelector('button[aria-label="Share trip"]')`,
+    "Share trip",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+      button.textContent.trim() === "Create and publish" && !button.disabled
+    )`,
+    "share publish control",
+  );
+  await clickButtonText(browser, "Create and publish");
+  await waitFor(
+    browser,
+    "Boolean(document.querySelector('[aria-label=\"Published shareable page\"]'))",
+    "published shareable page",
+    60_000,
+  );
+  const publicUrl = await evaluate(
+    browser,
+    `(() => {
+      const panel = document.querySelector('[aria-label="Published shareable page"]');
+      return [...panel.querySelectorAll('button')]
+        .map((button) => button.textContent.trim())
+        .find((text) => /^https?:\\/\\//.test(text));
+    })()`,
+  );
+  assert.ok(publicUrl, "The published page URL was not rendered by the application UI.");
+  const token = new URL(publicUrl).pathname.split("/").filter(Boolean).at(-1);
+  assert.ok(token, "The application UI returned an invalid public page URL.");
+  return token;
 }
 
 async function openTripMenu(browser) {
@@ -768,25 +895,86 @@ async function cleanupFixture(tripId) {
   return { deleted, remaining };
 }
 
-async function createPublicShareFixture(tripId) {
+async function loadPersistedAmapEvidence(tripId) {
   const config = loadLiveConfig();
   const { auth, db } = initializeLiveClient(config);
   try {
     await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
-    const variants = dataOrThrow(
-      await db.from("route_variants").select("id").eq("trip_id", tripId).eq("is_primary", true),
-      "application E2E share variant",
+    const items = dataOrThrow(
+      await db
+        .from("itinerary_items")
+        .select("id,place_id,title")
+        .eq("trip_id", tripId)
+        .eq("type", "activity"),
+      "application E2E AMap activities",
     );
-    const variantId = Array.isArray(variants) ? variants[0]?.id : variants?.id;
-    if (!variantId) throw new Error("Application E2E share variant was unavailable.");
-    const share = dataOrThrow(
-      await db.rpc("create_share_page_v3", { target_variant_id: variantId }),
-      "application E2E public share",
+    const placeIds = (Array.isArray(items) ? items : [items])
+      .map(({ place_id: placeId }) => placeId)
+      .filter(Boolean);
+    const places = placeIds.length
+      ? dataOrThrow(
+          await db
+            .from("places")
+            .select(
+              "id,source,provider_place_id,google_place_id,display_name,formatted_address,latitude,longitude,coordinate_system",
+            )
+            .in("id", placeIds),
+          "application E2E persisted AMap places",
+        )
+      : [];
+    const plans = dataOrThrow(
+      await db.from("day_route_plans").select("id").eq("trip_id", tripId),
+      "application E2E AMap day route",
     );
-    if (!share?.publicToken) throw new Error("Application E2E public token was unavailable.");
-    return share.publicToken;
+    const planIds = (Array.isArray(plans) ? plans : [plans]).map(({ id }) => id).filter(Boolean);
+    const calculations = planIds.length
+      ? dataOrThrow(
+          await db
+            .from("day_route_calculations")
+            .select("plan_id,calculated_legs")
+            .in("plan_id", planIds),
+          "application E2E calculated AMap route",
+        )
+      : [];
+    return {
+      calculations: Array.isArray(calculations) ? calculations : [calculations],
+      items: Array.isArray(items) ? items : [items],
+      places: Array.isArray(places) ? places : [places],
+    };
   } finally {
     await auth.signOut();
+  }
+}
+
+function assertPersistedAmapPlaces(evidence) {
+  assert.equal(evidence.items.length, 2, "The real UI did not persist both AMap activities.");
+  assert.equal(evidence.places.length, 2, "The real UI did not persist both AMap place rows.");
+  for (const place of evidence.places) {
+    assert.equal(place.source, "amap");
+    assert.equal(place.coordinate_system, "wgs84");
+    assert.equal(place.google_place_id, null);
+    assert.ok(place.provider_place_id, "An AMap place lost its provider place ID.");
+    assert.ok(place.display_name, "An AMap place lost its display name.");
+    assert.ok(place.formatted_address, "An AMap place lost its formatted address.");
+    assert.ok(Number.isFinite(place.latitude) && Math.abs(place.latitude) <= 90);
+    assert.ok(Number.isFinite(place.longitude) && Math.abs(place.longitude) <= 180);
+  }
+}
+
+function assertPersistedAmapRoute(evidence) {
+  assert.equal(evidence.calculations.length, 1, "The real UI did not persist one day route.");
+  const legs = evidence.calculations[0]?.calculated_legs;
+  assert.ok(Array.isArray(legs) && legs.length > 0, "The persisted AMap route has no legs.");
+  for (const leg of legs) {
+    assert.deepEqual(
+      {
+        coordinateSystem: leg.geometry?.coordinateSystem,
+        provider: leg.geometry?.provider,
+        source: leg.geometry?.source,
+      },
+      { coordinateSystem: "wgs84", provider: "amap", source: "encoded" },
+    );
+    assert.ok(leg.geometry?.encodedPolyline, "The persisted AMap route has no encoded geometry.");
   }
 }
 
@@ -900,6 +1088,45 @@ async function run() {
 
     const updatedTitle = `${runLabel}-owned-by-a`;
     await updateTripTitle(browser, updatedTitle);
+    await addAmapActivityThroughUi(browser, "上海外滩", 1);
+    await addAmapActivityThroughUi(browser, "上海人民广场", 2);
+    await navigate(browser, `/trips/${tripId}`);
+    await waitFor(
+      browser,
+      `Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount) >= 2`,
+      "refreshed AMap markers",
+      60_000,
+    );
+    const amapEvidence = await loadPersistedAmapEvidence(tripId);
+    assertPersistedAmapPlaces(amapEvidence);
+    const renderedMarkers = await evaluate(
+      browser,
+      `[...document.querySelectorAll('[data-coordinate-system="wgs84"]')].map((marker) => ({
+        coordinateSystem: marker.dataset.coordinateSystem,
+        latitude: Number(marker.dataset.wgs84Latitude),
+        longitude: Number(marker.dataset.wgs84Longitude),
+      }))`,
+    );
+    assert.ok(
+      renderedMarkers.length >= 2,
+      "The refreshed AMap canvas did not render both markers.",
+    );
+    for (const place of amapEvidence.places) {
+      assert.ok(
+        renderedMarkers.some(
+          (marker) =>
+            marker.coordinateSystem === "wgs84" &&
+            Math.abs(marker.latitude - Number(place.latitude)) < 1e-8 &&
+            Math.abs(marker.longitude - Number(place.longitude)) < 1e-8,
+        ),
+        `The refreshed AMap marker did not retain WGS-84 place ${place.id}.`,
+      );
+    }
+    await calculateAmapRouteThroughUi(browser);
+    const routeEvidence = await loadPersistedAmapEvidence(tripId);
+    assertPersistedAmapRoute(routeEvidence);
+    await assertRealAmapBrowserAdapter(browser);
+    const publicToken = await publishThroughUi(browser);
     await verifyTabletFrozenLayers(browser);
     const forms = await captureMutationForms(browser);
 
@@ -954,7 +1181,6 @@ async function run() {
       new RegExp(forgedTitle),
     );
 
-    const publicToken = await createPublicShareFixture(tripId);
     await clearCookies(browser);
     await navigate(browser, `/share/${publicToken}?view=overview`);
     await waitFor(
@@ -970,8 +1196,8 @@ async function run() {
     if (process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1") {
       await waitFor(
         browser,
-        'Boolean(window.AMap && document.querySelector(".amap-container"))',
-        "public AMap canvas",
+        'Boolean(window.AMap && document.querySelector(".amap-container")) && Number(document.querySelector("[data-amap-line-count]")?.dataset.amapLineCount) > 0',
+        "public AMap route canvas",
       );
       const publicResources = await evaluate(
         browser,
@@ -1057,7 +1283,7 @@ async function run() {
   console.log("CN accepted only tp-cn-* session cookies and logout cleared them.");
   if (process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1") {
     console.log(
-      "Authenticated AMap JS map/autocomplete/POI smoke passed with zero Google requests.",
+      "Real UI AMap search/select/save/refresh/route/publish/public-route smoke passed with WGS-84 persistence and zero Google requests.",
     );
   }
   console.log("A list/create/detail/update/status/delete and B read/update/delete denial passed.");

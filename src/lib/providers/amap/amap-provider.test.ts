@@ -7,11 +7,13 @@ import test from "node:test";
 import { findMapsProviderBoundaryViolations } from "../../../../scripts/check-maps-provider-boundary.ts";
 import type { RouteLegRequest } from "../routes/types.ts";
 import { RouteProviderError } from "../routes/errors.ts";
+import { PlaceProviderError } from "../places/errors.ts";
 import { decodeEncodedPolyline } from "../routes/geo.ts";
 import { wgs84Coordinates } from "../maps/types.ts";
 
 import { gcj02ToWgs84, wgs84ToGcj02 } from "./coordinates.ts";
 import { createAmapJsApiLoader } from "./maps/amap-loader.ts";
+import { createAmapOverlays } from "./maps/amap-map-overlays.ts";
 import { createAmapPlacesProvider } from "./places/amap-places-provider.ts";
 import { amapRoutesEndpoints, createAmapRoutesProvider } from "./routes/amap-routes-core.ts";
 import { amapRouteMode } from "./routes/mode-mapping.ts";
@@ -189,6 +191,130 @@ test("AMap Places aborts callback work and releases the session", async () => {
     (error) => error instanceof Error && error.message.includes("cancel"),
   );
   assert.deepEqual(harness.counters(), { autocompleteClosed: 1, placeSearchCleared: 1 });
+});
+
+test("AMap Places invalidates old suggestion IDs after no_data and error results", async () => {
+  const harness = placesHarness();
+  const session = createAmapPlacesProvider(harness.amap).createSession();
+  const first = session.fetchSuggestions({ input: "first" });
+  harness.autocompleteCallbacks[0]("complete", { tips: [{ id: "old-id", name: "Old" }] });
+  await first;
+
+  const empty = session.fetchSuggestions({ input: "empty" });
+  harness.autocompleteCallbacks[1]("no_data", {});
+  assert.deepEqual(await empty, []);
+  await assert.rejects(
+    session.resolveSuggestion("old-id"),
+    (error) => error instanceof PlaceProviderError && error.code === "invalid_response",
+  );
+
+  const second = session.fetchSuggestions({ input: "second" });
+  harness.autocompleteCallbacks[2]("complete", { tips: [{ id: "new-id", name: "New" }] });
+  await second;
+  const failed = session.fetchSuggestions({ input: "failed" });
+  harness.autocompleteCallbacks[3]("error", {});
+  await assert.rejects(
+    failed,
+    (error) => error instanceof PlaceProviderError && error.code === "search_failed",
+  );
+  await assert.rejects(
+    session.resolveSuggestion("new-id"),
+    (error) => error instanceof PlaceProviderError && error.code === "invalid_response",
+  );
+  session.close();
+});
+
+test("AMap map rebuilds restore marker and route overlays after releasing the old session", async () => {
+  class FakeElement {
+    dataset: Record<string, string> = {};
+    style: Record<string, string> = {};
+    textContent: string | null = null;
+    append() {}
+    addEventListener() {}
+    removeEventListener() {}
+    setAttribute() {}
+  }
+  class Marker {
+    readonly options: unknown;
+    constructor(options: unknown) {
+      this.options = options;
+    }
+  }
+  class Polyline {
+    readonly options: unknown;
+    constructor(options: unknown) {
+      this.options = options;
+    }
+  }
+  const amap = { Marker, Polyline } as unknown as AmapNamespace;
+  const added = [[], []] as unknown[][];
+  const removed = [[], []] as unknown[][];
+  const maps = [0, 1].map(
+    (index) =>
+      ({
+        add: (overlays: unknown[]) => added[index].push(...overlays),
+        remove: (overlays: unknown[]) => removed[index].push(...overlays),
+      }) as never,
+  );
+  const previousDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { createElement: () => new FakeElement() },
+  });
+  try {
+    const options = {
+      amap,
+      lines: [
+        {
+          id: "line-1",
+          path: [
+            { lat: 39.9, lng: 116.39 },
+            { lat: 39.91, lng: 116.4 },
+          ],
+        },
+      ],
+      markers: [
+        {
+          entries: [
+            {
+              dayLabel: "Day 1",
+              dayNumber: 1,
+              itemId: "item-1",
+              kind: "activity" as const,
+              title: "POI",
+            },
+          ],
+          id: "marker-1",
+          itemIds: ["item-1"],
+          latitude: 39.9,
+          longitude: 116.39,
+        },
+      ],
+      onMarkerClick() {},
+    };
+    const first = createAmapOverlays({ ...options, map: maps[0] });
+    assert.equal(added[0].length, 2);
+    first.release();
+    assert.equal(removed[0].length, 2);
+    const second = createAmapOverlays({ ...options, map: maps[1] });
+    assert.equal(added[1].length, 2);
+    assert.equal(removed[1].length, 0);
+    second.release();
+  } finally {
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: previousDocument,
+    });
+  }
+
+  const canvas = await readFile(
+    new URL("./maps/amap-planner-map-canvas.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    canvas,
+    /\[amap, colorScheme, compact, lines, markers, onMarkerClick, selectedId, viewportKey\]/,
+  );
 });
 
 test("AMap coordinate conversion round trips inside China and bypasses outside China", () => {

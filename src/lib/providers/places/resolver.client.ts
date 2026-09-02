@@ -8,5 +8,5 @@ import type { PlacesProviderState } from "./contracts";
 export function usePlacesProvider(): PlacesProviderState {
   const state = usePlacesProviderContext();
   const { providerError } = useMapProviderConfiguration();
-  return providerError ? { error: providerError, provider: null } : state;
+  return providerError ? { ...state, error: providerError, provider: null } : state;
 }

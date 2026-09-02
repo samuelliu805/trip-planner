@@ -15,6 +15,7 @@ export function PlaceSuggestionList({
   listId,
   onChoose,
   onHighlight,
+  providerLabel = "Google Maps places",
   suggestions,
 }: {
   activeIndex: number;
@@ -22,6 +23,7 @@ export function PlaceSuggestionList({
   listId: string;
   onChoose: (suggestion: PlaceSuggestion) => void;
   onHighlight: (index: number) => void;
+  providerLabel?: "AMap places" | "Google Maps places";
   suggestions: PlaceSuggestion[];
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -41,7 +43,7 @@ export function PlaceSuggestionList({
       {suggestions.length ? (
         <>
           <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <T message={" Google Maps places "} />
+            <T message={providerLabel} />
           </p>
           <ul className="max-h-40 min-w-0 overflow-y-auto pb-1" id={listId} role="listbox">
             {suggestions.map((suggestion, index) => (
