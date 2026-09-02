@@ -63,7 +63,14 @@ const boundedFetch = async (input, init = {}) => {
   throw new Error("AMap request exhausted its bounded retry budget.");
 };
 
-const routeProvider = createAmapRoutesProvider({ apiKey: key, fetchImplementation: boundedFetch });
+// Keep the provider deadline above the bounded transport retry window. The production adapter's
+// shorter default is appropriate for interactive requests, but would otherwise abort this
+// idempotent live verification after the first transient AMap connect timeout.
+const routeProvider = createAmapRoutesProvider({
+  apiKey: key,
+  fetchImplementation: boundedFetch,
+  timeoutMs: 40_000,
+});
 const route = await routeProvider.calculateLeg({
   destination: wgs84Coordinates(39.908_722, 116.397_499),
   legSignature: "phase-5-real-amap-route",
