@@ -780,19 +780,45 @@ async function publishThroughUi(browser, tripId) {
     )`,
     "share publish control",
   );
-  await clickElement(
+  const activated = await evaluate(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
-      button.textContent.trim() === "Create and publish" && button.getClientRects().length
-    )`,
-    "Create and publish",
+    `(() => {
+      const button = [...document.querySelectorAll('[role="dialog"] button')].find((candidate) =>
+        candidate.textContent.trim() === "Create and publish" &&
+        !candidate.disabled &&
+        candidate.getClientRects().length
+      );
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`,
   );
+  assert.equal(activated, true, "Create and publish was not available.");
   try {
     await waitFor(
       browser,
-      "Boolean(document.querySelector('[aria-label=\"Published shareable page\"]'))",
-      "published shareable page",
+      `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+        button.textContent.trim() === "Publishing…"
+      ) ||
+      Boolean(document.querySelector('[aria-label="Published shareable page"]')) ||
+      Boolean(document.querySelector('[role="dialog"] [aria-live]'))`,
+      "share publish activation",
+      10_000,
+    );
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector('[aria-label="Published shareable page"]')) ||
+       Boolean(document.querySelector('[role="dialog"] [aria-live]'))`,
+      "share publish result",
       60_000,
+    );
+    assert.equal(
+      await evaluate(
+        browser,
+        `Boolean(document.querySelector('[aria-label="Published shareable page"]'))`,
+      ),
+      true,
+      "The share publish action returned visible feedback without a published page.",
     );
   } catch (error) {
     const browserDiagnostic = await evaluate(
