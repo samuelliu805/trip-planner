@@ -49,7 +49,6 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "npm run check:build-secret-boundary",
     "git diff --check",
     "supabase db start",
-    "supabase db reset --local --no-seed",
     "supabase test db --local",
     "node scripts/verify-vercel-preview-deployment.mjs",
     "npm run test:global-phase-5-live",
@@ -70,11 +69,19 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.match(workflow, /@cloudbase\/cli@3\.8\.1/);
   assert.match(workflow, /GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
   assert.doesNotMatch(workflow, /VERCEL_(?:TOKEN|ORG_ID|PROJECT_ID)/);
-  assert.match(workflow, /version: 2\.58\.5/);
+  assert.match(workflow, /version: 2\.116\.0/);
+  assert.doesNotMatch(workflow, /supabase db reset/);
   assert.match(workflow, /migration up[\s\\]*\n[\s\S]{0,100}--dry-run --json/);
   assert.match(workflow, /node scripts\/invoke-cloudbase-cleanup\.mjs "\$invocation_output"/);
   assert.match(workflow, /timeout 60s npx --yes --package @cloudbase\/cli@3\.8\.1 tcb fn invoke/);
   assert.match(workflow, /tcb logout[\s\\]*\n[\s\S]{0,50}--json > \/dev\/null/);
+  assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 2);
+  assert.match(workflow, /Restore the CloudBase database audit CLI identity/);
+  assert.match(workflow, /CloudBase cleanup invocation configuration is incomplete\./);
+  assert.match(
+    workflow,
+    /Authenticate the CloudBase database audit CLI[\s\S]*Run private Storage[\s\S]*Invoke the deployed cleanup function[\s\S]*Restore the CloudBase database audit CLI identity[\s\S]*Independently execute cleanup and residue audit/,
+  );
   assert.ok((workflow.match(/if: \$\{\{ always\(\) \}\}/g) ?? []).length >= 7);
 });
 

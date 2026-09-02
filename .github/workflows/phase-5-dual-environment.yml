@@ -148,7 +148,7 @@ jobs:
           node-version: 24
       - uses: supabase/setup-cli@v1
         with:
-          version: 2.58.5
+          version: 2.116.0
       - name: Verify exact workflow head
         env:
           PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
@@ -164,9 +164,7 @@ jobs:
           npm run build
           npm run check:build-secret-boundary
       - name: Initialize every Supabase migration from zero
-        run: |
-          supabase db start
-          supabase db reset --local --no-seed
+        run: supabase db start
       - name: Run every Supabase SQL test
         run: supabase test db --local
       - name: Require an exact-SHA Git-integrated Vercel Preview
@@ -252,12 +250,16 @@ jobs:
             --env-id trip-planner-cn-dev-d3bz94038b26 \
             --region ap-shanghai \
             --instance-id pgdb-l4lhtrv7
-      - name: Authenticate the exactly pinned CloudBase CLI
-        run: >-
-          npx --yes --package @cloudbase/cli@3.8.1 tcb login
-          --cloudbase-api-key "$CLOUDBASE_API_KEY"
-          --env-id "$CLOUDBASE_ENV_ID"
-          --json
+      - name: Authenticate the CloudBase database audit CLI
+        if: ${{ always() }}
+        run: |
+          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
+            --cloudbase-api-key "$CLOUDBASE_API_KEY" \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --json > /dev/null 2>&1; then
+            echo "CloudBase database audit CLI authentication failed."
+            exit 1
+          fi
       - name: Require AMap server variables in the CloudBase Run runtime
         run: |
           detail_output="$(mktemp)"
@@ -294,6 +296,10 @@ jobs:
           CLOUDBASE_CAM_SECRET_ID: ${{ secrets.CLOUDBASE_CAM_SECRET_ID }}
           CLOUDBASE_CAM_SECRET_KEY: ${{ secrets.CLOUDBASE_CAM_SECRET_KEY }}
         run: |
+          if [ -z "$CLOUDBASE_CAM_SECRET_ID" ] || [ -z "$CLOUDBASE_CAM_SECRET_KEY" ]; then
+            echo "CloudBase cleanup invocation configuration is incomplete."
+            exit 1
+          fi
           invocation_output="$(mktemp)"
           trap 'rm -f "$invocation_output"' EXIT
           timeout 30s npx --yes --package @cloudbase/cli@3.8.1 tcb logout \
@@ -311,6 +317,18 @@ jobs:
             exit 1
           fi
           node scripts/invoke-cloudbase-cleanup.mjs "$invocation_output"
+      - name: Restore the CloudBase database audit CLI identity
+        if: ${{ always() }}
+        run: |
+          timeout 30s npx --yes --package @cloudbase/cli@3.8.1 tcb logout \
+            --json > /dev/null 2>&1
+          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
+            --cloudbase-api-key "$CLOUDBASE_API_KEY" \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --json > /dev/null 2>&1; then
+            echo "CloudBase database audit CLI authentication failed."
+            exit 1
+          fi
       - name: Independently execute cleanup and residue audit
         if: ${{ always() }}
         run: npm run test:cloudbase-phase-4-cleanup
