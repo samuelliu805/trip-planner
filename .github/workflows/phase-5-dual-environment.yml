@@ -275,10 +275,15 @@ jobs:
             --require-runtime-env AMAP_WEB_SERVICE_KEY
       - name: Verify migration list and dry run without applying changes
         run: |
+          migration_list="$(mktemp)"
+          migration_plan="$(mktemp)"
+          trap 'rm -f "$migration_list" "$migration_plan"' EXIT
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
-            --env-id "$CLOUDBASE_ENV_ID" --json
+            --env-id "$CLOUDBASE_ENV_ID" --json > "$migration_list"
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
-            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json
+            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
+          node scripts/verify-cloudbase-migration-plan.mjs \
+            "$migration_list" "$migration_plan" 20260901181000
       - name: Build the exact CN selector and scan secrets
         run: |
           npm run build
@@ -304,16 +309,19 @@ jobs:
           trap 'rm -f "$invocation_output"' EXIT
           timeout 30s npx --yes --package @cloudbase/cli@3.8.1 tcb logout \
             --json > /dev/null 2>&1
-          timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
+          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
             --apiKeyId "$CLOUDBASE_CAM_SECRET_ID" \
             --apiKey "$CLOUDBASE_CAM_SECRET_KEY" \
-            --json > /dev/null 2>&1
+            --json > /dev/null 2>&1; then
+            echo "CloudBase CAM login failed; verify the dedicated identity has tcb:CheckTcbService."
+            exit 1
+          fi
           if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb fn invoke \
             trip-planner-cleanup \
             --env-id "$CLOUDBASE_ENV_ID" \
             --params '{"source":"phase5-verification"}' \
             --json > "$invocation_output" 2>&1; then
-            echo "CloudBase cleanup function invocation failed."
+            echo "CloudBase cleanup invocation failed after CAM login; verify scf:GetFunction and scf:Invoke."
             exit 1
           fi
           node scripts/invoke-cloudbase-cleanup.mjs "$invocation_output"

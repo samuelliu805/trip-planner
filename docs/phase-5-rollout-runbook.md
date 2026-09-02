@@ -38,13 +38,20 @@ Missing ownership, notification routing, or change record is a release blocker.
   A paused service cannot satisfy this prerequisite or the live gate. Resume the approved dev
   service and publish its runtime configuration only through a separately approved platform
   change; if the plan prevents that action, record a CloudBase support/plan-upgrade blocker.
-- Create or select a dedicated non-production CAM sub-account restricted to inspecting and
-  invoking `trip-planner-cleanup` in the approved dev environment. Store its API key only as
+- Create or select a dedicated non-production CAM sub-account. Grant only
+  `tcb:CheckTcbService`, `scf:GetFunction`, and `scf:Invoke`. The current CAM action table requires
+  `resource: "*"` for these operation-level SCF APIs; a concrete function ARN is not authorized,
+  even with the correct main-account UIN. Do not grant `scf:*` or an administrator policy. Store
+  its API key only as
   `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY` in the protected `cloudbase-pg-dev`
   GitHub Environment. The environment API Key cannot authorize CLI invocation of a private Event
   Function. Do not put CAM credentials in CloudBase Run or repository-level variables.
 - Add the protected secrets and variables listed in
   [phase-5-verification.md](./phase-5-verification.md), then prove secret scans are zero.
+- Apply all reviewed candidate migrations to the approved CloudBase dev environment through a
+  separately authorized schema change before Phase 5 verification. The live workflow itself only
+  lists and dry-runs migrations and requires `pending=[]`; it never applies DDL. For this candidate,
+  remote history must include `20260901181000_provider_neutral_places_and_amap_public_routes`.
 - Keep CN username/password accounts controlled. Do not enable anonymous, phone, email, or public
   self-registration.
 - Confirm a disposable restore target and backup method. Neither provider's restore is considered

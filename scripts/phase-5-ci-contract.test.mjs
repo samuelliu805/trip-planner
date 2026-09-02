@@ -8,6 +8,10 @@ const configUrl = new URL("../supabase/config.toml", import.meta.url);
 const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
+const providerNeutralMigrationUrl = new URL(
+  "../database/shared/migrations/20260901181000_provider_neutral_places_and_amap_public_routes.sql",
+  import.meta.url,
+);
 
 test("Phase 5 verification is manual, exact-SHA, protected, and fail-closed", async () => {
   const [entryWorkflow, workflow] = await Promise.all([
@@ -57,6 +61,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "npm run test:amap-phase-5-live",
     "npm run test:cloudbase-phase-4-storage",
     "npm run test:cloudbase-phase-4-cleanup",
+    "node scripts/verify-cloudbase-migration-plan.mjs",
     "CLOUDBASE_CAM_SECRET_ID",
     "CLOUDBASE_CAM_SECRET_KEY",
     "tcb fn invoke",
@@ -72,12 +77,18 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.match(workflow, /version: 2\.116\.0/);
   assert.doesNotMatch(workflow, /supabase db reset/);
   assert.match(workflow, /migration up[\s\\]*\n[\s\S]{0,100}--dry-run --json/);
+  assert.match(
+    workflow,
+    /verify-cloudbase-migration-plan\.mjs[\s\\]*\n[\s\S]{0,100}20260901181000/,
+  );
   assert.match(workflow, /node scripts\/invoke-cloudbase-cleanup\.mjs "\$invocation_output"/);
   assert.match(workflow, /timeout 60s npx --yes --package @cloudbase\/cli@3\.8\.1 tcb fn invoke/);
   assert.match(workflow, /tcb logout[\s\\]*\n[\s\S]{0,50}--json > \/dev\/null/);
   assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 2);
   assert.match(workflow, /Restore the CloudBase database audit CLI identity/);
   assert.match(workflow, /CloudBase cleanup invocation configuration is incomplete\./);
+  assert.match(workflow, /CAM login failed; verify the dedicated identity has tcb:CheckTcbService/);
+  assert.match(workflow, /verify scf:GetFunction and scf:Invoke/);
   assert.match(
     workflow,
     /Authenticate the CloudBase database audit CLI[\s\S]*Run private Storage[\s\S]*Invoke the deployed cleanup function[\s\S]*Restore the CloudBase database audit CLI identity[\s\S]*Independently execute cleanup and residue audit/,
@@ -95,6 +106,17 @@ test("the root CloudBase image supports projects without public assets", async (
   const dockerfile = await readFile(rootDockerfileUrl, "utf8");
   assert.match(dockerfile, /COPY \. \.\nRUN mkdir -p public\nRUN APP_REGION=cn/);
   assert.match(dockerfile, /COPY --from=build[^\n]+\/app\/public \.\/public/);
+});
+
+test("the provider-neutral migration creates its private schema before private functions", async () => {
+  const migration = await readFile(providerNeutralMigrationUrl, "utf8");
+  const schema = migration.indexOf("CREATE SCHEMA IF NOT EXISTS app_private;");
+  const privateFunction = migration.indexOf("CREATE FUNCTION app_private.");
+  assert.ok(schema >= 0, "provider-neutral migration must initialize app_private from zero");
+  assert.ok(
+    schema < privateFunction,
+    "app_private must exist before its first function is created",
+  );
 });
 
 test("the disposable Supabase target disables every public registration path", async () => {

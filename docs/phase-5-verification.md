@@ -75,7 +75,9 @@ new dispatch. The protected `cloudbase-pg-dev` environment must approve both liv
 ### `cn-live`
 
 - validate the approved dev environment/region/PG instance and authenticate CloudBase CLI `3.8.1`;
-- list migrations and run `migration up --dry-run`; never apply a migration from this workflow;
+- list migrations and run `migration up --dry-run`; require an executable plan with `pending=[]`
+  and migration `20260901181000` already recorded remotely; never apply a migration from this
+  workflow;
 - build the exact CN selector and scan it for server secrets;
 - use controlled users A and B to prove Auth/session/refresh/expiry/logout, CRUD, owner RPCs, direct
   and RPC cross-owner denial, forged-owner denial, and anonymous-private denial;
@@ -123,11 +125,15 @@ the name-only check after release. Initial runtime configuration remains a manua
 The environment API Key does not authorize `tcb fn invoke` for a private Event Function. The
 deployed cleanup function is therefore invoked through CloudBase CLI `3.8.1` after a separate CAM
 login using `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY`. These must belong to a
-dedicated non-production sub-account restricted to inspecting and invoking
-`trip-planner-cleanup` in the approved dev environment. The CLI output is captured rather than
-echoed; only a successful Event invocation and the bounded cleanup result shape are accepted. The
-independent handler and final residue audit still run on `always()` paths and cannot turn an
-earlier failure green.
+dedicated non-production sub-account. The pinned CLI first requires `tcb:CheckTcbService`, then
+uses `scf:GetFunction` and `scf:Invoke`. Tencent CAM currently classifies the SCF operations as
+operation-level APIs, so their policy resource must be `*`; a function ARN is rejected even when
+its main-account UIN is correct. Compensate for that platform granularity by granting only those
+three actions to a dev-only identity—never `scf:*` or an administrator policy—and by storing its
+credentials only in the protected environment. The workflow reports whether CAM login or invoke
+failed but captures and deletes CLI output rather than echoing it. Only a successful Event
+invocation and the bounded cleanup result shape are accepted. The independent handler and final
+residue audit still run on `always()` paths and cannot turn an earlier failure green.
 
 The database/storage residue audits use the environment-scoped CloudBase API Key, not the CAM
 identity. Their CLI login runs on an `always()` path so a missing CAM prerequisite cannot suppress
@@ -145,6 +151,11 @@ the existing `upsert_google_place_snapshot_v2` remains as a compatibility wrappe
 route projection accepts only `provider=amap`, `source=encoded`, `encoding=polyline5`, and
 `coordinateSystem=wgs84`, and reconstructs the five-field geometry rather than exposing the stored
 provider object.
+
+Because CN live verification is intentionally read-only for schema, all candidate CloudBase
+migrations must be applied to the approved dev environment through a separately reviewed change
+before dispatch. A pending migration now fails at the migration gate, before the application build
+or UI smoke, instead of surfacing later as a missing-column server-render error.
 
 ## Evidence record
 
