@@ -20,6 +20,16 @@ test("classifies the pinned CLI Invoke denial without returning raw output", () 
 
 test("classifies function lookup, absence, timeout, and unknown failures", () => {
   assert.equal(
+    classifyCloudBaseFunctionInvokeText(
+      "SyntaxError: Cannot use import statement outside a module",
+    ),
+    "function-runtime-module-format",
+  );
+  assert.equal(
+    classifyCloudBaseFunctionInvokeText("[trip-planner-cleanup] 调用失败"),
+    "function-invocation-failed",
+  );
+  assert.equal(
     classifyCloudBaseFunctionInvokeText("GetFunction permission denied"),
     "scf-get-function-authorization",
   );
