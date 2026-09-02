@@ -31,6 +31,14 @@ Missing ownership, notification routing, or change record is a release blocker.
 - Configure the server-only names `AMAP_JS_SECURITY_CODE` and `AMAP_WEB_SERVICE_KEY` in the
   `trip-planner-cn` CloudBase Run runtime through the approved platform change process. A GitHub
   environment variable does not configure CloudBase Run. Record names/presence only, never values.
+  A paused service cannot satisfy this prerequisite or the live gate. Resume the approved dev
+  service and publish its runtime configuration only through a separately approved platform
+  change; if the plan prevents that action, record a CloudBase support/plan-upgrade blocker.
+- Create or select a dedicated non-production CAM sub-account restricted to inspecting and
+  invoking `trip-planner-cleanup` in the approved dev environment. Store its API key only as
+  `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY` in the protected `cloudbase-pg-dev`
+  GitHub Environment. The environment API Key cannot authorize CLI invocation of a private Event
+  Function. Do not put CAM credentials in CloudBase Run or repository-level variables.
 - Add the protected secrets and variables listed in
   [phase-5-verification.md](./phase-5-verification.md), then prove secret scans are zero.
 - Keep CN username/password accounts controlled. Do not enable anonymous, phone, email, or public
@@ -83,9 +91,9 @@ waivable for seed rollout.
    cleanup invocation, immutable share, and the real UI flow from AMap search through persisted
    WGS-84 marker, route calculation, publish, and public route. Confirm the browser recorded zero
    Google requests and review final residue.
-   The cleanup invocation uses the environment-scoped CloudBase server API key rather than
-   account-level CAM invocation credentials; a bounded deployed-function result and the independent
-   residue audit are both required.
+   The cleanup invocation uses the dedicated, dev-scoped CAM sub-account because `tcb fn invoke`
+   does not accept the environment API Key for a private Event Function. A bounded
+   deployed-function result and the independent residue audit are both required.
 4. Reconfirm the safe domain includes the final Run hostname and AMap browser-key restrictions.
 5. If all gates pass, request a separately approved internal smoke window for named employees using
    controlled username/password accounts. Start with the minimum cohort, no public registration,

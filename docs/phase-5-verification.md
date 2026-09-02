@@ -95,12 +95,12 @@ residue audit cannot turn a failed test green.
 
 The `cloudbase-pg-dev` GitHub environment must contain only controlled non-production values:
 
-| Kind           | Names                                                                                                     |
-| -------------- | --------------------------------------------------------------------------------------------------------- |
-| Supabase dev   | `SUPABASE_DEV_URL`, `SUPABASE_DEV_PUBLISHABLE_KEY`, `SUPABASE_DEV_SECRET_KEY`, `SUPABASE_DEV_CRON_SECRET` |
-| Google Preview | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`                              |
-| CloudBase dev  | `CLOUDBASE_API_KEY`, `CLOUDBASE_PUBLISHABLE_KEY`, controlled A/B passwords                                |
-| AMap           | `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, `AMAP_WEB_SERVICE_KEY`                            |
+| Kind           | Names                                                                                                                             |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase dev   | `SUPABASE_DEV_URL`, `SUPABASE_DEV_PUBLISHABLE_KEY`, `SUPABASE_DEV_SECRET_KEY`, `SUPABASE_DEV_CRON_SECRET`                         |
+| Google Preview | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`                                                      |
+| CloudBase dev  | `CLOUDBASE_API_KEY`, `CLOUDBASE_PUBLISHABLE_KEY`, `CLOUDBASE_CAM_SECRET_ID`, `CLOUDBASE_CAM_SECRET_KEY`, controlled A/B passwords |
+| AMap           | `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, `AMAP_WEB_SERVICE_KEY`                                                    |
 
 The Git-integrated Vercel Preview itself must use the controlled Supabase dev target, Preview-only
 Google keys, and the same exact candidate SHA. It must not inherit production Supabase credentials.
@@ -118,11 +118,19 @@ The deploy workflow applies the same preflight,
 relies on the pinned CLI's source deploy to preserve the existing runtime environment, and repeats
 the name-only check after release. Initial runtime configuration remains a manual platform action.
 
-The deployed cleanup Event Function is invoked through the pinned CloudBase JS SDK and the
-environment-scoped server API key. This proves the deployed function through the application
-gateway without requiring account-level CAM function-invoke credentials. Its response is rebuilt
-as a bounded success contract before any result is printed; the independent handler and final
-residue audit still run on `always()` paths and cannot turn an earlier failure green.
+The environment API Key does not authorize `tcb fn invoke` for a private Event Function. The
+deployed cleanup function is therefore invoked through CloudBase CLI `3.8.1` after a separate CAM
+login using `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY`. These must belong to a
+dedicated non-production sub-account restricted to inspecting and invoking
+`trip-planner-cleanup` in the approved dev environment. The CLI output is captured rather than
+echoed; only a successful Event invocation and the bounded cleanup result shape are accepted. The
+independent handler and final residue audit still run on `always()` paths and cannot turn an
+earlier failure green.
+
+Create or select the restricted sub-account under Tencent Cloud **CAM > Users**, then manage its
+API key under that sub-account's **API Keys** page. Store the two values only under GitHub
+**Settings > Environments > cloudbase-pg-dev > Environment secrets** with the exact names above.
+Do not put CAM credentials in CloudBase Run, repository variables, source files, or logs.
 
 The provider-neutral place schema is introduced by mirrored migrations `20260901180000` and
 `20260901181000`. `upsert_place_snapshot_v3` accepts only Google or AMap snapshots marked WGS-84;
