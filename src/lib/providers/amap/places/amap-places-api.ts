@@ -9,8 +9,11 @@ const maximumResponseBytes = 512 * 1024;
 type AmapPlacesApiOptions = {
   apiKey: string;
   fetchImplementation?: typeof fetch;
+  retryDelayMs?: number;
   timeoutMs?: number;
 };
+
+const maximumAttempts = 3;
 
 function responseHeaders() {
   return {
@@ -28,6 +31,21 @@ function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+async function waitForRetry(signal: AbortSignal, delayMs: number) {
+  if (signal.aborted) throw new Error("cancelled");
+  await new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timeout);
+      reject(new Error("cancelled"));
+    };
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, delayMs);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 async function readAmapPayload(
   operation: keyof typeof upstreamByOperation,
   parameters: URLSearchParams,
@@ -41,44 +59,60 @@ async function readAmapPayload(
   upstream.searchParams.set("key", apiKey);
   upstream.searchParams.set("output", "json");
 
-  const controller = new AbortController();
-  const onAbort = () => controller.abort();
-  requestSignal.addEventListener("abort", onAbort, { once: true });
-  const timeout = setTimeout(onAbort, options.timeoutMs ?? 8_000);
-  let response: Response;
-  try {
-    response = await (options.fetchImplementation ?? fetch)(upstream, {
-      headers: { Accept: "application/json" },
-      method: "GET",
-      redirect: "error",
-      signal: controller.signal,
-    });
-  } catch {
-    throw new Error(
-      requestSignal.aborted ? "cancelled" : controller.signal.aborted ? "timeout" : "upstream",
-    );
-  } finally {
-    clearTimeout(timeout);
-    requestSignal.removeEventListener("abort", onAbort);
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    if (requestSignal.aborted) throw new Error("cancelled");
+    const controller = new AbortController();
+    const onAbort = () => controller.abort();
+    requestSignal.addEventListener("abort", onAbort, { once: true });
+    const timeout = setTimeout(onAbort, options.timeoutMs ?? 8_000);
+    let response: Response;
+    try {
+      response = await (options.fetchImplementation ?? fetch)(upstream, {
+        headers: { Accept: "application/json" },
+        method: "GET",
+        redirect: "error",
+        signal: controller.signal,
+      });
+    } catch {
+      const category = requestSignal.aborted
+        ? "cancelled"
+        : controller.signal.aborted
+          ? "timeout"
+          : "upstream";
+      if (category === "cancelled" || attempt === maximumAttempts) throw new Error(category);
+      await waitForRetry(requestSignal, (options.retryDelayMs ?? 200) * attempt);
+      continue;
+    } finally {
+      clearTimeout(timeout);
+      requestSignal.removeEventListener("abort", onAbort);
+    }
+    if (!response.ok) {
+      if (response.status >= 500 && attempt < maximumAttempts) {
+        await response.body?.cancel().catch(() => undefined);
+        await waitForRetry(requestSignal, (options.retryDelayMs ?? 200) * attempt);
+        continue;
+      }
+      throw new Error(response.status === 429 ? "throttled" : "upstream");
+    }
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredLength) && declaredLength > maximumResponseBytes) {
+      throw new Error("invalid-response");
+    }
+    const body = await response.arrayBuffer();
+    if (body.byteLength > maximumResponseBytes) throw new Error("invalid-response");
+    let payload: unknown;
+    try {
+      payload = JSON.parse(new TextDecoder().decode(body));
+    } catch {
+      throw new Error("invalid-response");
+    }
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      throw new Error("invalid-response");
+    }
+    if (!("status" in payload) || String(payload.status) !== "1") throw new Error("provider");
+    return payload as Record<string, unknown>;
   }
-  if (!response.ok) throw new Error(response.status === 429 ? "throttled" : "upstream");
-  const declaredLength = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredLength) && declaredLength > maximumResponseBytes) {
-    throw new Error("invalid-response");
-  }
-  const body = await response.arrayBuffer();
-  if (body.byteLength > maximumResponseBytes) throw new Error("invalid-response");
-  let payload: unknown;
-  try {
-    payload = JSON.parse(new TextDecoder().decode(body));
-  } catch {
-    throw new Error("invalid-response");
-  }
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error("invalid-response");
-  }
-  if (!("status" in payload) || String(payload.status) !== "1") throw new Error("provider");
-  return payload as Record<string, unknown>;
+  throw new Error("upstream");
 }
 
 function allowedParameters(url: URL, operation: string) {

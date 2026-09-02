@@ -331,6 +331,55 @@ test("AMap Places API rejects SSRF inputs and bounds provider failures", async (
   assert.equal(timeout.status, 504);
 });
 
+test("AMap Places API retries only transient fixed-upstream failures", async () => {
+  let attempts = 0;
+  const recovered = await handleAmapPlacesRequest(
+    new Request("https://app.example/api/maps/amap/places?operation=suggest&input=place"),
+    {
+      apiKey: "server-web-key",
+      fetchImplementation: (async () => {
+        attempts += 1;
+        if (attempts === 1) return new Response(null, { status: 502 });
+        if (attempts === 2) throw new Error("temporary network failure");
+        return Response.json({ status: "1", tips: [] });
+      }) as typeof fetch,
+      retryDelayMs: 0,
+    },
+  );
+  assert.equal(recovered.status, 200);
+  assert.equal(attempts, 3);
+
+  attempts = 0;
+  const credentialFailure = await handleAmapPlacesRequest(
+    new Request("https://app.example/api/maps/amap/places?operation=suggest&input=place"),
+    {
+      apiKey: "server-web-key",
+      fetchImplementation: (async () => {
+        attempts += 1;
+        return Response.json({ info: "invalid key", status: "0" });
+      }) as typeof fetch,
+      retryDelayMs: 0,
+    },
+  );
+  assert.equal(credentialFailure.status, 502);
+  assert.equal(attempts, 1);
+
+  attempts = 0;
+  const throttled = await handleAmapPlacesRequest(
+    new Request("https://app.example/api/maps/amap/places?operation=suggest&input=place"),
+    {
+      apiKey: "server-web-key",
+      fetchImplementation: (async () => {
+        attempts += 1;
+        return new Response(null, { status: 429 });
+      }) as typeof fetch,
+      retryDelayMs: 0,
+    },
+  );
+  assert.equal(throttled.status, 429);
+  assert.equal(attempts, 1);
+});
+
 test("AMap client requests never send provider keys or raw upstream coordinates", async () => {
   let requestedUrl = "";
   const session = createAmapPlacesProvider({
