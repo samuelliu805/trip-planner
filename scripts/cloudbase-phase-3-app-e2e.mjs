@@ -541,10 +541,9 @@ async function readBoundedActivitySaveDiagnostic(browser) {
 }
 
 async function addAmapActivityThroughUi(browser, query, expectedCount) {
-  const addActivityExpression = `[...document.querySelectorAll('[data-add-item]')].find((button) =>
+  const addActivityExpression = `[...document.querySelectorAll('[data-cell="0-1"] [data-add-item]')].find((button) =>
       button.getClientRects().length && !button.disabled &&
-      getComputedStyle(button).pointerEvents !== "none" &&
-      (button.textContent.includes("Add activity") || button.getAttribute("aria-label")?.startsWith("Add activity on day 1"))
+      getComputedStyle(button).pointerEvents !== "none"
     )`;
   try {
     await waitFor(
@@ -558,6 +557,7 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
       browser,
       `({
         addItemCount: document.querySelectorAll('[data-add-item]').length,
+        activityAddItemCount: document.querySelectorAll('[data-cell="0-1"] [data-add-item]').length,
         body: document.body.innerText.slice(0, 1200),
         dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
         matrixReady: Boolean(document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]')),
