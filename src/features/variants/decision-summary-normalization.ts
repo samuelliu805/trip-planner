@@ -16,8 +16,9 @@ export function validDecisionSummaryCoordinates(place: DecisionSummaryItemRow["p
 
 export function decisionSummaryPlaceKey(item: DecisionSummaryItemRow) {
   if (!item.place_id || item.place?.id !== item.place_id) return null;
-  return item.place.google_place_id
-    ? `google:${item.place.google_place_id}`
+  const providerPlaceId = item.place.provider_place_id ?? item.place.google_place_id;
+  return providerPlaceId
+    ? `${item.place.source ?? "google"}:${providerPlaceId}`
     : `place:${item.place.id}`;
 }
 

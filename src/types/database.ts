@@ -536,6 +536,7 @@ export type Database = {
       places: {
         Row: {
           administrative_area_name: string | null
+          coordinate_system: string
           country_code: string | null
           custom_lat: number | null
           custom_lng: number | null
@@ -549,11 +550,13 @@ export type Database = {
           locality_name: string | null
           locality_source: string | null
           longitude: number | null
+          provider_place_id: string | null
           source: Database["public"]["Enums"]["place_source"]
           trip_id: string
         }
         Insert: {
           administrative_area_name?: string | null
+          coordinate_system?: string
           country_code?: string | null
           custom_lat?: number | null
           custom_lng?: number | null
@@ -567,11 +570,13 @@ export type Database = {
           locality_name?: string | null
           locality_source?: string | null
           longitude?: number | null
+          provider_place_id?: string | null
           source: Database["public"]["Enums"]["place_source"]
           trip_id: string
         }
         Update: {
           administrative_area_name?: string | null
+          coordinate_system?: string
           country_code?: string | null
           custom_lat?: number | null
           custom_lng?: number | null
@@ -585,6 +590,7 @@ export type Database = {
           locality_name?: string | null
           locality_source?: string | null
           longitude?: number | null
+          provider_place_id?: string | null
           source?: Database["public"]["Enums"]["place_source"]
           trip_id?: string
         }
@@ -2676,6 +2682,24 @@ export type Database = {
         }
         Returns: string
       }
+      upsert_place_snapshot_v3: {
+        Args: {
+          place_administrative_area_name?: string
+          place_coordinate_system: string
+          place_country_code?: string
+          place_display_name: string
+          place_formatted_address: string
+          place_latitude: number
+          place_locality_kind?: string
+          place_locality_name?: string
+          place_locality_source?: string
+          place_longitude: number
+          place_provider: string
+          provider_place_id: string
+          target_trip_id: string
+        }
+        Returns: string
+      }
       variant_trip_id: { Args: { target_variant_id: string }; Returns: string }
     }
     Enums: {
@@ -2698,7 +2722,7 @@ export type Database = {
         | "approximate"
         | "exact"
         | "range"
-      place_source: "google" | "custom"
+      place_source: "google" | "amap" | "custom"
       public_itinerary_view: "overview" | "table" | "timeline"
       trip_member_role: "owner" | "editor" | "viewer"
     }
@@ -2849,7 +2873,7 @@ export const Constants = {
         "exact",
         "range",
       ],
-      place_source: ["google", "custom"],
+      place_source: ["google", "amap", "custom"],
       public_itinerary_view: ["overview", "table", "timeline"],
       trip_member_role: ["owner", "editor", "viewer"],
     },

@@ -50,7 +50,7 @@ export const placeSnapshotSchema = z
       ])
       .optional(),
     localityName: z.string().trim().min(1).max(300).optional(),
-    localitySource: z.enum(["google_address_component", "legacy_city"]).optional(),
+    localitySource: z.enum(["amap_poi", "google_address_component", "legacy_city"]).optional(),
     provider: z.enum(["google", "amap", "custom"]),
     providerPlaceId: z.string().trim().min(1).max(300).optional(),
   })
@@ -66,6 +66,16 @@ export const placeSnapshotSchema = z
         code: "custom",
         message: "Place locality name and kind must be provided together.",
         path: ["localityName"],
+      });
+    if (
+      value.localitySource &&
+      ((value.provider === "google" && value.localitySource !== "google_address_component") ||
+        (value.provider === "amap" && value.localitySource !== "amap_poi"))
+    )
+      context.addIssue({
+        code: "custom",
+        message: "Place locality source must match its map provider.",
+        path: ["localitySource"],
       });
   });
 

@@ -206,7 +206,7 @@ test("variant comparison derives current destination localities with legacy fall
   assert.match(loader, /\.in\("type", \[/);
   assert.match(
     loader,
-    /place:places\(id, google_place_id, formatted_address, latitude, longitude, locality_name, country_code\)/,
+    /place:places\(id, source, provider_place_id, google_place_id, formatted_address, latitude, longitude, locality_name, country_code\)/,
   );
   assert.match(loader, /\.in\("variant_id", variantIds\)/);
   assert.match(loader, /getRelationalDatabase\(\)/);

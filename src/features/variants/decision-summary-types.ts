@@ -40,6 +40,8 @@ export type DecisionSummaryDayRow = {
 export type DecisionSummaryPlaceRow = {
   country_code: string | null;
   google_place_id: string | null;
+  provider_place_id?: string | null;
+  source?: "google" | "amap" | "custom";
   id: string;
   latitude: number | null;
   locality_name: string | null;

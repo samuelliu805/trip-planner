@@ -29,8 +29,12 @@ function isoDate(value: unknown) {
 function isSameHotel(candidate: ItineraryItem, selected: ItineraryItem) {
   if (candidate.type !== "hotel") return false;
   if (selected.place_id && candidate.place_id === selected.place_id) return true;
-  const selectedGoogleId = selected.place?.providerPlaceId;
-  return Boolean(selectedGoogleId && candidate.place?.providerPlaceId === selectedGoogleId);
+  const selectedProviderId = selected.place?.providerPlaceId;
+  return Boolean(
+    selectedProviderId &&
+    candidate.place?.provider === selected.place?.provider &&
+    candidate.place?.providerPlaceId === selectedProviderId,
+  );
 }
 
 function bookingRange(item: ItineraryItem) {

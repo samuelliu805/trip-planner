@@ -36,6 +36,7 @@ import {
 } from "./grid-interactions.ts";
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
 import { plannerItemTitleAfterPlaceSelection } from "./planner-item-title-autofill.ts";
+import { providerPlaceRpcArguments } from "./place-persistence.ts";
 import {
   plannerItemFormError,
   plannerItemFormSteps,
@@ -3476,7 +3477,7 @@ test("Google place normalization rejects invalid coordinates", () => {
   );
 });
 
-test("city items require a Google place while the displayed name remains optional", () => {
+test("city items accept canonical Google and AMap places while the displayed name remains optional", () => {
   const city = { ...base, details: {}, title: "Paris", type: "location" as const };
   assert.equal(createItineraryItemSchema.safeParse(city).success, false);
   assert.equal(
@@ -3492,6 +3493,77 @@ test("city items require a Google place while the displayed name remains optiona
       },
     }).success,
     true,
+  );
+  assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...city,
+      placeSnapshot: {
+        coordinateSystem: "wgs84",
+        displayName: "The Bund",
+        formattedAddress: "Shanghai, China",
+        latitude: 31.24001,
+        localityKind: "locality",
+        localityName: "Shanghai",
+        localitySource: "amap_poi",
+        longitude: 121.49001,
+        provider: "amap",
+        providerPlaceId: "B000A83U0P",
+      },
+    }).success,
+    true,
+  );
+});
+
+test("provider-neutral place persistence preserves AMap identity, address, and WGS-84", () => {
+  const amap = providerPlaceRpcArguments("trip-id", {
+    coordinateSystem: "wgs84",
+    displayName: "The Bund",
+    formattedAddress: "Shanghai Huangpu Zhongshan East 1st Road",
+    latitude: 31.24001,
+    localityKind: "locality",
+    localityName: "Shanghai",
+    localitySource: "amap_poi",
+    longitude: 121.49001,
+    provider: "amap",
+    providerPlaceId: "B000A83U0P",
+  });
+  assert.deepEqual(
+    {
+      address: amap.place_formatted_address,
+      coordinateSystem: amap.place_coordinate_system,
+      id: amap.provider_place_id,
+      name: amap.place_display_name,
+      provider: amap.place_provider,
+    },
+    {
+      address: "Shanghai Huangpu Zhongshan East 1st Road",
+      coordinateSystem: "wgs84",
+      id: "B000A83U0P",
+      name: "The Bund",
+      provider: "amap",
+    },
+  );
+  assert.throws(
+    () =>
+      providerPlaceRpcArguments("trip-id", {
+        coordinateSystem: "wgs84",
+        displayName: "Missing address",
+        latitude: 31.2,
+        longitude: 121.4,
+        provider: "amap",
+        providerPlaceId: "amap-id",
+      }),
+    /address is required/,
+  );
+  assert.doesNotThrow(() =>
+    providerPlaceRpcArguments("trip-id", {
+      coordinateSystem: "wgs84",
+      displayName: "Historical Google place",
+      latitude: 40.1,
+      longitude: -73.9,
+      provider: "google",
+      providerPlaceId: "google-id",
+    }),
   );
 });
 

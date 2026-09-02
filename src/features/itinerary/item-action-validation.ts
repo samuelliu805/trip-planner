@@ -16,6 +16,7 @@ export function prospectiveCityError(
     dayId: string;
     itemId?: string;
     placeId?: string | null;
+    provider?: "google" | "amap";
     providerPlaceId?: string;
     title: string;
   },
@@ -25,7 +26,12 @@ export function prospectiveCityError(
   const current = input.itemId
     ? workspace.days.flatMap(({ items }) => items).find(({ id }) => id === input.itemId)
     : undefined;
-  const placeKey = cityInputPlaceKey(workspace.days, input.placeId, input.providerPlaceId);
+  const placeKey = cityInputPlaceKey(
+    workspace.days,
+    input.placeId,
+    input.providerPlaceId,
+    input.provider,
+  );
   if (!placeKey) return "Choose a city from Google Maps.";
   const conflict = prospectiveNeighboringCityConflict(workspace.days, [
     {
@@ -68,6 +74,7 @@ export async function validateProspectiveCity(input: {
   dayId: string;
   itemId?: string;
   placeId?: string | null;
+  provider?: "google" | "amap";
   providerPlaceId?: string;
   title: string;
   tripId: string;

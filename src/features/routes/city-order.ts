@@ -51,7 +51,7 @@ export function isValidMapCoordinate(latitude: number, longitude: number) {
 export function cityPlaceKey(item: ItineraryItem): string | null {
   if (!item.place) return null;
   return item.place.providerPlaceId
-    ? `google:${item.place.providerPlaceId}`
+    ? `${item.place.provider}:${item.place.providerPlaceId}`
     : `place:${item.place.id}`;
 }
 
@@ -59,8 +59,9 @@ export function cityInputPlaceKey(
   days: PlannerDay[],
   placeId?: string | null,
   providerPlaceId?: string,
+  provider: "google" | "amap" = "google",
 ) {
-  if (providerPlaceId) return `google:${providerPlaceId}`;
+  if (providerPlaceId) return `${provider}:${providerPlaceId}`;
   if (!placeId) return null;
   const linkedItem = days.flatMap(({ items }) => items).find((item) => item.place?.id === placeId);
   return linkedItem ? cityPlaceKey(linkedItem) : `place:${placeId}`;

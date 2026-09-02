@@ -47,6 +47,7 @@ export function normalizeAmapPlace(value: AmapPoi): PlaceSnapshot {
   const formattedAddress = [...new Set([province, city, district, address].filter(Boolean))].join(
     " ",
   );
+  if (!formattedAddress) throw new Error("The selected place is missing its address.");
   return {
     ...gcj02ToWgs84(gcj02),
     ...(province && { administrativeAreaName: province }),

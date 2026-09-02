@@ -132,6 +132,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Overview leg positions must be unique.": "全程路线的分段位置不能重复。",
   "Password must be at least 8 characters.": "密码至少需要 8 个字符。",
   "Place locality name and kind must be provided together.": "地点的城市名称和类型必须同时提供。",
+  "Place locality source must match its map provider.": "地点的城市来源必须与地图服务商一致。",
   Places: "地点",
   Provider: "服务商",
   "Public access revoked. Other shareable pages and permanent images are unchanged.":
