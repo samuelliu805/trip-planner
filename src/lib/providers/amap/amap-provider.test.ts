@@ -557,6 +557,38 @@ test("AMap security proxy fixes upstreams, methods, secrets, and SSRF inputs", a
   assert.equal(timedOut.status, 504);
 });
 
+test("AMap security proxy allows only the fixed SDK initialization endpoint", async () => {
+  let upstream = "";
+  const response = await proxyAmapSecurityRequest(
+    new Request("https://app.example/_AMapService/v3/log/init?key=browser-key"),
+    ["v3", "log", "init"],
+    {
+      fetchImplementation: (async (input) => {
+        upstream = String(input);
+        return Response.json({ status: "1" });
+      }) as typeof fetch,
+      securityCode: "server-security-code",
+    },
+  );
+  const upstreamUrl = new URL(upstream);
+  assert.equal(response.status, 200);
+  assert.equal(
+    `${upstreamUrl.origin}${upstreamUrl.pathname}`,
+    "https://restapi.amap.com/v3/log/init",
+  );
+  assert.equal(upstreamUrl.searchParams.get("jscode"), "server-security-code");
+  assert.equal(
+    (
+      await proxyAmapSecurityRequest(
+        new Request("https://app.example/_AMapService/v3/log/other"),
+        ["v3", "log", "other"],
+        { securityCode: "secret" },
+      )
+    ).status,
+    404,
+  );
+});
+
 test("AMap and Google production SDK references remain isolated", async () => {
   assert.deepEqual(await findMapsProviderBoundaryViolations(), []);
   const sources = await Promise.all(

@@ -8,6 +8,7 @@ const configUrl = new URL("../supabase/config.toml", import.meta.url);
 const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
 const amapLiveSmokeUrl = new URL("./amap-phase-5-live.mjs", import.meta.url);
 const globalLiveSmokeUrl = new URL("./global-phase-5-live.mjs", import.meta.url);
+const cnBrowserOriginUrl = new URL("./lib/phase-5-cn-browser-origin.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
 const providerNeutralMigrationUrl = new URL(
@@ -97,6 +98,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.match(workflow, /node scripts\/describe-cloudbase-cam-login\.mjs "\$cam_login_output"/);
   assert.match(workflow, /tcb:CheckTcbService and tcb:DescribeBillingInfo/);
   assert.match(workflow, /verify scf:GetFunction and scf:InvokeFunction/);
+  assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);
   assert.ok(
     workflow.indexOf("Run real AMap route and place Web Service smoke") <
       workflow.indexOf("Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite"),
@@ -140,7 +142,10 @@ test("the disposable Supabase target disables every public registration path", a
 });
 
 test("the CN AMap smoke uses the real application UI and rejects Google requests", async () => {
-  const smoke = await readFile(cnApplicationSmokeUrl, "utf8");
+  const [browserOrigin, smoke] = await Promise.all([
+    readFile(cnBrowserOriginUrl, "utf8"),
+    readFile(cnApplicationSmokeUrl, "utf8"),
+  ]);
   assert.doesNotMatch(smoke, /window\.AMap\.(?:AutoComplete|PlaceSearch)/);
   assert.doesNotMatch(smoke, /new URL\("\/_AMapService/);
   for (const contract of [
@@ -154,6 +159,9 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   ]) {
     assert.match(smoke, new RegExp(contract.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+  assert.match(browserOrigin, /trip-planner-cn-306129-11-1253819205\.sh\.run\.tcloudbase\.com/);
+  assert.match(browserOrigin, /--host-resolver-rules=MAP/);
+  assert.match(browserOrigin, /loopbackHostnames/);
 });
 
 test("live preflights distinguish provider schema and AMap key contracts", async () => {

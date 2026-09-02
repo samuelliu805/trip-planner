@@ -12,6 +12,7 @@ import {
   signIn,
 } from "./lib/cloudbase-pg-live.mjs";
 import { stopChild } from "./lib/child-process.mjs";
+import { resolveCnBrowserOrigin } from "./lib/phase-5-cn-browser-origin.mjs";
 
 const requiredSelectors = {
   APP_REGION: "cn",
@@ -21,6 +22,12 @@ const requiredSelectors = {
   STORAGE_PROVIDER: "cloudbase",
 };
 const baseUrl = process.env.PHASE3_APP_BASE_URL ?? "http://127.0.0.1:3100";
+const requireAmapSmoke = process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1";
+const { browserBaseUrl, hostResolverArgument } = resolveCnBrowserOrigin(
+  baseUrl,
+  process.env.PHASE5_AMAP_ALLOWED_HOSTNAME,
+  requireAmapSmoke,
+);
 const runLabel = `phase3-app-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const userA = "trip-planner-cn-test-a";
 const userB = "trip-planner-cn-test-b";
@@ -135,6 +142,7 @@ async function launchBrowser() {
       "--disable-gpu",
       "--remote-debugging-port=0",
       `--user-data-dir=${profile}`,
+      ...(hostResolverArgument ? [hostResolverArgument] : []),
       "about:blank",
     ],
     { stdio: ["ignore", "ignore", "pipe"] },
@@ -260,7 +268,7 @@ async function waitFor(browser, expression, label, timeoutMs = 30_000) {
 }
 
 async function assertRealAmapBrowserAdapter(browser) {
-  if (process.env.PHASE5_REQUIRE_AMAP_SMOKE !== "1") return;
+  if (!requireAmapSmoke) return;
   await waitFor(
     browser,
     'Boolean(window.AMap && document.querySelector(".amap-container"))',
@@ -280,7 +288,11 @@ async function assertRealAmapBrowserAdapter(browser) {
 
 async function navigate(browser, path) {
   await evaluate(browser, "window.__phase3NavigationSentinel = true");
-  await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
+  await browser.cdp.send(
+    "Page.navigate",
+    { url: new URL(path, browserBaseUrl).href },
+    browser.sessionId,
+  );
   await waitFor(
     browser,
     'window.__phase3NavigationSentinel !== true && document.readyState === "complete"',
@@ -295,7 +307,7 @@ async function clearCookies(browser) {
 async function setCookie(browser, name, value) {
   const result = await browser.cdp.send(
     "Network.setCookie",
-    { name, url: baseUrl, value },
+    { name, url: browserBaseUrl, value },
     browser.sessionId,
   );
   assert.equal(result.success, true, `Could not set ${name}.`);
@@ -1239,7 +1251,7 @@ async function run() {
       (await cookieNames(browser)).some((name) => name.startsWith("tp-cn-")),
       false,
     );
-    if (process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1") {
+    if (requireAmapSmoke) {
       await waitFor(
         browser,
         'Boolean(window.AMap && document.querySelector(".amap-container")) && Number(document.querySelector("[data-amap-line-count]")?.dataset.amapLineCount) > 0',
@@ -1327,7 +1339,7 @@ async function run() {
     "Tablet Matrix frozen header and column cover passed at 820x600 after two-axis scroll.",
   );
   console.log("CN accepted only tp-cn-* session cookies and logout cleared them.");
-  if (process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1") {
+  if (requireAmapSmoke) {
     console.log(
       "Real UI AMap search/select/save/refresh/route/publish/public-route smoke passed with WGS-84 persistence and zero Google requests.",
     );

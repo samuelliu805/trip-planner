@@ -224,6 +224,7 @@ jobs:
       NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
       PHASE3_APP_BASE_URL: http://127.0.0.1:3100
       PHASE3_START_APP: "1"
+      PHASE5_AMAP_ALLOWED_HOSTNAME: trip-planner-cn-306129-11-1253819205.sh.run.tcloudbase.com
       PHASE5_REQUIRE_AMAP_SMOKE: "1"
       STORAGE_PROVIDER: cloudbase
     steps:

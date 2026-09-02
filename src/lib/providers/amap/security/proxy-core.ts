@@ -1,4 +1,5 @@
 const upstreamByPath = new Map([
+  ["v3/log/init", "https://restapi.amap.com"],
   ["v3/assistant/inputtips", "https://restapi.amap.com"],
   ["v3/place/around", "https://restapi.amap.com"],
   ["v3/place/detail", "https://restapi.amap.com"],
