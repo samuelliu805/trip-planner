@@ -132,6 +132,27 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
+async function boundedPageDiagnostic(browser) {
+  try {
+    return await evaluate(
+      browser,
+      `(() => {
+        const body = document.body?.innerText ?? "";
+        const error = body.match(/ERROR\\s+(\\d{1,16})/i);
+        const heading = document.querySelector("h1,h2,[role=heading]")?.textContent?.trim() ?? "";
+        return {
+          errorDigest: error?.[1] ?? null,
+          heading: heading.slice(0, 120),
+          path: location.pathname.slice(0, 240),
+          serverError: /server error|couldn.t load/i.test(body),
+        };
+      })()`,
+    );
+  } catch {
+    return { category: "diagnostic-unavailable" };
+  }
+}
+
 export function previewProtectionHeaders(secret, setCookie = false) {
   const value = secret?.trim();
   if (!value) throw new Error("VERCEL_AUTOMATION_BYPASS_SECRET is required for Global Preview.");
@@ -255,11 +276,18 @@ export async function runGlobalBrowserSmoke(options) {
     );
     await waitFor(browser, 'location.pathname === "/trips"', "Global authenticated session");
     await navigate(browser, baseUrl, `/trips/${options.tripId}`);
-    await waitFor(
-      browser,
-      `document.body.innerText.includes(${JSON.stringify(options.privateTitle)})`,
-      "authenticated trip",
-    );
+    try {
+      await waitFor(
+        browser,
+        `document.body.innerText.includes(${JSON.stringify(options.privateTitle)})`,
+        "authenticated trip",
+      );
+    } catch (error) {
+      const diagnostic = await boundedPageDiagnostic(browser);
+      throw new Error(
+        `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
+      );
+    }
     await waitFor(
       browser,
       'Boolean(window.google?.maps && document.querySelector(".gm-style"))',

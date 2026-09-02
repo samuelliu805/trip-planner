@@ -86,6 +86,18 @@ async function updateTrip(database, tripId, title) {
   );
 }
 
+async function requireProviderNeutralPlaceSchema(database) {
+  const result = await database
+    .from("places")
+    .select("source,provider_place_id,coordinate_system")
+    .limit(1);
+  if (result.error) {
+    throw new Error(
+      `Controlled Supabase dev is missing the Phase 5 provider-neutral place schema: ${result.error.code ?? "schema_error"}`,
+    );
+  }
+}
+
 function assertPublicProjection(projection, intendedTitle, privateTitle, ownerId) {
   assert.equal(projection?.available, true);
   const serialized = JSON.stringify(projection);
@@ -120,6 +132,7 @@ async function run() {
   let failure;
 
   try {
+    await requireProviderNeutralPlaceSchema(admin);
     for (const label of ["A", "B"]) {
       const email = `${runLabel}-${label.toLowerCase()}@example.com`;
       const user = ok(
