@@ -243,9 +243,6 @@ jobs:
           test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
       - run: npm ci
       - name: Validate the approved CloudBase dev target and required secrets
-        env:
-          CLOUDBASE_CAM_SECRET_ID: ${{ secrets.CLOUDBASE_CAM_SECRET_ID }}
-          CLOUDBASE_CAM_SECRET_KEY: ${{ secrets.CLOUDBASE_CAM_SECRET_KEY }}
         run: |
           npm run check:phase-5-environment -- cn --live
           npm run check:cloudbase-pg-target -- \
@@ -299,48 +296,7 @@ jobs:
         run: npm run test:cloudbase-phase-4-storage
       - name: Invoke the deployed cleanup function
         if: ${{ always() }}
-        env:
-          CLOUDBASE_CAM_SECRET_ID: ${{ secrets.CLOUDBASE_CAM_SECRET_ID }}
-          CLOUDBASE_CAM_SECRET_KEY: ${{ secrets.CLOUDBASE_CAM_SECRET_KEY }}
-        run: |
-          if [ -z "$CLOUDBASE_CAM_SECRET_ID" ] || [ -z "$CLOUDBASE_CAM_SECRET_KEY" ]; then
-            echo "CloudBase cleanup invocation configuration is incomplete."
-            exit 1
-          fi
-          cam_login_output="$(mktemp)"
-          invocation_output="$(mktemp)"
-          trap 'rm -f "$cam_login_output" "$invocation_output"' EXIT
-          timeout 30s npx --yes --package @cloudbase/cli@3.8.1 tcb logout \
-            --json > /dev/null 2>&1
-          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
-            --apiKeyId "$CLOUDBASE_CAM_SECRET_ID" \
-            --apiKey "$CLOUDBASE_CAM_SECRET_KEY" \
-            --json > "$cam_login_output" 2>&1; then
-            node scripts/describe-cloudbase-cam-login.mjs "$cam_login_output"
-            echo "Required login actions: tcb:CheckTcbService and tcb:DescribeBillingInfo (resource *)."
-            exit 1
-          fi
-          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb fn invoke \
-            trip-planner-cleanup \
-            --env-id "$CLOUDBASE_ENV_ID" \
-            --params '{"source":"phase5-verification"}' \
-            --json > "$invocation_output" 2>&1; then
-            node scripts/describe-cloudbase-function-invoke.mjs "$invocation_output"
-            exit 1
-          fi
-          node scripts/invoke-cloudbase-cleanup.mjs "$invocation_output"
-      - name: Restore the CloudBase database audit CLI identity
-        if: ${{ always() }}
-        run: |
-          timeout 30s npx --yes --package @cloudbase/cli@3.8.1 tcb logout \
-            --json > /dev/null 2>&1
-          if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
-            --cloudbase-api-key "$CLOUDBASE_API_KEY" \
-            --env-id "$CLOUDBASE_ENV_ID" \
-            --json > /dev/null 2>&1; then
-            echo "CloudBase database audit CLI authentication failed."
-            exit 1
-          fi
+        run: node scripts/invoke-cloudbase-cleanup-http.mjs
       - name: Independently execute cleanup and residue audit
         if: ${{ always() }}
         run: npm run test:cloudbase-phase-4-cleanup

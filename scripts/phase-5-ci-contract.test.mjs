@@ -65,10 +65,8 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "npm run test:cloudbase-phase-4-storage",
     "npm run test:cloudbase-phase-4-cleanup",
     "node scripts/verify-cloudbase-migration-plan.mjs",
-    "CLOUDBASE_CAM_SECRET_ID",
-    "CLOUDBASE_CAM_SECRET_KEY",
     "VERCEL_AUTOMATION_BYPASS_SECRET",
-    "tcb fn invoke",
+    "node scripts/invoke-cloudbase-cleanup-http.mjs",
     "--require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY",
     "--require-runtime-env AMAP_JS_SECURITY_CODE",
     "--require-runtime-env AMAP_WEB_SERVICE_KEY",
@@ -89,15 +87,8 @@ test("Phase 5 static and live inventory stays executable", async () => {
     workflow,
     /verify-cloudbase-migration-plan\.mjs[\s\\]*\n[\s\S]{0,100}20260902075444/,
   );
-  assert.match(workflow, /node scripts\/invoke-cloudbase-cleanup\.mjs "\$invocation_output"/);
-  assert.match(workflow, /timeout 60s npx --yes --package @cloudbase\/cli@3\.8\.1 tcb fn invoke/);
-  assert.match(workflow, /tcb logout[\s\\]*\n[\s\S]{0,50}--json > \/dev\/null/);
-  assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 2);
-  assert.match(workflow, /Restore the CloudBase database audit CLI identity/);
-  assert.match(workflow, /CloudBase cleanup invocation configuration is incomplete\./);
-  assert.match(workflow, /node scripts\/describe-cloudbase-cam-login\.mjs "\$cam_login_output"/);
-  assert.match(workflow, /tcb:CheckTcbService and tcb:DescribeBillingInfo/);
-  assert.match(workflow, /node scripts\/describe-cloudbase-function-invoke\.mjs/);
+  assert.doesNotMatch(workflow, /tcb fn invoke|CLOUDBASE_CAM_SECRET_/);
+  assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 1);
   assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);
   assert.ok(
     workflow.indexOf("Run real AMap route and place Web Service smoke") <
@@ -105,7 +96,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
   );
   assert.match(
     workflow,
-    /Authenticate the CloudBase database audit CLI[\s\S]*Run private Storage[\s\S]*Invoke the deployed cleanup function[\s\S]*Restore the CloudBase database audit CLI identity[\s\S]*Independently execute cleanup and residue audit/,
+    /Authenticate the CloudBase database audit CLI[\s\S]*Run private Storage[\s\S]*Invoke the deployed cleanup function[\s\S]*Independently execute cleanup and residue audit/,
   );
   assert.ok((workflow.match(/if: \$\{\{ always\(\) \}\}/g) ?? []).length >= 7);
 });

@@ -104,12 +104,12 @@ residue audit cannot turn a failed test green.
 
 The `cloudbase-pg-dev` GitHub environment must contain only controlled non-production values:
 
-| Kind           | Names                                                                                                                             |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Supabase dev   | `SUPABASE_DEV_URL`, `SUPABASE_DEV_PUBLISHABLE_KEY`, `SUPABASE_DEV_SECRET_KEY`, `SUPABASE_DEV_CRON_SECRET`                         |
-| Google Preview | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `VERCEL_AUTOMATION_BYPASS_SECRET`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`                   |
-| CloudBase dev  | `CLOUDBASE_API_KEY`, `CLOUDBASE_PUBLISHABLE_KEY`, `CLOUDBASE_CAM_SECRET_ID`, `CLOUDBASE_CAM_SECRET_KEY`, controlled A/B passwords |
-| AMap           | `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, `AMAP_WEB_SERVICE_KEY`                                                    |
+| Kind           | Names                                                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| Supabase dev   | `SUPABASE_DEV_URL`, `SUPABASE_DEV_PUBLISHABLE_KEY`, `SUPABASE_DEV_SECRET_KEY`, `SUPABASE_DEV_CRON_SECRET`       |
+| Google Preview | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `VERCEL_AUTOMATION_BYPASS_SECRET`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` |
+| CloudBase dev  | `CLOUDBASE_API_KEY`, `CLOUDBASE_PUBLISHABLE_KEY`, controlled A/B passwords                                      |
+| AMap           | `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, `AMAP_WEB_SERVICE_KEY`                                  |
 
 The Git-integrated Vercel Preview itself must use the controlled Supabase dev target, Preview-only
 Google keys, and the same exact candidate SHA. It must not inherit production Supabase credentials.
@@ -144,35 +144,15 @@ The deploy workflow applies the same preflight,
 relies on the pinned CLI's source deploy to preserve the existing runtime environment, and repeats
 the name-only check after release. Initial runtime configuration remains a manual platform action.
 
-The environment API Key does not authorize `tcb fn invoke` for a private Event Function. The
-deployed cleanup function is therefore invoked through CloudBase CLI `3.8.1` after a separate CAM
-login using `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY`. These must belong to a
-dedicated non-production sub-account. The pinned CLI first requires `tcb:CheckTcbService`, then
-reads the environment plan through `tcb:DescribeBillingInfo`, then uses `scf:GetFunction` and
-`scf:Invoke`. The fixed CLI version sends SCF API action `Invoke`; the separately named
-`InvokeFunction` action does not authorize that request. Tencent CAM currently classifies the SCF operations as
-operation-level APIs, so their policy resource must be `*`; a function ARN is rejected even when
-its main-account UIN is correct. Compensate for that platform granularity by granting only those
-four actions to a dev-only identity—never `scf:*` or an administrator policy—and by storing its
-credentials only in the protected environment. The workflow reports whether CAM login or invoke
-failed but captures and deletes CLI output rather than echoing it. Only a successful Event
-invocation and the bounded cleanup result shape are accepted. The independent handler and final
-residue audit still run on `always()` paths and cannot turn an earlier failure green.
-
-The database/storage residue audits use the environment-scoped CloudBase API Key, not the CAM
-identity. Their CLI login runs on an `always()` path so a missing CAM prerequisite cannot suppress
-the audit. Because the function invocation temporarily switches the CLI to CAM, the workflow
-restores the environment API Key identity before the independent final cleanup and residue audit.
-CAM login failures are reported only as a bounded category. The action-specific authorization
-categories identify missing `tcb:CheckTcbService` or `tcb:DescribeBillingInfo`; generic CAM
-authentication failures require checking both the active credential pair and those two TCB
-actions because CLI `3.8.1` may collapse a policy denial into a generic authentication error. The
-raw CLI response is never logged.
-
-Create or select the restricted sub-account under Tencent Cloud **CAM > Users**, then manage its
-API key under that sub-account's **API Keys** page. Store the two values only under GitHub
-**Settings > Environments > cloudbase-pg-dev > Environment secrets** with the exact names above.
-Do not put CAM credentials in CloudBase Run, repository variables, source files, or logs.
+The deployed cleanup function is invoked through CloudBase's fixed server-side HTTP API with the
+environment-scoped `CLOUDBASE_API_KEY` already required for controlled database and Storage
+audits. The request permits only HTTPS POST to
+`https://{validated-env-id}.api.tcloudbasegateway.com/v1/functions/trip-planner-cleanup`, rejects
+redirects, has a 60-second timeout and a 64 KiB response limit, and accepts only the bounded
+cleanup result shape. It never logs the authorization value or raw provider error. This avoids the
+pinned CLI's unrelated function-detail lookup and removes the need for a second CAM identity or
+SCF wildcard permissions. The independent handler and final residue audit still run on
+`always()` paths and cannot turn an earlier failure green.
 
 The provider-neutral place schema is introduced by mirrored migrations `20260901180000` and
 `20260901181000`, with conflict-target resolution corrected by `20260902075444`.
@@ -229,6 +209,6 @@ exact-SHA workflow evidence.
 
 Phase 5 remains **incomplete** until a final-commit protected run has all three jobs green. The
 manually reviewed AMap configuration now has the required Web端 JS key/security-code pairing and a
-separate Web服务 key; this still needs exact-SHA UI evidence. The dedicated CAM identity must allow
-both CLI login reads (`tcb:CheckTcbService` and `tcb:DescribeBillingInfo`) before its function
-permissions can be exercised. No backup/restore or alert-routing completion is claimed.
+separate Web服务 key; this still needs exact-SHA UI evidence. The cleanup function must return the
+bounded success shape through the fixed server-side HTTP API before the CN gate is accepted. No
+backup/restore or alert-routing completion is claimed.

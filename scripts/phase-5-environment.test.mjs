@@ -28,8 +28,6 @@ const cnEnvironment = {
   APP_REGION: "cn",
   AUTH_PROVIDER: "cloudbase",
   CLOUDBASE_API_KEY: "test-cloudbase-api-key",
-  CLOUDBASE_CAM_SECRET_ID: "test-cam-secret-id",
-  CLOUDBASE_CAM_SECRET_KEY: "test-cam-secret-key",
   CLOUDBASE_ENV_ID: "test-cloudbase-env",
   CLOUDBASE_PUBLISHABLE_KEY: "test-cloudbase-publishable-key",
   CLOUDBASE_REGION: "ap-shanghai",
@@ -71,21 +69,19 @@ test("the Global live validator requires the Preview automation bypass name only
   assert.doesNotMatch(result.stderr, /test-preview-bypass/);
 });
 
-test("the CN live validator requires CAM function-invoke credential names", () => {
+test("the CN live validator requires the server-only environment API key", () => {
   const runCn = (environment) =>
     spawnSync(process.execPath, [script, "cn", "--live"], {
       encoding: "utf8",
       env: environment,
     });
   assert.equal(runCn(cnEnvironment).status, 0);
-  for (const name of ["CLOUDBASE_CAM_SECRET_ID", "CLOUDBASE_CAM_SECRET_KEY"]) {
-    const missing = { ...cnEnvironment };
-    delete missing[name];
-    const result = runCn(missing);
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, new RegExp(`cn requires ${name}`));
-    assert.doesNotMatch(result.stderr, /test-cam-secret-(?:id|key)/);
-  }
+  const missing = { ...cnEnvironment };
+  delete missing.CLOUDBASE_API_KEY;
+  const result = runCn(missing);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /cn requires CLOUDBASE_API_KEY/);
+  assert.doesNotMatch(result.stderr, /test-cloudbase-api-key/);
 });
 
 test("the CN validator rejects the Global Preview bypass secret", () => {
