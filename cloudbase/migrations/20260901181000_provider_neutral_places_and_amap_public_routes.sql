@@ -132,11 +132,13 @@ BEGIN
       'sublocality_level_1',
       'sublocality'
     )
-    OR normalized_locality_source IS NOT NULL AND normalized_locality_source IS DISTINCT FROM
-      CASE normalized_provider
-        WHEN 'google' THEN 'google_address_component'
-        WHEN 'amap' THEN 'amap_poi'
-      END
+    OR (
+      normalized_locality_source IS NOT NULL
+      AND (
+        (normalized_provider = 'google' AND normalized_locality_source <> 'google_address_component')
+        OR (normalized_provider = 'amap' AND normalized_locality_source <> 'amap_poi')
+      )
+    )
     OR normalized_country_code IS NOT NULL AND normalized_country_code !~ '^[A-Z]{2}$'
   THEN
     RAISE EXCEPTION 'Invalid normalized Place locality' USING errcode = '22023';

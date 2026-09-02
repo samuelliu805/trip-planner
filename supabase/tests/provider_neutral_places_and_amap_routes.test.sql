@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(18);
 
 select ok(
   'amap' = any(enum_range(null::public.place_source)::text[]),
@@ -98,6 +98,19 @@ select is(
   (select locality_source from public.places where id = (select id from provider_neutral_state where key = 'amap_a')),
   'amap_poi',
   'AMap locality provenance is retained'
+);
+select throws_ok(
+  format(
+    $sql$select public.upsert_place_snapshot_v3(
+      %L::uuid, 'amap', 'wrong-locality-source', 'Invalid AMap place', 'Address',
+      31.2, 121.2, 'wgs84', 'Shanghai', 'locality', 'CN', 'Shanghai',
+      'google_address_component'
+    )$sql$,
+    (select id from provider_neutral_state where key = 'trip')
+  ),
+  '22023',
+  'Invalid normalized Place locality',
+  'AMap places reject Google locality provenance'
 );
 
 select lives_ok(
