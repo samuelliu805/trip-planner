@@ -1544,7 +1544,10 @@ async function run() {
     );
 
     await clearCookies(browser);
-    await navigate(browser, `/share/${publicToken}?view=overview`);
+    // Timeline defaults the public map to the saved day-route scope. The overview
+    // scope intentionally collapses adjacent POIs in the same locality, so two
+    // Shanghai stops can correctly produce no whole-trip line.
+    await navigate(browser, `/share/${publicToken}?view=timeline`);
     await waitFor(
       browser,
       `document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
