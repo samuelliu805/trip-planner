@@ -856,6 +856,12 @@ async function publishThroughUi(browser, tripId) {
   assert.ok(publicUrl, "The published page URL was not rendered by the application UI.");
   const token = new URL(publicUrl).pathname.split("/").filter(Boolean).at(-1);
   assert.ok(token, "The application UI returned an invalid public page URL.");
+  await clickElement(
+    browser,
+    `document.querySelector('[role="dialog"] [data-dialog-close]')`,
+    "Close published share dialog",
+  );
+  await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "share dialog close");
   return token;
 }
 

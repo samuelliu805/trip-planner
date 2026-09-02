@@ -264,6 +264,61 @@ async function navigate(browser, baseUrl, path) {
   );
 }
 
+async function submitGlobalLogin(browser, baseUrl, { email, password }) {
+  let lastDiagnostic = { category: "not-attempted" };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (attempt > 0) {
+      await navigate(browser, baseUrl, "/trips");
+      if ((await evaluate(browser, "location.pathname")) === "/trips") return;
+      await navigate(browser, baseUrl, "/login");
+    }
+    await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
+    const submitted = await evaluate(
+      browser,
+      `(() => {
+        const form = document.querySelector('form:has(#credential)');
+        const credential = document.querySelector("#credential");
+        const password = document.querySelector("#password");
+        if (!(form instanceof HTMLFormElement) ||
+            !(credential instanceof HTMLInputElement) ||
+            !(password instanceof HTMLInputElement)) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+        setter.call(credential, ${JSON.stringify(email)});
+        credential.dispatchEvent(new Event("input", { bubbles: true }));
+        credential.dispatchEvent(new Event("change", { bubbles: true }));
+        setter.call(password, ${JSON.stringify(password)});
+        password.dispatchEvent(new Event("input", { bubbles: true }));
+        password.dispatchEvent(new Event("change", { bubbles: true }));
+        form.requestSubmit();
+        return true;
+      })()`,
+    );
+    assert.equal(submitted, true, "Global login form was not submit-ready.");
+    try {
+      await waitFor(browser, 'location.pathname === "/trips"', "Global authenticated session");
+      return;
+    } catch (error) {
+      lastDiagnostic = {
+        ...(await boundedPageDiagnostic(browser)),
+        attempt: attempt + 1,
+        loginFormVisible: await evaluate(
+          browser,
+          'Boolean(document.querySelector("#credential")?.getClientRects().length)',
+        ),
+        visibleAlert: await evaluate(
+          browser,
+          "Boolean([...document.querySelectorAll('[role=\"alert\"]')].find((node) => node.getClientRects().length))",
+        ),
+      };
+      if (attempt === 1) {
+        throw new Error(
+          `${error instanceof Error ? error.message : error}; bounded login diagnostic: ${JSON.stringify(lastDiagnostic)}`,
+        );
+      }
+    }
+  }
+}
+
 async function startApplication(baseUrl) {
   const environment = { ...process.env, PORT: new URL(baseUrl).port || "3100" };
   for (const name of ["GOOGLE_PLACES_API_KEY", "GOOGLE_ROUTES_API_KEY"]) delete environment[name];
@@ -311,22 +366,7 @@ export async function runGlobalBrowserSmoke(options) {
     browser = await launchBrowser();
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
     await navigate(browser, baseUrl, "/login");
-    await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
-    await evaluate(
-      browser,
-      `(() => {
-        const set = (selector, value) => {
-          const input = document.querySelector(selector);
-          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, value);
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-          input.dispatchEvent(new Event("change", { bubbles: true }));
-        };
-        set("#credential", ${JSON.stringify(options.email)});
-        set("#password", ${JSON.stringify(options.password)});
-        document.querySelector('form:has(#credential) button[type="submit"]').click();
-      })()`,
-    );
-    await waitFor(browser, 'location.pathname === "/trips"', "Global authenticated session");
+    await submitGlobalLogin(browser, baseUrl, options);
     await navigate(browser, baseUrl, `/trips/${options.tripId}`);
     try {
       await waitFor(

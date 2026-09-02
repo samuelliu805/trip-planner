@@ -8,6 +8,7 @@ const configUrl = new URL("../supabase/config.toml", import.meta.url);
 const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
 const amapLiveSmokeUrl = new URL("./amap-phase-5-live.mjs", import.meta.url);
 const globalLiveSmokeUrl = new URL("./global-phase-5-live.mjs", import.meta.url);
+const globalBrowserSmokeUrl = new URL("./lib/phase-5-global-browser-smoke.mjs", import.meta.url);
 const cnBrowserOriginUrl = new URL("./lib/phase-5-cn-browser-origin.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
@@ -156,6 +157,8 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   );
   assert.match(smoke, /bounded share-publish diagnostic/);
   assert.match(smoke, /loadPersistedShareCount\(tripId\)/);
+  assert.match(smoke, /Close published share dialog/);
+  assert.match(smoke, /share dialog close/);
   assert.match(smoke, /visibleFrozenTop = Math\.max\(frozenRect\.top, headerRect\.bottom \+ 1\)/);
   assert.match(
     smoke,
@@ -167,9 +170,10 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
 });
 
 test("live preflights distinguish provider schema and AMap key contracts", async () => {
-  const [amapSmoke, globalSmoke] = await Promise.all([
+  const [amapSmoke, globalSmoke, globalBrowserSmoke] = await Promise.all([
     readFile(amapLiveSmokeUrl, "utf8"),
     readFile(globalLiveSmokeUrl, "utf8"),
+    readFile(globalBrowserSmokeUrl, "utf8"),
   ]);
   assert.match(amapSmoke, /required\("NEXT_PUBLIC_AMAP_JS_API_KEY"\)/);
   assert.match(amapSmoke, /required\("AMAP_JS_SECURITY_CODE"\)/);
@@ -179,4 +183,7 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("key", browserKey\)/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("jscode"/);
   assert.match(globalSmoke, /select\("source,provider_place_id,coordinate_system"\)/);
+  assert.match(globalBrowserSmoke, /async function submitGlobalLogin/);
+  assert.match(globalBrowserSmoke, /form\.requestSubmit\(\)/);
+  assert.match(globalBrowserSmoke, /bounded login diagnostic/);
 });
