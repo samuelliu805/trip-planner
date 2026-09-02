@@ -14,27 +14,32 @@ runtime and residue evidence remains in [cloudbase-phase-4-runtime.md](./cloudba
 
 ## Compatibility matrix
 
-| Capability            | Shared contract                                                                         | Global implementation                             | CN implementation                                    |
-| --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------- |
-| Authentication        | Password login, restore, refresh, expiry rejection, logout, no anonymous private access | Supabase email/password in controlled dev/Preview | Controlled CloudBase username/password only          |
-| Relational data       | Provider-neutral repositories, A/B ownership, owner-only RPCs                           | Supabase RLS and RPCs                             | CloudBase PG claim-aware RLS and reviewed RPC grants |
-| Private files         | Private bucket, owner-scoped signed upload/download, cleanup                            | Supabase Storage                                  | CloudBase Storage                                    |
-| Public sharing        | Immutable redacted snapshot; public token reads only that snapshot                      | `get_public_share_page_v3` through Supabase       | Same RPC through CloudBase PG                        |
-| Map canvas            | Markers, explicit selection, polylines, bounds, teardown                                | Google JS map                                     | AMap JS API 2.0                                      |
-| Places                | Provider-neutral suggestion/resolve session                                             | Google Places                                     | AMap AutoComplete and PlaceSearch                    |
-| Routes                | WGS-84 request/result contract and normalized errors                                    | Google Routes                                     | AMap walking, driving, and bicycling Web Services    |
-| Persisted coordinates | Always WGS-84                                                                           | No conversion                                     | GCJ-02 conversion stays inside the AMap adapter      |
-| Place photos          | Optional provider capability                                                            | Google implementation                             | Not available; fails closed                          |
-| Scheduled cleanup     | Same bounded cleanup contract and zero-residue result                                   | Authorized Vercel Cron route                      | Private Event Function and timer                     |
-| Operational CLI       | Exact-SHA evidence and read-before-write gates                                          | Supabase CLI `2.58.5`, Vercel deployment API/CLI  | CloudBase CLI `3.8.1`                                |
+| Capability            | Shared contract                                                                                    | Global implementation                                     | CN implementation                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------- |
+| Authentication        | Password login, restore, refresh, expiry rejection, logout, no anonymous private access            | Supabase email/password in controlled dev/Preview         | Controlled CloudBase username/password only          |
+| Relational data       | Provider-neutral repositories, A/B ownership, owner-only RPCs                                      | Supabase RLS and RPCs                                     | CloudBase PG claim-aware RLS and reviewed RPC grants |
+| Private files         | Private bucket, owner-scoped signed upload/download, cleanup                                       | Supabase Storage                                          | CloudBase Storage                                    |
+| Public sharing        | Immutable redacted snapshot; public token reads only that snapshot                                 | `get_public_share_page_v3` through Supabase               | Same RPC through CloudBase PG                        |
+| Map canvas            | Markers, explicit selection, polylines, bounds, teardown                                           | Google JS map                                             | AMap JS API 2.0                                      |
+| Places                | Provider-neutral suggestion/resolve session and persisted provider ID/name/address/WGS-84 snapshot | Google Places with legacy `google_place_id` compatibility | AMap AutoComplete and PlaceSearch                    |
+| Routes                | WGS-84 request/result contract and normalized errors                                               | Google Routes                                             | AMap walking, driving, and bicycling Web Services    |
+| Persisted coordinates | Always WGS-84                                                                                      | No conversion                                             | GCJ-02 conversion stays inside the AMap adapter      |
+| Place photos          | Optional provider capability                                                                       | Google implementation                                     | Not available; fails closed                          |
+| Scheduled cleanup     | Same bounded cleanup contract and zero-residue result                                              | Authorized Vercel Cron route                              | Private Event Function and timer                     |
+| Operational CLI       | Exact-SHA evidence and read-before-write gates                                                     | Supabase CLI `2.58.5`, Vercel deployment API/CLI          | CloudBase CLI `3.8.1`                                |
 
 AMap never falls back to Google. Global retains its Google selector and has no AMap configuration.
 
 ## Workflow inventory
 
-Dispatch **Phase 5 dual-environment verification** from the candidate ref with
-`verification_gate=VERIFY`. The protected `cloudbase-pg-dev` environment must approve both live
-jobs. Every job checks `git rev-parse HEAD == GITHUB_SHA` before doing work.
+Dispatch the existing **CloudBase PG schema security** workflow, which is already present on the
+default branch. Select the candidate branch under **Use workflow from**, then set
+`run_mode=phase5`, `verification_gate=VERIFY`, `candidate_ref=<candidate branch or SHA>`, and
+`candidate_sha=<full 40-character SHA>`. This avoids the GitHub `404` produced when attempting to
+dispatch a workflow file that exists only on a pull-request branch. The caller invokes the Phase 5
+matrix from the same candidate commit; each job checks both `git rev-parse HEAD == candidate_sha`
+and `candidate_sha == GITHUB_SHA`. A moved branch or mismatched input fails closed and requires a
+new dispatch. The protected `cloudbase-pg-dev` environment must approve both live jobs.
 
 ### `static`
 
@@ -74,8 +79,9 @@ jobs. Every job checks `git rev-parse HEAD == GITHUB_SHA` before doing work.
 - use controlled users A and B to prove Auth/session/refresh/expiry/logout, CRUD, owner RPCs, direct
   and RPC cross-owner denial, forged-owner denial, and anonymous-private denial;
 - reject Supabase cookies, forged CloudBase user headers, and unauthenticated protected-route access;
-- prove immutable public sharing and load authenticated and public-share pages with a real AMap JS
-  map, AutoComplete, and POI resolution while observing zero Google requests;
+- drive the real authenticated UI through AMap search, POI selection, save, full-page refresh,
+  persisted WGS-84 marker verification, route calculation, publish, and public-route rendering,
+  while observing zero Google requests for the complete CN browser session;
 - call real AMap place and route Web Services and require WGS-84 normalized route output;
 - prove B cannot sign/read, overwrite, delete, or list A's private CloudBase object; prove anonymous
   denial and share-image isolation;
@@ -101,6 +107,20 @@ The Git-integrated Vercel Preview itself must use the controlled Supabase dev ta
 Google keys, and the same exact candidate SHA. It must not inherit production Supabase credentials.
 The CN target must not receive any Supabase or Google credential. Neither AMap server key may use a
 `NEXT_PUBLIC_` name.
+
+The two server-only AMap names must also already exist in the `trip-planner-cn` CloudBase Run
+runtime environment. GitHub job variables are build/test inputs and are not evidence of Run
+configuration. The CN live job reads CloudBase Run detail and validates only the presence of the
+names; the validator never renders their values. The deploy workflow applies the same preflight,
+relies on the pinned CLI's source deploy to preserve the existing runtime environment, and repeats
+the name-only check after release. Initial runtime configuration remains a manual platform action.
+
+The provider-neutral place schema is introduced by mirrored migrations `20260901180000` and
+`20260901181000`. `upsert_place_snapshot_v3` accepts only Google or AMap snapshots marked WGS-84;
+the existing `upsert_google_place_snapshot_v2` remains as a compatibility wrapper. Public AMap
+route projection accepts only `provider=amap`, `source=encoded`, `encoding=polyline5`, and
+`coordinateSystem=wgs84`, and reconstructs the five-field geometry rather than exposing the stored
+provider object.
 
 ## Evidence record
 

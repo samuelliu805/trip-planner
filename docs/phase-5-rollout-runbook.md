@@ -28,6 +28,9 @@ Missing ownership, notification routing, or change record is a release blocker.
   available on the plan, record the dashboard/CLI log owner and polling interval.
 - Restrict Global Preview to controlled Supabase dev credentials. Restrict AMap and Google browser
   keys by the appropriate Preview/CN hostname and API scope.
+- Configure the server-only names `AMAP_JS_SECURITY_CODE` and `AMAP_WEB_SERVICE_KEY` in the
+  `trip-planner-cn` CloudBase Run runtime through the approved platform change process. A GitHub
+  environment variable does not configure CloudBase Run. Record names/presence only, never values.
 - Add the protected secrets and variables listed in
   [phase-5-verification.md](./phase-5-verification.md), then prove secret scans are zero.
 - Keep CN username/password accounts controlled. Do not enable anonymous, phone, email, or public
@@ -59,7 +62,9 @@ waivable for seed rollout.
    that exact SHA. Do not use or promote a production target.
 3. Confirm Preview environment selection is Global/Supabase/Google and points only to controlled
    Supabase dev. Confirm no CloudBase or AMap variables exist.
-4. Dispatch the Phase 5 workflow and review `static` plus `global-live`, including from-zero
+4. Dispatch the default-branch **CloudBase PG schema security** workflow from the exact candidate
+   ref with `run_mode=phase5`, `verification_gate=VERIFY`, and its full SHA. Review `static` plus
+   `global-live`, including from-zero
    migrations/pgTAP, A/B RLS/RPC, private Storage, cleanup route, immutable public share, real
    Google map/place, cookie isolation, bundle-secret scan, and zero residue.
 5. Manually inspect `/login`, `/signup`, Trips, one authenticated trip, and its anonymous share on
@@ -74,8 +79,10 @@ waivable for seed rollout.
 1. Complete CLS/alert routing and the restore drill before adding users.
 2. Run `static` and `cn-live` on the same candidate SHA against
    `trip-planner-cn-dev-d3bz94038b26`, `ap-shanghai`, and PG `pgdb-l4lhtrv7`.
-3. Review migration list/dry-run, controlled A/B Auth/RLS/RPC, Storage, cleanup invocation,
-   immutable share, browser AMap, Web Service place/route, cross-provider rejection, and residue.
+3. Review Run runtime-name preflight, migration list/dry-run, controlled A/B Auth/RLS/RPC, Storage,
+   cleanup invocation, immutable share, and the real UI flow from AMap search through persisted
+   WGS-84 marker, route calculation, publish, and public route. Confirm the browser recorded zero
+   Google requests and review final residue.
 4. Reconfirm the safe domain includes the final Run hostname and AMap browser-key restrictions.
 5. If all gates pass, request a separately approved internal smoke window for named employees using
    controlled username/password accounts. Start with the minimum cohort, no public registration,

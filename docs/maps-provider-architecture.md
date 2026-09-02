@@ -28,6 +28,13 @@ Canonical persisted coordinates are always WGS-84. `Coordinates`, `PlaceSnapshot
 route geometry carry `coordinateSystem: "wgs84"`. Legacy places, straight legs, and
 `{ source: "google", encodedPolyline }` geometry remain readable without rewriting records.
 
+`places.source` identifies `google`, `amap`, or `custom`; `provider_place_id` is the canonical
+provider-neutral identifier. Existing Google rows retain `google_place_id`, which is backfilled to
+the canonical column and remains readable by the compatibility mapping and RPC. The v3 place RPC
+requires a provider ID, display name, optional formatted address, and explicit WGS-84 coordinates
+for both Google and AMap. It rejects any snapshot labelled GCJ-02 instead of guessing or converting
+inside shared/database code.
+
 AMap receives and returns GCJ-02 inside China. Its adapter converts WGS-84 to GCJ-02 immediately
 before map, Places, or Web Service calls and converts results back to WGS-84 before returning a
 shared contract. No shared feature, persistence, UI, or database module performs that conversion.
@@ -63,6 +70,12 @@ the server. Walk maps to walking; self-driving, rideshare, and taxi map to drivi
 bicycling. Modes requiring unsupported city/service context use the existing explicit straight-line
 fallback and never make an upstream request. Provider errors and timeouts are normalized without
 including keys or upstream response bodies.
+
+Both server-only names must be present in the CloudBase Run runtime itself. CI job environment
+variables are not runtime configuration. The CN deployment gate reads Run detail before deployment,
+validates only the two variable names, preserves the service's existing runtime environment during
+the pinned source deployment, and repeats the name-only check after release. Missing names fail
+before mutation; their values are never emitted by the validator.
 
 ## Capability boundary
 
