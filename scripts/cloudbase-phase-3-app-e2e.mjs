@@ -12,6 +12,7 @@ import {
   signIn,
 } from "./lib/cloudbase-pg-live.mjs";
 import { stopChild } from "./lib/child-process.mjs";
+import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import { resolveCnBrowserOrigin } from "./lib/phase-5-cn-browser-origin.mjs";
 
 const requiredSelectors = {
@@ -23,11 +24,13 @@ const requiredSelectors = {
 };
 const baseUrl = process.env.PHASE3_APP_BASE_URL ?? "http://127.0.0.1:3100";
 const requireAmapSmoke = process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1";
-const { browserBaseUrl, hostResolverArgument } = resolveCnBrowserOrigin(
+const resolvedBrowserOrigin = resolveCnBrowserOrigin(
   baseUrl,
   process.env.PHASE5_AMAP_ALLOWED_HOSTNAME,
   requireAmapSmoke,
 );
+let browserBaseUrl = resolvedBrowserOrigin.browserBaseUrl;
+const { hostResolverArgument } = resolvedBrowserOrigin;
 const runLabel = `phase3-app-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const userA = "trip-planner-cn-test-a";
 const userB = "trip-planner-cn-test-b";
@@ -37,7 +40,7 @@ function safeApplicationDiagnostics(value) {
   return String(value)
     .replace(/Bearer\s+[^\s"']+/gi, "Bearer <redacted>")
     .replace(
-      /((?:api[_-]?key|access[_-]?token|refresh[_-]?token)\s*[:=]\s*)[^\s,}]+/gi,
+      /((?:api[_-]?key|access[_-]?token|refresh[_-]?token|security[_-]?code|secret|password)\s*[:=]\s*)[^\s,}]+/gi,
       "$1<redacted>",
     )
     .replace(/https?:\/\/\S+/g, "<url>")
@@ -142,62 +145,71 @@ async function launchBrowser() {
       "--disable-gpu",
       "--remote-debugging-port=0",
       `--user-data-dir=${profile}`,
+      ...(browserBaseUrl.startsWith("https:") ? ["--ignore-certificate-errors"] : []),
       ...(hostResolverArgument ? [hostResolverArgument] : []),
       "about:blank",
     ],
     { stdio: ["ignore", "ignore", "pipe"] },
   );
   let diagnostics = "";
-  const websocketUrl = await new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`Chrome did not start. ${diagnostics}`)),
-      15_000,
+  let socket;
+  try {
+    const websocketUrl = await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Chrome did not start. ${diagnostics}`)),
+        30_000,
+      );
+      child.stderr.on("data", (chunk) => {
+        diagnostics = `${diagnostics}${chunk}`.slice(-4_000);
+        const match = diagnostics.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+        if (!match) return;
+        clearTimeout(timer);
+        resolve(match[1]);
+      });
+      child.once("exit", (code) => {
+        clearTimeout(timer);
+        reject(new Error(`Chrome exited before CDP became available (${code}). ${diagnostics}`));
+      });
+    });
+    socket = new WebSocket(websocketUrl);
+    await new Promise((resolve, reject) => {
+      socket.addEventListener("open", resolve, { once: true });
+      socket.addEventListener("error", reject, { once: true });
+    });
+    const cdp = new CdpClient(socket);
+    const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
+    const { sessionId } = await cdp.send("Target.attachToTarget", { flatten: true, targetId });
+    await Promise.all([
+      cdp.send("Page.enable", {}, sessionId),
+      cdp.send("Runtime.enable", {}, sessionId),
+      cdp.send("Network.enable", {}, sessionId),
+      cdp.send("Log.enable", {}, sessionId),
+    ]);
+    await cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+      sessionId,
     );
-    child.stderr.on("data", (chunk) => {
-      diagnostics = `${diagnostics}${chunk}`.slice(-4_000);
-      const match = diagnostics.match(/DevTools listening on (ws:\/\/[^\s]+)/);
-      if (!match) return;
-      clearTimeout(timer);
-      resolve(match[1]);
-    });
-    child.once("exit", (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Chrome exited before CDP became available (${code}). ${diagnostics}`));
-    });
-  });
-  const socket = new WebSocket(websocketUrl);
-  await new Promise((resolve, reject) => {
-    socket.addEventListener("open", resolve, { once: true });
-    socket.addEventListener("error", reject, { once: true });
-  });
-  const cdp = new CdpClient(socket);
-  const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
-  const { sessionId } = await cdp.send("Target.attachToTarget", { flatten: true, targetId });
-  await Promise.all([
-    cdp.send("Page.enable", {}, sessionId),
-    cdp.send("Runtime.enable", {}, sessionId),
-    cdp.send("Network.enable", {}, sessionId),
-    cdp.send("Log.enable", {}, sessionId),
-  ]);
-  await cdp.send(
-    "Emulation.setDeviceMetricsOverride",
-    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
-    sessionId,
-  );
-  return {
-    cdp,
-    close: async () => {
-      try {
-        await cdp.send("Browser.close");
-      } catch {
-        // The process cleanup below handles a browser that already lost CDP.
-      }
-      socket.close();
-      await stopChild(child);
-      await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
-    },
-    sessionId,
-  };
+    return {
+      cdp,
+      close: async () => {
+        try {
+          await cdp.send("Browser.close");
+        } catch {
+          // The process cleanup below handles a browser that already lost CDP.
+        }
+        socket.close();
+        await stopChild(child);
+        await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+      },
+      sessionId,
+    };
+  } catch (error) {
+    socket?.close();
+    await stopChild(child);
+    await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+    throw error;
+  }
 }
 
 async function startApplicationIfRequested() {
@@ -1039,12 +1051,20 @@ function assertPersistedAmapRoute(evidence) {
 async function run() {
   requireProductionSelectors();
   let server;
+  let browserTlsProxy;
   let browser;
   let tripId;
   let assertionError;
   let cleanup;
   try {
     server = await startApplicationIfRequested();
+    if (requireAmapSmoke) {
+      browserTlsProxy = await startLoopbackTlsProxy({
+        browserHostname: new URL(resolvedBrowserOrigin.browserBaseUrl).hostname,
+        upstreamBaseUrl: baseUrl,
+      });
+      browserBaseUrl = browserTlsProxy.browserBaseUrl;
+    }
     browser = await launchBrowser();
     await navigate(browser, "/trips");
     assert.equal(await evaluate(browser, "location.pathname"), "/login");
@@ -1319,6 +1339,11 @@ async function run() {
     }
     try {
       if (browser) await browser.close();
+    } catch (error) {
+      recordCleanupFailure(error);
+    }
+    try {
+      if (browserTlsProxy) await browserTlsProxy.close();
     } catch (error) {
       recordCleanupFailure(error);
     }
