@@ -410,11 +410,18 @@ async function login(browser, username, password) {
 async function clickElement(browser, elementExpression, label) {
   const point = await evaluate(
     browser,
-    `(() => {
+    `(async () => {
       const element = (${elementExpression});
       if (!element || !element.getClientRects().length || element.disabled) return null;
+      element.scrollIntoView({ block: "center", inline: "center" });
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const rect = element.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return null;
+      const hit = document.elementFromPoint(x, y);
+      if (!hit || (hit !== element && !element.contains(hit))) return null;
+      return { x, y };
     })()`,
   );
   assert(point, `${label} was not available.`);
@@ -773,7 +780,7 @@ async function publishThroughUi(browser, tripId) {
     )`,
     "share publish control",
   );
-  await pressElement(
+  await clickElement(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
       button.textContent.trim() === "Create and publish" && button.getClientRects().length
