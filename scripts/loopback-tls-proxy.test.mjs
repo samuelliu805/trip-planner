@@ -83,7 +83,7 @@ test("loopback TLS proxy preserves Secure cookies and the approved browser origi
   }
 });
 
-test("loopback TLS proxy normalizes only its trusted Server Action origin", async () => {
+test("loopback TLS proxy normalizes only trusted same-origin POST requests", async () => {
   const requests = [];
   const upstream = createHttpServer((request, response) => {
     requests.push({
@@ -102,17 +102,25 @@ test("loopback TLS proxy normalizes only its trusted Server Action origin", asyn
   try {
     const browserOrigin = new URL(proxy.browserBaseUrl).origin;
     await requestThroughProxy(new URL("/action", proxy.browserBaseUrl), {
-      headers: { "next-action": "fixture", origin: browserOrigin },
+      headers: { origin: browserOrigin },
+      method: "POST",
+    });
+    await requestThroughProxy(new URL("/foreign", proxy.browserBaseUrl), {
+      headers: { origin: "https://untrusted.example" },
       method: "POST",
     });
     await requestThroughProxy(new URL("/ordinary", proxy.browserBaseUrl), {
       headers: { origin: browserOrigin },
-      method: "POST",
+      method: "GET",
     });
     assert.deepEqual(requests, [
       {
         forwardedHost: approvedAmapBrowserHostname,
         origin: `https://${approvedAmapBrowserHostname}`,
+      },
+      {
+        forwardedHost: new URL(proxy.browserBaseUrl).host,
+        origin: "https://untrusted.example",
       },
       {
         forwardedHost: new URL(proxy.browserBaseUrl).host,

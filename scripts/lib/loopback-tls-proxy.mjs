@@ -58,13 +58,14 @@ function proxyHeaders(request, browserHostname) {
   headers.host = request.headers.host ?? browserHostname;
   headers["x-forwarded-host"] = headers.host;
   headers["x-forwarded-proto"] = "https";
-  if (headers["next-action"] && headers.origin) {
+  if (request.method === "POST" && headers.origin) {
     try {
       const origin = new URL(headers.origin);
       if (origin.protocol === "https:" && origin.hostname === browserHostname) {
         // The TLS listener uses an ephemeral loopback port, while the approved deployment origin
-        // does not. Normalize only trusted same-origin Server Actions so Next's CSRF host check
-        // observes the real deployment host rather than the test listener port.
+        // does not. Next strips its action marker before this proxy sees some production-form POSTs,
+        // so normalize every trusted same-origin POST. Foreign origins and non-POST requests remain
+        // untouched for the application to reject normally.
         headers.host = browserHostname;
         headers["x-forwarded-host"] = browserHostname;
         headers.origin = `https://${browserHostname}`;
