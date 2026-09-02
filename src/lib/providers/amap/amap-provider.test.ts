@@ -14,10 +14,11 @@ import { wgs84Coordinates } from "../maps/types.ts";
 import { gcj02ToWgs84, wgs84ToGcj02 } from "./coordinates.ts";
 import { createAmapJsApiLoader } from "./maps/amap-loader.ts";
 import { createAmapOverlays } from "./maps/amap-map-overlays.ts";
+import { handleAmapPlacesRequest } from "./places/amap-places-api.ts";
 import { createAmapPlacesProvider } from "./places/amap-places-provider.ts";
 import { amapRoutesEndpoints, createAmapRoutesProvider } from "./routes/amap-routes-core.ts";
 import { amapRouteMode } from "./routes/mode-mapping.ts";
-import type { AmapBrowserWindow, AmapNamespace, AmapSearchStatus } from "./sdk-types.ts";
+import type { AmapBrowserWindow, AmapNamespace } from "./sdk-types.ts";
 import { proxyAmapSecurityRequest } from "./security/proxy-core.ts";
 
 class FakeScript {
@@ -83,86 +84,31 @@ test("AMap loader survives a Strict Mode release/remount without a duplicate scr
   assert.equal(scripts[0].removed, false);
 });
 
-type AutoCallback = (
-  status: AmapSearchStatus,
-  result: { tips?: Array<{ address?: string; district?: string; id?: string; name?: string }> },
-) => void;
-type DetailCallback = (
-  status: AmapSearchStatus,
-  result: {
-    poiList?: {
-      pois?: Array<{
-        adname?: string;
-        address?: string;
-        cityname?: string;
-        id?: string;
-        location?: string;
-        name?: string;
-        pname?: string;
-      }>;
-    };
-  },
-) => void;
-
-function placesHarness() {
-  const autocompleteCallbacks: AutoCallback[] = [];
-  const autocompleteTypes: string[] = [];
-  const detailCallbacks: DetailCallback[] = [];
-  let autocompleteClosed = 0;
-  let placeSearchCleared = 0;
-  class AutoComplete {
-    close() {
-      autocompleteClosed += 1;
-    }
-    search(_input: string, callback: AutoCallback) {
-      autocompleteCallbacks.push(callback);
-    }
-    setType(type: string) {
-      autocompleteTypes.push(type);
-    }
-  }
-  class PlaceSearch {
-    clear() {
-      placeSearchCleared += 1;
-    }
-    getDetails(_id: string, callback: DetailCallback) {
-      detailCallbacks.push(callback);
-    }
-  }
-  const amap = { AutoComplete, PlaceSearch } as unknown as AmapNamespace;
-  return {
-    amap,
-    autocompleteCallbacks,
-    autocompleteTypes,
-    counters: () => ({ autocompleteClosed, placeSearchCleared }),
-    detailCallbacks,
-  };
-}
-
 test("AMap Places retries a typed no-data query once without weakening stale protection", async () => {
-  const harness = placesHarness();
-  const session = createAmapPlacesProvider(harness.amap).createSession();
-  const suggestions = session.fetchSuggestions({
-    includedPrimaryTypes: ["tourist_attraction"],
-    input: "上海外滩",
-  });
-  assert.deepEqual(harness.autocompleteTypes, ["110000"]);
-  harness.autocompleteCallbacks[0]("no_data", {});
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.deepEqual(harness.autocompleteTypes, ["110000", ""]);
-  assert.equal(harness.autocompleteCallbacks.length, 2);
-  harness.autocompleteCallbacks[1]("complete", {
-    tips: [{ address: "中山东一路", district: "黄浦区", id: "bund", name: "外滩" }],
-  });
-  assert.deepEqual(await suggestions, [
-    { id: "bund", primary: "外滩", secondary: "黄浦区 · 中山东一路" },
-  ]);
+  const calls: URL[] = [];
+  const responses = [
+    { suggestions: [] },
+    { suggestions: [{ id: "bund", primary: "外滩", secondary: "黄浦区 · 中山东一路" }] },
+    { suggestions: [{ id: "square", primary: "人民广场" }] },
+  ];
+  const session = createAmapPlacesProvider({
+    endpoint: "https://app.example/api/maps/amap/places",
+    fetchImplementation: (async (input) => {
+      calls.push(new URL(String(input)));
+      return Response.json(responses.shift());
+    }) as typeof fetch,
+  }).createSession();
+  assert.deepEqual(
+    await session.fetchSuggestions({
+      includedPrimaryTypes: ["tourist_attraction"],
+      input: "上海外滩",
+    }),
+    [{ id: "bund", primary: "外滩", secondary: "黄浦区 · 中山东一路" }],
+  );
+  assert.equal(calls[0].searchParams.get("types"), "110000");
+  assert.equal(calls[1].searchParams.has("types"), false);
 
-  const next = session.fetchSuggestions({ input: "上海人民广场" });
-  harness.autocompleteCallbacks[2]("complete", {
-    tips: [{ id: "square", name: "人民广场" }],
-  });
-  await next;
+  await session.fetchSuggestions({ input: "上海人民广场" });
   await assert.rejects(
     session.resolveSuggestion("bund"),
     (error) => error instanceof PlaceProviderError && error.code === "invalid_response",
@@ -171,91 +117,236 @@ test("AMap Places retries a typed no-data query once without weakening stale pro
 });
 
 test("AMap Places drops stale results and closes each completed session", async () => {
-  const harness = placesHarness();
-  const session = createAmapPlacesProvider(harness.amap).createSession();
+  const pending: Array<(response: Response) => void> = [];
+  const session = createAmapPlacesProvider({
+    fetchImplementation: (() =>
+      new Promise<Response>((resolve) => pending.push(resolve))) as typeof fetch,
+  }).createSession();
   const stale = session.fetchSuggestions({ input: "old" });
   const current = session.fetchSuggestions({ input: "new" });
-  harness.autocompleteCallbacks[0]("complete", {
-    tips: [{ district: "北京市", id: "old", name: "Old" }],
-  });
+  pending[0](Response.json({ suggestions: [{ id: "old", primary: "Old" }] }));
   await assert.rejects(
     stale,
-    (error) => error instanceof Error && error.message.includes("cancel"),
+    (error) => error instanceof PlaceProviderError && error.code === "cancelled",
   );
-  harness.autocompleteCallbacks[1]("complete", {
-    tips: [{ address: "东长安街", district: "北京市", id: "poi-1", name: "天安门" }],
-  });
+  pending[1](
+    Response.json({
+      suggestions: [{ id: "poi1", primary: "天安门", secondary: "北京市 · 东长安街" }],
+    }),
+  );
   assert.deepEqual(await current, [
-    { id: "poi-1", primary: "天安门", secondary: "北京市 · 东长安街" },
+    { id: "poi1", primary: "天安门", secondary: "北京市 · 东长安街" },
   ]);
 
-  const resolved = session.resolveSuggestion("poi-1");
-  harness.detailCallbacks[0]("complete", {
-    poiList: {
-      pois: [
-        {
-          adname: "东城区",
-          address: "东长安街",
-          cityname: "北京市",
-          id: "poi-1",
-          location: "116.403632,39.910125",
-          name: "天安门",
-          pname: "北京市",
-        },
-      ],
-    },
-  });
+  const resolved = session.resolveSuggestion("poi1");
+  pending[2](
+    Response.json({
+      place: {
+        coordinateSystem: "wgs84",
+        displayName: "天安门",
+        formattedAddress: "北京市 东城区 东长安街",
+        latitude: 39.910125,
+        longitude: 116.397389,
+        provider: "amap",
+        providerPlaceId: "poi1",
+      },
+    }),
+  );
   const place = await resolved;
   assert.equal(place.provider, "amap");
   assert.equal(place.coordinateSystem, "wgs84");
-  assert.ok(Math.abs(place.longitude - 116.397389) < 0.0001);
-  assert.deepEqual(harness.counters(), { autocompleteClosed: 1, placeSearchCleared: 1 });
+  await assert.rejects(
+    session.fetchSuggestions({ input: "closed" }),
+    (error) => error instanceof PlaceProviderError && error.code === "cancelled",
+  );
 });
 
-test("AMap Places aborts callback work and releases the session", async () => {
-  const harness = placesHarness();
-  const session = createAmapPlacesProvider(harness.amap).createSession();
-  const suggestions = session.fetchSuggestions({ input: "place" });
-  harness.autocompleteCallbacks[0]("complete", { tips: [{ id: "poi", name: "Place" }] });
-  await suggestions;
+test("AMap Places aborts fetch work and releases the session", async () => {
+  let requestCount = 0;
+  const session = createAmapPlacesProvider({
+    fetchImplementation: (async (_input, init) => {
+      requestCount += 1;
+      if (requestCount === 1) {
+        return Response.json({ suggestions: [{ id: "poi1", primary: "Place" }] });
+      }
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => {
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          },
+          { once: true },
+        );
+      });
+    }) as typeof fetch,
+  }).createSession();
+  await session.fetchSuggestions({ input: "place" });
   const controller = new AbortController();
-  const resolution = session.resolveSuggestion("poi", controller.signal);
+  const resolution = session.resolveSuggestion("poi1", controller.signal);
   controller.abort();
   await assert.rejects(
     resolution,
-    (error) => error instanceof Error && error.message.includes("cancel"),
+    (error) => error instanceof PlaceProviderError && error.code === "cancelled",
   );
-  assert.deepEqual(harness.counters(), { autocompleteClosed: 1, placeSearchCleared: 1 });
+  await assert.rejects(
+    session.fetchSuggestions({ input: "closed" }),
+    (error) => error instanceof PlaceProviderError && error.code === "cancelled",
+  );
 });
 
-test("AMap Places invalidates old suggestion IDs after no_data and error results", async () => {
-  const harness = placesHarness();
-  const session = createAmapPlacesProvider(harness.amap).createSession();
-  const first = session.fetchSuggestions({ input: "first" });
-  harness.autocompleteCallbacks[0]("complete", { tips: [{ id: "old-id", name: "Old" }] });
-  await first;
-
-  const empty = session.fetchSuggestions({ input: "empty" });
-  harness.autocompleteCallbacks[1]("no_data", {});
-  assert.deepEqual(await empty, []);
+test("AMap Places invalidates old suggestion IDs after no-data and error results", async () => {
+  const responses = [
+    Response.json({ suggestions: [{ id: "old1", primary: "Old" }] }),
+    Response.json({ suggestions: [] }),
+    Response.json({ suggestions: [{ id: "new1", primary: "New" }] }),
+    Response.json({ error: "unavailable" }, { status: 502 }),
+  ];
+  const session = createAmapPlacesProvider({
+    fetchImplementation: (async () => responses.shift() ?? Response.error()) as typeof fetch,
+  }).createSession();
+  await session.fetchSuggestions({ input: "first" });
+  assert.deepEqual(await session.fetchSuggestions({ input: "empty" }), []);
   await assert.rejects(
-    session.resolveSuggestion("old-id"),
+    session.resolveSuggestion("old1"),
     (error) => error instanceof PlaceProviderError && error.code === "invalid_response",
   );
-
-  const second = session.fetchSuggestions({ input: "second" });
-  harness.autocompleteCallbacks[2]("complete", { tips: [{ id: "new-id", name: "New" }] });
-  await second;
-  const failed = session.fetchSuggestions({ input: "failed" });
-  harness.autocompleteCallbacks[3]("error", {});
+  await session.fetchSuggestions({ input: "second" });
   await assert.rejects(
-    failed,
+    session.fetchSuggestions({ input: "failed" }),
     (error) => error instanceof PlaceProviderError && error.code === "search_failed",
   );
   await assert.rejects(
-    session.resolveSuggestion("new-id"),
+    session.resolveSuggestion("new1"),
     (error) => error instanceof PlaceProviderError && error.code === "invalid_response",
   );
+  session.close();
+});
+
+test("AMap Places API fixes upstreams and returns only normalized WGS-84 data", async () => {
+  const upstreams: URL[] = [];
+  const fetchImplementation = (async (input) => {
+    const url = new URL(String(input));
+    upstreams.push(url);
+    if (url.pathname.endsWith("inputtips")) {
+      return Response.json({
+        status: "1",
+        tips: [
+          {
+            address: "中山东一路",
+            district: "上海市黄浦区",
+            id: "BUND1",
+            location: "121.490317,31.241701",
+            name: "外滩",
+          },
+        ],
+      });
+    }
+    return Response.json({
+      pois: [
+        {
+          adname: "黄浦区",
+          address: "中山东一路",
+          cityname: "上海市",
+          id: "BUND1",
+          location: "121.490317,31.241701",
+          name: "外滩",
+          pname: "上海市",
+        },
+      ],
+      status: "1",
+    });
+  }) as typeof fetch;
+  const options = { apiKey: "server-web-key", fetchImplementation };
+  const suggestionsResponse = await handleAmapPlacesRequest(
+    new Request(
+      "https://app.example/api/maps/amap/places?operation=suggest&input=%E4%B8%8A%E6%B5%B7%E5%A4%96%E6%BB%A9&types=110000",
+    ),
+    options,
+  );
+  assert.deepEqual(await suggestionsResponse.json(), {
+    suggestions: [{ id: "BUND1", primary: "外滩", secondary: "上海市黄浦区 · 中山东一路" }],
+  });
+  assert.equal(upstreams[0].origin, "https://restapi.amap.com");
+  assert.equal(upstreams[0].pathname, "/v3/assistant/inputtips");
+  assert.equal(upstreams[0].searchParams.get("key"), "server-web-key");
+
+  const placeResponse = await handleAmapPlacesRequest(
+    new Request("https://app.example/api/maps/amap/places?operation=resolve&id=BUND1"),
+    options,
+  );
+  const resolved = await placeResponse.json();
+  assert.equal(resolved.place.provider, "amap");
+  assert.equal(resolved.place.providerPlaceId, "BUND1");
+  assert.equal(resolved.place.coordinateSystem, "wgs84");
+  assert.notEqual(resolved.place.longitude, 121.490317);
+  assert.equal(JSON.stringify(resolved).includes("server-web-key"), false);
+  assert.equal("location" in resolved.place, false);
+});
+
+test("AMap Places API rejects SSRF inputs and bounds provider failures", async () => {
+  let requests = 0;
+  const rejected = await handleAmapPlacesRequest(
+    new Request(
+      "https://app.example/api/maps/amap/places?operation=suggest&input=place&url=https://evil.test",
+    ),
+    {
+      apiKey: "server-web-key",
+      fetchImplementation: (async () => {
+        requests += 1;
+        return Response.json({ status: "1", tips: [] });
+      }) as typeof fetch,
+    },
+  );
+  assert.equal(rejected.status, 400);
+  assert.equal(requests, 0);
+
+  const providerFailure = await handleAmapPlacesRequest(
+    new Request("https://app.example/api/maps/amap/places?operation=suggest&input=place"),
+    {
+      apiKey: "server-web-key",
+      fetchImplementation: (async () =>
+        Response.json({ info: "server-web-key provider detail", status: "0" })) as typeof fetch,
+    },
+  );
+  assert.equal(providerFailure.status, 502);
+  assert.doesNotMatch(await providerFailure.text(), /server-web-key|provider detail/);
+
+  const timeout = await handleAmapPlacesRequest(
+    new Request("https://app.example/api/maps/amap/places?operation=suggest&input=place"),
+    {
+      apiKey: "server-web-key",
+      fetchImplementation: ((_input, init) =>
+        new Promise((_resolve, rejectPromise) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => rejectPromise(Object.assign(new Error("aborted"), { name: "AbortError" })),
+            { once: true },
+          );
+        })) as typeof fetch,
+      timeoutMs: 1,
+    },
+  );
+  assert.equal(timeout.status, 504);
+});
+
+test("AMap client requests never send provider keys or raw upstream coordinates", async () => {
+  let requestedUrl = "";
+  const session = createAmapPlacesProvider({
+    fetchImplementation: (async (input) => {
+      requestedUrl = String(input);
+      return Response.json({ suggestions: [] });
+    }) as typeof fetch,
+  }).createSession();
+  assert.deepEqual(
+    await session.fetchSuggestions({
+      includedPrimaryTypes: ["tourist_attraction"],
+      input: "上海外滩",
+    }),
+    [],
+  );
+  assert.equal(new URL(requestedUrl, "https://app.example").searchParams.has("key"), false);
   session.close();
 });
 

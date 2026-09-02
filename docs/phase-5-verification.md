@@ -21,7 +21,7 @@ runtime and residue evidence remains in [cloudbase-phase-4-runtime.md](./cloudba
 | Private files         | Private bucket, owner-scoped signed upload/download, cleanup                                       | Supabase Storage                                          | CloudBase Storage                                    |
 | Public sharing        | Immutable redacted snapshot; public token reads only that snapshot                                 | `get_public_share_page_v3` through Supabase               | Same RPC through CloudBase PG                        |
 | Map canvas            | Markers, explicit selection, polylines, bounds, teardown                                           | Google JS map                                             | AMap JS API 2.0                                      |
-| Places                | Provider-neutral suggestion/resolve session and persisted provider ID/name/address/WGS-84 snapshot | Google Places with legacy `google_place_id` compatibility | AMap AutoComplete and PlaceSearch                    |
+| Places                | Provider-neutral suggestion/resolve session and persisted provider ID/name/address/WGS-84 snapshot | Google Places with legacy `google_place_id` compatibility | Same-origin AMap Web Service adapter                 |
 | Routes                | WGS-84 request/result contract and normalized errors                                               | Google Routes                                             | AMap walking, driving, and bicycling Web Services    |
 | Persisted coordinates | Always WGS-84                                                                                      | No conversion                                             | GCJ-02 conversion stays inside the AMap adapter      |
 | Place photos          | Optional provider capability                                                                       | Google implementation                                     | Not available; fails closed                          |
@@ -88,7 +88,9 @@ new dispatch. The protected `cloudbase-pg-dev` environment must approve both liv
   persisted WGS-84 marker verification, route calculation, publish, and public-route rendering,
   while observing zero Google requests for the complete CN browser session;
 - require distinct configured Web端 (JS API) and Web服务 keys, call real AMap place and route Web
-  Services only with the Web服务 key, and require WGS-84 normalized output; exercise the JS
+  Services only with the server-side Web服务 key, and require WGS-84 normalized output; the real
+  UI autocomplete/resolve flow uses the fixed same-origin endpoint and must not expose that key;
+  exercise the JS
   key/`securityJsCode` pair only through the real UI, JS API, and `serviceHost` proxy;
 - prove B cannot sign/read, overwrite, delete, or list A's private CloudBase object; prove anonymous
   denial and share-image isolation;

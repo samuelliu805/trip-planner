@@ -36,8 +36,10 @@ Missing ownership, notification routing, or change record is a release blocker.
 - In AMap's console, confirm `NEXT_PUBLIC_AMAP_JS_API_KEY` is a **Web端 (JS API)** key and
   `AMAP_JS_SECURITY_CODE` belongs to that exact key record. Keep `AMAP_WEB_SERVICE_KEY` as a
   distinct **Web服务** key. Never switch them. The live suite calls Web Services only with the Web
-  Service key and tests the browser-key/security-code pair through the real JS API UI and
-  same-origin security proxy. A raw REST call with the JS key is invalid and returns
+  Service key; the real UI calls the provider-local same-origin Places endpoint, which appends that
+  key only on the server and returns a WGS-84 snapshot. The live suite tests the
+  browser-key/security-code pair through the real JS API UI and same-origin security proxy. A raw
+  REST call with the JS key is invalid and returns
   `infocode=10009`; do not use it as a browser-key preflight or copy the Web Service key into the
   browser-key secret.
 - Configure `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, and `AMAP_WEB_SERVICE_KEY` in the

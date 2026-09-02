@@ -50,20 +50,30 @@ AMap uses JS API 2.0 with one reference-counted loader. A Strict Mode release/re
 pending script; cancelled or failed pending loads remove their script/listeners and restore the
 previous security global. Authenticated and public pages use the same AMap canvas implementation.
 The canvas owns map destruction, marker/polyline removal, fit view, selected-marker panning, and
-click/keyboard selection. Places owns one `AutoComplete`/`PlaceSearch` session at a time and rejects
-aborted or stale callbacks before normalized data reaches the UI.
+click/keyboard selection. The provider-local Places client owns one abortable search session at a
+time and calls only the same-origin `/api/maps/amap/places` endpoint. A new query invalidates every
+prior opaque suggestion ID, including after an empty or failed response, and stale responses never
+reach shared UI code.
 
 ## AMap secrets and fixed upstreams
 
 - `NEXT_PUBLIC_AMAP_JS_API_KEY` is the browser-visible JS API key.
 - `AMAP_JS_SECURITY_CODE` is server-only and exists only at the same-origin `/_AMapService` proxy.
-- `AMAP_WEB_SERVICE_KEY` is server-only and exists only in the route adapter.
+- `AMAP_WEB_SERVICE_KEY` is server-only and exists only in the AMap route and Places server
+  adapters.
 
 The browser sets `window._AMapSecurityConfig.serviceHost` to the current origin's
 `/_AMapService`. The proxy accepts only GET requests to the exact AMap input-tip, POI, and map-style
 paths required by the adapter. It constructs one of two fixed upstream origins, rejects
 host/URL/target inputs, appends `jscode` server-side, follows no redirects, enforces a timeout and a
 2 MiB response limit, and never logs or returns the security code.
+
+AMap Places autocomplete and POI resolution use a separate provider-local, same-origin GET
+endpoint. That endpoint constructs only the fixed `restapi.amap.com` input-tip and POI-detail URLs,
+accepts a bounded allowlist of query fields, appends `AMAP_WEB_SERVICE_KEY` only on the server,
+follows no redirects, and enforces an 8-second/512 KiB response bound. It returns only suggestion
+labels or a normalized `PlaceSnapshot`; the raw AMap response, GCJ-02 location, and Web Service key
+are never returned to browser code.
 
 AMap route calculation calls fixed `restapi.amap.com` walking, driving, or bicycling endpoints from
 the server. Walk maps to walking; self-driving, rideshare, and taxi map to driving; bike maps to

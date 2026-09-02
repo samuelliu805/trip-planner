@@ -47,7 +47,7 @@ export function AmapMapsProvider({ children }: { children: React.ReactNode }) {
     };
   }, [apiKey, retryKey]);
 
-  const placesProvider = useMemo(() => (amap ? createAmapPlacesProvider(amap) : null), [amap]);
+  const placesProvider = useMemo(() => (amap ? createAmapPlacesProvider() : null), [amap]);
   const value = {
     amap,
     apiError,

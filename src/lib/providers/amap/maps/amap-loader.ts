@@ -3,7 +3,6 @@
 import type { AmapBrowserWindow, AmapNamespace } from "../sdk-types.ts";
 
 const amapScriptBase = "https://webapi.amap.com/maps";
-const amapPlugins = ["AMap.AutoComplete", "AMap.PlaceSearch"];
 
 type LoaderState = {
   apiKey: string;
@@ -33,7 +32,6 @@ function scriptUrl(apiKey: string) {
   const url = new URL(amapScriptBase);
   url.searchParams.set("v", "2.0");
   url.searchParams.set("key", apiKey);
-  url.searchParams.set("plugin", amapPlugins.join(","));
   return url.toString();
 }
 

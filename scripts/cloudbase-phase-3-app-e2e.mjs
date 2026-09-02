@@ -101,7 +101,10 @@ class CdpClient {
         try {
           const response = message.params?.response;
           const url = new URL(response?.url);
-          if (url.pathname.startsWith("/_AMapService/")) {
+          if (
+            url.pathname.startsWith("/_AMapService/") ||
+            url.pathname === "/api/maps/amap/places"
+          ) {
             const errorHeader = Object.entries(response.headers ?? {}).find(
               ([name]) => name.toLowerCase() === "x-trip-planner-amap-error",
             )?.[1];
@@ -488,7 +491,10 @@ async function readBoundedAmapSuggestionDiagnostic(browser) {
           .flatMap((entry) => {
             try {
               const url = new URL(entry.name);
-              if (!url.pathname.startsWith("/_AMapService/")) return [];
+              if (
+                !url.pathname.startsWith("/_AMapService/") &&
+                url.pathname !== "/api/maps/amap/places"
+              ) return [];
               return [{
                 path: url.pathname,
                 status: Number.isInteger(entry.responseStatus) ? entry.responseStatus : 0,
