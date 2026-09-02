@@ -26,7 +26,7 @@ runtime and residue evidence remains in [cloudbase-phase-4-runtime.md](./cloudba
 | Persisted coordinates | Always WGS-84                                                                                      | No conversion                                             | GCJ-02 conversion stays inside the AMap adapter      |
 | Place photos          | Optional provider capability                                                                       | Google implementation                                     | Not available; fails closed                          |
 | Scheduled cleanup     | Same bounded cleanup contract and zero-residue result                                              | Authorized Vercel Cron route                              | Private Event Function and timer                     |
-| Operational CLI       | Exact-SHA evidence and read-before-write gates                                                     | Supabase CLI `2.58.5`, Vercel deployment API/CLI          | CloudBase CLI `3.8.1`                                |
+| Operational CLI       | Exact-SHA evidence and read-before-write gates                                                     | Supabase CLI `2.116.0`, Vercel deployment API/CLI         | CloudBase CLI `3.8.1`                                |
 
 AMap never falls back to Google. Global retains its Google selector and has no AMap configuration.
 
@@ -54,8 +54,9 @@ new dispatch. The protected `cloudbase-pg-dev` environment must approve both liv
 ### `global-live`
 
 - require a READY, non-production Vercel Preview whose Git metadata equals `GITHUB_SHA`;
-- initialize all migrations from zero in a disposable local Supabase stack and run every pgTAP SQL
-  test; the CLI is pinned to `2.58.5`;
+- initialize all migrations from zero in a disposable local Supabase database and run every pgTAP
+  SQL test; the CLI is pinned to `2.116.0`, and `db start` applies migrations once on the fresh
+  hosted runner without a redundant reset;
 - create temporary users A and B in controlled Supabase dev, then prove session restore, refresh,
   invalid-expiry rejection, logout, CRUD, owner RPCs, A/B RLS, forged `owner_id` rejection, and
   anonymous-private denial;
@@ -127,6 +128,11 @@ dedicated non-production sub-account restricted to inspecting and invoking
 echoed; only a successful Event invocation and the bounded cleanup result shape are accepted. The
 independent handler and final residue audit still run on `always()` paths and cannot turn an
 earlier failure green.
+
+The database/storage residue audits use the environment-scoped CloudBase API Key, not the CAM
+identity. Their CLI login runs on an `always()` path so a missing CAM prerequisite cannot suppress
+the audit. Because the function invocation temporarily switches the CLI to CAM, the workflow
+restores the environment API Key identity before the independent final cleanup and residue audit.
 
 Create or select the restricted sub-account under Tencent Cloud **CAM > Users**, then manage its
 API key under that sub-account's **API Keys** page. Store the two values only under GitHub
