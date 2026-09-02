@@ -655,7 +655,7 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
   return title;
 }
 
-async function calculateAmapRouteThroughUi(browser) {
+async function calculateAmapRouteThroughUi(browser, tripId) {
   const selectedPlaceOpen = await evaluate(
     browser,
     `Boolean(document.querySelector('button[aria-label="Close place details"]'))`,
@@ -713,13 +713,45 @@ async function calculateAmapRouteThroughUi(browser) {
     "save and calculate AMap route",
   );
   await clickButtonText(browser, "Save & calculate");
-  await waitFor(
-    browser,
-    `!document.querySelector('[data-i18n-aria-label="Edit Route A"]') &&
-      Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
-    "calculated AMap route",
-    60_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      `!document.querySelector('[data-i18n-aria-label="Edit Route A"]') &&
+        Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
+      "calculated AMap route",
+      60_000,
+    );
+  } catch (error) {
+    const browserDiagnostic = await evaluate(
+      browser,
+      `({
+        alerts: [...document.querySelectorAll('[role="alert"]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 160))
+          .filter(Boolean)
+          .slice(-3),
+        editorOpen: Boolean(document.querySelector('[data-i18n-aria-label="Edit Route A"]')),
+        lineCount: Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount ?? -1),
+        saveAction: (() => {
+          const button = [...document.querySelectorAll('button')]
+            .find((candidate) => ['Save & calculate', 'Saving…'].includes(candidate.textContent.trim()));
+          return button ? { disabled: button.disabled, text: button.textContent.trim() } : null;
+        })(),
+      })`,
+    );
+    const persisted = await loadPersistedAmapEvidence(tripId);
+    const persistedDiagnostic = {
+      calculationCount: persisted.calculations.length,
+      legCounts: persisted.calculations.map(({ calculated_legs: legs }) =>
+        Array.isArray(legs) ? legs.length : 0,
+      ),
+    };
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded route-calculation diagnostic: ${JSON.stringify(
+        { browser: browserDiagnostic, persisted: persistedDiagnostic },
+      )}`,
+    );
+  }
 }
 
 async function publishThroughUi(browser) {
@@ -1351,7 +1383,7 @@ async function run() {
         `The refreshed AMap marker did not retain WGS-84 place ${place.id}.`,
       );
     }
-    await calculateAmapRouteThroughUi(browser);
+    await calculateAmapRouteThroughUi(browser, tripId);
     const routeEvidence = await loadPersistedAmapEvidence(tripId);
     assertPersistedAmapRoute(routeEvidence);
     await assertRealAmapBrowserAdapter(browser);
