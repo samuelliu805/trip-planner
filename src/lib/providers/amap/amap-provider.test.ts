@@ -585,6 +585,47 @@ test("AMap Routes sends WGS-84 as GCJ-02 and normalizes returned geometry to WGS
   assert.equal(result.durationSeconds, 900);
 });
 
+test("AMap Routes retries only transient transport and HTTP failures", async () => {
+  let transportCalls = 0;
+  const transportProvider = createAmapRoutesProvider({
+    apiKey: "server-web-key",
+    fetchImplementation: (async () => {
+      transportCalls += 1;
+      if (transportCalls === 1) throw new Error("temporary network failure");
+      if (transportCalls === 2) return new Response(null, { status: 503 });
+      return Response.json({
+        route: {
+          paths: [
+            {
+              distance: "12",
+              duration: "9",
+              steps: [{ polyline: "116.403632,39.910125;116.405000,39.912000" }],
+            },
+          ],
+        },
+        status: "1",
+      });
+    }) as typeof fetch,
+    retryDelayMs: 0,
+  });
+  assert.equal((await transportProvider.calculateLeg(routeRequest())).distanceMeters, 12);
+  assert.equal(transportCalls, 3);
+
+  let authenticationCalls = 0;
+  await assert.rejects(
+    createAmapRoutesProvider({
+      apiKey: "server-web-key",
+      fetchImplementation: (async () => {
+        authenticationCalls += 1;
+        return new Response(null, { status: 401 });
+      }) as typeof fetch,
+      retryDelayMs: 0,
+    }).calculateLeg(routeRequest()),
+    (error) => error instanceof RouteProviderError && error.code === "authentication",
+  );
+  assert.equal(authenticationCalls, 1);
+});
+
 test("AMap route errors are normalized, bounded, and abort-safe", async () => {
   await assert.rejects(
     createAmapRoutesProvider({ apiKey: "" }).calculateLeg(routeRequest()),
@@ -611,6 +652,7 @@ test("AMap route errors are normalized, bounded, and abort-safe", async () => {
         error.name = "AbortError";
         throw error;
       }) as typeof fetch,
+      retryDelayMs: 0,
     }).calculateLeg(routeRequest()),
     (error) => error instanceof RouteProviderError && error.code === "timeout",
   );

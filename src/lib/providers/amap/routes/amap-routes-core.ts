@@ -35,8 +35,19 @@ type AmapRoutesProviderOptions = {
   apiKey: string;
   fetchImplementation?: typeof fetch;
   now?: () => string;
+  retryDelayMs?: number;
   timeoutMs?: number;
 };
+
+const maximumAttempts = 3;
+
+function retryableStatus(status: number) {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+async function waitForRetry(delayMs: number) {
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
 
 function numberField(value: unknown) {
   const parsed =
@@ -123,22 +134,31 @@ export function createAmapRoutesProvider(options: AmapRoutesProviderOptions): Ro
       if (!routeMode) return amapStraightFallbackLeg(request, "unsupported_mode", now());
       if (!options.apiKey) throw amapRouteProviderError("missing_key");
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMs);
-      let response: Response;
-      try {
-        response = await fetchImplementation(routeUrl(request, routeMode, options.apiKey), {
-          headers: { Accept: "application/json" },
-          method: "GET",
-          signal: controller.signal,
-        });
-      } catch (error) {
-        if (controller.signal.aborted || (error instanceof Error && error.name === "AbortError"))
-          throw amapRouteProviderError("timeout", error);
-        throw amapRouteProviderError("network", error);
-      } finally {
-        clearTimeout(timeout);
+      let response: Response | undefined;
+      for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          response = await fetchImplementation(routeUrl(request, routeMode, options.apiKey), {
+            headers: { Accept: "application/json" },
+            method: "GET",
+            signal: controller.signal,
+          });
+        } catch (error) {
+          const timedOut =
+            controller.signal.aborted || (error instanceof Error && error.name === "AbortError");
+          if (attempt === maximumAttempts)
+            throw amapRouteProviderError(timedOut ? "timeout" : "network", error);
+          await waitForRetry((options.retryDelayMs ?? 200) * attempt);
+          continue;
+        } finally {
+          clearTimeout(timeout);
+        }
+        if (response.ok || !retryableStatus(response.status) || attempt === maximumAttempts) break;
+        await response.body?.cancel().catch(() => undefined);
+        await waitForRetry((options.retryDelayMs ?? 200) * attempt);
       }
+      if (!response) throw amapRouteProviderError("network");
       if (!response.ok) throw providerErrorForStatus(response.status);
 
       let payload: unknown;
