@@ -13,6 +13,7 @@ import { backendCapabilitiesByRegion } from "./capabilities/backend-capabilities
 import { cloudBasePhase4Status } from "./cloudbase/status.ts";
 import { cloudBaseScalarUuidRpc } from "./cloudbase/rpc-compat.ts";
 import {
+  cloudBaseDayRoutePlanRecoveryKey,
   cloudBasePlaceUpsertRecoveryKey,
   recoverCloudBasePlaceUpsertResult,
 } from "./cloudbase/rpc-result-normalization.mjs";
@@ -324,6 +325,37 @@ test("CloudBase place RPC recovery accepts one RLS-scoped UUID and preserves eve
   ]) {
     assert.equal(recoverCloudBasePlaceUpsertResult(original, lookup), original);
   }
+});
+
+test("CloudBase route-plan RPC recovery is exact, validated, and RLS scoped", () => {
+  const dayId = "123e4567-e89b-42d3-a456-426614174000";
+  const variantId = "223e4567-e89b-42d3-a456-426614174000";
+  const parameters = {
+    ordered_item_ids: [
+      "323e4567-e89b-42d3-a456-426614174000",
+      "423e4567-e89b-42d3-a456-426614174000",
+    ],
+    requested_leg_modes: ["walking"],
+    target_day_id: dayId,
+    target_variant_id: variantId,
+  };
+  assert.deepEqual(cloudBaseDayRoutePlanRecoveryKey("save_day_route_plan", parameters, true), {
+    dayId,
+    variantId,
+  });
+  assert.equal(cloudBaseDayRoutePlanRecoveryKey("save_day_route_plan", parameters, false), null);
+  assert.equal(
+    cloudBaseDayRoutePlanRecoveryKey(
+      "save_day_route_plan",
+      { ...parameters, requested_leg_modes: [] },
+      true,
+    ),
+    null,
+  );
+  assert.equal(
+    cloudBaseDayRoutePlanRecoveryKey("upsert_place_snapshot_v3", parameters, true),
+    null,
+  );
 });
 
 test("CloudBase session normalization supports the SDK 3.9 Node user ID accessor", () => {

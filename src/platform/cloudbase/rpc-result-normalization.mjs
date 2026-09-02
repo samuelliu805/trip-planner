@@ -37,9 +37,36 @@ export function cloudBasePlaceUpsertRecoveryKey(name, parameters, recoverable) {
   return { provider, providerPlaceId, tripId };
 }
 
-export function recoverCloudBasePlaceUpsertResult(original, lookup) {
+export function cloudBaseDayRoutePlanRecoveryKey(name, parameters, recoverable) {
+  if (name !== "save_day_route_plan" || !recoverable) return null;
+  if (!parameters || typeof parameters !== "object" || Array.isArray(parameters)) return null;
+  const dayId = parameters.target_day_id;
+  const variantId = parameters.target_variant_id;
+  const itemIds = parameters.ordered_item_ids;
+  const legModes = parameters.requested_leg_modes;
+  if (
+    typeof dayId !== "string" ||
+    !uuidPattern.test(dayId) ||
+    typeof variantId !== "string" ||
+    !uuidPattern.test(variantId) ||
+    !Array.isArray(itemIds) ||
+    itemIds.length < 2 ||
+    itemIds.length > 20 ||
+    !itemIds.every((id) => typeof id === "string" && uuidPattern.test(id)) ||
+    !Array.isArray(legModes) ||
+    legModes.length !== itemIds.length - 1 ||
+    !legModes.every((mode) => typeof mode === "string" && mode.length > 0)
+  ) {
+    return null;
+  }
+  return { dayId, variantId };
+}
+
+export function recoverCloudBaseScalarUuidResult(original, lookup) {
   if (lookup?.error || !Array.isArray(lookup?.data) || lookup.data.length !== 1) return original;
   const id = lookup.data[0]?.id;
   if (typeof id !== "string" || !uuidPattern.test(id)) return original;
   return { ...original, data: id, error: null };
 }
+
+export const recoverCloudBasePlaceUpsertResult = recoverCloudBaseScalarUuidResult;

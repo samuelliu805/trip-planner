@@ -5,9 +5,10 @@ import type { RelationalDatabase } from "@/platform/contracts/relational";
 import { createCloudBaseUserContext } from "./database";
 import { isCloudBaseScalarUuidParseError } from "./errors";
 import {
+  cloudBaseDayRoutePlanRecoveryKey,
   cloudBasePlaceUpsertRecoveryKey,
   normalizeCloudBaseRpcResult,
-  recoverCloudBasePlaceUpsertResult,
+  recoverCloudBaseScalarUuidResult,
 } from "./rpc-result-normalization.mjs";
 
 export async function createCloudBaseRelationalDatabase(): Promise<RelationalDatabase> {
@@ -26,7 +27,20 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
           .eq("trip_id", recoveryKey.tripId)
           .eq("source", recoveryKey.provider)
           .eq("provider_place_id", recoveryKey.providerPlaceId);
-        return recoverCloudBasePlaceUpsertResult(value, lookup);
+        return recoverCloudBaseScalarUuidResult(value, lookup);
+      }
+      const routePlanRecoveryKey = cloudBaseDayRoutePlanRecoveryKey(
+        name,
+        parameters,
+        isCloudBaseScalarUuidParseError(value.error),
+      );
+      if (routePlanRecoveryKey) {
+        const lookup = await db
+          .from("day_route_plans")
+          .select("id")
+          .eq("day_id", routePlanRecoveryKey.dayId)
+          .eq("variant_id", routePlanRecoveryKey.variantId);
+        return recoverCloudBaseScalarUuidResult(value, lookup);
       }
       return normalizeCloudBaseRpcResult(name, value);
     });

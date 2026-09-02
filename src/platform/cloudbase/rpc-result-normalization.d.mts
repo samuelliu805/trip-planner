@@ -14,11 +14,27 @@ type CloudBasePlaceRecoveryKey = Readonly<{
   tripId: string;
 }>;
 
+type CloudBaseDayRoutePlanRecoveryKey = Readonly<{
+  dayId: string;
+  variantId: string;
+}>;
+
 export function cloudBasePlaceUpsertRecoveryKey(
   name: string,
   parameters: Readonly<Record<string, unknown>>,
   recoverable: boolean,
 ): CloudBasePlaceRecoveryKey | null;
+
+export function cloudBaseDayRoutePlanRecoveryKey(
+  name: string,
+  parameters: Readonly<Record<string, unknown>>,
+  recoverable: boolean,
+): CloudBaseDayRoutePlanRecoveryKey | null;
+
+export function recoverCloudBaseScalarUuidResult(
+  original: CloudBaseRpcResult,
+  lookup: CloudBaseRpcResult,
+): CloudBaseRpcResult;
 
 export function recoverCloudBasePlaceUpsertResult(
   original: CloudBaseRpcResult,
