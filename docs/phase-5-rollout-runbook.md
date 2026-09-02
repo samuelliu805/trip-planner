@@ -27,8 +27,15 @@ Missing ownership, notification routing, or change record is a release blocker.
   not alert-routing evidence.
 - Confirm Vercel Preview runtime logs and an approved error notification path. If Drains are not
   available on the plan, record the dashboard/CLI log owner and polling interval.
+- Under Vercel **Project > Settings > Deployment Protection > Protection Bypass for Automation**,
+  create a CI-only bypass and store it only as `VERCEL_AUTOMATION_BYPASS_SECRET` in the protected
+  `cloudbase-pg-dev` GitHub Environment. Do not add it to Vercel application variables, URLs,
+  repository variables, or any `NEXT_PUBLIC_` name.
 - Restrict Global Preview to controlled Supabase dev credentials. Restrict AMap and Google browser
   keys by the appropriate Preview/CN hostname and API scope.
+- In AMap's console, confirm `NEXT_PUBLIC_AMAP_JS_API_KEY` is a **Web端 (JS API)** key and
+  `AMAP_JS_SECURITY_CODE` belongs to that exact key record. Keep `AMAP_WEB_SERVICE_KEY` as a
+  distinct **Web服务** key. `infocode=10009` is a platform mismatch and blocks CN smoke.
 - Configure `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, and `AMAP_WEB_SERVICE_KEY` in the
   `trip-planner-cn` CloudBase Run runtime through the approved platform change process. A GitHub
   environment variable does not configure CloudBase Run. Record names/presence only, never values.
@@ -80,7 +87,9 @@ waivable for seed rollout.
 2. Verify through the read-only GitHub Deployment API that the successful Preview deployment has
    that exact SHA and an approved Vercel HTTPS origin. Do not use or promote a production target.
 3. Confirm Preview environment selection is Global/Supabase/Google and points only to controlled
-   Supabase dev. Confirm no CloudBase or AMap variables exist.
+   Supabase dev. Confirm no CloudBase or AMap variables exist. Confirm the CI-only Vercel
+   automation bypass is present in the protected GitHub Environment; the smoke must send it by
+   header/cookie, never a query parameter.
 4. Dispatch the default-branch **CloudBase PG schema security** workflow from the exact candidate
    ref with `run_mode=phase5`, `verification_gate=VERIFY`, and its full SHA. Review `static` plus
    `global-live`, including from-zero

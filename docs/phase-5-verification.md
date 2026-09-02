@@ -54,6 +54,8 @@ new dispatch. The protected `cloudbase-pg-dev` environment must approve both liv
 ### `global-live`
 
 - require a READY, non-production Vercel Preview whose Git metadata equals `GITHUB_SHA`;
+- enter a protected Preview with Vercel's automation-bypass header, establish its same-origin
+  bypass cookie, and never place the bypass value in a URL, client bundle, or log;
 - initialize all migrations from zero in a disposable local Supabase database and run every pgTAP
   SQL test; the CLI is pinned to `2.116.0`, and `db start` applies migrations once on the fresh
   hosted runner without a redundant reset;
@@ -101,7 +103,7 @@ The `cloudbase-pg-dev` GitHub environment must contain only controlled non-produ
 | Kind           | Names                                                                                                                             |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Supabase dev   | `SUPABASE_DEV_URL`, `SUPABASE_DEV_PUBLISHABLE_KEY`, `SUPABASE_DEV_SECRET_KEY`, `SUPABASE_DEV_CRON_SECRET`                         |
-| Google Preview | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`                                                      |
+| Google Preview | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `VERCEL_AUTOMATION_BYPASS_SECRET`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`                   |
 | CloudBase dev  | `CLOUDBASE_API_KEY`, `CLOUDBASE_PUBLISHABLE_KEY`, `CLOUDBASE_CAM_SECRET_ID`, `CLOUDBASE_CAM_SECRET_KEY`, controlled A/B passwords |
 | AMap           | `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, `AMAP_WEB_SERVICE_KEY`                                                    |
 
@@ -110,8 +112,21 @@ Google keys, and the same exact candidate SHA. It must not inherit production Su
 The Global live job resolves that Preview through the exact-SHA GitHub Deployment record using the
 job's read-only `GITHUB_TOKEN` and `deployments: read`; it does not require a separate Vercel API
 credential and accepts only a successful `https://*.vercel.app` deployment origin.
+Because the Preview is protected, create a dedicated **Protection Bypass for Automation** value in
+Vercel and store the same value only as the protected GitHub Environment secret
+`VERCEL_AUTOMATION_BYPASS_SECRET`. The smoke sends it only as
+`x-vercel-protection-bypass`; it requests `x-vercel-set-bypass-cookie: true` once and installs the
+returned cookie in the isolated browser profile. It never uses a query parameter or prints the
+secret/cookie. Missing configuration fails before browser login.
 The CN target must not receive any Supabase or Google credential. Neither AMap server key may use a
 `NEXT_PUBLIC_` name.
+
+`NEXT_PUBLIC_AMAP_JS_API_KEY` must be a **Web端 (JS API)** key, and
+`AMAP_JS_SECURITY_CODE` must be the `securityJsCode` generated for that same key record.
+`AMAP_WEB_SERVICE_KEY` must be a separate **Web服务** key. AMap `infocode=10009` means the request
+key does not match its platform; replace the mis-scoped value rather than routing it through Google
+or substituting the server-only Web Service key into browser code. The live workflow runs the
+server-side place/route smoke before the real UI so the two key contracts are diagnosed separately.
 
 The public AMap browser key and the two server-only AMap names must also already exist in the
 `trip-planner-cn` CloudBase Run runtime environment. GitHub job variables are build/test inputs and
