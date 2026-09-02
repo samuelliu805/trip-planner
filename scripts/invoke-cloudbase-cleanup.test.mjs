@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  classifyCleanupRuntimeFailure,
   verifyCloudBaseCleanupInvocation,
   verifyCleanupInvocationResult,
 } from "./invoke-cloudbase-cleanup.mjs";
@@ -34,6 +35,29 @@ test("rejects malformed or unsuccessful cleanup function responses", () => {
   ]) {
     assert.throws(() => verifyCleanupInvocationResult({ result }));
   }
+});
+
+test("classifies bounded deployed cleanup runtime failures without exposing raw diagnostics", () => {
+  assert.equal(
+    classifyCleanupRuntimeFailure({
+      errorMessage: "user code exception caught",
+      stackTrace: "SyntaxError: Cannot use import statement outside a module",
+      statusCode: 430,
+    }),
+    "node-module-format",
+  );
+  assert.equal(
+    classifyCleanupRuntimeFailure({
+      errorMessage: "Missing required cleanup runtime configuration: hidden-name",
+      statusCode: 430,
+    }),
+    "runtime-configuration",
+  );
+  assert.equal(
+    classifyCleanupRuntimeFailure({ errorCode: -1, statusCode: 430 }),
+    "user-code-exception",
+  );
+  assert.equal(classifyCleanupRuntimeFailure({ status: "ok" }), null);
 });
 
 test("accepts only a successful bounded Event Function CLI response", async (t) => {

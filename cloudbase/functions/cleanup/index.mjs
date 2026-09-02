@@ -1,7 +1,13 @@
-import nodeAdapter from "@cloudbase/adapter-node";
-import cloudbase from "@cloudbase/js-sdk";
+import { createRequire } from "node:module";
 
 import { runCleanupJobs } from "../shared/admin-cleanup.mjs";
+
+// CloudBase's Node 18 Event Function loader enters through CommonJS. Loading the SDK through the
+// ESM export selects a `.js` bundle that Node 18 treats as CommonJS and rejects before the handler
+// starts. Select the packages' explicit CommonJS conditions at this runtime boundary instead.
+const require = createRequire(import.meta.url);
+const { default: nodeAdapter } = require("@cloudbase/adapter-node");
+const cloudbase = require("@cloudbase/js-sdk");
 
 cloudbase.useAdapters(nodeAdapter);
 
