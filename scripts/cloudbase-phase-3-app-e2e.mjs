@@ -515,6 +515,31 @@ async function readBoundedAmapSuggestionDiagnostic(browser) {
   }
 }
 
+async function readBoundedActivitySaveDiagnostic(browser) {
+  try {
+    return await evaluate(
+      browser,
+      `(() => ({
+        alerts: [...document.querySelectorAll('[role="alert"]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 160))
+          .filter(Boolean)
+          .slice(-3),
+        dialogButtons: [...document.querySelectorAll('[role="dialog"] button')]
+          .filter((button) => button.getClientRects().length)
+          .map((button) => ({
+            disabled: button.disabled,
+            text: button.textContent?.trim().slice(0, 80),
+          }))
+          .slice(-8),
+        path: location.pathname,
+      }))()`,
+    );
+  } catch {
+    return { category: "diagnostic-unavailable" };
+  }
+}
+
 async function addAmapActivityThroughUi(browser, query, expectedCount) {
   await clickElement(
     browser,
@@ -590,7 +615,16 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
     );
     await clickButtonText(browser, "Save");
   }
-  await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "activity save", 45_000);
+  try {
+    await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "activity save", 45_000);
+  } catch (error) {
+    const diagnostic = await readBoundedActivitySaveDiagnostic(browser);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded activity-save diagnostic: ${JSON.stringify(
+        diagnostic,
+      )}`,
+    );
+  }
   await waitFor(
     browser,
     `document.querySelectorAll('[data-edit-item]').length >= ${expectedCount}`,

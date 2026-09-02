@@ -13,6 +13,10 @@ import { backendCapabilitiesByRegion } from "./capabilities/backend-capabilities
 import { cloudBasePhase4Status } from "./cloudbase/status.ts";
 import { cloudBaseScalarUuidRpc } from "./cloudbase/rpc-compat.ts";
 import {
+  cloudBasePlaceUpsertRecoveryKey,
+  recoverCloudBasePlaceUpsertResult,
+} from "./cloudbase/rpc-result-normalization.mjs";
+import {
   cloudBaseSessionFromData,
   cloudBaseSessionFromVerifiedTokens,
 } from "./cloudbase/session-data.ts";
@@ -271,6 +275,55 @@ test("CloudBase scalar UUID compatibility recovers only the validated SDK parser
       safeMessage: "failed",
     }),
   );
+});
+
+test("CloudBase place RPC recovery is limited to a canonical provider identity", () => {
+  const parameters = {
+    place_coordinate_system: "wgs84",
+    place_latitude: 31.24001,
+    place_longitude: 121.49001,
+    place_provider: "amap",
+    provider_place_id: "B0FFG6A2XR",
+    target_trip_id: "123e4567-e89b-42d3-a456-426614174000",
+  };
+  assert.deepEqual(cloudBasePlaceUpsertRecoveryKey("upsert_place_snapshot_v3", parameters, true), {
+    provider: "amap",
+    providerPlaceId: "B0FFG6A2XR",
+    tripId: parameters.target_trip_id,
+  });
+  assert.equal(
+    cloudBasePlaceUpsertRecoveryKey("upsert_place_snapshot_v3", parameters, false),
+    null,
+  );
+  assert.equal(
+    cloudBasePlaceUpsertRecoveryKey(
+      "upsert_place_snapshot_v3",
+      { ...parameters, place_coordinate_system: "gcj02" },
+      true,
+    ),
+    null,
+  );
+  assert.equal(cloudBasePlaceUpsertRecoveryKey("create_trip", parameters, true), null);
+});
+
+test("CloudBase place RPC recovery accepts one RLS-scoped UUID and preserves every failure", () => {
+  const original = {
+    data: null,
+    error: { message: "SyntaxError: value is not valid JSON" },
+  };
+  const id = "123e4567-e89b-42d3-a456-426614174000";
+  assert.deepEqual(recoverCloudBasePlaceUpsertResult(original, { data: [{ id }], error: null }), {
+    data: id,
+    error: null,
+  });
+  for (const lookup of [
+    { data: [], error: null },
+    { data: [{ id }, { id }], error: null },
+    { data: [{ id: "not-a-uuid" }], error: null },
+    { data: [{ id }], error: { message: "permission denied" } },
+  ]) {
+    assert.equal(recoverCloudBasePlaceUpsertResult(original, lookup), original);
+  }
 });
 
 test("CloudBase session normalization supports the SDK 3.9 Node user ID accessor", () => {
