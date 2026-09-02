@@ -29,6 +29,7 @@ const privateNames = [
   "GOOGLE_PLACES_API_KEY",
   "GOOGLE_ROUTES_API_KEY",
   "SUPABASE_SECRET_KEY",
+  "VERCEL_AUTOMATION_BYPASS_SECRET",
 ];
 
 function requireValue(name) {
@@ -55,6 +56,7 @@ if (selector === "global") {
       "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
       "NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID",
       "SUPABASE_SECRET_KEY",
+      "VERCEL_AUTOMATION_BYPASS_SECRET",
     ])
       requireValue(name);
   }
@@ -83,6 +85,7 @@ if (selector === "global") {
     "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
     "NEXT_PUBLIC_SUPABASE_URL",
     "SUPABASE_SECRET_KEY",
+    "VERCEL_AUTOMATION_BYPASS_SECRET",
   ]) {
     if (process.env[name]) throw new Error(`CN must not receive ${name}.`);
   }

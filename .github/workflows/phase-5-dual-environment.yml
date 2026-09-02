@@ -138,6 +138,7 @@ jobs:
       PHASE5_REQUIRE_BROWSER_SMOKE: "1"
       STORAGE_PROVIDER: supabase
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -288,10 +289,10 @@ jobs:
         run: |
           npm run build
           npm run check:build-secret-boundary
-      - name: Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite
-        run: npm run test:cloudbase-phase-3-live
       - name: Run real AMap route and place Web Service smoke
         run: npm run test:amap-phase-5-live
+      - name: Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite
+        run: npm run test:cloudbase-phase-3-live
       - name: Run private Storage, signed URL, and zero-residue suite
         if: ${{ always() }}
         run: npm run test:cloudbase-phase-4-storage

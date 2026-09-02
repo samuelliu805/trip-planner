@@ -455,6 +455,8 @@ async function readBoundedAmapSuggestionDiagnostic(browser, query) {
           ? String(payload.infocode)
           : "unknown";
         return {
+          category:
+            infoCode === "10009" ? "browser-key-platform-mismatch" : "provider-response",
           httpStatus: response.status,
           infoCode,
           providerStatus,

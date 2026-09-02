@@ -64,6 +64,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "node scripts/verify-cloudbase-migration-plan.mjs",
     "CLOUDBASE_CAM_SECRET_ID",
     "CLOUDBASE_CAM_SECRET_KEY",
+    "VERCEL_AUTOMATION_BYPASS_SECRET",
     "tcb fn invoke",
     "--require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY",
     "--require-runtime-env AMAP_JS_SECURITY_CODE",
@@ -73,6 +74,10 @@ test("Phase 5 static and live inventory stays executable", async () => {
   }
   assert.match(workflow, /@cloudbase\/cli@3\.8\.1/);
   assert.match(workflow, /GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(
+    workflow,
+    /VERCEL_AUTOMATION_BYPASS_SECRET: \$\{\{ secrets\.VERCEL_AUTOMATION_BYPASS_SECRET \}\}/,
+  );
   assert.doesNotMatch(workflow, /VERCEL_(?:TOKEN|ORG_ID|PROJECT_ID)/);
   assert.match(workflow, /version: 2\.116\.0/);
   assert.doesNotMatch(workflow, /supabase db reset/);
@@ -89,6 +94,10 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.match(workflow, /CloudBase cleanup invocation configuration is incomplete\./);
   assert.match(workflow, /node scripts\/describe-cloudbase-cam-login\.mjs "\$cam_login_output"/);
   assert.match(workflow, /verify scf:GetFunction and scf:Invoke/);
+  assert.ok(
+    workflow.indexOf("Run real AMap route and place Web Service smoke") <
+      workflow.indexOf("Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite"),
+  );
   assert.match(
     workflow,
     /Authenticate the CloudBase database audit CLI[\s\S]*Run private Storage[\s\S]*Invoke the deployed cleanup function[\s\S]*Restore the CloudBase database audit CLI identity[\s\S]*Independently execute cleanup and residue audit/,

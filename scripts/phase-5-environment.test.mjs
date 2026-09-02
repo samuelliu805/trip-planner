@@ -19,6 +19,7 @@ const globalEnvironment = {
   NEXT_PUBLIC_SUPABASE_URL: "https://supabase.example.invalid",
   STORAGE_PROVIDER: "supabase",
   SUPABASE_SECRET_KEY: "test-server-key",
+  VERCEL_AUTOMATION_BYPASS_SECRET: "test-preview-bypass",
 };
 
 const cnEnvironment = {
@@ -61,6 +62,15 @@ test("the Global live validator reports missing configuration names", () => {
   assert.doesNotMatch(result.stderr, /test-browser-key|test-server-key/);
 });
 
+test("the Global live validator requires the Preview automation bypass name only", () => {
+  const missing = { ...globalEnvironment };
+  delete missing.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const result = run(missing);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /global requires VERCEL_AUTOMATION_BYPASS_SECRET/);
+  assert.doesNotMatch(result.stderr, /test-preview-bypass/);
+});
+
 test("the CN live validator requires CAM function-invoke credential names", () => {
   const runCn = (environment) =>
     spawnSync(process.execPath, [script, "cn", "--live"], {
@@ -76,4 +86,14 @@ test("the CN live validator requires CAM function-invoke credential names", () =
     assert.match(result.stderr, new RegExp(`cn requires ${name}`));
     assert.doesNotMatch(result.stderr, /test-cam-secret-(?:id|key)/);
   }
+});
+
+test("the CN validator rejects the Global Preview bypass secret", () => {
+  const result = spawnSync(process.execPath, [script, "cn", "--live"], {
+    encoding: "utf8",
+    env: { ...cnEnvironment, VERCEL_AUTOMATION_BYPASS_SECRET: "global-only-value" },
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CN must not receive VERCEL_AUTOMATION_BYPASS_SECRET/);
+  assert.doesNotMatch(result.stderr, /global-only-value/);
 });

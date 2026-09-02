@@ -132,6 +132,55 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
+export function previewProtectionHeaders(secret, setCookie = false) {
+  const value = secret?.trim();
+  if (!value) throw new Error("VERCEL_AUTOMATION_BYPASS_SECRET is required for Global Preview.");
+  return {
+    "x-vercel-protection-bypass": value,
+    ...(setCookie ? { "x-vercel-set-bypass-cookie": "true" } : {}),
+  };
+}
+
+export function parsePreviewCookies(setCookieHeaders) {
+  return setCookieHeaders.flatMap((header) => {
+    const pair = header.split(";", 1)[0];
+    const separator = pair.indexOf("=");
+    if (separator <= 0) return [];
+    const name = pair.slice(0, separator).trim();
+    const value = pair.slice(separator + 1).trim();
+    if (
+      !/^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) ||
+      !value ||
+      /[\u0000-\u001f\u007f]/.test(value)
+    )
+      return [];
+    return [{ name, value }];
+  });
+}
+
+async function establishPreviewBypass(browser, baseUrl, secret) {
+  const response = await fetch(new URL("/login", baseUrl), {
+    headers: previewProtectionHeaders(secret, true),
+    redirect: "manual",
+    signal: AbortSignal.timeout(15_000),
+  });
+  const setCookieHeaders = response.headers.getSetCookie?.() ?? [];
+  const cookies = parsePreviewCookies(setCookieHeaders);
+  if (!cookies.length) {
+    throw new Error(
+      "Global Preview did not issue an automation bypass cookie; verify its protected-environment bypass secret.",
+    );
+  }
+  for (const cookie of cookies) {
+    const result = await browser.cdp.send(
+      "Network.setCookie",
+      { ...cookie, url: new URL(baseUrl).origin },
+      browser.sessionId,
+    );
+    if (!result.success) throw new Error("Global Preview bypass cookie could not be installed.");
+  }
+}
+
 async function navigate(browser, baseUrl, path) {
   await evaluate(browser, "window.__phase5NavigationSentinel = true");
   await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
@@ -170,16 +219,24 @@ async function startApplication(baseUrl) {
 
 export async function runGlobalBrowserSmoke(options) {
   const baseUrl = process.env.PHASE5_GLOBAL_BASE_URL ?? "http://127.0.0.1:3100";
+  const remotePreview = process.env.PHASE5_START_APP === "0";
+  const bypassSecret = remotePreview
+    ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()
+    : undefined;
   let browser;
   let server;
   try {
-    if (process.env.PHASE5_START_APP === "0") {
-      const response = await fetch(new URL("/login", baseUrl));
+    if (remotePreview) {
+      const response = await fetch(new URL("/login", baseUrl), {
+        headers: previewProtectionHeaders(bypassSecret),
+        signal: AbortSignal.timeout(15_000),
+      });
       if (!response.ok) throw new Error(`Global Preview returned ${response.status} for /login.`);
     } else {
       server = await startApplication(baseUrl);
     }
     browser = await launchBrowser();
+    if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
     await navigate(browser, baseUrl, "/login");
     await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
     await evaluate(
@@ -248,14 +305,15 @@ export async function runGlobalBrowserSmoke(options) {
     assert.doesNotMatch(publicBody, new RegExp(options.privateTitle));
     assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
 
+    const protectionHeaders = remotePreview ? previewProtectionHeaders(bypassSecret) : {};
     const unauthorizedCleanup = await fetch(new URL("/api/cron/share-image-cleanup", baseUrl), {
-      headers: { authorization: "Bearer wrong" },
+      headers: { ...protectionHeaders, authorization: "Bearer wrong" },
     });
     assert.equal(unauthorizedCleanup.status, 401);
     const cronSecret = process.env.CRON_SECRET?.trim();
     if (!cronSecret) throw new Error("CRON_SECRET is required for the cleanup route smoke.");
     const authorizedCleanup = await fetch(new URL("/api/cron/share-image-cleanup", baseUrl), {
-      headers: { authorization: `Bearer ${cronSecret}` },
+      headers: { ...protectionHeaders, authorization: `Bearer ${cronSecret}` },
     });
     assert.equal(authorizedCleanup.status, 200);
     const cleanup = await authorizedCleanup.json();
