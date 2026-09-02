@@ -51,6 +51,23 @@ export function initializeLiveClient(config) {
   return { app, auth: app.auth, db: app.rdb(), storage: app.storage };
 }
 
+export function initializeAdminLiveApp(config) {
+  const apiKey = config.CLOUDBASE_API_KEY;
+  if (!apiKey || apiKey.trim() !== apiKey || /[\r\n{}]/.test(apiKey)) {
+    throw new Error("CLOUDBASE_API_KEY has an invalid format");
+  }
+  if (cloudbase.version !== "3.9.0") throw new Error("CloudBase JS SDK version drift");
+  cloudbase.useAdapters(nodeAdapter);
+  return cloudbase.init({
+    accessKey: apiKey,
+    auth: { detectSessionInUrl: false },
+    env: config.CLOUDBASE_ENV_ID,
+    persistence: "none",
+    region: config.CLOUDBASE_REGION,
+    timeout: 45_000,
+  });
+}
+
 export function dataOrThrow(result, label) {
   if (result?.error) {
     const code = result.error.code || "request_failed";

@@ -171,14 +171,17 @@ test("checks required runtime variable names without exposing values", (t) => {
   payload.data.BaseInfo.ServerConfig.EnvParams = JSON.stringify({
     AMAP_JS_SECURITY_CODE: fakeSecret,
   });
-  assertSafeFailure(
-    run(
-      JSON.stringify(payload),
-      serviceName,
-      "--require-runtime-env",
-      "AMAP_JS_SECURITY_CODE",
-      "--require-runtime-env",
-      "AMAP_WEB_SERVICE_KEY",
-    ),
+  const missing = run(
+    JSON.stringify(payload),
+    serviceName,
+    "--require-runtime-env",
+    "AMAP_JS_SECURITY_CODE",
+    "--require-runtime-env",
+    "AMAP_WEB_SERVICE_KEY",
   );
+  assert.notEqual(missing.status, 0);
+  assert.equal(missing.stdout, "");
+  assert.match(missing.stderr, /Missing required CloudBase Run runtime variable names/);
+  assert.match(missing.stderr, /AMAP_WEB_SERVICE_KEY/);
+  assert.doesNotMatch(`${missing.stdout}${missing.stderr}`, new RegExp(fakeSecret));
 });

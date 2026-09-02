@@ -95,25 +95,34 @@ residue audit cannot turn a failed test green.
 
 The `cloudbase-pg-dev` GitHub environment must contain only controlled non-production values:
 
-| Kind                  | Names                                                                                                     |
-| --------------------- | --------------------------------------------------------------------------------------------------------- |
-| Supabase dev          | `SUPABASE_DEV_URL`, `SUPABASE_DEV_PUBLISHABLE_KEY`, `SUPABASE_DEV_SECRET_KEY`, `SUPABASE_DEV_CRON_SECRET` |
-| Vercel Preview lookup | `VERCEL_TOKEN`; variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`                                            |
-| Google Preview        | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`                              |
-| CloudBase dev         | `CLOUDBASE_API_KEY`, `CLOUDBASE_PUBLISHABLE_KEY`, controlled A/B passwords                                |
-| AMap                  | `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, `AMAP_WEB_SERVICE_KEY`                            |
+| Kind           | Names                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------------------------- |
+| Supabase dev   | `SUPABASE_DEV_URL`, `SUPABASE_DEV_PUBLISHABLE_KEY`, `SUPABASE_DEV_SECRET_KEY`, `SUPABASE_DEV_CRON_SECRET` |
+| Google Preview | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`; variable `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`                              |
+| CloudBase dev  | `CLOUDBASE_API_KEY`, `CLOUDBASE_PUBLISHABLE_KEY`, controlled A/B passwords                                |
+| AMap           | `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, `AMAP_WEB_SERVICE_KEY`                            |
 
 The Git-integrated Vercel Preview itself must use the controlled Supabase dev target, Preview-only
 Google keys, and the same exact candidate SHA. It must not inherit production Supabase credentials.
+The Global live job resolves that Preview through the exact-SHA GitHub Deployment record using the
+job's read-only `GITHUB_TOKEN` and `deployments: read`; it does not require a separate Vercel API
+credential and accepts only a successful `https://*.vercel.app` deployment origin.
 The CN target must not receive any Supabase or Google credential. Neither AMap server key may use a
 `NEXT_PUBLIC_` name.
 
 The two server-only AMap names must also already exist in the `trip-planner-cn` CloudBase Run
 runtime environment. GitHub job variables are build/test inputs and are not evidence of Run
 configuration. The CN live job reads CloudBase Run detail and validates only the presence of the
-names; the validator never renders their values. The deploy workflow applies the same preflight,
+names; when names are absent the validator renders only those missing names, never their values.
+The deploy workflow applies the same preflight,
 relies on the pinned CLI's source deploy to preserve the existing runtime environment, and repeats
 the name-only check after release. Initial runtime configuration remains a manual platform action.
+
+The deployed cleanup Event Function is invoked through the pinned CloudBase JS SDK and the
+environment-scoped server API key. This proves the deployed function through the application
+gateway without requiring account-level CAM function-invoke credentials. Its response is rebuilt
+as a bounded success contract before any result is printed; the independent handler and final
+residue audit still run on `always()` paths and cannot turn an earlier failure green.
 
 The provider-neutral place schema is introduced by mirrored migrations `20260901180000` and
 `20260901181000`. `upsert_place_snapshot_v3` accepts only Google or AMap snapshots marked WGS-84;

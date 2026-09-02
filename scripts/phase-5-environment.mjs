@@ -1,4 +1,5 @@
 const selector = process.argv[2];
+const live = process.argv[3] === "--live";
 
 const requiredBySelector = {
   cn: {
@@ -33,7 +34,9 @@ function requireValue(name) {
 }
 
 const expected = requiredBySelector[selector];
-if (!expected) throw new Error("Usage: phase-5-environment.mjs <global|cn>");
+if (!expected || (process.argv[3] && !live) || process.argv.length > 4) {
+  throw new Error("Usage: phase-5-environment.mjs <global|cn> [--live]");
+}
 for (const [name, value] of Object.entries(expected)) {
   if (process.env[name] !== value) throw new Error(`${selector} requires ${name}=${value}.`);
 }
@@ -44,6 +47,15 @@ for (const name of privateNames) {
 if (selector === "global") {
   requireValue("NEXT_PUBLIC_SUPABASE_URL");
   requireValue("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+  if (live) {
+    for (const name of [
+      "CRON_SECRET",
+      "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
+      "NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID",
+      "SUPABASE_SECRET_KEY",
+    ])
+      requireValue(name);
+  }
   for (const name of [
     "AMAP_JS_SECURITY_CODE",
     "AMAP_WEB_SERVICE_KEY",
@@ -71,6 +83,16 @@ if (selector === "global") {
     "SUPABASE_SECRET_KEY",
   ]) {
     if (process.env[name]) throw new Error(`CN must not receive ${name}.`);
+  }
+  if (live) {
+    for (const name of [
+      "AMAP_JS_SECURITY_CODE",
+      "AMAP_WEB_SERVICE_KEY",
+      "CLOUDBASE_API_KEY",
+      "CLOUDBASE_TEST_USER_A_PASSWORD",
+      "CLOUDBASE_TEST_USER_B_PASSWORD",
+    ])
+      requireValue(name);
   }
 }
 

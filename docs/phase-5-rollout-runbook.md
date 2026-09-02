@@ -58,8 +58,8 @@ waivable for seed rollout.
 ## Global Preview regression
 
 1. Record the candidate SHA, PR, change owner, and expected Git-integrated Preview deployment.
-2. Verify through the Vercel deployment API that the READY non-production deployment metadata has
-   that exact SHA. Do not use or promote a production target.
+2. Verify through the read-only GitHub Deployment API that the successful Preview deployment has
+   that exact SHA and an approved Vercel HTTPS origin. Do not use or promote a production target.
 3. Confirm Preview environment selection is Global/Supabase/Google and points only to controlled
    Supabase dev. Confirm no CloudBase or AMap variables exist.
 4. Dispatch the default-branch **CloudBase PG schema security** workflow from the exact candidate
@@ -83,6 +83,9 @@ waivable for seed rollout.
    cleanup invocation, immutable share, and the real UI flow from AMap search through persisted
    WGS-84 marker, route calculation, publish, and public route. Confirm the browser recorded zero
    Google requests and review final residue.
+   The cleanup invocation uses the environment-scoped CloudBase server API key rather than
+   account-level CAM invocation credentials; a bounded deployed-function result and the independent
+   residue audit are both required.
 4. Reconfirm the safe domain includes the final Run hostname and AMap browser-key restrictions.
 5. If all gates pass, request a separately approved internal smoke window for named employees using
    controlled username/password accounts. Start with the minimum cohort, no public registration,

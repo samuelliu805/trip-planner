@@ -62,9 +62,12 @@ test("Phase 5 static and live inventory stays executable", async () => {
     assert.match(workflow, new RegExp(command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
   assert.match(workflow, /@cloudbase\/cli@3\.8\.1/);
+  assert.match(workflow, /GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.doesNotMatch(workflow, /VERCEL_(?:TOKEN|ORG_ID|PROJECT_ID)/);
   assert.match(workflow, /version: 2\.58\.5/);
   assert.match(workflow, /migration up[\s\\]*\n[\s\S]{0,100}--dry-run --json/);
-  assert.match(workflow, /fn invoke trip-planner-cleanup/);
+  assert.match(workflow, /node scripts\/invoke-cloudbase-cleanup\.mjs/);
+  assert.doesNotMatch(workflow, /tcb fn invoke/);
   assert.ok((workflow.match(/if: \$\{\{ always\(\) \}\}/g) ?? []).length >= 7);
 });
 

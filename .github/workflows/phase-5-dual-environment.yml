@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: phase-5-dual-environment-${{ github.sha }}
@@ -137,9 +138,6 @@ jobs:
       PHASE5_REQUIRE_BROWSER_SMOKE: "1"
       STORAGE_PROVIDER: supabase
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
-      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -160,14 +158,7 @@ jobs:
       - run: npm ci
       - name: Require controlled Global Preview configuration
         run: |
-          npm run check:phase-5-environment -- global
-          test -n "$SUPABASE_SECRET_KEY"
-          test -n "$CRON_SECRET"
-          test -n "$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"
-          test -n "$NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID"
-          test -n "$VERCEL_ORG_ID"
-          test -n "$VERCEL_PROJECT_ID"
-          test -n "$VERCEL_TOKEN"
+          npm run check:phase-5-environment -- global --live
       - name: Build the exact Global selector and scan secrets
         run: |
           npm run build
@@ -181,6 +172,7 @@ jobs:
       - name: Require an exact-SHA Git-integrated Vercel Preview
         id: preview
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
         run: node scripts/verify-vercel-preview-deployment.mjs
       - name: Run Global Auth, CRUD, RPC, RLS, share, browser, and residue suite
@@ -252,16 +244,11 @@ jobs:
       - run: npm ci
       - name: Validate the approved CloudBase dev target and required secrets
         run: |
-          npm run check:phase-5-environment -- cn
+          npm run check:phase-5-environment -- cn --live
           npm run check:cloudbase-pg-target -- \
             --env-id trip-planner-cn-dev-d3bz94038b26 \
             --region ap-shanghai \
             --instance-id pgdb-l4lhtrv7
-          test -n "$CLOUDBASE_API_KEY"
-          test -n "$CLOUDBASE_TEST_USER_A_PASSWORD"
-          test -n "$CLOUDBASE_TEST_USER_B_PASSWORD"
-          test -n "$AMAP_JS_SECURITY_CODE"
-          test -n "$AMAP_WEB_SERVICE_KEY"
       - name: Authenticate the exactly pinned CloudBase CLI
         run: >-
           npx --yes --package @cloudbase/cli@3.8.1 tcb login
@@ -299,11 +286,7 @@ jobs:
         run: npm run test:cloudbase-phase-4-storage
       - name: Invoke the deployed cleanup function
         if: ${{ always() }}
-        run: >-
-          npx --yes --package @cloudbase/cli@3.8.1 tcb fn invoke trip-planner-cleanup
-          --env-id "$CLOUDBASE_ENV_ID"
-          --params '{}'
-          --json
+        run: node scripts/invoke-cloudbase-cleanup.mjs
       - name: Independently execute cleanup and residue audit
         if: ${{ always() }}
         run: npm run test:cloudbase-phase-4-cleanup

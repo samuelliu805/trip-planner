@@ -30,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: cloudbase-pg-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

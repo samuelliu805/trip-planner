@@ -2,6 +2,12 @@ import { readFirstJsonObject } from "./cloudbase-cli-json.mjs";
 
 const failureMessage = "CloudBase Run detail verification failed.\n";
 
+class MissingRuntimeEnvironmentNamesError extends Error {
+  constructor(names) {
+    super(`Missing required CloudBase Run runtime variable names: ${names.join(", ")}.`);
+  }
+}
+
 async function main() {
   const path = process.argv[2];
   const expectedServiceName = process.argv[3];
@@ -47,13 +53,10 @@ async function main() {
     if (!environment || typeof environment !== "object" || Array.isArray(environment)) {
       throw new Error();
     }
-    if (
-      requiredRuntimeEnvironmentNames.some(
-        (name) => !Object.prototype.hasOwnProperty.call(environment, name),
-      )
-    ) {
-      throw new Error();
-    }
+    const missingNames = requiredRuntimeEnvironmentNames.filter(
+      (name) => !Object.prototype.hasOwnProperty.call(environment, name),
+    );
+    if (missingNames.length) throw new MissingRuntimeEnvironmentNamesError(missingNames);
   }
   if (requireOnlineVersion) {
     const onlineVersions = payload?.data?.OnlineVersionInfos;
@@ -80,7 +83,11 @@ async function main() {
   }
 }
 
-main().catch(() => {
-  process.stderr.write(failureMessage);
+main().catch((error) => {
+  process.stderr.write(
+    error instanceof MissingRuntimeEnvironmentNamesError
+      ? `${failureMessage.trimEnd()} ${error.message}\n`
+      : failureMessage,
+  );
   process.exitCode = 1;
 });
