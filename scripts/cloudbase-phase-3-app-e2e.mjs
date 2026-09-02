@@ -541,14 +541,35 @@ async function readBoundedActivitySaveDiagnostic(browser) {
 }
 
 async function addAmapActivityThroughUi(browser, query, expectedCount) {
-  await clickElement(
-    browser,
-    `[...document.querySelectorAll('[data-add-item]')].find((button) =>
+  const addActivityExpression = `[...document.querySelectorAll('[data-add-item]')].find((button) =>
       button.getClientRects().length && !button.disabled &&
+      getComputedStyle(button).pointerEvents !== "none" &&
       (button.textContent.includes("Add activity") || button.getAttribute("aria-label")?.startsWith("Add activity on day 1"))
-    )`,
-    "Add activity",
-  );
+    )`;
+  try {
+    await waitFor(
+      browser,
+      `Boolean(${addActivityExpression})`,
+      "hydrated Add activity control",
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        addItemCount: document.querySelectorAll('[data-add-item]').length,
+        body: document.body.innerText.slice(0, 1200),
+        dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
+        matrixReady: Boolean(document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]')),
+        path: location.pathname,
+        selectedCellCount: document.querySelectorAll('[role="gridcell"][aria-selected="true"]').length,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded planner diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await clickElement(browser, addActivityExpression, "Add activity");
   const placeSelector = 'input[aria-label="Place or activity name"]';
   await waitFor(
     browser,
