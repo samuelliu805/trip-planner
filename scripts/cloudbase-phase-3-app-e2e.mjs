@@ -754,7 +754,7 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
   }
 }
 
-async function publishThroughUi(browser) {
+async function publishThroughUi(browser, tripId) {
   await openTripMenu(browser);
   await waitFor(
     browser,
@@ -772,12 +772,37 @@ async function publishThroughUi(browser) {
     "share publish control",
   );
   await clickButtonText(browser, "Create and publish");
-  await waitFor(
-    browser,
-    "Boolean(document.querySelector('[aria-label=\"Published shareable page\"]'))",
-    "published shareable page",
-    60_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      "Boolean(document.querySelector('[aria-label=\"Published shareable page\"]'))",
+      "published shareable page",
+      60_000,
+    );
+  } catch (error) {
+    const browserDiagnostic = await evaluate(
+      browser,
+      `({
+        dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
+        liveMessages: [...document.querySelectorAll('[role="dialog"] [aria-live]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 200))
+          .filter(Boolean)
+          .slice(-3),
+        publishAction: (() => {
+          const button = [...document.querySelectorAll('[role="dialog"] button')]
+            .find((candidate) => ['Create and publish', 'Publishing…'].includes(candidate.textContent.trim()));
+          return button ? { disabled: button.disabled, text: button.textContent.trim() } : null;
+        })(),
+      })`,
+    );
+    const persisted = await loadPersistedShareCount(tripId);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded share-publish diagnostic: ${JSON.stringify(
+        { browser: browserDiagnostic, persisted },
+      )}`,
+    );
+  }
   const publicUrl = await evaluate(
     browser,
     `(() => {
@@ -1171,6 +1196,19 @@ async function loadPersistedAmapEvidence(tripId) {
   }
 }
 
+async function loadPersistedShareCount(tripId) {
+  const config = loadLiveConfig();
+  const { auth, db } = initializeLiveClient(config);
+  try {
+    await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+    const result = await db.rpc("list_share_pages_v2", { target_trip_id: tripId });
+    if (result.error) return { count: null, lookupOk: false };
+    return { count: Array.isArray(result.data) ? result.data.length : null, lookupOk: true };
+  } finally {
+    await auth.signOut();
+  }
+}
+
 function assertPersistedAmapPlaces(evidence) {
   assert.equal(evidence.items.length, 2, "The real UI did not persist both AMap activities.");
   assert.equal(evidence.places.length, 2, "The real UI did not persist both AMap place rows.");
@@ -1394,7 +1432,7 @@ async function run() {
     const routeEvidence = await loadPersistedAmapEvidence(tripId);
     assertPersistedAmapRoute(routeEvidence);
     await assertRealAmapBrowserAdapter(browser);
-    const publicToken = await publishThroughUi(browser);
+    const publicToken = await publishThroughUi(browser, tripId);
     await verifyTabletFrozenLayers(browser);
     const forms = await captureMutationForms(browser);
 
