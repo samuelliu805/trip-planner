@@ -50,14 +50,16 @@ Missing ownership, notification routing, or change record is a release blocker.
   service and publish its runtime configuration only through a separately approved platform
   change; if the plan prevents that action, record a CloudBase support/plan-upgrade blocker.
 - Create or select a dedicated non-production CAM sub-account. Grant only
-  `tcb:CheckTcbService`, `tcb:DescribeBillingInfo`, `scf:GetFunction`, and `scf:InvokeFunction`. CLI `3.8.1`
+  `tcb:CheckTcbService`, `tcb:DescribeBillingInfo`, `scf:GetFunction`, and `scf:Invoke`. CLI `3.8.1`
   performs both TCB reads while logging in. The current CAM action table requires `resource: "*"`
   for these actions; a concrete function ARN is not authorized for the operation-level SCF APIs,
   even with the correct main-account UIN. Do not grant `tcb:*`, `scf:*`, or an administrator policy. Store
   its API key only as
   `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY` in the protected `cloudbase-pg-dev`
   GitHub Environment. The environment API Key cannot authorize CLI invocation of a private Event
-  Function. Do not put CAM credentials in CloudBase Run or repository-level variables.
+  Function. The pinned CLI sends the legacy SCF API action named `Invoke`; granting the distinct
+  `InvokeFunction` action does not authorize that request. Do not put CAM credentials in CloudBase
+  Run or repository-level variables.
 - Add the protected secrets and variables listed in
   [phase-5-verification.md](./phase-5-verification.md), then prove secret scans are zero.
 - Apply all reviewed candidate migrations to the approved CloudBase dev environment through a

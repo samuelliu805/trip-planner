@@ -97,7 +97,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.match(workflow, /CloudBase cleanup invocation configuration is incomplete\./);
   assert.match(workflow, /node scripts\/describe-cloudbase-cam-login\.mjs "\$cam_login_output"/);
   assert.match(workflow, /tcb:CheckTcbService and tcb:DescribeBillingInfo/);
-  assert.match(workflow, /verify scf:GetFunction and scf:InvokeFunction/);
+  assert.match(workflow, /node scripts\/describe-cloudbase-function-invoke\.mjs/);
   assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);
   assert.ok(
     workflow.indexOf("Run real AMap route and place Web Service smoke") <
