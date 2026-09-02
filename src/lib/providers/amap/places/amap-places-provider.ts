@@ -11,13 +11,13 @@ import type { AmapNamespace, AmapSearchStatus } from "../sdk-types.ts";
 import { normalizeAmapPlace } from "./normalize-amap-place.ts";
 
 const amapTypesByPrimaryType: Record<string, string> = {
-  airport: "交通设施服务",
-  bus_station: "交通设施服务",
-  cafe: "餐饮服务",
-  lodging: "住宿服务",
-  restaurant: "餐饮服务",
-  tourist_attraction: "风景名胜",
-  train_station: "交通设施服务",
+  airport: "150100",
+  bus_station: "150700",
+  cafe: "050500",
+  lodging: "100000",
+  restaurant: "050000",
+  tourist_attraction: "110000",
+  train_station: "150200",
 };
 
 function ensureActive(closed: boolean, signal?: AbortSignal) {
@@ -82,9 +82,10 @@ export function createAmapPlacesProvider(amap: AmapNamespace): PlacesProvider {
           // Starting any new query invalidates every prior opaque suggestion ID,
           // including when the newest request ends in no_data or an error.
           suggestions.clear();
-          autocomplete.setType?.(typeFilter(request.includedPrimaryTypes));
+          const requestedTypeFilter = typeFilter(request.includedPrimaryTypes);
+          autocomplete.setType?.(requestedTypeFilter);
           try {
-            const { result, status } = await callbackResult<{
+            let response = await callbackResult<{
               tips?: Array<{
                 address?: string | string[];
                 district?: string;
@@ -97,6 +98,19 @@ export function createAmapPlacesProvider(amap: AmapNamespace): PlacesProvider {
             });
             ensureActive(closed, request.signal);
             if (requestGeneration !== generation) throw new PlaceProviderError("cancelled");
+            // AMap categorizes some landmarks differently across cities. Preserve
+            // the requested category first, then retry the same user query once
+            // without a category only when AMap reports no data.
+            if (response.status === "no_data" && requestedTypeFilter) {
+              autocomplete.setType?.("");
+              response = await callbackResult({
+                invoke: (callback) => autocomplete.search(request.input, callback),
+                signal: request.signal,
+              });
+              ensureActive(closed, request.signal);
+              if (requestGeneration !== generation) throw new PlaceProviderError("cancelled");
+            }
+            const { result, status } = response;
             if (status === "no_data") return [];
             if (status !== "complete" || typeof result === "string")
               throw new PlaceProviderError("search_failed");

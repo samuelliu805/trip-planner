@@ -433,6 +433,40 @@ async function setInputValue(browser, selector, value) {
   assert.equal(changed, true, `${selector} was not available.`);
 }
 
+async function readBoundedAmapSuggestionDiagnostic(browser, query) {
+  const apiKey = process.env.NEXT_PUBLIC_AMAP_JS_API_KEY;
+  if (!apiKey) return { category: "missing-browser-key" };
+  try {
+    return await evaluate(
+      browser,
+      `(async () => {
+        const url = new URL("/_AMapService/v3/assistant/inputtips", location.origin);
+        url.searchParams.set("city", "全国");
+        url.searchParams.set("datatype", "poi");
+        url.searchParams.set("key", ${JSON.stringify(apiKey)});
+        url.searchParams.set("keywords", ${JSON.stringify(query)});
+        url.searchParams.set("output", "JSON");
+        const response = await fetch(url, { credentials: "same-origin" });
+        const payload = await response.json().catch(() => null);
+        const providerStatus = ["0", "1"].includes(String(payload?.status))
+          ? String(payload.status)
+          : "unknown";
+        const infoCode = /^\\d{1,8}$/.test(String(payload?.infocode))
+          ? String(payload.infocode)
+          : "unknown";
+        return {
+          httpStatus: response.status,
+          infoCode,
+          providerStatus,
+          tipCount: Array.isArray(payload?.tips) ? payload.tips.length : 0,
+        };
+      })()`,
+    );
+  } catch {
+    return { category: "diagnostic-unavailable" };
+  }
+}
+
 async function addAmapActivityThroughUi(browser, query, expectedCount) {
   await clickElement(
     browser,
@@ -449,12 +483,28 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
     "activity place search",
   );
   await setInputValue(browser, placeSelector, query);
-  await waitFor(
-    browser,
-    `Boolean([...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length))`,
-    `AMap suggestions for ${query}`,
-    45_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      `Boolean([...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length))`,
+      `AMap suggestions for ${query}`,
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await readBoundedAmapSuggestionDiagnostic(browser, query);
+    const visibleError = await evaluate(
+      browser,
+      `document.querySelector('[role="alert"]')?.textContent?.trim().slice(0, 160) ?? ""`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded AMap diagnostic: ${JSON.stringify(
+        {
+          diagnostic,
+          visibleError,
+        },
+      )}`,
+    );
+  }
   await clickElement(
     browser,
     `[...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length)`,

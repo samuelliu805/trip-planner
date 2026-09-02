@@ -106,6 +106,7 @@ type DetailCallback = (
 
 function placesHarness() {
   const autocompleteCallbacks: AutoCallback[] = [];
+  const autocompleteTypes: string[] = [];
   const detailCallbacks: DetailCallback[] = [];
   let autocompleteClosed = 0;
   let placeSearchCleared = 0;
@@ -116,7 +117,9 @@ function placesHarness() {
     search(_input: string, callback: AutoCallback) {
       autocompleteCallbacks.push(callback);
     }
-    setType() {}
+    setType(type: string) {
+      autocompleteTypes.push(type);
+    }
   }
   class PlaceSearch {
     clear() {
@@ -130,10 +133,42 @@ function placesHarness() {
   return {
     amap,
     autocompleteCallbacks,
+    autocompleteTypes,
     counters: () => ({ autocompleteClosed, placeSearchCleared }),
     detailCallbacks,
   };
 }
+
+test("AMap Places retries a typed no-data query once without weakening stale protection", async () => {
+  const harness = placesHarness();
+  const session = createAmapPlacesProvider(harness.amap).createSession();
+  const suggestions = session.fetchSuggestions({
+    includedPrimaryTypes: ["tourist_attraction"],
+    input: "上海外滩",
+  });
+  assert.deepEqual(harness.autocompleteTypes, ["110000"]);
+  harness.autocompleteCallbacks[0]("no_data", {});
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(harness.autocompleteTypes, ["110000", ""]);
+  assert.equal(harness.autocompleteCallbacks.length, 2);
+  harness.autocompleteCallbacks[1]("complete", {
+    tips: [{ address: "中山东一路", district: "黄浦区", id: "bund", name: "外滩" }],
+  });
+  assert.deepEqual(await suggestions, [
+    { id: "bund", primary: "外滩", secondary: "黄浦区 · 中山东一路" },
+  ]);
+
+  const next = session.fetchSuggestions({ input: "上海人民广场" });
+  harness.autocompleteCallbacks[2]("complete", {
+    tips: [{ id: "square", name: "人民广场" }],
+  });
+  await next;
+  await assert.rejects(
+    session.resolveSuggestion("bund"),
+    (error) => error instanceof PlaceProviderError && error.code === "invalid_response",
+  );
+  session.close();
+});
 
 test("AMap Places drops stale results and closes each completed session", async () => {
   const harness = placesHarness();
