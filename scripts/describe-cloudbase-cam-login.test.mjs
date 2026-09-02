@@ -18,8 +18,15 @@ test("classifies CAM credential and policy failures without returning CLI text",
     classifyCloudBaseCamLoginFailure({
       error: { code: "UnauthorizedOperation", message: "tcb:CheckTcbService denied" },
     }),
-    "authorization",
+    "tcb-service-authorization",
   );
+  assert.equal(
+    classifyCloudBaseCamLoginFailure({
+      error: { code: "UnauthorizedOperation", message: "tcb:DescribeBillingInfo denied" },
+    }),
+    "billing-info-authorization",
+  );
+  assert.match(camLoginFailureGuidance("billing-info-authorization"), /tcb:DescribeBillingInfo/);
   assert.doesNotMatch(camLoginFailureGuidance("credential-authentication"), /leaked-secret-value/);
 });
 
@@ -30,7 +37,7 @@ test("classifies non-JSON and localized CAM CLI failures without returning their
   );
   assert.equal(
     classifyCloudBaseCamLoginText("当前身份没有权限调用 tcb:CheckTcbService"),
-    "authorization",
+    "tcb-service-authorization",
   );
   assert.equal(
     classifyCloudBaseCamLoginText("SecretKey 无效；do-not-repeat-this-value"),

@@ -316,6 +316,7 @@ jobs:
             --apiKey "$CLOUDBASE_CAM_SECRET_KEY" \
             --json > "$cam_login_output" 2>&1; then
             node scripts/describe-cloudbase-cam-login.mjs "$cam_login_output"
+            echo "Required login actions: tcb:CheckTcbService and tcb:DescribeBillingInfo (resource *)."
             exit 1
           fi
           if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb fn invoke \

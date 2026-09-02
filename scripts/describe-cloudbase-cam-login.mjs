@@ -6,6 +6,10 @@ import { parseFirstJsonObject } from "./cloudbase-cli-json.mjs";
 
 export function classifyCloudBaseCamLoginText(input) {
   const text = stripVTControlCharacters(String(input)).slice(0, 65_536).toLowerCase();
+  const isAuthorizationFailure =
+    /unauthorized|not authorized|permission|access denied|无权限|没有权限|未授权|拒绝访问/.test(
+      text,
+    );
   if (
     /secret.?id.*(?:not found|invalid|does not exist)|invalid.*secret.?id|secretid.*(?:不存在|无效|错误)/.test(
       text,
@@ -18,12 +22,11 @@ export function classifyCloudBaseCamLoginText(input) {
     )
   )
     return "credential-rejected";
-  if (
-    /unauthorized|not authorized|permission|access denied|checktcbservice|无权限|没有权限|未授权|拒绝访问/.test(
-      text,
-    )
-  )
-    return "authorization";
+  if (text.includes("describebillinginfo") && isAuthorizationFailure)
+    return "billing-info-authorization";
+  if (text.includes("checktcbservice") && isAuthorizationFailure)
+    return "tcb-service-authorization";
+  if (isAuthorizationFailure) return "authorization";
   if (
     /authentication failed|authfailure|credential|cam authentication|身份验证失败|认证失败|鉴权失败|登录失败/.test(
       text,
@@ -45,14 +48,19 @@ export function classifyCloudBaseCamLoginFailure(payload) {
 
 export function camLoginFailureGuidance(category) {
   switch (category) {
+    case "billing-info-authorization":
+      return "Add tcb:DescribeBillingInfo with resource * to the dedicated CAM identity.";
+    case "tcb-service-authorization":
+      return "Verify that the CAM identity can call tcb:CheckTcbService and tcb:DescribeBillingInfo.";
     case "authorization":
-      return "Verify that the CAM identity can call tcb:CheckTcbService.";
+      return "Verify the dedicated CAM identity allows tcb:CheckTcbService, tcb:DescribeBillingInfo, scf:GetFunction, and scf:Invoke.";
     case "credential-not-found":
     case "credential-rejected":
-    case "credential-authentication":
       return "Replace both GitHub Environment CAM secrets from the same active SecretId/SecretKey pair.";
+    case "credential-authentication":
+      return "Verify the active CAM credential pair and allow tcb:CheckTcbService plus tcb:DescribeBillingInfo; the CLI may collapse a policy denial into a generic authentication failure.";
     default:
-      return "Verify the CAM credential pair and tcb:CheckTcbService permission.";
+      return "Verify the CAM credential pair plus tcb:CheckTcbService and tcb:DescribeBillingInfo permissions.";
   }
 }
 
