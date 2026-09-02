@@ -28,6 +28,10 @@ export function prepareCloudBaseRun(projectRoot) {
   if (existsSync(publicDirectory)) {
     cpSync(publicDirectory, join(output, "public"), { recursive: true });
   }
+  cpSync(
+    join(projectRoot, "scripts/cloudbase-runtime-entrypoint.mjs"),
+    join(output, "cloudbase-runtime-entrypoint.mjs"),
+  );
   cpSync(join(projectRoot, "cloudbase/run/Dockerfile"), join(output, "Dockerfile"));
 
   return output;

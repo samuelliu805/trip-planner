@@ -60,6 +60,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
     "CLOUDBASE_CAM_SECRET_ID",
     "CLOUDBASE_CAM_SECRET_KEY",
     "tcb fn invoke",
+    "--require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY",
     "--require-runtime-env AMAP_JS_SECURITY_CODE",
     "--require-runtime-env AMAP_WEB_SERVICE_KEY",
   ]) {

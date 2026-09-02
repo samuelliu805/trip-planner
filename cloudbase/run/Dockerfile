@@ -9,4 +9,4 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --chown=nextjs:nodejs . .
 USER nextjs
 EXPOSE 8080
-CMD ["node", "server.js"]
+CMD ["node", "cloudbase-runtime-entrypoint.mjs"]

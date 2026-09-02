@@ -110,10 +110,11 @@ credential and accepts only a successful `https://*.vercel.app` deployment origi
 The CN target must not receive any Supabase or Google credential. Neither AMap server key may use a
 `NEXT_PUBLIC_` name.
 
-The two server-only AMap names must also already exist in the `trip-planner-cn` CloudBase Run
-runtime environment. GitHub job variables are build/test inputs and are not evidence of Run
-configuration. The CN live job reads CloudBase Run detail and validates only the presence of the
-names; when names are absent the validator renders only those missing names, never their values.
+The public AMap browser key and the two server-only AMap names must also already exist in the
+`trip-planner-cn` CloudBase Run runtime environment. GitHub job variables are build/test inputs and
+are not evidence of Run configuration. The CN live job reads CloudBase Run detail and validates
+only the presence of the names; when names are absent the validator renders only those missing
+names, never their values.
 The deploy workflow applies the same preflight,
 relies on the pinned CLI's source deploy to preserve the existing runtime environment, and repeats
 the name-only check after release. Initial runtime configuration remains a manual platform action.

@@ -268,6 +268,7 @@ jobs:
             --json > "$detail_output"
           node scripts/verify-cloudbase-run-detail.mjs \
             "$detail_output" trip-planner-cn \
+            --require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY \
             --require-runtime-env AMAP_JS_SECURITY_CODE \
             --require-runtime-env AMAP_WEB_SERVICE_KEY
       - name: Verify migration list and dry run without applying changes

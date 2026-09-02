@@ -21,16 +21,20 @@ Missing ownership, notification routing, or change record is a release blocker.
 
 ## Manual prerequisites
 
-- Enable scoped CloudBase logging/CLS for Run, PG, Auth, Storage, and the cleanup function. Configure
-  and test error/latency/resource alerts to the approved destination. CLS is currently disabled, so
-  this is a prerequisite, not completed evidence.
+- CLS is now open and `trip-planner-cleanup` has an assigned Shanghai logset/topic. CloudRun already
+  collects `stdout` in its service Log tab. Configure and test the remaining Run/function
+  error/latency/resource alert routes to the approved destination; an enabled log service alone is
+  not alert-routing evidence.
 - Confirm Vercel Preview runtime logs and an approved error notification path. If Drains are not
   available on the plan, record the dashboard/CLI log owner and polling interval.
 - Restrict Global Preview to controlled Supabase dev credentials. Restrict AMap and Google browser
   keys by the appropriate Preview/CN hostname and API scope.
-- Configure the server-only names `AMAP_JS_SECURITY_CODE` and `AMAP_WEB_SERVICE_KEY` in the
+- Configure `NEXT_PUBLIC_AMAP_JS_API_KEY`, `AMAP_JS_SECURITY_CODE`, and `AMAP_WEB_SERVICE_KEY` in the
   `trip-planner-cn` CloudBase Run runtime through the approved platform change process. A GitHub
   environment variable does not configure CloudBase Run. Record names/presence only, never values.
+  CloudBase does not expose service runtime variables while building a Dockerfile. The root
+  Dockerfile therefore builds with non-secret markers and injects the public runtime values into
+  the Next.js output at container start; server-only AMap values never enter the client bundle.
   A paused service cannot satisfy this prerequisite or the live gate. Resume the approved dev
   service and publish its runtime configuration only through a separately approved platform
   change; if the plan prevents that action, record a CloudBase support/plan-upgrade blocker.
@@ -145,9 +149,12 @@ Status: **not proven**. The following procedure must be executed against non-pro
    deletion. Retain only redacted evidence and the approved backup artifact per policy.
 
 For Supabase, use a disposable local/project/branch target and the supported CLI/console backup
-workflow; never run a remote reset against production. For CloudBase, if the shared plan cannot
-produce and restore a backup to a disposable environment, stop and open the plan-upgrade/support
-action. A backup export without a successful restore is not proof.
+workflow; never run a remote reset against production. For CloudBase, the current Personal plan
+does not include database rollback, and the provisioned PG database is a shared CloudBase-managed
+instance rather than a separately listed TencentDB for PostgreSQL instance. There is no valid
+TencentDB backup page for this target. Upgrade the environment to Standard or higher, or obtain a
+documented support-approved disposable restore path, before attempting the drill. A logical export
+can supplement the evidence but cannot replace the required provider-supported restore proof.
 
 ## Rollback procedures
 
