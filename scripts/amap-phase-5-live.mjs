@@ -48,14 +48,19 @@ const boundedFetch = async (input, init = {}) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   assert.equal(url.protocol, "https:");
   assert.equal(url.hostname, "restapi.amap.com");
-  requestedUrls.push(url.hostname);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12_000);
-  try {
-    return await fetch(url, { ...init, redirect: "error", signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    requestedUrls.push(url.hostname);
+    const timeoutSignal = AbortSignal.timeout(12_000);
+    const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
+    try {
+      const response = await fetch(url, { ...init, redirect: "error", signal });
+      if (response.status < 500 || attempt === 3) return response;
+    } catch (error) {
+      if (init.signal?.aborted || attempt === 3) throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, attempt * 250));
   }
+  throw new Error("AMap request exhausted its bounded retry budget.");
 };
 
 const routeProvider = createAmapRoutesProvider({ apiKey: key, fetchImplementation: boundedFetch });
