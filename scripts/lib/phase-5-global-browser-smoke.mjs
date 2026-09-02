@@ -179,6 +179,27 @@ export function parsePreviewCookies(setCookieHeaders) {
   });
 }
 
+export async function requireAuthorizedCleanup(response) {
+  if (response.status === 200) {
+    const cleanup = await response.json();
+    assert.equal("error" in cleanup, false);
+    return cleanup;
+  }
+  if (response.status === 401) {
+    const responseType = response.headers.get("content-type") ?? "";
+    const body = (await response.text()).slice(0, 64).trim();
+    if (responseType.includes("text/plain") && body === "Unauthorized") {
+      throw new Error(
+        "Global Preview rejected cleanup authorization. Its CRON_SECRET must exactly match the cloudbase-pg-dev SUPABASE_DEV_CRON_SECRET.",
+      );
+    }
+    throw new Error(
+      "Vercel rejected the protected Preview request before it reached the cleanup route. Verify VERCEL_AUTOMATION_BYPASS_SECRET.",
+    );
+  }
+  throw new Error(`Global Preview cleanup route returned bounded status ${response.status}.`);
+}
+
 async function establishPreviewBypass(browser, baseUrl, secret) {
   const response = await fetch(new URL("/login", baseUrl), {
     headers: previewProtectionHeaders(secret, true),
@@ -355,9 +376,7 @@ export async function runGlobalBrowserSmoke(options) {
     const authorizedCleanup = await fetch(new URL("/api/cron/share-image-cleanup", baseUrl), {
       headers: { ...protectionHeaders, authorization: `Bearer ${cronSecret}` },
     });
-    assert.equal(authorizedCleanup.status, 200);
-    const cleanup = await authorizedCleanup.json();
-    assert.equal("error" in cleanup, false);
+    await requireAuthorizedCleanup(authorizedCleanup);
   } finally {
     if (browser) await browser.close();
     if (server) await stopChild(server, { processGroup: true });

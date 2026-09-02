@@ -324,7 +324,7 @@ jobs:
             --env-id "$CLOUDBASE_ENV_ID" \
             --params '{"source":"phase5-verification"}' \
             --json > "$invocation_output" 2>&1; then
-            echo "CloudBase cleanup invocation failed after CAM login; verify scf:GetFunction and scf:Invoke."
+            echo "CloudBase cleanup invocation failed after CAM login; verify scf:GetFunction and scf:InvokeFunction."
             exit 1
           fi
           node scripts/invoke-cloudbase-cleanup.mjs "$invocation_output"

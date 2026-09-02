@@ -5,6 +5,7 @@ import {
   clearBrowserSessionForPublicShare,
   parsePreviewCookies,
   previewProtectionHeaders,
+  requireAuthorizedCleanup,
 } from "./lib/phase-5-global-browser-smoke.mjs";
 
 test("builds Vercel Preview protection headers without putting the secret in a URL", () => {
@@ -24,6 +25,29 @@ test("accepts only bounded cookie name/value pairs from the protected Preview re
       "control=bad\u0001value",
     ]),
     [{ name: "_vercel_jwt", value: "opaque-value" }],
+  );
+});
+
+test("classifies cleanup authorization without exposing credential values", async () => {
+  await assert.rejects(
+    () =>
+      requireAuthorizedCleanup(
+        new Response("Unauthorized", {
+          headers: { "content-type": "text/plain;charset=UTF-8" },
+          status: 401,
+        }),
+      ),
+    /CRON_SECRET must exactly match.*SUPABASE_DEV_CRON_SECRET/,
+  );
+  await assert.rejects(
+    () =>
+      requireAuthorizedCleanup(
+        new Response("Authentication Required", {
+          headers: { "content-type": "text/html" },
+          status: 401,
+        }),
+      ),
+    /VERCEL_AUTOMATION_BYPASS_SECRET/,
   );
 });
 

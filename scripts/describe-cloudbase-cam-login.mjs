@@ -53,7 +53,7 @@ export function camLoginFailureGuidance(category) {
     case "tcb-service-authorization":
       return "Verify that the CAM identity can call tcb:CheckTcbService and tcb:DescribeBillingInfo.";
     case "authorization":
-      return "Verify the dedicated CAM identity allows tcb:CheckTcbService, tcb:DescribeBillingInfo, scf:GetFunction, and scf:Invoke.";
+      return "Verify the dedicated CAM identity allows tcb:CheckTcbService, tcb:DescribeBillingInfo, scf:GetFunction, and scf:InvokeFunction.";
     case "credential-not-found":
     case "credential-rejected":
       return "Replace both GitHub Environment CAM secrets from the same active SecretId/SecretKey pair.";

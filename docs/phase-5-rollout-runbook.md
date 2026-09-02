@@ -50,7 +50,7 @@ Missing ownership, notification routing, or change record is a release blocker.
   service and publish its runtime configuration only through a separately approved platform
   change; if the plan prevents that action, record a CloudBase support/plan-upgrade blocker.
 - Create or select a dedicated non-production CAM sub-account. Grant only
-  `tcb:CheckTcbService`, `tcb:DescribeBillingInfo`, `scf:GetFunction`, and `scf:Invoke`. CLI `3.8.1`
+  `tcb:CheckTcbService`, `tcb:DescribeBillingInfo`, `scf:GetFunction`, and `scf:InvokeFunction`. CLI `3.8.1`
   performs both TCB reads while logging in. The current CAM action table requires `resource: "*"`
   for these actions; a concrete function ARN is not authorized for the operation-level SCF APIs,
   even with the correct main-account UIN. Do not grant `tcb:*`, `scf:*`, or an administrator policy. Store

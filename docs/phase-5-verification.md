@@ -147,7 +147,7 @@ deployed cleanup function is therefore invoked through CloudBase CLI `3.8.1` aft
 login using `CLOUDBASE_CAM_SECRET_ID` and `CLOUDBASE_CAM_SECRET_KEY`. These must belong to a
 dedicated non-production sub-account. The pinned CLI first requires `tcb:CheckTcbService`, then
 reads the environment plan through `tcb:DescribeBillingInfo`, then uses `scf:GetFunction` and
-`scf:Invoke`. Tencent CAM currently classifies the SCF operations as
+`scf:InvokeFunction`. Tencent CAM currently classifies the SCF operations as
 operation-level APIs, so their policy resource must be `*`; a function ARN is rejected even when
 its main-account UIN is correct. Compensate for that platform granularity by granting only those
 four actions to a dev-only identity—never `scf:*` or an administrator policy—and by storing its
