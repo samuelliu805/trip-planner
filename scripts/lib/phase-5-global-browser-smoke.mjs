@@ -59,52 +59,78 @@ async function launchBrowser() {
     { stdio: ["ignore", "ignore", "pipe"] },
   );
   let diagnostics = "";
-  const websocketUrl = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Chrome did not expose CDP.")), 15_000);
-    child.stderr.on("data", (chunk) => {
-      diagnostics = `${diagnostics}${chunk}`.slice(-2_000);
-      const match = diagnostics.match(/DevTools listening on (ws:\/\/[^\s]+)/);
-      if (!match) return;
-      clearTimeout(timer);
-      resolve(match[1]);
+  let socket;
+  try {
+    const websocketUrl = await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Chrome did not expose CDP. ${diagnostics}`)),
+        30_000,
+      );
+      child.stderr.on("data", (chunk) => {
+        diagnostics = `${diagnostics}${chunk}`.slice(-2_000);
+        const match = diagnostics.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+        if (!match) return;
+        clearTimeout(timer);
+        resolve(match[1]);
+      });
+      child.once("exit", (code) => {
+        clearTimeout(timer);
+        reject(new Error(`Chrome exited before CDP became ready (${code}). ${diagnostics}`));
+      });
     });
-    child.once("exit", (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Chrome exited before CDP became ready (${code}).`));
+    socket = new WebSocket(websocketUrl);
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("Chrome CDP connection timed out.")), 15_000);
+      socket.addEventListener(
+        "open",
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true },
+      );
+      socket.addEventListener(
+        "error",
+        () => {
+          clearTimeout(timer);
+          reject(new Error("Chrome CDP connection failed."));
+        },
+        { once: true },
+      );
     });
-  });
-  const socket = new WebSocket(websocketUrl);
-  await new Promise((resolve, reject) => {
-    socket.addEventListener("open", resolve, { once: true });
-    socket.addEventListener("error", reject, { once: true });
-  });
-  const cdp = new CdpClient(socket);
-  const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
-  const { sessionId } = await cdp.send("Target.attachToTarget", { flatten: true, targetId });
-  await Promise.all([
-    cdp.send("Page.enable", {}, sessionId),
-    cdp.send("Runtime.enable", {}, sessionId),
-    cdp.send("Network.enable", {}, sessionId),
-  ]);
-  await cdp.send(
-    "Emulation.setDeviceMetricsOverride",
-    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
-    sessionId,
-  );
-  return {
-    cdp,
-    sessionId,
-    async close() {
-      try {
-        await cdp.send("Browser.close");
-      } catch {
-        // The process cleanup handles an already-closed browser.
-      }
-      socket.close();
-      await stopChild(child);
-      await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
-    },
-  };
+    const cdp = new CdpClient(socket);
+    const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
+    const { sessionId } = await cdp.send("Target.attachToTarget", { flatten: true, targetId });
+    await Promise.all([
+      cdp.send("Page.enable", {}, sessionId),
+      cdp.send("Runtime.enable", {}, sessionId),
+      cdp.send("Network.enable", {}, sessionId),
+    ]);
+    await cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+      sessionId,
+    );
+    return {
+      cdp,
+      sessionId,
+      async close() {
+        try {
+          await cdp.send("Browser.close");
+        } catch {
+          // The process cleanup handles an already-closed browser.
+        }
+        socket.close();
+        await stopChild(child);
+        await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+      },
+    };
+  } catch (error) {
+    socket?.close();
+    await stopChild(child);
+    await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+    throw error;
+  }
 }
 
 async function evaluate(browser, expression) {
