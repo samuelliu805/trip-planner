@@ -58,7 +58,7 @@ async function main() {
     throw new NonNormalServiceError(expectedServiceName);
   }
   if (requiredRuntimeEnvironmentNames.length) {
-    const rawEnvironment = baseInfo.ServerConfig?.EnvParams;
+    const rawEnvironment = payload?.data?.ServerConfig?.EnvParams;
     if (typeof rawEnvironment !== "string" || !rawEnvironment.trim()) {
       throw new RuntimeEnvironmentMetadataError(requiredRuntimeEnvironmentNames);
     }

@@ -16,9 +16,9 @@ function detail({ name = serviceName, status = "normal", extra = {} } = {}) {
       BaseInfo: {
         ServerName: name,
         Status: status,
-        ServerConfig: {
-          EnvParams: JSON.stringify({ CLOUDBASE_APIKEY: fakeSecret }),
-        },
+      },
+      ServerConfig: {
+        EnvParams: JSON.stringify({ CLOUDBASE_APIKEY: fakeSecret }),
       },
       ...extra,
     },
@@ -155,7 +155,7 @@ test("requires a fully online version for the post-deploy gate", async (t) => {
 test("checks required runtime variable names without exposing values", (t) => {
   const run = createRunner(t);
   const payload = detail();
-  payload.data.BaseInfo.ServerConfig.EnvParams = JSON.stringify({
+  payload.data.ServerConfig.EnvParams = JSON.stringify({
     AMAP_JS_SECURITY_CODE: fakeSecret,
     AMAP_WEB_SERVICE_KEY: `${fakeSecret}-web`,
     EXISTING_RUNTIME_SETTING: "preserved",
@@ -172,7 +172,7 @@ test("checks required runtime variable names without exposing values", (t) => {
   assert.match(result.stdout, /AMAP_JS_SECURITY_CODE, AMAP_WEB_SERVICE_KEY/);
   assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
 
-  payload.data.BaseInfo.ServerConfig.EnvParams = JSON.stringify({
+  payload.data.ServerConfig.EnvParams = JSON.stringify({
     AMAP_JS_SECURITY_CODE: fakeSecret,
   });
   const missing = run(
@@ -194,7 +194,7 @@ test("reports required names when runtime metadata is unavailable", (t) => {
   const run = createRunner(t);
   for (const unavailable of [undefined, "", "not-json", JSON.stringify([])]) {
     const payload = detail();
-    payload.data.BaseInfo.ServerConfig.EnvParams = unavailable;
+    payload.data.ServerConfig.EnvParams = unavailable;
     const result = run(
       JSON.stringify(payload),
       serviceName,
@@ -209,4 +209,24 @@ test("reports required names when runtime metadata is unavailable", (t) => {
     assert.match(result.stderr, /AMAP_JS_SECURITY_CODE, AMAP_WEB_SERVICE_KEY/);
     assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
   }
+});
+
+test("rejects runtime metadata nested under BaseInfo instead of the API ServerConfig field", (t) => {
+  const run = createRunner(t);
+  const payload = detail();
+  delete payload.data.ServerConfig;
+  payload.data.BaseInfo.ServerConfig = {
+    EnvParams: JSON.stringify({ AMAP_JS_SECURITY_CODE: fakeSecret }),
+  };
+  const result = run(
+    JSON.stringify(payload),
+    serviceName,
+    "--require-runtime-env",
+    "AMAP_JS_SECURITY_CODE",
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /Unable to inspect CloudBase Run runtime environment metadata/);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
 });
