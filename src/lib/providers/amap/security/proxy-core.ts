@@ -52,6 +52,65 @@ function safeContentType(value: string | null) {
     : "application/octet-stream";
 }
 
+function providerErrorCategory(body: string) {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const status = "status" in payload ? String(payload.status) : "";
+  if (status !== "0") return null;
+  const code = "infocode" in payload ? String(payload.infocode) : "";
+  const categories: Record<string, string> = {
+    "10001": "invalid-browser-key",
+    "10002": "service-unavailable",
+    "10003": "quota",
+    "10004": "throttled",
+    "10005": "ip-restriction",
+    "10006": "domain-restriction",
+    "10007": "signature",
+    "10008": "security-code",
+    "10009": "browser-key-platform",
+    "10012": "permission",
+  };
+  return categories[code] ?? "provider-rejected";
+}
+
+function trustedBrowserHeaders(request: Request) {
+  const requestUrl = new URL(request.url);
+  const headers: Record<string, string> = {};
+  const isTrustedBrowserUrl = (value: URL) =>
+    (value.protocol === "http:" || value.protocol === "https:") &&
+    value.host.toLowerCase() === requestUrl.host.toLowerCase();
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      if (isTrustedBrowserUrl(refererUrl)) {
+        // AMap uses the browser origin to validate a Web-end JS API key. Forward
+        // only the origin, never the trip path, public token, query, or fragment.
+        // Host equality also supports normal HTTPS termination in front of the
+        // Node server, where Request.url can use the internal HTTP protocol.
+        headers.Referer = `${refererUrl.origin}/`;
+      }
+    } catch {
+      // Invalid and cross-origin referrers are intentionally omitted.
+    }
+  }
+  const origin = request.headers.get("origin");
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      if (isTrustedBrowserUrl(originUrl) && origin === originUrl.origin) headers.Origin = origin;
+    } catch {
+      // Invalid and cross-origin origins are intentionally omitted.
+    }
+  }
+  return headers;
+}
+
 export async function proxyAmapSecurityRequest(
   request: Request,
   pathSegments: string[],
@@ -71,6 +130,7 @@ export async function proxyAmapSecurityRequest(
       headers: {
         Accept: request.headers.get("accept") ?? "application/json",
         "Accept-Language": request.headers.get("accept-language") ?? "zh-CN,zh;q=0.9",
+        ...trustedBrowserHeaders(request),
       },
       method: "GET",
       redirect: "error",
@@ -93,16 +153,16 @@ export async function proxyAmapSecurityRequest(
   if (Number.isFinite(declaredLength) && declaredLength > maximumResponseBytes)
     return errorResponse("AMap upstream response was too large.", 502);
   const body = await response.arrayBuffer();
-  if (
-    body.byteLength > maximumResponseBytes ||
-    new TextDecoder().decode(body).includes(securityCode)
-  )
+  const bodyText = new TextDecoder().decode(body);
+  if (body.byteLength > maximumResponseBytes || bodyText.includes(securityCode))
     return errorResponse("AMap upstream response was rejected.", 502);
+  const providerError = providerErrorCategory(bodyText);
   return new Response(body, {
     headers: {
       "Cache-Control": "private, no-store, max-age=0",
       "Content-Type": safeContentType(response.headers.get("content-type")),
       "Referrer-Policy": "no-referrer",
+      ...(providerError && { "X-Trip-Planner-AMap-Error": providerError }),
       "X-Content-Type-Options": "nosniff",
     },
     status: 200,

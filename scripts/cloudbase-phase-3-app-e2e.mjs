@@ -97,6 +97,28 @@ class CdpClient {
         this.diagnostics.push({ method: message.method, params: message.params });
         this.diagnostics = this.diagnostics.slice(-20);
       }
+      if (message.method === "Network.responseReceived") {
+        try {
+          const response = message.params?.response;
+          const url = new URL(response?.url);
+          if (url.pathname.startsWith("/_AMapService/")) {
+            const errorHeader = Object.entries(response.headers ?? {}).find(
+              ([name]) => name.toLowerCase() === "x-trip-planner-amap-error",
+            )?.[1];
+            this.diagnostics.push({
+              method: message.method,
+              params: {
+                ...(errorHeader && { providerError: String(errorHeader).slice(0, 64) }),
+                path: url.pathname,
+                status: response.status,
+              },
+            });
+            this.diagnostics = this.diagnostics.slice(-20);
+          }
+        } catch {
+          // Only well-formed AMap service response metadata is diagnostic evidence.
+        }
+      }
       const listeners = this.listeners.get(message.method) ?? [];
       for (const listener of listeners) listener(message);
     });
@@ -519,6 +541,9 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
     throw new Error(
       `${error instanceof Error ? error.message : error}; bounded AMap diagnostic: ${JSON.stringify(
         {
+          browser: browser.cdp.diagnostics
+            .filter((entry) => entry.method === "Network.responseReceived")
+            .slice(-5),
           diagnostic,
           visibleError,
         },

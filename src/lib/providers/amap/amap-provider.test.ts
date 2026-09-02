@@ -478,12 +478,21 @@ test("AMap route errors are normalized, bounded, and abort-safe", async () => {
 
 test("AMap security proxy fixes upstreams, methods, secrets, and SSRF inputs", async () => {
   let upstream = "";
+  let upstreamHeaders: Headers | undefined;
   const response = await proxyAmapSecurityRequest(
-    new Request("https://app.example/_AMapService/v3/place/detail?id=poi&key=browser-key"),
+    new Request("https://app.example/_AMapService/v3/place/detail?id=poi&key=browser-key", {
+      headers: {
+        Authorization: "Bearer private-session",
+        Cookie: "private=session",
+        Origin: "https://app.example",
+        Referer: "https://app.example/trips/private-id?token=private-token",
+      },
+    }),
     ["v3", "place", "detail"],
     {
-      fetchImplementation: (async (input) => {
+      fetchImplementation: (async (input, init) => {
         upstream = String(input);
+        upstreamHeaders = new Headers(init?.headers);
         return Response.json({ status: "1" });
       }) as typeof fetch,
       securityCode: "server-security-code",
@@ -492,6 +501,10 @@ test("AMap security proxy fixes upstreams, methods, secrets, and SSRF inputs", a
   const upstreamUrl = new URL(upstream);
   assert.equal(upstreamUrl.origin, "https://restapi.amap.com");
   assert.equal(upstreamUrl.searchParams.get("jscode"), "server-security-code");
+  assert.equal(upstreamHeaders?.get("origin"), "https://app.example");
+  assert.equal(upstreamHeaders?.get("referer"), "https://app.example/");
+  assert.equal(upstreamHeaders?.has("authorization"), false);
+  assert.equal(upstreamHeaders?.has("cookie"), false);
   assert.equal(await response.text(), '{"status":"1"}');
   assert.equal(
     (
@@ -555,6 +568,66 @@ test("AMap security proxy fixes upstreams, methods, secrets, and SSRF inputs", a
     },
   );
   assert.equal(timedOut.status, 504);
+
+  let untrustedHeaders: Headers | undefined;
+  await proxyAmapSecurityRequest(
+    new Request("https://app.example/_AMapService/v3/place/detail", {
+      headers: {
+        Origin: "https://evil.test",
+        Referer: "https://evil.test/stolen",
+      },
+    }),
+    ["v3", "place", "detail"],
+    {
+      fetchImplementation: (async (_input, init) => {
+        untrustedHeaders = new Headers(init?.headers);
+        return Response.json({ status: "1" });
+      }) as typeof fetch,
+      securityCode: "secret",
+    },
+  );
+  assert.equal(untrustedHeaders?.has("origin"), false);
+  assert.equal(untrustedHeaders?.has("referer"), false);
+
+  let terminatedTlsHeaders: Headers | undefined;
+  await proxyAmapSecurityRequest(
+    new Request("http://app.example:8443/_AMapService/v3/place/detail", {
+      headers: {
+        Origin: "https://app.example:8443",
+        Referer: "https://app.example:8443/trips/private-id",
+      },
+    }),
+    ["v3", "place", "detail"],
+    {
+      fetchImplementation: (async (_input, init) => {
+        terminatedTlsHeaders = new Headers(init?.headers);
+        return Response.json({ status: "1" });
+      }) as typeof fetch,
+      securityCode: "secret",
+    },
+  );
+  assert.equal(terminatedTlsHeaders?.get("origin"), "https://app.example:8443");
+  assert.equal(terminatedTlsHeaders?.get("referer"), "https://app.example:8443/");
+
+  const rejected = await proxyAmapSecurityRequest(
+    new Request("https://app.example/_AMapService/v3/assistant/inputtips"),
+    ["v3", "assistant", "inputtips"],
+    {
+      fetchImplementation: (async () =>
+        Response.json({
+          info: "must-not-be-used-as-a-header",
+          infocode: "10009",
+          status: "0",
+        })) as typeof fetch,
+      securityCode: "secret",
+    },
+  );
+  assert.equal(rejected.status, 200);
+  assert.equal(rejected.headers.get("x-trip-planner-amap-error"), "browser-key-platform");
+  assert.doesNotMatch(
+    rejected.headers.get("x-trip-planner-amap-error") ?? "",
+    /must-not-be-used-as-a-header/,
+  );
 });
 
 test("AMap security proxy allows only the fixed SDK initialization endpoint", async () => {
