@@ -76,7 +76,7 @@ new dispatch. The protected `cloudbase-pg-dev` environment must approve both liv
 
 - validate the approved dev environment/region/PG instance and authenticate CloudBase CLI `3.8.1`;
 - list migrations and run `migration up --dry-run`; require an executable plan with `pending=[]`
-  and migration `20260901181000` already recorded remotely; never apply a migration from this
+  and migration `20260902075444` already recorded remotely; never apply a migration from this
   workflow;
 - build the exact CN selector and scan it for server secrets;
 - use controlled users A and B to prove Auth/session/refresh/expiry/logout, CRUD, owner RPCs, direct
@@ -139,6 +139,9 @@ The database/storage residue audits use the environment-scoped CloudBase API Key
 identity. Their CLI login runs on an `always()` path so a missing CAM prerequisite cannot suppress
 the audit. Because the function invocation temporarily switches the CLI to CAM, the workflow
 restores the environment API Key identity before the independent final cleanup and residue audit.
+CAM login failures are reported only as a bounded category. `authorization` means the identity
+still lacks `tcb:CheckTcbService`; any `credential-*` category means both GitHub Environment secrets
+must be replaced from the same active SecretId/SecretKey pair. The raw CLI response is never logged.
 
 Create or select the restricted sub-account under Tencent Cloud **CAM > Users**, then manage its
 API key under that sub-account's **API Keys** page. Store the two values only under GitHub
@@ -146,7 +149,8 @@ API key under that sub-account's **API Keys** page. Store the two values only un
 Do not put CAM credentials in CloudBase Run, repository variables, source files, or logs.
 
 The provider-neutral place schema is introduced by mirrored migrations `20260901180000` and
-`20260901181000`. `upsert_place_snapshot_v3` accepts only Google or AMap snapshots marked WGS-84;
+`20260901181000`, with conflict-target resolution corrected by `20260902075444`.
+`upsert_place_snapshot_v3` accepts only Google or AMap snapshots marked WGS-84;
 the existing `upsert_google_place_snapshot_v2` remains as a compatibility wrapper. Public AMap
 route projection accepts only `provider=amap`, `source=encoded`, `encoding=polyline5`, and
 `coordinateSystem=wgs84`, and reconstructs the five-field geometry rather than exposing the stored

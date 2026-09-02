@@ -79,7 +79,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.match(workflow, /migration up[\s\\]*\n[\s\S]{0,100}--dry-run --json/);
   assert.match(
     workflow,
-    /verify-cloudbase-migration-plan\.mjs[\s\\]*\n[\s\S]{0,100}20260901181000/,
+    /verify-cloudbase-migration-plan\.mjs[\s\\]*\n[\s\S]{0,100}20260902075444/,
   );
   assert.match(workflow, /node scripts\/invoke-cloudbase-cleanup\.mjs "\$invocation_output"/);
   assert.match(workflow, /timeout 60s npx --yes --package @cloudbase\/cli@3\.8\.1 tcb fn invoke/);
@@ -87,7 +87,7 @@ test("Phase 5 static and live inventory stays executable", async () => {
   assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 2);
   assert.match(workflow, /Restore the CloudBase database audit CLI identity/);
   assert.match(workflow, /CloudBase cleanup invocation configuration is incomplete\./);
-  assert.match(workflow, /CAM login failed; verify the dedicated identity has tcb:CheckTcbService/);
+  assert.match(workflow, /node scripts\/describe-cloudbase-cam-login\.mjs "\$cam_login_output"/);
   assert.match(workflow, /verify scf:GetFunction and scf:Invoke/);
   assert.match(
     workflow,

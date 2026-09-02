@@ -51,7 +51,7 @@ Missing ownership, notification routing, or change record is a release blocker.
 - Apply all reviewed candidate migrations to the approved CloudBase dev environment through a
   separately authorized schema change before Phase 5 verification. The live workflow itself only
   lists and dry-runs migrations and requires `pending=[]`; it never applies DDL. For this candidate,
-  remote history must include `20260901181000_provider_neutral_places_and_amap_public_routes`.
+  remote history must include `20260902075444_fix_provider_place_upsert_conflict`.
 - Keep CN username/password accounts controlled. Do not enable anonymous, phone, email, or public
   self-registration.
 - Confirm a disposable restore target and backup method. Neither provider's restore is considered

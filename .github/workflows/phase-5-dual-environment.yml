@@ -283,7 +283,7 @@ jobs:
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
             --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
           node scripts/verify-cloudbase-migration-plan.mjs \
-            "$migration_list" "$migration_plan" 20260901181000
+            "$migration_list" "$migration_plan" 20260902075444
       - name: Build the exact CN selector and scan secrets
         run: |
           npm run build
@@ -305,15 +305,16 @@ jobs:
             echo "CloudBase cleanup invocation configuration is incomplete."
             exit 1
           fi
+          cam_login_output="$(mktemp)"
           invocation_output="$(mktemp)"
-          trap 'rm -f "$invocation_output"' EXIT
+          trap 'rm -f "$cam_login_output" "$invocation_output"' EXIT
           timeout 30s npx --yes --package @cloudbase/cli@3.8.1 tcb logout \
             --json > /dev/null 2>&1
           if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb login \
             --apiKeyId "$CLOUDBASE_CAM_SECRET_ID" \
             --apiKey "$CLOUDBASE_CAM_SECRET_KEY" \
-            --json > /dev/null 2>&1; then
-            echo "CloudBase CAM login failed; verify the dedicated identity has tcb:CheckTcbService."
+            --json > "$cam_login_output" 2>&1; then
+            node scripts/describe-cloudbase-cam-login.mjs "$cam_login_output"
             exit 1
           fi
           if ! timeout 60s npx --yes --package @cloudbase/cli@3.8.1 tcb fn invoke \
