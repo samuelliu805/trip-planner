@@ -150,6 +150,10 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   ]) {
     assert.match(smoke, new RegExp(contract.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+  assert.match(
+    smoke,
+    /async function publishThroughUi\(browser\)[\s\S]*?await openTripMenu\(browser\);[\s\S]*?"Share trip menu item"/,
+  );
   assert.match(browserOrigin, /trip-planner-cn-306129-11-1253819205\.sh\.run\.tcloudbase\.com/);
   assert.match(browserOrigin, /--host-resolver-rules=MAP/);
   assert.match(browserOrigin, /loopbackHostnames/);

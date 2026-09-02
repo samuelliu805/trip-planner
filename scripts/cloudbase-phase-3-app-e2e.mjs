@@ -755,11 +755,15 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
 }
 
 async function publishThroughUi(browser) {
-  await clickElement(
+  await openTripMenu(browser);
+  await waitFor(
     browser,
-    `document.querySelector('button[aria-label="Share trip"]')`,
-    "Share trip",
+    `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
+      item.textContent.trim() === "Share trip" && !item.disabled
+    )`,
+    "Share trip menu item",
   );
+  await clickButtonText(browser, "Share trip");
   await waitFor(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
