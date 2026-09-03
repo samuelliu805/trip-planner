@@ -83,7 +83,10 @@ export async function invokeCloudBaseCleanupHttp({
       `CloudBase cleanup HTTP invocation failed (category=${failureCategory(response.status, payload)}).`,
     );
   }
-  verifyCleanupInvocationResult(payload);
+  // The fixed CloudBase Functions HTTP API returns the Event Function's JSON value directly.
+  // The CLI uses a separate `{ data: { RetMsg } }` envelope, which is normalized by
+  // verifyCloudBaseCleanupInvocation instead.
+  verifyCleanupInvocationResult({ result: payload });
   return true;
 }
 

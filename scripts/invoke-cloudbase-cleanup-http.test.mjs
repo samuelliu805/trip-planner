@@ -4,12 +4,10 @@ import test from "node:test";
 import { invokeCloudBaseCleanupHttp } from "./invoke-cloudbase-cleanup-http.mjs";
 
 const success = {
-  result: {
-    assets: { deletedAssets: 0 },
-    backlog: false,
-    shareImages: { revokedImages: 0 },
-    status: "ok",
-  },
+  assets: { deletedAssets: 0 },
+  backlog: false,
+  shareImages: { revokedImages: 0 },
+  status: "ok",
 };
 
 test("cleanup HTTP invocation uses only the fixed CloudBase function endpoint", async () => {
