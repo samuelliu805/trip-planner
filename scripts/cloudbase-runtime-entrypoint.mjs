@@ -4,12 +4,28 @@ import { pathToFileURL } from "node:url";
 
 const runtimeValues = [
   {
+    name: "CLOUDBASE_ENV_ID",
+    token: "__TRIP_PLANNER_CLOUDBASE_ENV_ID__",
+  },
+  {
     name: "CLOUDBASE_PUBLISHABLE_KEY",
     token: "__TRIP_PLANNER_CLOUDBASE_SERVER_KEY__",
   },
   {
+    name: "CLOUDBASE_REGION",
+    token: "__TRIP_PLANNER_CLOUDBASE_REGION__",
+  },
+  {
+    name: "NEXT_PUBLIC_CLOUDBASE_ENV_ID",
+    token: "__TRIP_PLANNER_NEXT_PUBLIC_CLOUDBASE_ENV_ID__",
+  },
+  {
     name: "NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY",
     token: "__TRIP_PLANNER_CLOUDBASE_PUBLIC_KEY__",
+  },
+  {
+    name: "NEXT_PUBLIC_CLOUDBASE_REGION",
+    token: "__TRIP_PLANNER_NEXT_PUBLIC_CLOUDBASE_REGION__",
   },
   {
     name: "NEXT_PUBLIC_AMAP_JS_API_KEY",

@@ -22,7 +22,7 @@ const globalBrowserSmokeUrl = new URL("./lib/phase-5-global-browser-smoke.mjs", 
 const cnBrowserOriginUrl = new URL("./lib/phase-5-cn-browser-origin.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const cloudBaseRunSubmitterUrl = new URL("./cloudbase-run-source-submitter.mjs", import.meta.url);
-const cloudBaseRunDockerfileUrl = new URL("../cloudbase/run/Dockerfile", import.meta.url);
+const cloudBaseRunPreparationUrl = new URL("./prepare-cloudbase-run.mjs", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
 const providerNeutralMigrationUrl = new URL(
   "../database/shared/migrations/20260901181000_provider_neutral_places_and_amap_public_routes.sql",
@@ -122,14 +122,14 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
     cnProductionDeploy,
     observability,
     cloudBaseRunSubmitter,
-    cloudBaseRunDockerfile,
+    cloudBaseRunPreparation,
   ] = await Promise.all([
     readFile(globalDeployUrl, "utf8"),
     readFile(cnDeployUrl, "utf8"),
     readFile(cnProductionDeployUrl, "utf8"),
     readFile(observabilityWorkflowUrl, "utf8"),
     readFile(cloudBaseRunSubmitterUrl, "utf8"),
-    readFile(cloudBaseRunDockerfileUrl, "utf8"),
+    readFile(cloudBaseRunPreparationUrl, "utf8"),
   ]);
 
   assert.match(globalDeploy, /group: deploy-global-production/);
@@ -154,14 +154,9 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cloudBaseRunSubmitter, /UpdateCloudRunServer/);
   assert.match(cloudBaseRunSubmitter, /"curl"/);
   assert.match(cloudBaseRunSubmitter, /"-9"/);
-  assert.match(cloudBaseRunDockerfile, /AS dependencies/);
-  assert.match(cloudBaseRunDockerfile, /npm ci --omit=dev --no-audit --no-fund/);
-  assert.match(cloudBaseRunDockerfile, /cloudbase-runtime-node-modules\.txt/);
-  assert.match(cloudBaseRunDockerfile, /--verbatim-files-from/);
-  assert.match(
-    cloudBaseRunDockerfile,
-    /COPY --from=dependencies[^]*\/runtime-node_modules \.\/node_modules/,
-  );
+  assert.match(cloudBaseRunPreparation, /git", \["ls-files", "-z"\]/);
+  assert.match(cloudBaseRunPreparation, /"Dockerfile"/);
+  assert.match(cloudBaseRunPreparation, /"package-lock\.json"/);
   assert.match(cnDeploy, /cloudrun logs process/);
   assert.match(cnDeploy, /verify-cloudbase-runtime-logs\.mjs/);
 
@@ -193,6 +188,12 @@ test("the root CloudBase image supports projects without public assets", async (
   const dockerfile = await readFile(rootDockerfileUrl, "utf8");
   assert.match(dockerfile, /COPY \. \.\nRUN mkdir -p public\nRUN APP_REGION=cn/);
   assert.match(dockerfile, /COPY --from=build[^\n]+\/app\/public \.\/public/);
+  assert.match(dockerfile, /CLOUDBASE_ENV_ID=__TRIP_PLANNER_CLOUDBASE_ENV_ID__/);
+  assert.match(
+    dockerfile,
+    /NEXT_PUBLIC_CLOUDBASE_ENV_ID=__TRIP_PLANNER_NEXT_PUBLIC_CLOUDBASE_ENV_ID__/,
+  );
+  assert.doesNotMatch(dockerfile, /trip-planner-cn-dev-d3bz94038b26/);
 });
 
 test("the provider-neutral migration creates its private schema before private functions", async () => {
