@@ -22,6 +22,7 @@ export const providerSdkImportAllowlist = Object.freeze([
   "src/platform/supabase/admin.ts",
   "src/platform/cloudbase/client.ts",
   "src/platform/cloudbase/browser-storage-provider.ts",
+  "src/platform/cloudbase/browser-phone-otp-provider.ts",
   "src/platform/supabase/client.ts",
   "src/platform/supabase/proxy.ts",
   "src/platform/supabase/server.ts",

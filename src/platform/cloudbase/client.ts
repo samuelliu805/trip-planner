@@ -14,29 +14,11 @@ export type CloudBaseSdkResult<T = unknown> = Promise<{
 }>;
 
 export type CloudBaseAuthClient = Readonly<{
-  getVerification(input: {
-    phone_number: string;
-  }): Promise<{ is_user?: boolean; verification_id?: string }>;
   getSession(): CloudBaseSdkResult;
   refreshSession(refreshToken?: string): CloudBaseSdkResult;
   setSession(input: { access_token: string; refresh_token: string }): CloudBaseSdkResult;
   signInWithPassword(input: { password: string; username: string }): CloudBaseSdkResult;
-  signInWithSms(input: {
-    phoneNum: string;
-    verificationCode: string;
-    verificationInfo: { is_user: boolean; verification_id: string };
-  }): Promise<unknown>;
-  signUp(input: {
-    locale: string;
-    phone_number: string;
-    verification_code: string;
-    verification_token: string;
-  }): Promise<unknown>;
   signOut(): Promise<unknown>;
-  verify(input: {
-    verification_code: string;
-    verification_id: string;
-  }): Promise<{ verification_token?: string }>;
 }>;
 
 export type CloudBaseQuery = PromiseLike<{ data: unknown; error: unknown }> & {
