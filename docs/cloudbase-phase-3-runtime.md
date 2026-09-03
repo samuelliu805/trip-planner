@@ -39,9 +39,10 @@ Production and Preview origins must be reviewed independently.
 
 ## Authentication and cookies
 
-CN public sign-in requests a CloudBase SMS verification challenge, stores only an encrypted,
-authenticated, short-lived challenge in an HttpOnly cookie, then uses the pinned SDK's existing-user
-SMS sign-in or new-user verify-and-register path. The application never persists an OTP. Controlled
+CN public sign-in requests a CloudBase SMS verification challenge and returns only an encrypted,
+authenticated, short-lived token through the Server Action state, with an HttpOnly cookie as a
+compatibility fallback. The pinned SDK then uses its existing-user SMS sign-in or new-user
+verify-and-register path. The application never persists an OTP. Controlled
 CI identities call `signInWithPassword({ username, password })` directly from the protected test
 harness; no username/password fields are rendered by the public CN application. The server stores the returned
 access and refresh tokens in the distinct HttpOnly `tp-cn-access-token` and

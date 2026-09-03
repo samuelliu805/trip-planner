@@ -23,10 +23,10 @@ export class CloudBasePhoneOtpAuthProvider implements PhoneOtpAuthProvider {
     clearCloudBasePhoneChallenge(await cookies());
   }
 
-  async requestOtp(input: Readonly<{ phone: string }>) {
+  async requestOtp(input: Readonly<{ challengeToken?: string; phone: string }>) {
     const store = await cookies();
     const now = Date.now();
-    const existing = readCloudBasePhoneChallenge(store, now);
+    const existing = readCloudBasePhoneChallenge(store, input.challengeToken, now);
     if (existing && existing.issuedAt + resendDelayMs > now) {
       throw new PlatformOperationError(
         "rate_limited",
@@ -36,22 +36,22 @@ export class CloudBasePhoneOtpAuthProvider implements PhoneOtpAuthProvider {
     try {
       const result = await requestCloudBasePhoneOtp(createCloudBaseClients().auth, input.phone);
       const issuedAt = Date.now();
-      writeCloudBasePhoneChallenge(store, {
+      const challengeToken = writeCloudBasePhoneChallenge(store, {
         expiresAt: issuedAt + challengeLifetimeMs,
         isUser: result.isUser,
         issuedAt,
         phone: input.phone,
         verificationId: result.verificationId,
       });
-      return Object.freeze({ resendAt: issuedAt + resendDelayMs });
+      return Object.freeze({ challengeToken, resendAt: issuedAt + resendDelayMs });
     } catch (error) {
       throw normalizeCloudBaseError(error, "A verification code could not be requested.");
     }
   }
 
-  async verifyOtp(input: Readonly<{ code: string }>) {
+  async verifyOtp(input: Readonly<{ challengeToken?: string; code: string }>) {
     const store = await cookies();
-    const challenge = readCloudBasePhoneChallenge(store);
+    const challenge = readCloudBasePhoneChallenge(store, input.challengeToken);
     if (!challenge) {
       clearCloudBasePhoneChallenge(store);
       throw new PlatformOperationError(

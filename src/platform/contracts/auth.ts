@@ -45,8 +45,10 @@ export interface AuthProvider {
 
 export interface PhoneOtpAuthProvider {
   clearChallenge(): Promise<void>;
-  requestOtp(input: Readonly<{ phone: string }>): Promise<Readonly<{ resendAt: number }>>;
-  verifyOtp(input: Readonly<{ code: string }>): Promise<AppUser>;
+  requestOtp(
+    input: Readonly<{ challengeToken?: string; phone: string }>,
+  ): Promise<Readonly<{ challengeToken: string; resendAt: number }>>;
+  verifyOtp(input: Readonly<{ challengeToken?: string; code: string }>): Promise<AppUser>;
 }
 
 export interface PublicSelfRegistrationProvider {

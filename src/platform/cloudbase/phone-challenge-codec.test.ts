@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { openPhoneChallenge, sealPhoneChallenge } from "./phone-challenge-codec.ts";
+import {
+  openFirstPhoneChallenge,
+  openPhoneChallenge,
+  sealPhoneChallenge,
+} from "./phone-challenge-codec.ts";
 
 const now = 1_800_000_000_000;
 const challenge = {
@@ -24,4 +28,21 @@ test("rejects tampered, wrongly keyed, and expired challenges", () => {
   assert.equal(openPhoneChallenge(`${sealed}x`, "test-secret", now), null);
   assert.equal(openPhoneChallenge(sealed, "other-secret", now), null);
   assert.equal(openPhoneChallenge(sealed, "test-secret", challenge.expiresAt), null);
+});
+
+test("recovers a valid action-state challenge when the cookie candidate is missing", () => {
+  const sealed = sealPhoneChallenge(challenge, "test-secret");
+  assert.deepEqual(openFirstPhoneChallenge([sealed, undefined], "test-secret", now), challenge);
+});
+
+test("prefers the latest action-state challenge and falls back to a valid cookie", () => {
+  const oldChallenge = { ...challenge, verificationId: "verification-old" };
+  const actionState = sealPhoneChallenge(challenge, "test-secret");
+  const cookie = sealPhoneChallenge(oldChallenge, "test-secret");
+
+  assert.deepEqual(openFirstPhoneChallenge([actionState, cookie], "test-secret", now), challenge);
+  assert.deepEqual(
+    openFirstPhoneChallenge(["invalid-action-state", cookie], "test-secret", now),
+    oldChallenge,
+  );
 });

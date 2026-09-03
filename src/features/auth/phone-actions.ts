@@ -77,8 +77,13 @@ export async function phoneOtpAuth(
     const phone = normalizeMainlandPhone(formData.get("phone"));
     if (!phone) return { error: "Enter a valid mainland China mobile number.", step: state.step };
     try {
-      const result = await provider.requestOtp({ phone });
-      return { maskedPhone: maskMainlandPhone(phone), resendAt: result.resendAt, step: "otp" };
+      const result = await provider.requestOtp({ challengeToken: state.challengeToken, phone });
+      return {
+        challengeToken: result.challengeToken,
+        maskedPhone: maskMainlandPhone(phone),
+        resendAt: result.resendAt,
+        step: "otp",
+      };
     } catch (error) {
       await reportFailure(error, context);
       return { ...state, error: safePhoneError(error) };
@@ -88,7 +93,10 @@ export async function phoneOtpAuth(
   const code = codeSchema.safeParse(formData.get("code"));
   if (!code.success) return { ...state, error: code.error.issues[0]?.message };
   try {
-    const user = await provider.verifyOtp({ code: code.data });
+    const user = await provider.verifyOtp({
+      challengeToken: state.challengeToken,
+      code: code.data,
+    });
     await captureServerProductEvent(
       "auth_succeeded",
       {
