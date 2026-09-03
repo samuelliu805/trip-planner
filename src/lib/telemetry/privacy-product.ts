@@ -25,7 +25,7 @@ const releasePattern = /^[0-9a-f]{7,64}$/i;
 
 const actorTypes = new Set<TelemetryActorType>(["anonymous", "authenticated", "system"]);
 const authFlows = new Set<AuthFlow>(["confirmation", "login", "signup"]);
-const authMethods = new Set<AuthMethod>(["email_link", "google", "password"]);
+const authMethods = new Set<AuthMethod>(["email_link", "google", "password", "sms"]);
 const closeReasons = new Set<ItemEditorCloseReason>([
   "saved",
   "cancel",

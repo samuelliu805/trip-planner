@@ -5,7 +5,10 @@ export type PlatformErrorCode =
   | "forbidden"
   | "invalid_credentials"
   | "not_found"
+  | "otp_expired"
+  | "otp_invalid"
   | "provider_unavailable"
+  | "rate_limited"
   | "unexpected"
   | "unsupported_operation"
   | "validation_failed";

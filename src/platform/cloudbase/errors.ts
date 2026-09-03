@@ -33,6 +33,34 @@ export function normalizeCloudBaseError(error: unknown, fallbackMessage: string)
     platformCode = "captcha_required";
     safeMessage = "Complete the security check, then try again.";
   } else if (
+    combined.includes("too many") ||
+    combined.includes("rate limit") ||
+    combined.includes("rate_limit") ||
+    combined.includes("frequent") ||
+    combined.includes("频繁")
+  ) {
+    platformCode = "rate_limited";
+    safeMessage = "Too many code requests. Wait a moment, then try again.";
+  } else if (
+    combined.includes("verification expired") ||
+    combined.includes("verification_expired") ||
+    combined.includes("code expired") ||
+    combined.includes("验证码已过期")
+  ) {
+    platformCode = "otp_expired";
+    safeMessage = "That verification code has expired. Request a new code.";
+  } else if (
+    combined.includes("invalid verification") ||
+    combined.includes("verification_code") ||
+    combined.includes("invalid otp") ||
+    combined.includes("already used") ||
+    combined.includes("code used") ||
+    combined.includes("验证码错误") ||
+    combined.includes("验证码已使用")
+  ) {
+    platformCode = "otp_invalid";
+    safeMessage = "That verification code is incorrect.";
+  } else if (
     combined.includes("invalid login") ||
     combined.includes("invalid password") ||
     combined.includes("invalid_credentials") ||
@@ -85,7 +113,10 @@ export function normalizeCloudBaseError(error: unknown, fallbackMessage: string)
     platformCode = "validation_failed";
     safeMessage = message || fallbackMessage;
   }
-  return new PlatformOperationError(platformCode, safeMessage, { cause: error });
+  // Provider responses can contain credentials, phone numbers, verification
+  // payloads, or user input. Keep only the bounded code/message so an
+  // accidentally logged normalized error cannot serialize the raw response.
+  return new PlatformOperationError(platformCode, safeMessage);
 }
 
 export function cloudBaseData<T>(

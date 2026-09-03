@@ -7,14 +7,16 @@ Supabase/Google deployment unchanged. Provider selection remains deployment-time
 `src/platform/config/provider-matrix.ts`; request data, hostnames, cookies, and URL parameters never
 select a provider.
 
-| Deployment | Auth                                                  | Data                 | Storage         | Maps          |
-| ---------- | ----------------------------------------------------- | -------------------- | --------------- | ------------- |
-| Global     | Supabase email/password, Google OAuth, public sign-up | Supabase             | Supabase        | Google        |
-| CN         | CloudBase controlled username/password accounts       | CloudBase PostgreSQL | Not implemented | AMap boundary |
+| Deployment | Auth                                                                           | Data                 | Storage   | Maps   |
+| ---------- | ------------------------------------------------------------------------------ | -------------------- | --------- | ------ |
+| Global     | Supabase email/password, Google OAuth, public sign-up                          | Supabase             | Supabase  | Google |
+| CN         | CloudBase phone/SMS for public users; controlled username/password for CI only | CloudBase PostgreSQL | CloudBase | AMap   |
 
-CN capabilities deliberately report `realtime`, `selfRegistration`, `signedUrls`, `googleOAuth`,
-and `wechatAuth` as unavailable. Storage remains a typed `provider_unavailable` Phase 4 boundary;
-there is no Supabase fallback, dual write, account sync, or token sync.
+CN capabilities use typed public and protected authentication methods. Public `phone_otp` fails
+closed unless `CN_PUBLIC_PHONE_AUTH_ENABLED=true`; protected `username_password` fails closed unless
+its CI-only server flag is present and is never rendered by the ordinary CN UI. Realtime, Google
+OAuth, and WeChat remain unavailable. There is no Supabase fallback, dual write, account sync, or
+token sync.
 
 ## Runtime configuration
 
@@ -23,6 +25,7 @@ A CN application deployment requires the legal CN selectors plus:
 - `CLOUDBASE_ENV_ID`
 - `CLOUDBASE_REGION`
 - `CLOUDBASE_PUBLISHABLE_KEY`
+- `CN_PUBLIC_PHONE_AUTH_ENABLED=true`
 - `NEXT_PUBLIC_SITE_URL`
 
 `CLOUDBASE_PG_INSTANCE_ID` identifies the approved management/test target and is not consumed by
@@ -36,7 +39,11 @@ Production and Preview origins must be reviewed independently.
 
 ## Authentication and cookies
 
-CN sign-in calls only `signInWithPassword({ username, password })`. The server stores the returned
+CN public sign-in requests a CloudBase SMS verification challenge, stores only an encrypted,
+authenticated, short-lived challenge in an HttpOnly cookie, then uses the pinned SDK's existing-user
+SMS sign-in or new-user verify-and-register path. The application never persists an OTP. Controlled
+CI identities call `signInWithPassword({ username, password })` directly from the protected test
+harness; no username/password fields are rendered by the public CN application. The server stores the returned
 access and refresh tokens in the distinct HttpOnly `tp-cn-access-token` and
 `tp-cn-refresh-token` cookies. Sign-in verifies the created session with `getSession`. On later
 requests, the proxy verifies the RS256 access-token signature against the environment-scoped
@@ -53,9 +60,9 @@ through one narrow mutex, while every PostgreSQL request gets a fresh SDK applic
 with the verified end-user access token. Database RLS is therefore authoritative. Server actions
 never accept an owner ID from a client.
 
-Public self-registration and OAuth are hidden in CN. `/signup` stays a permanent public route and
-explains that accounts are organization-managed. Global Supabase cookie refresh, PKCE exchange,
-email/password, sign-up, and Google OAuth remain inside the existing Supabase adapter.
+`/login` and `/signup` share the CN phone flow; a new verified number is registered automatically.
+OAuth remains hidden in CN. Global Supabase cookie refresh, PKCE exchange, email/password, sign-up,
+and Google OAuth remain inside the existing Supabase adapter.
 
 ## PostgreSQL adapters
 

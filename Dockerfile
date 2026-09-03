@@ -11,6 +11,7 @@ COPY . .
 RUN mkdir -p public
 RUN APP_REGION=cn \
   AUTH_PROVIDER=cloudbase \
+  CN_PUBLIC_PHONE_AUTH_ENABLED=true \
   CLOUDBASE_ENV_ID=trip-planner-cn-dev-d3bz94038b26 \
   CLOUDBASE_PUBLISHABLE_KEY=__TRIP_PLANNER_CLOUDBASE_SERVER_KEY__ \
   CLOUDBASE_REGION=ap-shanghai \
@@ -31,6 +32,7 @@ FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
 ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
+ENV CN_PUBLIC_PHONE_AUTH_ENABLED=true
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8080
 RUN groupadd --system --gid 1001 nodejs \

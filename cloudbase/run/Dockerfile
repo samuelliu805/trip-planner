@@ -2,6 +2,7 @@ FROM node:24-bookworm-slim
 WORKDIR /app
 ENV HOSTNAME=0.0.0.0
 ENV NODE_ENV=production
+ENV CN_PUBLIC_PHONE_AUTH_ENABLED=true
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8080
 RUN groupadd --system --gid 1001 nodejs \

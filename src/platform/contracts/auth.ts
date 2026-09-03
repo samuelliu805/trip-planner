@@ -43,6 +43,12 @@ export interface AuthProvider {
   signOut(): Promise<void>;
 }
 
+export interface PhoneOtpAuthProvider {
+  clearChallenge(): Promise<void>;
+  requestOtp(input: Readonly<{ phone: string }>): Promise<Readonly<{ resendAt: number }>>;
+  verifyOtp(input: Readonly<{ code: string }>): Promise<AppUser>;
+}
+
 export interface PublicSelfRegistrationProvider {
   signUp(
     input: PublicSelfRegistrationInput,

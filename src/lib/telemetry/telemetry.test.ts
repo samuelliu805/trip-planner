@@ -370,6 +370,7 @@ test("the product registry and per-event property allowlists are exhaustive", ()
       location: "private-location-marker",
       notes: "private-note-marker",
       place_search_text: "private-search-marker",
+      phone: "+8613800138000",
       price_amount: 12345,
       provider_error: "private-provider-error-marker",
       raw_supabase_user_id: productOperationId,
@@ -411,6 +412,7 @@ test("the product registry and per-event property allowlists are exhaustive", ()
       "private-trip-marker",
       "private-unknown-marker",
       "private-date-marker",
+      "+8613800138000",
     ]) {
       assert.equal(serialized.includes(marker), false, `${eventName}:${marker}`);
     }

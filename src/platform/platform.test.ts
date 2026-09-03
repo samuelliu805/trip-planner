@@ -9,7 +9,10 @@ import {
   resolvePublicProviderConfig,
   type ProviderEnvironment,
 } from "./config/provider-matrix.ts";
-import { backendCapabilitiesByRegion } from "./capabilities/backend-capabilities.ts";
+import {
+  backendCapabilitiesByRegion,
+  capabilitiesForEnvironment,
+} from "./capabilities/backend-capabilities.ts";
 import { cloudBasePhase4Status } from "./cloudbase/status.ts";
 import { cloudBaseScalarUuidRpc } from "./cloudbase/rpc-compat.ts";
 import {
@@ -113,14 +116,37 @@ test("public provider config contains no server secret", () => {
 test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.global.realtime, true);
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
-  assert.equal(backendCapabilitiesByRegion.cn.selfRegistration, false);
+  assert.deepEqual(backendCapabilitiesByRegion.cn.publicAuthMethods, ["phone_otp"]);
   assert.equal(backendCapabilitiesByRegion.cn.signedUrls, true);
   assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, false);
   assert.equal(backendCapabilitiesByRegion.global.itineraryItemLinks, true);
-  assert.equal(backendCapabilitiesByRegion.cn.passwordSignInIdentifier, "username");
-  assert.equal(backendCapabilitiesByRegion.global.passwordSignInIdentifier, "email");
+  assert.deepEqual(backendCapabilitiesByRegion.cn.protectedAuthMethods, ["username_password"]);
+  assert.deepEqual(backendCapabilitiesByRegion.global.publicAuthMethods, [
+    "email_password",
+    "google_oauth",
+  ]);
   assert.equal(Object.isFrozen(backendCapabilitiesByRegion), true);
   assert.equal(Object.isFrozen(backendCapabilitiesByRegion.cn), true);
+});
+
+test("CN public and protected auth methods fail closed behind independent server flags", () => {
+  assert.deepEqual(capabilitiesForEnvironment("cn", {}).publicAuthMethods, []);
+  assert.deepEqual(
+    capabilitiesForEnvironment("cn", { CN_PUBLIC_PHONE_AUTH_ENABLED: "true" }).publicAuthMethods,
+    ["phone_otp"],
+  );
+  assert.deepEqual(
+    capabilitiesForEnvironment("cn", { CLOUDBASE_CI_PASSWORD_AUTH_ENABLED: "true" })
+      .protectedAuthMethods,
+    ["username_password"],
+  );
+  assert.deepEqual(
+    capabilitiesForEnvironment("global", {
+      CLOUDBASE_CI_PASSWORD_AUTH_ENABLED: "true",
+      CN_PUBLIC_PHONE_AUTH_ENABLED: "true",
+    }).publicAuthMethods,
+    ["email_password", "google_oauth"],
+  );
 });
 
 test("shared sign-in inputs distinguish email and username credentials", () => {
@@ -173,7 +199,10 @@ test("provider SDK imports are restricted to the exact adapter and maintenance a
 });
 
 test("CloudBase Phase 4 enables Auth, PG, private storage, and signed URLs", async () => {
-  const composition = await readFile(new URL("./composition/server.ts", import.meta.url), "utf8");
+  const composition = await readFile(
+    new URL("./composition/server-cloudbase.ts", import.meta.url),
+    "utf8",
+  );
   assert.equal(cloudBasePhase4Status.authImplemented, true);
   assert.equal(cloudBasePhase4Status.dataImplemented, true);
   assert.equal(cloudBasePhase4Status.runtimeReady, true);
@@ -225,7 +254,7 @@ test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK sur
     readFile(new URL("./cloudbase/trip-repository.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/client.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/relational-database.ts", import.meta.url), "utf8"),
-    readFile(new URL("./composition/server.ts", import.meta.url), "utf8"),
+    readFile(new URL("./composition/server-cloudbase.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/session-runtime.ts", import.meta.url), "utf8"),
   ]);
   for (const method of [

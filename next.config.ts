@@ -1,15 +1,38 @@
 import type { NextConfig } from "next";
 import { withPostHogConfig } from "@posthog/nextjs-config";
+import { resolve } from "node:path";
 
 import { resolveTelemetryConfig } from "./src/lib/telemetry/config";
 import { resolveDeploymentProviderConfig } from "./src/platform/config/provider-matrix";
 
 // Validate only deployment selectors here. Provider credentials stay lazy in their entrypoints.
-resolveDeploymentProviderConfig(process.env);
+const deploymentProviders = resolveDeploymentProviderConfig(process.env);
+const providerSuffix = deploymentProviders.appRegion === "cn" ? "cloudbase" : "supabase";
+const mapSuffix = deploymentProviders.appRegion === "cn" ? "amap" : "google";
+const selectedAliases = {
+  "@/lib/providers/maps/planner-map-canvas-selected": `./src/lib/providers/maps/planner-map-canvas-${mapSuffix}.tsx`,
+  "@/lib/providers/maps/planner-map-provider-selected": `./src/lib/providers/maps/planner-map-provider-${mapSuffix}.tsx`,
+  "@/platform/composition/client-selected": `./src/platform/composition/client-${providerSuffix}.ts`,
+  "@/platform/composition/proxy-selected": `./src/platform/composition/proxy-${providerSuffix}.ts`,
+  "@/platform/composition/server-selected": `./src/platform/composition/server-${providerSuffix}.ts`,
+} as const;
 
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  turbopack: { resolveAlias: selectedAliases },
+  webpack(config) {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      ...Object.fromEntries(
+        Object.entries(selectedAliases).map(([specifier, target]) => [
+          specifier,
+          resolve(process.cwd(), target),
+        ]),
+      ),
+    };
+    return config;
+  },
   async headers() {
     return [
       {

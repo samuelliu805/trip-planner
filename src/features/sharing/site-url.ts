@@ -28,6 +28,10 @@ export function siteUrlFromHeaders(requestHeaders: HeaderReader, fallback = getS
   const requestOrigin = validOrigin(firstHeaderValue(requestHeaders.get("origin")));
   if (requestOrigin) return requestOrigin;
 
+  return forwardedOrigin(requestHeaders, fallback);
+}
+
+function forwardedOrigin(requestHeaders: HeaderReader, fallback: string) {
   const host = firstHeaderValue(
     requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
   );
@@ -40,4 +44,9 @@ export function siteUrlFromHeaders(requestHeaders: HeaderReader, fallback = getS
         ? "http"
         : "https";
   return validOrigin(`${protocol}://${host}`) ?? fallback;
+}
+
+export function isSameOriginRequest(requestHeaders: HeaderReader, fallback = getSiteUrl()) {
+  const requestOrigin = validOrigin(firstHeaderValue(requestHeaders.get("origin")));
+  return Boolean(requestOrigin && requestOrigin === forwardedOrigin(requestHeaders, fallback));
 }
