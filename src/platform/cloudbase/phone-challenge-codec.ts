@@ -85,3 +85,15 @@ export function openPhoneChallenge(
     return null;
   }
 }
+
+export function openFirstPhoneChallenge(
+  values: readonly (string | undefined)[],
+  secret: string,
+  now = Date.now(),
+) {
+  for (const value of values) {
+    const challenge = openPhoneChallenge(value, secret, now);
+    if (challenge) return challenge;
+  }
+  return null;
+}

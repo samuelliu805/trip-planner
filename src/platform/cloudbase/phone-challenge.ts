@@ -3,7 +3,7 @@ import "server-only";
 import type { CloudBaseCookieStore } from "./session";
 import { getCloudBaseAdminConfig } from "./config";
 import {
-  openPhoneChallenge,
+  openFirstPhoneChallenge,
   sealPhoneChallenge,
   type PhoneChallenge,
 } from "./phone-challenge-codec";
@@ -14,21 +14,31 @@ function secret() {
   return getCloudBaseAdminConfig().apiKey;
 }
 
-export function readCloudBasePhoneChallenge(store: CloudBaseCookieStore, now = Date.now()) {
-  return openPhoneChallenge(store.get(cloudBasePhoneChallengeCookie)?.value, secret(), now);
+export function readCloudBasePhoneChallenge(
+  store: CloudBaseCookieStore,
+  challengeToken?: string,
+  now = Date.now(),
+) {
+  return openFirstPhoneChallenge(
+    [challengeToken, store.get(cloudBasePhoneChallengeCookie)?.value],
+    secret(),
+    now,
+  );
 }
 
 export function writeCloudBasePhoneChallenge(
   store: CloudBaseCookieStore,
   challenge: PhoneChallenge,
 ) {
-  store.set?.(cloudBasePhoneChallengeCookie, sealPhoneChallenge(challenge, secret()), {
+  const challengeToken = sealPhoneChallenge(challenge, secret());
+  store.set?.(cloudBasePhoneChallengeCookie, challengeToken, {
     httpOnly: true,
     maxAge: 10 * 60,
     path: "/",
-    sameSite: "strict",
+    sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
   });
+  return challengeToken;
 }
 
 export function clearCloudBasePhoneChallenge(store: CloudBaseCookieStore) {
