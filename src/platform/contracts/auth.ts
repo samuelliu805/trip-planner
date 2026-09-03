@@ -44,11 +44,15 @@ export interface AuthProvider {
 }
 
 export interface PhoneOtpAuthProvider {
-  clearChallenge(): Promise<void>;
-  requestOtp(
-    input: Readonly<{ challengeToken?: string; phone: string }>,
-  ): Promise<Readonly<{ challengeToken: string; resendAt: number }>>;
-  verifyOtp(input: Readonly<{ challengeToken?: string; code: string }>): Promise<AppUser>;
+  establishSession(
+    input: Readonly<{ accessToken: string; refreshToken: string }>,
+  ): Promise<AppUser>;
+}
+
+export interface BrowserPhoneOtpProvider {
+  clearChallenge(): void;
+  requestOtp(phone: string): Promise<void>;
+  verifyOtp(code: string): Promise<Readonly<{ accessToken: string; refreshToken: string }>>;
 }
 
 export interface PublicSelfRegistrationProvider {

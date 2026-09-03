@@ -333,6 +333,7 @@ test("CloudBase SMS failures map to bounded errors without phone or OTP leakage"
   const code = "123456";
   const cases = [
     [{ message: `too many requests for ${phone}` }, "rate_limited"],
+    [{ category: "VERIFICATION_FAILED", code: "invalid_argument" }, "otp_invalid"],
     [{ message: `verification expired ${code}` }, "otp_expired"],
     [{ message: `verification code already used ${code}` }, "otp_invalid"],
   ] as const;

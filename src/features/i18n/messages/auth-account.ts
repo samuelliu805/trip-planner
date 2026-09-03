@@ -58,6 +58,8 @@ export const authAccountZhCN: Record<string, string> = {
   "Sending code…": "正在发送验证码…",
   "That verification code has expired. Request a new code.": "验证码已过期，请重新获取。",
   "That verification code is incorrect.": "验证码不正确。",
+  "That verification code is expired or incorrect. Request a new code if needed.":
+    "验证码不正确或已过期；如有需要，请重新获取。",
   "Too many code requests. Wait a moment, then try again.": "验证码请求过于频繁，请稍后重试。",
   "Verifying…": "正在验证…",
   "Wait for the countdown before requesting another code.": "请等待倒计时结束后重新获取验证码。",
