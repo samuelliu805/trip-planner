@@ -154,11 +154,13 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cloudBaseRunSubmitter, /UpdateCloudRunServer/);
   assert.match(cloudBaseRunSubmitter, /"curl"/);
   assert.match(cloudBaseRunSubmitter, /"-9"/);
-  assert.match(cloudBaseRunDockerfile, /AS sharp-vendor/);
-  assert.match(cloudBaseRunDockerfile, /@img\/sharp-libvips-linux-x64@1\.2\.4/);
+  assert.match(cloudBaseRunDockerfile, /AS dependencies/);
+  assert.match(cloudBaseRunDockerfile, /npm ci --omit=dev --no-audit --no-fund/);
+  assert.match(cloudBaseRunDockerfile, /cloudbase-runtime-node-modules\.txt/);
+  assert.match(cloudBaseRunDockerfile, /--verbatim-files-from/);
   assert.match(
     cloudBaseRunDockerfile,
-    /COPY --from=sharp-vendor[^]*node_modules\/@img\/sharp-libvips-linux-x64/,
+    /COPY --from=dependencies[^]*\/runtime-node_modules \.\/node_modules/,
   );
   assert.match(cnDeploy, /cloudrun logs process/);
   assert.match(cnDeploy, /verify-cloudbase-runtime-logs\.mjs/);

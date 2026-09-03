@@ -1,8 +1,27 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
+
+function collectRuntimeDependencyFiles(directory, prefix = "") {
+  const files = [];
+  const entries = readdirSync(directory, { withFileTypes: true }).sort((left, right) =>
+    left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
+  );
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (relativePath.includes("\n")) {
+      throw new Error("CloudBase runtime dependency path contained a newline.");
+    }
+    if (entry.isDirectory()) {
+      files.push(...collectRuntimeDependencyFiles(join(directory, entry.name), relativePath));
+    } else {
+      files.push(relativePath);
+    }
+  }
+  return files;
+}
 
 export function prepareCloudBaseRun(projectRoot) {
   const output = join(projectRoot, ".cloudbase-run");
@@ -24,10 +43,14 @@ export function prepareCloudBaseRun(projectRoot) {
     force: true,
     recursive: true,
   });
-  rmSync(join(output, "node_modules/@img/sharp-libvips-linux-x64"), {
-    force: true,
-    recursive: true,
-  });
+  const nodeModules = join(output, "node_modules");
+  const runtimeDependencyFiles = collectRuntimeDependencyFiles(nodeModules);
+  writeFileSync(
+    join(output, "cloudbase-runtime-node-modules.txt"),
+    `${runtimeDependencyFiles.join("\n")}\n`,
+  );
+  rmSync(nodeModules, { force: true, recursive: true });
+  cpSync(join(projectRoot, "package-lock.json"), join(output, "package-lock.json"));
   cpSync(join(projectRoot, ".next/static"), join(output, ".next/static"), { recursive: true });
   if (existsSync(publicDirectory)) {
     cpSync(publicDirectory, join(output, "public"), { recursive: true });

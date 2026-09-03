@@ -8,7 +8,6 @@ import { prepareCloudBaseRun } from "./prepare-cloudbase-run.mjs";
 
 const muslSharpPackages = ["sharp-linuxmusl-x64", "sharp-libvips-linuxmusl-x64"];
 const glibcSharpPackages = ["sharp-linux-x64", "sharp-libvips-linux-x64"];
-const sourceSharpPackages = ["sharp-linux-x64"];
 
 function createFixture({ includeMuslSharpPackages = true, publicAsset } = {}) {
   const root = mkdtempSync(join(tmpdir(), "prepare-cloudbase-run-"));
@@ -20,6 +19,7 @@ function createFixture({ includeMuslSharpPackages = true, publicAsset } = {}) {
   writeFileSync(join(root, ".next/standalone/server.js"), "server");
   writeFileSync(join(root, ".next/static/chunks/app.js"), "static");
   writeFileSync(join(root, "cloudbase/run/Dockerfile"), "FROM node:22-alpine\n");
+  writeFileSync(join(root, "package-lock.json"), "lock");
   writeFileSync(join(root, "scripts/cloudbase-runtime-entrypoint.mjs"), "entrypoint");
 
   const fixtureSharpPackages = includeMuslSharpPackages
@@ -42,13 +42,17 @@ function createFixture({ includeMuslSharpPackages = true, publicAsset } = {}) {
 }
 
 function assertSharpPackageSelection(output) {
-  for (const packageName of [...muslSharpPackages, "sharp-libvips-linux-x64"]) {
-    assert.equal(existsSync(join(output, "node_modules/@img", packageName)), false);
+  const manifest = new Set(
+    readFileSync(join(output, "cloudbase-runtime-node-modules.txt"), "utf8").trim().split("\n"),
+  );
+  assert.equal(existsSync(join(output, "node_modules")), false);
+  for (const packageName of muslSharpPackages) {
+    assert.equal(manifest.has(`@img/${packageName}/package.json`), false);
   }
-  for (const packageName of sourceSharpPackages) {
-    assert.equal(existsSync(join(output, "node_modules/@img", packageName, "package.json")), true);
+  for (const packageName of glibcSharpPackages) {
+    assert.equal(manifest.has(`@img/${packageName}/package.json`), true);
   }
-  assert.equal(existsSync(join(output, "node_modules/sharp/package.json")), true);
+  assert.equal(manifest.has("sharp/package.json"), true);
 }
 
 test("prepares CloudBase Run output without a public directory", (t) => {
@@ -60,6 +64,7 @@ test("prepares CloudBase Run output without a public directory", (t) => {
   assert.equal(readFileSync(join(output, "server.js"), "utf8"), "server");
   assert.equal(readFileSync(join(output, ".next/static/chunks/app.js"), "utf8"), "static");
   assert.equal(readFileSync(join(output, "Dockerfile"), "utf8"), "FROM node:22-alpine\n");
+  assert.equal(readFileSync(join(output, "package-lock.json"), "utf8"), "lock");
   assert.equal(
     readFileSync(join(output, "cloudbase-runtime-entrypoint.mjs"), "utf8"),
     "entrypoint",
