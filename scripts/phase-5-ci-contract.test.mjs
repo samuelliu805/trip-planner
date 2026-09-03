@@ -33,7 +33,8 @@ test("Phase 6 verification is manual, exact-SHA, protected, and fail-closed", as
     readFile(workflowUrl, "utf8"),
   ]);
   assert.match(entryWorkflow, /workflow_dispatch:/);
-  assert.match(entryWorkflow, /run_mode:[\s\S]*phase6/);
+  assert.match(entryWorkflow, /run_mode:[\s\S]*phase5[\s\S]*phase6/);
+  assert.match(entryWorkflow, /\(inputs\.run_mode == 'phase5' \|\| inputs\.run_mode == 'phase6'\)/);
   assert.match(entryWorkflow, /verification_gate == 'VERIFY'/);
   assert.match(entryWorkflow, /uses: \.\/\.github\/workflows\/phase-5-dual-environment\.yml/);
   assert.match(workflow, /workflow_call:/);

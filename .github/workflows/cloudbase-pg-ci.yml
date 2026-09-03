@@ -8,15 +8,16 @@ on:
   workflow_dispatch:
     inputs:
       run_mode:
-        description: Select canonical CI or the protected Phase 6 matrix
+        description: Select canonical CI or the protected Phase 5/6 matrix
         required: true
         default: schema-security
         type: choice
         options:
           - schema-security
+          - phase5
           - phase6
       verification_gate:
-        description: Type VERIFY only when run_mode is phase6
+        description: Type VERIFY only when run_mode is phase5 or phase6
         required: false
         type: string
       candidate_ref:
@@ -38,7 +39,9 @@ concurrency:
 
 jobs:
   static:
-    if: github.event_name != 'workflow_dispatch' || inputs.run_mode != 'phase6'
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -74,7 +77,9 @@ jobs:
       - run: npm run format:check
 
   global-build:
-    if: github.event_name != 'workflow_dispatch' || inputs.run_mode != 'phase6'
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')
     needs: static
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -103,7 +108,9 @@ jobs:
       - run: npm run check:build-provider-isolation
 
   cn-build:
-    if: github.event_name != 'workflow_dispatch' || inputs.run_mode != 'phase6'
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')
     needs: static
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -278,7 +285,7 @@ jobs:
   phase6-verification:
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      inputs.run_mode == 'phase6' &&
+      (inputs.run_mode == 'phase5' || inputs.run_mode == 'phase6') &&
       inputs.verification_gate == 'VERIFY'
     uses: ./.github/workflows/phase-5-dual-environment.yml
     with:
