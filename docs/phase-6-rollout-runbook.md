@@ -88,7 +88,9 @@ CloudBase source submission is guarded by the deployment ledger. The workflow fi
 current version to be normal at 100% traffic. It builds a maximum-compression archive, obtains a
 fresh one-use upload target through `DescribeCloudBaseBuildService`, uploads with bounded `curl`,
 and registers that exact package through `UpdateCloudRunServer`. This avoids the CLI's unbounded
-Node upload path while retaining the same official CloudBase deployment APIs. After any success,
+Node upload path while retaining the same official CloudBase deployment APIs. The cross-region
+source archive excludes the large pinned glibc libvips payload; the CloudBase Docker build restores
+`@img/sharp-libvips-linux-x64@1.2.4` before the non-root runtime image is created. After any success,
 timeout, or HTTP error, the workflow reconciles the ledger for three minutes before deciding what
 to do. A new DeployId permanently disables retries and is followed until it is released or fails.
 Only a failed/timed-out submission with a confirmed unchanged DeployId may be retried, with at most

@@ -24,6 +24,10 @@ export function prepareCloudBaseRun(projectRoot) {
     force: true,
     recursive: true,
   });
+  rmSync(join(output, "node_modules/@img/sharp-libvips-linux-x64"), {
+    force: true,
+    recursive: true,
+  });
   cpSync(join(projectRoot, ".next/static"), join(output, ".next/static"), { recursive: true });
   if (existsSync(publicDirectory)) {
     cpSync(publicDirectory, join(output, "public"), { recursive: true });

@@ -22,6 +22,7 @@ const globalBrowserSmokeUrl = new URL("./lib/phase-5-global-browser-smoke.mjs", 
 const cnBrowserOriginUrl = new URL("./lib/phase-5-cn-browser-origin.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const cloudBaseRunSubmitterUrl = new URL("./cloudbase-run-source-submitter.mjs", import.meta.url);
+const cloudBaseRunDockerfileUrl = new URL("../cloudbase/run/Dockerfile", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
 const providerNeutralMigrationUrl = new URL(
   "../database/shared/migrations/20260901181000_provider_neutral_places_and_amap_public_routes.sql",
@@ -115,14 +116,21 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
 });
 
 test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed", async () => {
-  const [globalDeploy, cnDeploy, cnProductionDeploy, observability, cloudBaseRunSubmitter] =
-    await Promise.all([
-      readFile(globalDeployUrl, "utf8"),
-      readFile(cnDeployUrl, "utf8"),
-      readFile(cnProductionDeployUrl, "utf8"),
-      readFile(observabilityWorkflowUrl, "utf8"),
-      readFile(cloudBaseRunSubmitterUrl, "utf8"),
-    ]);
+  const [
+    globalDeploy,
+    cnDeploy,
+    cnProductionDeploy,
+    observability,
+    cloudBaseRunSubmitter,
+    cloudBaseRunDockerfile,
+  ] = await Promise.all([
+    readFile(globalDeployUrl, "utf8"),
+    readFile(cnDeployUrl, "utf8"),
+    readFile(cnProductionDeployUrl, "utf8"),
+    readFile(observabilityWorkflowUrl, "utf8"),
+    readFile(cloudBaseRunSubmitterUrl, "utf8"),
+    readFile(cloudBaseRunDockerfileUrl, "utf8"),
+  ]);
 
   assert.match(globalDeploy, /group: deploy-global-production/);
   assert.match(globalDeploy, /workflow_run:/);
@@ -146,6 +154,12 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cloudBaseRunSubmitter, /UpdateCloudRunServer/);
   assert.match(cloudBaseRunSubmitter, /"curl"/);
   assert.match(cloudBaseRunSubmitter, /"-9"/);
+  assert.match(cloudBaseRunDockerfile, /AS sharp-vendor/);
+  assert.match(cloudBaseRunDockerfile, /@img\/sharp-libvips-linux-x64@1\.2\.4/);
+  assert.match(
+    cloudBaseRunDockerfile,
+    /COPY --from=sharp-vendor[^]*node_modules\/@img\/sharp-libvips-linux-x64/,
+  );
   assert.match(cnDeploy, /cloudrun logs process/);
   assert.match(cnDeploy, /verify-cloudbase-runtime-logs\.mjs/);
 

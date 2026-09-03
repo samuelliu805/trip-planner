@@ -8,6 +8,7 @@ import { prepareCloudBaseRun } from "./prepare-cloudbase-run.mjs";
 
 const muslSharpPackages = ["sharp-linuxmusl-x64", "sharp-libvips-linuxmusl-x64"];
 const glibcSharpPackages = ["sharp-linux-x64", "sharp-libvips-linux-x64"];
+const sourceSharpPackages = ["sharp-linux-x64"];
 
 function createFixture({ includeMuslSharpPackages = true, publicAsset } = {}) {
   const root = mkdtempSync(join(tmpdir(), "prepare-cloudbase-run-"));
@@ -41,10 +42,10 @@ function createFixture({ includeMuslSharpPackages = true, publicAsset } = {}) {
 }
 
 function assertSharpPackageSelection(output) {
-  for (const packageName of muslSharpPackages) {
+  for (const packageName of [...muslSharpPackages, "sharp-libvips-linux-x64"]) {
     assert.equal(existsSync(join(output, "node_modules/@img", packageName)), false);
   }
-  for (const packageName of glibcSharpPackages) {
+  for (const packageName of sourceSharpPackages) {
     assert.equal(existsSync(join(output, "node_modules/@img", packageName, "package.json")), true);
   }
   assert.equal(existsSync(join(output, "node_modules/sharp/package.json")), true);
