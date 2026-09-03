@@ -117,35 +117,18 @@ jobs:
           node scripts/verify-cloudbase-migration-plan.mjs \
             "$migration_list" "$migration_plan" "${migration_versions[@]}"
       - name: Deploy the exact artifact and verify release evidence
+        id: cloudbase_run
+        run: >-
+          node scripts/deploy-cloudbase-run-with-evidence.mjs
+          --service-name "$CLOUDBASE_RUN_SERVICE"
+          --source .cloudbase-run
+      - name: Verify the released production runtime
         run: |
-          previous_records="$(mktemp)"
-          current_records="$(mktemp)"
           runtime_logs="$(mktemp)"
-          trap 'rm -f "$previous_records" "$current_records" "$runtime_logs"' EXIT
-          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
-            --env-id "$CLOUDBASE_ENV_ID" \
-            --service-name "$CLOUDBASE_RUN_SERVICE" \
-            --json > "$previous_records"
-          previous_deploy_id="$(node scripts/verify-cloudbase-run-records.mjs \
-            "$previous_records" latest)"
-          npx --yes --package @cloudbase/cli@3.8.1 tcb --yes cloudrun deploy \
-            --env-id "$CLOUDBASE_ENV_ID" \
-            --service-name "$CLOUDBASE_RUN_SERVICE" \
-            --source .cloudbase-run \
-            --port 8080 \
-            --install-dependency false \
-            --force --wait --json
-          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
-            --env-id "$CLOUDBASE_ENV_ID" \
-            --service-name "$CLOUDBASE_RUN_SERVICE" \
-            --json > "$current_records"
-          node scripts/verify-cloudbase-run-records.mjs \
-            "$current_records" released "$previous_deploy_id"
+          trap 'rm -f "$runtime_logs"' EXIT
           node scripts/verify-cloudbase-run-health.mjs "$NEXT_PUBLIC_SITE_URL"
-          current_run_id="$(node scripts/verify-cloudbase-run-records.mjs \
-            "$current_records" run-id)"
           npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun logs process \
             --env-id "$CLOUDBASE_ENV_ID" \
-            --run-id "$current_run_id" \
+            --run-id "${{ steps.cloudbase_run.outputs.run_id }}" \
             --json > "$runtime_logs"
           node scripts/verify-cloudbase-runtime-logs.mjs "$runtime_logs"

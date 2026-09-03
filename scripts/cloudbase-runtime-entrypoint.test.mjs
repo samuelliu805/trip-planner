@@ -19,25 +19,37 @@ function fixture(content) {
 test("injects CloudBase public runtime configuration without logging values", async (t) => {
   const root = fixture(
     [
+      "__TRIP_PLANNER_CLOUDBASE_ENV_ID__",
       "__TRIP_PLANNER_CLOUDBASE_SERVER_KEY__",
+      "__TRIP_PLANNER_CLOUDBASE_REGION__",
+      "__TRIP_PLANNER_NEXT_PUBLIC_CLOUDBASE_ENV_ID__",
       "__TRIP_PLANNER_CLOUDBASE_PUBLIC_KEY__",
+      "__TRIP_PLANNER_NEXT_PUBLIC_CLOUDBASE_REGION__",
       "__TRIP_PLANNER_AMAP_JS_API_KEY__",
       "__TRIP_PLANNER_SITE_URL__",
     ].join("|"),
   );
   t.after(() => rmSync(root, { force: true, recursive: true }));
   const env = {
+    CLOUDBASE_ENV_ID: "cn-production-environment",
     CLOUDBASE_PUBLISHABLE_KEY: "server-publishable",
+    CLOUDBASE_REGION: "ap-shanghai",
     NEXT_PUBLIC_AMAP_JS_API_KEY: "amap-browser-key",
+    NEXT_PUBLIC_CLOUDBASE_ENV_ID: "cn-production-environment",
     NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: "browser-publishable",
+    NEXT_PUBLIC_CLOUDBASE_REGION: "ap-shanghai",
     NEXT_PUBLIC_SITE_URL: "https://cn.example.com",
   };
 
   const result = await injectCloudBaseRuntimePublicEnv({ env, root });
 
   assert.deepEqual(result.names, [
+    "CLOUDBASE_ENV_ID",
     "CLOUDBASE_PUBLISHABLE_KEY",
+    "CLOUDBASE_REGION",
+    "NEXT_PUBLIC_CLOUDBASE_ENV_ID",
     "NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY",
+    "NEXT_PUBLIC_CLOUDBASE_REGION",
     "NEXT_PUBLIC_AMAP_JS_API_KEY",
     "NEXT_PUBLIC_SITE_URL",
   ]);

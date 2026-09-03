@@ -5,9 +5,12 @@ const path = process.argv[2];
 try {
   if (!path || process.argv[3]) throw new Error();
   const payload = await readFirstJsonObject(path);
-  if (!Array.isArray(payload?.Logs)) throw new Error();
+  const response = payload?.data ?? payload;
+  if (!response || typeof response !== "object" || !Array.isArray(response.Logs)) {
+    throw new Error();
+  }
 
-  const logs = payload.Logs.map((entry) => (typeof entry === "string" ? entry : "")).filter(
+  const logs = response.Logs.map((entry) => (typeof entry === "string" ? entry : "")).filter(
     Boolean,
   );
   const unsafe = logs.filter((entry) =>

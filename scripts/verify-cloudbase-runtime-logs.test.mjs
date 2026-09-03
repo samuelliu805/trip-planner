@@ -18,14 +18,22 @@ async function run(payload) {
 }
 
 test("accepts a healthy CloudBase runtime log", async () => {
-  const result = await run({ Logs: ["container started", "GET /api/health 200"] });
+  const result = await run({
+    data: { Logs: ["container started", "GET /api/health 200"] },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /no error clusters \(2 lines\)/);
+});
+
+test("accepts the raw CloudBase API response without the CLI envelope", async () => {
+  const result = await run({ Logs: ["create_build_image : creating", "check_build_image : succ"] });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /no error clusters \(2 lines\)/);
 });
 
 test("rejects runtime errors without replaying log content", async () => {
   const secret = "do-not-print-runtime-secret";
-  const result = await run({ Logs: [`Unhandled ERROR ${secret}`] });
+  const result = await run({ data: { Logs: [`Unhandled ERROR ${secret}`] } });
   assert.equal(result.status, 1);
   assert.equal(result.stderr.includes(secret), false);
 });

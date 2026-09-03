@@ -1,43 +1,75 @@
+import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
 
-export function prepareCloudBaseRun(projectRoot) {
-  const output = join(projectRoot, ".cloudbase-run");
-  const standalone = join(projectRoot, ".next/standalone");
-  const publicDirectory = join(projectRoot, "public");
+export function listTrackedProjectFiles(projectRoot) {
+  return execFileSync("git", ["ls-files", "-z"], {
+    cwd: projectRoot,
+    encoding: "buffer",
+    maxBuffer: 32 * 1024 * 1024,
+  })
+    .toString("utf8")
+    .split("\0")
+    .filter(Boolean);
+}
 
-  if (!existsSync(join(standalone, "server.js"))) {
-    throw new Error("Build the standalone Next.js application before preparing CloudBase Run.");
+function checkedSourcePath(projectRoot, trackedPath) {
+  if (
+    typeof trackedPath !== "string" ||
+    !trackedPath ||
+    isAbsolute(trackedPath) ||
+    trackedPath === ".cloudbase-run" ||
+    trackedPath.startsWith(".cloudbase-run/")
+  ) {
+    throw new Error("CloudBase source snapshot contained an invalid tracked path.");
+  }
+  const source = resolve(projectRoot, trackedPath);
+  const fromRoot = relative(projectRoot, source);
+  if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
+    throw new Error("CloudBase source snapshot escaped the project root.");
+  }
+  if (!existsSync(source)) {
+    throw new Error(`CloudBase tracked source was missing: ${trackedPath}`);
+  }
+  return source;
+}
+
+export function prepareCloudBaseRun(
+  projectRoot,
+  { trackedFiles = listTrackedProjectFiles(projectRoot) } = {},
+) {
+  const output = join(projectRoot, ".cloudbase-run");
+  if (!Array.isArray(trackedFiles) || trackedFiles.length === 0) {
+    throw new Error("CloudBase source snapshot had no tracked files.");
   }
 
   rmSync(output, { force: true, recursive: true });
   mkdirSync(output, { recursive: true });
-  cpSync(standalone, output, { recursive: true });
-  rmSync(join(output, "node_modules/@img/sharp-linuxmusl-x64"), {
-    force: true,
-    recursive: true,
-  });
-  rmSync(join(output, "node_modules/@img/sharp-libvips-linuxmusl-x64"), {
-    force: true,
-    recursive: true,
-  });
-  cpSync(join(projectRoot, ".next/static"), join(output, ".next/static"), { recursive: true });
-  if (existsSync(publicDirectory)) {
-    cpSync(publicDirectory, join(output, "public"), { recursive: true });
+  for (const trackedPath of trackedFiles) {
+    const source = checkedSourcePath(projectRoot, trackedPath);
+    const destination = join(output, trackedPath);
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(source, destination, { recursive: true });
   }
-  cpSync(
-    join(projectRoot, "scripts/cloudbase-runtime-entrypoint.mjs"),
-    join(output, "cloudbase-runtime-entrypoint.mjs"),
-  );
-  cpSync(join(projectRoot, "cloudbase/run/Dockerfile"), join(output, "Dockerfile"));
 
+  for (const requiredPath of [
+    "Dockerfile",
+    "package.json",
+    "package-lock.json",
+    "src",
+    "scripts/cloudbase-runtime-entrypoint.mjs",
+  ]) {
+    if (!existsSync(join(output, requiredPath))) {
+      throw new Error(`CloudBase source snapshot requires ${requiredPath}.`);
+    }
+  }
   return output;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const output = prepareCloudBaseRun(root);
-  process.stdout.write(`Prepared ${output}\n`);
+  process.stdout.write(`Prepared tracked CloudBase source snapshot at ${output}\n`);
 }

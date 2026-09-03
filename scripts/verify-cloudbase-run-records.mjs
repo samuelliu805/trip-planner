@@ -1,3 +1,5 @@
+import { pathToFileURL } from "node:url";
+
 import { readFirstJsonObject } from "./cloudbase-cli-json.mjs";
 
 const failureMessage = "CloudBase Run deployment record verification failed.\n";
@@ -23,33 +25,89 @@ function isPresent(value) {
   );
 }
 
+export function inspectCloudBaseRunRecords(payload) {
+  const records = payload?.data?.DeployRecords;
+  if (!Array.isArray(records) || records.length === 0) throw new Error();
+
+  const latest = records[0];
+  if (!latest || typeof latest !== "object" || Array.isArray(latest)) throw new Error();
+  return { latest, deployId: identifier(latest.DeployId) };
+}
+
+export function cloudBaseRunId(payload) {
+  const { latest } = inspectCloudBaseRunRecords(payload);
+  return identifier(latest.RunId);
+}
+
+function isReleased(latest) {
+  return (
+    latest.Status === "normal" &&
+    latest.HasTraffic === true &&
+    latest.FlowRatio === 100 &&
+    latest.IsReleasing === false &&
+    isPresent(latest.RunId) &&
+    isPresent(latest.BuildId)
+  );
+}
+
+export function classifyCloudBaseRunRecords(payload, previousDeployId) {
+  const { latest, deployId } = inspectCloudBaseRunRecords(payload);
+  if (deployId === previousDeployId) return "unchanged";
+  if (isReleased(latest)) return "released";
+
+  const status = typeof latest.Status === "string" ? latest.Status.toLowerCase() : "";
+  if (/(?:^|_)failed$/.test(status) || ["error", "canceled", "cancelled"].includes(status)) {
+    return "failed";
+  }
+  if (
+    latest.IsReleasing === true ||
+    ["building", "creating", "deploying", "normal", "pending", "releasing", "running"].includes(
+      status,
+    )
+  ) {
+    return "pending";
+  }
+  throw new Error();
+}
+
+export function assertCloudBaseRunBaseline(payload) {
+  const { latest, deployId } = inspectCloudBaseRunRecords(payload);
+  if (!isReleased(latest)) throw new Error();
+  return deployId;
+}
+
 async function main() {
   const path = process.argv[2];
   const mode = process.argv[3];
   const previousDeployId = process.argv[4];
   if (
     !path ||
-    !["latest", "run-id", "unchanged", "released"].includes(mode) ||
+    !["baseline", "latest", "run-id", "state", "unchanged", "released"].includes(mode) ||
     (["latest", "run-id"].includes(mode) && previousDeployId !== undefined) ||
-    (!["latest", "run-id"].includes(mode) && (!previousDeployId || process.argv[5]))
+    (mode === "baseline" && previousDeployId !== undefined) ||
+    (!["baseline", "latest", "run-id"].includes(mode) && (!previousDeployId || process.argv[5]))
   ) {
     throw new Error();
   }
 
   const payload = await readFirstJsonObject(path);
-  const records = payload?.data?.DeployRecords;
-  if (!Array.isArray(records) || records.length === 0) throw new Error();
+  const { latest, deployId: latestDeployId } = inspectCloudBaseRunRecords(payload);
 
-  const latest = records[0];
-  if (!latest || typeof latest !== "object" || Array.isArray(latest)) throw new Error();
-  const latestDeployId = identifier(latest.DeployId);
+  if (mode === "baseline") {
+    process.stdout.write(`${assertCloudBaseRunBaseline(payload)}\n`);
+    return;
+  }
 
   if (mode === "latest") {
     process.stdout.write(`${latestDeployId}\n`);
     return;
   }
   if (mode === "run-id") {
-    process.stdout.write(`${identifier(latest.RunId)}\n`);
+    process.stdout.write(`${cloudBaseRunId(payload)}\n`);
+    return;
+  }
+  if (mode === "state") {
+    process.stdout.write(`${classifyCloudBaseRunRecords(payload, previousDeployId)}\n`);
     return;
   }
   if (mode === "unchanged") {
@@ -58,22 +116,16 @@ async function main() {
     return;
   }
 
-  if (
-    latestDeployId === previousDeployId ||
-    latest.Status !== "normal" ||
-    latest.HasTraffic !== true ||
-    latest.FlowRatio !== 100 ||
-    latest.IsReleasing !== false ||
-    !isPresent(latest.RunId) ||
-    !isPresent(latest.BuildId)
-  ) {
+  if (latestDeployId === previousDeployId || !isReleased(latest)) {
     throw new Error();
   }
 
   process.stdout.write("CloudBase Run deployment is normal with 100% traffic.\n");
 }
 
-main().catch(() => {
-  process.stderr.write(failureMessage);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(() => {
+    process.stderr.write(failureMessage);
+    process.exitCode = 1;
+  });
+}

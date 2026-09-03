@@ -84,6 +84,23 @@ Never copy its test passwords into CloudBase Run application variables.
 succeeds on `master`; manual dispatch remains available for recovery. It applies no unreviewed
 migration, never rolls a migration back, and serializes releases with a fixed concurrency group.
 
+CloudBase source submission is guarded by the deployment ledger. The workflow first requires the
+current version to be normal at 100% traffic. It builds a maximum-compression archive, obtains a
+fresh one-use upload target through `DescribeCloudBaseBuildService`, uploads with bounded `curl`,
+and registers that exact package through `UpdateCloudRunServer`. This avoids the CLI's unbounded
+Node upload path while retaining the same official CloudBase deployment APIs. The cross-region
+source archive is a clean snapshot of Git-tracked files only, so it excludes `node_modules`, local
+environment files, untracked files, and prior build output. CloudBase then uses the root Dockerfile
+to install dependencies from the committed lockfile, build the application, and copy the standalone
+Next.js output into a non-root runtime image. Public CloudBase environment identifiers and regions,
+like the existing keys and site URL, are injected from the service's runtime configuration rather
+than being fixed to the development environment at image-build time. After any success,
+timeout, or HTTP error, the workflow reconciles the ledger for three minutes before deciding what
+to do. A new DeployId permanently disables retries and is followed until it is released or fails.
+Only a failed/timed-out submission with a confirmed unchanged DeployId may be retried, with at most
+three submissions and increasing backoff. This keeps a transient upload failure recoverable without
+creating duplicate versions or accepting a stale release.
+
 If CN health or runtime-log verification fails, preserve the workflow's previous DeployId/RunId and
 stop. In CloudBase Console, select the exact environment, click **CloudBase Run**, select the
 service, open **Versions/Traffic**, inspect the recorded known-good version, and use **Rollback**

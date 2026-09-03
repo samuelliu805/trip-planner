@@ -10,9 +10,66 @@ const required = (name, environment = process.env) => {
 export function selectExactProductionDeployment(payload, expectedSha) {
   if (!Array.isArray(payload?.deployments)) throw new Error("Vercel deployment list was invalid.");
   return payload.deployments.find(
-    (candidate) =>
-      candidate?.meta?.githubCommitSha === expectedSha && candidate?.target === "production",
+    (candidate) => matchesExactGitSha(candidate, expectedSha) && candidate?.target === "production",
   );
+}
+
+function matchesExactGitSha(deployment, expectedSha) {
+  const reportedShas = [deployment?.meta?.githubCommitSha, deployment?.gitSource?.sha].filter(
+    (value) => typeof value === "string" && value.length > 0,
+  );
+  return reportedShas.length > 0 && reportedShas.every((value) => value === expectedSha);
+}
+
+function deploymentIdentifier(deployment) {
+  const value = deployment?.id ?? deployment?.uid;
+  if (typeof value !== "string" || !/^dpl_[A-Za-z0-9]+$/.test(value)) {
+    throw new Error("Vercel deployment identifier was invalid.");
+  }
+  return value;
+}
+
+export function assertExactProductionDeploymentDetail(
+  detail,
+  selectedDeployment,
+  projectId,
+  expectedSha,
+) {
+  const selectedId = deploymentIdentifier(selectedDeployment);
+  const detailId = deploymentIdentifier(detail);
+  const detailProjectId = detail?.projectId ?? detail?.project?.id;
+  if (
+    detailId !== selectedId ||
+    detailProjectId !== projectId ||
+    detail?.target !== "production" ||
+    (detail?.readyState ?? detail?.state) !== "READY" ||
+    !matchesExactGitSha(detail, expectedSha)
+  ) {
+    throw new Error("Vercel deployment detail did not match the exact production candidate.");
+  }
+  return detailId;
+}
+
+export function exactProductionOrigin(detail, configuredSiteUrl) {
+  let configured;
+  try {
+    configured = new URL(configuredSiteUrl);
+  } catch {
+    throw new Error("Global production site URL was invalid.");
+  }
+  if (
+    configured.protocol !== "https:" ||
+    configured.username ||
+    configured.password ||
+    configured.pathname !== "/" ||
+    configured.search ||
+    configured.hash ||
+    !Array.isArray(detail?.alias) ||
+    !detail.alias.includes(configured.hostname)
+  ) {
+    throw new Error("Global production site URL was not assigned to the exact deployment.");
+  }
+  return configured.origin;
 }
 
 export function assertGlobalEnvironmentKeys(payload) {
@@ -91,6 +148,7 @@ export async function verifyVercelGitDeployment(environment = process.env) {
   const projectId = required("VERCEL_PROJECT_ID", environment);
   const teamId = required("VERCEL_ORG_ID", environment);
   const expectedSha = required("DEPLOY_SHA", environment);
+  const configuredSiteUrl = required("NEXT_PUBLIC_SITE_URL", environment);
   const deadline = Date.now() + 20 * 60_000;
   let deployment;
   while (Date.now() < deadline) {
@@ -109,36 +167,33 @@ export async function verifyVercelGitDeployment(environment = process.env) {
     throw new Error(`Timed out waiting for the Vercel Git deployment for ${expectedSha}.`);
   }
 
-  const detail = await apiJson(`/v13/deployments/${encodeURIComponent(deployment.uid)}`, {
-    teamId,
-    token,
-  });
-  if (
-    detail.uid !== deployment.uid ||
-    detail.projectId !== projectId ||
-    detail.target !== "production" ||
-    (detail.readyState ?? detail.state) !== "READY" ||
-    detail.meta?.githubCommitSha !== expectedSha
-  )
-    throw new Error("Vercel deployment detail did not match the exact production candidate.");
+  const deploymentId = deploymentIdentifier(deployment);
+  const detail = await apiJson(
+    `/v13/deployments/${encodeURIComponent(deploymentId)}?withGitRepoInfo=true`,
+    {
+      teamId,
+      token,
+    },
+  );
+  assertExactProductionDeploymentDetail(detail, deployment, projectId, expectedSha);
 
   assertGlobalEnvironmentKeys(
     await apiJson(`/v9/projects/${encodeURIComponent(projectId)}/env`, { teamId, token }),
   );
-  const origin = new URL(`https://${detail.url}`).origin;
+  const origin = exactProductionOrigin(detail, configuredSiteUrl);
   await verifyRoutes(origin);
   assertNoCloudBaseWarnings(
-    await apiJson(`/v3/deployments/${encodeURIComponent(detail.uid)}/events?follow=0&limit=200`, {
+    await apiJson(`/v3/deployments/${encodeURIComponent(deploymentId)}/events?follow=0&limit=200`, {
       teamId,
       token,
     }),
   );
 
   if (environment.GITHUB_OUTPUT) {
-    await appendFile(environment.GITHUB_OUTPUT, `deployment_id=${detail.uid}\nurl=${origin}\n`);
+    await appendFile(environment.GITHUB_OUTPUT, `deployment_id=${deploymentId}\nurl=${origin}\n`);
   }
-  process.stdout.write(`Verified exact-SHA Vercel production deployment ${detail.uid}.\n`);
-  return { deploymentId: detail.uid, origin };
+  process.stdout.write(`Verified exact-SHA Vercel production deployment ${deploymentId}.\n`);
+  return { deploymentId, origin };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

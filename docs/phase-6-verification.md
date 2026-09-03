@@ -55,11 +55,15 @@ overflow. Controlled A/B authorization tests sign in directly through the SDK. A
 is a separate manual acceptance gate and must not be claimed by automation.
 
 Global delivery verification waits for the exact master SHA, validates its Vercel target and
-project, checks the bounded health response and public auth routes, rejects CN/CloudBase production
+project, accepts the documented v6-list `uid`/v13-detail `id` representation of the same deployment,
+requires the configured public production origin in that deployment's alias list, checks the
+bounded health response and public auth routes there, rejects CN/CloudBase production
 environment names, and scans exact-deployment build/runtime errors. CN dev delivery triggers only
 after successful master CI, validates its fixed target, reviews and applies committed migrations,
 deploys the cleanup function and Run artifact, records release identifiers, checks health, and scans
-the new Run ID's runtime log. CN production is a separate manually approved workflow.
+the new Run ID's runtime log. Run submission retries are bounded and allowed only while the provider
+ledger proves that no new DeployId was registered. CN production is a separate manually approved
+workflow.
 
 GitHub checks are visible evidence, but a private repository plan may not provide enforceable
 rulesets/required checks. The release owner must not describe them as merge-enforced unless the

@@ -1,88 +1,66 @@
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { prepareCloudBaseRun } from "./prepare-cloudbase-run.mjs";
 
-const muslSharpPackages = ["sharp-linuxmusl-x64", "sharp-libvips-linuxmusl-x64"];
-const glibcSharpPackages = ["sharp-linux-x64", "sharp-libvips-linux-x64"];
+const requiredFiles = [
+  "Dockerfile",
+  "package.json",
+  "package-lock.json",
+  "src/app.ts",
+  "scripts/cloudbase-runtime-entrypoint.mjs",
+];
 
-function createFixture({ includeMuslSharpPackages = true, publicAsset } = {}) {
+function createFixture() {
   const root = mkdtempSync(join(tmpdir(), "prepare-cloudbase-run-"));
-
-  mkdirSync(join(root, ".next/standalone"), { recursive: true });
-  mkdirSync(join(root, ".next/static/chunks"), { recursive: true });
-  mkdirSync(join(root, "cloudbase/run"), { recursive: true });
-  mkdirSync(join(root, "scripts"), { recursive: true });
-  writeFileSync(join(root, ".next/standalone/server.js"), "server");
-  writeFileSync(join(root, ".next/static/chunks/app.js"), "static");
-  writeFileSync(join(root, "cloudbase/run/Dockerfile"), "FROM node:22-alpine\n");
-  writeFileSync(join(root, "scripts/cloudbase-runtime-entrypoint.mjs"), "entrypoint");
-
-  const fixtureSharpPackages = includeMuslSharpPackages
-    ? [...muslSharpPackages, ...glibcSharpPackages]
-    : glibcSharpPackages;
-  for (const packageName of fixtureSharpPackages) {
-    const packageDirectory = join(root, ".next/standalone/node_modules/@img", packageName);
-    mkdirSync(packageDirectory, { recursive: true });
-    writeFileSync(join(packageDirectory, "package.json"), JSON.stringify({ name: packageName }));
+  for (const path of requiredFiles) {
+    const fullPath = join(root, path);
+    mkdirSync(dirname(fullPath), { recursive: true });
+    writeFileSync(fullPath, `tracked:${path}`);
   }
-  mkdirSync(join(root, ".next/standalone/node_modules/sharp"), { recursive: true });
-  writeFileSync(join(root, ".next/standalone/node_modules/sharp/package.json"), "sharp");
-
-  if (publicAsset) {
-    mkdirSync(join(root, "public/assets"), { recursive: true });
-    writeFileSync(join(root, "public/assets/logo.txt"), publicAsset);
-  }
-
+  writeFileSync(join(root, ".env.local"), "SECRET=must-not-copy");
+  writeFileSync(join(root, "untracked.txt"), "must-not-copy");
+  mkdirSync(join(root, ".cloudbase-run"), { recursive: true });
+  writeFileSync(join(root, ".cloudbase-run/stale.txt"), "stale");
   return root;
 }
 
-function assertSharpPackageSelection(output) {
-  for (const packageName of muslSharpPackages) {
-    assert.equal(existsSync(join(output, "node_modules/@img", packageName)), false);
-  }
-  for (const packageName of glibcSharpPackages) {
-    assert.equal(existsSync(join(output, "node_modules/@img", packageName, "package.json")), true);
-  }
-  assert.equal(existsSync(join(output, "node_modules/sharp/package.json")), true);
-}
-
-test("prepares CloudBase Run output without a public directory", (t) => {
+test("copies only the supplied tracked source snapshot", (t) => {
   const root = createFixture();
   t.after(() => rmSync(root, { force: true, recursive: true }));
 
-  const output = prepareCloudBaseRun(root);
+  const output = prepareCloudBaseRun(root, { trackedFiles: requiredFiles });
 
-  assert.equal(readFileSync(join(output, "server.js"), "utf8"), "server");
-  assert.equal(readFileSync(join(output, ".next/static/chunks/app.js"), "utf8"), "static");
-  assert.equal(readFileSync(join(output, "Dockerfile"), "utf8"), "FROM node:22-alpine\n");
-  assert.equal(
-    readFileSync(join(output, "cloudbase-runtime-entrypoint.mjs"), "utf8"),
-    "entrypoint",
+  for (const path of requiredFiles) {
+    assert.equal(readFileSync(join(output, path), "utf8"), `tracked:${path}`);
+  }
+  assert.equal(existsSync(join(output, ".env.local")), false);
+  assert.equal(existsSync(join(output, "untracked.txt")), false);
+  assert.equal(existsSync(join(output, "stale.txt")), false);
+});
+
+test("rejects a tracked path outside the project root", (t) => {
+  const root = createFixture();
+  t.after(() => rmSync(root, { force: true, recursive: true }));
+
+  assert.throws(
+    () => prepareCloudBaseRun(root, { trackedFiles: [...requiredFiles, "../outside"] }),
+    /escaped the project root/,
   );
-  assert.equal(existsSync(join(output, "public")), false);
-  assertSharpPackageSelection(output);
 });
 
-test("copies real public assets when the public directory exists", (t) => {
-  const root = createFixture({ publicAsset: "logo" });
+test("requires the complete source build contract", (t) => {
+  const root = createFixture();
   t.after(() => rmSync(root, { force: true, recursive: true }));
 
-  const output = prepareCloudBaseRun(root);
-
-  assert.equal(readFileSync(join(output, "public/assets/logo.txt"), "utf8"), "logo");
-  assertSharpPackageSelection(output);
-});
-
-test("tolerates missing optional musl Sharp package directories", (t) => {
-  const root = createFixture({ includeMuslSharpPackages: false });
-  t.after(() => rmSync(root, { force: true, recursive: true }));
-
-  const output = prepareCloudBaseRun(root);
-
-  assert.equal(readFileSync(join(output, "server.js"), "utf8"), "server");
-  assertSharpPackageSelection(output);
+  assert.throws(
+    () =>
+      prepareCloudBaseRun(root, {
+        trackedFiles: requiredFiles.filter((path) => path !== "Dockerfile"),
+      }),
+    /requires Dockerfile/,
+  );
 });
