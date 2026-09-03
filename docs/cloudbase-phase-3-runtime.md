@@ -39,15 +39,17 @@ Production and Preview origins must be reviewed independently.
 
 ## Authentication and cookies
 
-CN public sign-in requests a CloudBase SMS verification challenge and returns only an encrypted,
-authenticated, short-lived token through the Server Action state, with an HttpOnly cookie as a
-compatibility fallback. The pinned SDK then uses its existing-user SMS sign-in or new-user
-verify-and-register path. The application never persists an OTP. Controlled
+CN public sign-in keeps the `verifyOtp` callback returned by CloudBase `signInWithOtp` in the
+browser that requested the SMS. This is the SDK's supported flow for both existing users and
+automatic registration, and prevents a verification request from being detached from its
+provider-owned message ID across Cloud Run requests or instances. The application never persists
+an OTP. Controlled
 CI identities call `signInWithPassword({ username, password })` directly from the protected test
 harness; no username/password fields are rendered by the public CN application. The server stores the returned
 access and refresh tokens in the distinct HttpOnly `tp-cn-access-token` and
-`tp-cn-refresh-token` cookies. Sign-in verifies the created session with `getSession`. On later
-requests, the proxy verifies the RS256 access-token signature against the environment-scoped
+`tp-cn-refresh-token` cookies only after verifying the newly issued access token's RS256 signature,
+environment-scoped issuer, subject, issued-at, and expiry. On later requests, the proxy repeats
+that verification against the environment-scoped
 CloudBase OIDC/JWKS endpoint, checks issuer, subject, issued-at, and expiry, and forwards only the
 verified provider-neutral identity. It enters the SDK `refreshSession` / `setSession` /
 `getSession` path only for an expired or nearly expired access token and persists the rotated pair.

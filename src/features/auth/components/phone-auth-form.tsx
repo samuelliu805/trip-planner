@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertCircle, LoaderCircle, MessageSquareText } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { T } from "@/features/i18n/i18n-provider";
 import type { PhoneOtpActionState } from "@/features/auth/types";
-import { phoneOtpResendState } from "@/features/auth/phone";
+import {
+  maskMainlandPhone,
+  normalizeMainlandPhone,
+  phoneOtpResendState,
+} from "@/features/auth/phone";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { getBrowserPhoneOtpProvider } from "@/platform/composition/client-selected";
+import type { BrowserPhoneOtpProvider } from "@/platform/contracts/auth";
+import { PlatformOperationError } from "@/platform/contracts/errors";
 
 type PhoneAuthFormProps = {
   action: (state: PhoneOtpActionState, formData: FormData) => Promise<PhoneOtpActionState>;
@@ -20,6 +27,18 @@ type PhoneAuthFormProps = {
 };
 
 const initialState: PhoneOtpActionState = { step: "phone" };
+
+function safePhoneError(error: unknown) {
+  if (
+    error instanceof PlatformOperationError &&
+    (error.code === "captcha_required" ||
+      error.code === "otp_expired" ||
+      error.code === "otp_invalid" ||
+      error.code === "rate_limited")
+  )
+    return error.message;
+  return "Phone sign-in could not be completed. Please try again.";
+}
 
 function ResendControls({ pending, resendAt }: { pending: boolean; resendAt: number }) {
   const [secondsRemaining, setSecondsRemaining] = useState(
@@ -60,9 +79,55 @@ function ResendControls({ pending, resendAt }: { pending: boolean; resendAt: num
 }
 
 export function PhoneAuthForm({ action, mode }: PhoneAuthFormProps) {
-  const [state, formAction, pending] = useActionState(action, initialState);
   const [phone, setPhone] = useState("");
   const operationRef = useRef<HTMLInputElement>(null);
+  const providerRef = useRef<BrowserPhoneOtpProvider | null>(null);
+
+  const browserAction = useCallback(
+    async (state: PhoneOtpActionState, formData: FormData): Promise<PhoneOtpActionState> => {
+      const intent = formData.get("intent");
+      if (intent === "reset") {
+        providerRef.current?.clearChallenge();
+        return { step: "phone" };
+      }
+      if (intent === "request") {
+        const normalizedPhone = normalizeMainlandPhone(formData.get("phone"));
+        if (!normalizedPhone)
+          return { ...state, error: "Enter a valid mainland China mobile number." };
+        try {
+          const provider = (providerRef.current ??= getBrowserPhoneOtpProvider());
+          await provider.requestOtp(normalizedPhone);
+          const requestedAt = Date.now();
+          return {
+            maskedPhone: maskMainlandPhone(normalizedPhone),
+            resendAt: requestedAt + 60_000,
+            step: "otp",
+          };
+        } catch (error) {
+          return { ...state, error: safePhoneError(error) };
+        }
+      }
+      const code = String(formData.get("code") ?? "").trim();
+      if (!/^\d{6}$/.test(code)) return { ...state, error: "Enter the 6-digit code." };
+      let tokens: Readonly<{ accessToken: string; refreshToken: string }>;
+      try {
+        const provider = (providerRef.current ??= getBrowserPhoneOtpProvider());
+        tokens = await provider.verifyOtp(code);
+      } catch (error) {
+        return { ...state, error: safePhoneError(error) };
+      }
+      const session = new FormData();
+      session.set("access_token", tokens.accessToken);
+      session.set("auth_flow", mode);
+      session.set("intent", "session");
+      session.set("operation_id", String(formData.get("operation_id") ?? ""));
+      session.set("refresh_token", tokens.refreshToken);
+      const result = await action(state, session);
+      return result.error ? { ...state, ...result } : result;
+    },
+    [action, mode],
+  );
+  const [state, formAction, pending] = useActionState(browserAction, initialState);
 
   function captureStart(event: React.FormEvent<HTMLFormElement>) {
     const intent = (event.nativeEvent as SubmitEvent).submitter?.getAttribute("value");

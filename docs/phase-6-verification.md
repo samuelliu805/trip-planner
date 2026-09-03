@@ -17,12 +17,12 @@ CloudBase packages or the CloudBase missing-`ws` path. A CN artifact fails if it
 Google Maps runtime packages/URLs. Neither runtime can select a provider from a host, request,
 cookie, or URL parameter.
 
-The public CN flow normalizes an accepted mainland number to E.164, obtains a challenge through the
-pinned CloudBase SDK, and seals challenge state with AES-256-GCM in a short-lived HttpOnly,
-SameSite=Strict cookie. The OTP is submitted directly to CloudBase and is never stored. Successful
-authentication reuses the existing separately named CN HttpOnly session cookies and the existing
-RS256 issuer, subject, expiry, and refresh checks. Application telemetry contains method/flow and a
-generated operation ID only—never phone, OTP, provider payload, or token.
+The public CN flow normalizes an accepted mainland number, then keeps the official verifier returned
+by CloudBase `signInWithOtp` in the requesting browser. The OTP is submitted directly through that
+bound verifier and is never stored. Successful authentication sends the newly issued token pair to
+the same-origin Server Action, which verifies the access-token signature, issuer, subject, and
+expiry before writing the separately named CN HttpOnly session cookies. Application telemetry
+contains method/flow and a generated operation ID only—never phone, OTP, provider payload, or token.
 
 ## Locale resolution
 

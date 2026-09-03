@@ -3,73 +3,27 @@ import "server-only";
 import { cookies } from "next/headers";
 
 import type { PhoneOtpAuthProvider } from "@/platform/contracts/auth";
-import { PlatformOperationError } from "@/platform/contracts/errors";
 
-import { createCloudBaseClients } from "./client";
-import { cloudBaseData, normalizeCloudBaseError } from "./errors";
-import {
-  clearCloudBasePhoneChallenge,
-  readCloudBasePhoneChallenge,
-  writeCloudBasePhoneChallenge,
-} from "./phone-challenge";
-import { completeCloudBasePhoneOtp, requestCloudBasePhoneOtp } from "./phone-otp-runtime";
-import { sessionFromData, withCloudBaseAuthLock, writeCloudBaseSession } from "./session";
+import { verifyCloudBaseAccessToken } from "./access-token";
+import { getCloudBaseConfig } from "./config";
+import { normalizeCloudBaseError } from "./errors";
+import { writeCloudBaseSession } from "./session";
+import { cloudBaseSessionFromVerifiedClaims } from "./session-data";
 
-const challengeLifetimeMs = 10 * 60_000;
-const resendDelayMs = 60_000;
+const legacyChallengeCookie = "tp-cn-phone-challenge";
 
 export class CloudBasePhoneOtpAuthProvider implements PhoneOtpAuthProvider {
-  async clearChallenge() {
-    clearCloudBasePhoneChallenge(await cookies());
-  }
-
-  async requestOtp(input: Readonly<{ challengeToken?: string; phone: string }>) {
+  async establishSession(input: Readonly<{ accessToken: string; refreshToken: string }>) {
     const store = await cookies();
-    const now = Date.now();
-    const existing = readCloudBasePhoneChallenge(store, input.challengeToken, now);
-    if (existing && existing.issuedAt + resendDelayMs > now) {
-      throw new PlatformOperationError(
-        "rate_limited",
-        "Wait for the countdown before requesting another code.",
-      );
-    }
     try {
-      const result = await requestCloudBasePhoneOtp(createCloudBaseClients().auth, input.phone);
-      const issuedAt = Date.now();
-      const challengeToken = writeCloudBasePhoneChallenge(store, {
-        expiresAt: issuedAt + challengeLifetimeMs,
-        isUser: result.isUser,
-        issuedAt,
-        phone: input.phone,
-        verificationId: result.verificationId,
-      });
-      return Object.freeze({ challengeToken, resendAt: issuedAt + resendDelayMs });
-    } catch (error) {
-      throw normalizeCloudBaseError(error, "A verification code could not be requested.");
-    }
-  }
-
-  async verifyOtp(input: Readonly<{ challengeToken?: string; code: string }>) {
-    const store = await cookies();
-    const challenge = readCloudBasePhoneChallenge(store, input.challengeToken);
-    if (!challenge) {
-      clearCloudBasePhoneChallenge(store);
-      throw new PlatformOperationError(
-        "otp_expired",
-        "Your verification request has expired. Request a new code.",
+      const claims = await verifyCloudBaseAccessToken(input.accessToken, getCloudBaseConfig().env);
+      const session = cloudBaseSessionFromVerifiedClaims(
+        { accessToken: input.accessToken, refreshToken: input.refreshToken },
+        claims,
       );
-    }
-    try {
-      const user = await withCloudBaseAuthLock(async () => {
-        const { auth } = createCloudBaseClients();
-        await completeCloudBasePhoneOtp(auth, challenge, input.code);
-        const result = await auth.getSession();
-        const session = sessionFromData(cloudBaseData(result, "Phone sign-in failed."));
-        writeCloudBaseSession(store, session);
-        return session.user;
-      });
-      clearCloudBasePhoneChallenge(store);
-      return user;
+      writeCloudBaseSession(store, session);
+      store.delete(legacyChallengeCookie);
+      return session.user;
     } catch (error) {
       throw normalizeCloudBaseError(error, "Phone sign-in failed. Please try again.");
     }

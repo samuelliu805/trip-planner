@@ -41,6 +41,9 @@ export function normalizeCloudBaseError(error: unknown, fallbackMessage: string)
   ) {
     platformCode = "rate_limited";
     safeMessage = "Too many code requests. Wait a moment, then try again.";
+  } else if (code.includes("INVALID_ARGUMENT") || code.includes("VERIFICATION_FAILED")) {
+    platformCode = "otp_invalid";
+    safeMessage = "That verification code is expired or incorrect. Request a new code if needed.";
   } else if (
     combined.includes("verification expired") ||
     combined.includes("verification_expired") ||
