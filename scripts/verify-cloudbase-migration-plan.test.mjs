@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { verifyCloudBaseMigrationPlan } from "./verify-cloudbase-migration-plan.mjs";
+import {
+  verifyCloudBaseDeploymentMigrationPlan,
+  verifyCloudBaseMigrationPlan,
+} from "./verify-cloudbase-migration-plan.mjs";
 
 const requiredVersion = "20260901181000";
 
@@ -89,5 +92,36 @@ test("rejects malformed CLI results without echoing their content", () => {
       assert.doesNotMatch(error.message, /do-not-print/);
       return true;
     },
+  );
+});
+
+test("deployment mode accepts only reviewed pending versions and is idempotent", () => {
+  assert.deepEqual(
+    verifyCloudBaseDeploymentMigrationPlan(
+      listWith("20260901180000"),
+      planWith([{ name: "locale", version: requiredVersion }]),
+      [requiredVersion],
+    ),
+    { applied: 1, pending: [requiredVersion] },
+  );
+  assert.deepEqual(
+    verifyCloudBaseDeploymentMigrationPlan(
+      listWith("20260901180000", requiredVersion),
+      planWith(),
+      [requiredVersion],
+    ),
+    { applied: 2, pending: [] },
+  );
+});
+
+test("deployment mode rejects unexpected or missing migration versions", () => {
+  assert.throws(
+    () =>
+      verifyCloudBaseDeploymentMigrationPlan(
+        listWith(),
+        planWith([{ version: "20260901999999" }]),
+        [requiredVersion],
+      ),
+    /Unexpected pending versions.*Missing candidate versions/,
   );
 });

@@ -29,9 +29,9 @@ async function main() {
   const previousDeployId = process.argv[4];
   if (
     !path ||
-    !["latest", "unchanged", "released"].includes(mode) ||
-    (mode === "latest" && previousDeployId !== undefined) ||
-    (mode !== "latest" && (!previousDeployId || process.argv[5]))
+    !["latest", "run-id", "unchanged", "released"].includes(mode) ||
+    (["latest", "run-id"].includes(mode) && previousDeployId !== undefined) ||
+    (!["latest", "run-id"].includes(mode) && (!previousDeployId || process.argv[5]))
   ) {
     throw new Error();
   }
@@ -46,6 +46,10 @@ async function main() {
 
   if (mode === "latest") {
     process.stdout.write(`${latestDeployId}\n`);
+    return;
+  }
+  if (mode === "run-id") {
+    process.stdout.write(`${identifier(latest.RunId)}\n`);
     return;
   }
   if (mode === "unchanged") {

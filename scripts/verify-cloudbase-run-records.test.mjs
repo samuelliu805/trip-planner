@@ -68,6 +68,15 @@ test("extracts the latest DeployId from noisy CloudBase CLI output", (t) => {
   assert.equal(result.stdout.includes(fakeSecret), false);
 });
 
+test("extracts the latest bounded RunId for runtime-log verification", (t) => {
+  const run = createRunner(t);
+  const result = run(JSON.stringify(records(record())), "run-id");
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, "run-004\n");
+  assert.equal(result.stderr, "");
+});
+
 test("rejects an unchanged DeployId", (t) => {
   const run = createRunner(t);
   assertSafeFailure(run(JSON.stringify(records(record())), "released", "004"));

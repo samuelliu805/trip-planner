@@ -1,0 +1,151 @@
+name: Deploy CN Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact 40-character master commit SHA to deploy
+        required: true
+        type: string
+      deployment_gate:
+        description: Type DEPLOY_PRODUCTION after the environment reviewer approves the change
+        required: true
+        type: string
+      production_readiness:
+        description: Type ALERTS_RESTORE_SMS_ROLLBACK_READY after all four evidence gates pass
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-cn-production-trip-planner-cn
+  cancel-in-progress: false
+
+jobs:
+  deploy-cn-production:
+    if: >-
+      inputs.deployment_gate == 'DEPLOY_PRODUCTION' &&
+      inputs.production_readiness == 'ALERTS_RESTORE_SMS_ROLLBACK_READY'
+    environment: cloudbase-cn-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      AMAP_JS_SECURITY_CODE: ${{ secrets.AMAP_JS_SECURITY_CODE }}
+      AMAP_WEB_SERVICE_KEY: ${{ secrets.AMAP_WEB_SERVICE_KEY }}
+      ALERT_EVIDENCE: ${{ vars.ALERT_EVIDENCE }}
+      APP_REGION: cn
+      AUTH_PROVIDER: cloudbase
+      CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
+      CLOUDBASE_ENV_ID: ${{ vars.CLOUDBASE_ENV_ID }}
+      CLOUDBASE_PG_INSTANCE_ID: ${{ vars.CLOUDBASE_PG_INSTANCE_ID }}
+      CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+      CLOUDBASE_REGION: ${{ vars.CLOUDBASE_REGION }}
+      CLOUDBASE_ROLLBACK_VERSION: ${{ vars.CLOUDBASE_ROLLBACK_VERSION }}
+      CLOUDBASE_RUN_SERVICE: ${{ vars.CLOUDBASE_RUN_SERVICE }}
+      CN_PUBLIC_PHONE_AUTH_ENABLED: "true"
+      DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_AMAP_JS_API_KEY: ${{ secrets.NEXT_PUBLIC_AMAP_JS_API_KEY }}
+      NEXT_PUBLIC_APP_REGION: cn
+      NEXT_PUBLIC_CLOUDBASE_ENV_ID: ${{ vars.CLOUDBASE_ENV_ID }}
+      NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLOUDBASE_REGION: ${{ vars.CLOUDBASE_REGION }}
+      NEXT_PUBLIC_MAPS_PROVIDER: amap
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+      NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
+      NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: production
+      RESTORE_DRILL_EVIDENCE: ${{ vars.RESTORE_DRILL_EVIDENCE }}
+      SMS_READINESS_EVIDENCE: ${{ vars.SMS_READINESS_EVIDENCE }}
+      STORAGE_PROVIDER: cloudbase
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.candidate_sha }}
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - name: Verify the exact reviewed production target and SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ inputs.candidate_sha }}"
+          test "${#CLOUDBASE_ENV_ID}" -gt 0
+          test "${#CLOUDBASE_PG_INSTANCE_ID}" -gt 0
+          test "${#CLOUDBASE_RUN_SERVICE}" -gt 0
+          test "${#CLOUDBASE_ROLLBACK_VERSION}" -gt 0
+          test "${#ALERT_EVIDENCE}" -gt 0
+          test "${#RESTORE_DRILL_EVIDENCE}" -gt 0
+          test "${#SMS_READINESS_EVIDENCE}" -gt 0
+          test "$CLOUDBASE_ENV_ID" != "trip-planner-cn-dev-d3bz94038b26"
+          test "$CLOUDBASE_PG_INSTANCE_ID" != "pgdb-l4lhtrv7"
+          git merge-base --is-ancestor HEAD origin/master
+      - run: npm ci
+      - name: Build and verify the isolated CN artifact
+        run: |
+          npm run check:database-pg-migrations
+          npm run build
+          npm run check:build-secret-boundary
+          npm run check:build-provider-isolation
+          npm run prepare:cloudbase-run
+      - name: Authenticate the production-scoped CloudBase CLI
+        run: >-
+          npx --yes --package @cloudbase/cli@3.8.1 tcb login
+          --cloudbase-api-key "$CLOUDBASE_API_KEY"
+          --env-id "$CLOUDBASE_ENV_ID" --json
+      - name: Validate and apply only reviewed migration files
+        run: |
+          migration_list="$(mktemp)"
+          migration_plan="$(mktemp)"
+          trap 'rm -f "$migration_list" "$migration_plan"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
+            --env-id "$CLOUDBASE_ENV_ID" --json > "$migration_list"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
+          migration_versions=()
+          while IFS= read -r file; do
+            migration_versions+=("${file%%_*}")
+          done < <(find cloudbase/migrations -maxdepth 1 -type f -name '*.sql' -printf '%f\n' | sort)
+          node scripts/verify-cloudbase-migration-plan.mjs \
+            "$migration_list" "$migration_plan" --deployment "${migration_versions[@]}"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --json
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
+            --env-id "$CLOUDBASE_ENV_ID" --json > "$migration_list"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
+          node scripts/verify-cloudbase-migration-plan.mjs \
+            "$migration_list" "$migration_plan" "${migration_versions[@]}"
+      - name: Deploy the exact artifact and verify release evidence
+        run: |
+          previous_records="$(mktemp)"
+          current_records="$(mktemp)"
+          runtime_logs="$(mktemp)"
+          trap 'rm -f "$previous_records" "$current_records" "$runtime_logs"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --service-name "$CLOUDBASE_RUN_SERVICE" \
+            --json > "$previous_records"
+          previous_deploy_id="$(node scripts/verify-cloudbase-run-records.mjs \
+            "$previous_records" latest)"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb --yes cloudrun deploy \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --service-name "$CLOUDBASE_RUN_SERVICE" \
+            --source .cloudbase-run \
+            --port 8080 \
+            --install-dependency false \
+            --force --wait --json
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --service-name "$CLOUDBASE_RUN_SERVICE" \
+            --json > "$current_records"
+          node scripts/verify-cloudbase-run-records.mjs \
+            "$current_records" released "$previous_deploy_id"
+          node scripts/verify-cloudbase-run-health.mjs "$NEXT_PUBLIC_SITE_URL"
+          current_run_id="$(node scripts/verify-cloudbase-run-records.mjs \
+            "$current_records" run-id)"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun logs process \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --run-id "$current_run_id" \
+            --json > "$runtime_logs"
+          node scripts/verify-cloudbase-runtime-logs.mjs "$runtime_logs"

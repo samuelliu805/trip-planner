@@ -33,6 +33,7 @@ const cnEnvironment = {
   CLOUDBASE_REGION: "ap-shanghai",
   CLOUDBASE_TEST_USER_A_PASSWORD: "test-user-a-password",
   CLOUDBASE_TEST_USER_B_PASSWORD: "test-user-b-password",
+  CN_PUBLIC_PHONE_AUTH_ENABLED: "true",
   DATA_PROVIDER: "cloudbase",
   NEXT_PUBLIC_AMAP_JS_API_KEY: "test-amap-browser-key",
   NEXT_PUBLIC_APP_REGION: "cn",
@@ -92,4 +93,15 @@ test("the CN validator rejects the Global Preview bypass secret", () => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /CN must not receive VERCEL_AUTOMATION_BYPASS_SECRET/);
   assert.doesNotMatch(result.stderr, /global-only-value/);
+});
+
+test("the CN validator fails closed when public phone auth is not explicitly enabled", () => {
+  const missing = { ...cnEnvironment };
+  delete missing.CN_PUBLIC_PHONE_AUTH_ENABLED;
+  const result = spawnSync(process.execPath, [script, "cn"], {
+    encoding: "utf8",
+    env: missing,
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /cn requires CN_PUBLIC_PHONE_AUTH_ENABLED=true/);
 });

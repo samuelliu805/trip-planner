@@ -5,6 +5,7 @@ const requiredBySelector = {
   cn: {
     APP_REGION: "cn",
     AUTH_PROVIDER: "cloudbase",
+    CN_PUBLIC_PHONE_AUTH_ENABLED: "true",
     DATA_PROVIDER: "cloudbase",
     NEXT_PUBLIC_APP_REGION: "cn",
     NEXT_PUBLIC_MAPS_PROVIDER: "amap",
@@ -64,7 +65,9 @@ if (selector === "global") {
     "AMAP_JS_SECURITY_CODE",
     "AMAP_WEB_SERVICE_KEY",
     "CLOUDBASE_API_KEY",
+    "CLOUDBASE_CI_PASSWORD_AUTH_ENABLED",
     "CLOUDBASE_ENV_ID",
+    "CN_PUBLIC_PHONE_AUTH_ENABLED",
     "NEXT_PUBLIC_AMAP_JS_API_KEY",
     "NEXT_PUBLIC_CLOUDBASE_ENV_ID",
   ]) {
