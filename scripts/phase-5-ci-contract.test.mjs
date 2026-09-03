@@ -137,6 +137,8 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cnDeploy, /group: deploy-cn-dev-trip-planner-cn/);
   assert.match(cnDeploy, /CN_PUBLIC_PHONE_AUTH_ENABLED: "true"/);
   assert.match(cnDeploy, /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment 20260903180000/);
+  assert.match(cnDeploy, /deploy-cloudbase-run-with-evidence\.mjs/);
+  assert.doesNotMatch(cnDeploy, /sleep 10|deploy_cloudbase_run/);
   assert.match(cnDeploy, /cloudrun logs process/);
   assert.match(cnDeploy, /verify-cloudbase-runtime-logs\.mjs/);
 
@@ -150,6 +152,7 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cnProductionDeploy, /SMS_READINESS_EVIDENCE/);
   assert.match(cnProductionDeploy, /CLOUDBASE_ROLLBACK_VERSION/);
   assert.match(cnProductionDeploy, /git merge-base --is-ancestor HEAD origin\/master/);
+  assert.match(cnProductionDeploy, /deploy-cloudbase-run-with-evidence\.mjs/);
   assert.match(cnProductionDeploy, /cloudrun logs process/);
 
   assert.match(observability, /npm run test:telemetry/);

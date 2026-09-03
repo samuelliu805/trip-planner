@@ -153,49 +153,16 @@ jobs:
             --require-runtime-env AMAP_JS_SECURITY_CODE \
             --require-runtime-env AMAP_WEB_SERVICE_KEY
       - name: Deploy the same SHA and require CloudBase Run release evidence
+        id: cloudbase_run
+        run: >-
+          node scripts/deploy-cloudbase-run-with-evidence.mjs
+          --service-name trip-planner-cn
+          --source .cloudbase-run
+      - name: Verify the released CloudBase Run service and runtime logs
         run: |
-          previous_records="$(mktemp)"
-          retry_records="$(mktemp)"
-          current_records="$(mktemp)"
           detail_output="$(mktemp)"
           runtime_logs="$(mktemp)"
-          trap 'rm -f "$previous_records" "$retry_records" "$current_records" "$detail_output" "$runtime_logs"' EXIT
-          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
-            --env-id "$CLOUDBASE_ENV_ID" \
-            --service-name trip-planner-cn \
-            --json > "$previous_records"
-          previous_deploy_id="$(node scripts/verify-cloudbase-run-records.mjs \
-            "$previous_records" latest)"
-          deploy_cloudbase_run() {
-            npx --yes --package @cloudbase/cli@3.8.1 \
-              tcb --yes cloudrun deploy \
-              --env-id "$CLOUDBASE_ENV_ID" \
-              --service-name trip-planner-cn \
-              --source .cloudbase-run \
-              --port 8080 \
-              --install-dependency false \
-              --force \
-              --wait \
-              --json
-          }
-          if deploy_cloudbase_run; then
-            :
-          else
-            npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
-              --env-id "$CLOUDBASE_ENV_ID" \
-              --service-name trip-planner-cn \
-              --json > "$retry_records"
-            node scripts/verify-cloudbase-run-records.mjs \
-              "$retry_records" unchanged "$previous_deploy_id"
-            sleep 10
-            deploy_cloudbase_run
-          fi
-          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
-            --env-id "$CLOUDBASE_ENV_ID" \
-            --service-name trip-planner-cn \
-            --json > "$current_records"
-          node scripts/verify-cloudbase-run-records.mjs \
-            "$current_records" released "$previous_deploy_id"
+          trap 'rm -f "$detail_output" "$runtime_logs"' EXIT
           npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun detail \
             --env-id "$CLOUDBASE_ENV_ID" \
             --service-name trip-planner-cn \
@@ -208,10 +175,8 @@ jobs:
             --require-runtime-env AMAP_JS_SECURITY_CODE \
             --require-runtime-env AMAP_WEB_SERVICE_KEY
           node scripts/verify-cloudbase-run-health.mjs "$NEXT_PUBLIC_SITE_URL"
-          current_run_id="$(node scripts/verify-cloudbase-run-records.mjs \
-            "$current_records" run-id)"
           npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun logs process \
             --env-id "$CLOUDBASE_ENV_ID" \
-            --run-id "$current_run_id" \
+            --run-id "${{ steps.cloudbase_run.outputs.run_id }}" \
             --json > "$runtime_logs"
           node scripts/verify-cloudbase-runtime-logs.mjs "$runtime_logs"

@@ -68,6 +68,29 @@ test("extracts the latest DeployId from noisy CloudBase CLI output", (t) => {
   assert.equal(result.stdout.includes(fakeSecret), false);
 });
 
+test("requires a healthy baseline before attempting another deployment", (t) => {
+  const run = createRunner(t);
+  const healthy = run(JSON.stringify(records(record())), "baseline");
+
+  assert.equal(healthy.status, 0);
+  assert.equal(healthy.stdout, "004\n");
+  assertSafeFailure(run(JSON.stringify(records(record({ IsReleasing: true }))), "baseline"));
+});
+
+test("classifies unchanged, pending, released, and failed records", (t) => {
+  const run = createRunner(t);
+  assert.equal(run(JSON.stringify(records(record())), "state", "004").stdout, "unchanged\n");
+  assert.equal(
+    run(JSON.stringify(records(record({ Status: "deploying" }))), "state", "003").stdout,
+    "pending\n",
+  );
+  assert.equal(run(JSON.stringify(records(record())), "state", "003").stdout, "released\n");
+  assert.equal(
+    run(JSON.stringify(records(record({ Status: "build_failed" }))), "state", "003").stdout,
+    "failed\n",
+  );
+});
+
 test("extracts the latest bounded RunId for runtime-log verification", (t) => {
   const run = createRunner(t);
   const result = run(JSON.stringify(records(record())), "run-id");
