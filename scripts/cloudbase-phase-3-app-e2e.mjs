@@ -337,14 +337,69 @@ async function navigate(browser, path) {
   );
 }
 
+async function verifyPublicPhoneAuthAtMobileWidths(browser) {
+  await clearCookies(browser);
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 844, mobile: true, width },
+      browser.sessionId,
+    );
+    for (const [path, heading] of [
+      ["/login", "欢迎回来"],
+      ["/signup", "创建账户"],
+    ]) {
+      await navigate(browser, path);
+      await waitFor(browser, 'Boolean(document.querySelector("#phone"))', `${path} phone form`);
+      const evidence = await evaluate(
+        browser,
+        `(() => {
+          const phone = document.querySelector("#phone");
+          const submit = document.querySelector('button[type="submit"][value="request"]');
+          return {
+            body: document.body.innerText,
+            documentWidth: document.documentElement.scrollWidth,
+            heading: document.querySelector("h1,h2")?.textContent?.trim(),
+            innerWidth,
+            phoneHeight: phone?.getBoundingClientRect().height ?? 0,
+            submitHeight: submit?.getBoundingClientRect().height ?? 0,
+            submitCount: document.querySelectorAll('button[type="submit"][value="request"]').length,
+            forbiddenFields: Boolean(document.querySelector("#credential,#password")),
+          };
+        })()`,
+      );
+      assert.equal(
+        evidence.heading,
+        heading,
+        `${path} did not use the CN regional locale default.`,
+      );
+      assert.equal(evidence.forbiddenFields, false, `${path} exposed a password credential.`);
+      assert.doesNotMatch(evidence.body, /Continue with Google|Username|Email address/);
+      assert.equal(evidence.submitCount, 1, `${path} must expose one primary SMS action.`);
+      assert.ok(evidence.phoneHeight >= 44, `${path} phone input is below 44px.`);
+      assert.ok(evidence.submitHeight >= 44, `${path} primary action is below 44px.`);
+      assert.ok(
+        evidence.documentWidth <= evidence.innerWidth,
+        `${path} overflows horizontally at ${width}px.`,
+      );
+    }
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+  await clearCookies(browser);
+}
+
 async function clearCookies(browser) {
   await browser.cdp.send("Network.clearBrowserCookies", {}, browser.sessionId);
 }
 
-async function setCookie(browser, name, value) {
+async function setCookie(browser, name, value, options = {}) {
   const result = await browser.cdp.send(
     "Network.setCookie",
-    { name, url: browserBaseUrl, value },
+    { name, url: browserBaseUrl, value, ...options },
     browser.sessionId,
   );
   assert.equal(result.success, true, `Could not set ${name}.`);
@@ -369,41 +424,17 @@ async function cookieMetadata(browser) {
 
 async function login(browser, username, password) {
   await setCookie(browser, "trip-planner-locale", "en");
-  await navigate(browser, "/login");
-  try {
-    await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "actual login form");
-  } catch (error) {
-    const diagnostics = await evaluate(
-      browser,
-      `({
-        body: document.body.innerText.slice(0, 1600),
-        nextError: Boolean(document.querySelector('[data-nextjs-dialog]')),
-        path: location.pathname,
-      })`,
-    );
-    throw new Error(
-      `${error instanceof Error ? error.message : error} ${JSON.stringify({
-        ...diagnostics,
-        cookies: await cookieMetadata(browser),
-      })}`,
-    );
-  }
-  await evaluate(
-    browser,
-    `(() => {
-      const set = (selector, value) => {
-        const input = document.querySelector(selector);
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
-        setter.call(input, value);
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        input.dispatchEvent(new Event("change", { bubbles: true }));
-      };
-      set("#credential", ${JSON.stringify(username)});
-      set("#password", ${JSON.stringify(password)});
-      document.querySelector('form:has(#credential) button[type="submit"]').click();
-      return true;
-    })()`,
-  );
+  const config = loadLiveConfig();
+  const { auth } = initializeLiveClient(config);
+  dataOrThrow(await auth.signInWithPassword({ username, password }), `${username} login`);
+  const sessionData = dataOrThrow(await auth.getSession(), `${username} session`);
+  const session = sessionData?.session ?? sessionData;
+  assert.equal(typeof session?.access_token, "string", "Controlled login lacks an access token.");
+  assert.equal(typeof session?.refresh_token, "string", "Controlled login lacks a refresh token.");
+  const cookieOptions = { httpOnly: true, sameSite: "Lax" };
+  await setCookie(browser, "tp-cn-access-token", session.access_token, cookieOptions);
+  await setCookie(browser, "tp-cn-refresh-token", session.refresh_token, cookieOptions);
+  await navigate(browser, "/trips");
   await waitFor(browser, 'location.pathname === "/trips"', `${username} login`, 45_000);
 }
 
@@ -1311,6 +1342,7 @@ async function run() {
       browserBaseUrl = browserTlsProxy.browserBaseUrl;
     }
     browser = await launchBrowser();
+    await verifyPublicPhoneAuthAtMobileWidths(browser);
     await navigate(browser, "/trips");
     assert.equal(await evaluate(browser, "location.pathname"), "/login");
 

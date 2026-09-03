@@ -1,4 +1,4 @@
-name: Phase 5 dual-environment verification
+name: Phase 6 dual-environment verification
 
 on:
   workflow_call:
@@ -18,7 +18,7 @@ permissions:
   deployments: read
 
 concurrency:
-  group: phase-5-dual-environment-${{ github.sha }}
+  group: phase-6-dual-environment-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -69,40 +69,6 @@ jobs:
           npm run check:cloudbase-pg-baseline
           npm run check:cloudbase-pg-rpc-surface
           npm run check:database-pg-migrations
-      - name: Validate and build the Global selector
-        run: |
-          npm run check:phase-5-environment -- global
-          npm run build
-          npm run check:build-secret-boundary
-      - name: Remove only the prior selector build output
-        run: |
-          node -e 'require("node:fs").rmSync(".next", { force: true, recursive: true })'
-      - name: Validate and build the CN selector
-        env:
-          AMAP_JS_SECURITY_CODE: ci-amap-security-code
-          AMAP_WEB_SERVICE_KEY: ci-amap-web-service-key
-          APP_REGION: cn
-          AUTH_PROVIDER: cloudbase
-          CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
-          CLOUDBASE_PUBLISHABLE_KEY: ci-cloudbase-publishable-key
-          CLOUDBASE_REGION: ap-shanghai
-          DATA_PROVIDER: cloudbase
-          NEXT_PUBLIC_AMAP_JS_API_KEY: ci-amap-browser-key
-          NEXT_PUBLIC_APP_REGION: cn
-          NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
-          NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ci-cloudbase-publishable-key
-          NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai
-          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ""
-          NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID: ""
-          NEXT_PUBLIC_MAPS_PROVIDER: amap
-          NEXT_PUBLIC_SITE_URL: https://cn-preview.example.invalid
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ""
-          NEXT_PUBLIC_SUPABASE_URL: ""
-          STORAGE_PROVIDER: cloudbase
-        run: |
-          npm run check:phase-5-environment -- cn
-          npm run build
-          npm run check:build-secret-boundary
       - name: Require a clean generated diff
         run: |
           git diff --check
@@ -110,13 +76,91 @@ jobs:
       - name: Record static evidence identity
         if: ${{ always() }}
         run: |
-          printf '## Phase 5 static evidence\n\n- SHA: `%s`\n- Run: `%s`\n' \
+          printf '## Phase 6 static evidence\n\n- SHA: `%s`\n- Run: `%s`\n' \
             "${{ inputs.candidate_sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             >> "$GITHUB_STEP_SUMMARY"
 
-  global-live:
+  global-build:
     if: ${{ inputs.verification_gate == 'VERIFY' }}
     needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_REGION: global
+      AUTH_PROVIDER: supabase
+      DATA_PROVIDER: supabase
+      NEXT_PUBLIC_APP_REGION: global
+      NEXT_PUBLIC_MAPS_PROVIDER: google
+      NEXT_PUBLIC_SITE_URL: https://global-preview.example.invalid
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      STORAGE_PROVIDER: supabase
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.candidate_ref }}
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - name: Verify exact workflow head
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
+      - run: npm ci
+      - run: npm run check:phase-5-environment -- global
+      - run: npm run build
+      - run: npm run check:build-secret-boundary
+      - run: npm run check:build-provider-isolation
+
+  cn-build:
+    if: ${{ inputs.verification_gate == 'VERIFY' }}
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AMAP_JS_SECURITY_CODE: ci-amap-security-code
+      AMAP_WEB_SERVICE_KEY: ci-amap-web-service-key
+      APP_REGION: cn
+      AUTH_PROVIDER: cloudbase
+      CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      CLOUDBASE_PUBLISHABLE_KEY: ci-cloudbase-publishable-key
+      CLOUDBASE_REGION: ap-shanghai
+      CN_PUBLIC_PHONE_AUTH_ENABLED: "true"
+      DATA_PROVIDER: cloudbase
+      NEXT_PUBLIC_AMAP_JS_API_KEY: ci-amap-browser-key
+      NEXT_PUBLIC_APP_REGION: cn
+      NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
+      NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ci-cloudbase-publishable-key
+      NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai
+      NEXT_PUBLIC_MAPS_PROVIDER: amap
+      NEXT_PUBLIC_SITE_URL: https://cn-preview.example.invalid
+      STORAGE_PROVIDER: cloudbase
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.candidate_ref }}
+      - uses: actions/setup-node@v5
+        with:
+          cache: npm
+          node-version: 24
+      - name: Verify exact workflow head
+        env:
+          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
+      - run: npm ci
+      - run: npm run check:phase-5-environment -- cn
+      - run: npm run build
+      - run: npm run check:build-secret-boundary
+      - run: npm run check:build-provider-isolation
+
+  global-live:
+    if: ${{ inputs.verification_gate == 'VERIFY' }}
+    needs: [static, global-build]
     environment: cloudbase-pg-dev
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -164,6 +208,7 @@ jobs:
         run: |
           npm run build
           npm run check:build-secret-boundary
+          npm run check:build-provider-isolation
       - name: Initialize every Supabase migration from zero
         run: supabase db start
       - name: Run every Supabase SQL test
@@ -190,13 +235,13 @@ jobs:
       - name: Record Global evidence identity
         if: ${{ always() }}
         run: |
-          printf '## Phase 5 Global live evidence\n\n- SHA: `%s`\n- Target: controlled Supabase dev/Preview\n- Run: `%s`\n' \
+          printf '## Phase 6 Global live evidence\n\n- SHA: `%s`\n- Target: controlled Supabase dev/Preview\n- Run: `%s`\n' \
             "${{ inputs.candidate_sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             >> "$GITHUB_STEP_SUMMARY"
 
   cn-live:
     if: ${{ inputs.verification_gate == 'VERIFY' }}
-    needs: static
+    needs: [static, cn-build]
     environment: cloudbase-pg-dev
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -210,6 +255,7 @@ jobs:
       CLOUDBASE_PG_INSTANCE_ID: pgdb-l4lhtrv7
       CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
       CLOUDBASE_REGION: ap-shanghai
+      CN_PUBLIC_PHONE_AUTH_ENABLED: "true"
       CLOUDBASE_TEST_USER_A_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_A_PASSWORD }}
       CLOUDBASE_TEST_USER_B_PASSWORD: ${{ secrets.CLOUDBASE_TEST_USER_B_PASSWORD }}
       DATA_PROVIDER: cloudbase
@@ -282,11 +328,12 @@ jobs:
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
             --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
           node scripts/verify-cloudbase-migration-plan.mjs \
-            "$migration_list" "$migration_plan" 20260902075444
+            "$migration_list" "$migration_plan" 20260902075444 20260903180000
       - name: Build the exact CN selector and scan secrets
         run: |
           npm run build
           npm run check:build-secret-boundary
+          npm run check:build-provider-isolation
       - name: Run real AMap route and place Web Service smoke
         run: npm run test:amap-phase-5-live
       - name: Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite
@@ -303,6 +350,6 @@ jobs:
       - name: Record CN evidence identity
         if: ${{ always() }}
         run: |
-          printf '## Phase 5 CN live evidence\n\n- SHA: `%s`\n- Target: approved CloudBase dev\n- Run: `%s`\n' \
+          printf '## Phase 6 CN live evidence\n\n- SHA: `%s`\n- Target: approved CloudBase dev\n- Run: `%s`\n' \
             "${{ inputs.candidate_sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             >> "$GITHUB_STEP_SUMMARY"

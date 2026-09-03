@@ -1,19 +1,25 @@
 name: Deploy Global
 
 on:
-  push:
-    branches: [master]
+  workflow_run:
+    workflows: [CloudBase PG schema security]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-global-${{ github.sha }}
+  group: deploy-global-production
   cancel-in-progress: false
 
 jobs:
   deploy-global:
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master') ||
+      github.event_name == 'workflow_dispatch'
     environment: global-production
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -36,15 +42,36 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           cache: npm
           node-version: 24
       - name: Verify exact workflow head
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
       - run: npm ci
       - name: Build the Global selector without CloudBase configuration
         run: npm run build
       - run: npm run check:build-secret-boundary
+      - run: npm run check:build-provider-isolation
       - name: Verify the Git-integrated production deployment
+        id: production
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: node scripts/verify-vercel-git-deployment.mjs
+      - name: Scan exact deployment runtime warnings and errors
+        run: |
+          runtime_logs="$(mktemp)"
+          trap 'rm -f "$runtime_logs"' EXIT
+          npx --yes vercel@59.11.2 logs \
+            --deployment "${{ steps.production.outputs.deployment_id }}" \
+            --since 15m \
+            --level error \
+            --level warning \
+            --limit 200 \
+            --json \
+            --token "$VERCEL_TOKEN" > "$runtime_logs"
+          node scripts/verify-vercel-runtime-logs.mjs "$runtime_logs"

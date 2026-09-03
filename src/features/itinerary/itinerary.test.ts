@@ -497,11 +497,8 @@ test("browser locale wins without rewriting the saved account preference", async
         "../../app/layout.tsx",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     );
-  assert.match(
-    serverLocale,
-    /if \(browserLocale\) return \{ locale: browserLocale, source: "browser" \}/,
-  );
-  assert.match(serverLocale, /source: "profile"/);
+  assert.match(serverLocale, /resolveLocaleState\(\{ appRegion, browserLocale \}\)/);
+  assert.match(serverLocale, /profileLocale: profile\?\.preferredLocale/);
   assert.doesNotMatch(localeAction, /preferred_locale|profiles|createClient/);
   assert.doesNotMatch(accountAction, /setLocaleCookie/);
   assert.match(accountEditor, /useState\(initialLocale\)/);

@@ -12,7 +12,7 @@ import { safeMutationErrorCode } from "./errors.ts";
 const operationIdPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const authFlows = new Set<AuthFlow>(["confirmation", "login", "signup"]);
-const authMethods = new Set<AuthMethod>(["email_link", "google", "password"]);
+const authMethods = new Set<AuthMethod>(["email_link", "google", "password", "sms"]);
 const surfaces = new Set<ProductSurface>([
   "account",
   "auth_form",

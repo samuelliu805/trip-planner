@@ -51,10 +51,14 @@ function authMetadata(formData: FormData, fallbackFlow: "login" | "signup") {
 export async function login(_state: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const metadata = authMetadata(formData, "login");
   const capabilities = getBackendCapabilities();
+  const passwordIdentifier = capabilities.publicAuthMethods.includes("email_password")
+    ? "email"
+    : capabilities.protectedAuthMethods.includes("username_password")
+      ? "username"
+      : null;
+  if (!passwordIdentifier) return { error: "This sign-in method is not available." };
   const parsed = (
-    capabilities.passwordSignInIdentifier === "username"
-      ? usernameCredentialSchema
-      : emailCredentialSchema
+    passwordIdentifier === "username" ? usernameCredentialSchema : emailCredentialSchema
   ).safeParse({
     credential: formData.get("credential"),
     password: formData.get("password"),
@@ -76,7 +80,7 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
 
   try {
     const user = await getAuthProvider().signIn(
-      capabilities.passwordSignInIdentifier === "username"
+      passwordIdentifier === "username"
         ? {
             method: "username_password",
             password: parsed.data.password,
@@ -118,6 +122,9 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
 
 export async function continueWithGoogle(formData: FormData) {
   const metadata = authMetadata(formData, "login");
+  if (!getBackendCapabilities().publicAuthMethods.includes("google_oauth")) {
+    redirect("/login");
+  }
   const siteUrl = siteUrlFromHeaders(await headers());
   const callbackUrl = new URL("/auth/callback", siteUrl);
   callbackUrl.searchParams.set("auth_flow", metadata.authFlow);
@@ -152,7 +159,7 @@ export async function signup(
   formData: FormData,
 ): Promise<AuthActionState> {
   const metadata = authMetadata(formData, "signup");
-  if (!getBackendCapabilities().selfRegistration) {
+  if (!getBackendCapabilities().publicAuthMethods.includes("email_password")) {
     return { error: "Account creation is managed by your organization." };
   }
   const parsed = emailCredentialSchema

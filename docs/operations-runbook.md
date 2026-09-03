@@ -3,7 +3,8 @@
 This runbook covers the merged Observability Foundation and Global Product Observability system. Repository code defines telemetry contracts and validation; it does not provision PostHog dashboards, alerts, notification destinations, uptime monitors, or Vercel settings. Replace every bracketed placeholder below through the approved external change process.
 
 Dual-provider release gates, CloudBase Run rollback, restore rehearsal, and seed-user decisions are
-maintained in [phase-5-rollout-runbook.md](./phase-5-rollout-runbook.md).
+maintained in [phase-6-rollout-runbook.md](./phase-6-rollout-runbook.md). Phase 5 evidence remains
+available as the historical baseline.
 
 ## Ownership and external consoles
 

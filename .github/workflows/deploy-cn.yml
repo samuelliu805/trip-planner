@@ -1,6 +1,9 @@
 name: Deploy CN
 
 on:
+  workflow_run:
+    workflows: [CloudBase PG schema security]
+    types: [completed]
   workflow_dispatch:
     inputs:
       deployment_gate:
@@ -12,12 +15,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-cn-${{ github.sha }}
+  group: deploy-cn-dev-trip-planner-cn
   cancel-in-progress: false
 
 jobs:
   deploy-cn:
-    if: ${{ inputs.deployment_gate == 'DEPLOY' }}
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master') ||
+      (github.event_name == 'workflow_dispatch' && inputs.deployment_gate == 'DEPLOY')
     environment: cloudbase-cn-dev
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -31,6 +38,7 @@ jobs:
       CLOUDBASE_PG_INSTANCE_ID: pgdb-l4lhtrv7
       CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
       CLOUDBASE_REGION: ap-shanghai
+      CN_PUBLIC_PHONE_AUTH_ENABLED: "true"
       DATA_PROVIDER: cloudbase
       NEXT_PUBLIC_APP_REGION: cn
       NEXT_PUBLIC_AMAP_JS_API_KEY: ${{ secrets.NEXT_PUBLIC_AMAP_JS_API_KEY }}
@@ -44,12 +52,16 @@ jobs:
       STORAGE_PROVIDER: cloudbase
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           cache: npm
           node-version: 24
       - name: Verify exact workflow head
-        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
       - run: npm ci
       - name: Validate the approved CN target
         run: >-
@@ -62,6 +74,7 @@ jobs:
       - name: Build the CN selector without cross-region credentials
         run: npm run build
       - run: npm run check:build-secret-boundary
+      - run: npm run check:build-provider-isolation
       - run: npm run prepare:cloudbase-run
       - name: Enforce the CloudBase Run source package size limit
         run: |
@@ -91,11 +104,32 @@ jobs:
           --cloudbase-api-key "$CLOUDBASE_API_KEY"
           --env-id "$CLOUDBASE_ENV_ID"
           --json
-      - name: Apply reviewed CloudBase PG migrations
+      - name: Inspect and validate the reviewed CloudBase PG migration plan
+        run: |
+          migration_list="$(mktemp)"
+          migration_plan="$(mktemp)"
+          trap 'rm -f "$migration_list" "$migration_plan"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
+            --env-id "$CLOUDBASE_ENV_ID" --json > "$migration_list"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
+          node scripts/verify-cloudbase-migration-plan.mjs \
+            "$migration_list" "$migration_plan" --deployment 20260903180000
+      - name: Apply the validated CloudBase PG migration plan
         run: >-
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up
-          --env-id "$CLOUDBASE_ENV_ID"
-          --json
+          --env-id "$CLOUDBASE_ENV_ID" --json
+      - name: Verify the CloudBase PG ledger after apply
+        run: |
+          migration_list="$(mktemp)"
+          migration_plan="$(mktemp)"
+          trap 'rm -f "$migration_list" "$migration_plan"' EXIT
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration list \
+            --env-id "$CLOUDBASE_ENV_ID" --json > "$migration_list"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
+            --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
+          node scripts/verify-cloudbase-migration-plan.mjs \
+            "$migration_list" "$migration_plan" 20260903180000
       - name: Deploy the private cleanup Event Function and timer
         run: >-
           npx --yes --package @cloudbase/cli@3.8.1 tcb fn deploy trip-planner-cleanup
@@ -114,6 +148,7 @@ jobs:
             --json > "$detail_output"
           node scripts/verify-cloudbase-run-detail.mjs \
             "$detail_output" trip-planner-cn \
+            --require-runtime-env CLOUDBASE_APIKEY \
             --require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY \
             --require-runtime-env AMAP_JS_SECURITY_CODE \
             --require-runtime-env AMAP_WEB_SERVICE_KEY
@@ -123,7 +158,8 @@ jobs:
           retry_records="$(mktemp)"
           current_records="$(mktemp)"
           detail_output="$(mktemp)"
-          trap 'rm -f "$previous_records" "$retry_records" "$current_records" "$detail_output"' EXIT
+          runtime_logs="$(mktemp)"
+          trap 'rm -f "$previous_records" "$retry_records" "$current_records" "$detail_output" "$runtime_logs"' EXIT
           npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun record list \
             --env-id "$CLOUDBASE_ENV_ID" \
             --service-name trip-planner-cn \
@@ -167,7 +203,15 @@ jobs:
           node scripts/verify-cloudbase-run-detail.mjs \
             "$detail_output" trip-planner-cn \
             --require-online-version \
+            --require-runtime-env CLOUDBASE_APIKEY \
             --require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY \
             --require-runtime-env AMAP_JS_SECURITY_CODE \
             --require-runtime-env AMAP_WEB_SERVICE_KEY
           node scripts/verify-cloudbase-run-health.mjs "$NEXT_PUBLIC_SITE_URL"
+          current_run_id="$(node scripts/verify-cloudbase-run-records.mjs \
+            "$current_records" run-id)"
+          npx --yes --package @cloudbase/cli@3.8.1 tcb cloudrun logs process \
+            --env-id "$CLOUDBASE_ENV_ID" \
+            --run-id "$current_run_id" \
+            --json > "$runtime_logs"
+          node scripts/verify-cloudbase-runtime-logs.mjs "$runtime_logs"

@@ -143,11 +143,12 @@ separately reviewed migration.
 
 ## RLS and A/B evidence
 
-Username/password login is enabled. `trip-planner-cn-test-a` and
-`trip-planner-cn-test-b` are admin-created controlled users. Email, phone, SMS, WeChat, and
-anonymous public registration remain off; no signup UI/API was added and
-`backendCapabilitiesByRegion.cn.selfRegistration` remains `false`. Passwords and the publishable
-key are ignored local/CI secrets and are never printed or committed.
+Phone/SMS login and username/password login are enabled in the approved dev environment.
+`trip-planner-cn-test-a` and `trip-planner-cn-test-b` remain admin-created controlled identities used
+only by protected CI. Public CN authentication exposes only the typed `phone_otp` capability; the
+protected `username_password` capability is independently fail-closed and is not rendered. Email,
+WeChat, and anonymous login remain off. Passwords, verification payloads, OTPs, phone numbers, and
+keys are never printed or committed.
 
 Two repeatable layers passed:
 

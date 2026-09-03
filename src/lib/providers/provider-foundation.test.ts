@@ -48,17 +48,22 @@ test("AMap resolves implemented capabilities while photos remain fail closed", (
 });
 
 test("client and server provider entry points share deployment-time selection", async () => {
-  const [mapClient, placesClient, routeServer] = await Promise.all(
+  const [mapClient, googleMapClient, amapMapClient, placesClient, routeServer] = await Promise.all(
     [
       "./maps/planner-map-provider.tsx",
+      "./maps/planner-map-provider-google.tsx",
+      "./maps/planner-map-provider-amap.tsx",
       "./places/resolver.client.ts",
       "./routes/resolver.server.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
-  for (const source of [mapClient, routeServer]) assert.match(source, /resolveMapsProvider/);
+  assert.match(mapClient, /planner-map-provider-selected/);
+  assert.match(routeServer, /resolveMapsProvider/);
   assert.match(placesClient, /useMapProviderConfiguration/);
-  assert.match(mapClient, /GoogleMapsProvider/);
-  assert.match(mapClient, /AmapMapsProvider/);
+  assert.match(googleMapClient, /GoogleMapsProvider/);
+  assert.doesNotMatch(googleMapClient, /AmapMapsProvider/);
+  assert.match(amapMapClient, /AmapMapsProvider/);
+  assert.doesNotMatch(amapMapClient, /GoogleMapsProvider/);
   assert.doesNotMatch(routeServer, /calculateGoogleRouteLeg/);
 });
 

@@ -4,30 +4,34 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 
 import { getAccountProfileRepository, getAuthProvider } from "@/platform/composition/server";
+import { getServerProviderConfig } from "@/platform/config/server";
 
-import { defaultLocale, localeCookieName, parseLocale, type Locale } from "./config";
-
-export type RequestLocaleState = {
-  locale: Locale;
-  source: "browser" | "default" | "profile";
-};
+import {
+  localeCookieName,
+  resolveLocaleState,
+  type Locale,
+  type RequestLocaleState,
+} from "./config";
 
 export const getRequestLocaleState = cache(async (): Promise<RequestLocaleState> => {
   const cookieStore = await cookies();
-  const browserLocale = parseLocale(cookieStore.get(localeCookieName)?.value);
-  if (browserLocale) return { locale: browserLocale, source: "browser" };
+  const appRegion = getServerProviderConfig().appRegion;
+  const browserLocale = cookieStore.get(localeCookieName)?.value;
+  const browserState = resolveLocaleState({ appRegion, browserLocale });
+  if (browserState.source === "browser") return browserState;
 
   try {
     const user = await getAuthProvider().getCurrentUser();
-    if (!user) return { locale: defaultLocale, source: "default" };
+    if (!user) return browserState;
 
     const profile = await getAccountProfileRepository().getForCurrentUser();
-    const profileLocale = parseLocale(profile?.preferredLocale);
-    return profileLocale
-      ? { locale: profileLocale, source: "profile" }
-      : { locale: defaultLocale, source: "default" };
+    return resolveLocaleState({
+      appRegion,
+      browserLocale,
+      profileLocale: profile?.preferredLocale,
+    });
   } catch {
-    return { locale: defaultLocale, source: "default" };
+    return browserState;
   }
 });
 

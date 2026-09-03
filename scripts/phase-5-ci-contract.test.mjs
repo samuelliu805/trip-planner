@@ -4,6 +4,16 @@ import test from "node:test";
 
 const workflowUrl = new URL("../.github/workflows/phase-5-dual-environment.yml", import.meta.url);
 const entryWorkflowUrl = new URL("../.github/workflows/cloudbase-pg-ci.yml", import.meta.url);
+const globalDeployUrl = new URL("../.github/workflows/deploy-global.yml", import.meta.url);
+const cnDeployUrl = new URL("../.github/workflows/deploy-cn.yml", import.meta.url);
+const cnProductionDeployUrl = new URL(
+  "../.github/workflows/deploy-cn-production.yml",
+  import.meta.url,
+);
+const observabilityWorkflowUrl = new URL(
+  "../.github/workflows/observability-ci.yml",
+  import.meta.url,
+);
 const configUrl = new URL("../supabase/config.toml", import.meta.url);
 const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.meta.url);
 const amapLiveSmokeUrl = new URL("./amap-phase-5-live.mjs", import.meta.url);
@@ -17,29 +27,30 @@ const providerNeutralMigrationUrl = new URL(
   import.meta.url,
 );
 
-test("Phase 5 verification is manual, exact-SHA, protected, and fail-closed", async () => {
+test("Phase 6 verification is manual, exact-SHA, protected, and fail-closed", async () => {
   const [entryWorkflow, workflow] = await Promise.all([
     readFile(entryWorkflowUrl, "utf8"),
     readFile(workflowUrl, "utf8"),
   ]);
   assert.match(entryWorkflow, /workflow_dispatch:/);
-  assert.match(entryWorkflow, /run_mode:[\s\S]*phase5/);
+  assert.match(entryWorkflow, /run_mode:[\s\S]*phase5[\s\S]*phase6/);
+  assert.match(entryWorkflow, /\(inputs\.run_mode == 'phase5' \|\| inputs\.run_mode == 'phase6'\)/);
   assert.match(entryWorkflow, /verification_gate == 'VERIFY'/);
   assert.match(entryWorkflow, /uses: \.\/\.github\/workflows\/phase-5-dual-environment\.yml/);
   assert.match(workflow, /workflow_call:/);
   assert.match(workflow, /verification_gate == 'VERIFY'/);
   assert.equal(
     workflow.match(/test "\$\(git rev-parse HEAD\)" = "\$PHASE5_CANDIDATE_SHA"/g)?.length,
-    3,
+    5,
   );
-  assert.equal(workflow.match(/test "\$PHASE5_CANDIDATE_SHA" = "\$GITHUB_SHA"/g)?.length, 3);
-  assert.equal(workflow.match(/ref: \$\{\{ inputs\.candidate_ref \}\}/g)?.length, 3);
+  assert.equal(workflow.match(/test "\$PHASE5_CANDIDATE_SHA" = "\$GITHUB_SHA"/g)?.length, 5);
+  assert.equal(workflow.match(/ref: \$\{\{ inputs\.candidate_ref \}\}/g)?.length, 5);
   assert.equal(workflow.match(/environment: cloudbase-pg-dev/g)?.length, 2);
   assert.doesNotMatch(`${entryWorkflow}\n${workflow}`, /continue-on-error/);
   assert.match(workflow, /cancel-in-progress: false/);
 });
 
-test("Phase 5 static and live inventory stays executable", async () => {
+test("Phase 6 static, isolated builds, and live inventory stay executable", async () => {
   const workflow = await readFile(workflowUrl, "utf8");
   for (const command of [
     "npm run lint",
@@ -100,6 +111,50 @@ test("Phase 5 static and live inventory stays executable", async () => {
     /Authenticate the CloudBase database audit CLI[\s\S]*Run private Storage[\s\S]*Invoke the deployed cleanup function[\s\S]*Independently execute cleanup and residue audit/,
   );
   assert.ok((workflow.match(/if: \$\{\{ always\(\) \}\}/g) ?? []).length >= 7);
+});
+
+test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed", async () => {
+  const [globalDeploy, cnDeploy, cnProductionDeploy, observability] = await Promise.all([
+    readFile(globalDeployUrl, "utf8"),
+    readFile(cnDeployUrl, "utf8"),
+    readFile(cnProductionDeployUrl, "utf8"),
+    readFile(observabilityWorkflowUrl, "utf8"),
+  ]);
+
+  assert.match(globalDeploy, /group: deploy-global-production/);
+  assert.match(globalDeploy, /workflow_run:/);
+  assert.match(globalDeploy, /workflow_run\.conclusion == 'success'/);
+  assert.match(globalDeploy, /workflow_run\.head_branch == 'master'/);
+  assert.match(globalDeploy, /github\.event\.workflow_run\.head_sha \|\| github\.sha/);
+  assert.match(globalDeploy, /DEPLOY_SHA:/);
+  assert.match(globalDeploy, /verify-vercel-git-deployment\.mjs/);
+  assert.match(globalDeploy, /vercel@59\.11\.2 logs/);
+  assert.match(globalDeploy, /verify-vercel-runtime-logs\.mjs/);
+  assert.match(globalDeploy, /check:build-provider-isolation/);
+
+  assert.match(cnDeploy, /workflow_run:/);
+  assert.match(cnDeploy, /head_branch == 'master'/);
+  assert.match(cnDeploy, /group: deploy-cn-dev-trip-planner-cn/);
+  assert.match(cnDeploy, /CN_PUBLIC_PHONE_AUTH_ENABLED: "true"/);
+  assert.match(cnDeploy, /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment 20260903180000/);
+  assert.match(cnDeploy, /cloudrun logs process/);
+  assert.match(cnDeploy, /verify-cloudbase-runtime-logs\.mjs/);
+
+  assert.match(cnProductionDeploy, /workflow_dispatch:/);
+  assert.doesNotMatch(cnProductionDeploy, /push:|workflow_run:/);
+  assert.match(cnProductionDeploy, /environment: cloudbase-cn-production/);
+  assert.match(cnProductionDeploy, /DEPLOY_PRODUCTION/);
+  assert.match(cnProductionDeploy, /ALERTS_RESTORE_SMS_ROLLBACK_READY/);
+  assert.match(cnProductionDeploy, /ALERT_EVIDENCE/);
+  assert.match(cnProductionDeploy, /RESTORE_DRILL_EVIDENCE/);
+  assert.match(cnProductionDeploy, /SMS_READINESS_EVIDENCE/);
+  assert.match(cnProductionDeploy, /CLOUDBASE_ROLLBACK_VERSION/);
+  assert.match(cnProductionDeploy, /git merge-base --is-ancestor HEAD origin\/master/);
+  assert.match(cnProductionDeploy, /cloudrun logs process/);
+
+  assert.match(observability, /npm run test:telemetry/);
+  assert.match(observability, /npm run check:auth-routes/);
+  assert.doesNotMatch(observability, /npm run (?:lint|typecheck|build|test$)/m);
 });
 
 test("the i18n check has no runner-specific file discovery dependency", async () => {

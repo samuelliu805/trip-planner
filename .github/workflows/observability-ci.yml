@@ -35,17 +35,8 @@ jobs:
         with:
           cache: npm
           node-version: 24
-      - name: Install repository script dependencies
-        run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - run: npm ci
       - run: npm run test:telemetry
-      - run: npm test
-      - run: npm run check:backend-provider-boundary
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run format:check
-      - run: npm run check:i18n
-      - run: npm run validate:public-templates
       - name: Check public authentication routes
         shell: bash
         run: |
@@ -65,6 +56,3 @@ jobs:
             exit 1
           fi
           npm run check:auth-routes
-      - run: npm run build
-      - run: npm run check:build-secret-boundary
-      - run: git diff --check

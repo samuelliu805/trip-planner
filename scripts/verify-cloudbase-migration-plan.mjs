@@ -43,6 +43,39 @@ export function verifyCloudBaseMigrationPlan(listPayload, planPayload, requiredV
   return { applied: appliedVersions.size };
 }
 
+export function verifyCloudBaseDeploymentMigrationPlan(
+  listPayload,
+  planPayload,
+  requiredVersions = [],
+) {
+  if (!requiredVersions.length || requiredVersions.some((version) => !/^\d{14}$/.test(version))) {
+    throw new Error("CloudBase deployment migration versions are invalid.");
+  }
+  const remote = listPayload?.data?.remote?.items;
+  const plan = planPayload?.data;
+  if (!Array.isArray(remote) || !plan || typeof plan !== "object" || Array.isArray(plan)) {
+    throw new Error("CloudBase migration verification returned an invalid bounded result.");
+  }
+  if (plan.dryRun !== true || plan.executable !== true || !Array.isArray(plan.pending)) {
+    throw new Error("CloudBase migration dry-run was not executable.");
+  }
+  const applied = new Set(remote.map(versionOf).filter(Boolean));
+  const pending = plan.pending.map(versionOf).filter(Boolean);
+  const allowed = new Set(requiredVersions);
+  const unexpected = pending.filter((version) => !allowed.has(version));
+  const missing = requiredVersions.filter(
+    (version) => !applied.has(version) && !pending.includes(version),
+  );
+  if (pending.length !== plan.pending.length || unexpected.length || missing.length) {
+    throw new Error(
+      "CloudBase deployment migration plan does not match the reviewed candidate versions." +
+        (unexpected.length ? ` Unexpected pending versions: ${unexpected.join(", ")}.` : "") +
+        (missing.length ? ` Missing candidate versions: ${missing.join(", ")}.` : ""),
+    );
+  }
+  return { applied: applied.size, pending };
+}
+
 export async function verifyCloudBaseMigrationPlanFiles(listPath, planPath, requiredVersions) {
   if (!listPath || !planPath) {
     throw new Error("CloudBase migration verification input is unavailable.");
@@ -58,16 +91,35 @@ export async function verifyCloudBaseMigrationPlanFiles(listPath, planPath, requ
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await verifyCloudBaseMigrationPlanFiles(
-    process.argv[2],
-    process.argv[3],
-    process.argv.slice(4),
-  ).catch((error) => {
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : "CloudBase migration verification failed.";
-    process.stderr.write(`${message}\n`);
-    process.exitCode = 1;
-  });
+  const deploymentMode = process.argv[4] === "--deployment";
+  const requiredVersions = process.argv.slice(deploymentMode ? 5 : 4);
+  if (deploymentMode) {
+    Promise.all([readFirstJsonObject(process.argv[2]), readFirstJsonObject(process.argv[3])])
+      .then(([listPayload, planPayload]) =>
+        verifyCloudBaseDeploymentMigrationPlan(listPayload, planPayload, requiredVersions),
+      )
+      .then((result) => {
+        process.stdout.write(
+          `CloudBase deployment migration plan is executable; ${result.pending.length} reviewed version(s) pending.\n`,
+        );
+      })
+      .catch((error) => {
+        process.stderr.write(
+          `${error instanceof Error ? error.message : "Migration plan failed."}\n`,
+        );
+        process.exitCode = 1;
+      });
+  } else
+    await verifyCloudBaseMigrationPlanFiles(
+      process.argv[2],
+      process.argv[3],
+      requiredVersions,
+    ).catch((error) => {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "CloudBase migration verification failed.";
+      process.stderr.write(`${message}\n`);
+      process.exitCode = 1;
+    });
 }

@@ -1,16 +1,32 @@
 const baseUrl = new URL(process.argv[2] ?? process.env.APP_URL ?? "http://localhost:3000");
+const region = process.env.APP_REGION === "cn" ? "cn" : "global";
 
-const routes = [
-  { markers: ["Welcome back", "Continue with Google"], pathname: "/login" },
-  {
-    markers: ["Create your account", "Continue with Google", "Email address"],
-    pathname: "/signup",
-  },
-];
+const routes =
+  region === "cn"
+    ? [
+        {
+          forbidden: ["Continue with Google", 'id="credential"', 'id="password"'],
+          markers: ["欢迎回来", 'id="phone"', "发送验证码"],
+          pathname: "/login",
+        },
+        {
+          forbidden: ["Continue with Google", 'id="credential"', 'id="password"'],
+          markers: ["创建账户", 'id="phone"', "发送验证码"],
+          pathname: "/signup",
+        },
+      ]
+    : [
+        { forbidden: [], markers: ["Welcome back", "Continue with Google"], pathname: "/login" },
+        {
+          forbidden: [],
+          markers: ["Create your account", "Continue with Google", "Email address"],
+          pathname: "/signup",
+        },
+      ];
 
 const failures = [];
 
-for (const { markers, pathname } of routes) {
+for (const { forbidden, markers, pathname } of routes) {
   const url = new URL(pathname, baseUrl);
 
   try {
@@ -20,7 +36,11 @@ for (const { markers, pathname } of routes) {
     });
     const body = await response.text();
 
-    if (response.status !== 200 || markers.some((marker) => !body.includes(marker))) {
+    if (
+      response.status !== 200 ||
+      markers.some((marker) => !body.includes(marker)) ||
+      forbidden.some((marker) => body.includes(marker))
+    ) {
       failures.push(
         `${pathname}: expected 200 with ${markers.map(JSON.stringify).join(" and ")}, received ${response.status}`,
       );

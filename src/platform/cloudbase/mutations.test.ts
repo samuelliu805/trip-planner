@@ -327,3 +327,21 @@ test("CloudBase refresh failure and CAPTCHA map to shared safe errors", async ()
   assert.equal(captcha.code, "captcha_required");
   assert.equal(captcha.message, "Complete the security check, then try again.");
 });
+
+test("CloudBase SMS failures map to bounded errors without phone or OTP leakage", () => {
+  const phone = "+8613800138000";
+  const code = "123456";
+  const cases = [
+    [{ message: `too many requests for ${phone}` }, "rate_limited"],
+    [{ message: `verification expired ${code}` }, "otp_expired"],
+    [{ message: `verification code already used ${code}` }, "otp_invalid"],
+  ] as const;
+
+  for (const [providerError, expectedCode] of cases) {
+    const normalized = normalizeCloudBaseError(providerError, "Phone sign-in failed.");
+    assert.equal(normalized.code, expectedCode);
+    assert.equal(normalized.message.includes(phone), false);
+    assert.equal(normalized.message.includes(code), false);
+    assert.equal(normalized.cause, undefined);
+  }
+});

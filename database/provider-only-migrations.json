@@ -78,6 +78,12 @@
       "file": "20260902102500_reload_postgrest_provider_place_schema.sql",
       "kind": "phase_5_postgrest_schema_refresh",
       "sha256": "d2cdf00fd432fa3b1e6014cac85774d5a5ca43c43bfb71b77cf586a702d42c8e"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260903180000_cloudbase_profile_locale_default_zh_cn.sql",
+      "kind": "phase_6_regional_locale_default",
+      "sha256": "af6f0dbe78f1bea424f3c9fe363d648716e8fac81a0f35091b0b6f59e5206590"
     }
   ]
 }

@@ -42,7 +42,7 @@ import {
   publicTimelineTransportMeta,
 } from "./public-timeline-presentation.ts";
 import { canonicalPublicTemplates, publicShareUrlState } from "./public-url-state.ts";
-import { siteUrlFromHeaders } from "./site-url.ts";
+import { isSameOriginRequest, siteUrlFromHeaders } from "./site-url.ts";
 import {
   canonicalPublicViews,
   publicItinerarySchema,
@@ -129,6 +129,27 @@ test("share URLs follow the current request host across local and preview enviro
     siteUrlFromHeaders(new Headers({ origin: "null" }), "https://trip-planner.example.com"),
     "https://trip-planner.example.com",
   );
+});
+
+test("same-origin checks compare browser origin with the forwarded request host", () => {
+  assert.equal(
+    isSameOriginRequest(
+      new Headers({
+        host: "internal:3000",
+        origin: "https://cn.example.com",
+        "x-forwarded-host": "cn.example.com",
+        "x-forwarded-proto": "https",
+      }),
+    ),
+    true,
+  );
+  assert.equal(
+    isSameOriginRequest(
+      new Headers({ host: "cn.example.com", origin: "https://attacker.example" }),
+    ),
+    false,
+  );
+  assert.equal(isSameOriginRequest(new Headers({ host: "cn.example.com" })), false);
 });
 
 const itinerary: PublicItinerary = publicItinerarySchema.parse({

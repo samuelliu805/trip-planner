@@ -1,31 +1,31 @@
 import type { AppRegion } from "../config/provider-matrix";
 
+export type PublicAuthMethod = "email_password" | "google_oauth" | "phone_otp";
+export type ProtectedAuthMethod = "username_password";
+
 export type BackendCapabilities = Readonly<{
-  googleOAuth: boolean;
   itineraryItemLinks: boolean;
-  passwordSignInIdentifier: "email" | "username";
+  protectedAuthMethods: readonly ProtectedAuthMethod[];
+  publicAuthMethods: readonly PublicAuthMethod[];
   realtime: boolean;
-  selfRegistration: boolean;
   signedUrls: boolean;
   wechatAuth: boolean;
 }>;
 
 export const backendCapabilitiesByRegion = Object.freeze({
   global: Object.freeze({
-    googleOAuth: true,
     itineraryItemLinks: true,
-    passwordSignInIdentifier: "email",
+    protectedAuthMethods: Object.freeze([] as const),
+    publicAuthMethods: Object.freeze(["email_password", "google_oauth"] as const),
     realtime: true,
-    selfRegistration: true,
     signedUrls: true,
     wechatAuth: false,
   }),
   cn: Object.freeze({
-    googleOAuth: false,
     itineraryItemLinks: false,
-    passwordSignInIdentifier: "username",
+    protectedAuthMethods: Object.freeze(["username_password"] as const),
+    publicAuthMethods: Object.freeze(["phone_otp"] as const),
     realtime: false,
-    selfRegistration: false,
     signedUrls: true,
     wechatAuth: false,
   }),
@@ -33,4 +33,26 @@ export const backendCapabilitiesByRegion = Object.freeze({
 
 export function capabilitiesForRegion(region: AppRegion): BackendCapabilities {
   return backendCapabilitiesByRegion[region];
+}
+
+type PublicAuthEnvironment = Readonly<{
+  CLOUDBASE_CI_PASSWORD_AUTH_ENABLED?: string;
+  CN_PUBLIC_PHONE_AUTH_ENABLED?: string;
+}>;
+
+export function capabilitiesForEnvironment(
+  region: AppRegion,
+  env: PublicAuthEnvironment,
+): BackendCapabilities {
+  const base = capabilitiesForRegion(region);
+  if (region === "global") return base;
+  return Object.freeze({
+    ...base,
+    protectedAuthMethods:
+      env.CLOUDBASE_CI_PASSWORD_AUTH_ENABLED === "true"
+        ? base.protectedAuthMethods
+        : Object.freeze([]),
+    publicAuthMethods:
+      env.CN_PUBLIC_PHONE_AUTH_ENABLED === "true" ? base.publicAuthMethods : Object.freeze([]),
+  });
 }
