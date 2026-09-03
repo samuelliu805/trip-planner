@@ -65,7 +65,7 @@ function boundedString(value, label, maximum = 512) {
 }
 
 export function readCloudBaseBuildUpload(payload) {
-  const response = payload?.Response ?? payload;
+  const response = payload?.data?.Response ?? payload?.data ?? payload?.Response ?? payload;
   const uploadUrl = boundedString(response?.UploadUrl, "upload URL", 8192);
   const parsedUrl = new URL(uploadUrl);
   if (
@@ -152,9 +152,11 @@ export async function submitCloudBaseRunSource({
   archivePath,
   cli,
   envId,
+  log = () => undefined,
   run = runCommand,
   serviceName,
 }) {
+  log("Requesting a fresh CloudBase source upload target.");
   const upload = readCloudBaseBuildUpload(
     await callCloudBaseApi({
       action: "DescribeCloudBaseBuildService",
@@ -164,6 +166,7 @@ export async function submitCloudBaseRunSource({
       service: "tcb",
     }),
   );
+  log("Uploading the bounded CloudBase source archive with curl.");
   const uploadResult = await run(
     "curl",
     [
@@ -186,6 +189,7 @@ export async function submitCloudBaseRunSource({
   if (uploadResult.code !== 0 || uploadResult.timedOut) {
     throw new Error("CloudBase source archive upload failed.");
   }
+  log("Registering the uploaded package as a full CloudBase Run release.");
   await callCloudBaseApi({
     action: "UpdateCloudRunServer",
     body: cloudBaseRunUpdateBody({ ...upload, envId, serviceName }),

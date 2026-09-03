@@ -29,6 +29,15 @@ test("accepts bounded HTTPS CloudBase upload metadata", () => {
     packageVersion: "package-version",
     uploadUrl: uploadPayload.Response.UploadUrl,
   });
+  assert.deepEqual(readCloudBaseBuildUpload({ data: uploadPayload.Response }), {
+    headers: [
+      { key: "Content-Type", value: "application/zip" },
+      { key: "x-cos-meta-source", value: "cloudbase" },
+    ],
+    packageName: "package-name",
+    packageVersion: "package-version",
+    uploadUrl: uploadPayload.Response.UploadUrl,
+  });
 });
 
 test("rejects unsafe upload URLs and header injection", () => {
@@ -77,8 +86,13 @@ test("builds the same full-release update used by the CloudBase CLI", () => {
 
 test("uploads with curl before registering the exact package release", async () => {
   const calls = [];
+  const logs = [];
   const responses = [
-    { code: 0, output: `CloudBase CLI\n${JSON.stringify(uploadPayload)}`, timedOut: false },
+    {
+      code: 0,
+      output: `CloudBase CLI\n${JSON.stringify({ data: uploadPayload.Response })}`,
+      timedOut: false,
+    },
     { code: 0, output: "", timedOut: false },
     { code: 0, output: '{"RequestId":"request-id"}', timedOut: false },
   ];
@@ -86,6 +100,7 @@ test("uploads with curl before registering the exact package release", async () 
     archivePath: "/tmp/source.zip",
     cli: ["--yes", "--package", "@cloudbase/cli@3.8.1", "tcb"],
     envId: "env-id",
+    log: (message) => logs.push(message),
     run: async (...arguments_) => {
       calls.push(arguments_);
       return responses.shift();
@@ -109,4 +124,9 @@ test("uploads with curl before registering the exact package release", async () 
   const body = JSON.parse(calls[2][1][calls[2][1].indexOf("--body") + 1]);
   assert.equal(body.DeployInfo.PackageName, "package-name");
   assert.equal(responses.length, 0);
+  assert.deepEqual(logs, [
+    "Requesting a fresh CloudBase source upload target.",
+    "Uploading the bounded CloudBase source archive with curl.",
+    "Registering the uploaded package as a full CloudBase Run release.",
+  ]);
 });

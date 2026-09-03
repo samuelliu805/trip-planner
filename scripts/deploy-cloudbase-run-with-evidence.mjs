@@ -160,6 +160,7 @@ async function main() {
             archivePath: archive.archivePath,
             cli,
             envId,
+            log: (message) => process.stdout.write(`${message}\n`),
             serviceName,
           });
           return true;
