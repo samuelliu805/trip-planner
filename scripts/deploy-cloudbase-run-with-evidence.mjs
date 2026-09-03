@@ -1,8 +1,12 @@
-import { spawn } from "node:child_process";
 import { appendFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import { parseFirstJsonObject } from "./cloudbase-cli-json.mjs";
+import {
+  prepareCloudBaseSourceArchive,
+  runCommand,
+  submitCloudBaseRunSource,
+} from "./cloudbase-run-source-submitter.mjs";
 import {
   assertCloudBaseRunBaseline,
   classifyCloudBaseRunRecords,
@@ -93,57 +97,15 @@ export async function deployCloudBaseRunWithEvidence({
 
     log(
       commandSucceeded
-        ? "CloudBase CLI exited successfully, but no new deployment record is visible yet."
-        : "CloudBase CLI failed or timed out without registering a deployment.",
+        ? "CloudBase source submission succeeded, but no new deployment record is visible yet."
+        : "CloudBase source submission failed without registering a deployment.",
     );
     if (commandSucceeded) {
-      throw new Error("CloudBase CLI succeeded without observable release evidence.");
+      throw new Error("CloudBase source submission succeeded without observable release evidence.");
     }
     if (attempt < attempts) await waitImplementation(retryDelayMs * attempt);
   }
   throw new Error("CloudBase Run did not register a deployment within the retry budget.");
-}
-
-function signalProcess(child, signal) {
-  if (!child.pid) return;
-  try {
-    if (process.platform === "win32") child.kill(signal);
-    else process.kill(-child.pid, signal);
-  } catch (error) {
-    if (error?.code !== "ESRCH") throw error;
-  }
-}
-
-function runCommand(arguments_, { capture = false, timeoutMs }) {
-  return new Promise((resolve, reject) => {
-    const child = spawn("npx", arguments_, {
-      detached: process.platform !== "win32",
-      stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
-    });
-    let output = "";
-    let timedOut = false;
-    let killTimer;
-    child.stdout?.setEncoding("utf8");
-    child.stdout?.on("data", (chunk) => {
-      output += chunk;
-      if (output.length > 10 * 1024 * 1024) signalProcess(child, "SIGTERM");
-    });
-    const timeout = setTimeout(() => {
-      timedOut = true;
-      signalProcess(child, "SIGTERM");
-      killTimer = setTimeout(() => signalProcess(child, "SIGKILL"), 30_000);
-    }, timeoutMs);
-    child.once("error", (error) => {
-      clearTimeout(timeout);
-      clearTimeout(killTimer);
-      reject(error);
-    });
-    child.once("close", (code) => {
-      clearTimeout(timeout);
-      clearTimeout(killTimer);
-      resolve({ code, output, timedOut });
-    });
-  });
 }
 
 function readArguments(arguments_) {
@@ -170,6 +132,7 @@ async function main() {
   const cli = ["--yes", "--package", "@cloudbase/cli@3.8.1", "tcb"];
   const queryRecords = async () => {
     const result = await runCommand(
+      "npx",
       [
         ...cli,
         "cloudrun",
@@ -186,38 +149,31 @@ async function main() {
     if (result.code !== 0 || result.timedOut) throw new Error();
     return parseFirstJsonObject(result.output);
   };
-  const deploy = async () => {
-    const result = await runCommand(
-      [
-        ...cli,
-        "--yes",
-        "cloudrun",
-        "deploy",
-        "--env-id",
-        envId,
-        "--service-name",
-        serviceName,
-        "--source",
-        source,
-        "--port",
-        "8080",
-        "--install-dependency",
-        "false",
-        "--force",
-        "--wait",
-        "--json",
-      ],
-      { timeoutMs: 12 * 60_000 },
-    );
-    if (result.timedOut) process.stderr.write("CloudBase CLI submission timed out after 12m.\n");
-    return result.code === 0 && !result.timedOut;
-  };
-
-  const result = await deployCloudBaseRunWithEvidence({
-    deploy,
-    log: (message) => process.stdout.write(`${message}\n`),
-    queryRecords,
-  });
+  const archive = await prepareCloudBaseSourceArchive(source);
+  process.stdout.write(`Prepared ${archive.archiveBytes}-byte CloudBase source archive.\n`);
+  let result;
+  try {
+    result = await deployCloudBaseRunWithEvidence({
+      deploy: async () => {
+        try {
+          await submitCloudBaseRunSource({
+            archivePath: archive.archivePath,
+            cli,
+            envId,
+            serviceName,
+          });
+          return true;
+        } catch {
+          process.stderr.write("CloudBase source submission failed before release evidence.\n");
+          return false;
+        }
+      },
+      log: (message) => process.stdout.write(`${message}\n`),
+      queryRecords,
+    });
+  } finally {
+    await archive.dispose();
+  }
   if (process.env.GITHUB_OUTPUT) {
     await appendFile(
       process.env.GITHUB_OUTPUT,

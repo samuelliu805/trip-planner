@@ -128,7 +128,7 @@ test("does not retry a successful command whose release evidence stays missing",
         queryRecords: sequence([baseline, baseline]),
         registrationChecks: 1,
       }),
-    /succeeded without observable release evidence/,
+    /source submission succeeded without observable release evidence/,
   );
   assert.equal(deployCalls, 1);
 });

@@ -21,6 +21,7 @@ const globalLiveSmokeUrl = new URL("./global-phase-5-live.mjs", import.meta.url)
 const globalBrowserSmokeUrl = new URL("./lib/phase-5-global-browser-smoke.mjs", import.meta.url);
 const cnBrowserOriginUrl = new URL("./lib/phase-5-cn-browser-origin.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
+const cloudBaseRunSubmitterUrl = new URL("./cloudbase-run-source-submitter.mjs", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
 const providerNeutralMigrationUrl = new URL(
   "../database/shared/migrations/20260901181000_provider_neutral_places_and_amap_public_routes.sql",
@@ -114,12 +115,14 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
 });
 
 test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed", async () => {
-  const [globalDeploy, cnDeploy, cnProductionDeploy, observability] = await Promise.all([
-    readFile(globalDeployUrl, "utf8"),
-    readFile(cnDeployUrl, "utf8"),
-    readFile(cnProductionDeployUrl, "utf8"),
-    readFile(observabilityWorkflowUrl, "utf8"),
-  ]);
+  const [globalDeploy, cnDeploy, cnProductionDeploy, observability, cloudBaseRunSubmitter] =
+    await Promise.all([
+      readFile(globalDeployUrl, "utf8"),
+      readFile(cnDeployUrl, "utf8"),
+      readFile(cnProductionDeployUrl, "utf8"),
+      readFile(observabilityWorkflowUrl, "utf8"),
+      readFile(cloudBaseRunSubmitterUrl, "utf8"),
+    ]);
 
   assert.match(globalDeploy, /group: deploy-global-production/);
   assert.match(globalDeploy, /workflow_run:/);
@@ -139,6 +142,10 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cnDeploy, /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment 20260903180000/);
   assert.match(cnDeploy, /deploy-cloudbase-run-with-evidence\.mjs/);
   assert.doesNotMatch(cnDeploy, /sleep 10|deploy_cloudbase_run/);
+  assert.match(cloudBaseRunSubmitter, /DescribeCloudBaseBuildService/);
+  assert.match(cloudBaseRunSubmitter, /UpdateCloudRunServer/);
+  assert.match(cloudBaseRunSubmitter, /"curl"/);
+  assert.match(cloudBaseRunSubmitter, /"-9"/);
   assert.match(cnDeploy, /cloudrun logs process/);
   assert.match(cnDeploy, /verify-cloudbase-runtime-logs\.mjs/);
 
