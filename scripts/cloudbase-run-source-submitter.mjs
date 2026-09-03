@@ -176,7 +176,7 @@ export async function submitCloudBaseRunSource({
       "--connect-timeout",
       "30",
       "--max-time",
-      "300",
+      "600",
       "--request",
       "PUT",
       ...upload.headers.flatMap(({ key, value }) => ["--header", `${key}: ${value}`]),
@@ -184,7 +184,7 @@ export async function submitCloudBaseRunSource({
       archivePath,
       upload.uploadUrl,
     ],
-    { capture: true, timeoutMs: 330_000 },
+    { capture: true, timeoutMs: 630_000 },
   );
   if (uploadResult.code !== 0 || uploadResult.timedOut) {
     throw new Error("CloudBase source archive upload failed.");

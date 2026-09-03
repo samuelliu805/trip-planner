@@ -119,6 +119,8 @@ test("uploads with curl before registering the exact package release", async () 
   assert.equal(calls[1][0], "curl");
   assert.ok(calls[1][1].includes("--upload-file"));
   assert.ok(calls[1][1].includes(uploadPayload.Response.UploadUrl));
+  assert.equal(calls[1][1][calls[1][1].indexOf("--max-time") + 1], "600");
+  assert.equal(calls[1][2].timeoutMs, 630_000);
   assert.equal(calls[2][0], "npx");
   assert.ok(calls[2][1].includes("UpdateCloudRunServer"));
   const body = JSON.parse(calls[2][1][calls[2][1].indexOf("--body") + 1]);
