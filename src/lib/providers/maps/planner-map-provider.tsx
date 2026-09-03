@@ -1,6 +1,7 @@
 "use client";
 
 import { GoogleMapsProvider } from "@/lib/providers/google/maps/google-maps-provider";
+import { AmapMapsProvider } from "@/lib/providers/amap/maps/amap-maps-provider";
 
 import { MapProviderContext } from "./client-context";
 import { MapsProviderConfigurationError, resolveMapsProvider } from "./provider";
@@ -27,6 +28,12 @@ export function PlannerMapProvider({ children }: { children: React.ReactNode }) 
     return (
       <MapProviderContext.Provider value={configuration}>
         <GoogleMapsProvider>{children}</GoogleMapsProvider>
+      </MapProviderContext.Provider>
+    );
+  if (configuration.providerId === "amap")
+    return (
+      <MapProviderContext.Provider value={configuration}>
+        <AmapMapsProvider>{children}</AmapMapsProvider>
       </MapProviderContext.Provider>
     );
   return (

@@ -17,8 +17,9 @@ type StoredPlace = ResearchItem["location_place"];
 function toPlaceSnapshot(value?: StoredPlace | null): PlaceSnapshot | null {
   if (
     !value ||
-    value.source !== "google" ||
-    !value.google_place_id ||
+    (value.source !== "google" && value.source !== "amap") ||
+    !(value.provider_place_id ?? value.google_place_id) ||
+    value.coordinate_system !== "wgs84" ||
     !value.display_name ||
     value.latitude === null ||
     value.longitude === null
@@ -47,11 +48,12 @@ function toPlaceSnapshot(value?: StoredPlace | null): PlaceSnapshot | null {
     ...(localityKind && value.locality_name
       ? { localityKind, localityName: value.locality_name }
       : {}),
-    ...(value.locality_source === "google_address_component" && {
+    ...((value.locality_source === "google_address_component" ||
+      value.locality_source === "amap_poi") && {
       localitySource: value.locality_source,
     }),
-    provider: "google",
-    providerPlaceId: value.google_place_id,
+    provider: value.source,
+    providerPlaceId: value.provider_place_id ?? value.google_place_id!,
   };
 }
 

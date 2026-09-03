@@ -23,6 +23,30 @@ function session(result, label) {
   return data?.session ?? data ?? null;
 }
 
+function assertPublicProjection(projection, intendedTitle, privateTitle, ownerId) {
+  if (!projection || projection.available !== true) {
+    throw new Error("Anonymous public snapshot was unavailable");
+  }
+  const serialized = JSON.stringify(projection);
+  if (!serialized.includes(intendedTitle)) throw new Error("Public snapshot lost intended data");
+  for (const forbidden of [
+    privateTitle,
+    ownerId,
+    "owner_id",
+    "object_key",
+    "trip-assets/",
+    "AMAP_WEB_SERVICE_KEY",
+    "CLOUDBASE_API_KEY",
+    "CLOUDBASE_CAM_SECRET_ID",
+    "CLOUDBASE_CAM_SECRET_KEY",
+    "SUPABASE_SECRET_KEY",
+    "tp-cn-access-token",
+    "sb-access-token",
+  ]) {
+    if (serialized.includes(forbidden)) throw new Error(`Public snapshot leaked ${forbidden}`);
+  }
+}
+
 async function assertSessionLifecycle(auth, expectedUserId) {
   let current = session(await auth.getSession(), "session read after sign-in");
   if (!current?.access_token || !current?.refresh_token) {
@@ -170,7 +194,9 @@ async function deleteOwnedFixtures(auth, db, username, password, knownTripId) {
 
 async function runAssertions(auth, db, config) {
   let aTrip = null;
+  let aVariant = null;
   let bTrip = null;
+  let publicToken = null;
   let assertionFailure = null;
   try {
     const aId = await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
@@ -200,12 +226,61 @@ async function runAssertions(auth, db, config) {
     if (status.length !== 1 || status[0].status !== "done") {
       throw new Error("A own status update mismatch");
     }
+    const intendedTitle = `${runLabel}-published`;
+    const privateTitle = `${runLabel}-private-after-publish`;
+    const publishUpdate = await db.rpc("update_trip_plan", {
+      target_trip_id: aTrip,
+      trip_title: intendedTitle,
+      trip_start_date: null,
+      trip_end_date: null,
+      trip_day_count: 1,
+      trip_timezone: "UTC",
+      trip_currency: "USD",
+    });
+    if (
+      publishUpdate.error &&
+      !/(?:SyntaxError:.*JSON|not valid JSON|JSON at position)/i.test(
+        String(publishUpdate.error.message ?? ""),
+      )
+    ) {
+      dataOrThrow(publishUpdate, "A publish title update");
+    }
+    aVariant = rows(
+      await db.from("route_variants").select("id").eq("trip_id", aTrip).eq("is_primary", true),
+      "A primary variant",
+    )[0]?.id;
+    if (!aVariant) throw new Error("A primary variant was unavailable");
+    const share = dataOrThrow(
+      await db.rpc("create_share_page_v3", { target_variant_id: aVariant }),
+      "A immutable public share",
+    );
+    publicToken = share?.publicToken;
+    if (!publicToken) throw new Error("A public share token was unavailable");
+    const privateUpdate = await db.rpc("update_trip_plan", {
+      target_trip_id: aTrip,
+      trip_title: privateTitle,
+      trip_start_date: null,
+      trip_end_date: null,
+      trip_day_count: 1,
+      trip_timezone: "UTC",
+      trip_currency: "USD",
+    });
+    if (
+      privateUpdate.error &&
+      !/(?:SyntaxError:.*JSON|not valid JSON|JSON at position)/i.test(
+        String(privateUpdate.error.message ?? ""),
+      )
+    ) {
+      dataOrThrow(privateUpdate, "A private title update");
+    }
     dataOrThrow(await auth.signOut(), "A sign out");
     await assertSignedOut(auth, "A sign out");
 
     const bId = await signIn(auth, userB, config.CLOUDBASE_TEST_USER_B_PASSWORD);
     if (bId === aId) throw new Error("Controlled users A and B resolved to the same identity");
     bTrip = await createTrip(db, `${runLabel}-b`);
+    const crossPublish = await db.rpc("create_share_page_v3", { target_variant_id: aVariant });
+    if (!crossPublish.error) throw new Error("B published A's route variant");
     dataOrThrow(await auth.signOut(), "B sign out");
 
     await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
@@ -268,6 +343,16 @@ async function runAssertions(auth, db, config) {
     if (!anonymousPrivate.error && rows(anonymousPrivate, "anonymous private read").length) {
       throw new Error("Anonymous read private resources");
     }
+    const projection = dataOrThrow(
+      await db.rpc("get_public_share_page_v3", { shared_token: publicToken }),
+      "anonymous immutable public snapshot",
+    );
+    assertPublicProjection(
+      projection,
+      `${runLabel}-published`,
+      `${runLabel}-private-after-publish`,
+      aId,
+    );
     await signIn(auth, userB, config.CLOUDBASE_TEST_USER_B_PASSWORD);
     const bOwn = rows(await db.from("trips").select("id,title").eq("id", bTrip), "B own read");
     if (bOwn.length !== 1 || bOwn[0].title !== `${runLabel}-b`) {
@@ -305,6 +390,7 @@ async function run() {
   await runAssertions(auth, db, config);
   console.log("CloudBase live A/B JWT RLS and business RPC security matrix passed.");
   console.log("Session restore, refresh, expiry boundary, and logout verification passed.");
+  console.log("Immutable public snapshot and owner-private leak checks passed.");
   console.log("Both identities proved exact deletion and zero controlled/cascading fixtures.");
 }
 

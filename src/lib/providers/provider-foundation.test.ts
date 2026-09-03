@@ -27,18 +27,19 @@ test("maps provider resolution defaults every capability to Google", () => {
     assert.equal(resolveMapsProvider(capability, undefined), "google");
 });
 
-test("AMap is a bounded ID but every unimplemented capability fails closed", () => {
+test("AMap resolves implemented capabilities while photos remain fail closed", () => {
   assert.equal(parseMapsProviderId("amap"), "amap");
   assert.equal(configuredMapsProviderId("amap"), "amap");
-  for (const capability of ["maps", "places", "routes", "photos"] as MapsProviderCapability[])
-    assert.throws(
-      () => resolveMapsProvider(capability, "amap"),
-      (error) =>
-        error instanceof MapsProviderConfigurationError &&
-        error.code === "provider_unavailable" &&
-        error.providerId === "amap" &&
-        error.capability === capability,
-    );
+  for (const capability of ["maps", "places", "routes"] as MapsProviderCapability[])
+    assert.equal(resolveMapsProvider(capability, "amap"), "amap");
+  assert.throws(
+    () => resolveMapsProvider("photos", "amap"),
+    (error) =>
+      error instanceof MapsProviderConfigurationError &&
+      error.code === "provider_unavailable" &&
+      error.providerId === "amap" &&
+      error.capability === "photos",
+  );
   assert.equal(parseMapsProviderId("unknown"), null);
   assert.throws(
     () => configuredMapsProviderId("unknown"),
@@ -46,7 +47,7 @@ test("AMap is a bounded ID but every unimplemented capability fails closed", () 
   );
 });
 
-test("client and server provider entry points use the same resolver", async () => {
+test("client and server provider entry points share deployment-time selection", async () => {
   const [mapClient, placesClient, routeServer] = await Promise.all(
     [
       "./maps/planner-map-provider.tsx",
@@ -54,8 +55,10 @@ test("client and server provider entry points use the same resolver", async () =
       "./routes/resolver.server.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
-  for (const source of [mapClient, placesClient, routeServer])
-    assert.match(source, /resolveMapsProvider/);
+  for (const source of [mapClient, routeServer]) assert.match(source, /resolveMapsProvider/);
+  assert.match(placesClient, /useMapProviderConfiguration/);
+  assert.match(mapClient, /GoogleMapsProvider/);
+  assert.match(mapClient, /AmapMapsProvider/);
   assert.doesNotMatch(routeServer, /calculateGoogleRouteLeg/);
 });
 
@@ -154,7 +157,7 @@ test("legacy Google and straight route geometry normalize without inventing AMap
   assert.equal(routeGeometryFromJson({ provider: "amap", source: "amap" }), null);
 });
 
-test("routes-v1 persistence keeps the deployed Google and straight geometry shapes", () => {
+test("routes-v1 persistence keeps legacy Google and canonical provider-neutral shapes", () => {
   const common = {
     computedAt: "2026-08-29T00:00:00.000Z",
     distanceMeters: 100,
@@ -186,6 +189,18 @@ test("routes-v1 persistence keeps the deployed Google and straight geometry shap
         source: "straight",
       },
     },
+    {
+      ...common,
+      position: 3,
+      providerMode: "walking",
+      geometry: {
+        coordinateSystem: "wgs84",
+        encodedPolyline: "amap-encoded",
+        encoding: "polyline5",
+        provider: "amap",
+        source: "encoded",
+      },
+    },
   ]);
   assert.deepEqual(
     serialized.map(({ geometry }) => geometry),
@@ -196,10 +211,21 @@ test("routes-v1 persistence keeps the deployed Google and straight geometry shap
         origin: { latitude: 1, longitude: 1 },
         source: "straight",
       },
+      {
+        coordinateSystem: "wgs84",
+        encodedPolyline: "amap-encoded",
+        encoding: "polyline5",
+        provider: "amap",
+        source: "encoded",
+      },
     ],
   );
   assert.equal(routeGeometryFromJson(serialized[0].geometry)?.source, "encoded");
   assert.equal(routeGeometryFromJson(serialized[1].geometry)?.source, "straight");
+  const amapGeometry = routeGeometryFromJson(serialized[2].geometry);
+  assert.equal(amapGeometry?.source, "encoded");
+  if (amapGeometry?.source !== "encoded") assert.fail("Expected encoded AMap geometry");
+  assert.equal(amapGeometry.provider, "amap");
 });
 
 test("Google Places adapter exposes DTOs, one session token, and normalized WGS-84 places", async () => {

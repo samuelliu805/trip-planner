@@ -6,9 +6,31 @@ on:
     branches:
       - master
   workflow_dispatch:
+    inputs:
+      run_mode:
+        description: Select schema security or the protected Phase 5 matrix
+        required: true
+        default: schema-security
+        type: choice
+        options:
+          - schema-security
+          - phase5
+      verification_gate:
+        description: Type VERIFY only when run_mode is phase5
+        required: false
+        type: string
+      candidate_ref:
+        description: Branch, tag, or SHA to check out (must resolve to candidate_sha and GITHUB_SHA)
+        required: false
+        type: string
+      candidate_sha:
+        description: Exact 40-character commit SHA to verify
+        required: false
+        type: string
 
 permissions:
   contents: read
+  deployments: read
 
 concurrency:
   group: cloudbase-pg-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -16,6 +38,7 @@ concurrency:
 
 jobs:
   static:
+    if: github.event_name != 'workflow_dispatch' || inputs.run_mode != 'phase5'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -50,6 +73,7 @@ jobs:
       - run: npm run check:build-secret-boundary
 
   cn-build:
+    if: github.event_name != 'workflow_dispatch' || inputs.run_mode != 'phase5'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -81,7 +105,7 @@ jobs:
       - run: npm run check:build-secret-boundary
 
   live-cloudbase-dev:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'schema-security'
     needs: [static, cn-build]
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -211,3 +235,15 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_DEV_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
         run: npm run test:supabase-phase-4-storage
+
+  phase5-verification:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.run_mode == 'phase5' &&
+      inputs.verification_gate == 'VERIFY'
+    uses: ./.github/workflows/phase-5-dual-environment.yml
+    with:
+      candidate_ref: ${{ inputs.candidate_ref }}
+      candidate_sha: ${{ inputs.candidate_sha }}
+      verification_gate: ${{ inputs.verification_gate }}
+    secrets: inherit

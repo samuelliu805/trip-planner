@@ -16,9 +16,9 @@ function detail({ name = serviceName, status = "normal", extra = {} } = {}) {
       BaseInfo: {
         ServerName: name,
         Status: status,
-        ServerConfig: {
-          EnvParams: `CLOUDBASE_APIKEY=${fakeSecret}`,
-        },
+      },
+      ServerConfig: {
+        EnvParams: JSON.stringify({ CLOUDBASE_APIKEY: fakeSecret }),
       },
       ...extra,
     },
@@ -82,7 +82,11 @@ test("rejects a detail response for the wrong service", (t) => {
 
 test("rejects an abnormal service status", (t) => {
   const run = createRunner(t);
-  assertSafeFailure(run(JSON.stringify(detail({ status: "deploying" }))));
+  const result = run(JSON.stringify(detail({ status: "paused" })));
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /CloudBase Run service trip-planner-cn is not Normal/);
+  assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(fakeSecret));
 });
 
 test("does not accept an unrelated nested normal status", (t) => {
@@ -146,4 +150,83 @@ test("requires a fully online version for the post-deploy gate", async (t) => {
       "--require-online-version",
     ),
   );
+});
+
+test("checks required runtime variable names without exposing values", (t) => {
+  const run = createRunner(t);
+  const payload = detail();
+  payload.data.ServerConfig.EnvParams = JSON.stringify({
+    AMAP_JS_SECURITY_CODE: fakeSecret,
+    AMAP_WEB_SERVICE_KEY: `${fakeSecret}-web`,
+    EXISTING_RUNTIME_SETTING: "preserved",
+  });
+  const result = run(
+    JSON.stringify(payload),
+    serviceName,
+    "--require-runtime-env",
+    "AMAP_JS_SECURITY_CODE",
+    "--require-runtime-env",
+    "AMAP_WEB_SERVICE_KEY",
+  );
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /AMAP_JS_SECURITY_CODE, AMAP_WEB_SERVICE_KEY/);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
+
+  payload.data.ServerConfig.EnvParams = JSON.stringify({
+    AMAP_JS_SECURITY_CODE: fakeSecret,
+  });
+  const missing = run(
+    JSON.stringify(payload),
+    serviceName,
+    "--require-runtime-env",
+    "AMAP_JS_SECURITY_CODE",
+    "--require-runtime-env",
+    "AMAP_WEB_SERVICE_KEY",
+  );
+  assert.notEqual(missing.status, 0);
+  assert.equal(missing.stdout, "");
+  assert.match(missing.stderr, /Missing required CloudBase Run runtime variable names/);
+  assert.match(missing.stderr, /AMAP_WEB_SERVICE_KEY/);
+  assert.doesNotMatch(`${missing.stdout}${missing.stderr}`, new RegExp(fakeSecret));
+});
+
+test("reports required names when runtime metadata is unavailable", (t) => {
+  const run = createRunner(t);
+  for (const unavailable of [undefined, "", "not-json", JSON.stringify([])]) {
+    const payload = detail();
+    payload.data.ServerConfig.EnvParams = unavailable;
+    const result = run(
+      JSON.stringify(payload),
+      serviceName,
+      "--require-runtime-env",
+      "AMAP_JS_SECURITY_CODE",
+      "--require-runtime-env",
+      "AMAP_WEB_SERVICE_KEY",
+    );
+    assert.notEqual(result.status, 0);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /Unable to inspect CloudBase Run runtime environment metadata/);
+    assert.match(result.stderr, /AMAP_JS_SECURITY_CODE, AMAP_WEB_SERVICE_KEY/);
+    assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
+  }
+});
+
+test("rejects runtime metadata nested under BaseInfo instead of the API ServerConfig field", (t) => {
+  const run = createRunner(t);
+  const payload = detail();
+  delete payload.data.ServerConfig;
+  payload.data.BaseInfo.ServerConfig = {
+    EnvParams: JSON.stringify({ AMAP_JS_SECURITY_CODE: fakeSecret }),
+  };
+  const result = run(
+    JSON.stringify(payload),
+    serviceName,
+    "--require-runtime-env",
+    "AMAP_JS_SECURITY_CODE",
+  );
+
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /Unable to inspect CloudBase Run runtime environment metadata/);
+  assert.equal(`${result.stdout}${result.stderr}`.includes(fakeSecret), false);
 });

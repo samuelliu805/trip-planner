@@ -129,11 +129,12 @@ no direct client creation.
 
 ## Admin, cron, deployment, and scripts
 
-| File                                     | Current purpose and coupling                                                       | Risk                           | Planned phase                              |
-| ---------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------ | ------------------------------------------ |
-| `vercel.json`                            | Schedules the existing Global cleanup endpoint daily.                              | H: platform-specific scheduler | 4; retain Global schedule                  |
-| `.github/workflows/observability-ci.yml` | Supplies Global placeholder env and runs build/test checks.                        | M                              | Phase 4 dual workflow; Phase 5 full matrix |
-| `scripts/backfill-place-localities.ts`   | Direct admin Supabase SDK plus Google Places backfill. Exact lint allowlist entry. | H: privileged bulk write       | 4                                          |
+| File                                                                              | Current purpose and coupling                                                                                           | Risk                               | Planned phase                             |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------- |
+| `vercel.json`                                                                     | Schedules the existing Global cleanup endpoint daily.                                                                  | H: platform-specific scheduler     | 4; retain Global schedule                 |
+| `.github/workflows/observability-ci.yml`                                          | Supplies Global placeholder env and runs build/test checks.                                                            | M                                  | Retained shared observability CI          |
+| `.github/workflows/cloudbase-pg-ci.yml` + reusable `phase-5-dual-environment.yml` | Default-branch dispatch entry plus protected exact-SHA static, Global Preview/Supabase, and CN/CloudBase verification. | H: live non-production credentials | Phase 5; `run_mode=phase5`, `VERIFY` gate |
+| `scripts/backfill-place-localities.ts`                                            | Direct admin Supabase SDK plus Google Places backfill. Exact lint allowlist entry.                                     | H: privileged bulk write           | 4                                         |
 
 No production infrastructure, Vercel setting, Supabase project, or CloudBase resource was accessed or
 modified during this inventory.

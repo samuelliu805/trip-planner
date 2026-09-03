@@ -73,6 +73,36 @@ export const validationErrorsZhCN: Record<string, string> = {
   Forest: "森林绿",
   "Google could not find a route for this leg, so a straight fallback is shown.":
     "Google 未找到此路段的路线，已改用直线显示。",
+  "Add the AMap browser key and server-side JS security proxy configuration to view saved places.":
+    "请配置高德地图浏览器 Key 和服务端 JS 安全代理，以查看已保存的地点。",
+  "AMap could not find a route for this leg, so a straight fallback is shown.":
+    "高德地图未找到此路段的路线，已改用直线显示。",
+  "AMap failed to load. You can keep using the itinerary and retry later.":
+    "高德地图加载失败。你仍可继续使用行程，稍后再试。",
+  "AMap JS API configuration is incomplete.": "高德地图 JS API 配置不完整。",
+  "AMap JS API could not be loaded.": "无法加载高德地图 JS API。",
+  "AMap JS API loaded without its global API.": "高德地图 JS API 加载后未提供全局接口。",
+  "AMap JS API loading was cancelled.": "已取消加载高德地图 JS API。",
+  "AMap JS API was requested with conflicting settings.": "高德地图 JS API 收到了冲突的配置。",
+  "AMap Routes is not configured on the server.": "尚未在服务端配置高德路线服务。",
+  "AMap Routes is not enabled or permitted for the Web Service API key.":
+    "高德路线服务未启用，或 Web 服务 Key 没有访问权限。",
+  "AMap Routes is temporarily unavailable. Try calculating again later.":
+    "高德路线服务暂时不可用，请稍后重新计算。",
+  "AMap Routes quota or rate limit was reached. Check quotas before trying again.":
+    "高德路线服务已达到配额或频率限制，请检查配额后重试。",
+  "AMap Routes rejected the route request. Check the saved places and travel modes; the previous route is unchanged.":
+    "高德路线服务拒绝了请求，请检查已保存的地点和出行方式；原路线保持不变。",
+  "AMap Routes rejected the Web Service API key. Check that the key is valid.":
+    "高德路线服务拒绝了 Web 服务 Key，请检查 Key 是否有效。",
+  "AMap Routes returned an invalid response. The previous route is unchanged.":
+    "高德路线服务返回了无效响应；原路线保持不变。",
+  "AMap Routes timed out. The previous route is unchanged; try again later.":
+    "高德路线服务请求超时；原路线保持不变，请稍后重试。",
+  "The server could not reach AMap Routes. Check outbound HTTPS; the previous route is unchanged.":
+    "服务器无法连接高德路线服务，请检查出站 HTTPS；原路线保持不变。",
+  "This travel mode uses a straight distance because AMap routing is unsupported.":
+    "高德路线服务不支持此出行方式，已改用直线距离。",
   hotel: "住宿",
   "Items can only be copied within the active route variant.": "只能在当前方案内复制项目。",
   "Items must be unique.": "项目不能重复。",
@@ -102,6 +132,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Overview leg positions must be unique.": "全程路线的分段位置不能重复。",
   "Password must be at least 8 characters.": "密码至少需要 8 个字符。",
   "Place locality name and kind must be provided together.": "地点的城市名称和类型必须同时提供。",
+  "Place locality source must match its map provider.": "地点的城市来源必须与地图服务商一致。",
   Places: "地点",
   Provider: "服务商",
   "Public access revoked. Other shareable pages and permanent images are unchanged.":

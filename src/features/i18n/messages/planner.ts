@@ -96,6 +96,7 @@ export const plannerZhCN: Record<string, string> = {
   "Add dates later": "稍后添加日期",
   "Day actions": "当天操作",
   "Delete item": "删除项目",
+  "AMap places": "高德地图地点",
   "Google Maps places": "Google 地图地点",
   "Insert a new day above Day": "在当天上方插入新的一天",
   "Insert a new day below Day": "在当天下方插入新的一天",
@@ -127,12 +128,16 @@ export const plannerZhCN: Record<string, string> = {
   "Google Maps is unavailable. You can still type a {label}.":
     "Google 地图暂不可用，你仍可手动输入{label}。",
   "Places search is unavailable right now.": "地点搜索暂不可用。",
+  "Places search loads when {provider} is configured.": "配置 {provider} 后即可搜索地点。",
   "Places search loads when Google Maps is configured.": "配置 Google 地图后即可搜索地点。",
+  "Search AMap": "搜索高德地图",
   "Search Google Maps": "搜索 Google 地图",
   "The place could not be selected.": "无法选择该地点。",
   "The configured map provider is unavailable.": "已配置的地图服务暂不可用。",
   "Use “{query}”": "使用“{query}”",
   "Use “{query}” as {label}": "将“{query}”作为{label}",
+  "{provider} is unavailable. You can still type a {label}.":
+    "{provider} 暂不可用。你仍可输入{label}。",
   entry: "内容",
   value: "内容",
 };

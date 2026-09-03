@@ -5,29 +5,27 @@ RUN npm ci
 
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
-ARG NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY
-ARG NEXT_PUBLIC_SITE_URL
-ENV APP_REGION=cn
-ENV AUTH_PROVIDER=cloudbase
-ENV CLOUDBASE_ENV_ID=trip-planner-cn-dev-d3bz94038b26
-ENV CLOUDBASE_PUBLISHABLE_KEY=build-placeholder
-ENV CLOUDBASE_REGION=ap-shanghai
-ENV DATA_PROVIDER=cloudbase
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_APP_REGION=cn
-ENV NEXT_PUBLIC_CLOUDBASE_ENV_ID=trip-planner-cn-dev-d3bz94038b26
-ENV NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY
-ENV NEXT_PUBLIC_CLOUDBASE_REGION=ap-shanghai
-ENV NEXT_PUBLIC_MAPS_PROVIDER=amap
-ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-ENV NEXT_PUBLIC_TELEMETRY_ENABLED=false
-ENV NEXT_PUBLIC_TELEMETRY_ENVIRONMENT=production
-ENV STORAGE_PROVIDER=cloudbase
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
-RUN test -n "$NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY" \
-  && test -n "$NEXT_PUBLIC_SITE_URL" \
-  && npm run build
+RUN mkdir -p public
+RUN APP_REGION=cn \
+  AUTH_PROVIDER=cloudbase \
+  CLOUDBASE_ENV_ID=trip-planner-cn-dev-d3bz94038b26 \
+  CLOUDBASE_PUBLISHABLE_KEY=__TRIP_PLANNER_CLOUDBASE_SERVER_KEY__ \
+  CLOUDBASE_REGION=ap-shanghai \
+  DATA_PROVIDER=cloudbase \
+  NEXT_PUBLIC_AMAP_JS_API_KEY=__TRIP_PLANNER_AMAP_JS_API_KEY__ \
+  NEXT_PUBLIC_APP_REGION=cn \
+  NEXT_PUBLIC_CLOUDBASE_ENV_ID=trip-planner-cn-dev-d3bz94038b26 \
+  NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY=__TRIP_PLANNER_CLOUDBASE_PUBLIC_KEY__ \
+  NEXT_PUBLIC_CLOUDBASE_REGION=ap-shanghai \
+  NEXT_PUBLIC_MAPS_PROVIDER=amap \
+  NEXT_PUBLIC_SITE_URL=__TRIP_PLANNER_SITE_URL__ \
+  NEXT_PUBLIC_TELEMETRY_ENABLED=false \
+  NEXT_PUBLIC_TELEMETRY_ENVIRONMENT=production \
+  STORAGE_PROVIDER=cloudbase \
+  npm run build
 
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
@@ -40,6 +38,7 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=build --chown=nextjs:nodejs /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/scripts/cloudbase-runtime-entrypoint.mjs ./cloudbase-runtime-entrypoint.mjs
 USER nextjs
 EXPOSE 8080
-CMD ["node", "server.js"]
+CMD ["node", "cloudbase-runtime-entrypoint.mjs"]

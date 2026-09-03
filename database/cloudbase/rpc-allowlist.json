@@ -36,6 +36,10 @@
     [
       "upsert_google_place_snapshot_v2(uuid,text,text,text,double precision,double precision,text,text,text,text)",
       "owner_guard"
+    ],
+    [
+      "upsert_place_snapshot_v3(uuid,text,text,text,text,double precision,double precision,text,text,text,text,text,text)",
+      "owner_guard"
     ]
   ],
   "anonymous": [

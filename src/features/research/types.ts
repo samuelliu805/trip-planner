@@ -12,6 +12,8 @@ export type StoredResearchPlace = Pick<
   | "display_name"
   | "formatted_address"
   | "google_place_id"
+  | "provider_place_id"
+  | "coordinate_system"
   | "id"
   | "latitude"
   | "locality_kind"

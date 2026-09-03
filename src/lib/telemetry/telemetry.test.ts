@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
-import { relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, relative } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 import {
@@ -1812,7 +1812,7 @@ test("Public Template warnings normalize actionable diagnostics and ignore fallb
 async function productionSourceFiles(directory: URL): Promise<URL[]> {
   const files: URL[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const child = new URL(`${entry.name}${entry.isDirectory() ? "/" : ""}`, directory);
+    const child = pathToFileURL(join(fileURLToPath(directory), entry.name));
     if (entry.isDirectory()) files.push(...(await productionSourceFiles(child)));
     else if (/\.(?:ts|tsx)$/.test(entry.name) && !/\.test\.(?:ts|tsx)$/.test(entry.name))
       files.push(child);

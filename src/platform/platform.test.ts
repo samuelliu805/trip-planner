@@ -13,6 +13,11 @@ import { backendCapabilitiesByRegion } from "./capabilities/backend-capabilities
 import { cloudBasePhase4Status } from "./cloudbase/status.ts";
 import { cloudBaseScalarUuidRpc } from "./cloudbase/rpc-compat.ts";
 import {
+  cloudBaseDayRoutePlanRecoveryKey,
+  cloudBasePlaceUpsertRecoveryKey,
+  recoverCloudBasePlaceUpsertResult,
+} from "./cloudbase/rpc-result-normalization.mjs";
+import {
   cloudBaseSessionFromData,
   cloudBaseSessionFromVerifiedTokens,
 } from "./cloudbase/session-data.ts";
@@ -215,10 +220,12 @@ test("Successful password login invalidates the Trips page before redirecting", 
 });
 
 test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK surface", async () => {
-  const [auth, trips, client, sessionRuntime] = await Promise.all([
+  const [auth, trips, client, relational, composition, sessionRuntime] = await Promise.all([
     readFile(new URL("./cloudbase/auth-provider.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/trip-repository.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/client.ts", import.meta.url), "utf8"),
+    readFile(new URL("./cloudbase/relational-database.ts", import.meta.url), "utf8"),
+    readFile(new URL("./composition/server.ts", import.meta.url), "utf8"),
     readFile(new URL("./cloudbase/session-runtime.ts", import.meta.url), "utf8"),
   ]);
   for (const method of [
@@ -239,6 +246,12 @@ test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK sur
   assert.match(sessionRuntime, /getSession\(/);
   assert.match(sessionRuntime, /refreshSession\(/);
   assert.match(client, /app\.rdb\(\)/);
+  assert.match(client, /createCloudBasePublicDatabase/);
+  assert.match(client, /publicDatabase \?\?= initializeCloudBasePublicDatabase\(\)/);
+  assert.match(relational, /createCloudBasePublicRelationalDatabase/);
+  assert.match(relational, /createCloudBasePublicDatabase\(\)/);
+  assert.match(composition, /getPublicRelationalDatabase/);
+  assert.match(composition, /createCloudBasePublicRelationalDatabase\(\)/);
   assert.doesNotMatch(trips, /\.where\(|\.orderBy\(|\.count\(/);
   assert.doesNotMatch(auth, /getUser\(/);
 });
@@ -270,6 +283,86 @@ test("CloudBase scalar UUID compatibility recovers only the validated SDK parser
       recover: async () => ({ id }),
       safeMessage: "failed",
     }),
+  );
+});
+
+test("CloudBase place RPC recovery is limited to a canonical provider identity", () => {
+  const parameters = {
+    place_coordinate_system: "wgs84",
+    place_latitude: 31.24001,
+    place_longitude: 121.49001,
+    place_provider: "amap",
+    provider_place_id: "B0FFG6A2XR",
+    target_trip_id: "123e4567-e89b-42d3-a456-426614174000",
+  };
+  assert.deepEqual(cloudBasePlaceUpsertRecoveryKey("upsert_place_snapshot_v3", parameters, true), {
+    provider: "amap",
+    providerPlaceId: "B0FFG6A2XR",
+    tripId: parameters.target_trip_id,
+  });
+  assert.equal(
+    cloudBasePlaceUpsertRecoveryKey("upsert_place_snapshot_v3", parameters, false),
+    null,
+  );
+  assert.equal(
+    cloudBasePlaceUpsertRecoveryKey(
+      "upsert_place_snapshot_v3",
+      { ...parameters, place_coordinate_system: "gcj02" },
+      true,
+    ),
+    null,
+  );
+  assert.equal(cloudBasePlaceUpsertRecoveryKey("create_trip", parameters, true), null);
+});
+
+test("CloudBase place RPC recovery accepts one RLS-scoped UUID and preserves every failure", () => {
+  const original = {
+    data: null,
+    error: { message: "SyntaxError: value is not valid JSON" },
+  };
+  const id = "123e4567-e89b-42d3-a456-426614174000";
+  assert.deepEqual(recoverCloudBasePlaceUpsertResult(original, { data: [{ id }], error: null }), {
+    data: id,
+    error: null,
+  });
+  for (const lookup of [
+    { data: [], error: null },
+    { data: [{ id }, { id }], error: null },
+    { data: [{ id: "not-a-uuid" }], error: null },
+    { data: [{ id }], error: { message: "permission denied" } },
+  ]) {
+    assert.equal(recoverCloudBasePlaceUpsertResult(original, lookup), original);
+  }
+});
+
+test("CloudBase route-plan RPC recovery is exact, validated, and RLS scoped", () => {
+  const dayId = "123e4567-e89b-42d3-a456-426614174000";
+  const variantId = "223e4567-e89b-42d3-a456-426614174000";
+  const parameters = {
+    ordered_item_ids: [
+      "323e4567-e89b-42d3-a456-426614174000",
+      "423e4567-e89b-42d3-a456-426614174000",
+    ],
+    requested_leg_modes: ["walking"],
+    target_day_id: dayId,
+    target_variant_id: variantId,
+  };
+  assert.deepEqual(cloudBaseDayRoutePlanRecoveryKey("save_day_route_plan", parameters, true), {
+    dayId,
+    variantId,
+  });
+  assert.equal(cloudBaseDayRoutePlanRecoveryKey("save_day_route_plan", parameters, false), null);
+  assert.equal(
+    cloudBaseDayRoutePlanRecoveryKey(
+      "save_day_route_plan",
+      { ...parameters, requested_leg_modes: [] },
+      true,
+    ),
+    null,
+  );
+  assert.equal(
+    cloudBaseDayRoutePlanRecoveryKey("upsert_place_snapshot_v3", parameters, true),
+    null,
   );
 });
 

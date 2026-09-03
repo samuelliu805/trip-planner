@@ -400,7 +400,7 @@ select isnt(
 reset role;
 select throws_ok(
   format(
-    'insert into public.asset_links (asset_id,owner_id,trip_id,itinerary_item_id,display_filename,sort_order) values (%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L,0)',
+    'insert into public.asset_links (asset_id,owner_id,trip_id,itinerary_item_id,display_filename,sort_order) values (%L::uuid,%L::uuid,%L::uuid,%L::uuid,%L,4)',
     (select payload ->> 'assetId' from attachment_state where key = 'prepare_a'),
     '68000000-0000-4000-8000-000000000001',
     (select id from attachment_state where key = 'trip_a'),

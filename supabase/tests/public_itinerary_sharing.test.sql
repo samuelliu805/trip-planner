@@ -64,8 +64,8 @@ select is(
     where default_value.adrelid = 'public.public_itinerary_links'::regclass
       and attribute.attname = 'template_id'
   ),
-  '''ethereal''::text',
-  'new links default to Ethereal'
+  '''neon''::text',
+  'new links default to Neon'
 );
 select is(
   (
@@ -349,8 +349,8 @@ select is(
   public.get_public_itinerary_v4(
     ((select payload ->> 'publicToken' from phase_6a_state where key = 'link_a'))::uuid
   ) #>> '{settings,templateId}',
-  'ethereal',
-  'new links created through a legacy RPC receive the Ethereal database default'
+  'neon',
+  'new links created through a legacy RPC receive the Neon database default'
 );
 update phase_6a_state
 set payload = public.update_public_itinerary_link_v3(

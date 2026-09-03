@@ -181,6 +181,10 @@ anywhere in `.next`. It never prints secret values.
 - Prepare rollback, monitoring, operational ownership, and rollout evidence for a separate release
   decision. Phase completion does not itself route production traffic.
 
+The executable matrix and operational gates are maintained in
+[phase-5-verification.md](./phase-5-verification.md) and
+[phase-5-rollout-runbook.md](./phase-5-rollout-runbook.md).
+
 ## Manual configuration required
 
 Before the next Global Preview build, configure the five selectors exactly as the Global matrix.

@@ -2,6 +2,7 @@
 
 import { Localized } from "@/features/i18n/i18n-provider";
 import { GooglePlannerMapCanvas } from "@/lib/providers/google/maps/google-planner-map-canvas";
+import { AmapPlannerMapCanvas } from "@/lib/providers/amap/maps/amap-planner-map-canvas";
 import { AlertTriangle } from "lucide-react";
 
 import type { PlannerMapCanvasProps } from "./contracts";
@@ -9,6 +10,7 @@ import { useMapProviderConfiguration } from "./client-context";
 
 export function PlannerMapCanvas(props: PlannerMapCanvasProps) {
   const { providerError, providerId } = useMapProviderConfiguration();
+  if (!providerError && providerId === "amap") return <AmapPlannerMapCanvas {...props} />;
   if (providerError || providerId !== "google")
     return (
       <div

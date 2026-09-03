@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
+      AMAP_JS_SECURITY_CODE: ${{ secrets.AMAP_JS_SECURITY_CODE }}
+      AMAP_WEB_SERVICE_KEY: ${{ secrets.AMAP_WEB_SERVICE_KEY }}
       APP_REGION: cn
       AUTH_PROVIDER: cloudbase
       CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
@@ -31,6 +33,7 @@ jobs:
       CLOUDBASE_REGION: ap-shanghai
       DATA_PROVIDER: cloudbase
       NEXT_PUBLIC_APP_REGION: cn
+      NEXT_PUBLIC_AMAP_JS_API_KEY: ${{ secrets.NEXT_PUBLIC_AMAP_JS_API_KEY }}
       NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
       NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ${{ secrets.CLOUDBASE_PUBLISHABLE_KEY }}
       NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai
@@ -54,6 +57,8 @@ jobs:
           --env-id trip-planner-cn-dev-d3bz94038b26
           --region ap-shanghai
           --instance-id pgdb-l4lhtrv7
+      - name: Validate the CN provider environment
+        run: npm run check:phase-5-environment -- cn
       - name: Build the CN selector without cross-region credentials
         run: npm run build
       - run: npm run check:build-secret-boundary
@@ -108,7 +113,10 @@ jobs:
             --service-name trip-planner-cn \
             --json > "$detail_output"
           node scripts/verify-cloudbase-run-detail.mjs \
-            "$detail_output" trip-planner-cn
+            "$detail_output" trip-planner-cn \
+            --require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY \
+            --require-runtime-env AMAP_JS_SECURITY_CODE \
+            --require-runtime-env AMAP_WEB_SERVICE_KEY
       - name: Deploy the same SHA and require CloudBase Run release evidence
         run: |
           previous_records="$(mktemp)"
@@ -157,5 +165,9 @@ jobs:
             --service-name trip-planner-cn \
             --json > "$detail_output"
           node scripts/verify-cloudbase-run-detail.mjs \
-            "$detail_output" trip-planner-cn --require-online-version
+            "$detail_output" trip-planner-cn \
+            --require-online-version \
+            --require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY \
+            --require-runtime-env AMAP_JS_SECURITY_CODE \
+            --require-runtime-env AMAP_WEB_SERVICE_KEY
           node scripts/verify-cloudbase-run-health.mjs "$NEXT_PUBLIC_SITE_URL"

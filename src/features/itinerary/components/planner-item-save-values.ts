@@ -77,7 +77,8 @@ export function plannerItemSaveValues({
                   : null,
                 destinationPlace:
                   journey.endpoints &&
-                  destinationPlace?.provider === "google" &&
+                  (destinationPlace?.provider === "google" ||
+                    destinationPlace?.provider === "amap") &&
                   destinationPlace.providerPlaceId
                     ? (destinationPlace as unknown as Json)
                     : null,
@@ -85,7 +86,7 @@ export function plannerItemSaveValues({
                 origin: journey.endpoints ? originPlace?.displayName || origin || null : null,
                 originPlace:
                   journey.endpoints &&
-                  originPlace?.provider === "google" &&
+                  (originPlace?.provider === "google" || originPlace?.provider === "amap") &&
                   originPlace.providerPlaceId
                     ? (originPlace as unknown as Json)
                     : null,
@@ -98,8 +99,8 @@ export function plannerItemSaveValues({
     type,
     carAction,
   );
-  const googlePlace =
-    place?.provider === "google" && place.providerPlaceId
+  const providerPlace =
+    (place?.provider === "google" || place?.provider === "amap") && place.providerPlaceId
       ? {
           administrativeAreaName: place.administrativeAreaName,
           countryCode: place.countryCode,
@@ -107,14 +108,15 @@ export function plannerItemSaveValues({
           displayName: place.displayName,
           formattedAddress: place.formattedAddress,
           latitude: place.latitude,
-          ...(place.localitySource === "google_address_component" &&
+          ...(place.localitySource ===
+            (place.provider === "google" ? "google_address_component" : "amap_poi") &&
             place.localityKind !== "legacy_city" && {
               localityKind: place.localityKind,
               localityName: place.localityName,
-              localitySource: "google_address_component" as const,
+              localitySource: place.localitySource,
             }),
           longitude: place.longitude,
-          provider: "google" as const,
+          provider: place.provider,
           providerPlaceId: place.providerPlaceId,
         }
       : undefined;
@@ -136,6 +138,6 @@ export function plannerItemSaveValues({
     type,
     variantId,
     placeId: supportsPlace && place ? item?.place_id : null,
-    placeSnapshot: supportsPlace ? googlePlace : undefined,
+    placeSnapshot: supportsPlace ? providerPlace : undefined,
   };
 }

@@ -320,6 +320,17 @@ async function run() {
       ),
     );
     assert.notEqual(bId, aId);
+    const bOwnPath = `${bId}/${randomUUID()}/original`;
+    controlled.push({ bucket: "trip-assets", path: bOwnPath });
+    data(
+      await stage("user B private upload", () =>
+        sdkCall(
+          () => tripAssets.upload(bOwnPath, jpeg, { contentType: "image/jpeg", upsert: false }),
+          "user B private upload",
+        ),
+      ),
+      "user B private upload",
+    );
     await denialStage("user B download denial", "invisible", () =>
       tripAssets.createSignedUrl(ownPath, 60),
     );
@@ -342,6 +353,18 @@ async function run() {
     assert.equal(crossList.folders.length, 0);
 
     await stage("user B sign-out", () => sdkCall(() => auth.signOut(), "user B sign-out"));
+    await stage("user A isolation sign-in", () =>
+      hardTimeout(
+        () => signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD),
+        "user A isolation sign-in",
+      ),
+    );
+    await denialStage("user A cannot sign or retrieve B object", "invisible", () =>
+      tripAssets.createSignedUrl(bOwnPath, 60),
+    );
+    await stage("user A isolation sign-out", () =>
+      sdkCall(() => auth.signOut(), "user A isolation sign-out"),
+    );
     const afterBDelete = data(
       await stage("service verifies B did not delete A object", () =>
         adminCall(

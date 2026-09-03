@@ -30,8 +30,8 @@ select ok(
 );
 select is(
   (select public from storage.buckets where id = 'share-images'),
-  true,
-  'permanent image objects use a public bucket behind opaque application links'
+  false,
+  'permanent image objects stay private behind signed application access'
 );
 select is(
   (select file_size_limit from storage.buckets where id = 'share-images'),

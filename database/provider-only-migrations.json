@@ -72,6 +72,12 @@
       "file": "20260831213000_cloudbase_phase_four_ledger_repair.sql",
       "kind": "phase_4_ledger_repair",
       "sha256": "035501fb60488ab7fa20e6668637525ba639ba4db4c205c407fb3417416534c7"
+    },
+    {
+      "provider": "supabase",
+      "file": "20260902102500_reload_postgrest_provider_place_schema.sql",
+      "kind": "phase_5_postgrest_schema_refresh",
+      "sha256": "d2cdf00fd432fa3b1e6014cac85774d5a5ca43c43bfb71b77cf586a702d42c8e"
     }
   ]
 }

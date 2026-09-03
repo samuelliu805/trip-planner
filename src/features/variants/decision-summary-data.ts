@@ -60,7 +60,7 @@ export async function getVariantDecisionSummary(
     database
       .from("itinerary_items")
       .select<DecisionSummaryItemRow>(
-        "id, trip_id, variant_id, day_id, type, title, sort_order, place_id, details, place:places(id, google_place_id, latitude, longitude, locality_name, country_code)",
+        "id, trip_id, variant_id, day_id, type, title, sort_order, place_id, details, place:places(id, source, provider_place_id, google_place_id, latitude, longitude, locality_name, country_code)",
       )
       .eq("trip_id", tripId)
       .in("variant_id", variantIds)

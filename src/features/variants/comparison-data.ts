@@ -42,7 +42,7 @@ export async function getVariantComparison(
     database
       .from("itinerary_items")
       .select<ComparisonCityRow>(
-        "id, variant_id, day_id, type, title, sort_order, place_id, place:places(id, google_place_id, formatted_address, latitude, longitude, locality_name, country_code)",
+        "id, variant_id, day_id, type, title, sort_order, place_id, place:places(id, source, provider_place_id, google_place_id, formatted_address, latitude, longitude, locality_name, country_code)",
       )
       .eq("trip_id", tripId)
       .in("variant_id", variantIds)

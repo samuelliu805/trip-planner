@@ -1,9 +1,10 @@
 import type { ItineraryItem } from "@/features/itinerary/types";
 import { nameTripAfterFirstPlace } from "@/features/trips/auto-title";
-import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
 import type { AppRow } from "@/platform/contracts/database";
+
+import { providerPlaceRpcArguments } from "./place-persistence";
 
 export function firstIssue(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Check the item and try again.";
@@ -23,26 +24,10 @@ export async function persistPlaceSnapshot(
   snapshot?: PlaceSnapshot | null,
 ) {
   if (!snapshot) return null;
-  if (snapshot.provider === "amap")
-    throw new MapsProviderConfigurationError({
-      capability: "places",
-      code: "provider_unavailable",
-      providerId: "amap",
-    });
-  if (snapshot.provider !== "google" || !snapshot.providerPlaceId)
-    throw new Error("Only normalized Google place snapshots can be persisted here.");
-  const { data, error } = await database.rpc("upsert_google_place_snapshot_v2", {
-    place_administrative_area_name: snapshot.administrativeAreaName,
-    place_country_code: snapshot.countryCode,
-    place_display_name: snapshot.displayName,
-    place_formatted_address: snapshot.formattedAddress ?? "",
-    place_latitude: snapshot.latitude,
-    place_locality_kind: snapshot.localityKind,
-    place_locality_name: snapshot.localityName,
-    place_longitude: snapshot.longitude,
-    provider_place_id: snapshot.providerPlaceId,
-    target_trip_id: tripId,
-  });
+  const { data, error } = await database.rpc(
+    "upsert_place_snapshot_v3",
+    providerPlaceRpcArguments(tripId, snapshot),
+  );
   if (error || !data)
     throw new Error(mutationError(error?.message ?? "The map place could not be saved."));
   await nameTripAfterFirstPlace(tripId, snapshot);

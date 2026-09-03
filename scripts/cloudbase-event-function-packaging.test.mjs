@@ -29,4 +29,9 @@ test("CloudBase cleanup Event Function packages its SCF entry boundary", () => {
     assert.equal(isAbsolute(relativePath) || relativePath.startsWith(".."), false);
     assert.equal(statSync(artifactPath).isFile(), true);
   }
+
+  const cleanupSource = readFileSync(join(deploymentDirectory, "cleanup/index.mjs"), "utf8");
+  assert.match(cleanupSource, /createRequire\(import\.meta\.url\)/);
+  assert.match(cleanupSource, /require\("@cloudbase\/js-sdk"\)/);
+  assert.doesNotMatch(cleanupSource, /import cloudbase from "@cloudbase\/js-sdk"/);
 });

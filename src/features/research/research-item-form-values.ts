@@ -6,7 +6,7 @@ import { parseResearchLinks } from "./links";
 import { firstPresentIsoDate } from "./date-range";
 import type { ResearchCategory, ResearchItem } from "./types";
 
-type GooglePlaceSnapshot = z.input<typeof placeSnapshotSchema>;
+type ProviderPlaceSnapshot = z.input<typeof placeSnapshotSchema>;
 
 function optional(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim() || null;
@@ -78,14 +78,14 @@ export function researchItemInputFromForm({
   const originText = firstSegment?.origin ?? optional(form, "originText");
   const returnToPickup = category === "rental" && optional(form, "returnToPickup") === "true";
   const originPlaceId = optional(form, "originPlaceId");
-  const originPlaceSnapshot = optionalJson<GooglePlaceSnapshot>(form, "originPlaceSnapshot");
+  const originPlaceSnapshot = optionalJson<ProviderPlaceSnapshot>(form, "originPlaceSnapshot");
   const destinationText = returnToPickup
     ? originText
     : (firstSegment?.destination ?? optional(form, "destinationText"));
   const destinationPlaceId = returnToPickup ? originPlaceId : optional(form, "destinationPlaceId");
   const destinationPlaceSnapshot = returnToPickup
     ? originPlaceSnapshot
-    : optionalJson<GooglePlaceSnapshot>(form, "destinationPlaceSnapshot");
+    : optionalJson<ProviderPlaceSnapshot>(form, "destinationPlaceSnapshot");
   const locationText = optional(form, "locationText");
   const automaticTitle =
     category === "stay"
@@ -112,7 +112,7 @@ export function researchItemInputFromForm({
     journeyType,
     links: parseResearchLinks(item?.links),
     locationPlaceId: optional(form, "locationPlaceId"),
-    locationPlaceSnapshot: optionalJson<GooglePlaceSnapshot>(form, "locationPlaceSnapshot"),
+    locationPlaceSnapshot: optionalJson<ProviderPlaceSnapshot>(form, "locationPlaceSnapshot"),
     locationText,
     note: optional(form, "note"),
     originPlaceId,

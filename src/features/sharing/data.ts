@@ -1,6 +1,11 @@
 import "server-only";
 
-import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
+import {
+  getBackendCapabilities,
+  getPublicRelationalDatabase,
+  getRelationalDatabase,
+} from "@/platform/composition/server";
+import { PlatformOperationError } from "@/platform/contracts/errors";
 
 import { ownerShareImageStateSchema, shareImageManifestSchema } from "./long-image/schema";
 import {
@@ -19,7 +24,7 @@ import type {
 
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
   if (!getBackendCapabilities().signedUrls) return null;
-  const database = await getRelationalDatabase();
+  const database = await getPublicRelationalDatabase();
   const { data, error } = await database.rpc("get_public_share_page_v3", {
     shared_token: token,
   });
@@ -64,7 +69,7 @@ export async function listPublicItineraryLinks(
 
 export async function getPublicShareImage(token: string): Promise<ShareImageManifest | null> {
   if (!getBackendCapabilities().signedUrls) return null;
-  const database = await getRelationalDatabase();
+  const database = await getPublicRelationalDatabase();
   const { data, error } = await database.rpc("public_share_page_image_v1", {
     shared_token: token,
   });
@@ -77,7 +82,7 @@ export async function getShareImageManifest(
   permanentSlug: string,
 ): Promise<ShareImageManifest | null> {
   if (!getBackendCapabilities().signedUrls) return null;
-  const database = await getRelationalDatabase();
+  const database = await getPublicRelationalDatabase();
   const { data, error } = await database.rpc("public_share_image_manifest_v1", {
     requested_slug: permanentSlug,
   });
@@ -101,7 +106,15 @@ export async function getOwnerShareImageState(
 
 export async function getOwnerSharePageByToken(token: string): Promise<PublicItineraryLink | null> {
   if (!getBackendCapabilities().signedUrls) return null;
-  const database = await getRelationalDatabase();
+  let database;
+  try {
+    database = await getRelationalDatabase();
+  } catch (error) {
+    if (error instanceof PlatformOperationError && error.code === "authentication_required") {
+      return null;
+    }
+    throw error;
+  }
   const { data, error } = await database.rpc("owner_share_page_by_token_v2", {
     shared_token: token,
   });

@@ -12,6 +12,8 @@ import {
   signIn,
 } from "./lib/cloudbase-pg-live.mjs";
 import { stopChild } from "./lib/child-process.mjs";
+import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
+import { resolveCnBrowserOrigin } from "./lib/phase-5-cn-browser-origin.mjs";
 
 const requiredSelectors = {
   APP_REGION: "cn",
@@ -21,6 +23,14 @@ const requiredSelectors = {
   STORAGE_PROVIDER: "cloudbase",
 };
 const baseUrl = process.env.PHASE3_APP_BASE_URL ?? "http://127.0.0.1:3100";
+const requireAmapSmoke = process.env.PHASE5_REQUIRE_AMAP_SMOKE === "1";
+const resolvedBrowserOrigin = resolveCnBrowserOrigin(
+  baseUrl,
+  process.env.PHASE5_AMAP_ALLOWED_HOSTNAME,
+  requireAmapSmoke,
+);
+let browserBaseUrl = resolvedBrowserOrigin.browserBaseUrl;
+const { hostResolverArgument } = resolvedBrowserOrigin;
 const runLabel = `phase3-app-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const userA = "trip-planner-cn-test-a";
 const userB = "trip-planner-cn-test-b";
@@ -30,7 +40,7 @@ function safeApplicationDiagnostics(value) {
   return String(value)
     .replace(/Bearer\s+[^\s"']+/gi, "Bearer <redacted>")
     .replace(
-      /((?:api[_-]?key|access[_-]?token|refresh[_-]?token)\s*[:=]\s*)[^\s,}]+/gi,
+      /((?:api[_-]?key|access[_-]?token|refresh[_-]?token|security[_-]?code|secret|password)\s*[:=]\s*)[^\s,}]+/gi,
       "$1<redacted>",
     )
     .replace(/https?:\/\/\S+/g, "<url>")
@@ -87,6 +97,31 @@ class CdpClient {
         this.diagnostics.push({ method: message.method, params: message.params });
         this.diagnostics = this.diagnostics.slice(-20);
       }
+      if (message.method === "Network.responseReceived") {
+        try {
+          const response = message.params?.response;
+          const url = new URL(response?.url);
+          if (
+            url.pathname.startsWith("/_AMapService/") ||
+            url.pathname === "/api/maps/amap/places"
+          ) {
+            const errorHeader = Object.entries(response.headers ?? {}).find(
+              ([name]) => name.toLowerCase() === "x-trip-planner-amap-error",
+            )?.[1];
+            this.diagnostics.push({
+              method: message.method,
+              params: {
+                ...(errorHeader && { providerError: String(errorHeader).slice(0, 64) }),
+                path: url.pathname,
+                status: response.status,
+              },
+            });
+            this.diagnostics = this.diagnostics.slice(-20);
+          }
+        } catch {
+          // Only well-formed AMap service response metadata is diagnostic evidence.
+        }
+      }
       const listeners = this.listeners.get(message.method) ?? [];
       for (const listener of listeners) listener(message);
     });
@@ -135,61 +170,71 @@ async function launchBrowser() {
       "--disable-gpu",
       "--remote-debugging-port=0",
       `--user-data-dir=${profile}`,
+      ...(browserBaseUrl.startsWith("https:") ? ["--ignore-certificate-errors"] : []),
+      ...(hostResolverArgument ? [hostResolverArgument] : []),
       "about:blank",
     ],
     { stdio: ["ignore", "ignore", "pipe"] },
   );
   let diagnostics = "";
-  const websocketUrl = await new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`Chrome did not start. ${diagnostics}`)),
-      15_000,
+  let socket;
+  try {
+    const websocketUrl = await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(`Chrome did not start. ${diagnostics}`)),
+        30_000,
+      );
+      child.stderr.on("data", (chunk) => {
+        diagnostics = `${diagnostics}${chunk}`.slice(-4_000);
+        const match = diagnostics.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+        if (!match) return;
+        clearTimeout(timer);
+        resolve(match[1]);
+      });
+      child.once("exit", (code) => {
+        clearTimeout(timer);
+        reject(new Error(`Chrome exited before CDP became available (${code}). ${diagnostics}`));
+      });
+    });
+    socket = new WebSocket(websocketUrl);
+    await new Promise((resolve, reject) => {
+      socket.addEventListener("open", resolve, { once: true });
+      socket.addEventListener("error", reject, { once: true });
+    });
+    const cdp = new CdpClient(socket);
+    const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
+    const { sessionId } = await cdp.send("Target.attachToTarget", { flatten: true, targetId });
+    await Promise.all([
+      cdp.send("Page.enable", {}, sessionId),
+      cdp.send("Runtime.enable", {}, sessionId),
+      cdp.send("Network.enable", {}, sessionId),
+      cdp.send("Log.enable", {}, sessionId),
+    ]);
+    await cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+      sessionId,
     );
-    child.stderr.on("data", (chunk) => {
-      diagnostics = `${diagnostics}${chunk}`.slice(-4_000);
-      const match = diagnostics.match(/DevTools listening on (ws:\/\/[^\s]+)/);
-      if (!match) return;
-      clearTimeout(timer);
-      resolve(match[1]);
-    });
-    child.once("exit", (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Chrome exited before CDP became available (${code}). ${diagnostics}`));
-    });
-  });
-  const socket = new WebSocket(websocketUrl);
-  await new Promise((resolve, reject) => {
-    socket.addEventListener("open", resolve, { once: true });
-    socket.addEventListener("error", reject, { once: true });
-  });
-  const cdp = new CdpClient(socket);
-  const { targetId } = await cdp.send("Target.createTarget", { url: "about:blank" });
-  const { sessionId } = await cdp.send("Target.attachToTarget", { flatten: true, targetId });
-  await Promise.all([
-    cdp.send("Page.enable", {}, sessionId),
-    cdp.send("Runtime.enable", {}, sessionId),
-    cdp.send("Network.enable", {}, sessionId),
-    cdp.send("Log.enable", {}, sessionId),
-  ]);
-  await cdp.send(
-    "Emulation.setDeviceMetricsOverride",
-    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
-    sessionId,
-  );
-  return {
-    cdp,
-    close: async () => {
-      try {
-        await cdp.send("Browser.close");
-      } catch {
-        // The process cleanup below handles a browser that already lost CDP.
-      }
-      socket.close();
-      await stopChild(child);
-      await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
-    },
-    sessionId,
-  };
+    return {
+      cdp,
+      close: async () => {
+        try {
+          await cdp.send("Browser.close");
+        } catch {
+          // The process cleanup below handles a browser that already lost CDP.
+        }
+        socket.close();
+        await stopChild(child);
+        await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+      },
+      sessionId,
+    };
+  } catch (error) {
+    socket?.close();
+    await stopChild(child);
+    await rm(profile, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
+    throw error;
+  }
 }
 
 async function startApplicationIfRequested() {
@@ -259,9 +304,32 @@ async function waitFor(browser, expression, label, timeoutMs = 30_000) {
   throw new Error(`Timed out waiting for ${label}; last result: ${String(last)}`);
 }
 
+async function assertRealAmapBrowserAdapter(browser) {
+  if (!requireAmapSmoke) return;
+  await waitFor(
+    browser,
+    'Boolean(window.AMap && document.querySelector(".amap-container"))',
+    "real AMap JS map",
+    45_000,
+  );
+  const resources = await evaluate(
+    browser,
+    `performance.getEntriesByType("resource").map((entry) => entry.name)`,
+  );
+  assert.ok(resources.some((url) => /webapi\.amap\.com\/maps|\/_AMapService\//.test(url)));
+  assert.equal(
+    resources.some((url) => /googleapis|maps\.google|gstatic/i.test(url)),
+    false,
+  );
+}
+
 async function navigate(browser, path) {
   await evaluate(browser, "window.__phase3NavigationSentinel = true");
-  await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
+  await browser.cdp.send(
+    "Page.navigate",
+    { url: new URL(path, browserBaseUrl).href },
+    browser.sessionId,
+  );
   await waitFor(
     browser,
     'window.__phase3NavigationSentinel !== true && document.readyState === "complete"',
@@ -276,7 +344,7 @@ async function clearCookies(browser) {
 async function setCookie(browser, name, value) {
   const result = await browser.cdp.send(
     "Network.setCookie",
-    { name, url: baseUrl, value },
+    { name, url: browserBaseUrl, value },
     browser.sessionId,
   );
   assert.equal(result.success, true, `Could not set ${name}.`);
@@ -342,11 +410,18 @@ async function login(browser, username, password) {
 async function clickElement(browser, elementExpression, label) {
   const point = await evaluate(
     browser,
-    `(() => {
+    `(async () => {
       const element = (${elementExpression});
       if (!element || !element.getClientRects().length || element.disabled) return null;
+      element.scrollIntoView({ block: "center", inline: "center" });
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const rect = element.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return null;
+      const hit = document.elementFromPoint(x, y);
+      if (!hit || (hit !== element && !element.contains(hit))) return null;
+      return { x, y };
     })()`,
   );
   assert(point, `${label} was not available.`);
@@ -396,6 +471,398 @@ async function clickButtonText(browser, text) {
     })()`,
     `Button ${text}`,
   );
+}
+
+async function setInputValue(browser, selector, value) {
+  const changed = await evaluate(
+    browser,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      if (!(input instanceof HTMLInputElement) || !input.getClientRects().length) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, ${JSON.stringify(value)});
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    })()`,
+  );
+  assert.equal(changed, true, `${selector} was not available.`);
+}
+
+async function readBoundedAmapSuggestionDiagnostic(browser) {
+  try {
+    return await evaluate(
+      browser,
+      `(() => {
+        const serviceRequests = performance.getEntriesByType("resource")
+          .flatMap((entry) => {
+            try {
+              const url = new URL(entry.name);
+              if (
+                !url.pathname.startsWith("/_AMapService/") &&
+                url.pathname !== "/api/maps/amap/places"
+              ) return [];
+              return [{
+                path: url.pathname,
+                status: Number.isInteger(entry.responseStatus) ? entry.responseStatus : 0,
+              }];
+            } catch {
+              return [];
+            }
+          });
+        return {
+          amapLoaded: Boolean(window.AMap),
+          serviceRequestCount: serviceRequests.length,
+          serviceRequests: serviceRequests.slice(-5),
+        };
+      })()`,
+    );
+  } catch {
+    return { category: "diagnostic-unavailable" };
+  }
+}
+
+async function readBoundedActivitySaveDiagnostic(browser) {
+  try {
+    return await evaluate(
+      browser,
+      `(() => ({
+        alerts: [...document.querySelectorAll('[role="alert"]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 160))
+          .filter(Boolean)
+          .slice(-3),
+        dialogButtons: [...document.querySelectorAll('[role="dialog"] button')]
+          .filter((button) => button.getClientRects().length)
+          .map((button) => ({
+            disabled: button.disabled,
+            text: button.textContent?.trim().slice(0, 80),
+          }))
+          .slice(-8),
+        path: location.pathname,
+      }))()`,
+    );
+  } catch {
+    return { category: "diagnostic-unavailable" };
+  }
+}
+
+async function addAmapActivityThroughUi(browser, query, expectedCount) {
+  const addActivityExpression = `[...document.querySelectorAll('[data-cell="0-1"] [data-add-item]')].find((button) =>
+      button.getClientRects().length && !button.disabled &&
+      getComputedStyle(button).pointerEvents !== "none"
+    )`;
+  try {
+    await waitFor(
+      browser,
+      `Boolean(${addActivityExpression})`,
+      "hydrated Add activity control",
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        addItemCount: document.querySelectorAll('[data-add-item]').length,
+        activityAddItemCount: document.querySelectorAll('[data-cell="0-1"] [data-add-item]').length,
+        body: document.body.innerText.slice(0, 1200),
+        dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
+        matrixReady: Boolean(document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]')),
+        path: location.pathname,
+        selectedCellCount: document.querySelectorAll('[role="gridcell"][aria-selected="true"]').length,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded planner diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await clickElement(browser, addActivityExpression, "Add activity");
+  const placeSelector = 'input[aria-label="Place or activity name"]';
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector(${JSON.stringify(placeSelector)}))`,
+    "activity place search",
+  );
+  await setInputValue(browser, placeSelector, query);
+  try {
+    await waitFor(
+      browser,
+      `Boolean([...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length))`,
+      `AMap suggestions for ${query}`,
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await readBoundedAmapSuggestionDiagnostic(browser);
+    const visibleError = await evaluate(
+      browser,
+      `document.querySelector('[role="alert"]')?.textContent?.trim().slice(0, 160) ?? ""`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded AMap diagnostic: ${JSON.stringify(
+        {
+          browser: browser.cdp.diagnostics
+            .filter((entry) => entry.method === "Network.responseReceived")
+            .slice(-5),
+          diagnostic,
+          visibleError,
+        },
+      )}`,
+    );
+  }
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length)`,
+    `AMap suggestion for ${query}`,
+  );
+  await waitFor(
+    browser,
+    "Boolean(document.querySelector('button[aria-label=\"Clear map place\"]'))",
+    `resolved AMap POI for ${query}`,
+    30_000,
+  );
+  const title = await evaluate(
+    browser,
+    `document.querySelector('input[id^="item-title-"]')?.value?.trim()`,
+  );
+  assert.ok(title, `AMap selection for ${query} did not populate the activity name.`);
+
+  const action = await evaluate(
+    browser,
+    `(() => [...document.querySelectorAll('[role="dialog"] button')]
+      .find((button) => ["Confirm order", "Save"].includes(button.textContent.trim()) && !button.disabled)
+      ?.textContent.trim())()`,
+  );
+  assert.ok(action, `The activity editor for ${query} was not saveable.`);
+  await clickButtonText(browser, action);
+  if (action === "Confirm order") {
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="dialog"] button')]
+        .some((button) => button.textContent.trim() === "Save" && !button.disabled)`,
+      "activity order confirmation",
+    );
+    await clickButtonText(browser, "Save");
+  }
+  try {
+    await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "activity save", 45_000);
+  } catch (error) {
+    const diagnostic = await readBoundedActivitySaveDiagnostic(browser);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded activity-save diagnostic: ${JSON.stringify(
+        diagnostic,
+      )}`,
+    );
+  }
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-edit-item]').length >= ${expectedCount}`,
+    `saved activity ${expectedCount}`,
+    45_000,
+  );
+  return title;
+}
+
+async function calculateAmapRouteThroughUi(browser, tripId) {
+  const selectedPlaceOpen = await evaluate(
+    browser,
+    `Boolean(document.querySelector('button[aria-label="Close place details"]'))`,
+  );
+  if (selectedPlaceOpen) {
+    await clickElement(
+      browser,
+      `document.querySelector('button[aria-label="Close place details"]')`,
+      "close selected place details",
+    );
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector('button[aria-label="Open map details"]'))`,
+      "reopen day route panel control",
+    );
+    await clickElement(
+      browser,
+      `document.querySelector('button[aria-label="Open map details"]')`,
+      "reopen day route panel",
+    );
+  }
+  try {
+    await waitFor(
+      browser,
+      "Boolean(document.querySelector('button[aria-label=\"Create route\"]'))",
+      "create day route control",
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        controls: [...document.querySelectorAll('button[aria-label]')]
+          .filter((button) => button.getClientRects().length)
+          .map((button) => button.getAttribute('aria-label'))
+          .filter((label) => label?.toLowerCase().includes('route') || label?.toLowerCase().includes('map'))
+          .slice(-12),
+        mapMarkerCount: Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount ?? -1),
+        path: location.pathname,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded route-control diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await clickElement(
+    browser,
+    `document.querySelector('button[aria-label="Create route"]')`,
+    "Create route",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('button')].some((button) =>
+      button.textContent.trim() === "Save & calculate" && !button.disabled
+    )`,
+    "save and calculate AMap route",
+  );
+  await clickButtonText(browser, "Save & calculate");
+  try {
+    await waitFor(
+      browser,
+      `!document.querySelector('[data-i18n-aria-label="Edit Route A"]') &&
+        Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
+      "calculated AMap route",
+      60_000,
+    );
+  } catch (error) {
+    const browserDiagnostic = await evaluate(
+      browser,
+      `({
+        alerts: [...document.querySelectorAll('[role="alert"]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 160))
+          .filter(Boolean)
+          .slice(-3),
+        editorOpen: Boolean(document.querySelector('[data-i18n-aria-label="Edit Route A"]')),
+        lineCount: Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount ?? -1),
+        saveAction: (() => {
+          const button = [...document.querySelectorAll('button')]
+            .find((candidate) => ['Save & calculate', 'Saving…'].includes(candidate.textContent.trim()));
+          return button ? { disabled: button.disabled, text: button.textContent.trim() } : null;
+        })(),
+      })`,
+    );
+    const persisted = await loadPersistedAmapEvidence(tripId);
+    const persistedDiagnostic = {
+      calculationCount: persisted.calculations.length,
+      legCounts: persisted.calculations.map(({ calculated_legs: legs }) =>
+        Array.isArray(legs) ? legs.length : 0,
+      ),
+    };
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded route-calculation diagnostic: ${JSON.stringify(
+        { browser: browserDiagnostic, persisted: persistedDiagnostic },
+      )}`,
+    );
+  }
+}
+
+async function publishThroughUi(browser, tripId) {
+  await openTripMenu(browser);
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
+      item.textContent.trim() === "Share trip" && !item.disabled
+    )`,
+    "Share trip menu item",
+  );
+  await clickButtonText(browser, "Share trip");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+      button.textContent.trim() === "Create and publish" &&
+      !button.disabled &&
+      button.getClientRects().length
+    )`,
+    "share publish control",
+  );
+  const activated = await evaluate(
+    browser,
+    `(() => {
+      const button = [...document.querySelectorAll('[role="dialog"] button')].find((candidate) =>
+        candidate.textContent.trim() === "Create and publish" &&
+        !candidate.disabled &&
+        candidate.getClientRects().length
+      );
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  assert.equal(activated, true, "Create and publish was not available.");
+  try {
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+        button.textContent.trim() === "Publishing…"
+      ) ||
+      Boolean(document.querySelector('[aria-label="Published shareable page"]')) ||
+      Boolean(document.querySelector('[role="dialog"] [aria-live]'))`,
+      "share publish activation",
+      10_000,
+    );
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector('[aria-label="Published shareable page"]')) ||
+       Boolean(document.querySelector('[role="dialog"] [aria-live]'))`,
+      "share publish result",
+      60_000,
+    );
+    assert.equal(
+      await evaluate(
+        browser,
+        `Boolean(document.querySelector('[aria-label="Published shareable page"]'))`,
+      ),
+      true,
+      "The share publish action returned visible feedback without a published page.",
+    );
+  } catch (error) {
+    const browserDiagnostic = await evaluate(
+      browser,
+      `({
+        dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
+        liveMessages: [...document.querySelectorAll('[role="dialog"] [aria-live]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 200))
+          .filter(Boolean)
+          .slice(-3),
+        publishAction: (() => {
+          const button = [...document.querySelectorAll('[role="dialog"] button')]
+            .find((candidate) => ['Create and publish', 'Publishing…'].includes(candidate.textContent.trim()));
+          return button ? { disabled: button.disabled, text: button.textContent.trim() } : null;
+        })(),
+      })`,
+    );
+    const persisted = await loadPersistedShareCount(tripId);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded share-publish diagnostic: ${JSON.stringify(
+        { browser: browserDiagnostic, persisted },
+      )}`,
+    );
+  }
+  const publicUrl = await evaluate(
+    browser,
+    `(() => {
+      const panel = document.querySelector('[aria-label="Published shareable page"]');
+      return [...panel.querySelectorAll('button')]
+        .map((button) => button.textContent.trim())
+        .find((text) => /^https?:\\/\\//.test(text));
+    })()`,
+  );
+  assert.ok(publicUrl, "The published page URL was not rendered by the application UI.");
+  const token = new URL(publicUrl).pathname.split("/").filter(Boolean).at(-1);
+  assert.ok(token, "The application UI returned an invalid public page URL.");
+  await clickElement(
+    browser,
+    `document.querySelector('[role="dialog"] [data-dialog-close]')`,
+    "Close published share dialog",
+  );
+  await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "share dialog close");
+  return token;
 }
 
 async function openTripMenu(browser) {
@@ -584,8 +1051,13 @@ async function verifyTabletFrozenLayers(browser) {
         const rect = cell.getBoundingClientRect();
         return rect.left < frozenRect.right && rect.right > frozenRect.left;
       });
+      const visibleFrozenTop = Math.max(frozenRect.top, headerRect.bottom + 1);
+      const visibleFrozenBottom = Math.min(frozenRect.bottom, matrixRect.bottom - 1);
       const rowHeaderAtFrozenPoint = document
-        .elementsFromPoint(frozenRect.left + frozenRect.width / 2, frozenRect.top + frozenRect.height / 2)
+        .elementsFromPoint(
+          frozenRect.left + frozenRect.width / 2,
+          visibleFrozenTop + (visibleFrozenBottom - visibleFrozenTop) / 2,
+        )
         .map((element) => element.closest('[role="rowheader"]'))
         .find(Boolean);
       const columnHeaderAtHeaderPoint = document
@@ -672,7 +1144,7 @@ async function forgeForm(browser, path, entries, replacements = {}) {
       const replacements = ${JSON.stringify(replacements)};
       const body = new FormData();
       for (const [name, value] of entries) body.append(name, name in replacements ? replacements[name] : value);
-      const response = await fetch(${JSON.stringify(new URL(path, baseUrl).href)}, {
+      const response = await fetch(${JSON.stringify(path)}, {
         body,
         credentials: "include",
         method: "POST",
@@ -725,15 +1197,119 @@ async function cleanupFixture(tripId) {
   return { deleted, remaining };
 }
 
+async function loadPersistedAmapEvidence(tripId) {
+  const config = loadLiveConfig();
+  const { auth, db } = initializeLiveClient(config);
+  try {
+    await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+    const items = dataOrThrow(
+      await db
+        .from("itinerary_items")
+        .select("id,place_id,title")
+        .eq("trip_id", tripId)
+        .eq("type", "activity"),
+      "application E2E AMap activities",
+    );
+    const placeIds = (Array.isArray(items) ? items : [items])
+      .map(({ place_id: placeId }) => placeId)
+      .filter(Boolean);
+    const places = placeIds.length
+      ? dataOrThrow(
+          await db
+            .from("places")
+            .select(
+              "id,source,provider_place_id,google_place_id,display_name,formatted_address,latitude,longitude,coordinate_system",
+            )
+            .in("id", placeIds),
+          "application E2E persisted AMap places",
+        )
+      : [];
+    const plans = dataOrThrow(
+      await db.from("day_route_plans").select("id").eq("trip_id", tripId),
+      "application E2E AMap day route",
+    );
+    const planIds = (Array.isArray(plans) ? plans : [plans]).map(({ id }) => id).filter(Boolean);
+    const calculations = planIds.length
+      ? dataOrThrow(
+          await db
+            .from("day_route_calculations")
+            .select("plan_id,calculated_legs")
+            .in("plan_id", planIds),
+          "application E2E calculated AMap route",
+        )
+      : [];
+    return {
+      calculations: Array.isArray(calculations) ? calculations : [calculations],
+      items: Array.isArray(items) ? items : [items],
+      places: Array.isArray(places) ? places : [places],
+    };
+  } finally {
+    await auth.signOut();
+  }
+}
+
+async function loadPersistedShareCount(tripId) {
+  const config = loadLiveConfig();
+  const { auth, db } = initializeLiveClient(config);
+  try {
+    await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+    const result = await db.rpc("list_share_pages_v2", { target_trip_id: tripId });
+    if (result.error) return { count: null, lookupOk: false };
+    return { count: Array.isArray(result.data) ? result.data.length : null, lookupOk: true };
+  } finally {
+    await auth.signOut();
+  }
+}
+
+function assertPersistedAmapPlaces(evidence) {
+  assert.equal(evidence.items.length, 2, "The real UI did not persist both AMap activities.");
+  assert.equal(evidence.places.length, 2, "The real UI did not persist both AMap place rows.");
+  for (const place of evidence.places) {
+    assert.equal(place.source, "amap");
+    assert.equal(place.coordinate_system, "wgs84");
+    assert.equal(place.google_place_id, null);
+    assert.ok(place.provider_place_id, "An AMap place lost its provider place ID.");
+    assert.ok(place.display_name, "An AMap place lost its display name.");
+    assert.ok(place.formatted_address, "An AMap place lost its formatted address.");
+    assert.ok(Number.isFinite(place.latitude) && Math.abs(place.latitude) <= 90);
+    assert.ok(Number.isFinite(place.longitude) && Math.abs(place.longitude) <= 180);
+  }
+}
+
+function assertPersistedAmapRoute(evidence) {
+  assert.equal(evidence.calculations.length, 1, "The real UI did not persist one day route.");
+  const legs = evidence.calculations[0]?.calculated_legs;
+  assert.ok(Array.isArray(legs) && legs.length > 0, "The persisted AMap route has no legs.");
+  for (const leg of legs) {
+    assert.deepEqual(
+      {
+        coordinateSystem: leg.geometry?.coordinateSystem,
+        provider: leg.geometry?.provider,
+        source: leg.geometry?.source,
+      },
+      { coordinateSystem: "wgs84", provider: "amap", source: "encoded" },
+    );
+    assert.ok(leg.geometry?.encodedPolyline, "The persisted AMap route has no encoded geometry.");
+  }
+}
+
 async function run() {
   requireProductionSelectors();
   let server;
+  let browserTlsProxy;
   let browser;
   let tripId;
   let assertionError;
   let cleanup;
   try {
     server = await startApplicationIfRequested();
+    if (requireAmapSmoke) {
+      browserTlsProxy = await startLoopbackTlsProxy({
+        browserHostname: new URL(resolvedBrowserOrigin.browserBaseUrl).hostname,
+        upstreamBaseUrl: baseUrl,
+      });
+      browserBaseUrl = browserTlsProxy.browserBaseUrl;
+    }
     browser = await launchBrowser();
     await navigate(browser, "/trips");
     assert.equal(await evaluate(browser, "location.pathname"), "/login");
@@ -831,9 +1407,84 @@ async function run() {
       await evaluate(browser, 'Boolean(document.querySelector("[data-nextjs-dialog]"))'),
       false,
     );
+    await assertRealAmapBrowserAdapter(browser);
 
     const updatedTitle = `${runLabel}-owned-by-a`;
     await updateTripTitle(browser, updatedTitle);
+    await addAmapActivityThroughUi(browser, "上海外滩", 1);
+    await addAmapActivityThroughUi(browser, "上海人民广场", 2);
+    await navigate(browser, `/trips/${tripId}`);
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+        .filter((item) => item.getClientRects().length).length >= 2`,
+      "refreshed saved activities",
+      60_000,
+    );
+    await clickElement(
+      browser,
+      `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+        .find((item) => item.getClientRects().length)`,
+      "first refreshed saved activity",
+    );
+    await clickElement(
+      browser,
+      `[...document.querySelectorAll('button[aria-label="Show the selected day"]')]
+        .find((button) => button.getClientRects().length)`,
+      "selected day map scope",
+    );
+    try {
+      await waitFor(
+        browser,
+        `Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount) >= 2`,
+        "refreshed AMap markers",
+        60_000,
+      );
+    } catch (error) {
+      const diagnostic = await evaluate(
+        browser,
+        `({
+          activityCount: document.querySelectorAll('[data-cell="0-1"] [data-edit-item]').length,
+          mapMarkerCount: Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount ?? -1),
+          mapModeButtons: [...document.querySelectorAll('[aria-label^="Show the"]')]
+            .map((button) => ({ label: button.getAttribute('aria-label'), pressed: button.getAttribute('aria-pressed') })),
+          path: location.pathname,
+        })`,
+      );
+      throw new Error(
+        `${error instanceof Error ? error.message : error}; bounded refreshed-map diagnostic: ${JSON.stringify(diagnostic)}`,
+      );
+    }
+    const amapEvidence = await loadPersistedAmapEvidence(tripId);
+    assertPersistedAmapPlaces(amapEvidence);
+    const renderedMarkers = await evaluate(
+      browser,
+      `[...document.querySelectorAll('[data-coordinate-system="wgs84"]')].map((marker) => ({
+        coordinateSystem: marker.dataset.coordinateSystem,
+        latitude: Number(marker.dataset.wgs84Latitude),
+        longitude: Number(marker.dataset.wgs84Longitude),
+      }))`,
+    );
+    assert.ok(
+      renderedMarkers.length >= 2,
+      "The refreshed AMap canvas did not render both markers.",
+    );
+    for (const place of amapEvidence.places) {
+      assert.ok(
+        renderedMarkers.some(
+          (marker) =>
+            marker.coordinateSystem === "wgs84" &&
+            Math.abs(marker.latitude - Number(place.latitude)) < 1e-8 &&
+            Math.abs(marker.longitude - Number(place.longitude)) < 1e-8,
+        ),
+        `The refreshed AMap marker did not retain WGS-84 place ${place.id}.`,
+      );
+    }
+    await calculateAmapRouteThroughUi(browser, tripId);
+    const routeEvidence = await loadPersistedAmapEvidence(tripId);
+    assertPersistedAmapRoute(routeEvidence);
+    await assertRealAmapBrowserAdapter(browser);
+    const publicToken = await publishThroughUi(browser, tripId);
     await verifyTabletFrozenLayers(browser);
     const forms = await captureMutationForms(browser);
 
@@ -866,10 +1517,14 @@ async function run() {
     await clearCookies(browser);
     await login(browser, userB, process.env.CLOUDBASE_TEST_USER_B_PASSWORD);
     await navigate(browser, `/trips/${tripId}`);
-    assert.match(
-      await evaluate(browser, "document.body.innerText"),
-      /This page could not be found|404/,
+    await waitFor(
+      browser,
+      "/This page could not be found|404/.test(document.body.innerText)",
+      "B trip access denial",
     );
+    const deniedTripBody = await evaluate(browser, "document.body.innerText");
+    assert.match(deniedTripBody, /This page could not be found|404/);
+    assert.equal(deniedTripBody.includes(updatedTitle), false);
 
     const forgedTitle = `${runLabel}-forged-by-b`;
     await forgeForm(browser, `/trips/${tripId}`, forms.updateEntries, { title: forgedTitle });
@@ -888,6 +1543,39 @@ async function run() {
       new RegExp(forgedTitle),
     );
 
+    await clearCookies(browser);
+    // Timeline defaults the public map to the saved day-route scope. The overview
+    // scope intentionally collapses adjacent POIs in the same locality, so two
+    // Shanghai stops can correctly produce no whole-trip line.
+    await navigate(browser, `/share/${publicToken}?view=timeline`);
+    await waitFor(
+      browser,
+      `document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      "CN anonymous public share",
+    );
+    assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
+    assert.equal(
+      (await cookieNames(browser)).some((name) => name.startsWith("tp-cn-")),
+      false,
+    );
+    if (requireAmapSmoke) {
+      await waitFor(
+        browser,
+        'Boolean(window.AMap && document.querySelector(".amap-container")) && Number(document.querySelector("[data-amap-line-count]")?.dataset.amapLineCount) > 0',
+        "public AMap route canvas",
+      );
+      const publicResources = await evaluate(
+        browser,
+        'performance.getEntriesByType("resource").map((entry) => entry.name)',
+      );
+      assert.equal(
+        publicResources.some((url) => /googleapis|maps\.google|gstatic/i.test(url)),
+        false,
+      );
+    }
+
+    await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
+    await navigate(browser, `/trips/${tripId}`);
     await deleteTripThroughUi(browser);
     await navigate(browser, "/trips");
     try {
@@ -942,6 +1630,11 @@ async function run() {
       recordCleanupFailure(error);
     }
     try {
+      if (browserTlsProxy) await browserTlsProxy.close();
+    } catch (error) {
+      recordCleanupFailure(error);
+    }
+    try {
       if (server) await stopChild(server, { processGroup: true });
     } catch (error) {
       recordCleanupFailure(error);
@@ -958,7 +1651,13 @@ async function run() {
     "Tablet Matrix frozen header and column cover passed at 820x600 after two-axis scroll.",
   );
   console.log("CN accepted only tp-cn-* session cookies and logout cleared them.");
+  if (requireAmapSmoke) {
+    console.log(
+      "Real UI AMap search/select/save/refresh/route/publish/public-route smoke passed with WGS-84 persistence and zero Google requests.",
+    );
+  }
   console.log("A list/create/detail/update/status/delete and B read/update/delete denial passed.");
+  console.log("CN anonymous public-share application smoke passed without a session cookie.");
 }
 
 run().then(
