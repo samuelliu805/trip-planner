@@ -5,7 +5,7 @@ import { ExternalLink, LoaderCircle, Share2 } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { PullUpPanelHandle, useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import {
   Dialog,
@@ -77,7 +77,6 @@ export function PublicShareDialog({
     Boolean(activeLink) &&
     shareSettingsSignature(settings, variantId) ===
       shareSettingsSignature(settingsFromLink(activeLink), activeLink?.variantId ?? variantId);
-  useAutoDismiss(notice, () => setNotice(undefined));
 
   useExclusivePullUpPanel("share-settings", open, setOpen);
 
@@ -193,14 +192,18 @@ export function PublicShareDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {error || notice ? (
-          <p
-            aria-live="polite"
-            className={`mx-4 shrink-0 border-l-2 px-3 py-2 text-sm sm:mx-6 ${error ? "border-destructive bg-destructive/5 text-destructive" : "border-primary bg-primary/5"}`}
-          >
-            <Localized value={error ?? notice} />
-          </p>
-        ) : null}
+        <AutoDismissAlert
+          className="mx-4 shrink-0 rounded-lg shadow-none sm:mx-6"
+          onDismiss={() => {
+            setError(undefined);
+            setNotice(undefined);
+          }}
+          role={error ? "alert" : "status"}
+          tone={error ? "destructive" : "success"}
+          value={error ?? notice}
+        >
+          {error || notice ? <Localized value={error ?? notice} /> : null}
+        </AutoDismissAlert>
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="min-w-0 space-y-4 px-4 py-4 sm:px-6 sm:py-5">

@@ -81,7 +81,7 @@ export const selectableTransportModes = transportModes.filter(
 );
 
 export const transportModeLabels: Record<TransportMode, string> = {
-  bike: "Bike",
+  bike: "Biking",
   bus: "Bus",
   cable_car: "Cable car",
   ferry: "Ferry",
@@ -89,13 +89,13 @@ export const transportModeLabels: Record<TransportMode, string> = {
   motorcycle: "Motorcycle",
   other: "Other",
   rideshare: "Rideshare / taxi",
-  self_driving: "Drive",
+  self_driving: "Driving",
   shuttle: "Shuttle",
   subway: "Subway / metro",
   taxi: "Rideshare / taxi",
   train: "Train",
   tram: "Tram",
-  walk: "Walk",
+  walk: "Walking",
 };
 
 export function normalizeTransportMode(value?: string): TransportMode {

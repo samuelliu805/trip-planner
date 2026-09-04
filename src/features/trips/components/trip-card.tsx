@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -205,11 +206,15 @@ export function TripCard({
             <PrimaryRouteSummary trip={trip} />
           </div>
         </CardContent>
-        {statusError ? (
-          <p className="border-t px-6 py-3 text-sm font-medium text-destructive" role="alert">
-            <Localized value={statusError} />
-          </p>
-        ) : null}
+        <AutoDismissAlert
+          className="rounded-none border-x-0 border-b-0 px-6 py-3 shadow-none"
+          onDismiss={() => setStatusError(null)}
+          role="alert"
+          tone="destructive"
+          value={statusError}
+        >
+          {statusError ? <Localized value={statusError} /> : null}
+        </AutoDismissAlert>
       </Card>
 
       <TripSettingsEditor

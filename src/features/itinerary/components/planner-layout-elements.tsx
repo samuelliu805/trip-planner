@@ -1,6 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type {
   PlannerMapMode,
@@ -36,29 +37,33 @@ export function PlannerStatus({
   const { t } = useI18n();
   return (
     <>
-      {interactionError ? (
-        <div
-          className="flex items-center justify-between border-b bg-destructive/10 px-4 py-1.5 text-xs text-destructive"
-          role="alert"
-        >
-          <span>
-            <Localized value={interactionError} />
-          </span>
-          <button className="underline" onClick={onDismissError} type="button">
-            <T message={" Dismiss "} />
-          </button>
-        </div>
-      ) : null}
-      {workspaceError ? (
-        <p className="border-b bg-destructive/10 px-4 py-2 text-xs text-destructive" role="alert">
+      <AutoDismissAlert
+        className="rounded-none border-x-0 border-t-0 py-1.5 text-xs shadow-none"
+        onDismiss={onDismissError}
+        role="alert"
+        tone="destructive"
+        value={interactionError}
+      >
+        {interactionError ? <Localized value={interactionError} /> : null}
+      </AutoDismissAlert>
+      <AutoDismissAlert
+        className="rounded-none border-x-0 border-t-0 text-xs shadow-none"
+        role="alert"
+        tone="destructive"
+        value={workspaceError}
+      >
+        {workspaceError ? (
           <T message={" The planner could not refresh. Your last loaded data remains visible. "} />
-        </p>
-      ) : null}
-      {deleteError ? (
-        <p className="border-b bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
-          <T message={" The trip could not be deleted. "} />
-        </p>
-      ) : null}
+        ) : null}
+      </AutoDismissAlert>
+      <AutoDismissAlert
+        className="rounded-none border-x-0 border-t-0 shadow-none"
+        role="alert"
+        tone="destructive"
+        value={deleteError}
+      >
+        {deleteError ? <T message={" The trip could not be deleted. "} /> : null}
+      </AutoDismissAlert>
       {isFillDragging ? (
         <div
           className="pointer-events-none fixed left-1/2 top-28 z-50 -translate-x-1/2 rounded-full border bg-background/95 px-4 py-2 text-xs font-medium shadow-lg backdrop-blur"

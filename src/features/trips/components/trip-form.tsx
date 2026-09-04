@@ -189,7 +189,7 @@ export function TripForm({
           id="trip-start-date"
           label={
             <>
-              <T message={" Start date "} />
+              <T message={" Start date "} />{" "}
               <span className="font-normal text-muted-foreground">
                 <T message={"optional"} />
               </span>
@@ -211,7 +211,7 @@ export function TripForm({
           id="trip-end-date"
           label={
             <>
-              <T message={" End date "} />
+              <T message={" End date "} />{" "}
               <span className="font-normal text-muted-foreground">
                 <T message={"optional"} />
               </span>

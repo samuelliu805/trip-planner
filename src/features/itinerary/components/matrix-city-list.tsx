@@ -1,4 +1,3 @@
-import { useI18n } from "@/features/i18n/i18n-provider";
 import { MatrixItemSummary } from "@/features/itinerary/components/matrix-presentation";
 
 export function MatrixCityList({
@@ -8,8 +7,7 @@ export function MatrixCityList({
   labels: string[];
   publicView?: boolean;
 }) {
-  const { t } = useI18n();
-  const rows = labels.length ? labels : [t("City / town unavailable")];
+  const rows = labels.length ? labels : ["-"];
 
   return rows.map((title, index) => (
     <div

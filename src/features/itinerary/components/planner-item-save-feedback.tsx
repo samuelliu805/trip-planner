@@ -1,10 +1,10 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ArrowUpRight, CircleAlert, CircleCheckBig, X } from "lucide-react";
+import { ArrowUpRight, CircleAlert, CircleCheckBig } from "lucide-react";
 import { createPortal } from "react-dom";
 
-import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import type { ItineraryItem } from "@/features/itinerary/types";
 
 export type PlannerItemSaveFeedback =
@@ -21,18 +21,17 @@ export function PlannerItemSaveFeedbackAlert({
   onView: (item: ItineraryItem) => void;
 }) {
   const { t } = useI18n();
-  useAutoDismiss(feedback?.status === "created" ? feedback : undefined, onDismiss);
   if (!feedback || typeof document === "undefined") return null;
   const success = feedback.status === "created";
 
   return createPortal(
     <div className="pointer-events-none fixed left-1/2 top-4 z-[150] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2">
-      <div
-        aria-live={success ? "polite" : "assertive"}
-        className={`pointer-events-auto rounded-xl border bg-background p-4 shadow-2xl sm:p-5 ${
-          success ? "border-primary/50 ring-4 ring-primary/10" : "border-destructive/50"
-        }`}
+      <AutoDismissAlert
+        className={`pointer-events-auto rounded-xl p-4 shadow-2xl sm:p-5 ${success ? "ring-4 ring-primary/10" : ""}`}
+        onDismiss={onDismiss}
         role={success ? "status" : "alert"}
+        tone={success ? "success" : "destructive"}
+        value={feedback}
       >
         <div className="flex min-w-0 items-start gap-3">
           {success ? (
@@ -70,17 +69,8 @@ export function PlannerItemSaveFeedbackAlert({
               </p>
             ) : null}
           </div>
-          <button
-            aria-label="Dismiss message"
-            data-i18n-aria-label={"Dismiss message"}
-            className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onClick={onDismiss}
-            type="button"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </button>
         </div>
-      </div>
+      </AutoDismissAlert>
     </div>,
     document.body,
   );

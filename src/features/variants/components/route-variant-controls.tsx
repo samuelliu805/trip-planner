@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import type { PlannerVariant } from "@/features/itinerary/types";
@@ -36,7 +36,6 @@ export function RouteVariantControls({
   tripId: string;
   variants: PlannerVariant[];
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const currentResearchCategory =
     parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? researchCategory;
@@ -48,6 +47,14 @@ export function RouteVariantControls({
 
   if (!activeVariant) return null;
 
+  function navigateToVariant(variantId: string) {
+    // A fresh document prevents a client RSC navigation from racing a newly committed Plan on
+    // either deployment platform, and keeps later Plan switches on the same reliable path.
+    window.location.assign(
+      tripSectionHref(tripId, activeSection, variantId, currentResearchCategory),
+    );
+  }
+
   function switchVariant(variantId: string) {
     setSheetOpen(false);
     if (variantId !== activeVariantId) {
@@ -56,7 +63,7 @@ export function RouteVariantControls({
         { operation_id: newTelemetryOperationId(), surface: "variant_controls" },
         { actorType: "authenticated" },
       );
-      router.push(tripSectionHref(tripId, activeSection, variantId, currentResearchCategory));
+      navigateToVariant(variantId);
     }
   }
 
@@ -66,9 +73,6 @@ export function RouteVariantControls({
     if (action === "duplicate") setDuplicateOpen(true);
     if (action === "manage") setManageOpen(true);
   }
-
-  const navigateToVariant = (variantId: string) =>
-    router.push(tripSectionHref(tripId, activeSection, variantId, currentResearchCategory));
 
   return (
     <>

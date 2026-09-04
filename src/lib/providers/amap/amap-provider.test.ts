@@ -229,18 +229,20 @@ test("AMap Places API fixes upstreams and returns only normalized WGS-84 data", 
   const fetchImplementation = (async (input) => {
     const url = new URL(String(input));
     upstreams.push(url);
-    if (url.pathname.endsWith("inputtips")) {
+    if (url.pathname.endsWith("place/text")) {
       return Response.json({
-        status: "1",
-        tips: [
+        pois: [
           {
             address: "中山东一路",
-            district: "上海市黄浦区",
+            adname: "黄浦区",
+            cityname: "上海市",
             id: "BUND1",
             location: "121.490317,31.241701",
             name: "外滩",
+            pname: "上海市",
           },
         ],
+        status: "1",
       });
     }
     return Response.json({
@@ -269,7 +271,8 @@ test("AMap Places API fixes upstreams and returns only normalized WGS-84 data", 
     suggestions: [{ id: "BUND1", primary: "外滩", secondary: "上海市黄浦区 · 中山东一路" }],
   });
   assert.equal(upstreams[0].origin, "https://restapi.amap.com");
-  assert.equal(upstreams[0].pathname, "/v3/assistant/inputtips");
+  assert.equal(upstreams[0].pathname, "/v3/place/text");
+  assert.equal(upstreams[0].searchParams.get("keywords"), "上海外滩");
   assert.equal(upstreams[0].searchParams.get("key"), "server-web-key");
 
   const placeResponse = await handleAmapPlacesRequest(
@@ -381,10 +384,10 @@ test("AMap Places API retries only transient fixed-upstream failures", async () 
 });
 
 test("AMap client requests never send provider keys or raw upstream coordinates", async () => {
-  let requestedUrl = "";
+  const requestedUrls: string[] = [];
   const session = createAmapPlacesProvider({
     fetchImplementation: (async (input) => {
-      requestedUrl = String(input);
+      requestedUrls.push(String(input));
       return Response.json({ suggestions: [] });
     }) as typeof fetch,
   }).createSession();
@@ -395,8 +398,25 @@ test("AMap client requests never send provider keys or raw upstream coordinates"
     }),
     [],
   );
-  assert.equal(new URL(requestedUrl, "https://app.example").searchParams.has("key"), false);
+  assert.equal(new URL(requestedUrls[0], "https://app.example").searchParams.has("key"), false);
   session.close();
+
+  const airportSession = createAmapPlacesProvider({
+    fetchImplementation: (async (input) => {
+      requestedUrls.push(String(input));
+      return Response.json({ suggestions: [] });
+    }) as typeof fetch,
+  }).createSession();
+  await airportSession.fetchSuggestions({
+    includedPrimaryTypes: ["airport", "locality"],
+    input: "Shanghai Hongqiao airport",
+  });
+  assert.equal(
+    new URL(requestedUrls[1], "https://app.example").searchParams.has("types"),
+    false,
+    "mixed airport/city search stays broad enough for common airport names",
+  );
+  airportSession.close();
 });
 
 test("AMap map rebuilds restore marker and route overlays after releasing the old session", async () => {

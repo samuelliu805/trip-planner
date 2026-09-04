@@ -5,7 +5,7 @@ import type { DayRouteCalculation, RouteCalculationConfig } from "./types.ts";
 
 export type RouteProviderResolver = () => RouteProvider;
 
-type CalculationResult = {
+export type CalculationResult = {
   cache: "full" | "partial" | "miss";
   configSignature: string;
   legs: CalculatedRouteLeg[];

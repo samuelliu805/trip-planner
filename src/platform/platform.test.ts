@@ -131,7 +131,14 @@ test("public provider config contains no server secret", () => {
 test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.global.realtime, true);
   assert.equal(backendCapabilitiesByRegion.cn.realtime, false);
-  assert.deepEqual(backendCapabilitiesByRegion.cn.publicAuthMethods, ["phone_otp"]);
+  assert.deepEqual(backendCapabilitiesByRegion.cn.publicAuthMethods, [
+    "phone_otp",
+    "phone_password",
+  ]);
+  assert.equal(backendCapabilitiesByRegion.cn.passwordManagement, true);
+  assert.equal(backendCapabilitiesByRegion.cn.passwordRecovery, true);
+  assert.equal(backendCapabilitiesByRegion.global.passwordManagement, true);
+  assert.equal(backendCapabilitiesByRegion.global.passwordRecovery, false);
   assert.equal(backendCapabilitiesByRegion.cn.signedUrls, true);
   assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, false);
   assert.equal(backendCapabilitiesByRegion.global.itineraryItemLinks, true);
@@ -148,7 +155,12 @@ test("CN public and protected auth methods fail closed behind independent server
   assert.deepEqual(capabilitiesForEnvironment("cn", {}).publicAuthMethods, []);
   assert.deepEqual(
     capabilitiesForEnvironment("cn", { CN_PUBLIC_PHONE_AUTH_ENABLED: "true" }).publicAuthMethods,
-    ["phone_otp"],
+    ["phone_otp", "phone_password"],
+  );
+  assert.equal(capabilitiesForEnvironment("cn", {}).passwordManagement, false);
+  assert.equal(
+    capabilitiesForEnvironment("cn", { CN_PUBLIC_PHONE_AUTH_ENABLED: "true" }).passwordManagement,
+    true,
   );
   assert.deepEqual(
     capabilitiesForEnvironment("cn", { CLOUDBASE_CI_PASSWORD_AUTH_ENABLED: "true" })
@@ -164,7 +176,7 @@ test("CN public and protected auth methods fail closed behind independent server
   );
 });
 
-test("shared sign-in inputs distinguish email and username credentials", () => {
+test("shared sign-in inputs distinguish email, phone, and username credentials", () => {
   const emailPassword: SignInInput = {
     email: "traveler@example.com",
     method: "email_password",
@@ -175,9 +187,15 @@ test("shared sign-in inputs distinguish email and username credentials", () => {
     password: "secret",
     username: "traveler",
   };
+  const phonePassword: SignInInput = {
+    method: "phone_password",
+    password: "secret123",
+    phone: "+8613800138000",
+  };
 
   assert.equal(emailPassword.method, "email_password");
   assert.equal(usernamePassword.method, "username_password");
+  assert.equal(phonePassword.method, "phone_password");
   assert.deepEqual(supabasePasswordCredentials(emailPassword), {
     email: "traveler@example.com",
     password: "secret",
@@ -284,7 +302,9 @@ test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK sur
   ]) {
     assert.match(trips, new RegExp(`async ${method}\\(`));
   }
-  assert.match(auth, /signInWithPassword\(\{[\s\S]*username: input\.username/);
+  assert.match(auth, /signInWithPassword\([\s\S]*username: input\.username/);
+  assert.match(auth, /phone: phoneForCloudBase\(input\.phone\)/);
+  assert.match(auth, /resetPasswordForOld\(/);
   assert.match(auth, /getSession\(\)/);
   assert.match(sessionRuntime, /setSession\(/);
   assert.match(sessionRuntime, /getSession\(/);

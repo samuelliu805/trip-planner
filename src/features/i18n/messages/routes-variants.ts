@@ -1,4 +1,7 @@
 export const routesVariantsZhCN: Record<string, string> = {
+  "This Plan could not be loaded.": "无法加载该方案。",
+  "The Plan may still be finishing setup. Retry without losing your trip.":
+    "该方案可能仍在完成初始化；重试不会丢失行程数据。",
   "Route variant comparison legend": "方案比较图例",
   "Route variant comparison summary": "方案对比摘要",
   "All eligible places are planned.": "所有符合条件的地点都已加入路线。",

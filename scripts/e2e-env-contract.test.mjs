@@ -72,6 +72,18 @@ test("regional environments do not expose opposite-provider credentials", () => 
   assert.equal(global.HOME, "/tmp/test-home");
 });
 
+test("CN live scripts use the sanitized environment proxy without inheriting Node options", () => {
+  const values = completeValues();
+  const inventory = { fileNames: Object.keys(values), values };
+  const cn = createRegionEnvironment("cn", inventory, {
+    HTTPS_PROXY: "http://127.0.0.1:7890",
+    NODE_OPTIONS: "--inspect",
+    PATH: "/usr/bin",
+  });
+  assert.equal(cn.HTTPS_PROXY, "http://127.0.0.1:7890");
+  assert.equal(cn.NODE_OPTIONS, "--use-env-proxy");
+});
+
 test("static checks receive no application credentials", () => {
   const values = completeValues();
   const environment = createSanitizedEnvironment(Object.keys(values), {

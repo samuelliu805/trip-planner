@@ -121,3 +121,23 @@ html[lang="zh-CN"] .public-header-actions {
     filter 100ms ease,
     opacity 100ms ease;
 }
+@keyframes alert-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.alert-countdown-progress {
+  animation-name: alert-countdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-countdown-progress {
+    animation-timing-function: steps(5, end);
+  }
+}

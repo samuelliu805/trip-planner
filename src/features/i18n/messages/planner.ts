@@ -144,4 +144,11 @@ export const plannerZhCN: Record<string, string> = {
     "{provider} 暂不可用。你仍可输入{label}。",
   entry: "内容",
   value: "内容",
+  Biking: "骑行",
+  "Cable car": "缆车",
+  Ferry: "轮渡",
+  Motorcycle: "摩托车",
+  Other: "其他",
+  Shuttle: "接驳车",
+  Tram: "有轨电车",
 };

@@ -60,10 +60,33 @@ export function dataOrThrow(result, label) {
   return result?.data;
 }
 
-export async function signIn(auth, username, password) {
-  dataOrThrow(await auth.signInWithPassword({ username, password }), `${username} login`);
-  const sessionData = dataOrThrow(await auth.getSession(), `${username} session`);
+async function retryAuthOperation(operation) {
+  let result;
+  const maximumAttempts = 5;
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    result = await operation();
+    if (!result?.error || attempt === maximumAttempts) return result;
+    await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+  }
+  return result;
+}
+
+export async function signInSession(auth, username, password) {
+  dataOrThrow(
+    await retryAuthOperation(() => auth.signInWithPassword({ username, password })),
+    `${username} login`,
+  );
+  const sessionData = dataOrThrow(
+    await retryAuthOperation(() => auth.getSession()),
+    `${username} session`,
+  );
   const session = sessionData?.session ?? sessionData;
+  if (!session) throw new Error(`${username} session is unavailable`);
+  return session;
+}
+
+export async function signIn(auth, username, password) {
+  const session = await signInSession(auth, username, password);
   const id = String(session?.user?.id ?? session?.user?.sub ?? session?.sub ?? "");
   if (!id) throw new Error(`${username} session identity is unavailable`);
   return id;

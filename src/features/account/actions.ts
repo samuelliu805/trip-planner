@@ -2,9 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 
-import { updateAccountSchema } from "@/features/account/schema";
+import { changePasswordSchema, updateAccountSchema } from "@/features/account/schema";
 import type { AccountActionState } from "@/features/account/types";
-import { getAccountProfileRepository, getAuthProvider } from "@/platform/composition/server";
+import { PlatformOperationError } from "@/platform/contracts/errors";
+import {
+  getAccountProfileRepository,
+  getAuthProvider,
+  getBackendCapabilities,
+  getPasswordManagementProvider,
+} from "@/platform/composition/server";
 
 export async function updateAccount(
   _state: AccountActionState,
@@ -33,4 +39,31 @@ export async function updateAccount(
   }
   revalidatePath("/account");
   return { success: "Account preferences saved." };
+}
+
+export async function changeAccountPassword(
+  _state: AccountActionState,
+  formData: FormData,
+): Promise<AccountActionState> {
+  if (!getBackendCapabilities().passwordManagement)
+    return { error: "Password changes are not available." };
+  const parsed = changePasswordSchema.safeParse({
+    confirmation: formData.get("password_confirmation"),
+    currentPassword: formData.get("current_password"),
+    newPassword: formData.get("new_password"),
+  });
+  if (!parsed.success)
+    return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  if (!(await getAuthProvider().getCurrentUser()))
+    return { error: "Sign in to update your account." };
+  try {
+    await getPasswordManagementProvider().changePassword(parsed.data);
+  } catch (error) {
+    if (error instanceof PlatformOperationError) {
+      if (error.code === "invalid_credentials") return { error: "Current password is incorrect." };
+      return { error: error.message };
+    }
+    return { error: "Password could not be changed." };
+  }
+  return { success: "Password changed." };
 }

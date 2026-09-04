@@ -3,6 +3,7 @@
 import { Localized, T } from "@/features/i18n/i18n-provider";
 import { Pencil, Plus, Route, X } from "lucide-react";
 
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { DayRouteEditor } from "./day-route-editor";
 import { SelectedPlaceSlot } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
@@ -57,14 +58,14 @@ function DayRouteSummary({
         </RouteIconButton>
       </div>
       <RouteLegDetails legs={legDetails} />
-      {route.error ? (
-        <p
-          className="m-3 mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
-          role="alert"
-        >
-          <Localized value={route.error} />
-        </p>
-      ) : null}
+      <AutoDismissAlert
+        className="m-3 mt-2 rounded-md text-xs shadow-none"
+        role="alert"
+        tone="destructive"
+        value={route.error}
+      >
+        {route.error ? <Localized value={route.error} /> : null}
+      </AutoDismissAlert>
     </section>
   );
 }

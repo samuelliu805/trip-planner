@@ -36,6 +36,7 @@ function ensureActive(
 }
 
 function typeFilter(primaryTypes: string[] | undefined) {
+  if (primaryTypes?.some((type) => !amapTypesByPrimaryType[type])) return "";
   return [
     ...new Set(
       (primaryTypes ?? []).flatMap((type) =>

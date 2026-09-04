@@ -131,7 +131,13 @@ import {
   deleteItineraryItemSchema,
   updateItineraryItemSchema,
 } from "./item-schema.ts";
-import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "./types.ts";
+import {
+  selectableTransportModes,
+  transportModeLabels,
+  type ItineraryItem,
+  type PlannerDay,
+  type PlannerWorkspace,
+} from "./types.ts";
 import {
   deriveDayLocality,
   deriveDayOverviewClusters,
@@ -188,6 +194,13 @@ async function readItineraryItemActions() {
     )
   ).join("\n");
 }
+
+test("hotel and transport duplicate checks avoid CloudBase empty HEAD responses", async () => {
+  const actions = await readItineraryItemActions();
+  assert.doesNotMatch(actions, /head:\s*true/);
+  assert.match(actions, /data: hotels[\s\S]*hotels\?\.length/);
+  assert.match(actions, /data: transports[\s\S]*transports\?\.length/);
+});
 
 async function readAppStyles() {
   return (
@@ -471,7 +484,7 @@ test("Account and Ideas share supported currencies while email remains plain tex
   const supportedCurrencies: readonly string[] = tripCurrencyCodes;
   for (const currency of ["CNY", "HKD", "JPY"]) assert.ok(supportedCurrencies.includes(currency));
   assert.doesNotMatch(accountEditor, /PlannerEditorTextField[\s\S]*label="Email"/);
-  assert.match(accountEditor, /message=(?:\{" Email "\}|"Email")[\s\S]*\{email\}<\/p>/);
+  assert.match(accountEditor, /message=\{identityLabel\}[\s\S]*\{email\}<\/p>/);
   assert.match(bookingPriceFields, /commonBookingCurrencies[^=]*= tripCurrencyCodes/);
   assert.match(plannerResearchActions, /currencies[^=]*= tripCurrencyCodes/);
   assert.match(accountEditor, /router\.prefetch\("\/trips"\)/);
@@ -487,8 +500,53 @@ test("browser locale parsing distinguishes an absent preference from default Eng
   assert.equal(parseLocale("fr"), null);
 });
 
-test("Bus uses the requested authentic Simplified Chinese transport label", () => {
+test("all selectable transport modes include the requested options and zh-CN labels", () => {
   assert.equal(translateMessage("zh-CN", "Bus"), "大巴");
+  for (const mode of ["ferry", "walk", "subway", "bike", "self_driving", "taxi"] as const) {
+    assert.ok(selectableTransportModes.includes(mode));
+    assert.notEqual(
+      translateMessage("zh-CN", transportModeLabels[mode]),
+      transportModeLabels[mode],
+    );
+  }
+});
+
+test("empty City cells use a dash and optional field labels preserve visible spacing", async () => {
+  const cityList = await readFile(
+    new URL("./components/matrix-city-list.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(cityList, /labels\.length \? labels : \["-"\]/);
+
+  for (const path of [
+    "./components/planner-booking-fields.tsx",
+    "./components/planner-item-primary-fields.tsx",
+    "./components/planner-item-secondary-fields.tsx",
+    "./components/planner-item-place-fields.tsx",
+    "../trips/components/trip-form.tsx",
+  ]) {
+    const source = await readFile(new URL(path, import.meta.url), "utf8");
+    assert.doesNotMatch(
+      source,
+      /\/>\s*<span className="font-normal text-muted-foreground">\s*<T message=\{"optional"\}/,
+      `${path} must place explicit whitespace before its optional label`,
+    );
+  }
+});
+
+test("transient alert banners share countdown, auto-dismiss, and a 44px close target", async () => {
+  const [alert, css, plannerStatus, routeOverlay] = await Promise.all([
+    readFile(new URL("../../components/ui/auto-dismiss-alert.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("./components/planner-layout-elements.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../routes/day-route-overlay.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(alert, /useAutoDismiss\(visible && value, dismiss, delayMilliseconds\)/);
+  assert.match(alert, /className="-my-2 -mr-2 flex size-11/);
+  assert.match(alert, /alert-countdown-progress/);
+  assert.match(css, /@keyframes alert-countdown[\s\S]*scaleX\(0\)/);
+  assert.match(plannerStatus, /<AutoDismissAlert/);
+  assert.match(routeOverlay, /<AutoDismissAlert/);
 });
 
 test("compact language controls rely on their localized accessible name", async () => {
@@ -838,7 +896,8 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(dayRoute, /variantId: workspace\.variant\.id/);
   assert.match(mapHook, /overview:\$\{variantId\}/);
 
-  assert.match(controls, /router\.push\(tripSectionHref/);
+  assert.doesNotMatch(controls, /router\.push\(tripSectionHref/);
+  assert.match(controls, /navigateToVariant[\s\S]*window\.location\.assign/);
   assert.match(variantUi, /<PullUpPanel/);
   assert.match(variantUi, /PrimaryBadge/);
   assert.match(variantUi, /message=\{"? ?Primary ?"?\}/);
@@ -862,7 +921,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
   assert.match(
     variantUi,
-    /wasActive[\s\S]*find\(\(\{ is_primary \}\) => is_primary\)[\s\S]*router\.push/,
+    /wasActive[\s\S]*find\(\(\{ is_primary \}\) => is_primary\)[\s\S]*window\.location\.assign/,
   );
   assert.match(tripsData, /getTripRepository\(\)\.listForCurrentUser/);
   assert.match(tripRepository, /route_variants\(id, name, color, is_primary\)/);
@@ -2639,18 +2698,21 @@ test("transport editor keeps endpoints first and hides irrelevant timed fields",
     arrivalTime: false,
     dates: false,
     departureTime: false,
-    endpoints: true,
+    endpoints: false,
     serviceNumber: false,
   });
   assert.deepEqual(plannerJourneyFieldCapabilities("transport", "walk"), {
     arrivalTime: false,
     dates: false,
     departureTime: false,
-    endpoints: true,
+    endpoints: false,
     serviceNumber: false,
   });
-  assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").endpoints, true);
+  assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").endpoints, false);
   assert.equal(plannerJourneyFieldCapabilities("transport", "taxi").arrivalTime, false);
+  for (const mode of ["bike", "subway", "rideshare"] as const) {
+    assert.equal(plannerJourneyFieldCapabilities("transport", mode).endpoints, false);
+  }
   for (const mode of ["subway", "taxi", "rideshare", "shuttle", "tram", "cable_car"] as const) {
     const capabilities = plannerJourneyFieldCapabilities("transport", mode);
     assert.equal(capabilities.dates, false, `${mode} has no date fields`);
@@ -2845,7 +2907,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /visible=\{workspace\.days\.length === 1 \|\| selectedDayRow === row\}/);
   assert.match(
     dayActions,
-    /if \(isOnlyDay\)[\s\S]*mt-auto min-h-11 w-full gap-1\.5 px-3 font-sans[\s\S]*message=\{"Add day"\}/,
+    /if \(isOnlyDay\)[\s\S]*mx-1 mt-auto min-h-11 w-\[calc\(100%-0\.5rem\)\] gap-1\.5 px-3 font-sans[\s\S]*message=\{"Add day"\}/,
   );
   assert.match(dayActions, /InsertRowIcon className="size-4 shrink-0" direction="below"/);
   assert.match(dayActions, /grid grid-cols-2[\s\S]*<Trash2/);

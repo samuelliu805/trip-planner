@@ -160,6 +160,7 @@ export function createRegionEnvironment(region, inventory, ambient = process.env
   }
 
   const result = createSanitizedEnvironment(fileNames, ambient);
+  const useEnvironmentProxy = Boolean(trimmed(ambient.HTTPS_PROXY) || trimmed(ambient.HTTP_PROXY));
   for (const name of requiredCredentials[region]) result[name] = values[name];
 
   const common = {
@@ -194,6 +195,7 @@ export function createRegionEnvironment(region, inventory, ambient = process.env
           NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: values.CLOUDBASE_PUBLISHABLE_KEY,
           NEXT_PUBLIC_CLOUDBASE_REGION: values.CLOUDBASE_REGION,
           NEXT_PUBLIC_MAPS_PROVIDER: "amap",
+          NODE_OPTIONS: useEnvironmentProxy ? "--use-env-proxy" : "",
           PHASE3_APP_BASE_URL: "http://127.0.0.1:3100",
           PHASE3_START_APP: "1",
           PHASE5_AMAP_ALLOWED_HOSTNAME: approvedAmapBrowserHostname,

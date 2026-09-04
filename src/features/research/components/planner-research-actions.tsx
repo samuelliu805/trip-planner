@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import {
   Dialog,
   DialogContent,
@@ -63,8 +63,6 @@ export function PlannerResearchActions({
   const [error, setError] = useState<string>();
   const [feedback, setFeedback] = useState<string>();
   const count = matchingPlanResearchItems(items, context).length;
-  useAutoDismiss(feedback, () => setFeedback(undefined));
-  useAutoDismiss(error && !open ? error : undefined, () => setError(undefined), 8_000);
 
   async function savePlanSnapshot() {
     if (!sourceItem || pending) return;
@@ -150,24 +148,24 @@ export function PlannerResearchActions({
           </Link>
         </Button>
       </div>
-      {feedback ? (
-        <div
-          aria-live="polite"
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[80] -translate-x-1/2 rounded-full border bg-background px-4 py-2 text-xs font-medium shadow-lg"
-          role="status"
-        >
-          <Localized value={feedback} />
-        </div>
-      ) : null}
-      {error && !open ? (
-        <div
-          aria-live="assertive"
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[80] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-full border border-destructive/30 bg-background px-4 py-2 text-xs font-medium text-destructive shadow-lg"
-          role="alert"
-        >
-          <Localized value={error} />
-        </div>
-      ) : null}
+      <AutoDismissAlert
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[80] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl text-xs font-medium"
+        onDismiss={() => setFeedback(undefined)}
+        tone="success"
+        value={feedback}
+      >
+        {feedback ? <Localized value={feedback} /> : null}
+      </AutoDismissAlert>
+      <AutoDismissAlert
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[80] max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl text-xs font-medium"
+        delayMilliseconds={8_000}
+        onDismiss={() => setError(undefined)}
+        role="alert"
+        tone="destructive"
+        value={error && !open ? error : undefined}
+      >
+        {error ? <Localized value={error} /> : null}
+      </AutoDismissAlert>
       <Dialog onOpenChange={setOpen} open={open}>
         <DialogContent>
           <form onSubmit={save}>

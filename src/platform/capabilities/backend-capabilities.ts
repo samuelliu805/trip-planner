@@ -1,10 +1,12 @@
 import type { AppRegion } from "../config/provider-matrix";
 
-export type PublicAuthMethod = "email_password" | "google_oauth" | "phone_otp";
+export type PublicAuthMethod = "email_password" | "google_oauth" | "phone_otp" | "phone_password";
 export type ProtectedAuthMethod = "username_password";
 
 export type BackendCapabilities = Readonly<{
   itineraryItemLinks: boolean;
+  passwordManagement: boolean;
+  passwordRecovery: boolean;
   protectedAuthMethods: readonly ProtectedAuthMethod[];
   publicAuthMethods: readonly PublicAuthMethod[];
   realtime: boolean;
@@ -15,6 +17,8 @@ export type BackendCapabilities = Readonly<{
 export const backendCapabilitiesByRegion = Object.freeze({
   global: Object.freeze({
     itineraryItemLinks: true,
+    passwordManagement: true,
+    passwordRecovery: false,
     protectedAuthMethods: Object.freeze([] as const),
     publicAuthMethods: Object.freeze(["email_password", "google_oauth"] as const),
     realtime: true,
@@ -23,8 +27,10 @@ export const backendCapabilitiesByRegion = Object.freeze({
   }),
   cn: Object.freeze({
     itineraryItemLinks: false,
+    passwordManagement: true,
+    passwordRecovery: true,
     protectedAuthMethods: Object.freeze(["username_password"] as const),
-    publicAuthMethods: Object.freeze(["phone_otp"] as const),
+    publicAuthMethods: Object.freeze(["phone_otp", "phone_password"] as const),
     realtime: false,
     signedUrls: true,
     wechatAuth: false,
@@ -52,6 +58,8 @@ export function capabilitiesForEnvironment(
       env.CLOUDBASE_CI_PASSWORD_AUTH_ENABLED === "true"
         ? base.protectedAuthMethods
         : Object.freeze([]),
+    passwordManagement: env.CN_PUBLIC_PHONE_AUTH_ENABLED === "true",
+    passwordRecovery: env.CN_PUBLIC_PHONE_AUTH_ENABLED === "true",
     publicAuthMethods:
       env.CN_PUBLIC_PHONE_AUTH_ENABLED === "true" ? base.publicAuthMethods : Object.freeze([]),
   });
