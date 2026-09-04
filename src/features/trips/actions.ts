@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
 import { listPublicItineraryLinks } from "@/features/sharing/data";
 import {
-  defaultTripCurrency,
+  defaultTripCurrencyForRegion,
   defaultTripDayCount,
   defaultTripTitle,
   tripDateInZone,
@@ -23,6 +23,7 @@ import {
   getBackendCapabilities,
   getTripRepository,
 } from "@/platform/composition/server";
+import { getServerProviderConfig } from "@/platform/config/server";
 
 function firstIssue(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Check the form and try again.";
@@ -67,7 +68,8 @@ export async function createTrip(
   let createdTripId: string;
   try {
     const repository = getTripRepository();
-    const currency = (await repository.getDefaultCurrencyForCurrentUser()) ?? defaultTripCurrency;
+    const regionalDefault = defaultTripCurrencyForRegion(getServerProviderConfig().appRegion);
+    const currency = (await repository.getDefaultCurrencyForCurrentUser()) ?? regionalDefault;
     const trip = await repository.create({
       currency,
       dayCount: defaultTripDayCount,

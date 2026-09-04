@@ -16,7 +16,9 @@ function text(value: unknown) {
 }
 
 export function isCloudBaseScalarUuidParseError(error: unknown) {
-  return /(?:SyntaxError:.*JSON|not valid JSON|JSON at position)/i.test(text(shape(error).message));
+  return /(?:syntax\s*error.*json|syntaxerror:.*json|not valid json|json at position|unexpected (?:end|number).*json)/i.test(
+    text(shape(error).message),
+  );
 }
 
 export function normalizeCloudBaseError(error: unknown, fallbackMessage: string) {

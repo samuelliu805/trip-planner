@@ -18,6 +18,7 @@ export function PublicTimelineNode({
 }) {
   const { t } = useI18n();
   const { item } = node;
+  const title = item.type === "car_rental" ? t(item.title) : item.title;
   const schedule =
     item.scheduleLabel ??
     (item.startTime && item.endTime
@@ -40,7 +41,7 @@ export function PublicTimelineNode({
         <div className={`timeline-node-content-v4 ${selected ? "is-selected" : ""}`}>
           <button
             aria-current={selected ? "true" : undefined}
-            aria-label={t("Focus map on {item}", { item: item.title })}
+            aria-label={t("Focus map on {item}", { item: title })}
             className="public-item-focus timeline-node-topline-v4"
             data-public-item-ref={item.ref}
             onClick={onSelect}
@@ -53,7 +54,7 @@ export function PublicTimelineNode({
               </span>
             </span>
             <span className="timeline-node-copy-v4">
-              <span className="timeline-node-title-v4">{item.title}</span>
+              <span className="timeline-node-title-v4">{title}</span>
               {schedule || place ? (
                 <span className="timeline-node-meta-v4">
                   {[schedule, place].filter(Boolean).join(" · ")}

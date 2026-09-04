@@ -37,11 +37,12 @@ export function buildPublicMarkers(
       if (typeof item.place?.latitude !== "number" || typeof item.place.longitude !== "number")
         return [];
       const kind = markerKind(item.type);
+      const title = kind === "carRental" ? translateMessage(locale, item.title) : item.title;
       return [
         {
           accessibleLabel: translateMessage(locale, "{item}, Day {day}", {
             day: day.dayNumber,
-            item: item.title,
+            item: title,
           }),
           address: item.place.address,
           appearance: "category" as const,
@@ -51,7 +52,7 @@ export function buildPublicMarkers(
               dayNumber: day.dayNumber,
               itemId: item.ref,
               kind,
-              title: item.title,
+              title,
             },
           ],
           ...(theme && { glyphColor: theme.glyphColor }),

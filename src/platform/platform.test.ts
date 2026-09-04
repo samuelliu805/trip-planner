@@ -16,10 +16,25 @@ import {
 import { cloudBasePhase4Status } from "./cloudbase/status.ts";
 import { cloudBaseScalarUuidRpc } from "./cloudbase/rpc-compat.ts";
 import {
+  cloudBaseCnDefaultCurrency,
+  explicitCloudBaseCurrency,
+} from "./cloudbase/profile-currency.ts";
+import {
   cloudBaseDayRoutePlanRecoveryKey,
+  cloudBaseOrderMutationRecoveryKey,
   cloudBasePlaceUpsertRecoveryKey,
+  cloudBaseScalarMutationRecoveryKey,
+  recoverCloudBaseDeletedUuidResult,
+  recoverCloudBaseOrderedVoidResult,
   recoverCloudBasePlaceUpsertResult,
 } from "./cloudbase/rpc-result-normalization.mjs";
+import {
+  cloudBaseStateMutationRecoveryKey,
+  recoverCloudBaseEmptyLookupResult,
+  recoverCloudBaseNonNullLookupResult,
+  recoverCloudBaseSingleLookupResult,
+} from "./cloudbase/rpc-state-recovery.mjs";
+import { isCloudBaseScalarUuidParseError } from "./cloudbase/errors.ts";
 import {
   cloudBaseSessionFromData,
   cloudBaseSessionFromVerifiedTokens,
@@ -393,6 +408,141 @@ test("CloudBase route-plan RPC recovery is exact, validated, and RLS scoped", ()
     cloudBaseDayRoutePlanRecoveryKey("upsert_place_snapshot_v3", parameters, true),
     null,
   );
+});
+
+test("CloudBase committed mutation recovery covers CN scalar and empty JSON responses", () => {
+  const tripId = "123e4567-e89b-42d3-a456-426614174000";
+  const variantId = "223e4567-e89b-42d3-a456-426614174000";
+  const dayId = "323e4567-e89b-42d3-a456-426614174000";
+  const otherId = "423e4567-e89b-42d3-a456-426614174000";
+  assert.equal(
+    isCloudBaseScalarUuidParseError({ message: "Unexpected number in JSON at position 1" }),
+    true,
+  );
+  assert.equal(
+    isCloudBaseScalarUuidParseError({ message: "Syntax error: Unexpected end of JSON input" }),
+    true,
+  );
+  assert.deepEqual(
+    cloudBaseScalarMutationRecoveryKey(
+      "insert_variant_day",
+      {
+        before_day_number: 2,
+        target_trip_id: tripId,
+        target_variant_id: variantId,
+      },
+      true,
+    ),
+    { dayNumber: 2, kind: "insert-day", tripId, variantId },
+  );
+  assert.deepEqual(
+    cloudBaseScalarMutationRecoveryKey(
+      "duplicate_route_variant",
+      {
+        source_variant_id: variantId,
+        target_trip_id: tripId,
+        variant_color: "#0F766E",
+        variant_name: " Route B ",
+      },
+      true,
+    ),
+    { kind: "create-variant", tripId, variantColor: "#0f766e", variantName: "Route B" },
+  );
+  assert.deepEqual(
+    cloudBaseOrderMutationRecoveryKey(
+      "reorder_itinerary_items",
+      { ordered_item_ids: [dayId, otherId], target_day_id: dayId },
+      true,
+    ),
+    { dayId, kind: "items", orderedIds: [dayId, otherId] },
+  );
+  assert.deepEqual(
+    recoverCloudBaseOrderedVoidResult(
+      { data: null, error: { message: "Unexpected end of JSON input" } },
+      { data: [{ id: dayId }, { id: otherId }], error: null },
+      [dayId, otherId],
+    ),
+    { data: null, error: null },
+  );
+  assert.deepEqual(
+    recoverCloudBaseDeletedUuidResult(
+      { data: null, error: { message: "Unexpected number in JSON" } },
+      { data: [], error: null },
+      dayId,
+    ),
+    { data: dayId, error: null },
+  );
+  assert.deepEqual(
+    cloudBaseStateMutationRecoveryKey(
+      "clear_route_variant_items",
+      {
+        target_item_ids: [dayId, otherId],
+        target_trip_id: tripId,
+        target_variant_id: variantId,
+      },
+      true,
+    ),
+    { itemIds: [dayId, otherId], kind: "clear-items" },
+  );
+  assert.deepEqual(
+    cloudBaseStateMutationRecoveryKey(
+      "save_day_route_calculation",
+      {
+        calculated_config_signature: "signature",
+        calculated_total_distance_meters: 10,
+        calculated_total_duration_seconds: 20,
+        normalized_calculated_legs: [],
+        target_plan_id: dayId,
+      },
+      true,
+    ),
+    {
+      distance: 10,
+      duration: 20,
+      kind: "save-route-calculation",
+      planId: dayId,
+      schemaVersion: "routes-v1",
+      signature: "signature",
+    },
+  );
+  const parseFailure = { data: null, error: { message: "Unexpected end of JSON input" } };
+  assert.deepEqual(recoverCloudBaseEmptyLookupResult(parseFailure, { data: [], error: null }, 2), {
+    data: 2,
+    error: null,
+  });
+  assert.deepEqual(
+    recoverCloudBaseSingleLookupResult(parseFailure, { data: [{ id: dayId }], error: null }),
+    { data: null, error: null },
+  );
+  assert.deepEqual(
+    recoverCloudBaseNonNullLookupResult(
+      parseFailure,
+      { data: [{ revoked_at: "2026-09-03T19:00:00Z" }], error: null },
+      "revoked_at",
+    ),
+    { data: null, error: null },
+  );
+  assert.equal(
+    cloudBaseStateMutationRecoveryKey(
+      "clear_route_variant_items",
+      {
+        target_item_ids: [dayId, dayId],
+        target_trip_id: tripId,
+        target_variant_id: variantId,
+      },
+      true,
+    ),
+    null,
+  );
+});
+
+test("CloudBase CN uses CNY until the traveller explicitly saves a currency", () => {
+  assert.equal(cloudBaseCnDefaultCurrency, "CNY");
+  assert.equal(explicitCloudBaseCurrency("USD", false), null);
+  assert.equal(explicitCloudBaseCurrency("EUR", false), "EUR");
+  assert.equal(explicitCloudBaseCurrency("EUR", true), "EUR");
+  assert.equal(explicitCloudBaseCurrency("USD", true), "USD");
+  assert.equal(explicitCloudBaseCurrency(undefined, true), null);
 });
 
 test("CloudBase session normalization supports the SDK 3.9 Node user ID accessor", () => {

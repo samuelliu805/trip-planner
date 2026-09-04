@@ -74,6 +74,10 @@ export const plannerZhCN: Record<string, string> = {
   Return: "还车",
   "Save + another": "保存并继续添加",
   "Save and add another": "保存并继续添加",
+  "Save & create new": "保存并继续新建",
+  "Save trip image": "保存行程长图",
+  "Loading image tools…": "正在加载长图工具…",
+  "Publish this page before saving a trip image.": "请先发布页面，再保存行程长图。",
   "Selected cells": "所选单元格",
   Selection: "选择内容",
   "The first link is the public Primary action. Remaining links appear under More links.":

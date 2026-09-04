@@ -77,12 +77,13 @@ function markerContent(marker: PlannerMapMarker, selectedId?: string) {
     : "0 2px 7px rgba(15,23,42,.3)";
   visual.style.color = marker.glyphColor ?? "#fff";
   visual.style.display = "flex";
-  visual.style.font = "600 11px system-ui, sans-serif";
+  visual.style.font = "600 11px/1 var(--font-sans, sans-serif)";
   visual.style.height = pill ? "28px" : comparison ? "34px" : selected ? "36px" : "30px";
   visual.style.justifyContent = "center";
   visual.style.minWidth = pill ? "36px" : visual.style.height;
   visual.style.padding = pill ? "0 8px" : "0";
   visual.style.borderRadius = pill ? "999px" : comparison ? "50% 50% 50% 0" : "50% 50% 50% 0";
+  visual.style.whiteSpace = "nowrap";
   visual.style.transform = pill ? "none" : "rotate(-45deg)";
   const text = visual.textContent;
   if (!pill) {

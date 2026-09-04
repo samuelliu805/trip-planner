@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 142,
+  "publicFunctionCount": 143,
   "catalog": [
     {
       "schema": "public",
@@ -290,8 +290,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -304,8 +304,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -616,8 +616,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -630,8 +630,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -644,8 +644,8 @@
       "returns": "integer",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -658,8 +658,8 @@
       "returns": "integer",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -759,8 +759,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -772,8 +772,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -832,8 +832,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -852,8 +852,21 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "finalize_share_image_version_v1(uuid,jsonb)",
+      "arguments": [
+        { "name": "target_version_id", "type": "uuid" },
+        { "name": "requested_parts", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -989,8 +1002,8 @@
       "returns": "uuid",
       "securityDefiner": false,
       "safeSearchPath": true,
-      "category": "obsolete_legacy",
-      "authorization": null
+      "category": "policy_helper",
+      "authorization": "rls_policy_helper"
     },
     {
       "schema": "public",
@@ -1052,8 +1065,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -1062,8 +1075,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -1092,8 +1105,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -1177,8 +1190,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -1196,8 +1209,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -1230,8 +1243,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -1240,8 +1253,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_anonymous",
+      "authorization": "public_token_snapshot"
     },
     {
       "schema": "public",
@@ -1250,8 +1263,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_anonymous",
+      "authorization": "public_token_snapshot"
     },
     {
       "schema": "public",
@@ -1370,8 +1383,8 @@
       "returns": "boolean",
       "securityDefiner": false,
       "safeSearchPath": true,
-      "category": "obsolete_legacy",
-      "authorization": null
+      "category": "policy_helper",
+      "authorization": "rls_policy_helper"
     },
     {
       "schema": "public",
@@ -1567,8 +1580,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",
@@ -1710,8 +1723,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "phase_4",
-      "authorization": null
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
     },
     {
       "schema": "public",

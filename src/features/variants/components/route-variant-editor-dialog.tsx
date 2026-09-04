@@ -1,20 +1,9 @@
 "use client";
 
-import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { Check, LoaderCircle } from "lucide-react";
+import { Localized, useI18n } from "@/features/i18n/i18n-provider";
+import { Check } from "lucide-react";
 import { useId, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,6 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  PlannerEditorField,
+  PlannerEditorTextField,
+} from "@/features/itinerary/components/planner-editor-fields";
+import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
+import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
+import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { cn } from "@/lib/utils";
@@ -156,102 +152,72 @@ export function RouteVariantEditorDialog({
         : "Edit Plan";
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            <Localized value={title} />
-          </DialogTitle>
-          <DialogDescription>
-            <Localized
-              value={
-                mode === "blank"
-                  ? "Creates the same planning days with no itinerary items or saved routes."
-                  : mode === "duplicate"
-                    ? "Copies days, items, links, saved stops, and leg modes. Route calculations are not copied."
-                    : "The Plan name and color identify this version throughout the planner."
-              }
-            />
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-5 px-5 py-5 sm:px-6">
-          {mode === "duplicate" ? (
-            <div className="space-y-2">
-              <Label htmlFor={`${nameId}-source`}>
-                <T message={"Copy from"} />
-              </Label>
-              <Select onValueChange={setSourceVariantId} value={sourceVariantId}>
-                <SelectTrigger id={`${nameId}-source`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {variants.map((variant) => (
-                    <SelectItem key={variant.id} value={variant.id}>
-                      {variant.name}
-                      {variant.is_primary ? ` · ${t("Primary")}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
-          <div className="space-y-2">
-            <Label htmlFor={nameId}>
-              <T message={"Plan name"} />
-            </Label>
-            <Input
-              autoComplete="off"
-              id={nameId}
-              maxLength={80}
-              onChange={(event) => setName(event.target.value)}
-              value={name}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>
-              <T message={"Plan color"} />
-            </Label>
-            <ColorPalette color={color} onChange={setColor} />
-            <p className="text-xs text-muted-foreground">
-              <T message={" Color is paired with the Plan name and never used alone. "} />
-            </p>
-          </div>
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              <Localized value={error} />
-            </p>
-          ) : null}
-        </div>
-        <DialogFooter>
-          <Button
-            disabled={pending}
-            onClick={() => onOpenChange(false)}
-            type="button"
-            variant="ghost"
-          >
-            <T message={" Cancel "} />
-          </Button>
-          <Button
-            aria-busy={pending}
-            disabled={pending || !name.trim()}
-            onClick={() => void submit()}
-            type="button"
-          >
-            {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            <Localized
-              value={
-                pending
-                  ? "Saving…"
-                  : mode === "blank"
-                    ? "Create Plan"
-                    : mode === "duplicate"
-                      ? "Duplicate Plan"
-                      : "Save changes"
-              }
-            />
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <PlannerEditorScreen editorKind="variant" onOpenChange={onOpenChange} open={open}>
+      <PlannerEditorForm
+        compactActions
+        header={
+          <PlannerEditorHeader
+            closeDisabled={pending}
+            description={
+              mode === "blank"
+                ? "Creates the same planning days with no itinerary items or saved routes."
+                : mode === "duplicate"
+                  ? "Copies days, items, links, saved stops, and leg modes. Route calculations are not copied."
+                  : "The Plan name and color identify this version throughout the planner."
+            }
+            error={error}
+            onClose={() => onOpenChange(false)}
+            title={title}
+          />
+        }
+        onCancel={() => onOpenChange(false)}
+        onClose={() => onOpenChange(false)}
+        onSave={() => submit()}
+        pending={pending}
+        pendingLabel="Saving…"
+        saveDisabled={!name.trim()}
+        saveLabel={
+          mode === "blank"
+            ? "Create Plan"
+            : mode === "duplicate"
+              ? "Duplicate Plan"
+              : "Save changes"
+        }
+      >
+        {mode === "duplicate" ? (
+          <PlannerEditorField id={`${nameId}-source`} label="Copy from">
+            <Select onValueChange={setSourceVariantId} value={sourceVariantId}>
+              <SelectTrigger id={`${nameId}-source`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {variants.map((variant) => (
+                  <SelectItem key={variant.id} value={variant.id}>
+                    {variant.name}
+                    {variant.is_primary ? ` · ${t("Primary")}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </PlannerEditorField>
+        ) : null}
+        <PlannerEditorTextField
+          autoComplete="off"
+          id={nameId}
+          label="Plan name"
+          maxLength={80}
+          onChange={(event) => setName(event.target.value)}
+          required
+          value={name}
+        />
+        <PlannerEditorField
+          description="Color is paired with the Plan name and never used alone."
+          id={`${nameId}-color`}
+          label="Plan color"
+        >
+          <ColorPalette color={color} onChange={setColor} />
+        </PlannerEditorField>
+      </PlannerEditorForm>
+    </PlannerEditorScreen>
   );
 }

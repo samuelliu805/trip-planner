@@ -12,6 +12,7 @@ import { PublicShareVisibilityFields } from "./public-share-visibility-fields";
 
 export function PublicShareSettingsFields({
   existingPage,
+  longImagePanel,
   onChooseVariant,
   onSettingChange,
   pagePicker,
@@ -23,6 +24,7 @@ export function PublicShareSettingsFields({
   variants,
 }: {
   existingPage: boolean;
+  longImagePanel: ReactNode;
   onChooseVariant: (variantId: string) => void;
   onSettingChange: <Key extends keyof ShareSettings>(key: Key, value: ShareSettings[Key]) => void;
   pagePicker: ReactNode;
@@ -61,6 +63,7 @@ export function PublicShareSettingsFields({
           settings={settings}
           sharePages={sharePages}
         />
+        <ShareSettingSection title="Trip image">{longImagePanel}</ShareSettingSection>
       </ShareSettingDisclosure>
     </div>
   );

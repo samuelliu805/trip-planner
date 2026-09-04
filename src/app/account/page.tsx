@@ -7,9 +7,10 @@ import { normalizeLocale } from "@/features/i18n/config";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
-import { defaultTripCurrency } from "@/features/trips/create-defaults";
+import { defaultTripCurrencyForRegion } from "@/features/trips/create-defaults";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 import { getAccountProfileRepository, getAuthProvider } from "@/platform/composition/server";
+import { getServerProviderConfig } from "@/platform/config/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -27,7 +28,10 @@ export default async function AccountPage() {
       <AuthenticatedTelemetryIdentity locale={requestLocale} appUserId={user.id} />
       <PlannerMapProvider>
         <AccountEditor
-          currency={profile?.defaultCurrency ?? defaultTripCurrency}
+          currency={
+            profile?.defaultCurrency ??
+            defaultTripCurrencyForRegion(getServerProviderConfig().appRegion)
+          }
           email={
             user.email ??
             String(user.metadata.username ?? translateMessage(requestLocale, "Email unavailable"))

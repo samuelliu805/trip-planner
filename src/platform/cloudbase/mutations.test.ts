@@ -199,10 +199,28 @@ test("CloudBase deletion rejects a zero-row mutation", async () => {
 
 test("CloudBase profile save returns the database row", async () => {
   const saved = await saveCloudBaseProfile(
-    database(() => ({
-      data: [{ default_currency: "EUR", home_city: "Paris", id: "user-a", preferred_locale: "fr" }],
-      error: null,
-    })),
+    database((query) => {
+      assert.equal(query.operation, "upsert");
+      assert.deepEqual(query.values, {
+        default_currency: "USD",
+        default_currency_is_explicit: true,
+        home_city: "Paris",
+        id: "user-a",
+        preferred_locale: "fr",
+      });
+      return {
+        data: [
+          {
+            default_currency: "EUR",
+            default_currency_is_explicit: true,
+            home_city: "Paris",
+            id: "user-a",
+            preferred_locale: "fr",
+          },
+        ],
+        error: null,
+      };
+    }),
     "user-a",
     {
       defaultCurrency: "USD",

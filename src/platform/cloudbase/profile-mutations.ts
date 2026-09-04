@@ -13,13 +13,14 @@ export async function saveCloudBaseProfile(
     .upsert(
       {
         default_currency: input.defaultCurrency,
+        default_currency_is_explicit: true,
         home_city: input.homeCity,
         id: userId,
         preferred_locale: input.preferredLocale,
       },
       { onConflict: "id" },
     )
-    .select("default_currency, home_city, id, preferred_locale");
+    .select("default_currency, default_currency_is_explicit, home_city, id, preferred_locale");
   const rows = cloudBaseData(result, "Account preferences could not be saved.");
   if (!Array.isArray(rows) || rows.length !== 1) {
     throw new PlatformOperationError(
@@ -31,6 +32,7 @@ export async function saveCloudBaseProfile(
   if (
     row.id !== userId ||
     typeof row.default_currency !== "string" ||
+    row.default_currency_is_explicit !== true ||
     (row.home_city !== null && typeof row.home_city !== "string") ||
     typeof row.preferred_locale !== "string"
   ) {

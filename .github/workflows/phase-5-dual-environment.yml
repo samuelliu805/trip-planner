@@ -328,7 +328,8 @@ jobs:
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
             --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
           node scripts/verify-cloudbase-migration-plan.mjs \
-            "$migration_list" "$migration_plan" 20260902075444 20260903180000
+            "$migration_list" "$migration_plan" \
+            20260902075444 20260903180000 20260903193000
       - name: Build the exact CN selector and scan secrets
         run: |
           npm run build
@@ -336,6 +337,8 @@ jobs:
           npm run check:build-provider-isolation
       - name: Run real AMap route and place Web Service smoke
         run: npm run test:amap-phase-5-live
+      - name: Run CN repaired mutation and Ideas workflow smoke
+        run: npm run test:cloudbase-cn-feature-repair
       - name: Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite
         run: npm run test:cloudbase-phase-3-live
       - name: Run private Storage, signed URL, and zero-residue suite

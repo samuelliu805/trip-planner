@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { T } from "@/features/i18n/i18n-provider";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import type { PhoneOtpActionState } from "@/features/auth/types";
 import {
   maskMainlandPhone,
@@ -79,6 +79,7 @@ function ResendControls({ pending, resendAt }: { pending: boolean; resendAt: num
 }
 
 export function PhoneAuthForm({ action, mode }: PhoneAuthFormProps) {
+  const { t } = useI18n();
   const [phone, setPhone] = useState("");
   const operationRef = useRef<HTMLInputElement>(null);
   const providerRef = useRef<BrowserPhoneOtpProvider | null>(null);
@@ -185,16 +186,20 @@ export function PhoneAuthForm({ action, mode }: PhoneAuthFormProps) {
               <Label htmlFor="phone">
                 <T message={"Mobile number"} />
               </Label>
-              <div className="flex min-w-0 items-center rounded-md border border-input bg-transparent focus-within:ring-2 focus-within:ring-ring">
-                <span className="shrink-0 pl-3 text-base text-muted-foreground">+86</span>
+              <div className="flex min-w-0 items-stretch rounded-md border border-input bg-transparent font-sans text-base leading-none focus-within:ring-2 focus-within:ring-ring">
+                <span className="flex h-11 shrink-0 items-center pl-3 font-sans text-base leading-none text-muted-foreground">
+                  +86
+                </span>
                 <Input
                   autoComplete="tel-national"
-                  className="h-11 min-w-0 border-0 pl-2 text-base shadow-none focus-visible:ring-0"
+                  className="h-11 min-w-0 border-0 pl-2 font-sans text-base leading-none shadow-none sm:text-base focus-visible:ring-0"
                   id="phone"
-                  inputMode="tel"
+                  inputMode="numeric"
+                  maxLength={11}
                   name="phone"
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="138 0013 8000"
+                  onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(0, 11))}
+                  pattern="[0-9]{11}"
+                  placeholder="13800138000"
                   required
                   type="tel"
                   value={phone}
@@ -218,14 +223,20 @@ export function PhoneAuthForm({ action, mode }: PhoneAuthFormProps) {
                 </Label>
                 <Input
                   autoComplete="one-time-code"
-                  className="h-11 text-base tracking-[0.25em]"
+                  className="h-11 font-sans text-base leading-none tracking-[0.25em] sm:text-base"
                   id="verification-code"
                   inputMode="numeric"
                   maxLength={6}
                   name="code"
+                  onInput={(event) => {
+                    event.currentTarget.value = event.currentTarget.value
+                      .replace(/\D/g, "")
+                      .slice(0, 6);
+                  }}
                   pattern="[0-9]{6}"
-                  placeholder="000000"
+                  placeholder={t("6-digit code")}
                   required
+                  type="text"
                 />
               </div>
             </>

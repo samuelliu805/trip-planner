@@ -20,6 +20,7 @@ import type { CloudBaseDatabase } from "./client";
 import { createCloudBaseUserContext } from "./database";
 import { cloudBaseData } from "./errors";
 import { cloudBaseScalarUuidRpc } from "./rpc-compat";
+import { explicitCloudBaseCurrency } from "./profile-currency";
 import {
   removeCloudBaseTrip,
   renameCloudBaseTripIfTitle,
@@ -74,12 +75,12 @@ export class CloudBaseTripRepository implements TripRepository {
   async getDefaultCurrencyForCurrentUser() {
     const { db } = await createCloudBaseUserContext();
     const data = await rows(
-      db.from("profiles").select("default_currency"),
+      db.from("profiles").select("default_currency, default_currency_is_explicit"),
       "Account preferences could not be loaded.",
     );
     if (!Array.isArray(data) || !data.length) return null;
-    const value = (data[0] as Record<string, unknown>).default_currency;
-    return typeof value === "string" ? value : null;
+    const row = data[0] as Record<string, unknown>;
+    return explicitCloudBaseCurrency(row.default_currency, row.default_currency_is_explicit);
   }
 
   async create(input: CreateTripInput) {

@@ -24,7 +24,9 @@ export type CloudBaseAuthClient = Readonly<{
 export type CloudBaseQuery = PromiseLike<{ data: unknown; error: unknown }> & {
   delete(): CloudBaseQuery;
   eq(column: string, value: unknown): CloudBaseQuery;
+  in(column: string, values: readonly unknown[]): CloudBaseQuery;
   insert(values: Readonly<Record<string, unknown>>): CloudBaseQuery;
+  order(column: string, options?: Readonly<{ ascending?: boolean }>): CloudBaseQuery;
   select(columns?: string): CloudBaseQuery;
   update(values: Readonly<Record<string, unknown>>): CloudBaseQuery;
   upsert(

@@ -41,6 +41,7 @@ function buildCatalog() {
   const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
   const authenticated = new Map(allowlist.authenticated);
   const anonymous = new Map(allowlist.anonymous);
+  const policyHelpers = new Map(allowlist.policyHelpers ?? []);
   const phase4Names = new Set(allowlist.phase4);
   const functions = parseFunctions(baseline);
   const publicFunctions = functions.filter((routine) => routine.schema === "public");
@@ -70,6 +71,9 @@ function buildCatalog() {
       } else if (anonymous.has(routine.signature)) {
         category = "external_anonymous";
         authorization = anonymous.get(routine.signature);
+      } else if (policyHelpers.has(routine.signature)) {
+        category = "policy_helper";
+        authorization = policyHelpers.get(routine.signature);
       } else if (triggerNames.has(routine.name)) category = "trigger";
       else if (phase4Names.has(routine.name)) category = "phase_4";
       else if (internalNames.has(routine.name)) category = "internal_helper";
@@ -96,10 +100,16 @@ function buildCatalog() {
 
 function verifyCatalog({ allowlist, functions, catalog, privateHelpers, baseline }) {
   const external = catalog.filter((routine) => routine.category.startsWith("external_"));
-  const expectedCount = allowlist.authenticated.length + allowlist.anonymous.length;
+  const expectedExternalCount = allowlist.authenticated.length + allowlist.anonymous.length;
+  const expectedGrantCount = expectedExternalCount + (allowlist.policyHelpers?.length ?? 0);
   const anonymousSignatures = new Set(allowlist.anonymous.map(([signature]) => signature));
-  if (external.length !== expectedCount)
+  if (external.length !== expectedExternalCount)
     throw new Error("External RPC allowlist does not match catalog");
+  if (
+    catalog.filter((routine) => routine.category === "policy_helper").length !==
+    (allowlist.policyHelpers?.length ?? 0)
+  )
+    throw new Error("RLS policy helper allowlist does not match catalog");
   if (catalog.some((routine) => routine.securityDefiner && !routine.safeSearchPath)) {
     throw new Error("SECURITY DEFINER function has an unsafe search_path");
   }
@@ -151,13 +161,12 @@ function verifyCatalog({ allowlist, functions, catalog, privateHelpers, baseline
   ) {
     throw new Error("RPC grants do not fail closed before applying the allowlist");
   }
-  const normalizedGrants = baseline.replaceAll(
-    "public.public_itinerary_view",
-    "public_itinerary_view",
-  );
+  const normalizedGrants = baseline
+    .replaceAll("public.public_itinerary_view", "public_itinerary_view")
+    .replaceAll("public.asset_media_kind", "asset_media_kind");
   const actualGrants = new Map();
   for (const match of normalizedGrants.matchAll(
-    /GRANT EXECUTE ON FUNCTION public\.([^;]+?) TO ([a-z, ]+);/gi,
+    /GRANT EXECUTE ON FUNCTION public\.([^;]+?)\s+TO\s+([a-z, ]+);/gi,
   )) {
     const roles = match[2].replace(/\s+/g, "");
     if (!roles.split(",").some((role) => role === "anon" || role === "authenticated")) continue;
@@ -166,11 +175,18 @@ function verifyCatalog({ allowlist, functions, catalog, privateHelpers, baseline
       roles,
     );
   }
-  if (actualGrants.size !== expectedCount) throw new Error("Unexpected extra public RPC grant");
-  for (const [signature] of [...allowlist.authenticated, ...allowlist.anonymous]) {
+  if (actualGrants.size !== expectedGrantCount)
+    throw new Error("Unexpected extra public RPC grant");
+  for (const [signature] of [
+    ...allowlist.authenticated,
+    ...allowlist.anonymous,
+    ...(allowlist.policyHelpers ?? []),
+  ]) {
     const escaped = signature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll(",", ",\\s*");
     if (
-      !new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${escaped} TO `, "i").test(normalizedGrants)
+      !new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${escaped}\\s+TO\\s+`, "i").test(
+        normalizedGrants,
+      )
     ) {
       throw new Error(`Missing exact SQL grant: ${signature}`);
     }

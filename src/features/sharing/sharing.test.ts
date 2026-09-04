@@ -1571,6 +1571,14 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./components/long-image-scope-picker.tsx", import.meta.url),
     "utf8",
   );
+  const ownerLongImage = await readFile(
+    new URL("./components/owner-long-image-settings.tsx", import.meta.url),
+    "utf8",
+  );
+  const longImageEditorAction = await readFile(
+    new URL("./long-image/editor-action.ts", import.meta.url),
+    "utf8",
+  );
   const shareStatus = await readFile(
     new URL("./components/public-share-status-panel.tsx", import.meta.url),
     "utf8",
@@ -1936,6 +1944,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(viewportContainment, /visualViewport\?\.height \?\? window\.innerHeight/);
   assert.match(viewportContainment, /setProperty\("--public-viewport-height"/);
+  assert.match(viewportContainment, /setProperty\("--public-viewport-top"/);
+  assert.match(viewportContainment, /history\.scrollRestoration = "manual"/);
   assert.match(viewportContainment, /addEventListener\("pageshow", stabilizeViewport\)/);
   assert.match(viewportContainment, /addEventListener\("visibilitychange"/);
   assert.match(viewportContainment, /\[100, 350, 1_000\]/);
@@ -2082,6 +2092,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareSettingsFields, /ShareSettingDisclosure title="Advanced settings"/);
   assert.match(shareSettingsFields, /PublicSharePageFields/);
   assert.match(shareSettingsFields, /PublicShareVisibilityFields/);
+  assert.match(shareSettingsFields, /ShareSettingSection title="Trip image"/);
+  assert.match(shareSettings, /<OwnerLongImageSettings/);
+  assert.match(ownerLongImage, /<LongImageExportPanel/);
+  assert.match(longImageEditorAction, /ownerPage\.id !== input\.data\.sharePageId/);
   assert.match(shareVisibilityFields, /LongImageSettingsFields/);
   assert.match(shareBasicFields, /!existingPage \? \([\s\S]*public-share-variant/);
   assert.doesNotMatch(shareBasicFields, /Route \(fixed\)/);

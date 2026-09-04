@@ -22,6 +22,7 @@ export function PublicOverviewCard({
 }) {
   const { t } = useI18n();
   const { item, media } = presentation;
+  const title = item.type === "car_rental" ? t(item.title) : item.title;
   const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
   const place = item.place?.localityName ?? item.place?.displayName;
   const placeMedia = media.filter(({ source }) => source === "google_place");
@@ -41,7 +42,7 @@ export function PublicOverviewCard({
     >
       <button
         aria-current={selected ? "true" : undefined}
-        aria-label={t("Focus map on {item}", { item: item.title })}
+        aria-label={t("Focus map on {item}", { item: title })}
         className="public-item-focus overview-item-top-v4"
         data-public-item-ref={item.ref}
         onClick={onSelect}
@@ -54,7 +55,7 @@ export function PublicOverviewCard({
           <PublicItemIcon className="size-3.5" type={item.type} />
         </span>
         <span className="overview-item-copy-v4">
-          <span className="overview-item-title-v4">{item.title}</span>
+          <span className="overview-item-title-v4">{title}</span>
           {schedule || place ? (
             <span className="overview-item-meta-v4">
               {[schedule, place].filter(Boolean).join(" · ")}

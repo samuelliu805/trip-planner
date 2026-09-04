@@ -84,6 +84,12 @@
       "file": "20260903180000_cloudbase_profile_locale_default_zh_cn.sql",
       "kind": "phase_6_regional_locale_default",
       "sha256": "af6f0dbe78f1bea424f3c9fe363d648716e8fac81a0f35091b0b6f59e5206590"
+    },
+    {
+      "provider": "cloudbase",
+      "file": "20260903193000_restore_authenticated_feature_rpcs.sql",
+      "kind": "phase_6_cn_feature_repair",
+      "sha256": "364d8e6ca6072d271e9f6ee1cc1608a0ef2f72f84c40325ac35eaf6d05759038"
     }
   ]
 }

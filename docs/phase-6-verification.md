@@ -42,6 +42,13 @@ The migration was applied to the approved development target
 the column default at `'zh-CN'::text`, and row-level security still enabled and forced with the
 existing self-only select, insert, and update policies unchanged.
 
+The follow-up CloudBase-only migration
+`20260903193000_restore_authenticated_feature_rpcs.sql` restores the reviewed attachment,
+research-policy, and long-image RPC grants omitted by the deny-by-default overlay, adds the missing
+CN long-image finalizer, and records whether a currency preference was explicitly saved. CN
+profiles without an explicit choice now resolve to CNY; a later account save preserves any currency
+the traveller deliberately selects. Global schema and defaults remain unchanged.
+
 ## Automated evidence
 
 Canonical pull-request CI runs shared lint, types, formatting, i18n, unit/contract, telemetry,

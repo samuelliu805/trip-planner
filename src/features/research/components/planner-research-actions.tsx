@@ -17,7 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
-import { tripCurrencyCodes } from "@/features/trips/currencies";
+import {
+  tripCurrencyCodes,
+  tripCurrencyCodesForLocale,
+  tripCurrencyLabel,
+} from "@/features/trips/currencies";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
@@ -50,7 +54,7 @@ export function PlannerResearchActions({
   sourceItem?: ItineraryItem;
   tripId: string;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(context.itemId ? context.label : "");
   const [price, setPrice] = useState("");
@@ -204,13 +208,14 @@ export function PlannerResearchActions({
                     onChange={(event) => setSelectedCurrency(event.target.value)}
                     value={selectedCurrency}
                   >
-                    {(currencies.includes(currency) ? currencies : [currency, ...currencies]).map(
-                      (value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ),
-                    )}
+                    {(currencies.includes(currency)
+                      ? tripCurrencyCodesForLocale(locale)
+                      : [currency, ...tripCurrencyCodesForLocale(locale)]
+                    ).map((value) => (
+                      <option key={value} value={value}>
+                        {tripCurrencyLabel(value, locale)}
+                      </option>
+                    ))}
                   </select>
                 </ResearchField>
               </div>

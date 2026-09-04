@@ -38,25 +38,48 @@ async function proveDenied(db, routines, actor) {
   }
 }
 
+async function proveReachable(db, routines, actor) {
+  for (const routine of routines) {
+    const name = routine.signature.slice(0, routine.signature.indexOf("("));
+    const args = Object.fromEntries(
+      routine.arguments.map((argument) => [argument.name, valueFor(argument.type)]),
+    );
+    const result = await db.rpc(name, args);
+    if (functionAclDenied(result, name) || gatewayFunctionUnavailable(result, name)) {
+      throw new Error(`${actor} could not reach required policy helper ${routine.signature}`);
+    }
+  }
+}
+
 async function run() {
   const config = loadLiveConfig();
   const { auth, db } = initializeLiveClient(config);
   const manifest = JSON.parse(
     readFileSync(join(root, "database/cloudbase/rpc-catalog.json"), "utf8"),
   );
-  const denied = manifest.catalog.filter((routine) => !routine.category.startsWith("external_"));
-  const knownDenied = denied[0].signature.slice(0, denied[0].signature.indexOf("("));
+  const anonymousDenied = manifest.catalog.filter(
+    (routine) => !routine.category.startsWith("external_"),
+  );
+  const authenticatedDenied = anonymousDenied.filter(
+    (routine) => routine.category !== "policy_helper",
+  );
+  const policyHelpers = manifest.catalog.filter((routine) => routine.category === "policy_helper");
+  const knownDenied = anonymousDenied[0].signature.slice(
+    0,
+    anonymousDenied[0].signature.indexOf("("),
+  );
   const knownArgs = Object.fromEntries(
-    denied[0].arguments.map((argument) => [argument.name, valueFor(argument.type)]),
+    anonymousDenied[0].arguments.map((argument) => [argument.name, valueFor(argument.type)]),
   );
   const knownResult = await db.rpc(knownDenied, knownArgs);
   if (!functionAclDenied(knownResult, knownDenied)) {
     throw new Error("Known denied function did not produce the reviewed ACL denial");
   }
-  await proveDenied(db, denied, "anonymous");
+  await proveDenied(db, anonymousDenied, "anonymous");
 
   await signIn(auth, "trip-planner-cn-test-a", config.CLOUDBASE_TEST_USER_A_PASSWORD);
-  await proveDenied(db, denied, "authenticated");
+  await proveDenied(db, authenticatedDenied, "authenticated");
+  await proveReachable(db, policyHelpers, "authenticated");
 
   for (const [name, args] of [
     ["app_current_user_id", {}],
@@ -70,7 +93,10 @@ async function run() {
   }
   await auth.signOut();
   console.log(
-    `CloudBase SDK proved ${denied.length} non-allowlisted public functions inaccessible to anon and authenticated.`,
+    `CloudBase SDK proved ${authenticatedDenied.length} internal public functions inaccessible to anon and authenticated.`,
+  );
+  console.log(
+    `${policyHelpers.length} RLS policy helpers are authenticated-only and remain inaccessible to anon.`,
   );
   console.log(`Known denied function ${knownDenied} produced DATABASE_42501.`);
   console.log(

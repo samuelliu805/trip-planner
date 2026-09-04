@@ -54,15 +54,25 @@ import { inferredHomeCity } from "../account/profile-defaults.ts";
 import { parseLocale } from "../i18n/config.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import {
+  defaultCnTripCurrency,
   defaultTripCurrency,
+  defaultTripCurrencyForRegion,
   defaultTripDayCount,
   defaultTripTitle,
   isDefaultTripTitle,
   tripDateInZone,
   tripTitleFromPlace,
 } from "../trips/create-defaults.ts";
-import { tripCurrencyCodes } from "../trips/currencies.ts";
-import { sanitizeTripDayCountInput, settleTripDateFields } from "../trips/date-fields.ts";
+import {
+  tripCurrencyCodes,
+  tripCurrencyCodesForLocale,
+  tripCurrencyLabel,
+} from "../trips/currencies.ts";
+import {
+  optimisticTripDayDates,
+  sanitizeTripDayCountInput,
+  settleTripDateFields,
+} from "../trips/date-fields.ts";
 import {
   resolveTripStatusFilter,
   tripStatusFilterLabels,
@@ -409,6 +419,12 @@ test("trip creation uses the old branch defaults and opens the planner directly"
   ]);
 
   assert.equal(defaultTripCurrency, "USD");
+  assert.equal(defaultCnTripCurrency, "CNY");
+  assert.equal(defaultTripCurrencyForRegion("global"), "USD");
+  assert.equal(defaultTripCurrencyForRegion("cn"), "CNY");
+  assert.equal(tripCurrencyCodesForLocale("zh-CN")[0], "CNY");
+  assert.equal(tripCurrencyCodesForLocale("en")[0], "USD");
+  assert.equal(tripCurrencyLabel("CNY", "zh-CN"), "CNY · 人民币");
   assert.equal(defaultTripDayCount, 1);
   const created = new Date("2026-08-22T05:30:00Z");
   assert.equal(tripDateInZone("Asia/Shanghai", created), "2026-08-22");
@@ -503,6 +519,8 @@ test("browser locale wins without rewriting the saved account preference", async
   assert.doesNotMatch(accountAction, /setLocaleCookie/);
   assert.match(accountEditor, /useState\(initialLocale\)/);
   assert.match(accountEditor, /<LanguageSwitcher/);
+  assert.match(accountEditor, /await logoutSession\(formData\)/);
+  assert.match(accountEditor, /window\.location\.assign\("\/login"\)/);
   assert.match(rootLayout, /persistInitialLocale=\{localeState\.source === "profile"\}/);
   assert.match(i18nProvider, /document\.readyState === "complete"/);
   assert.match(i18nProvider, /window\.addEventListener\("load", scheduleInitialSync/);
@@ -541,6 +559,19 @@ test("trip filters, date settlement, and lifecycle toggles stay deterministic", 
     { dayCount: "6", endDate: "2026-08-25", startDate: "2026-08-20" },
   );
   assert.equal(sanitizeTripDayCountInput("days: 005"), "5");
+  assert.deepEqual(
+    optimisticTripDayDates(
+      [
+        { date: null, day_number: 1, id: "one" },
+        { date: null, day_number: 2, id: "two" },
+      ],
+      "2026-09-03",
+    ),
+    [
+      { date: "2026-09-03", day_number: 1, id: "one" },
+      { date: "2026-09-04", day_number: 2, id: "two" },
+    ],
+  );
 });
 
 test("trip cards expose loading filters, deletion, and the shared settings editor", async () => {
@@ -818,6 +849,9 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.doesNotMatch(variantUi, /z-\[90\]/);
   assert.match(variantUi, /is now the primary Plan/);
   assert.match(variantUi, /router\.refresh\(\)/);
+  assert.match(variantEditor, /<PlannerEditorScreen/);
+  assert.match(variantEditor, /<PlannerEditorForm/);
+  assert.doesNotMatch(variantEditor, /<Dialog|<DialogContent/);
   assert.match(variantQueries, /is_primary: variant\.id === input\.variantId/);
   assert.match(variantQueries, /onError:[\s\S]*context\?\.previous/);
   assert.match(workspaceEvents, /event\.key === "Backspace"/);
