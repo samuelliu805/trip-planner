@@ -1,5 +1,7 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import type { PlannerEditorSaveIntent } from "@/features/itinerary/components/planner-editor-form";
 import {
   itemCopy,
@@ -12,6 +14,9 @@ import {
   useCreateItineraryItem,
   useUpdateItineraryItem,
 } from "@/features/itinerary/item-mutations";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
+import { replaceItem } from "@/features/itinerary/query-cache";
+import type { PlannerWorkspace } from "@/features/itinerary/types";
 
 type ItemSaveValues = NonNullable<ReturnType<typeof plannerItemSaveValues>>;
 
@@ -39,6 +44,7 @@ export function usePlannerItemSaveFlow({
   | "type"
   | "variantId"
 >) {
+  const client = useQueryClient();
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
   const itemMutationPending = createMutation.isPending || updateMutation.isPending;
@@ -59,6 +65,9 @@ export function usePlannerItemSaveFlow({
         ? await updateMutation.mutateAsync({ ...values, id: item.id, surface: "item_editor" })
         : await createMutation.mutateAsync({ ...values, dayId, surface: "item_editor" });
       const committedItem = await attachmentSession.commit(savedItem);
+      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
+        replaceItem(current, committedItem),
+      );
       if (reportsCreationFeedback)
         onSaveFeedback({
           item: committedItem,

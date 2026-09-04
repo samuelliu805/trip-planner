@@ -18,6 +18,18 @@ function revealDelta(
   return 0;
 }
 
+export function plannerEditorKeyboardOcclusion({
+  layoutHeight,
+  viewportHeight,
+  viewportOffsetTop,
+}: {
+  layoutHeight: number;
+  viewportHeight: number;
+  viewportOffsetTop: number;
+}) {
+  return Math.max(0, layoutHeight - viewportHeight - viewportOffsetTop);
+}
+
 /** Keeps the focused control visible when iPadOS changes only the visual viewport for its keyboard. */
 export function usePlannerEditorKeyboardScroll() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -43,7 +55,18 @@ export function usePlannerEditorKeyboardScroll() {
     function revealFocusedControl() {
       const viewport = window.visualViewport;
       const viewportHeight = viewport?.height ?? window.innerHeight;
-      const keyboardOpen = surface.clientHeight - viewportHeight >= keyboardThreshold;
+      const viewportOffsetTop = viewport?.offsetTop ?? 0;
+      const layoutHeight = Math.max(
+        surface.clientHeight,
+        window.innerHeight,
+        document.documentElement.clientHeight,
+      );
+      const keyboardSpace = plannerEditorKeyboardOcclusion({
+        layoutHeight,
+        viewportHeight,
+        viewportOffsetTop,
+      });
+      const keyboardOpen = keyboardSpace >= keyboardThreshold;
       editorForm?.toggleAttribute("data-editor-keyboard-open", keyboardOpen);
 
       cancelAnimationFrame(firstFrame);
@@ -53,10 +76,19 @@ export function usePlannerEditorKeyboardScroll() {
           const currentViewport = window.visualViewport;
           const currentViewportHeight = currentViewport?.height ?? window.innerHeight;
           const viewportTop = currentViewport?.offsetTop ?? 0;
-          const keyboardSpace = Math.max(0, surface.clientHeight - currentViewportHeight);
+          const currentLayoutHeight = Math.max(
+            surface.clientHeight,
+            window.innerHeight,
+            document.documentElement.clientHeight,
+          );
+          const currentKeyboardSpace = plannerEditorKeyboardOcclusion({
+            layoutHeight: currentLayoutHeight,
+            viewportHeight: currentViewportHeight,
+            viewportOffsetTop: viewportTop,
+          });
           surface.style.setProperty(
             "--planner-editor-keyboard-space",
-            keyboardOpen ? `${keyboardSpace + keyboardEdgeClearance}px` : "0px",
+            keyboardOpen ? `${currentKeyboardSpace + keyboardEdgeClearance}px` : "0px",
           );
           const active = document.activeElement;
           if (!(active instanceof HTMLElement) || !active.matches(editableSelector)) return;

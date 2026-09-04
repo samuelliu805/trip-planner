@@ -22,6 +22,7 @@ import {
 import { googleTravelMode } from "../../lib/providers/google/routes/mode-mapping.ts";
 import type { RouteLegRequest, RouteProvider } from "../../lib/providers/routes/types.ts";
 import { shouldRestorePlannerDocumentScroll } from "./hooks/use-planner-viewport-containment.ts";
+import { plannerEditorKeyboardOcclusion } from "./components/use-planner-editor-keyboard-scroll.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
@@ -2122,6 +2123,17 @@ test("Day route drafts always follow the itinerary SSOT order", () => {
     ).itemIds,
     ["hotel", "activity", "hotel"],
   );
+  assert.deepEqual(
+    fixedDayRouteDraft(
+      {
+        itemIds: ["activity", "deleted-activity", "meal"],
+        legModes: ["walk", "train"],
+      },
+      ["activity", "meal"],
+      "self_driving",
+    ),
+    { itemIds: ["activity", "meal"], legModes: ["self_driving"] },
+  );
 });
 
 test("new Day routes include all eligible stops and anchor available Hotels", () => {
@@ -2965,12 +2977,13 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(editorScreen, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editorViewportLock, /planner-editor-viewport-locked/);
   assert.match(styles, /--planner-editor-keyboard-space/);
-  assert.match(editorKeyboardScroll, /surface\.clientHeight - viewportHeight/);
+  assert.match(editorKeyboardScroll, /plannerEditorKeyboardOcclusion/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);
   assert.match(editorKeyboardScroll, /window\.addEventListener\("resize", revealFocusedControl\)/);
   assert.match(styles, /aria-label="Fill selected cells down"[\s\S]*display: none/);
   assert.match(workspace, /PlannerContextActions/);
-  assert.match(workspace, /planner-mobile-map-fab/);
+  assert.doesNotMatch(workspace, /planner-mobile-map-fab/);
+  assert.match(workspace, /Open map and route tools/);
   assert.match(workspace, /open=\{mapExpanded\}/);
   assert.doesNotMatch(workspace, /setMapExpanded\(!open\)/);
   assert.match(mapShell, /PlannerMapCanvas/);
@@ -3000,6 +3013,48 @@ test("planner restores document scroll after iPad browser chrome moves the visua
   assert.equal(shouldRestorePlannerDocumentScroll(input), false);
   assert.equal(shouldRestorePlannerDocumentScroll(page), true);
   assert.equal(shouldRestorePlannerDocumentScroll(null), true);
+});
+
+test("planner editor reserves the actually occluded visual viewport height", () => {
+  assert.equal(
+    plannerEditorKeyboardOcclusion({
+      layoutHeight: 844,
+      viewportHeight: 500,
+      viewportOffsetTop: 20,
+    }),
+    324,
+  );
+  assert.equal(
+    plannerEditorKeyboardOcclusion({
+      layoutHeight: 844,
+      viewportHeight: 844,
+      viewportOffsetTop: 0,
+    }),
+    0,
+  );
+});
+
+test("trip route errors retry in place and clear recovery state after the planner mounts", async () => {
+  const routeError = await readFile(
+    new URL("../../app/trips/[tripId]/error.tsx", import.meta.url),
+    "utf8",
+  );
+  const routePage = await readFile(
+    new URL("../../app/trips/[tripId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const containment = await readFile(
+    new URL("./hooks/use-planner-viewport-containment.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(routeError, /tripRouteRecoveryMaximumAttempts/);
+  assert.match(routeError, /reset\(\)/);
+  assert.match(routeError, /sessionStorage\.setItem/);
+  assert.match(
+    routePage,
+    /if \(error\) throw new Error\(error\.message\);\s*if \(!trip\) notFound\(\);/,
+  );
+  assert.match(containment, /sessionStorage\.removeItem\(tripRouteRecoveryStorageKey\)/);
 });
 
 test("mobile and tablet workspaces contain scrolling and keep frozen Matrix layers", async () => {
@@ -3106,7 +3161,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   );
   assert.match(styles, /\[role="rowheader"\]:nth-child\(2\)[\s\S]*overflow: hidden/);
   assert.match(workspace, /matrix-frozen-content/);
-  assert.match(styles, /planner-mobile-map-fab[\s\S]*display: inline-flex/);
+  assert.doesNotMatch(styles, /planner-mobile-map-fab/);
   assert.match(
     styles,
     /\.map-panel-reopen \{\s*bottom: max\(2\.75rem, calc\(env\(safe-area-inset-bottom\)/,

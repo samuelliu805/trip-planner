@@ -92,7 +92,19 @@ export const prepareShareImageSchema = z
     renderConfig: longImageRenderConfigSchema,
     sourceSnapshot: publicItinerarySchema,
     sourceSnapshotHash: z.string().regex(/^[0-9a-f]{64}$/),
-    uploadPathPrefix: z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}$/),
+    uploadPathPrefix: z
+      .string()
+      .min(1)
+      .max(138)
+      .refine((path) => {
+        const [ownerId, exportId, versionId, ...remainder] = path.split("/");
+        return (
+          remainder.length === 0 &&
+          /^[A-Za-z0-9._~-]{1,64}$/.test(ownerId ?? "") &&
+          z.uuid().safeParse(exportId).success &&
+          z.uuid().safeParse(versionId).success
+        );
+      }),
     versionId: z.uuid(),
     versionNumber: z.number().int().positive(),
   })

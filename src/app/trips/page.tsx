@@ -3,6 +3,7 @@ import { MapPin } from "lucide-react";
 import type { Metadata } from "next";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { PostLoginRefresh } from "@/features/auth/components/post-login-refresh";
 import { CreateTripButton } from "@/features/trips/components/create-trip-button";
 import { TripCard } from "@/features/trips/components/trip-card";
 import { TripStatusFilterTabs } from "@/features/trips/components/trip-status-filter";
@@ -35,9 +36,10 @@ const emptyCopy: Record<TripStatusFilter, { body: string; title: string }> = {
 export default async function TripsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ post_login?: string; status?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { post_login: postLogin, status } = await searchParams;
+  if (postLogin === "1") return <PostLoginRefresh />;
   const filter = resolveTripStatusFilter(status);
   const { data: trips, error } = await listTrips(filter);
   const empty = emptyCopy[filter];

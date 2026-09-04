@@ -14,12 +14,15 @@ export function fixedDayRouteDraft(
   roundTripHotelId?: string,
 ): FixedDayRouteDraft {
   const rankById = new Map(eligibleItemIds.map((itemId, index) => [itemId, index]));
-  const countsById = draft.itemIds.reduce(
+  const validItemIds = draft.itemIds.filter(
+    (itemId) => rankById.has(itemId) || itemId === previousHotelId,
+  );
+  const countsById = validItemIds.reduce(
     (counts, itemId) => counts.set(itemId, (counts.get(itemId) ?? 0) + 1),
     new Map<string, number>(),
   );
   const occurrenceById = new Map<string, number>();
-  const itemIds = draft.itemIds
+  const itemIds = validItemIds
     .map((itemId, originalIndex) => {
       const occurrence = occurrenceById.get(itemId) ?? 0;
       occurrenceById.set(itemId, occurrence + 1);

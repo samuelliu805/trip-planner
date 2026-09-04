@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { Check, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
+import { Check, ChevronDown, Copy, GitCompareArrows, MoreHorizontal, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -122,6 +122,7 @@ export function RouteVariantSwitcher({
           style={{ backgroundColor: activeVariant.color }}
         />
         <span className="truncate text-sm font-semibold">{title}</span>
+        <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
       </Button>
 
       <PullUpPanel

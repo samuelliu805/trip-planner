@@ -39,6 +39,11 @@ function nationalPhone(phone: string) {
   return match[1];
 }
 
+function e164MainlandPhone(phone: string) {
+  nationalPhone(phone);
+  return phone;
+}
+
 function sessionTokens(data: SignInData | null) {
   const accessToken = data?.session?.access_token;
   const refreshToken = data?.session?.refresh_token;
@@ -117,7 +122,9 @@ export class CloudBaseBrowserPhoneOtpProvider implements BrowserPhoneOtpProvider
   async requestPasswordResetOtp(phone: string) {
     this.clearChallenge();
     try {
-      const result = await this.auth.resetPasswordForEmail(nationalPhone(phone));
+      // CloudBase uses the original value again after verifying the bound challenge. Keep the
+      // full E.164 identity so the password-reset request and its verification token match.
+      const result = await this.auth.resetPasswordForEmail(e164MainlandPhone(phone));
       if (result.error) throw result.error;
       if (typeof result.data?.updateUser !== "function") {
         throw new PlatformOperationError(

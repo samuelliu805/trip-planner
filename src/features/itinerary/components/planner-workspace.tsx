@@ -22,6 +22,7 @@ import { planResearchContext } from "../../research/planner-context";
 import { TripMobileTabBar } from "../../trips/components/trip-app-bar";
 import { convertPlanCostBreakdown, planCostBreakdown, planCostSummary } from "../../research/money";
 import { usePlannerViewTelemetry } from "../hooks/use-planner-view-telemetry";
+import { usePlannerMapSheetHistory } from "../hooks/use-planner-map-sheet-history";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
   return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
@@ -30,6 +31,7 @@ export function PlannerWorkspace(props: PlannerWorkspaceProps) {
 function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
   usePlannerViewportContainment();
   const c = usePlannerWorkspaceController(props);
+  const mapSheet = usePlannerMapSheetHistory(c.setMapExpanded);
   usePlannerViewTelemetry(c.mapExpanded);
   const [itemSaveFeedback, setItemSaveFeedback] = useState<PlannerItemSaveFeedback>();
   const activeItem =
@@ -106,6 +108,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         isFillDragging={c.isFillDragging}
         mutating={c.mutating}
         onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
+        onMapExpand={mapSheet.open}
         pasteAvailableClipboard={c.clipboard.pasteAvailableClipboard}
         planCostLines={planCostLines}
         planCostSummary={costSummary}
@@ -133,7 +136,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
             comparisonBlockingReason={c.map.comparison.blockingReason}
             onCompare={() => {
               c.map.enterComparison();
-              c.setMapExpanded(true);
+              mapSheet.open();
             }}
             title={props.trip.title}
             tripId={props.trip.id}
@@ -173,7 +176,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         onDecisionSummaryOpen={() => c.map.setDecisionSummaryPanelOpen(true)}
         onDecisionSummaryPanelClose={() => c.map.setDecisionSummaryPanelOpen(false)}
         onEditMapItem={c.editMapItem}
-        onMapExpand={() => c.setMapExpanded(true)}
+        onMapExpand={mapSheet.open}
         onMapModeChange={c.changeMapModeAndSelection}
         onMapSelectionClear={c.selectMapMarker}
         onMarkerClick={c.selectMapMarker}
@@ -243,7 +246,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         onInteractionError={c.setInteractionError}
         onItemSaveFeedback={setItemSaveFeedback}
         onMapExpandedChange={(open) => {
-          c.setMapExpanded(open);
+          mapSheet.onOpenChange(open);
           if (
             !open &&
             c.map.mapMode === "comparison" &&

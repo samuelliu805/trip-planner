@@ -93,6 +93,7 @@ export function useLongImageExport({
             cacheControl: "31536000",
             contentType: "image/jpeg",
             path: storagePath,
+            signedUrl: authorization.data.signedUrl,
             token: authorization.data.token,
             upsert: false,
           });

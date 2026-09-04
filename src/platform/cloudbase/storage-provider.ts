@@ -4,6 +4,7 @@ import type { StorageProvider, UploadInput } from "@/platform/contracts/storage"
 
 import { createCloudBaseAdminClients } from "./client";
 import { normalizeCloudBaseError } from "./errors";
+import { normalizeCloudBaseStorageUrl } from "./storage-url";
 
 export class CloudBaseStorageProvider implements StorageProvider {
   constructor(
@@ -43,7 +44,10 @@ export class CloudBaseStorageProvider implements StorageProvider {
     const result = await this.storage().createSignedUploadUrl(path, { upsert: false });
     if (result.error || !result.data)
       throw normalizeCloudBaseError(result.error, "Signed upload creation failed.");
-    return { signedUrl: result.data.fullSignedURL, token: result.data.token };
+    return {
+      signedUrl: normalizeCloudBaseStorageUrl(result.data.fullSignedURL),
+      token: result.data.token,
+    };
   }
 
   async download(path: string) {

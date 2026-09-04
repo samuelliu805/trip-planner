@@ -278,7 +278,7 @@ test("Global Supabase auth adapter and proxy retain the existing auth operations
 
 test("Successful password login invalidates the Trips page before redirecting", async () => {
   const actions = await readFile(new URL("../features/auth/actions.ts", import.meta.url), "utf8");
-  assert.match(actions, /revalidatePath\("\/trips"\);\s*redirect\("\/trips"\);/);
+  assert.match(actions, /revalidatePath\("\/trips"\);\s*redirect\(postLoginRefreshPath\);/);
 });
 
 test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK surface", async () => {

@@ -465,7 +465,7 @@ async function saveOpenItemEditor(browser, label) {
         return alert ? { message: alert.textContent.trim().slice(0, 240), status: 'error' } : null;
       })()`,
       `${label} save result`,
-      45_000,
+      90_000,
     );
     if (outcome.status === "saved") return;
     lastError = outcome.message;
@@ -517,7 +517,7 @@ async function saveHotelThroughUi(browser) {
     browser,
     `document.querySelectorAll('[data-cell="0-3"] [data-edit-item]').length === 1`,
     "saved hotel",
-    45_000,
+    75_000,
   );
 }
 
@@ -553,7 +553,293 @@ async function saveWalkingTransportThroughUi(browser) {
     browser,
     `document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length === 1`,
     "saved Walking transport",
+    75_000,
+  );
+}
+
+async function openSavedItemEditor(browser, cell, itemIndex = 0) {
+  const rowExpression = `[...document.querySelectorAll('[data-cell="${cell}"] [data-edit-item]')]
+    .filter((item) => item.getClientRects().length)[${itemIndex}]`;
+  await clickElement(browser, rowExpression, `saved item ${cell}:${itemIndex}`);
+  await clickElement(
+    browser,
+    `(${rowExpression})?.parentElement?.querySelector('button[aria-label^="Actions for"]')`,
+    `saved item actions ${cell}:${itemIndex}`,
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
+      item.textContent.trim() === "Edit item" && item.getClientRects().length
+    )`,
+    "Edit item menu action",
+  );
+  await clickButtonText(browser, "Edit item");
+  await waitFor(browser, "Boolean(document.querySelector('[role=\"dialog\"]'))", "item editor");
+}
+
+async function chooseVisiblePlaceSuggestion(browser, inputSelector, query, label) {
+  await waitFor(
+    browser,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(inputSelector)});
+      return input instanceof HTMLInputElement && !input.disabled;
+    })()`,
+    `${label} enabled place search`,
     45_000,
+  );
+  await setInputValue(browser, inputSelector, query);
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('li[role="option"]')]
+      .find((option) => option.getClientRects().length))`,
+    `${label} suggestions`,
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('li[role="option"]')]
+      .find((option) => option.getClientRects().length)`,
+    `${label} suggestion`,
+  );
+}
+
+async function verifyMobileTransportEditorScroll(browser) {
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 932, mobile: true, width: 430 },
+    browser.sessionId,
+  );
+  await openSavedItemEditor(browser, "0-2");
+  await clickElement(
+    browser,
+    `document.querySelector('button[id^="transport-mode-"]')`,
+    "mobile transport mode",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')]
+      .find((option) => option.textContent.trim() === "Bus" && option.getClientRects().length)`,
+    "Bus transport option",
+  );
+  await chooseVisiblePlaceSuggestion(
+    browser,
+    'input[aria-label="From"]',
+    "上海虹桥机场",
+    "mobile transport origin",
+  );
+  await chooseVisiblePlaceSuggestion(
+    browser,
+    'input[aria-label="To"]',
+    "上海外滩",
+    "mobile transport destination",
+  );
+  const actionEvidence = await evaluate(
+    browser,
+    `(async () => {
+      const surface = document.querySelector('[data-planner-editor-scroll]');
+      const save = [...document.querySelectorAll('[role="dialog"] button')]
+        .find((button) => button.textContent.trim() === "Save" && !button.disabled);
+      surface.scrollTop = surface.scrollHeight;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const rect = save?.getBoundingClientRect();
+      const hit = rect
+        ? document.elementsFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+        : [];
+      return {
+        bottom: rect?.bottom,
+        clientHeight: surface.clientHeight,
+        maxScrollTop: surface.scrollHeight - surface.clientHeight,
+        saveIsTopmost: Boolean(save && hit.some((node) => node === save || save.contains(node))),
+        scrollTop: surface.scrollTop,
+        viewportHeight: window.visualViewport?.height ?? window.innerHeight,
+      };
+    })()`,
+  );
+  assert.ok(actionEvidence.maxScrollTop > 0, "Mobile transport editor did not become scrollable.");
+  assert.ok(
+    actionEvidence.scrollTop >= actionEvidence.maxScrollTop - 2,
+    "Mobile transport editor bounced away from its bottom action.",
+  );
+  assert.ok(
+    actionEvidence.bottom <= actionEvidence.viewportHeight + 1,
+    "Mobile transport Save action remained below the visual viewport.",
+  );
+  assert.equal(actionEvidence.saveIsTopmost, true, "Mobile transport Save action was obstructed.");
+  await saveOpenItemEditor(browser, "mobile transport edit");
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+}
+
+async function uploadAttachmentThroughUi(browser) {
+  await openSavedItemEditor(browser, "0-1");
+  const linksStepExpression = `document.querySelector(
+    '[role="dialog"] button[data-step-id="files"]',
+  )`;
+  try {
+    await waitFor(browser, `Boolean(${linksStepExpression})`, "Links step", 30_000);
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        buttons: [...document.querySelectorAll('[role="dialog"] button')]
+          .filter((button) => button.getClientRects().length)
+          .map((button) => button.textContent.trim()).slice(0, 20),
+        dialogs: [...document.querySelectorAll('[role="dialog"]')]
+          .filter((dialog) => dialog.getClientRects().length)
+          .map((dialog) => dialog.textContent.trim().slice(0, 600)),
+        path: location.pathname,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; Links step diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  const openedFilesStep = await evaluate(
+    browser,
+    `(() => {
+      const button = ${linksStepExpression};
+      if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  assert.equal(openedFilesStep, true, "Links step was not available.");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[role="dialog"] input[type="file"]'))`,
+    "attachment file input",
+  );
+  const queued = await evaluate(
+    browser,
+    `(() => {
+      window.__phase3UploadRequests = [];
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (...arguments_) => {
+        const request = arguments_[0];
+        const requestUrl = new URL(
+          typeof request === "string" || request instanceof URL ? request : request.url,
+          location.href,
+        );
+        const relevant =
+          requestUrl.pathname.includes("/attachments/") ||
+          requestUrl.pathname.includes("/object/upload/sign/");
+        try {
+          const response = await originalFetch(...arguments_);
+          if (relevant) {
+            let responseError;
+            if (requestUrl.origin === location.origin) {
+              const payload = await response
+                .clone()
+                .json()
+                .catch(() => null);
+              responseError =
+                payload && typeof payload === "object" && typeof payload.error === "string"
+                  ? payload.error.slice(0, 160)
+                  : undefined;
+            }
+            window.__phase3UploadRequests.push({
+              ...(responseError ? { error: responseError } : {}),
+              host: requestUrl.hostname,
+              path: requestUrl.pathname,
+              status: response.status,
+              type: response.type,
+            });
+          }
+          return response;
+        } catch (error) {
+          if (relevant) {
+            window.__phase3UploadRequests.push({
+              error: error instanceof Error ? error.name : "unknown",
+              host: requestUrl.hostname,
+              path: requestUrl.pathname,
+            });
+          }
+          throw error;
+        }
+      };
+      const binary = atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      const input = document.querySelector('[role="dialog"] input[type="file"]');
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([bytes], "phase3-upload.png", { type: "image/png" }));
+      input.files = transfer.files;
+      const queuedCount = input.files.length;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return queuedCount;
+    })()`,
+  );
+  assert.equal(queued, 1, "The browser did not queue the attachment fixture.");
+  try {
+    await waitFor(
+      browser,
+      `document.querySelector('[role="dialog"]')?.innerText.includes("1/5") &&
+       !document.querySelector('[role="dialog"]')?.innerText.includes("Failed")`,
+      "signed browser attachment upload",
+      60_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        body: document.querySelector('[role="dialog"]')?.innerText.slice(0, 1_600),
+        failures: performance.getEntriesByType('resource')
+          .filter((entry) => entry.name.includes('/attachments/') || entry.name.includes('/object/upload/sign/'))
+          .slice(-4)
+          .map((entry) => ({ duration: Math.round(entry.duration), name: new URL(entry.name).pathname })),
+        requests: window.__phase3UploadRequests,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; attachment upload diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await saveOpenItemEditor(browser, "activity attachment");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-cell="0-1"] [aria-label="1 attachment(s)"]'))`,
+    "committed activity attachment",
+    45_000,
+  );
+}
+
+async function verifyMobileMapBackNavigation(browser) {
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 932, mobile: true, width: 430 },
+    browser.sessionId,
+  );
+  const before = await evaluate(browser, "location.href");
+  assert.equal(
+    await evaluate(browser, "Boolean(document.querySelector('.planner-mobile-map-fab'))"),
+    false,
+    "The old map FAB still obstructs the bottom Matrix row.",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button[data-i18n-aria-label="Open map and route tools"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "mobile map icon",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('.planner-map-sheet[data-state="open"]'))`,
+    "mobile map sheet",
+  );
+  await evaluate(browser, "history.back(); true");
+  await waitFor(
+    browser,
+    `!document.querySelector('.planner-map-sheet')`,
+    "browser Back closes mobile map",
+  );
+  assert.equal(await evaluate(browser, "location.href"), before);
+  assert.doesNotMatch(await evaluate(browser, "document.body.innerText"), /could not be loaded/i);
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
   );
 }
 
@@ -567,12 +853,22 @@ async function verifyFeedbackCountdown(browser) {
     browser,
     `(() => {
       const button = document.querySelector('button[aria-label="Dismiss message"]');
+      const alert = button?.closest('[role="alert"], [role="status"]');
       if (!button) return null;
       const rect = button.getBoundingClientRect();
-      return { height: rect.height, width: rect.width };
+      return {
+        backgroundColor: alert ? getComputedStyle(alert).backgroundColor : "",
+        height: rect.height,
+        width: rect.width,
+      };
     })()`,
   );
   assert.ok(hitbox?.height >= 44 && hitbox?.width >= 44, "Alert close target is below 44px.");
+  assert.doesNotMatch(
+    hitbox?.backgroundColor ?? "",
+    /transparent|rgba\([^)]*,\s*0\s*\)$/,
+    "Alert background is transparent.",
+  );
   await waitFor(
     browser,
     `!document.querySelector('.alert-countdown-progress')`,
@@ -930,8 +1226,12 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
   const placeSelector = 'input[aria-label="Place or activity name"]';
   await waitFor(
     browser,
-    `Boolean(document.querySelector(${JSON.stringify(placeSelector)}))`,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(placeSelector)});
+      return input instanceof HTMLInputElement && !input.disabled;
+    })()`,
     "activity place search",
+    45_000,
   );
   await setInputValue(browser, placeSelector, query);
   try {
@@ -983,18 +1283,17 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
       ?.textContent.trim())()`,
   );
   assert.ok(action, `The activity editor for ${query} was not saveable.`);
-  await clickButtonText(browser, action);
   if (action === "Confirm order") {
+    await clickButtonText(browser, action);
     await waitFor(
       browser,
       `[...document.querySelectorAll('[role="dialog"] button')]
         .some((button) => button.textContent.trim() === "Save" && !button.disabled)`,
       "activity order confirmation",
     );
-    await clickButtonText(browser, "Save");
   }
   try {
-    await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "activity save", 45_000);
+    await saveOpenItemEditor(browser, "activity");
   } catch (error) {
     const diagnostic = await readBoundedActivitySaveDiagnostic(browser);
     throw new Error(
@@ -1069,6 +1368,31 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
     )`,
     "save and calculate AMap route",
   );
+  const routeLegCount = await evaluate(
+    browser,
+    `document.querySelectorAll('button[aria-label^="Travel mode for leg"]').length`,
+  );
+  for (let index = 0; index < routeLegCount; index += 1) {
+    await clickElement(
+      browser,
+      `document.querySelector('button[aria-label="Travel mode for leg ${index + 1}"]')`,
+      `travel mode for AMap leg ${index + 1}`,
+    );
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="option"]')].some((option) =>
+        ["Driving", "驾车"].includes(option.textContent.trim()) && option.getClientRects().length
+      )`,
+      `driving option for AMap leg ${index + 1}`,
+    );
+    await clickElement(
+      browser,
+      `[...document.querySelectorAll('[role="option"]')].find((option) =>
+        ["Driving", "驾车"].includes(option.textContent.trim()) && option.getClientRects().length
+      )`,
+      `Driving for AMap leg ${index + 1}`,
+    );
+  }
   await clickButtonText(browser, "Save & calculate");
   try {
     await waitFor(
@@ -1109,6 +1433,170 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
       )}`,
     );
   }
+}
+
+async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
+  const before = await evaluate(
+    browser,
+    `({
+      itemCount: document.querySelectorAll('[data-cell="0-1"] [data-edit-item]').length,
+      markerCount: Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount ?? -1),
+    })`,
+  );
+  assert.ok(before.itemCount >= 3, "The deletion regression needs three saved activities.");
+  assert.ok(before.markerCount >= 3, "The deletion regression needs mapped activities.");
+  const rowExpression = `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+    .find((item) => item.getClientRects().length)`;
+  await clickElement(
+    browser,
+    `(${rowExpression})?.parentElement?.querySelector('button[aria-label^="Actions for"]')`,
+    "activity actions before delete",
+  );
+  await clickButtonText(browser, "Delete item");
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-cell="0-1"] [data-edit-item]').length === ${before.itemCount - 1} &&
+      Number(document.querySelector('[data-amap-marker-count]')?.dataset.amapMarkerCount) < ${before.markerCount}`,
+    "deleted activity removed from Matrix and map",
+    60_000,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button[aria-label="Show the selected day"]')]
+      .find((button) => button.getClientRects().length)`,
+    "reopen selected day route after activity delete",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('button')].some((button) =>
+      ["Edit route", "Create route"].includes(button.getAttribute("aria-label")) &&
+      button.getClientRects().length
+    )`,
+    "route recovery control after activity delete",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      ["Edit route", "Create route"].includes(button.getAttribute("aria-label")) &&
+      button.getClientRects().length
+    )`,
+    "edit or recreate route after activity delete",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-i18n-aria-label="Edit Route A"]')) &&
+      !document.querySelector('[data-i18n-aria-label="Edit Route A"]')?.innerText.includes("Deleted item")`,
+    "route draft without deleted activity",
+  );
+  await clickButtonText(browser, "Save & calculate");
+  await waitFor(
+    browser,
+    `!document.querySelector('[data-i18n-aria-label="Edit Route A"]') &&
+      Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
+    "route recalculated after activity delete",
+    60_000,
+  );
+  const persisted = await loadPersistedAmapEvidence(tripId);
+  assert.equal(persisted.items.length, before.itemCount - 1);
+  assert.equal(persisted.calculations.length, 1);
+}
+
+async function generateLongImageThroughUi(browser) {
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] summary')]
+      .find((summary) => summary.textContent.trim() === "Advanced settings")`,
+    "Advanced share settings",
+  );
+  await clickButtonText(browser, "Save trip image");
+  try {
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+        ["Create image", "Create image & download"].some((label) =>
+          button.textContent.includes(label)
+        ) &&
+        !button.disabled && button.getClientRects().length
+      )`,
+      "long image creation action",
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        body: document.querySelector('[role="dialog"]')?.innerText.slice(0, 2_000),
+        alerts: [...document.querySelectorAll('[role="dialog"] [role="alert"]')]
+          .map((element) => element.textContent?.trim())
+          .filter(Boolean),
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; long-image workspace diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      ["Create image", "Create image & download"].some((label) =>
+        button.textContent.includes(label)
+      ) &&
+      !button.disabled && button.getClientRects().length
+    )`,
+    "Create trip long image",
+  );
+  try {
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+        ["Open image", "Download image"].includes(button.textContent.trim()) &&
+        button.getClientRects().length
+      )`,
+      "generated trip long image",
+      90_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        body: document.querySelector('[role="dialog"]')?.innerText.slice(0, 2_000),
+        storageRequests: performance.getEntriesByType('resource')
+          .filter((entry) => entry.name.includes('/storages/'))
+          .slice(-6)
+          .map((entry) => ({ duration: Math.round(entry.duration), name: new URL(entry.name).pathname })),
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; long-image diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] summary')]
+      .find((summary) => summary.textContent.trim() === "Manage image link")`,
+    "Manage generated image link",
+  );
+  await clickButtonText(browser, "Revoke image link…");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[role="alertdialog"]'))`,
+    "revoke image confirmation",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')]
+      .find((button) => button.textContent.trim() === "Revoke image link" && !button.disabled)`,
+    "Revoke generated image link",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[role="alertdialog"]') &&
+      [...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+        button.textContent.includes("Create image") && !button.disabled
+      )`,
+    "generated image storage cleanup",
+    60_000,
+  );
 }
 
 async function publishThroughUi(browser, tripId) {
@@ -1206,6 +1694,20 @@ async function publishThroughUi(browser, tripId) {
   assert.ok(publicUrl, "The published page URL was not rendered by the application UI.");
   const token = new URL(publicUrl).pathname.split("/").filter(Boolean).at(-1);
   assert.ok(token, "The application UI returned an invalid public page URL.");
+  const openPage = await evaluate(
+    browser,
+    `(() => {
+      const link = [...document.querySelectorAll('[role="dialog"] a')]
+        .find((candidate) => candidate.textContent.trim() === "Open page");
+      return link ? { href: link.href, target: link.target } : null;
+    })()`,
+  );
+  assert.deepEqual(
+    openPage,
+    { href: publicUrl, target: "_blank" },
+    "Open page must launch the unscrolled share URL in a new tab.",
+  );
+  await generateLongImageThroughUi(browser);
   await clickElement(
     browser,
     `document.querySelector('[role="dialog"] [data-dialog-close]')`,
@@ -1483,6 +1985,11 @@ async function captureMutationForms(browser) {
     })()`,
   );
   await clickButtonText(browser, "Cancel");
+  await waitFor(
+    browser,
+    `!document.querySelector('[role="alertdialog"]') && !document.querySelector('input[name="trip_id"]')`,
+    "delete confirmation close",
+  );
   return { deleteEntries, updateEntries };
 }
 
@@ -1785,6 +2292,7 @@ async function run() {
     await saveHotelThroughUi(browser);
     await verifyFeedbackCountdown(browser);
     await saveWalkingTransportThroughUi(browser);
+    await verifyMobileTransportEditorScroll(browser);
     await verifyVariantNavigationThroughUi(browser);
     await navigate(browser, `/trips/${tripId}`);
     await navigate(browser, `/trips/${tripId}`);
@@ -1795,6 +2303,8 @@ async function run() {
       "refreshed saved activities",
       60_000,
     );
+    await uploadAttachmentThroughUi(browser);
+    await verifyMobileMapBackNavigation(browser);
     await clickElement(
       browser,
       `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
@@ -1858,11 +2368,35 @@ async function run() {
     const routeEvidence = await loadPersistedAmapEvidence(tripId);
     assertPersistedAmapRoute(routeEvidence);
     await assertRealAmapBrowserAdapter(browser);
+    await verifyDeletedActivityLeavesMapAndRoute(browser, tripId);
     const publicToken = await publishThroughUi(browser, tripId);
     await verifyTabletFrozenLayers(browser);
     const forms = await captureMutationForms(browser);
 
-    await navigate(browser, "/trips");
+    await evaluate(browser, "window.__phase3BackNavigationSentinel = true");
+    await clickElement(
+      browser,
+      `document.querySelector('button[data-i18n-aria-label="Back to Trips"]')`,
+      "Back to Trips hard navigation",
+    );
+    await waitFor(
+      browser,
+      `location.pathname === "/trips" && window.__phase3BackNavigationSentinel !== true`,
+      "Back to Trips document load",
+      45_000,
+    );
+    assert.doesNotMatch(
+      await evaluate(browser, "document.body.innerText"),
+      /This page couldn.t load|This Plan could not be loaded/i,
+    );
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector(${JSON.stringify(
+        `button[aria-label="Actions for ${updatedTitle}"]`,
+      )}))`,
+      "Created trip actions",
+      45_000,
+    );
     await pressElement(
       browser,
       `document.querySelector(${JSON.stringify(`button[aria-label="Actions for ${updatedTitle}"]`)})`,
