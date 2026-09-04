@@ -1226,10 +1226,22 @@ test("trip creation persists the request locale through provider-safe versioned 
     ),
     "utf8",
   );
+  const aclHardening = await readFile(
+    new URL(
+      "../../../database/shared/migrations/20260905020000_revoke_anon_create_trip_v2.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
   assert.match(shared, /create function public\.create_trip_v2/iu);
   assert.match(shared, /trip_locale text default 'en'/iu);
   assert.match(shared, /trip_locale = 'zh-CN' then '方案 A' else 'Route A'/iu);
   assert.match(cloudbase, /app_private\.app_current_user_id\(\)/u);
+  assert.match(aclHardening, /revoke all on function public\.create_trip_v2[\s\S]*from anon/iu);
+  assert.match(
+    aclHardening,
+    /grant execute on function public\.create_trip_v2[\s\S]*to authenticated/iu,
+  );
 });
 
 test("Overview transport defaults use the restricted priority and distance threshold", () => {
