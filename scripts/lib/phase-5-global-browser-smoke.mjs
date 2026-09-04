@@ -216,6 +216,108 @@ async function setInputValue(browser, selector, value) {
   assert.equal(changed, true, `${selector} was not available.`);
 }
 
+async function verifyVariantAffordance(browser) {
+  const hasVisibleChevron = `Boolean([...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+    .find((button) => button.getClientRects().length)?.querySelector('.lucide-chevron-down'))`;
+  for (const width of [1280, 820]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 900, mobile: width < 900, width },
+      browser.sessionId,
+    );
+    await waitFor(browser, hasVisibleChevron, `Plan dropdown chevron at ${width}px`);
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+}
+
+async function verifyHardNewTabShare(browser, publicToken) {
+  await evaluate(
+    browser,
+    `window.dispatchEvent(new Event("trip-planner:open-share-settings")); true`,
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('[role="dialog"] a')]
+      .find((link) => link.getClientRects().length && link.textContent.trim() === "Open page"))`,
+    "published Share Page open action",
+  );
+  const contract = await evaluate(
+    browser,
+    `(() => {
+      const link = [...document.querySelectorAll('[role="dialog"] a')]
+        .find((candidate) => candidate.getClientRects().length && candidate.textContent.trim() === "Open page");
+      const record = { calls: [], nativeOpen: window.open, replacement: "", tab: null };
+      const tab = {
+        location: { replace: (url) => { record.replacement = String(url); } },
+        opener: window,
+      };
+      record.tab = tab;
+      window.__phase5WindowOpen = record;
+      window.open = (url, target) => {
+        record.calls.push({ target: String(target), url: String(url) });
+        return tab;
+      };
+      return link ? { href: link.href, rel: link.rel, target: link.target } : null;
+    })()`,
+  );
+  assert.ok(contract, "Published Share Page anchor contract was unavailable.");
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const link = [...document.querySelectorAll('[role="dialog"] a')]
+          .find((candidate) => candidate.getClientRects().length && candidate.textContent.trim() === "Open page");
+        if (!(link instanceof HTMLAnchorElement)) return false;
+        link.click();
+        return true;
+      })()`,
+    ),
+    true,
+    "published Share Page open action was not clickable",
+  );
+  const expectedPath = `/share/${publicToken}`;
+  const observed = await evaluate(
+    browser,
+    `(() => {
+      const record = window.__phase5WindowOpen;
+      window.open = record.nativeOpen;
+      delete window.__phase5WindowOpen;
+      return {
+        calls: record.calls,
+        currentHref: location.href,
+        openerCleared: record.tab.opener === null,
+        replacement: record.replacement,
+      };
+    })()`,
+  );
+  assert.deepEqual(observed.calls, [{ target: "_blank", url: "about:blank" }]);
+  assert.equal(observed.openerCleared, true);
+  assert.equal(new URL(observed.replacement).pathname, expectedPath);
+  assert.equal(new URL(contract.href).pathname, expectedPath);
+  assert.equal(contract.target, "_blank");
+  assert.match(contract.rel, /\bnoopener\b/u);
+  assert.equal(new URL(observed.currentHref).pathname.startsWith("/trips/"), true);
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyDown" },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp" },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('.public-share-settings-dialog')`,
+    "published Share Page dialog close",
+  );
+}
+
 async function verifyVariantNavigation(browser) {
   const trigger = `[...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
     .find((button) => button.getClientRects().length && !button.disabled)`;
@@ -577,6 +679,8 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded map diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
+    await verifyVariantAffordance(browser);
+    await verifyHardNewTabShare(browser, options.publicToken);
     await verifyVariantNavigation(browser);
     const place = await evaluate(
       browser,
@@ -624,6 +728,35 @@ export async function runGlobalBrowserSmoke(options) {
     const publicBody = await evaluate(browser, "document.body.innerText");
     assert.doesNotMatch(publicBody, new RegExp(options.privateTitle));
     assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
+    const publicMetadata = await evaluate(
+      browser,
+      `(() => ({
+        canonical: document.querySelector('link[rel="canonical"]')?.href ?? '',
+        icon: document.querySelector('link[rel~="icon"]')?.href ?? '',
+        image: document.querySelector('meta[property="og:image"]')?.content ?? '',
+        origin: location.origin,
+        path: location.pathname,
+      }))()`,
+    );
+    assert.equal(new URL(publicMetadata.canonical).origin, publicMetadata.origin);
+    assert.equal(new URL(publicMetadata.canonical).pathname, publicMetadata.path);
+    assert.equal(new URL(publicMetadata.icon).pathname, "/icon.svg");
+    assert.equal(new URL(publicMetadata.image).origin, publicMetadata.origin);
+    assert.equal(new URL(publicMetadata.image).pathname, `${publicMetadata.path}/opengraph-image`);
+    await clickElement(
+      browser,
+      `document.querySelector('[data-i18n-aria-label="Share itinerary"]')`,
+      "public Share itinerary",
+    );
+    await waitFor(
+      browser,
+      `(() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        return dialog?.innerText.includes('Trip image') &&
+          dialog.innerText.includes('The owner has not published a trip image yet.');
+      })()`,
+      "public long-image sharing option",
+    );
 
     const protectionHeaders = remotePreview ? previewProtectionHeaders(bypassSecret) : {};
     const unauthorizedCleanup = await fetch(new URL("/api/cron/share-image-cleanup", baseUrl), {

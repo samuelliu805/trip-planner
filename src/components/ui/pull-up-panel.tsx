@@ -110,6 +110,7 @@ export function PullUpPanel({
           panelRef.current?.focus({ preventScroll: true });
         }}
         ref={panelRef}
+        showCloseButton={false}
         side="bottom"
         tabIndex={focusPanelOnOpen ? -1 : undefined}
       >

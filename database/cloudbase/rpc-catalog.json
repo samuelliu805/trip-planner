@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 143,
+  "publicFunctionCount": 144,
   "catalog": [
     {
       "schema": "public",
@@ -561,6 +561,24 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "create_trip_v2(text,date,date,text,text,integer,text)",
+      "arguments": [
+        { "name": "trip_title", "type": "text" },
+        { "name": "trip_start_date", "type": "date" },
+        { "name": "trip_end_date", "type": "date" },
+        { "name": "trip_timezone", "type": "text" },
+        { "name": "trip_currency", "type": "text" },
+        { "name": "trip_day_count", "type": "integer" },
+        { "name": "trip_locale", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "claim_bound_create"
     },
     {
       "schema": "public",

@@ -1982,6 +1982,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_trip_v2: {
+        Args: {
+          trip_currency?: string
+          trip_day_count?: number
+          trip_end_date?: string
+          trip_locale?: string
+          trip_start_date?: string
+          trip_timezone?: string
+          trip_title: string
+        }
+        Returns: string
+      }
       current_research_plan_application_ids: {
         Args: { target_trip_id: string; target_variant_id: string }
         Returns: string[]

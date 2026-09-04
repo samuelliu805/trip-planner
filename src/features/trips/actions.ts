@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
+import { getRequestLocale } from "@/features/i18n/server";
 import { listPublicItineraryLinks } from "@/features/sharing/data";
 import {
   defaultTripCurrencyForRegion,
@@ -70,9 +71,11 @@ export async function createTrip(
     const repository = getTripRepository();
     const regionalDefault = defaultTripCurrencyForRegion(getServerProviderConfig().appRegion);
     const currency = (await repository.getDefaultCurrencyForCurrentUser()) ?? regionalDefault;
+    const locale = await getRequestLocale();
     const trip = await repository.create({
       currency,
       dayCount: defaultTripDayCount,
+      locale,
       timezone: parsed.data.timezone,
       title: defaultTripTitle(today),
     });

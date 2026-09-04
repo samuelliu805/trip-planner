@@ -61,9 +61,10 @@ export class SupabaseTripRepository implements TripRepository {
 
   async create(input: CreateTripInput) {
     const supabase = await createSupabaseServerClient();
-    const { data: id, error } = await supabase.rpc("create_trip", {
+    const { data: id, error } = await supabase.rpc("create_trip_v2", {
       trip_currency: input.currency,
       trip_day_count: input.dayCount,
+      trip_locale: input.locale,
       trip_timezone: input.timezone,
       trip_title: input.title,
     });

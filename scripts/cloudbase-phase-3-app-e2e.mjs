@@ -828,6 +828,10 @@ async function verifyMobileMapBackNavigation(browser) {
     `Boolean(document.querySelector('.planner-map-sheet[data-state="open"]'))`,
     "mobile map sheet",
   );
+  await evaluate(
+    browser,
+    "window.__phase3MatrixBeforeMapBack = document.querySelector('.planner-matrix'); true",
+  );
   await evaluate(browser, "history.back(); true");
   await waitFor(
     browser,
@@ -835,6 +839,14 @@ async function verifyMobileMapBackNavigation(browser) {
     "browser Back closes mobile map",
   );
   assert.equal(await evaluate(browser, "location.href"), before);
+  assert.equal(
+    await evaluate(
+      browser,
+      "window.__phase3MatrixBeforeMapBack === document.querySelector('.planner-matrix')",
+    ),
+    true,
+    "Closing the map remounted the Matrix instead of revealing the existing table.",
+  );
   assert.doesNotMatch(await evaluate(browser, "document.body.innerText"), /could not be loaded/i);
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",

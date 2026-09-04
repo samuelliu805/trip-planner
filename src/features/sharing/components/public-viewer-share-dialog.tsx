@@ -92,52 +92,55 @@ export function PublicViewerShareDialog({
               url={url}
             />
           </section>
-          {ownerSharePage || shareImage ? (
-            <section className="space-y-3 border-t pt-5" aria-labelledby="trip-image-heading">
-              <h3 className="text-sm font-semibold" id="trip-image-heading">
-                <T message={" Trip image "} />
-              </h3>
-              {ownerSharePage ? (
-                <div className="border bg-muted/30 p-4">
-                  <LongImageExportPanel
-                    imageState={currentImageState}
-                    itinerary={itinerary}
-                    onImageStateChange={setCurrentImageState}
-                    sharePage={ownerSharePage}
-                    siteUrl={siteUrl}
-                  />
-                </div>
-              ) : null}
-              {!ownerSharePage && shareImage ? (
-                <div className="space-y-2 border bg-muted/30 p-4">
-                  <Button asChild className="min-h-11 w-full min-[1200px]:hidden">
-                    <a
-                      href={`/share/image/${shareImage.permanentSlug}`}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink aria-hidden="true" className="size-4" />{" "}
-                      <T message={" Open image "} />
-                    </a>
-                  </Button>
-                  <Button
-                    className="hidden min-h-11 w-full min-[1200px]:inline-flex"
-                    onClick={() =>
-                      downloadShareImageParts(shareImage.permanentSlug, shareImage.parts.length)
-                    }
+          <section className="space-y-3 border-t pt-5" aria-labelledby="trip-image-heading">
+            <h3 className="text-sm font-semibold" id="trip-image-heading">
+              <T message={" Trip image "} />
+            </h3>
+            {ownerSharePage ? (
+              <div className="border bg-muted/30 p-4">
+                <LongImageExportPanel
+                  imageState={currentImageState}
+                  itinerary={itinerary}
+                  onImageStateChange={setCurrentImageState}
+                  sharePage={ownerSharePage}
+                  siteUrl={siteUrl}
+                />
+              </div>
+            ) : null}
+            {!ownerSharePage && shareImage ? (
+              <div className="space-y-2 border bg-muted/30 p-4">
+                <Button asChild className="min-h-11 w-full min-[1200px]:hidden">
+                  <a
+                    href={`/share/image/${shareImage.permanentSlug}`}
+                    rel="noopener noreferrer"
+                    target="_blank"
                   >
-                    <ImageDown className="size-4" /> <T message={" Download image "} />
-                  </Button>
-                  {shareImage.expiresAt ? (
-                    <p className="text-center text-xs text-muted-foreground">
-                      <T message={" Available until "} />
-                      {formatShareImageExpiry(shareImage.expiresAt, locale)}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-            </section>
-          ) : null}
+                    <ExternalLink aria-hidden="true" className="size-4" />{" "}
+                    <T message={" Open image "} />
+                  </a>
+                </Button>
+                <Button
+                  className="hidden min-h-11 w-full min-[1200px]:inline-flex"
+                  onClick={() =>
+                    downloadShareImageParts(shareImage.permanentSlug, shareImage.parts.length)
+                  }
+                >
+                  <ImageDown className="size-4" /> <T message={" Download image "} />
+                </Button>
+                {shareImage.expiresAt ? (
+                  <p className="text-center text-xs text-muted-foreground">
+                    <T message={" Available until "} />
+                    {formatShareImageExpiry(shareImage.expiresAt, locale)}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {!ownerSharePage && !shareImage ? (
+              <div className="border bg-muted/30 p-4 text-sm text-muted-foreground">
+                <T message="The owner has not published a trip image yet." />
+              </div>
+            ) : null}
+          </section>
         </div>
       </DialogContent>
     </Dialog>

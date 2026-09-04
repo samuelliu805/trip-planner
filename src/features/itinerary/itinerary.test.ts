@@ -108,6 +108,7 @@ import { buildRouteConfigSignature } from "../routes/signatures.ts";
 import { resolveRouteCalculationConfig } from "../routes/plan-config.ts";
 import { dayRouteStatus } from "../routes/status.ts";
 import { suggestedDraftLegMode } from "../routes/transport-suggestion.ts";
+import { nextVariantName } from "../variants/default-name.ts";
 import { routeLegExplanation } from "../routes/route-leg-presentation.ts";
 import { compactTransportEndpoint, compactTransportRoute } from "./transport-presentation.ts";
 import {
@@ -900,6 +901,8 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.doesNotMatch(controls, /router\.push\(tripSectionHref/);
   assert.match(controls, /navigateToVariant[\s\S]*window\.location\.assign/);
   assert.match(variantUi, /<PullUpPanel/);
+  assert.doesNotMatch(variantSwitcher, /Switch the Plan shown in the Matrix/);
+  assert.match(variantSwitcher, /min-\[960px\]:text-base[\s\S]*<ChevronDown/);
   assert.match(variantUi, /PrimaryBadge/);
   assert.match(variantUi, /message=\{"? ?Primary ?"?\}/);
   assert.match(variantUi, /Maximum of three variants reached/);
@@ -1165,13 +1168,68 @@ test("failed recalculation leaves the prior snapshot untouched and caps concurre
   assert.deepEqual(result.legs, previous);
 });
 
-test("transport suggestions are restrained and never use unknown-to-Train normalization", () => {
-  const item = (mode: string): ItineraryItem =>
-    ({ details: { mode }, id: mode, type: "transport" }) as unknown as ItineraryItem;
-  assert.equal(suggestedDraftLegMode([item("bus")]), "bus");
-  assert.equal(suggestedDraftLegMode([item("bus"), item("train")]), "walk");
-  assert.equal(suggestedDraftLegMode([item("unknown")]), "walk");
-  assert.equal(suggestedDraftLegMode([]), "walk");
+test("Day route transport suggestions default to Driving and choose explicit modes by span", () => {
+  const transport = (mode: string, id = mode): ItineraryItem =>
+    ({ details: { mode }, id, type: "transport" }) as unknown as ItineraryItem;
+  const place = (id: string, longitude: number): ItineraryItem =>
+    ({
+      details: {},
+      id,
+      place: { id: `${id}-place`, latitude: 0, longitude },
+      type: "activity",
+    }) as unknown as ItineraryItem;
+  const span = (longitude: number, modes: string[]) => [
+    place("from", 0),
+    ...modes.map((mode, index) => transport(mode, `${mode}-${index}`)),
+    place("to", longitude),
+  ];
+
+  assert.equal(suggestedDraftLegMode([]), "self_driving");
+  assert.equal(suggestedDraftLegMode([transport("unknown")]), "self_driving");
+  assert.equal(suggestedDraftLegMode([transport("bus")]), "bus");
+  assert.equal(
+    suggestedDraftLegMode([transport("flight"), transport("self_driving")]),
+    "self_driving",
+  );
+  assert.equal(suggestedDraftLegMode(span(0.005, ["walk", "bike"])), "walk");
+  assert.equal(suggestedDraftLegMode(span(0.03, ["walk", "bike"])), "bike");
+  assert.equal(suggestedDraftLegMode(span(0.18, ["taxi", "train"])), "taxi");
+  assert.equal(suggestedDraftLegMode(span(0.9, ["train", "flight"])), "train");
+  assert.equal(suggestedDraftLegMode(span(9, ["train", "flight"])), "flight");
+  assert.equal(
+    suggestedDraftLegMode([
+      { details: {}, id: "flight", type: "flight" } as unknown as ItineraryItem,
+    ]),
+    "flight",
+  );
+});
+
+test("generated Plan names localize and advance across English and Chinese defaults", () => {
+  assert.equal(nextVariantName([], "en"), "Route A");
+  assert.equal(nextVariantName([], "zh-CN"), "方案 A");
+  assert.equal(nextVariantName([{ name: "Route A" }], "zh-CN"), "方案 B");
+  assert.equal(nextVariantName([{ name: "方案 A" }, { name: "Route B" }], "en"), "Route C");
+});
+
+test("trip creation persists the request locale through provider-safe versioned RPCs", async () => {
+  const shared = await readFile(
+    new URL(
+      "../../../database/shared/migrations/20260905010000_localized_initial_route_variant.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const cloudbase = await readFile(
+    new URL(
+      "../../../database/cloudbase/overlays/migrations/20260905010000_localized_initial_route_variant.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(shared, /create function public\.create_trip_v2/iu);
+  assert.match(shared, /trip_locale text default 'en'/iu);
+  assert.match(shared, /trip_locale = 'zh-CN' then '方案 A' else 'Route A'/iu);
+  assert.match(cloudbase, /app_private\.app_current_user_id\(\)/u);
 });
 
 test("Overview transport defaults use the restricted priority and distance threshold", () => {

@@ -20,6 +20,7 @@ export type Trip = Readonly<{
 export type CreateTripInput = Readonly<{
   currency: string;
   dayCount: number;
+  locale: "en" | "zh-CN";
   timezone: string;
   title: string;
 }>;
