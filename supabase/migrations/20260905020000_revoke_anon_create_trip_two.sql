@@ -1,4 +1,4 @@
--- Generated CloudBase migration from database/shared/migrations/20260905020000_revoke_anon_create_trip_v2.sql.
+-- Generated Supabase migration from database/shared/migrations/20260905020000_revoke_anon_create_trip_two.sql.
 
 -- Edit the shared source and the minimal provider overlay, then rebuild.
 

@@ -1228,7 +1228,7 @@ test("trip creation persists the request locale through provider-safe versioned 
   );
   const aclHardening = await readFile(
     new URL(
-      "../../../database/shared/migrations/20260905020000_revoke_anon_create_trip_v2.sql",
+      "../../../database/shared/migrations/20260905020000_revoke_anon_create_trip_two.sql",
       import.meta.url,
     ),
     "utf8",
