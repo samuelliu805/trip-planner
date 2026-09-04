@@ -329,7 +329,7 @@ jobs:
             --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
           node scripts/verify-cloudbase-migration-plan.mjs \
             "$migration_list" "$migration_plan" \
-            20260902075444 20260903180000 20260903193000 20260905010000
+            20260902075444 20260903180000 20260903193000 20260905010000 20260905020000
       - name: Build the exact CN selector and scan secrets
         run: |
           npm run build
