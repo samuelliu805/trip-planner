@@ -41,7 +41,11 @@ type PublicSharePageProps = {
 };
 
 export async function generateMetadata({ params }: PublicSharePageProps): Promise<Metadata> {
-  const [{ token }, locale] = await Promise.all([params, getRequestLocale()]);
+  const [{ token }, locale, siteUrl] = await Promise.all([
+    params,
+    getRequestLocale(),
+    getRequestSiteUrl(),
+  ]);
   const itinerary = await loadItinerary(token);
   if (!itinerary) {
     return {
@@ -51,12 +55,20 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
     };
   }
   const description = localizeGeneratedPublicDescription(itinerary.metadata.description, locale);
+  const canonicalUrl = `${siteUrl}/share/${token}`;
+  const imageUrl = `${canonicalUrl}/opengraph-image`;
   return {
+    alternates: { canonical: canonicalUrl },
     description,
+    icons: { icon: "/icon.svg" },
     openGraph: {
       description,
+      images: [{ alt: itinerary.metadata.title, height: 630, url: imageUrl, width: 1200 }],
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      siteName: locale === "zh-CN" ? "行程规划" : "Trip Planner",
       title: itinerary.metadata.title,
       type: "website",
+      url: canonicalUrl,
     },
     other: { referrer: "strict-origin" },
     robots: { follow: false, index: false, noarchive: true },
@@ -64,6 +76,7 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
     twitter: {
       card: "summary_large_image",
       description,
+      images: [imageUrl],
       title: itinerary.metadata.title,
     },
   };

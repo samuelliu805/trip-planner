@@ -98,6 +98,7 @@ export const researchZhCN: Record<string, string> = {
   "Trip type": "行程类型",
   "Booking link (optional)": "预订链接（选填）",
   "Open {site} in a new tab": "在新标签页中打开{site}",
+  "Get the {site} app": "下载{site}应用",
   "Price category: {category}": "价格分类：{category}",
   "Saved today": "今天保存",
 };

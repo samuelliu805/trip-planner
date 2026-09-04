@@ -8,6 +8,7 @@ DECLARE
     to_regprocedure('public.create_route_variant(uuid,uuid,text,text)')::oid,
     to_regprocedure('public.create_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)')::oid,
     to_regprocedure('public.create_trip(text,date,date,text,text,integer)')::oid,
+    to_regprocedure('public.create_trip_v2(text,date,date,text,text,integer,text)')::oid,
     to_regprocedure('public.current_research_plan_application_ids(uuid,uuid)')::oid,
     to_regprocedure('public.delete_route_variant(uuid,uuid)')::oid,
     to_regprocedure('public.duplicate_route_variant(uuid,uuid,text,text)')::oid,

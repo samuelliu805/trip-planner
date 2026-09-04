@@ -63,6 +63,7 @@ export function RouteVariantSwitcher({
                 style={{ backgroundColor: activeVariant.color }}
               />
               <span className="truncate text-sm font-semibold min-[960px]:text-base">{title}</span>
+              <ChevronDown aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
@@ -126,7 +127,6 @@ export function RouteVariantSwitcher({
       </Button>
 
       <PullUpPanel
-        description="Switch the Plan shown in the Matrix and map."
         id="route-variant-switcher"
         onOpenChange={onSheetOpenChange}
         open={sheetOpen}

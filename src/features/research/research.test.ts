@@ -133,6 +133,41 @@ test("rental and train provider sets open official booking pages without brittle
   );
 });
 
+test("CN Ideas use category-specific Chinese providers with mobile app fallbacks", () => {
+  assert.deepEqual(
+    bookingSitesForCategory("flight", "cn").map(({ name }) => name),
+    ["携程旅行", "飞猪旅行", "美团"],
+  );
+  assert.deepEqual(
+    bookingSitesForCategory("stay", "cn").map(({ name }) => name),
+    [
+      "携程旅行",
+      "飞猪旅行",
+      "美团",
+      "途家民宿",
+      "希尔顿官网",
+      "万豪官网",
+      "洲际酒店集团官网",
+      "凯悦官网",
+    ],
+  );
+  assert.deepEqual(
+    bookingSitesForCategory("train", "cn").map(({ name }) => name),
+    ["携程旅行", "铁路12306"],
+  );
+  assert.deepEqual(
+    bookingSitesForCategory("rental", "cn").map(({ name }) => name),
+    ["租租车", "神州租车"],
+  );
+  for (const category of ["flight", "stay", "train", "rental"] as const) {
+    for (const site of bookingSitesForCategory(category, "cn")) {
+      assert.match(site.url, /^https:\/\//);
+      if (site.appStoreUrl)
+        assert.match(site.appStoreUrl, /^https:\/\/apps\.apple\.com\/cn\/app\//);
+    }
+  }
+});
+
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
   return {
     category: "stay",

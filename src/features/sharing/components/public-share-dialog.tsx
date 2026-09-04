@@ -2,7 +2,7 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ExternalLink, LoaderCircle, Share2 } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type MouseEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
@@ -160,6 +160,27 @@ export function PublicShareDialog({
     });
   }
 
+  function openPublishedPage(event: MouseEvent<HTMLAnchorElement>) {
+    captureBrowserProductEvent(
+      "share_link_opened",
+      {
+        operation_id: newTelemetryOperationId(),
+        share_artifact: "page",
+        surface: "share_dialog",
+      },
+      { actorType: "authenticated" },
+    );
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+    // Start from an empty browsing context so this can never inherit an App Router tree,
+    // scroll restoration entry, or intercepted client navigation from the planner.
+    const tab = window.open("about:blank", "_blank");
+    if (!tab) return;
+    event.preventDefault();
+    tab.opener = null;
+    tab.location.replace(publicUrl);
+  }
+
   return (
     <Dialog onOpenChange={setOpen} open={open}>
       {renderTrigger ? (
@@ -253,17 +274,7 @@ export function PublicShareDialog({
             <Button asChild>
               <a
                 href={publicUrl}
-                onClick={() =>
-                  captureBrowserProductEvent(
-                    "share_link_opened",
-                    {
-                      operation_id: newTelemetryOperationId(),
-                      share_artifact: "page",
-                      surface: "share_dialog",
-                    },
-                    { actorType: "authenticated" },
-                  )
-                }
+                onClick={openPublishedPage}
                 rel="noopener noreferrer"
                 target="_blank"
               >

@@ -23,6 +23,7 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { cn } from "@/lib/utils";
 
 import { useCreateRouteVariant, useDuplicateRouteVariant, useUpdateRouteVariant } from "../queries";
+import { nextVariantName } from "../default-name";
 import { variantColorPalette } from "../schema";
 
 export type VariantEditorMode = "blank" | "duplicate" | "metadata";
@@ -63,16 +64,12 @@ function ColorPalette({ color, onChange }: { color: string; onChange: (color: st
   );
 }
 
-function nextVariantDefaults(variants: PlannerVariant[]) {
-  const suffix = ["A", "B", "C"].find(
-    (candidate) =>
-      !variants.some(({ name }) => name.toLowerCase() === `route ${candidate.toLowerCase()}`),
-  );
+function nextVariantDefaults(variants: PlannerVariant[], locale: "en" | "zh-CN") {
   const color =
     variantColorPalette.find(
       (candidate) => !variants.some((variant) => variant.color.toLowerCase() === candidate.value),
     )?.value ?? variantColorPalette[variants.length % variantColorPalette.length].value;
-  return { color, name: suffix ? `Route ${suffix}` : `Route ${variants.length + 1}` };
+  return { color, name: nextVariantName(variants, locale) };
 }
 
 export function RouteVariantEditorDialog({
@@ -92,11 +89,11 @@ export function RouteVariantEditorDialog({
   tripId: string;
   variants: PlannerVariant[];
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [initialValues] = useState(() =>
     mode === "metadata"
       ? { color: activeVariant.color.toLowerCase(), name: activeVariant.name }
-      : nextVariantDefaults(variants),
+      : nextVariantDefaults(variants, locale),
   );
   const [name, setName] = useState(initialValues.name);
   const [color, setColor] = useState(initialValues.color);

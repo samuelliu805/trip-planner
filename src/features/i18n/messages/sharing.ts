@@ -97,6 +97,7 @@ export const sharingZhCN: Record<string, string> = {
   "Itinerary views": "行程视图",
   "Trip details": "行程详情",
   "Trip image": "行程长图",
+  "The owner has not published a trip image yet.": "分享者尚未发布行程长图。",
   "Trip Planner home — no itinerary shared": "行程规划首页（不分享具体行程）",
   "Visitor tools": "访客工具",
   "Whole trip overview": "全程概览",

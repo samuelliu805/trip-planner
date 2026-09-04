@@ -18,12 +18,15 @@ function objectHistoryState() {
 /** Lets mobile Back close the map sheet instead of leaving the active Plan route. */
 export function usePlannerMapSheetHistory(setMapExpanded: Dispatch<SetStateAction<boolean>>) {
   const entryActive = useRef(false);
+  const closing = useRef(false);
+  const returnUrl = useRef<string | undefined>(undefined);
   const [marker] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     function handlePopState(event: PopStateEvent) {
       const mapEntry = event.state?.[historyStateKey] === marker;
       entryActive.current = mapEntry;
+      closing.current = false;
       setMapExpanded(mapEntry);
     }
 
@@ -33,15 +36,25 @@ export function usePlannerMapSheetHistory(setMapExpanded: Dispatch<SetStateActio
       if (history.state?.[historyStateKey] !== marker) return;
       const nextState = { ...objectHistoryState() };
       delete nextState[historyStateKey];
-      history.replaceState(nextState, "", location.href);
+      history.replaceState(
+        nextState,
+        "",
+        returnUrl.current ?? `${location.pathname}${location.search}`,
+      );
     };
   }, [marker, setMapExpanded]);
 
   const open = useCallback(() => {
     if (window.matchMedia("(max-width: 899px)").matches && !entryActive.current) {
-      history.pushState({ ...objectHistoryState(), [historyStateKey]: marker }, "", location.href);
+      returnUrl.current = location.href;
+      history.pushState(
+        { ...objectHistoryState(), [historyStateKey]: marker },
+        "",
+        `${location.pathname}${location.search}#trip-planner-map-${marker}`,
+      );
       entryActive.current = true;
     }
+    closing.current = false;
     setMapExpanded(true);
   }, [marker, setMapExpanded]);
 
@@ -51,12 +64,19 @@ export function usePlannerMapSheetHistory(setMapExpanded: Dispatch<SetStateActio
         open();
         return;
       }
-      setMapExpanded(false);
-      if (!entryActive.current) return;
+      const ownsCurrentEntry = history.state?.[historyStateKey] === marker;
+      if (entryActive.current && ownsCurrentEntry) {
+        if (!closing.current) {
+          closing.current = true;
+          history.back();
+        }
+        return;
+      }
       entryActive.current = false;
-      history.back();
+      closing.current = false;
+      setMapExpanded(false);
     },
-    [open, setMapExpanded],
+    [marker, open, setMapExpanded],
   );
 
   return { onOpenChange, open };

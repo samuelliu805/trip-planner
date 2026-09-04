@@ -12,6 +12,7 @@
       "owner_guard"
     ],
     ["create_trip(text,date,date,text,text,integer)", "claim_bound_create"],
+    ["create_trip_v2(text,date,date,text,text,integer,text)", "claim_bound_create"],
     ["current_research_plan_application_ids(uuid,uuid)", "owner_guard"],
     ["delete_route_variant(uuid,uuid)", "owner_guard"],
     ["detach_item_asset_v1(uuid,uuid,text)", "owner_guard"],

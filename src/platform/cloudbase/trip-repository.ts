@@ -88,10 +88,11 @@ export class CloudBaseTripRepository implements TripRepository {
     const recoveryTitle = `__trip_create_${randomUUID()}`;
     const id = await cloudBaseScalarUuidRpc({
       execute: () =>
-        db.rpc("create_trip", {
+        db.rpc("create_trip_v2", {
           trip_currency: input.currency,
           trip_day_count: input.dayCount,
           trip_end_date: null,
+          trip_locale: input.locale,
           trip_start_date: null,
           trip_timezone: input.timezone,
           trip_title: recoveryTitle,

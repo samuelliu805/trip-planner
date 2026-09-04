@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Search } from "lucide-react";
+import { Download, ExternalLink, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,10 +26,13 @@ type BookingSitesDialogProps = (
 
 export function BookingSitesDialog(props: BookingSitesDialogProps) {
   const { t } = useI18n();
+  const region = process.env.NEXT_PUBLIC_APP_REGION === "cn" ? "cn" : "global";
   const { item, toolbar = false } = props;
   const category = item ? (item.category as ResearchCategory) : props.category;
   const details = item ? bookingSearchDetails(item) : null;
-  const sites = item ? bookingSitesForItem(item) : bookingSitesForCategory(category);
+  const sites = item
+    ? bookingSitesForItem(item, region)
+    : bookingSitesForCategory(category, region);
 
   return (
     <Dialog>
@@ -64,22 +67,47 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
           ) : null}
           <div className="grid min-w-0 gap-2 sm:grid-cols-2">
             {sites.map((site) => (
-              <Button
-                asChild
-                className="min-h-12 min-w-0 justify-between px-3 text-left"
+              <div
+                className={
+                  site.appStoreUrl
+                    ? "grid min-w-0 grid-cols-[minmax(0,1fr)_3rem] gap-1 sm:block"
+                    : "min-w-0"
+                }
                 key={site.name}
-                variant="outline"
               >
-                <a
-                  aria-label={t("Open {site} in a new tab", { site: site.name })}
-                  href={site.url}
-                  rel="noreferrer"
-                  target="_blank"
+                <Button
+                  asChild
+                  className="min-h-12 w-full min-w-0 justify-between px-3 text-left"
+                  variant="outline"
                 >
-                  <span className="min-w-0 truncate font-semibold">{site.name}</span>
-                  <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
-                </a>
-              </Button>
+                  <a
+                    aria-label={t("Open {site} in a new tab", { site: site.name })}
+                    href={site.url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <span className="min-w-0 truncate font-semibold">{site.name}</span>
+                    <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
+                  </a>
+                </Button>
+                {site.appStoreUrl ? (
+                  <Button
+                    asChild
+                    className="size-12 p-0 sm:hidden"
+                    title={t("Get the {site} app", { site: site.name })}
+                    variant="outline"
+                  >
+                    <a
+                      aria-label={t("Get the {site} app", { site: site.name })}
+                      href={site.appStoreUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <Download aria-hidden="true" className="size-4" />
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
             ))}
           </div>
         </div>

@@ -2164,6 +2164,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(viewerShare, /public-viewer-share-dialog[\s\S]*overflow-y-auto/);
   assert.match(viewerShare, /--dialog-viewport-height/);
   assert.match(viewerShare, /downloadShareImageParts/);
+  assert.match(viewerShare, /The owner has not published a trip image yet/);
+  assert.doesNotMatch(viewerShare, /ownerSharePage \|\| shareImage/);
   assert.match(viewerShare, /min-\[1200px\]:hidden[\s\S]*Open image/);
   assert.match(viewerShare, /hidden min-h-11 w-full min-\[1200px\]:inline-flex/);
   assert.ok(
@@ -2171,6 +2173,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     "share link actions stay above image generation",
   );
   assert.doesNotMatch(viewerShare + shareTools, /WeChat|Wechat|showWechatQr|ShareQrCode/);
+  assert.match(shareSettings, /window\.open\("about:blank", "_blank"\)/);
+  assert.match(shareSettings, /tab\.location\.replace\(publicUrl\)/);
   assert.match(shareTools, /grid grid-cols-2 gap-2/);
   assert.equal(shareTools.match(/<Button/g)?.length, 2);
   assert.doesNotMatch(shell + controller + renderer + platformParts, /Compact/);
