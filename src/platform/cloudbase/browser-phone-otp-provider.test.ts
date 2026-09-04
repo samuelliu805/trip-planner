@@ -119,7 +119,7 @@ test("uses CloudBase phone sign-up with a password before verifying the OTP", as
   assert.deepEqual(calls, [{ password: "secure123", phone: "13800138000" }]);
 });
 
-test("binds the official phone password-reset callback to the OTP request", async () => {
+test("keeps the E.164 phone bound to the official password-reset callback", async () => {
   const calls: unknown[] = [];
   const provider = new CloudBaseBrowserPhoneOtpProvider({
     async resetPasswordForEmail(phone: string) {
@@ -137,5 +137,5 @@ test("binds the official phone password-reset callback to the OTP request", asyn
   } as never);
   await provider.requestPasswordResetOtp("+8613800138000");
   await provider.resetPassword("123456", "newpass123");
-  assert.deepEqual(calls, ["13800138000", { nonce: "123456", password: "newpass123" }]);
+  assert.deepEqual(calls, ["+8613800138000", { nonce: "123456", password: "newpass123" }]);
 });

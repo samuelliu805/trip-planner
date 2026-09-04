@@ -448,6 +448,7 @@ async function submitGlobalLogin(browser, baseUrl, { email, password }) {
             !(credential instanceof HTMLInputElement) ||
             !(password instanceof HTMLInputElement)) return false;
         const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+        window.__phase5PostLoginDocument = true;
         setter.call(credential, ${JSON.stringify(email)});
         credential.dispatchEvent(new Event("input", { bubbles: true }));
         credential.dispatchEvent(new Event("change", { bubbles: true }));
@@ -460,7 +461,11 @@ async function submitGlobalLogin(browser, baseUrl, { email, password }) {
     );
     assert.equal(submitted, true, "Global login form was not submit-ready.");
     try {
-      await waitFor(browser, 'location.pathname === "/trips"', "Global authenticated session");
+      await waitFor(
+        browser,
+        'location.pathname === "/trips" && !location.search && window.__phase5PostLoginDocument !== true',
+        "Global authenticated hard refresh",
+      );
       return;
     } catch (error) {
       lastDiagnostic = {

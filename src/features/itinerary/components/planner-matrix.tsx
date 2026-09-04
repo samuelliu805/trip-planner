@@ -3,9 +3,7 @@
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { format, parseISO } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Map } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { AddItemButton } from "@/features/itinerary/components/planner-add-item-button";
 import { DayActions } from "@/features/itinerary/components/planner-grid-elements";
 import { PlannerItemRow } from "@/features/itinerary/components/planner-item-row";
@@ -287,15 +285,6 @@ export function PlannerMatrix({
         selectedItem={selectedMapItem}
         viewportKey={mapViewportKey}
       />
-      <Button
-        aria-label="Open map and route tools"
-        data-i18n-aria-label={"Open map and route tools"}
-        className="planner-mobile-map-fab absolute bottom-4 right-4 z-30 hidden min-h-11 items-center gap-2 rounded-full px-4 shadow-lg"
-        onClick={onMapExpand}
-        type="button"
-      >
-        <Map aria-hidden="true" className="size-4" /> <T message={" Map & routes "} />
-      </Button>
     </div>
   );
 }

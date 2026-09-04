@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import type { AuthActionState } from "@/features/auth/types";
+import { postLoginRefreshPath } from "@/features/auth/post-login";
 import { normalizeMainlandPhone } from "@/features/auth/phone";
 import { siteUrlFromHeaders } from "@/features/sharing/site-url";
 import { safeAuthErrorCode } from "@/lib/telemetry/errors";
@@ -147,7 +148,7 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
     return { error: loginError(error, passwordIdentifier) };
   }
   revalidatePath("/trips");
-  redirect("/trips");
+  redirect(postLoginRefreshPath);
 }
 
 export async function continueWithGoogle(formData: FormData) {
@@ -252,7 +253,7 @@ export async function signup(
     );
     return { error: error instanceof Error ? error.message : "Account creation failed." };
   }
-  if (sessionCreated) redirect("/trips");
+  if (sessionCreated) redirect(postLoginRefreshPath);
 
   return { success: "Check your email to confirm your account, then sign in." };
 }

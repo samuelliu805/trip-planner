@@ -38,7 +38,8 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
     getExchangeRateTable(),
     getRequestSiteUrl(),
   ]);
-  if (error || !trip) notFound();
+  if (error) throw new Error(error.message);
+  if (!trip) notFound();
   if (variantsResult.error || !variantsResult.data)
     throw new Error(variantsResult.error ?? "The route variants could not be loaded.");
   if (researchItemsResult.error || !researchItemsResult.data)

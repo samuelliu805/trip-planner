@@ -41,8 +41,8 @@ export function AutoDismissAlert({
       aria-live={role === "alert" ? "assertive" : "polite"}
       className={cn(
         "relative flex min-w-0 items-center gap-3 overflow-hidden border bg-background px-4 py-2 text-sm shadow-lg",
-        tone === "destructive" && "border-destructive/40 bg-destructive/5 text-destructive",
-        tone === "success" && "border-primary/40 bg-primary/5",
+        tone === "destructive" && "border-destructive/40 text-destructive",
+        tone === "success" && "border-primary/40",
         className,
       )}
       role={role}

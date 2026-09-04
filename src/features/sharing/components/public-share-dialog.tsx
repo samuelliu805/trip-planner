@@ -252,7 +252,7 @@ export function PublicShareDialog({
           {unchanged ? (
             <Button asChild>
               <a
-                href={`${publicUrl}#public-itinerary-top`}
+                href={publicUrl}
                 onClick={() =>
                   captureBrowserProductEvent(
                     "share_link_opened",

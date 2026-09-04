@@ -6,8 +6,9 @@ import type {
   BrowserStorageProvider,
   SignedUploadInput,
   UploadInput,
-} from "@/platform/contracts/storage";
-import { PlatformOperationError } from "@/platform/contracts/errors";
+} from "../contracts/storage.ts";
+import { PlatformOperationError } from "../contracts/errors.ts";
+import { normalizeCloudBaseStorageUrl } from "./storage-url.ts";
 
 function required(name: string, value: string | undefined) {
   if (value?.trim()) return value.trim();
@@ -32,7 +33,11 @@ function createCloudBaseBrowserStorage() {
 }
 
 export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
-  constructor(private readonly bucket: string) {}
+  private readonly bucket: string;
+
+  constructor(bucket: string) {
+    this.bucket = bucket;
+  }
 
   private storage() {
     return createCloudBaseBrowserStorage().from(this.bucket);
@@ -52,16 +57,47 @@ export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
   }
 
   async uploadToSignedUrl(input: SignedUploadInput) {
-    const result = await this.storage().uploadToSignedUrl(input.path, input.token, input.body, {
-      cacheControl: input.cacheControl,
-      contentType: input.contentType,
-      upsert: input.upsert ?? false,
-    });
-    if (result.error || !result.data)
-      throw new PlatformOperationError("unexpected", "Signed storage upload failed.", {
-        cause: result.error,
+    const target = new URL(normalizeCloudBaseStorageUrl(input.signedUrl));
+    if (!target.searchParams.has("token")) target.searchParams.set("token", input.token);
+    const body = new FormData();
+    if (input.cacheControl) body.append("cacheControl", input.cacheControl);
+    if (input.contentType) body.append("contentType", input.contentType);
+    let uploadBody: Blob;
+    if (input.body instanceof Blob) {
+      uploadBody = input.body;
+    } else if (input.body instanceof Uint8Array) {
+      const bytes = new Uint8Array(input.body.byteLength);
+      bytes.set(input.body);
+      uploadBody = new Blob([bytes.buffer], {
+        type: input.contentType ?? "application/octet-stream",
       });
-    return result.data;
+    } else {
+      uploadBody = new Blob([input.body], {
+        type: input.contentType ?? "application/octet-stream",
+      });
+    }
+    body.append("", uploadBody);
+    let response: Response;
+    try {
+      response = await fetch(target, {
+        body,
+        credentials: "omit",
+        method: "PUT",
+      });
+    } catch (cause) {
+      throw new PlatformOperationError("unexpected", "Signed storage upload failed.", { cause });
+    }
+    if (!response.ok)
+      throw new PlatformOperationError(
+        "unexpected",
+        `Signed storage upload returned ${response.status}.`,
+      );
+    const payload: unknown = await response.json().catch(() => null);
+    const fullPath =
+      payload && typeof payload === "object" && "Key" in payload && typeof payload.Key === "string"
+        ? payload.Key
+        : `${this.bucket}/${input.path}`;
+    return { fullPath, path: input.path };
   }
 
   async remove(paths: string[]) {

@@ -21,6 +21,7 @@ export type SignedUploadAuthorization = Readonly<{
 
 export type SignedUploadInput = UploadInput &
   Readonly<{
+    signedUrl: string;
     token: string;
   }>;
 

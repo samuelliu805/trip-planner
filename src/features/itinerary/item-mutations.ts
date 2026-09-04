@@ -245,6 +245,7 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (_data, _input, context) => {
+      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       if (context?.deletedLocalitySource) void invalidateVariantComparison(client, tripId);
       if (context?.deletedDecisionSummaryItem)
         void invalidateVariantDecisionSummary(client, tripId);

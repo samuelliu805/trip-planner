@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { tripRouteRecoveryStorageKey } from "../route-recovery.ts";
+
 const EDITABLE_SELECTOR = "input, textarea, select, [contenteditable='true']";
 
 type ActiveElementMatch = {
@@ -18,8 +20,13 @@ function isEditing() {
 
 export function usePlannerViewportContainment() {
   useEffect(() => {
+    sessionStorage.removeItem(tripRouteRecoveryStorageKey);
     const visualViewport = window.visualViewport;
     const timers = new Set<number>();
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") settleAfterKeyboard();
+    }
 
     function resetDocumentScroll() {
       if (isEditing()) return;
@@ -42,7 +49,10 @@ export function usePlannerViewportContainment() {
     window.addEventListener("resize", settleAfterKeyboard);
     window.addEventListener("orientationchange", settleAfterKeyboard);
     window.addEventListener("scroll", resetDocumentScroll, { passive: true });
+    window.addEventListener("pageshow", settleAfterKeyboard);
+    window.addEventListener("focus", settleAfterKeyboard);
     document.addEventListener("focusout", settleAfterKeyboard, true);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     visualViewport?.addEventListener("resize", settleAfterKeyboard);
     visualViewport?.addEventListener("scroll", resetDocumentScroll);
 
@@ -51,7 +61,10 @@ export function usePlannerViewportContainment() {
       window.removeEventListener("resize", settleAfterKeyboard);
       window.removeEventListener("orientationchange", settleAfterKeyboard);
       window.removeEventListener("scroll", resetDocumentScroll);
+      window.removeEventListener("pageshow", settleAfterKeyboard);
+      window.removeEventListener("focus", settleAfterKeyboard);
       document.removeEventListener("focusout", settleAfterKeyboard, true);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       visualViewport?.removeEventListener("resize", settleAfterKeyboard);
       visualViewport?.removeEventListener("scroll", resetDocumentScroll);
     };

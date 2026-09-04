@@ -59,7 +59,7 @@ import {
   TIMELINE_EXPORT_MAX_HEIGHT,
   TIMELINE_EXPORT_WIDTH,
 } from "./long-image/layout.ts";
-import { longImageScopeSchema } from "./long-image/schema.ts";
+import { longImageScopeSchema, prepareShareImageSchema } from "./long-image/schema.ts";
 import { scopePublicItinerary } from "./long-image/scope.ts";
 import {
   captureAuthenticatedShareExportEvent,
@@ -194,6 +194,42 @@ const itinerary: PublicItinerary = publicItinerarySchema.parse({
     title: "Kyoto",
   },
   variant: { color: "#166b4f", name: "Route A" },
+});
+
+test("long-image upload prefixes accept opaque CloudBase owner IDs without weakening UUID segments", () => {
+  const prepared = {
+    exportId: "123e4567-e89b-42d3-a456-426614174000",
+    permanentSlug: "a".repeat(24),
+    qrDestinationType: "share_page" as const,
+    qrDestinationUrl: "https://example.com/share/example",
+    renderConfig: {
+      locale: "en" as const,
+      renderer: "timeline" as const,
+      scope: { mode: "entire_trip" as const },
+      version: 1 as const,
+      width: 1080 as const,
+    },
+    sourceSnapshot: itinerary,
+    sourceSnapshotHash: "b".repeat(64),
+    versionId: "123e4567-e89b-42d3-a456-426614174001",
+    versionNumber: 1,
+  };
+  assert.equal(
+    prepareShareImageSchema.safeParse({
+      ...prepared,
+      uploadPathPrefix:
+        "7413652127915356160/123e4567-e89b-42d3-a456-426614174000/123e4567-e89b-42d3-a456-426614174001",
+    }).success,
+    true,
+  );
+  assert.equal(
+    prepareShareImageSchema.safeParse({
+      ...prepared,
+      uploadPathPrefix:
+        "owner/escape/123e4567-e89b-42d3-a456-426614174000/123e4567-e89b-42d3-a456-426614174001",
+    }).success,
+    false,
+  );
 });
 
 test("Timeline export v1 keeps 1080 px parts and paginates measured DOM day groups", () => {
@@ -1662,7 +1698,13 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     publicTripHeader,
     /<Link aria-label=\{t\("Go to Trip Planner"\)\} className="public-brand-kicker" href="\/">/,
   );
-  assert.match(tripAppBar, /data-i18n-aria-label=\{"Back to Trips"\} href="\/trips"/);
+  assert.match(tripAppBar, /onClick=\{\(\) => window\.location\.assign\("\/trips"\)\}/);
+  assert.doesNotMatch(tripAppBar, /href="\/trips"/);
+  assert.match(
+    shareSettings,
+    /href=\{publicUrl\}[\s\S]*rel="noopener noreferrer"[\s\S]*target="_blank"/,
+  );
+  assert.doesNotMatch(shareSettings, /public-itinerary-top/);
   assert.match(overview, /publicOverviewDaySections/);
   assert.match(overview, /PublicOverviewCard/);
   assert.match(overview, /PublicOverviewTransportList[\s\S]*public-overview-board/);

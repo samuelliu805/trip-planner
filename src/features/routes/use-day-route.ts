@@ -70,7 +70,7 @@ export function useDayRoute(
     value: DayRouteEditorDraft;
   } | null>(null);
   const [errorState, setErrorState] = useState<{ dayId: string; value: string } | null>(null);
-  const draft = draftState && draftState.dayId === activeDay?.id ? draftState.value : null;
+  const rawDraft = draftState && draftState.dayId === activeDay?.id ? draftState.value : null;
   const error = errorState && errorState.dayId === activeDay?.id ? errorState.value : undefined;
   const plan = workspace.routePlans.find(
     (candidate) =>
@@ -92,6 +92,19 @@ export function useDayRoute(
   const suggestedMode = useMemo(
     () => suggestedDraftLegMode(activeDay?.items ?? []),
     [activeDay?.items],
+  );
+  const draft = useMemo(
+    () =>
+      rawDraft
+        ? fixedDayRouteDraft(
+            rawDraft,
+            eligibleItems.map(({ id }) => id),
+            suggestedMode,
+            previousHotel?.id,
+            currentHotel?.id,
+          )
+        : null,
+    [currentHotel?.id, eligibleItems, previousHotel?.id, rawDraft, suggestedMode],
   );
   const variantId = workspace.variant.id;
   const saveMutation = useSaveDayRoutePlan(tripId, variantId);

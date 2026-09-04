@@ -58,11 +58,13 @@ function responseError(payload: unknown, fallback: string) {
 async function signedStandardUpload({
   file,
   objectKey,
+  signedUrl,
   signal,
   token,
 }: {
   file: Blob;
   objectKey: string;
+  signedUrl: string;
   signal: AbortSignal;
   token: string;
 }) {
@@ -72,6 +74,7 @@ async function signedStandardUpload({
     cacheControl: "3600",
     contentType: file.type,
     path: objectKey,
+    signedUrl,
     token,
     upsert: false,
   });
@@ -256,6 +259,7 @@ export async function uploadFileAttachment({
       await signedStandardUpload({
         file: normalizedFile,
         objectKey: prepared.data.upload.objectKey,
+        signedUrl: prepared.data.upload.signedUrl,
         signal,
         token: prepared.data.upload.token,
       });
@@ -269,6 +273,7 @@ export async function uploadFileAttachment({
           await signedStandardUpload({
             file: poster,
             objectKey: prepared.data.posterUpload.objectKey,
+            signedUrl: prepared.data.posterUpload.signedUrl,
             signal,
             token: prepared.data.posterUpload.token,
           });

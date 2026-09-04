@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { PhoneOtpActionState } from "@/features/auth/types";
+import { postLoginRefreshPath } from "@/features/auth/post-login";
 import { isSameOriginRequest } from "@/features/sharing/site-url";
 import { safeAuthErrorCode } from "@/lib/telemetry/errors";
 import { telemetryAuthFlow, telemetryOperationId } from "@/lib/telemetry/product";
@@ -91,5 +92,5 @@ export async function phoneOtpAuth(
     return { error: safePhoneError(error), step: "otp" };
   }
   revalidatePath("/trips");
-  redirect("/trips");
+  redirect(postLoginRefreshPath);
 }

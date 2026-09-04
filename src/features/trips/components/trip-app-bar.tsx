@@ -123,10 +123,14 @@ export function TripAppBar({
       >
         <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-            <Button asChild className="-ml-1 size-11 shrink-0 p-0" variant="ghost">
-              <Link aria-label="Back to Trips" data-i18n-aria-label={"Back to Trips"} href="/trips">
-                <ArrowLeft aria-hidden="true" className="size-4" />
-              </Link>
+            <Button
+              aria-label="Back to Trips"
+              className="-ml-1 size-11 shrink-0 p-0"
+              data-i18n-aria-label={"Back to Trips"}
+              onClick={() => window.location.assign("/trips")}
+              variant="ghost"
+            >
+              <ArrowLeft aria-hidden="true" className="size-4" />
             </Button>
             <div className="min-w-0 flex-1" title={title}>
               <h1 className="sr-only">{title}</h1>

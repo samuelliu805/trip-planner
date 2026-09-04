@@ -31,6 +31,7 @@ export type PlannerToolbarProps = {
   planCostSummary: PlanCostSummary;
   planDays: PlannerDay[];
   onArrangeActivities: (day: PlannerDay) => void;
+  onMapExpand: () => void;
   pasteAvailableClipboard: () => Promise<void>;
   removeDay: (dayId: string) => Promise<void>;
   requestClearSelection: () => void;

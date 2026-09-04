@@ -10,6 +10,7 @@ import {
 } from "./lib/cloudbase-pg-live.mjs";
 
 const dummyUuid = "00000000-0000-4000-8000-000000000001";
+const maximumRpcAttempts = 3;
 
 function valueFor(type) {
   if (type.endsWith("[]")) return [];
@@ -23,13 +24,32 @@ function valueFor(type) {
   return "";
 }
 
+async function reviewedRpc(db, name, args, label) {
+  let result;
+  for (let attempt = 1; attempt <= maximumRpcAttempts; attempt += 1) {
+    result = await db.rpc(name, args);
+    const isConclusive =
+      !result?.error || functionAclDenied(result, name) || gatewayFunctionUnavailable(result, name);
+    if (isConclusive) return result;
+    if (attempt < maximumRpcAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+    }
+  }
+
+  const code = String(result?.error?.code ?? "unknown_error");
+  const reason = String(result?.error?.message ?? "request failed").slice(0, 120);
+  throw new Error(
+    `${label} RPC check was inconclusive after ${maximumRpcAttempts} attempts (${code}: ${reason})`,
+  );
+}
+
 async function proveDenied(db, routines, actor) {
   for (const routine of routines) {
     const name = routine.signature.slice(0, routine.signature.indexOf("("));
     const args = Object.fromEntries(
       routine.arguments.map((argument) => [argument.name, valueFor(argument.type)]),
     );
-    const result = await db.rpc(name, args);
+    const result = await reviewedRpc(db, name, args, `${actor} ${routine.signature}`);
     if (!functionAclDenied(result, name) && !gatewayFunctionUnavailable(result, name)) {
       const code = String(result?.error?.code ?? "no_error");
       const reason = String(result?.error?.message ?? "no error").slice(0, 120);
@@ -44,7 +64,7 @@ async function proveReachable(db, routines, actor) {
     const args = Object.fromEntries(
       routine.arguments.map((argument) => [argument.name, valueFor(argument.type)]),
     );
-    const result = await db.rpc(name, args);
+    const result = await reviewedRpc(db, name, args, `${actor} ${routine.signature}`);
     if (functionAclDenied(result, name) || gatewayFunctionUnavailable(result, name)) {
       throw new Error(`${actor} could not reach required policy helper ${routine.signature}`);
     }
@@ -71,7 +91,7 @@ async function run() {
   const knownArgs = Object.fromEntries(
     anonymousDenied[0].arguments.map((argument) => [argument.name, valueFor(argument.type)]),
   );
-  const knownResult = await db.rpc(knownDenied, knownArgs);
+  const knownResult = await reviewedRpc(db, knownDenied, knownArgs, `anonymous ${knownDenied}`);
   if (!functionAclDenied(knownResult, knownDenied)) {
     throw new Error("Known denied function did not produce the reviewed ACL denial");
   }
@@ -87,7 +107,7 @@ async function run() {
     ["variant_trip_id", { target_variant_id: dummyUuid }],
     ["phase2_rename_owned_trip", { target_trip_id: dummyUuid, requested_title: "denied" }],
   ]) {
-    const result = await db.rpc(name, args);
+    const result = await reviewedRpc(db, name, args, `authenticated ${name}`);
     if (!gatewayFunctionUnavailable(result, name))
       throw new Error(`Private or removed helper was exposed: ${name}`);
   }

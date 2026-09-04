@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import { Copy, LoaderCircle, Pencil, Plus } from "lucide-react";
+import { Copy, LoaderCircle, Map, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { PlannerToolbarProps } from "@/features/itinerary/components/planner-toolbar-types";
@@ -18,6 +18,7 @@ export type PlannerContextProps = Pick<
   | "copySelectionToClipboard"
   | "dayMutationPending"
   | "insertDay"
+  | "onMapExpand"
   | "onArrangeActivities"
   | "pasteAvailableClipboard"
   | "planCostLines"
@@ -61,6 +62,15 @@ export function PlannerContextActions(props: PlannerContextProps) {
   return (
     <>
       <PlanCostMenu lines={props.planCostLines} summary={props.planCostSummary} />
+      <Button
+        aria-label="Open map and route tools"
+        className="size-11 shrink-0 p-0 min-[900px]:hidden"
+        data-i18n-aria-label="Open map and route tools"
+        onClick={props.onMapExpand}
+        type="button"
+      >
+        <Map aria-hidden="true" className="size-4" />
+      </Button>
       {manyCells ? (
         <Button
           aria-busy={props.requestPending}
@@ -83,7 +93,7 @@ export function PlannerContextActions(props: PlannerContextProps) {
         </Button>
       ) : null}
       {oneCell && (canAdd || props.selectedItem) ? (
-        <Button className="h-11 px-3" onClick={openEditor} size="sm">
+        <Button className="hidden h-11 px-3 min-[900px]:inline-flex" onClick={openEditor} size="sm">
           {props.selectedItem ? <Pencil className="size-4" /> : <Plus className="size-4" />}
           <span className="hidden min-[430px]:inline">
             <Localized value={props.selectedItem ? "Edit" : "Add"} />

@@ -50,6 +50,7 @@ export function PlannerItemStepNav<Step extends EditorStep>({
             <button
               aria-current={active ? "step" : undefined}
               className="group relative z-10 flex min-h-14 w-full min-w-0 flex-col items-center gap-1 focus-visible:outline-none"
+              data-step-id={step.id}
               onClick={() => onSelect(step.id)}
               type="button"
             >
