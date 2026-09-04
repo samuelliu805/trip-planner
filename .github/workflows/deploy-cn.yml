@@ -115,7 +115,7 @@ jobs:
             --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
           node scripts/verify-cloudbase-migration-plan.mjs \
             "$migration_list" "$migration_plan" --deployment \
-            20260903180000 20260903193000
+            20260903180000 20260903193000 20260905010000
       - name: Apply the validated CloudBase PG migration plan
         run: >-
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up
@@ -130,7 +130,8 @@ jobs:
           npx --yes --package @cloudbase/cli@3.8.1 tcb db pg migration up \
             --env-id "$CLOUDBASE_ENV_ID" --dry-run --json > "$migration_plan"
           node scripts/verify-cloudbase-migration-plan.mjs \
-            "$migration_list" "$migration_plan" 20260903180000 20260903193000
+            "$migration_list" "$migration_plan" \
+            20260903180000 20260903193000 20260905010000
       - name: Deploy the private cleanup Event Function and timer
         run: >-
           npx --yes --package @cloudbase/cli@3.8.1 tcb fn deploy trip-planner-cleanup
