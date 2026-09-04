@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { SheetTitle } from "@/components/ui/sheet";
 import { updateAccount } from "@/features/account/actions";
-import { logout } from "@/features/auth/actions";
+import { logoutSession } from "@/features/auth/actions";
 import type { Locale } from "@/features/i18n/config";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
@@ -22,10 +22,11 @@ import { PlannerEditorField } from "@/features/itinerary/components/planner-edit
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
-import { tripCurrencyCodes } from "@/features/trips/currencies";
+import { tripCurrencyCodesForLocale, tripCurrencyLabel } from "@/features/trips/currencies";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 function AccountCurrencyField({ initialCurrency }: { initialCurrency: string }) {
+  const { locale } = useI18n();
   const [currency, setCurrency] = useState(initialCurrency);
 
   return (
@@ -37,9 +38,9 @@ function AccountCurrencyField({ initialCurrency }: { initialCurrency: string }) 
             <SelectValue aria-label={currency}>{currency}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {tripCurrencyCodes.map((code) => (
+            {tripCurrencyCodesForLocale(locale).map((code) => (
               <SelectItem key={code} value={code}>
-                {code}
+                {tripCurrencyLabel(code, locale)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -130,6 +131,7 @@ function AccountForm({
   const { t } = useI18n();
   const [state, action, pending] = useActionState(updateAccount, {});
   const [logoutPending, startLogout] = useTransition();
+  const [logoutError, setLogoutError] = useState<string>();
 
   return (
     <PlannerEditorForm
@@ -162,9 +164,15 @@ function AccountForm({
             disabled={pending || logoutPending || exiting}
             onClick={() =>
               startLogout(async () => {
+                setLogoutError(undefined);
                 const formData = new FormData();
                 formData.set("surface", "account");
-                await logout(formData);
+                const result = await logoutSession(formData);
+                if (result.error) {
+                  setLogoutError(result.error);
+                  return;
+                }
+                window.location.assign("/login");
               })
             }
             type="button"
@@ -180,9 +188,9 @@ function AccountForm({
         </div>
       </div>
 
-      {state.error ? (
+      {state.error || logoutError ? (
         <p className="text-sm font-medium text-destructive" role="alert">
-          <T message={state.error} />
+          <T message={logoutError ?? state.error ?? ""} />
         </p>
       ) : null}
 

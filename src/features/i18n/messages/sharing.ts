@@ -1,4 +1,5 @@
 export const sharingZhCN: Record<string, string> = {
+  "The Share Page is invalid.": "分享页面无效。",
   "Permanent image exports are not supported by this backend.": "当前后端不支持永久长图导出。",
   "Public sharing is not supported by this backend.": "当前后端不支持公开分享。",
   "Share-image cleanup unavailable": "分享长图清理功能不可用。",

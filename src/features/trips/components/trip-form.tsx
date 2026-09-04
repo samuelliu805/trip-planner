@@ -1,7 +1,9 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { Settings2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -20,8 +22,11 @@ import {
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { updateTrip } from "@/features/trips/actions";
 import { useTripSettingsEditorContext } from "@/features/trips/components/trip-settings-editor";
-import { tripCurrencyCodes } from "@/features/trips/currencies";
+import { useI18n } from "@/features/i18n/i18n-provider";
+import type { PlannerWorkspace } from "@/features/itinerary/types";
+import { tripCurrencyCodesForLocale, tripCurrencyLabel } from "@/features/trips/currencies";
 import {
+  optimisticTripDayDates,
   sanitizeTripDayCountInput,
   settleTripDateFields,
   type TripDateField,
@@ -39,6 +44,9 @@ export function TripForm({
   surface?: "planner_app_bar" | "trip_list";
   trip: Trip;
 }) {
+  const { locale } = useI18n();
+  const queryClient = useQueryClient();
+  const router = useRouter();
   const [state, action, pending] = useActionState(updateTrip, {});
   const [dayCount, setDayCount] = useState(String(trip.day_count));
   const [startDate, setStartDate] = useState(trip.start_date ?? "");
@@ -46,6 +54,7 @@ export function TripForm({
   const [currency, setCurrency] = useState(trip.currency);
   const savedRef = useRef(onSaved);
   const operationRef = useRef<HTMLInputElement>(null);
+  const optimisticSnapshotsRef = useRef<Array<[QueryKey, PlannerWorkspace | undefined]>>([]);
   const editor = useTripSettingsEditorContext();
 
   useEffect(() => {
@@ -53,10 +62,33 @@ export function TripForm({
   }, [onSaved]);
 
   useEffect(() => {
+    if (state.error) {
+      for (const [queryKey, workspace] of optimisticSnapshotsRef.current)
+        queryClient.setQueryData(queryKey, workspace);
+      optimisticSnapshotsRef.current = [];
+      return;
+    }
     if (!state.success) return;
+    optimisticSnapshotsRef.current = [];
+    void queryClient.invalidateQueries({ queryKey: ["planner", trip.id] });
+    router.refresh();
     if (savedRef.current) savedRef.current();
     else editor.onClose();
-  }, [editor, state.success]);
+  }, [editor, queryClient, router, state, trip.id]);
+
+  function optimisticallyUpdateDates() {
+    const snapshots = queryClient.getQueriesData<PlannerWorkspace>({
+      queryKey: ["planner", trip.id],
+    });
+    optimisticSnapshotsRef.current = snapshots;
+    for (const [queryKey, workspace] of snapshots) {
+      if (!workspace) continue;
+      queryClient.setQueryData<PlannerWorkspace>(queryKey, {
+        ...workspace,
+        days: optimisticTripDayDates(workspace.days, startDate),
+      });
+    }
+  }
 
   function commitDateField(committed: TripDateField, value: string) {
     const settled = settleTripDateFields(
@@ -88,6 +120,7 @@ export function TripForm({
       onClose={editor.onClose}
       onSubmitStart={() => {
         if (operationRef.current) operationRef.current.value = newTelemetryOperationId();
+        optimisticallyUpdateDates();
       }}
       pending={pending}
       pendingLabel="Saving…"
@@ -204,9 +237,9 @@ export function TripForm({
             <SelectValue aria-label={currency}>{currency}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {tripCurrencyCodes.map((code) => (
+            {tripCurrencyCodesForLocale(locale).map((code) => (
               <SelectItem key={code} value={code}>
-                {code}
+                {tripCurrencyLabel(code, locale)}
               </SelectItem>
             ))}
           </SelectContent>

@@ -1,8 +1,13 @@
 export const defaultTripCurrency = "USD";
+export const defaultCnTripCurrency = "CNY";
 export const defaultTripDayCount = 1;
 const placeTitleLimit = 32;
 const placeTitleSuffix = " Trip";
 const datedTitlePattern = /^New trip \d{4}-\d{2}-\d{2}$/;
+
+export function defaultTripCurrencyForRegion(region: "cn" | "global") {
+  return region === "cn" ? defaultCnTripCurrency : defaultTripCurrency;
+}
 
 /** Return yyyy-mm-dd in the traveller's timezone. */
 export function tripDateInZone(timezone: string, now: Date) {

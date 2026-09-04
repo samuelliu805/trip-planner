@@ -227,24 +227,34 @@ export async function signup(
   return { success: "Check your email to confirm your account, then sign in." };
 }
 
-export async function logout(formData?: FormData) {
+export async function logoutSession(formData?: FormData): Promise<AuthActionState> {
   const auth = getAuthProvider();
   const user = await auth.getCurrentUser();
-  await reportSuccessfulSignOut(
-    async () => {
-      await auth.signOut();
-      return { error: null };
-    },
-    () =>
-      captureServerProductEvent(
-        "signed_out",
-        { surface: telemetrySurface(formData?.get("surface")) ?? "global_header" },
-        {
-          actorType: user ? "authenticated" : "anonymous",
-          route: "/login",
-          appUserId: user?.id,
-        },
-      ),
-  );
+  try {
+    await reportSuccessfulSignOut(
+      async () => {
+        await auth.signOut();
+        return { error: null };
+      },
+      () =>
+        captureServerProductEvent(
+          "signed_out",
+          { surface: telemetrySurface(formData?.get("surface")) ?? "global_header" },
+          {
+            actorType: user ? "authenticated" : "anonymous",
+            route: "/login",
+            appUserId: user?.id,
+          },
+        ),
+    );
+    return { success: "Signed out." };
+  } catch {
+    return { error: "Sign-out could not be completed. Please try again." };
+  }
+}
+
+export async function logout(formData?: FormData) {
+  const result = await logoutSession(formData);
+  if (result.error) throw new Error(result.error);
   redirect("/login");
 }

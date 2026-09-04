@@ -107,6 +107,7 @@ export function PlannerMapSelectedPlace({
   const { locale, t } = useI18n();
   const entry = marker.entries.find(({ itemId }) => itemId === selectedId);
   if (!entry) return null;
+  const entryTitle = entry.kind === "carRental" ? t(entry.title) : entry.title;
   const details = itemDetails(item);
   const hotelStay = deriveHotelStaySummary(days, item);
   const firstStay = hotelStay?.ranges[0];
@@ -157,7 +158,7 @@ export function PlannerMapSelectedPlace({
       <div className="flex min-w-0 items-start gap-2">
         <MapPin aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-bold leading-tight">{entry.title}</h3>
+          <h3 className="truncate text-base font-bold leading-tight">{entryTitle}</h3>
           {marker.address ? (
             <p className="mt-0.5 line-clamp-2 text-xs leading-4 text-muted-foreground">
               {marker.address}
@@ -165,7 +166,7 @@ export function PlannerMapSelectedPlace({
           ) : null}
         </div>
         <RouteIconButton
-          label={t("Edit {item}", { item: entry.title })}
+          label={t("Edit {item}", { item: entryTitle })}
           onClick={() => onEditMapItem(entry.itemId)}
           title="Edit item"
         >
@@ -177,7 +178,7 @@ export function PlannerMapSelectedPlace({
         {mapMode === "day_route" && eligibleDayStop && dayRoute.editing ? (
           dayRoute.draft?.itemIds.includes(entry.itemId) ? (
             <RouteIconButton
-              label={t("Remove {item} from route", { item: entry.title })}
+              label={t("Remove {item} from route", { item: entryTitle })}
               onClick={() => dayRoute.removeItem(entry.itemId)}
               title="Remove from route"
               variant="destructive"
@@ -186,7 +187,7 @@ export function PlannerMapSelectedPlace({
             </RouteIconButton>
           ) : (
             <RouteIconButton
-              label={t("Add {item} to route", { item: entry.title })}
+              label={t("Add {item} to route", { item: entryTitle })}
               onClick={() => dayRoute.addStop(entry.itemId)}
               title="Add to route"
               variant="secondary"
@@ -217,7 +218,9 @@ export function PlannerMapSelectedPlace({
                 onClick={() => onMarkerClick(candidate.itemId)}
                 type="button"
               >
-                <span className="truncate">{candidate.title}</span>
+                <span className="truncate">
+                  {candidate.kind === "carRental" ? t(candidate.title) : candidate.title}
+                </span>
                 <span className="text-muted-foreground">{candidate.dayLabel}</span>
               </button>
             ))}

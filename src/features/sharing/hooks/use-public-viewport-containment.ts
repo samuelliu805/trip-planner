@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 /** Keeps the public shell pinned while mobile browser chrome changes the visual viewport. */
 export function usePublicViewportContainment() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     const visualViewport = window.visualViewport;
     const root = document.documentElement;
     const timers = new Set<number>();
     let animationFrame: number | undefined;
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
 
     function resetDocumentScroll() {
       if (window.scrollX || window.scrollY) window.scrollTo({ left: 0, top: 0, behavior: "auto" });
@@ -18,8 +20,10 @@ export function usePublicViewportContainment() {
 
     function syncViewport() {
       const height = visualViewport?.height ?? window.innerHeight;
+      const top = visualViewport?.offsetTop ?? 0;
       if (Number.isFinite(height) && height > 0)
         root.style.setProperty("--public-viewport-height", `${Math.round(height)}px`);
+      root.style.setProperty("--public-viewport-top", `${Math.max(0, Math.round(top))}px`);
       resetDocumentScroll();
     }
 
@@ -59,6 +63,8 @@ export function usePublicViewportContainment() {
       if (animationFrame !== undefined) window.cancelAnimationFrame(animationFrame);
       for (const timer of timers) window.clearTimeout(timer);
       root.style.removeProperty("--public-viewport-height");
+      root.style.removeProperty("--public-viewport-top");
+      window.history.scrollRestoration = previousScrollRestoration;
       window.removeEventListener("resize", syncViewport);
       window.removeEventListener("orientationchange", stabilizeViewport);
       window.removeEventListener("scroll", resetDocumentScroll);

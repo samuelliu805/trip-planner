@@ -1,4 +1,4 @@
-import { addDays, differenceInCalendarDays, format, parseISO, subDays } from "date-fns";
+import { addDays, differenceInCalendarDays, format, isValid, parseISO, subDays } from "date-fns";
 
 export type TripDateField = "dayCount" | "endDate" | "startDate";
 
@@ -16,6 +16,19 @@ function isoDay(date: Date) {
 
 export function sanitizeTripDayCountInput(value: string) {
   return value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 3);
+}
+
+/** Project saved Trip dates into every cached route variant before its server refresh completes. */
+export function optimisticTripDayDates<T extends { date: string | null; day_number: number }>(
+  days: readonly T[],
+  startDate: string,
+) {
+  const parsedStart = parseISO(startDate);
+  const hasStart = /^\d{4}-\d{2}-\d{2}$/.test(startDate) && isValid(parsedStart);
+  return days.map((day) => ({
+    ...day,
+    date: hasStart ? isoDay(addDays(parsedStart, day.day_number - 1)) : null,
+  }));
 }
 
 function validTripDayCount(value: string) {

@@ -15,7 +15,7 @@ export function PlannerEditorScreen({
   open,
 }: {
   children: ReactNode;
-  editorKind?: "research" | "trip-settings";
+  editorKind?: "research" | "trip-settings" | "variant";
   initialFocusSelector?: string;
   onDismissReason?: (reason: "escape" | "overlay") => void;
   onOpenChange: (open: boolean) => void;

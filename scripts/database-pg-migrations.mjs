@@ -128,6 +128,7 @@ export function renderCloudbaseFunctionAcl(sql, allowlist) {
   }
   const authenticated = new Set(allowlist.authenticated.map(([signature]) => signature));
   const anonymous = new Set(allowlist.anonymous.map(([signature]) => signature));
+  const policyHelpers = new Set((allowlist.policyHelpers ?? []).map(([signature]) => signature));
   const lines = [
     "-- Generated fail-closed function ACLs. Review rpc-allowlist.json before granting a browser role.",
   ];
@@ -140,7 +141,7 @@ export function renderCloudbaseFunctionAcl(sql, allowlist) {
     if (routine.schema !== "public") continue;
     if (anonymous.has(routine.signature)) {
       lines.push(`GRANT EXECUTE ON FUNCTION public.${routine.signature} TO anon, authenticated;`);
-    } else if (authenticated.has(routine.signature)) {
+    } else if (authenticated.has(routine.signature) || policyHelpers.has(routine.signature)) {
       lines.push(`GRANT EXECUTE ON FUNCTION public.${routine.signature} TO authenticated;`);
     }
   }

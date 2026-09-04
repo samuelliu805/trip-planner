@@ -33,6 +33,7 @@
     "test:cloudbase-phase-3-live": "npm run test:cloudbase-pg-rpc-surface && npm run test:cloudbase-pg-security && npm run test:cloudbase-phase-3-app-e2e",
     "test:cloudbase-phase-4-storage": "node --env-file-if-exists=.env.local scripts/cloudbase-phase-4-storage-live.mjs",
     "test:cloudbase-phase-4-cleanup": "node --env-file-if-exists=.env.local scripts/cloudbase-phase-4-cleanup-live.mjs",
+    "test:cloudbase-cn-feature-repair": "node --env-file-if-exists=.env.local scripts/cloudbase-cn-feature-repair-live.mjs",
     "test:supabase-phase-4-storage": "node --env-file-if-exists=.env.local scripts/supabase-phase-4-storage-live.mjs",
     "test:global-cookie-isolation": "node --env-file-if-exists=.env.local scripts/global-cookie-isolation-e2e.mjs",
     "test:global-phase-5-live": "node --env-file-if-exists=.env.local scripts/global-phase-5-live.mjs",

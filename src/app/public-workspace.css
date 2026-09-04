@@ -32,7 +32,7 @@ body:has(.public-itinerary-shell) {
 .public-itinerary-shell {
   position: fixed;
   inset-inline: 0;
-  top: 0;
+  top: var(--public-viewport-top, 0px);
   bottom: auto;
   width: 100%;
   height: var(--public-viewport-height, 100dvh);

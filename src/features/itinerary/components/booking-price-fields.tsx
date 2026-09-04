@@ -1,9 +1,13 @@
 "use client";
 
-import { T } from "@/features/i18n/i18n-provider";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { tripCurrencyCodes } from "@/features/trips/currencies";
+import {
+  tripCurrencyCodes,
+  tripCurrencyCodesForLocale,
+  tripCurrencyLabel,
+} from "@/features/trips/currencies";
 
 export const commonBookingCurrencies: readonly string[] = tripCurrencyCodes;
 
@@ -28,9 +32,11 @@ export function BookingPriceFields({
   onAmountChange: (value: string) => void;
   onCurrencyChange: (value: string) => void;
 }) {
+  const { locale } = useI18n();
+  const localizedCurrencies = tripCurrencyCodesForLocale(locale);
   const currencies = commonBookingCurrencies.includes(defaultCurrency)
-    ? commonBookingCurrencies
-    : [defaultCurrency, ...commonBookingCurrencies];
+    ? localizedCurrencies
+    : [defaultCurrency, ...localizedCurrencies];
 
   return (
     <div className="grid min-w-0 gap-4 sm:grid-cols-2">
@@ -65,7 +71,7 @@ export function BookingPriceFields({
         >
           {currencies.map((value) => (
             <option key={value} value={value}>
-              {value}
+              {tripCurrencyLabel(value, locale)}
             </option>
           ))}
         </select>

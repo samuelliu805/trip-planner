@@ -1,4 +1,5 @@
 export const authAccountZhCN: Record<string, string> = {
+  "6-digit code": "6 位验证码",
   "Account preferences saved.": "账户偏好已保存。",
   "Accounts are created by your organization.": "账户由你的组织统一创建。",
   "Account creation is managed by your organization.": "账户创建由你的组织统一管理。",
@@ -35,6 +36,8 @@ export const authAccountZhCN: Record<string, string> = {
   "Search a city": "搜索城市",
   "Sign in to continue planning your trips.": "登录后继续规划行程。",
   "Sign-in could not be completed. Please try again.": "无法完成登录，请重试。",
+  "Sign-out could not be completed. Please try again.": "无法退出登录，请重试。",
+  "Signed out.": "已退出登录。",
   "This sign-in method is not available.": "此登录方式暂不可用。",
   "Sign-in unavailable": "暂时无法登录",
   "Sign in to update your account.": "请先登录，再更新账户。",

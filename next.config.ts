@@ -21,7 +21,16 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   turbopack: { resolveAlias: selectedAliases },
-  webpack(config) {
+  webpack(config, { webpack }) {
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(
+        /^(?:@\/lib\/providers\/maps\/planner-map-(?:canvas|provider)-selected|@\/platform\/composition\/(?:client|proxy|server)-selected)$/,
+        (resource: { request: string }) => {
+          const target = selectedAliases[resource.request as keyof typeof selectedAliases];
+          if (target) resource.request = resolve(process.cwd(), target);
+        },
+      ),
+    );
     config.resolve.alias = {
       ...config.resolve.alias,
       ...Object.fromEntries(

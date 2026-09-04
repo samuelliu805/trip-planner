@@ -31,7 +31,7 @@ export function PublicTripHeader({
   const { locale, t } = useI18n();
   const BrandIcon = template.id === "journal" ? Send : Route;
   return (
-    <div className="public-brand-area">
+    <div className="public-brand-area" id="public-itinerary-top">
       <Link aria-label={t("Go to Trip Planner")} className="public-brand-kicker" href="/">
         {template.id === "ethereal" ? (
           <span aria-hidden="true" className="public-brand-monogram">

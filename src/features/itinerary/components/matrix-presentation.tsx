@@ -72,7 +72,13 @@ export function MatrixItemSummary({
                 : "truncate text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
           }
         >
-          {transportMode ? <Localized value={transportModeLabels[transportMode]} /> : title}
+          {transportMode ? (
+            <Localized value={transportModeLabels[transportMode]} />
+          ) : type === "car_rental" ? (
+            <Localized value={title} />
+          ) : (
+            title
+          )}
         </span>
       </span>
       {subtitle ? (

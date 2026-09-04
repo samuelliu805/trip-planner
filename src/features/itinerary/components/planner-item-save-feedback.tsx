@@ -45,7 +45,10 @@ export function PlannerItemSaveFeedbackAlert({
               {success
                 ? t("{item} “{title}” was created.", {
                     item: t(feedback.itemLabel),
-                    title: feedback.item.title,
+                    title:
+                      feedback.item.type === "car_rental"
+                        ? t(feedback.item.title)
+                        : feedback.item.title,
                   })
                 : t("{item} “{title}” was not created.", {
                     item: t(feedback.itemLabel),

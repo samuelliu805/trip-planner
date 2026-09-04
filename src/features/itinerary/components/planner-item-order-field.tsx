@@ -113,7 +113,9 @@ export function PlannerItemOrderField({
           <div key={entry.id}>
             <div className="flex min-h-12 items-center rounded-md border bg-muted/20 px-3 py-2">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{entry.title}</p>
+                <p className="truncate text-sm font-medium">
+                  {entry.type === "car_rental" ? <Localized value={entry.title} /> : entry.title}
+                </p>
                 <p className="text-xs capitalize text-muted-foreground">
                   <Localized value={itemCopy[entry.type].label} />
                 </p>

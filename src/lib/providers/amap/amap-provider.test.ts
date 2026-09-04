@@ -401,10 +401,13 @@ test("AMap client requests never send provider keys or raw upstream coordinates"
 
 test("AMap map rebuilds restore marker and route overlays after releasing the old session", async () => {
   class FakeElement {
+    children: FakeElement[] = [];
     dataset: Record<string, string> = {};
     style: Record<string, string> = {};
     textContent: string | null = null;
-    append() {}
+    append(child: FakeElement) {
+      this.children.push(child);
+    }
     addEventListener() {}
     removeEventListener() {}
     setAttribute() {}
@@ -450,6 +453,7 @@ test("AMap map rebuilds restore marker and route overlays after releasing the ol
       ],
       markers: [
         {
+          appearance: "overview" as const,
           entries: [
             {
               dayLabel: "Day 1",
@@ -462,6 +466,7 @@ test("AMap map rebuilds restore marker and route overlays after releasing the ol
           id: "marker-1",
           itemIds: ["item-1"],
           latitude: 39.9,
+          label: "第1天",
           longitude: 116.39,
         },
       ],
@@ -469,6 +474,9 @@ test("AMap map rebuilds restore marker and route overlays after releasing the ol
     };
     const first = createAmapOverlays({ ...options, map: maps[0] });
     assert.equal(added[0].length, 2);
+    const markerContent = (added[0][1] as Marker).options as { content: FakeElement };
+    assert.equal(markerContent.content.children[0].textContent, "第1天");
+    assert.equal(markerContent.content.children[0].style.whiteSpace, "nowrap");
     first.release();
     assert.equal(removed[0].length, 2);
     const second = createAmapOverlays({ ...options, map: maps[1] });
