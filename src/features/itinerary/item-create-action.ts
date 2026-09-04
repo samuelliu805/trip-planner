@@ -75,25 +75,25 @@ async function createItineraryItemMutation(
     return { error: error instanceof Error ? error.message : "The map place could not be saved." };
   }
   if (parsed.data.type === "hotel") {
-    const { count, error: hotelError } = await database
+    const { data: hotels, error: hotelError } = await database
       .from("itinerary_items")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("day_id", parsed.data.dayId)
       .eq("type", "hotel");
     if (hotelError) return { error: mutationError(hotelError.message) };
-    if (count)
+    if (hotels?.length)
       return { error: "Only one hotel is allowed per day. Edit the existing hotel instead." };
   }
   if (parsed.data.type === "transport") {
     const mode = parsed.data.details.mode;
-    const { count, error: transportError } = await database
+    const { data: transports, error: transportError } = await database
       .from("itinerary_items")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("day_id", parsed.data.dayId)
       .eq("type", "transport")
       .contains("details", { mode });
     if (transportError) return { error: mutationError(transportError.message) };
-    if (count)
+    if (transports?.length)
       return {
         error: `This day already has ${parsed.data.title}. Choose a different transport type.`,
       };

@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 
+import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
 import { verifyCleanupInvocationResult } from "./invoke-cloudbase-cleanup.mjs";
 
 const maximumResponseBytes = 65_536;
@@ -57,7 +58,7 @@ export async function invokeCloudBaseCleanupHttp({
   if (typeof envId !== "string" || !envIdPattern.test(envId)) {
     throw new Error("CloudBase cleanup HTTP invocation requires a valid environment ID.");
   }
-  const response = await fetchImpl(
+  const response = await boundedRetryFetch(
     `https://${envId}.api.tcloudbasegateway.com/v1/functions/trip-planner-cleanup`,
     {
       body: JSON.stringify({ source: "phase5-verification" }),
@@ -70,6 +71,7 @@ export async function invokeCloudBaseCleanupHttp({
       redirect: "error",
       signal,
     },
+    { attempts: 3, fetchImplementation: fetchImpl, timeoutMs: 20_000 },
   );
   const text = await boundedResponseText(response);
   let payload;

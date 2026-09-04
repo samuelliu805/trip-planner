@@ -94,7 +94,7 @@ export function CarProviderField({
   return (
     <div className="space-y-2">
       <Label htmlFor={`car-provider-${fieldId}`}>
-        <T message={" Rental company "} />
+        <T message={" Rental company "} />{" "}
         <span className="font-normal text-muted-foreground">
           <T message={"optional"} />
         </span>

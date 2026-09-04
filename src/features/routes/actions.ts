@@ -2,16 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 
-import { getPlannerWorkspace } from "@/features/itinerary/data";
-import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import { wgs84Coordinates } from "@/lib/providers/maps/types";
-import { RouteProviderError } from "@/lib/providers/routes/errors";
 import { serializeRoutesV1CalculatedLegs } from "@/lib/providers/routes/persistence";
 import { resolveRouteProvider } from "@/lib/providers/routes/resolver.server";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import { getRelationalDatabase } from "@/platform/composition/server";
 import type { Json } from "@/types/database";
 
+import { loadRouteWorkspace, routeActionError, withCalculatedRoute } from "./action-support";
 import { calculateRouteConfiguration, mapWithConcurrency } from "./calculator";
 import {
   deriveOverviewStages,
@@ -39,23 +37,6 @@ import {
   type SaveDayRoutePlanInput,
 } from "./types";
 
-const actionError = (error: unknown) => {
-  if (error instanceof MapsProviderConfigurationError) return error.message;
-  if (error instanceof RouteProviderError) return error.message;
-  if (error instanceof Error) {
-    if (/permission|row-level security|owner/i.test(error.message))
-      return "Only the trip owner can configure or calculate routes.";
-    return error.message;
-  }
-  return "The day route could not be changed.";
-};
-
-const loadWorkspace = async (tripId: string, variantId: string) => {
-  const result = await getPlannerWorkspace(tripId, variantId);
-  if (!result.data) throw new Error(result.error ?? "The planner could not be loaded.");
-  return result.data;
-};
-
 export async function saveDayRoutePlan(
   input: SaveDayRoutePlanInput,
 ): Promise<RouteActionResult<DayRoutePlan>> {
@@ -71,7 +52,7 @@ export async function saveDayRoutePlan(
     });
 
   try {
-    const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
+    const workspace = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
     const day = workspace.days.find(({ id }) => id === parsed.data.dayId);
     const previousDay = day
       ? workspace.days.find(({ day_number }) => day_number === day.day_number - 1)
@@ -119,13 +100,13 @@ export async function saveDayRoutePlan(
     });
     if (error || !planId)
       throw new Error(error?.message ?? "The route configuration was not saved.");
-    const refreshed = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
+    const refreshed = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
     const plan = refreshed.routePlans.find(({ id }) => id === planId);
     if (!plan) throw new Error("The saved route could not be reloaded.");
     revalidatePath(`/trips/${parsed.data.tripId}`);
     return { data: plan };
   } catch (error) {
-    const message = actionError(error);
+    const message = routeActionError(error);
     await reportRouteCalculationFailure({
       error: message,
       operationId: parsed.data.operationId,
@@ -149,7 +130,7 @@ export async function calculateDayRoute(
     });
     if (ownerError || !owner) throw new Error("Trip owner access required.");
 
-    const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
+    const workspace = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
     const plan = workspace.routePlans.find(
       ({ id, trip_id }) => id === parsed.data.planId && trip_id === parsed.data.tripId,
     );
@@ -169,10 +150,9 @@ export async function calculateDayRoute(
       resolveRouteProvider,
       3,
     );
+    const normalizedLegs = serializeRoutesV1CalculatedLegs(calculated.legs);
     if (calculated.cache !== "full") {
-      const normalized = JSON.parse(
-        JSON.stringify(serializeRoutesV1CalculatedLegs(calculated.legs)),
-      ) as Json;
+      const normalized = JSON.parse(JSON.stringify(normalizedLegs)) as Json;
       const { error } = await database.rpc("save_day_route_calculation", {
         calculated_config_signature: calculated.configSignature,
         calculated_provider_schema_version: "routes-v1",
@@ -185,20 +165,17 @@ export async function calculateDayRoute(
       if (error) throw new Error(error.message);
     }
 
-    const refreshed = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
-    const refreshedPlan = refreshed.routePlans.find(({ id }) => id === plan.id);
-    if (!refreshedPlan) throw new Error("The calculated route could not be reloaded.");
     revalidatePath(`/trips/${parsed.data.tripId}`);
     return reportRouteCalculation({
       operationId: parsed.data.operationId,
-      result: { cache: calculated.cache, data: refreshedPlan },
+      result: { cache: calculated.cache, data: withCalculatedRoute(plan, calculated) },
       routeMode: parsed.data.telemetryRouteMode,
       routeView: "day",
     });
   } catch (error) {
     return reportRouteCalculation({
       operationId: parsed.data.operationId,
-      result: { error: actionError(error) },
+      result: { error: routeActionError(error) },
       routeMode: parsed.data.telemetryRouteMode,
       routeView: "day",
     });
@@ -218,7 +195,7 @@ export async function calculateOverviewRoute(
     });
     if (ownerError || !owner) throw new Error("Trip owner access required.");
 
-    const workspace = await loadWorkspace(parsed.data.tripId, parsed.data.variantId);
+    const workspace = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
     const stages = deriveOverviewStages(workspace.days);
     if (stages.length < 2)
       return reportRouteCalculation({
@@ -286,7 +263,7 @@ export async function calculateOverviewRoute(
   } catch (error) {
     return reportRouteCalculation({
       operationId: parsed.data.operationId,
-      result: { error: actionError(error) },
+      result: { error: routeActionError(error) },
       routeMode: parsed.data.telemetryRouteMode,
       routeView: "overview",
     });
@@ -308,6 +285,6 @@ export async function clearDayRoutePlan(
     revalidatePath(`/trips/${parsed.data.tripId}`);
     return { data: { dayId: parsed.data.dayId } };
   } catch (error) {
-    return { error: actionError(error) };
+    return { error: routeActionError(error) };
   }
 }

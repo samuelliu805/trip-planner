@@ -6,7 +6,10 @@ import {
 } from "@/platform/composition/proxy";
 
 export async function proxy(request: NextRequest) {
-  if (request.nextUrl.pathname.startsWith("/share/"))
+  if (
+    request.nextUrl.pathname.startsWith("/share/") ||
+    request.nextUrl.pathname === "/api/maps/amap/places"
+  )
     return continueWithoutProviderSession(request);
   return updateProviderSession(request);
 }

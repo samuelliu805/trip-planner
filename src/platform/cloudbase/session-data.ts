@@ -12,6 +12,8 @@ export type CloudBaseJwtClaims = Readonly<{
   exp?: unknown;
   is_anonymous?: unknown;
   sub?: unknown;
+  phone?: unknown;
+  phone_number?: unknown;
   user_metadata?: unknown;
 }>;
 
@@ -40,6 +42,12 @@ function appUser(value: unknown): AppUser {
     email: typeof user.email === "string" ? user.email : null,
     id,
     metadata: Object.freeze({ ...metadata }),
+    phone:
+      typeof user.phone === "string"
+        ? user.phone
+        : typeof user.phone_number === "string"
+          ? user.phone_number
+          : null,
   });
 }
 
@@ -88,6 +96,8 @@ export function cloudBaseSessionFromVerifiedClaims(
       email: claims.email,
       id: claims.sub,
       is_anonymous: claims.is_anonymous,
+      phone: claims.phone,
+      phone_number: claims.phone_number,
       user_metadata: claims.user_metadata,
     }),
   });

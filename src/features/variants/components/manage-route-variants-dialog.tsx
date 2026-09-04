@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useAutoDismiss } from "@/components/ui/use-auto-dismiss";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +54,6 @@ export function ManageRouteVariantsDialog({
   const primaryMutation = useSetPrimaryRouteVariant(tripId);
   const deleteMutation = useDeleteRouteVariant(tripId);
   const limitReached = variants.length >= 3;
-  useAutoDismiss(notice, () => setNotice(undefined));
 
   async function setPrimary(variant: PlannerVariant) {
     setError(undefined);
@@ -85,7 +84,7 @@ export function ManageRouteVariantsDialog({
       setDeleteVariant(undefined);
       if (wasActive) {
         const primary = result.variants.find(({ is_primary }) => is_primary);
-        if (primary) router.push(variantHref(tripId, primary.id));
+        if (primary) window.location.assign(variantHref(tripId, primary.id));
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "The Plan could not be deleted.");
@@ -153,16 +152,17 @@ export function ManageRouteVariantsDialog({
                 <T message={"Maximum of three variants reached."} />
               </p>
             ) : null}
-            {error ? (
-              <p className="text-sm text-destructive" role="alert">
-                <Localized value={error} />
-              </p>
-            ) : null}
-            {notice ? (
-              <p className="text-sm text-primary" aria-live="polite">
-                <Localized value={notice} />
-              </p>
-            ) : null}
+            <AutoDismissAlert
+              onDismiss={() => setError(undefined)}
+              role="alert"
+              tone="destructive"
+              value={error}
+            >
+              {error ? <Localized value={error} /> : null}
+            </AutoDismissAlert>
+            <AutoDismissAlert onDismiss={() => setNotice(undefined)} tone="success" value={notice}>
+              {notice ? <Localized value={notice} /> : null}
+            </AutoDismissAlert>
           </div>
           <DialogFooter>
             <Button onClick={() => onOpenChange(false)} type="button">
@@ -202,11 +202,15 @@ export function ManageRouteVariantsDialog({
               />
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {error ? (
-            <p className="text-sm text-destructive" role="alert">
-              <Localized value={error} />
-            </p>
-          ) : null}
+          <AutoDismissAlert
+            className="rounded-md text-sm shadow-none"
+            onDismiss={() => setError(undefined)}
+            role="alert"
+            tone="destructive"
+            value={error}
+          >
+            {error ? <Localized value={error} /> : null}
+          </AutoDismissAlert>
           <AlertDialogFooter>
             <AlertDialogCancel>
               <T message={"Cancel"} />

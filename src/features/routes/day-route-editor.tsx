@@ -15,6 +15,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import {
   Select,
   SelectContent,
@@ -198,14 +199,14 @@ export function DayRouteEditor({
           ) : null}
         </div>
 
-        {route.error ? (
-          <p
-            className="mt-3 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
-            role="alert"
-          >
-            <Localized value={route.error} />
-          </p>
-        ) : null}
+        <AutoDismissAlert
+          className="mt-3 rounded-md text-xs shadow-none"
+          role="alert"
+          tone="destructive"
+          value={route.error}
+        >
+          {route.error ? <Localized value={route.error} /> : null}
+        </AutoDismissAlert>
       </div>
       <footer className="flex items-center gap-2 border-t p-3">
         {route.plan ? (

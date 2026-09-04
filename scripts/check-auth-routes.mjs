@@ -5,14 +5,19 @@ const routes =
   region === "cn"
     ? [
         {
-          forbidden: ["Continue with Google", 'id="credential"', 'id="password"'],
-          markers: ["欢迎回来", 'id="phone"', "发送验证码"],
+          forbidden: ["Continue with Google", 'id="credential"'],
+          markers: ["欢迎回来", 'id="phone"', 'id="password"', "密码", "短信验证码", "忘记密码"],
           pathname: "/login",
         },
         {
-          forbidden: ["Continue with Google", 'id="credential"', 'id="password"'],
-          markers: ["创建账户", 'id="phone"', "发送验证码"],
+          forbidden: ["Continue with Google", 'id="credential"'],
+          markers: ["创建账户", 'id="phone"', 'id="password"', "发送验证码"],
           pathname: "/signup",
+        },
+        {
+          forbidden: ["Continue with Google", 'id="credential"'],
+          markers: ["重置密码", 'id="phone"', "发送验证码"],
+          pathname: "/forgot-password",
         },
       ]
     : [

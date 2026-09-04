@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         : undefined;
 
   if (capabilities.publicAuthMethods.includes("phone_otp")) {
-    return <PhoneAuthForm action={phoneOtpAuth} mode="login" />;
+    return <PhoneAuthForm action={phoneOtpAuth} mode="login" passwordAction={login} />;
   }
 
   const identifier = capabilities.publicAuthMethods.includes("email_password")

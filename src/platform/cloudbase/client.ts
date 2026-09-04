@@ -16,8 +16,13 @@ export type CloudBaseSdkResult<T = unknown> = Promise<{
 export type CloudBaseAuthClient = Readonly<{
   getSession(): CloudBaseSdkResult;
   refreshSession(refreshToken?: string): CloudBaseSdkResult;
+  resetPasswordForOld(input: { new_password: string; old_password: string }): CloudBaseSdkResult;
   setSession(input: { access_token: string; refresh_token: string }): CloudBaseSdkResult;
-  signInWithPassword(input: { password: string; username: string }): CloudBaseSdkResult;
+  signInWithPassword(input: {
+    password: string;
+    phone?: string;
+    username?: string;
+  }): CloudBaseSdkResult;
   signOut(): Promise<unknown>;
 }>;
 

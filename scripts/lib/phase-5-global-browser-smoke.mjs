@@ -19,6 +19,19 @@ function chromeExecutable() {
   return executable;
 }
 
+function browserProxyArguments() {
+  const candidate = process.env.HTTPS_PROXY ?? process.env.https_proxy;
+  if (!candidate) return [];
+  try {
+    const proxy = new URL(candidate);
+    if (!["http:", "https:"].includes(proxy.protocol) || proxy.username || proxy.password)
+      return [];
+    return [`--proxy-server=${proxy.origin}`, "--proxy-bypass-list=localhost;127.0.0.1;[::1]"];
+  } catch {
+    return [];
+  }
+}
+
 class CdpClient {
   constructor(socket) {
     this.nextId = 1;
@@ -52,6 +65,7 @@ async function launchBrowser() {
       "--no-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
+      ...browserProxyArguments(),
       "--remote-debugging-port=0",
       `--user-data-dir=${profile}`,
       "about:blank",
@@ -156,6 +170,157 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
   throw new Error(`Timed out waiting for ${label}.`);
+}
+
+async function clickElement(browser, elementExpression, label) {
+  const point = await evaluate(
+    browser,
+    `(async () => {
+      const element = (${elementExpression});
+      if (!element || !element.getClientRects().length || element.disabled) return null;
+      element.scrollIntoView({ block: "center", inline: "center" });
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const rect = element.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return hit && (hit === element || element.contains(hit)) ? { x, y } : null;
+    })()`,
+  );
+  assert.ok(point, `${label} was not available.`);
+  await browser.cdp.send(
+    "Input.dispatchMouseEvent",
+    { button: "left", clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchMouseEvent",
+    { button: "left", clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
+    browser.sessionId,
+  );
+}
+
+async function setInputValue(browser, selector, value) {
+  const changed = await evaluate(
+    browser,
+    `(() => {
+      const input = document.querySelector(${JSON.stringify(selector)});
+      if (!(input instanceof HTMLInputElement) || !input.getClientRects().length) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, ${JSON.stringify(value)});
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    })()`,
+  );
+  assert.equal(changed, true, `${selector} was not available.`);
+}
+
+async function verifyVariantNavigation(browser) {
+  const trigger = `[...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+    .find((button) => button.getClientRects().length && !button.disabled)`;
+  const label = await evaluate(browser, `(${trigger})?.getAttribute('aria-label')`);
+  const originalPlan = label?.match(/Current Plan: (.+)$/)?.[1];
+  assert.ok(originalPlan, "Global active Plan label was unavailable.");
+  await clickElement(browser, trigger, "Global Plans menu");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === "New empty Plan")`,
+    "Global New empty Plan",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[role="dialog"] input'))`,
+    "Global Plan editor",
+  );
+  const planName = `Global browser Plan ${Date.now()}`;
+  await setInputValue(browser, '[role="dialog"] input', planName);
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')]
+      .some((button) => button.textContent.trim() === "Create Plan" && !button.disabled)`,
+    "enabled Global Create Plan",
+  );
+  const submitted = await evaluate(
+    browser,
+    `(() => {
+      const button = [...document.querySelectorAll('[role="dialog"] button')]
+        .find((candidate) => candidate.textContent.trim() === "Create Plan" && !candidate.disabled);
+      const form = button?.closest('form');
+      if (!(button instanceof HTMLButtonElement) || !(form instanceof HTMLFormElement)) return false;
+      form.requestSubmit(button);
+      return true;
+    })()`,
+  );
+  assert.equal(submitted, true, "Global Create Plan form was not submit-ready.");
+  const createdVariantId = await waitFor(
+    browser,
+    `(() => {
+      const variant = new URLSearchParams(location.search).get('variant');
+      const planButton = [...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+        .find((button) => button.getClientRects().length && button.getAttribute('aria-label')?.includes(${JSON.stringify(`Current Plan: ${planName}`)}));
+      return variant && planButton && document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]') ? variant : '';
+    })()`,
+    "Global created Plan navigation",
+    60_000,
+  );
+  assert.doesNotMatch(await evaluate(browser, "document.body.innerText"), /could not be loaded/i);
+
+  await clickElement(browser, trigger, "Global Plans menu after create");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(originalPlan)}))`,
+    "Global original Plan",
+  );
+  try {
+    await waitFor(
+      browser,
+      `(() => {
+        const variant = new URLSearchParams(location.search).get('variant');
+        const planButton = [...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+          .find((button) => button.getClientRects().length && button.getAttribute('aria-label')?.includes(${JSON.stringify(`Current Plan: ${originalPlan}`)}));
+        return variant && variant !== ${JSON.stringify(createdVariantId)} && planButton && document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]') ? variant : '';
+      })()`,
+      "Global original Plan navigation",
+      60_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        body: document.body.innerText.slice(0, 1_200),
+        href: location.href,
+        menuitems: [...document.querySelectorAll('[role="menuitem"]')].map((node) => ({ text: node.textContent.trim(), visible: Boolean(node.getClientRects().length) })),
+        trigger: (${trigger})?.getAttribute('aria-label'),
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; original Plan diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await clickElement(browser, trigger, "Global Plans menu after original switch");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(planName)}))`,
+    "Global created Plan",
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(createdVariantId)}
+      && [...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+        .some((button) => button.getClientRects().length && button.getAttribute('aria-label')?.includes(${JSON.stringify(`Current Plan: ${planName}`)}))
+      && Boolean(document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]'))`,
+    "Global created Plan revisit",
+    60_000,
+  );
+  assert.doesNotMatch(await evaluate(browser, "document.body.innerText"), /could not be loaded/i);
+  assert.equal(
+    await evaluate(browser, 'Boolean(document.querySelector("[data-nextjs-dialog]"))'),
+    false,
+  );
 }
 
 async function boundedPageDiagnostic(browser) {
@@ -345,6 +510,20 @@ async function startApplication(baseUrl) {
   throw new Error(`Global Next.js did not become ready. ${diagnostics}`);
 }
 
+async function verifyAuthRoutes(baseUrl) {
+  await new Promise((resolve, reject) => {
+    const child = spawn("npm", ["run", "check:auth-routes", "--", baseUrl], {
+      env: process.env,
+      stdio: "inherit",
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) resolve();
+      else reject(new Error(`Global auth route check failed (${signal ?? `exit ${code}`}).`));
+    });
+  });
+}
+
 export async function runGlobalBrowserSmoke(options) {
   const baseUrl = process.env.PHASE5_GLOBAL_BASE_URL ?? "http://127.0.0.1:3100";
   const remotePreview = process.env.PHASE5_START_APP === "0";
@@ -362,6 +541,7 @@ export async function runGlobalBrowserSmoke(options) {
       if (!response.ok) throw new Error(`Global Preview returned ${response.status} for /login.`);
     } else {
       server = await startApplication(baseUrl);
+      await verifyAuthRoutes(baseUrl);
     }
     browser = await launchBrowser();
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
@@ -380,11 +560,19 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
-    await waitFor(
-      browser,
-      'Boolean(window.google?.maps && document.querySelector(".gm-style"))',
-      "real Google map",
-    );
+    try {
+      await waitFor(
+        browser,
+        'Boolean(window.google?.maps && document.querySelector(".gm-style"))',
+        "real Google map",
+      );
+    } catch (error) {
+      const diagnostic = await boundedPageDiagnostic(browser);
+      throw new Error(
+        `${error instanceof Error ? error.message : error}; bounded map diagnostic: ${JSON.stringify(diagnostic)}`,
+      );
+    }
+    await verifyVariantNavigation(browser);
     const place = await evaluate(
       browser,
       `(async () => {

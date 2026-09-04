@@ -7,6 +7,7 @@ import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -145,15 +146,19 @@ export function AuthForm({
       </CardHeader>
       <CardContent className="px-0 pb-7 sm:px-8">
         {errorMessage ? (
-          <div
-            className="mb-4 flex gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+          <AutoDismissAlert
+            className="mb-4 rounded-lg shadow-none"
             role="alert"
+            tone="destructive"
+            value={errorMessage}
           >
-            <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-            <p>
-              <Localized value={errorMessage} />
-            </p>
-          </div>
+            <div className="flex gap-2">
+              <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+              <p>
+                <Localized value={errorMessage} />
+              </p>
+            </div>
+          </AutoDismissAlert>
         ) : null}
         {oauthAction ? (
           <>
@@ -183,15 +188,19 @@ export function AuthForm({
           <input name="auth_flow" type="hidden" value={mode} />
           <input name="operation_id" ref={passwordOperationRef} type="hidden" />
           {state.error ? (
-            <div
-              className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+            <AutoDismissAlert
+              className="rounded-lg shadow-none"
               role="alert"
+              tone="destructive"
+              value={state.error}
             >
-              <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
-              <p>
-                <Localized value={state.error} />
-              </p>
-            </div>
+              <div className="flex gap-2">
+                <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+                <p>
+                  <Localized value={state.error} />
+                </p>
+              </div>
+            </AutoDismissAlert>
           ) : null}
           <div className="space-y-2">
             <Label htmlFor="credential">

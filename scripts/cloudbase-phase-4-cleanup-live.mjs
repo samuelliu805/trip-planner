@@ -15,9 +15,8 @@ if (!apiKey) throw new Error("CLOUDBASE_API_KEY is unavailable");
 if (apiKey.trim() !== apiKey || /[\r\n{}]/.test(apiKey)) {
   throw new Error("CLOUDBASE_API_KEY has an invalid format");
 }
-process.env.CLOUDBASE_APIKEY = apiKey;
-
-const timeoutMilliseconds = 15_000;
+// The management-plane SQL command regularly needs longer than application data requests.
+const timeoutMilliseconds = 60_000;
 const users = ["trip-planner-cn-test-a", "trip-planner-cn-test-b"];
 
 async function run() {

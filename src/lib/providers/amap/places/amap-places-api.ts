@@ -2,7 +2,7 @@ import { normalizeAmapPlace } from "./normalize-amap-place.ts";
 
 const upstreamByOperation = {
   resolve: "https://restapi.amap.com/v3/place/detail",
-  suggest: "https://restapi.amap.com/v3/assistant/inputtips",
+  suggest: "https://restapi.amap.com/v3/place/text",
 } as const;
 const maximumResponseBytes = 512 * 1024;
 
@@ -138,20 +138,27 @@ export async function handleAmapPlacesRequest(request: Request, options: AmapPla
       }
       const parameters = new URLSearchParams({
         citylimit: "false",
-        datatype: "poi",
+        children: "1",
+        extensions: "base",
         keywords: input,
-        ...(types && { type: types }),
+        offset: "25",
+        page: "1",
+        ...(types && { types }),
       });
       const payload = await readAmapPayload("suggest", parameters, request.signal, options);
-      const tips = Array.isArray(payload.tips) ? payload.tips : [];
-      const suggestions = tips.slice(0, 25).flatMap((value) => {
+      const pois = Array.isArray(payload.pois) ? payload.pois : [];
+      const suggestions = pois.slice(0, 25).flatMap((value) => {
         if (!value || typeof value !== "object" || Array.isArray(value)) return [];
-        const tip = value as Record<string, unknown>;
-        const id = text(tip.id);
-        const primary = text(tip.name);
+        const poi = value as Record<string, unknown>;
+        const id = text(poi.id);
+        const primary = text(poi.name);
         if (!id || !primary || !/^[A-Za-z0-9]{1,64}$/.test(id)) return [];
-        const address = Array.isArray(tip.address) ? text(tip.address[0]) : text(tip.address);
-        const secondary = [text(tip.district), address].filter(Boolean).join(" · ");
+        const address = Array.isArray(poi.address) ? text(poi.address[0]) : text(poi.address);
+        const locality = [text(poi.pname), text(poi.cityname), text(poi.adname)]
+          .filter(Boolean)
+          .filter((part, index, values) => values.indexOf(part) === index)
+          .join("");
+        const secondary = [locality, address].filter(Boolean).join(" · ");
         return [{ id, primary, ...(secondary && { secondary }) }];
       });
       return Response.json({ suggestions }, { headers: responseHeaders() });

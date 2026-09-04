@@ -4,6 +4,7 @@ export type AppUser = Readonly<{
   email: string | null;
   id: AppUserId;
   metadata: Readonly<Record<string, unknown>>;
+  phone: string | null;
 }>;
 
 export type SignInInput =
@@ -16,6 +17,11 @@ export type SignInInput =
       method: "username_password";
       password: string;
       username: string;
+    }>
+  | Readonly<{
+      method: "phone_password";
+      password: string;
+      phone: string;
     }>;
 
 export type PublicSelfRegistrationInput = Readonly<{
@@ -51,8 +57,20 @@ export interface PhoneOtpAuthProvider {
 
 export interface BrowserPhoneOtpProvider {
   clearChallenge(): void;
-  requestOtp(phone: string): Promise<void>;
+  requestOtp(
+    input: Readonly<{
+      intent: "sign_in" | "sign_up";
+      password?: string;
+      phone: string;
+    }>,
+  ): Promise<void>;
+  requestPasswordResetOtp(phone: string): Promise<void>;
+  resetPassword(code: string, password: string): Promise<void>;
   verifyOtp(code: string): Promise<Readonly<{ accessToken: string; refreshToken: string }>>;
+}
+
+export interface PasswordManagementProvider {
+  changePassword(input: Readonly<{ currentPassword: string; newPassword: string }>): Promise<void>;
 }
 
 export interface PublicSelfRegistrationProvider {

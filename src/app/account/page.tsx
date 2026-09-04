@@ -9,7 +9,11 @@ import { translateMessage } from "@/features/i18n/translate";
 import { PlannerMapProvider } from "@/features/maps/planner-map-provider";
 import { defaultTripCurrencyForRegion } from "@/features/trips/create-defaults";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
-import { getAccountProfileRepository, getAuthProvider } from "@/platform/composition/server";
+import {
+  getAccountProfileRepository,
+  getAuthProvider,
+  getBackendCapabilities,
+} from "@/platform/composition/server";
 import { getServerProviderConfig } from "@/platform/config/server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -22,6 +26,8 @@ export default async function AccountPage() {
   const user = await getAuthProvider().getCurrentUser();
   if (!user) redirect("/login");
   const profile = await getAccountProfileRepository().getForCurrentUser();
+  const identity = user.phone ?? user.email ?? String(user.metadata.username ?? "-");
+  const identityLabel = user.phone ? "Mobile number" : user.email ? "Email" : "Account";
 
   return (
     <main className="min-h-dvh bg-muted">
@@ -32,12 +38,11 @@ export default async function AccountPage() {
             profile?.defaultCurrency ??
             defaultTripCurrencyForRegion(getServerProviderConfig().appRegion)
           }
-          email={
-            user.email ??
-            String(user.metadata.username ?? translateMessage(requestLocale, "Email unavailable"))
-          }
+          email={identity}
           homeCity={profile?.homeCity ?? inferredHomeCity(user.metadata)}
+          identityLabel={identityLabel}
           locale={normalizeLocale(profile?.preferredLocale)}
+          passwordManagement={getBackendCapabilities().passwordManagement}
         />
       </PlannerMapProvider>
     </main>

@@ -9,8 +9,9 @@ import {
   dataOrThrow,
   initializeLiveClient,
   loadLiveConfig,
-  signIn,
+  signInSession,
 } from "./lib/cloudbase-pg-live.mjs";
+import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import { resolveCnBrowserOrigin } from "./lib/phase-5-cn-browser-origin.mjs";
@@ -34,6 +35,8 @@ const { hostResolverArgument } = resolvedBrowserOrigin;
 const runLabel = `phase3-app-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const userA = "trip-planner-cn-test-a";
 const userB = "trip-planner-cn-test-b";
+const browserSessions = new Map();
+const dataClients = new Map();
 let applicationServerDiagnostics = "";
 
 function safeApplicationDiagnostics(value) {
@@ -168,6 +171,7 @@ async function launchBrowser() {
       "--no-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
+      "--no-proxy-server",
       "--remote-debugging-port=0",
       `--user-data-dir=${profile}`,
       ...(browserBaseUrl.startsWith("https:") ? ["--ignore-certificate-errors"] : []),
@@ -277,6 +281,20 @@ async function startApplicationIfRequested() {
   );
 }
 
+async function verifyAuthRoutes() {
+  await new Promise((resolve, reject) => {
+    const child = spawn("npm", ["run", "check:auth-routes", "--", baseUrl], {
+      env: process.env,
+      stdio: "inherit",
+    });
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      if (code === 0) resolve();
+      else reject(new Error(`CN auth route check failed (${signal ?? `exit ${code}`}).`));
+    });
+  });
+}
+
 async function evaluate(browser, expression) {
   const result = await browser.cdp.send(
     "Runtime.evaluate",
@@ -348,23 +366,40 @@ async function verifyPublicPhoneAuthAtMobileWidths(browser) {
     for (const [path, heading] of [
       ["/login", "欢迎回来"],
       ["/signup", "创建账户"],
+      ["/forgot-password", "重置密码"],
     ]) {
       await navigate(browser, path);
-      await waitFor(browser, 'Boolean(document.querySelector("#phone"))', `${path} phone form`);
+      try {
+        await waitFor(browser, 'Boolean(document.querySelector("#phone"))', `${path} phone form`);
+      } catch (error) {
+        const diagnostic = await evaluate(
+          browser,
+          `({
+            body: document.body.innerText.slice(0, 800),
+            hasNextDialog: Boolean(document.querySelector('[data-nextjs-dialog]')),
+            href: location.href,
+            title: document.title,
+          })`,
+        );
+        throw new Error(
+          `${error instanceof Error ? error.message : error}; public auth diagnostic: ${JSON.stringify(diagnostic)}`,
+        );
+      }
       const evidence = await evaluate(
         browser,
         `(() => {
           const phone = document.querySelector("#phone");
-          const submit = document.querySelector('button[type="submit"][value="request"]');
+          const submit = [...document.querySelectorAll('button[type="submit"]')]
+            .find((button) => button.getClientRects().length);
           return {
             body: document.body.innerText,
             documentWidth: document.documentElement.scrollWidth,
             heading: document.querySelector("h1,h2")?.textContent?.trim(),
             innerWidth,
+            passwordCount: document.querySelectorAll('#password').length,
             phoneHeight: phone?.getBoundingClientRect().height ?? 0,
             submitHeight: submit?.getBoundingClientRect().height ?? 0,
-            submitCount: document.querySelectorAll('button[type="submit"][value="request"]').length,
-            forbiddenFields: Boolean(document.querySelector("#credential,#password")),
+            forbiddenCredential: Boolean(document.querySelector("#credential")),
           };
         })()`,
       );
@@ -373,15 +408,30 @@ async function verifyPublicPhoneAuthAtMobileWidths(browser) {
         heading,
         `${path} did not use the CN regional locale default.`,
       );
-      assert.equal(evidence.forbiddenFields, false, `${path} exposed a password credential.`);
+      assert.equal(evidence.forbiddenCredential, false, `${path} exposed a non-phone credential.`);
       assert.doesNotMatch(evidence.body, /Continue with Google|Username|Email address/);
-      assert.equal(evidence.submitCount, 1, `${path} must expose one primary SMS action.`);
+      assert.equal(
+        evidence.passwordCount,
+        path === "/login" || path === "/signup" ? 1 : 0,
+        `${path} rendered the wrong password step.`,
+      );
       assert.ok(evidence.phoneHeight >= 44, `${path} phone input is below 44px.`);
       assert.ok(evidence.submitHeight >= 44, `${path} primary action is below 44px.`);
       assert.ok(
         evidence.documentWidth <= evidence.innerWidth,
         `${path} overflows horizontally at ${width}px.`,
       );
+      if (path === "/login") {
+        assert.match(evidence.body, /密码/);
+        assert.match(evidence.body, /短信验证码/);
+        assert.match(evidence.body, /忘记密码/);
+        await clickButtonText(browser, "短信验证码");
+        await waitFor(
+          browser,
+          `Boolean(document.querySelector('button[type="submit"][value="request"]')) && !document.querySelector('#password')`,
+          "SMS login method",
+        );
+      }
     }
   }
   await browser.cdp.send(
@@ -390,6 +440,255 @@ async function verifyPublicPhoneAuthAtMobileWidths(browser) {
     browser.sessionId,
   );
   await clearCookies(browser);
+}
+
+async function openPlannerCellEditor(browser, cell, label) {
+  const cellExpression = `document.querySelector('[data-cell="${cell}"]')`;
+  await clickElement(browser, cellExpression, `${label} cell`);
+  const addExpression = `[...document.querySelectorAll('[data-cell="${cell}"] [data-add-item]')]
+    .find((button) => button.getClientRects().length && !button.disabled && getComputedStyle(button).pointerEvents !== "none")`;
+  await waitFor(browser, `Boolean(${addExpression})`, `${label} add control`);
+  await clickElement(browser, addExpression, `Add ${label}`);
+  await waitFor(browser, "Boolean(document.querySelector('[role=\"dialog\"]'))", `${label} editor`);
+}
+
+async function saveOpenItemEditor(browser, label) {
+  let lastError = "";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await clickButtonText(browser, "Save");
+    const outcome = await waitFor(
+      browser,
+      `(() => {
+        if (!document.querySelector('[role="dialog"]')) return { status: 'saved' };
+        const alert = [...document.querySelectorAll('[role="alert"]')]
+          .find((candidate) => candidate.getClientRects().length && candidate.textContent.trim());
+        return alert ? { message: alert.textContent.trim().slice(0, 240), status: 'error' } : null;
+      })()`,
+      `${label} save result`,
+      45_000,
+    );
+    if (outcome.status === "saved") return;
+    lastError = outcome.message;
+    if (/unexpected end of json/i.test(lastError)) {
+      throw new Error(`${label} save reproduced the empty JSON regression: ${lastError}`);
+    }
+    if (!/could not be saved|fetch failed|network|try again|unavailable/i.test(lastError)) {
+      throw new Error(`${label} save failed: ${lastError}`);
+    }
+    const dismiss = await evaluate(
+      browser,
+      `(() => {
+        const button = [...document.querySelectorAll('button[aria-label="Dismiss message"]')]
+          .find((candidate) => candidate.getClientRects().length);
+        if (!button) return false;
+        button.click();
+        return true;
+      })()`,
+    );
+    if (!dismiss) await new Promise((resolve) => setTimeout(resolve, 750));
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="dialog"] button')]
+        .some((button) => button.textContent.trim() === 'Save' && !button.disabled)`,
+      `${label} retry control`,
+    );
+  }
+  throw new Error(`${label} save exhausted its retry budget: ${lastError}`);
+}
+
+async function saveHotelThroughUi(browser) {
+  await openPlannerCellEditor(browser, "0-3", "hotel");
+  await setInputValue(browser, 'input[id^="item-title-"]', `${runLabel} hotel`);
+  try {
+    await saveOpenItemEditor(browser, "hotel");
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        body: document.querySelector('[role="dialog"]')?.textContent.slice(0, 1_200),
+        href: location.href,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; hotel save diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-cell="0-3"] [data-edit-item]').length === 1`,
+    "saved hotel",
+    45_000,
+  );
+}
+
+async function saveWalkingTransportThroughUi(browser) {
+  await openPlannerCellEditor(browser, "0-2", "transport");
+  await clickElement(
+    browser,
+    `document.querySelector('button[id^="transport-mode-"]')`,
+    "transport mode",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].some((option) => option.textContent.trim() === "Walking" && option.getClientRects().length)`,
+    "Walking transport option",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].find((option) => option.textContent.trim() === "Walking" && option.getClientRects().length)`,
+    "Walking transport option",
+  );
+  const endpointLabels = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] label')]
+      .filter((label) => label.getClientRects().length)
+      .map((label) => label.textContent.trim())`,
+  );
+  assert.equal(
+    endpointLabels.some((label) => label === "From" || label === "To"),
+    false,
+  );
+  await saveOpenItemEditor(browser, "transport");
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length === 1`,
+    "saved Walking transport",
+    45_000,
+  );
+}
+
+async function verifyFeedbackCountdown(browser) {
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('.alert-countdown-progress'))`,
+    "alert countdown progress",
+  );
+  const hitbox = await evaluate(
+    browser,
+    `(() => {
+      const button = document.querySelector('button[aria-label="Dismiss message"]');
+      if (!button) return null;
+      const rect = button.getBoundingClientRect();
+      return { height: rect.height, width: rect.width };
+    })()`,
+  );
+  assert.ok(hitbox?.height >= 44 && hitbox?.width >= 44, "Alert close target is below 44px.");
+  await waitFor(
+    browser,
+    `!document.querySelector('.alert-countdown-progress')`,
+    "alert auto-dismiss",
+    10_000,
+  );
+}
+
+async function verifyVariantNavigationThroughUi(browser) {
+  const triggerExpression = `[...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+    .find((button) => button.getClientRects().length && !button.disabled)`;
+  const triggerLabel = await evaluate(
+    browser,
+    `(${triggerExpression})?.getAttribute('aria-label')`,
+  );
+  const priorPlan = triggerLabel?.match(/Current Plan: (.+)$/)?.[1];
+  assert.ok(priorPlan, "The active Plan label was unavailable.");
+  await clickElement(browser, triggerExpression, "Plans menu");
+  await clickButtonText(browser, "New empty Plan");
+  try {
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector('[role="dialog"] input'))`,
+      "new Plan editor",
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        body: document.body.innerText.slice(0, 1_200),
+        dialogs: [...document.querySelectorAll('[role="dialog"]')].map((node) => node.textContent.slice(0, 240)),
+        href: location.href,
+        menuitems: [...document.querySelectorAll('[role="menuitem"]')].map((node) => ({ disabled: node.getAttribute('data-disabled'), text: node.textContent.trim(), visible: Boolean(node.getClientRects().length) })),
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; Plan editor diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  const planName = `${runLabel}-plan`;
+  await setInputValue(browser, '[role="dialog"] input', planName);
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')]
+      .some((button) => button.textContent.trim() === "Create Plan" && !button.disabled)`,
+    "enabled Create Plan action",
+  );
+  const submitted = await evaluate(
+    browser,
+    `(() => {
+      const button = [...document.querySelectorAll('[role="dialog"] button')]
+        .find((candidate) => candidate.textContent.trim() === "Create Plan" && !candidate.disabled);
+      const form = button?.closest('form');
+      if (!(button instanceof HTMLButtonElement) || !(form instanceof HTMLFormElement)) return false;
+      form.requestSubmit(button);
+      return true;
+    })()`,
+  );
+  assert.equal(submitted, true, "Create Plan form was not submit-ready.");
+  const createdVariantId = await waitFor(
+    browser,
+    `(() => {
+      const variant = new URLSearchParams(location.search).get('variant');
+      const planButton = [...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+        .find((button) => button.getClientRects().length && button.getAttribute('aria-label')?.includes(${JSON.stringify(`Current Plan: ${planName}`)}));
+      return variant && planButton && document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]') ? variant : '';
+    })()`,
+    "created Plan full navigation",
+    60_000,
+  );
+  assert.doesNotMatch(await evaluate(browser, "document.body.innerText"), /could not be loaded/i);
+  assert.equal(
+    await evaluate(browser, 'Boolean(document.querySelector("[data-nextjs-dialog]"))'),
+    false,
+  );
+
+  await clickElement(browser, triggerExpression, "Plans menu after create");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(priorPlan)}))`,
+    `switch to ${priorPlan}`,
+  );
+  const priorVariantId = await waitFor(
+    browser,
+    `(() => {
+      const variant = new URLSearchParams(location.search).get('variant');
+      const planButton = [...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+        .find((button) => button.getClientRects().length && button.getAttribute('aria-label')?.includes(${JSON.stringify(`Current Plan: ${priorPlan}`)}));
+      return variant && variant !== ${JSON.stringify(createdVariantId)} && planButton && document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]') ? variant : '';
+    })()`,
+    "switch to original Plan",
+    60_000,
+  );
+  assert.ok(priorVariantId);
+  await clickElement(browser, triggerExpression, "Plans menu after original switch");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(planName)}))`,
+    `switch to ${planName}`,
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(createdVariantId)}
+      && [...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+        .some((button) => button.getClientRects().length && button.getAttribute('aria-label')?.includes(${JSON.stringify(`Current Plan: ${planName}`)}))
+      && Boolean(document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]'))`,
+    "switch back to created Plan",
+    60_000,
+  );
+  assert.doesNotMatch(await evaluate(browser, "document.body.innerText"), /could not be loaded/i);
+  assert.equal(
+    await evaluate(browser, 'Boolean(document.querySelector("[data-nextjs-dialog]"))'),
+    false,
+  );
 }
 
 async function clearCookies(browser) {
@@ -424,11 +723,13 @@ async function cookieMetadata(browser) {
 
 async function login(browser, username, password) {
   await setCookie(browser, "trip-planner-locale", "en");
-  const config = loadLiveConfig();
-  const { auth } = initializeLiveClient(config);
-  dataOrThrow(await auth.signInWithPassword({ username, password }), `${username} login`);
-  const sessionData = dataOrThrow(await auth.getSession(), `${username} session`);
-  const session = sessionData?.session ?? sessionData;
+  let session = browserSessions.get(username);
+  if (!session) {
+    const config = loadLiveConfig();
+    const { auth } = initializeLiveClient(config);
+    session = await signInSession(auth, username, password);
+    browserSessions.set(username, session);
+  }
   assert.equal(typeof session?.access_token, "string", "Controlled login lacks an access token.");
   assert.equal(typeof session?.refresh_token, "string", "Controlled login lacks a refresh token.");
   const cookieOptions = { httpOnly: true, sameSite: "Lax" };
@@ -436,6 +737,24 @@ async function login(browser, username, password) {
   await setCookie(browser, "tp-cn-refresh-token", session.refresh_token, cookieOptions);
   await navigate(browser, "/trips");
   await waitFor(browser, 'location.pathname === "/trips"', `${username} login`, 45_000);
+}
+
+async function controlledDataClient(username, password) {
+  let client = dataClients.get(username);
+  if (client) return client;
+  client = initializeLiveClient(loadLiveConfig());
+  await signInSession(client.auth, username, password);
+  dataClients.set(username, client);
+  return client;
+}
+
+async function controlledData(operation, label) {
+  const result = await runCloudBaseSdkCall(operation, label, {
+    attempts: 3,
+    backoffMilliseconds: 500,
+    timeoutMilliseconds: 30_000,
+  });
+  return dataOrThrow(result, label);
 }
 
 async function clickElement(browser, elementExpression, label) {
@@ -1203,26 +1522,24 @@ async function deleteTripThroughUi(browser) {
 async function cleanupFixture(tripId) {
   if (!tripId) return { deleted: 0, remaining: 0 };
   const config = loadLiveConfig();
-  const { auth, db } = initializeLiveClient(config);
-  await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
-  const before = dataOrThrow(
-    await db.from("trips").select("id").eq("id", tripId),
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const before = await controlledData(
+    () => db.from("trips").select("id").eq("id", tripId),
     "application E2E cleanup lookup",
   );
   let deleted = 0;
   if (Array.isArray(before) && before.length) {
-    const result = dataOrThrow(
-      await db.from("trips").delete().eq("id", tripId).select("id"),
+    const result = await controlledData(
+      () => db.from("trips").delete().eq("id", tripId).select("id"),
       "application E2E cleanup delete",
     );
     deleted = Array.isArray(result) ? result.length : 0;
     if (deleted !== 1) throw new Error("Application E2E cleanup did not delete exactly one row.");
   }
-  const after = dataOrThrow(
-    await db.from("trips").select("id").eq("id", tripId),
+  const after = await controlledData(
+    () => db.from("trips").select("id").eq("id", tripId),
     "application E2E cleanup verification",
   );
-  await auth.signOut();
   const remaining = Array.isArray(after) ? after.length : 0;
   if (remaining) throw new Error("Application E2E fixture remained after cleanup.");
   return { deleted, remaining };
@@ -1230,71 +1547,70 @@ async function cleanupFixture(tripId) {
 
 async function loadPersistedAmapEvidence(tripId) {
   const config = loadLiveConfig();
-  const { auth, db } = initializeLiveClient(config);
-  try {
-    await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
-    const items = dataOrThrow(
-      await db
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const items = await controlledData(
+    () =>
+      db
         .from("itinerary_items")
         .select("id,place_id,title")
         .eq("trip_id", tripId)
         .eq("type", "activity"),
-      "application E2E AMap activities",
-    );
-    const placeIds = (Array.isArray(items) ? items : [items])
-      .map(({ place_id: placeId }) => placeId)
-      .filter(Boolean);
-    const places = placeIds.length
-      ? dataOrThrow(
-          await db
+    "application E2E AMap activities",
+  );
+  const placeIds = (Array.isArray(items) ? items : [items])
+    .map(({ place_id: placeId }) => placeId)
+    .filter(Boolean);
+  const places = placeIds.length
+    ? await controlledData(
+        () =>
+          db
             .from("places")
             .select(
               "id,source,provider_place_id,google_place_id,display_name,formatted_address,latitude,longitude,coordinate_system",
             )
             .in("id", placeIds),
-          "application E2E persisted AMap places",
-        )
-      : [];
-    const plans = dataOrThrow(
-      await db.from("day_route_plans").select("id").eq("trip_id", tripId),
-      "application E2E AMap day route",
-    );
-    const planIds = (Array.isArray(plans) ? plans : [plans]).map(({ id }) => id).filter(Boolean);
-    const calculations = planIds.length
-      ? dataOrThrow(
-          await db
+        "application E2E persisted AMap places",
+      )
+    : [];
+  const plans = await controlledData(
+    () => db.from("day_route_plans").select("id").eq("trip_id", tripId),
+    "application E2E AMap day route",
+  );
+  const planIds = (Array.isArray(plans) ? plans : [plans]).map(({ id }) => id).filter(Boolean);
+  const calculations = planIds.length
+    ? await controlledData(
+        () =>
+          db
             .from("day_route_calculations")
             .select("plan_id,calculated_legs")
             .in("plan_id", planIds),
-          "application E2E calculated AMap route",
-        )
-      : [];
-    return {
-      calculations: Array.isArray(calculations) ? calculations : [calculations],
-      items: Array.isArray(items) ? items : [items],
-      places: Array.isArray(places) ? places : [places],
-    };
-  } finally {
-    await auth.signOut();
-  }
+        "application E2E calculated AMap route",
+      )
+    : [];
+  return {
+    calculations: Array.isArray(calculations) ? calculations : [calculations],
+    items: Array.isArray(items) ? items : [items],
+    places: Array.isArray(places) ? places : [places],
+  };
 }
 
 async function loadPersistedShareCount(tripId) {
   const config = loadLiveConfig();
-  const { auth, db } = initializeLiveClient(config);
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
   try {
-    await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
-    const result = await db.rpc("list_share_pages_v2", { target_trip_id: tripId });
-    if (result.error) return { count: null, lookupOk: false };
-    return { count: Array.isArray(result.data) ? result.data.length : null, lookupOk: true };
-  } finally {
-    await auth.signOut();
+    const result = await controlledData(
+      () => db.rpc("list_share_pages_v2", { target_trip_id: tripId }),
+      "application E2E persisted share count",
+    );
+    return { count: Array.isArray(result) ? result.length : null, lookupOk: true };
+  } catch {
+    return { count: null, lookupOk: false };
   }
 }
 
 function assertPersistedAmapPlaces(evidence) {
-  assert.equal(evidence.items.length, 2, "The real UI did not persist both AMap activities.");
-  assert.equal(evidence.places.length, 2, "The real UI did not persist both AMap place rows.");
+  assert.equal(evidence.items.length, 3, "The real UI did not persist all AMap activities.");
+  assert.equal(evidence.places.length, 3, "The real UI did not persist all AMap place rows.");
   for (const place of evidence.places) {
     assert.equal(place.source, "amap");
     assert.equal(place.coordinate_system, "wgs84");
@@ -1334,6 +1650,7 @@ async function run() {
   let cleanup;
   try {
     server = await startApplicationIfRequested();
+    if (server) await verifyAuthRoutes();
     if (requireAmapSmoke) {
       browserTlsProxy = await startLoopbackTlsProxy({
         browserHostname: new URL(resolvedBrowserOrigin.browserBaseUrl).hostname,
@@ -1367,6 +1684,10 @@ async function run() {
     assert.equal(await evaluate(browser, "location.pathname"), "/login");
     await clearCookies(browser);
 
+    // Acquire both controlled sessions before creating a fixture. Reusing these short-lived
+    // tokens avoids making later authorization assertions depend on a transient auth-gateway call.
+    await login(browser, userB, process.env.CLOUDBASE_TEST_USER_B_PASSWORD);
+    await clearCookies(browser);
     await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
     let names = await cookieNames(browser);
     assert(names.includes("tp-cn-access-token"));
@@ -1415,11 +1736,26 @@ async function run() {
     }
     tripId = detailPath.split("/").at(-1);
     try {
-      await waitFor(
-        browser,
-        "Boolean(document.querySelector('[data-i18n-aria-label=\"Editable trip planning matrix\"]'))",
-        "real planner workspace",
-        60_000,
+      let workspaceReady = false;
+      for (let attempt = 0; attempt < 3 && !workspaceReady; attempt += 1) {
+        const outcome = await waitFor(
+          browser,
+          `(() => {
+            if (document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]')) return 'ready';
+            const retry = [...document.querySelectorAll('button')]
+              .find((button) => button.textContent.trim() === 'Try again' && button.getClientRects().length);
+            return retry ? 'retry' : '';
+          })()`,
+          "real planner workspace or bounded retry",
+          60_000,
+        );
+        workspaceReady = outcome === "ready";
+        if (!workspaceReady) await clickButtonText(browser, "Try again");
+      }
+      assert.equal(
+        workspaceReady,
+        true,
+        "The planner did not recover from its bounded load error.",
       );
     } catch (error) {
       const page = await evaluate(
@@ -1445,6 +1781,12 @@ async function run() {
     await updateTripTitle(browser, updatedTitle);
     await addAmapActivityThroughUi(browser, "上海外滩", 1);
     await addAmapActivityThroughUi(browser, "上海人民广场", 2);
+    await addAmapActivityThroughUi(browser, "Shanghai Hongqiao airport", 3);
+    await saveHotelThroughUi(browser);
+    await verifyFeedbackCountdown(browser);
+    await saveWalkingTransportThroughUi(browser);
+    await verifyVariantNavigationThroughUi(browser);
+    await navigate(browser, `/trips/${tripId}`);
     await navigate(browser, `/trips/${tripId}`);
     await waitFor(
       browser,

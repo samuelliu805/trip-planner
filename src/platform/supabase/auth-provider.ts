@@ -6,6 +6,7 @@ import type {
   AuthorizationCodeExchangeProvider,
   PublicSelfRegistrationInput,
   PublicSelfRegistrationProvider,
+  PasswordManagementProvider,
   RedirectOAuthProvider,
   RedirectOAuthSignInInput,
   SignInInput,
@@ -18,6 +19,7 @@ import { createSupabaseServerClient } from "./server";
 type SupabaseUserShape = {
   email?: string;
   id: string;
+  phone?: string;
   user_metadata?: Record<string, unknown>;
 };
 
@@ -26,6 +28,7 @@ function appUser(user: SupabaseUserShape): AppUser {
     email: user.email ?? null,
     id: user.id,
     metadata: Object.freeze({ ...(user.user_metadata ?? {}) }),
+    phone: user.phone ?? null,
   });
 }
 
@@ -38,6 +41,7 @@ export class SupabaseAuthProvider
     AuthProvider,
     AuthorizationCodeExchangeProvider,
     PublicSelfRegistrationProvider,
+    PasswordManagementProvider,
     RedirectOAuthProvider
 {
   async getCurrentUser() {
@@ -66,6 +70,15 @@ export class SupabaseAuthProvider
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.signOut();
     if (error) throw operationFailed("Sign out failed.", error);
+  }
+
+  async changePassword(input: Readonly<{ currentPassword: string; newPassword: string }>) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.updateUser({
+      current_password: input.currentPassword,
+      password: input.newPassword,
+    });
+    if (error) throw operationFailed("Password could not be changed.", error);
   }
 
   async exchangeAuthorizationCode(code: string) {

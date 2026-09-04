@@ -136,7 +136,7 @@ export function JourneyScheduleFields({
       {showArrival ? (
         <div className="planner-native-control-frame min-w-0 max-w-full space-y-2">
           <Label htmlFor={`journey-arrival-${fieldId}`}>
-            <T message={" Arrival "} />
+            <T message={" Arrival "} />{" "}
             <span className="font-normal text-muted-foreground">
               <T message={"optional"} />
             </span>

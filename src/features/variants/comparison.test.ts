@@ -597,7 +597,7 @@ test("Phase 5B UI keeps comparison read-only, responsive, isolated, and cost-fre
   assert.match(mapHook, /if \(mapMode === "comparison"\) return/);
   assert.match(mapHook, /current === "comparison" \? current : mode/);
   assert.match(mapHook, /returnMode === "day_route" \? dayRoute\.activeDay\?\.day_number/);
-  assert.match(variantControls, /router\.push\(tripSectionHref/);
+  assert.match(variantControls, /window\.location\.assign\([\s\S]*tripSectionHref/);
   assert.doesNotMatch(comparisonUi, /router\.push|variantHref/);
   assert.match(queries, /invalidateVariantComparison/);
   assert.doesNotMatch(

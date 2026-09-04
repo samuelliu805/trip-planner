@@ -15,6 +15,7 @@ import type {
   AuthProvider,
   AuthorizationCodeExchangeProvider,
   PhoneOtpAuthProvider,
+  PasswordManagementProvider,
   PublicSelfRegistrationProvider,
   RedirectOAuthProvider,
 } from "@/platform/contracts/auth";
@@ -50,6 +51,10 @@ export function getAuthorizationCodeExchangeProvider(): AuthorizationCodeExchang
 
 export function getPhoneOtpAuthProvider(): PhoneOtpAuthProvider {
   return new CloudBasePhoneOtpAuthProvider();
+}
+
+export function getPasswordManagementProvider(): PasswordManagementProvider {
+  return new CloudBaseAuthProvider();
 }
 
 export function getTripRepository(): TripRepository {

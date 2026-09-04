@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { z } from "zod";
 
 import type { AuthActionState } from "@/features/auth/types";
+import { normalizeMainlandPhone } from "@/features/auth/phone";
 import { siteUrlFromHeaders } from "@/features/sharing/site-url";
 import { safeAuthErrorCode } from "@/lib/telemetry/errors";
 import {
@@ -33,10 +34,19 @@ const usernameCredentialSchema = z.object({
   password: z.string().min(1, "Enter your password."),
 });
 
-function loginError(error: unknown) {
+const phoneCredentialSchema = z.object({
+  credential: z.string().trim(),
+  password: z.string().min(1, "Enter your password."),
+});
+
+function loginError(error: unknown, identifier: "email" | "phone" | "username") {
   if (error instanceof PlatformOperationError) {
     if (error.code === "captcha_required") return error.message;
-    if (error.code === "invalid_credentials") return "Username or password is incorrect.";
+    if (error.code === "invalid_credentials") {
+      if (identifier === "phone") return "Phone number or password is incorrect.";
+      if (identifier === "email") return "Email or password is incorrect.";
+      return "Username or password is incorrect.";
+    }
   }
   return "Sign-in could not be completed. Please try again.";
 }
@@ -51,14 +61,22 @@ function authMetadata(formData: FormData, fallbackFlow: "login" | "signup") {
 export async function login(_state: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const metadata = authMetadata(formData, "login");
   const capabilities = getBackendCapabilities();
-  const passwordIdentifier = capabilities.publicAuthMethods.includes("email_password")
-    ? "email"
-    : capabilities.protectedAuthMethods.includes("username_password")
-      ? "username"
-      : null;
+  const requestedKind = formData.get("credential_kind");
+  const passwordIdentifier =
+    requestedKind === "phone" && capabilities.publicAuthMethods.includes("phone_password")
+      ? "phone"
+      : capabilities.publicAuthMethods.includes("email_password")
+        ? "email"
+        : capabilities.protectedAuthMethods.includes("username_password")
+          ? "username"
+          : null;
   if (!passwordIdentifier) return { error: "This sign-in method is not available." };
   const parsed = (
-    passwordIdentifier === "username" ? usernameCredentialSchema : emailCredentialSchema
+    passwordIdentifier === "username"
+      ? usernameCredentialSchema
+      : passwordIdentifier === "phone"
+        ? phoneCredentialSchema
+        : emailCredentialSchema
   ).safeParse({
     credential: formData.get("credential"),
     password: formData.get("password"),
@@ -78,6 +96,12 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
     return { error: parsed.error.issues[0]?.message ?? "Invalid credentials." };
   }
 
+  const phone =
+    passwordIdentifier === "phone" ? normalizeMainlandPhone(parsed.data.credential) : null;
+  if (passwordIdentifier === "phone" && !phone) {
+    return { error: "Enter a valid mainland China mobile number." };
+  }
+
   try {
     const user = await getAuthProvider().signIn(
       passwordIdentifier === "username"
@@ -86,11 +110,17 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
             password: parsed.data.password,
             username: parsed.data.credential,
           }
-        : {
-            email: parsed.data.credential,
-            method: "email_password",
-            password: parsed.data.password,
-          },
+        : passwordIdentifier === "phone"
+          ? {
+              method: "phone_password",
+              password: parsed.data.password,
+              phone: phone!,
+            }
+          : {
+              email: parsed.data.credential,
+              method: "email_password",
+              password: parsed.data.password,
+            },
     );
     await captureServerProductEvent(
       "auth_succeeded",
@@ -114,7 +144,7 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
       },
       { actorType: "anonymous", route: "/login" },
     );
-    return { error: loginError(error) };
+    return { error: loginError(error, passwordIdentifier) };
   }
   revalidatePath("/trips");
   redirect("/trips");

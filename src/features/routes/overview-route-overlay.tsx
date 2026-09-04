@@ -4,6 +4,7 @@ import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { LoaderCircle, RotateCcw, Route, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import {
   Select,
   SelectContent,
@@ -207,14 +208,14 @@ export function OverviewRouteOverlay({
           </div>
         ) : null}
         {!route.editing ? <RouteLegDetails legs={legDetails} /> : null}
-        {route.error ? (
-          <p
-            className="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive"
-            role="alert"
-          >
-            <Localized value={route.error} />
-          </p>
-        ) : null}
+        <AutoDismissAlert
+          className="mt-2 rounded-md text-xs shadow-none"
+          role="alert"
+          tone="destructive"
+          value={route.error}
+        >
+          {route.error ? <Localized value={route.error} /> : null}
+        </AutoDismissAlert>
       </div>
     </section>
   );

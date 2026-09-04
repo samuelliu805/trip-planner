@@ -193,15 +193,15 @@ async function updateItineraryItemMutation(
   if (parsed.data.type === "transport" && parsed.data.details && "mode" in parsed.data.details) {
     const dayId = parsed.data.dayId ?? existingItem.day_id;
     const mode = parsed.data.details.mode as string;
-    const { count, error: transportError } = await database
+    const { data: transports, error: transportError } = await database
       .from("itinerary_items")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("day_id", dayId)
       .eq("type", "transport")
       .contains("details", { mode })
       .neq("id", parsed.data.id);
     if (transportError) return { error: mutationError(transportError.message) };
-    if (count)
+    if (transports?.length)
       return {
         error: `This day already has ${parsed.data.title ?? "that transport type"}. Choose a different transport type.`,
       };

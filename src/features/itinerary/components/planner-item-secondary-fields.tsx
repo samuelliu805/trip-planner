@@ -222,7 +222,7 @@ export function ItemNotesField({
   return (
     <div className="space-y-2">
       <Label htmlFor={`item-notes-${fieldId}-${type}`}>
-        <Localized value={copyLabel} /> <T message={" notes "} />
+        <Localized value={copyLabel} /> <T message={" notes "} />{" "}
         <span className="font-normal text-muted-foreground">
           <T message={"optional"} />
         </span>

@@ -1,6 +1,7 @@
 "use client";
 
-import { LoaderCircle, LogOut } from "lucide-react";
+import { KeyRound, LoaderCircle, LogOut } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useState, useTransition } from "react";
 
@@ -118,15 +119,19 @@ function AccountForm({
   email,
   exiting,
   homeCity,
+  identityLabel,
   locale,
   onExit,
+  passwordManagement,
 }: {
   currency: string;
   email: string;
   exiting: boolean;
   homeCity: string;
+  identityLabel: string;
   locale: Locale;
   onExit: () => void;
+  passwordManagement: boolean;
 }) {
   const { t } = useI18n();
   const [state, action, pending] = useActionState(updateAccount, {});
@@ -196,7 +201,7 @@ function AccountForm({
 
       <div className="min-w-0 space-y-2">
         <p className="text-sm font-medium leading-none">
-          <T message="Email" />
+          <T message={identityLabel} />
         </p>
         <p className="min-w-0 break-all py-1 text-sm leading-6 text-muted-foreground">{email}</p>
       </div>
@@ -206,6 +211,17 @@ function AccountForm({
       <AccountHomeCityField initialHomeCity={homeCity} key={homeCity} />
 
       <AccountLanguageField initialLocale={locale} key={locale} />
+
+      {passwordManagement ? (
+        <div className="border-t pt-4">
+          <Button asChild className="min-h-11 justify-start" variant="outline">
+            <Link href="/account/password">
+              <KeyRound aria-hidden="true" className="size-4" />
+              <T message="Change password" />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
 
       {state.success ? (
         <p className="text-sm font-medium text-primary" role="status">
@@ -220,12 +236,16 @@ export function AccountEditor({
   currency,
   email,
   homeCity,
+  identityLabel,
   locale,
+  passwordManagement,
 }: {
   currency: string;
   email: string;
   homeCity: string;
+  identityLabel: string;
   locale: Locale;
+  passwordManagement: boolean;
 }) {
   const router = useRouter();
   const [exiting, startExit] = useTransition();
@@ -249,8 +269,10 @@ export function AccountEditor({
         email={email}
         exiting={exiting}
         homeCity={homeCity}
+        identityLabel={identityLabel}
         locale={locale}
         onExit={exit}
+        passwordManagement={passwordManagement}
       />
     </PlannerEditorScreen>
   );
