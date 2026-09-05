@@ -9,6 +9,7 @@ import {
   buildPublicMarkers,
   buildPublicOverviewLines,
   buildPublicRouteLines,
+  orderedPublicDayStopRefs,
   publicDayRoutePlan,
   publicOverviewDefaultModes,
   publicOverviewStops,
@@ -111,35 +112,12 @@ export function usePublicMapWorkspaceController({
   }
 
   function toggleStop(ref: string, include: boolean) {
-    if (ref === dayPlan.startRef || ref === dayPlan.endRef) return;
     setDayCalculation(undefined);
     setLocalStops((current) => {
-      if (!include) return current.filter((candidate) => candidate !== ref);
-      if (current.includes(ref)) return current;
-      const next = [...current];
-      const endIndex = dayPlan.endRef ? next.indexOf(dayPlan.endRef) : -1;
-      next.splice(endIndex >= 0 ? endIndex : next.length, 0, ref);
-      return next;
-    });
-  }
-
-  function moveStop(index: number, direction: -1 | 1) {
-    setDayCalculation(undefined);
-    setLocalStops((current) => {
-      const destination = index + direction;
-      if (destination < 0 || destination >= current.length) return current;
-      const movingRef = current[index];
-      const destinationRef = current[destination];
-      if (
-        movingRef === dayPlan.startRef ||
-        movingRef === dayPlan.endRef ||
-        destinationRef === dayPlan.startRef ||
-        destinationRef === dayPlan.endRef
-      )
-        return current;
-      const next = [...current];
-      [next[index], next[destination]] = [next[destination], next[index]];
-      return next;
+      const selected = new Set(current);
+      if (include) selected.add(ref);
+      else selected.delete(ref);
+      return orderedPublicDayStopRefs(dayPlan, selected);
     });
   }
 
@@ -233,7 +211,6 @@ export function usePublicMapWorkspaceController({
         setDayModes((current) => ({ ...current, [`${from}:${to}`]: mode }));
         setDayCalculation(undefined);
       },
-      onMoveStop: moveStop,
       onReset: () => resetDay(day?.ref),
       onSelectDay: selectDay,
       onToggleStop: toggleStop,

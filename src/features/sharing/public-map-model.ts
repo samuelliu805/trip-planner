@@ -179,3 +179,21 @@ export function publicDayRoutePlan(itinerary: PublicItinerary, dayRef?: string) 
     unmappedActivities,
   };
 }
+
+export function orderedPublicDayStopRefs(
+  plan: ReturnType<typeof publicDayRoutePlan>,
+  selectedRefs: Iterable<string>,
+) {
+  const selected = new Set(selectedRefs);
+  return plan.items.flatMap(({ ref }) => (selected.has(ref) ? [ref] : []));
+}
+
+export function publicDayStopOrderMatches(
+  plan: ReturnType<typeof publicDayRoutePlan>,
+  stopRefs: string[],
+) {
+  const ordered = orderedPublicDayStopRefs(plan, stopRefs);
+  return (
+    ordered.length === stopRefs.length && ordered.every((ref, index) => ref === stopRefs[index])
+  );
+}

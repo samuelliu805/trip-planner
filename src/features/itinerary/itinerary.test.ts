@@ -23,6 +23,7 @@ import { googleTravelMode } from "../../lib/providers/google/routes/mode-mapping
 import type { RouteLegRequest, RouteProvider } from "../../lib/providers/routes/types.ts";
 import { shouldRestorePlannerDocumentScroll } from "./hooks/use-planner-viewport-containment.ts";
 import { plannerEditorKeyboardOcclusion } from "./components/use-planner-editor-keyboard-scroll.ts";
+import { plannerEditorViewportBox } from "./components/use-planner-editor-viewport-lock.ts";
 
 import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
 import {
@@ -588,23 +589,35 @@ test("compact language controls rely on their localized accessible name", async 
 });
 
 test("browser locale wins without rewriting the saved account preference", async () => {
-  const [serverLocale, localeAction, i18nProvider, accountAction, accountEditor, rootLayout] =
-    await Promise.all(
-      [
-        "../i18n/server.ts",
-        "../i18n/actions.ts",
-        "../i18n/i18n-provider.tsx",
-        "../account/actions.ts",
-        "../account/components/account-editor.tsx",
-        "../../app/layout.tsx",
-      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
-    );
+  const [
+    serverLocale,
+    localeAction,
+    i18nProvider,
+    accountAction,
+    accountEditor,
+    accountPage,
+    rootLayout,
+  ] = await Promise.all(
+    [
+      "../i18n/server.ts",
+      "../i18n/actions.ts",
+      "../i18n/i18n-provider.tsx",
+      "../account/actions.ts",
+      "../account/components/account-editor.tsx",
+      "../../app/account/page.tsx",
+      "../../app/layout.tsx",
+    ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
+  );
   assert.match(serverLocale, /resolveLocaleState\(\{ appRegion, browserLocale \}\)/);
   assert.match(serverLocale, /profileLocale: profile\?\.preferredLocale/);
   assert.doesNotMatch(localeAction, /preferred_locale|profiles|createClient/);
   assert.doesNotMatch(accountAction, /setLocaleCookie/);
   assert.match(accountEditor, /useState\(initialLocale\)/);
   assert.match(accountEditor, /<LanguageSwitcher/);
+  assert.match(
+    accountPage,
+    /parseLocale\(profile\?\.preferredLocale\) \?\? defaultLocaleForRegion\(appRegion\)/,
+  );
   assert.match(accountEditor, /await logoutSession\(formData\)/);
   assert.match(accountEditor, /window\.location\.assign\("\/login"\)/);
   assert.match(rootLayout, /persistInitialLocale=\{localeState\.source === "profile"\}/);
@@ -3073,9 +3086,12 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
   assert.match(styles, /width: 9\.5rem;[\s\S]*flex: 0 0 9\.5rem;/);
-  assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
+  assert.match(
+    plannerDialogRule,
+    /top: var\(--planner-editor-viewport-top, 0px\)[\s\S]*height: var\(--planner-editor-viewport-height, 100dvh\)[\s\S]*max-height: var\(--planner-editor-viewport-height, 100dvh\)/,
+  );
   assert.match(plannerDialogRule, /overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/);
-  assert.doesNotMatch(plannerDialogRule, /100dvh/);
+  assert.doesNotMatch(plannerDialogRule, /100lvh/);
   assert.match(styles, /data-compact-actions[\s\S]*padding-bottom: calc/);
   assert.match(styles, /planner-item-dialog\[data-state="open"\][\s\S]*visibility: hidden/);
   assert.doesNotMatch(editorDialog, /useDialogViewport|visualViewport\.height/);
@@ -3083,6 +3099,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(editorDialog, /<PlannerEditorScreen/);
   assert.match(editorScreen, /usePlannerEditorViewportLock\(open\)/);
   assert.match(editorViewportLock, /planner-editor-viewport-locked/);
+  assert.match(editorViewportLock, /--planner-editor-viewport-height/);
+  assert.match(editorViewportLock, /visualViewport\?\.addEventListener\("scroll", syncViewport\)/);
   assert.match(styles, /--planner-editor-keyboard-space/);
   assert.match(editorKeyboardScroll, /plannerEditorKeyboardOcclusion/);
   assert.match(editorKeyboardScroll, /surface\.scrollTo/);
@@ -3139,6 +3157,18 @@ test("planner editor reserves the actually occluded visual viewport height", () 
     }),
     0,
   );
+});
+
+test("planner editor fits browser chrome's visual viewport before scrolling its fields", () => {
+  assert.deepEqual(
+    plannerEditorViewportBox({
+      innerHeight: 932,
+      visualViewportHeight: 744,
+      visualViewportOffsetTop: 7,
+    }),
+    { height: 744, top: 7 },
+  );
+  assert.deepEqual(plannerEditorViewportBox({ innerHeight: 844 }), { height: 844, top: 0 });
 });
 
 test("trip route errors retry in place and clear recovery state after the planner mounts", async () => {

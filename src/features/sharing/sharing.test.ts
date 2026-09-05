@@ -22,7 +22,9 @@ import {
   buildPublicMarkers,
   buildPublicOverviewLines,
   buildPublicRouteLines,
+  orderedPublicDayStopRefs,
   publicDayRoutePlan,
+  publicDayStopOrderMatches,
   publicOverviewStops,
   publicRouteCandidates,
 } from "./public-map-model.ts";
@@ -1087,6 +1089,18 @@ test("public day route defaults to all shared stops between previous and current
   assert.deepEqual(
     plan.unmappedActivities.map(({ title }) => title),
     ["Unmapped gallery"],
+  );
+  assert.deepEqual(
+    orderedPublicDayStopRefs(plan, [meal.ref, previousHotel.ref, currentHotel.ref]),
+    [previousHotel.ref, meal.ref, currentHotel.ref],
+  );
+  assert.equal(
+    publicDayStopOrderMatches(plan, [previousHotel.ref, activity.ref, currentHotel.ref]),
+    true,
+  );
+  assert.equal(
+    publicDayStopOrderMatches(plan, [activity.ref, previousHotel.ref, currentHotel.ref]),
+    false,
   );
 });
 
@@ -2268,8 +2282,11 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.match(routeSources, /defaultStops/);
   assert.match(routeSources, /No map location/);
   assert.match(routeSources, /publicDayCityLabel/);
-  assert.match(routeSources, /Move \{item\} earlier/);
-  assert.match(routeSources, /Move \{item\} later/);
+  assert.match(routeSources, /orderedPublicDayStopRefs/);
+  assert.doesNotMatch(routeSources, /Move \{item\} earlier|Move \{item\} later/);
+  assert.doesNotMatch(temporaryStops, /ArrowUp|ArrowDown|onMoveStop|lockedStart|lockedEnd/);
+  assert.doesNotMatch(temporaryStops, /Start · previous Hotel|today’s Hotel|stopRole/);
+  assert.match(temporaryStops, /item\.place\?\.displayName/);
   assert.doesNotMatch(routeSources, /drag|DndContext|useSortable|Set up route/);
   assert.doesNotMatch(routeSources, /aria-label="Reset temporary route"/);
   assert.doesNotMatch(
@@ -2290,8 +2307,9 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.match(routeSummary, /defaultOpen = false/);
   assert.match(dayPanel, /calculation \? \([\s\S]*Edit route/);
   assert.match(overviewPanel, /calculation \? \([\s\S]*Edit route/);
-  assert.match(actions, /must start at the previous day Hotel/);
-  assert.match(actions, /must end at the current day Hotel/);
+  assert.match(actions, /publicDayStopOrderMatches/);
+  assert.doesNotMatch(actions, /must start at the previous day Hotel/);
+  assert.doesNotMatch(actions, /must end at the current day Hotel/);
   const providerCall = actions.slice(
     actions.indexOf("calculateGoogleRouteLeg({"),
     actions.indexOf("});", actions.indexOf("calculateGoogleRouteLeg({")),

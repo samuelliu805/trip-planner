@@ -1069,7 +1069,10 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.doesNotMatch(journey, /Flight \{index \+ 1\}/);
   assert.match(dateRange, /showPicker/);
   assert.match(dateRange, /openDatePicker\(endRef\.current\)/);
-  assert.match(editorStyles, /data-editor-kind="research"[\s\S]*height: 100dvh !important/);
+  assert.match(
+    editorStyles,
+    /\.planner-item-dialog \{[\s\S]*height: var\(--planner-editor-viewport-height, 100dvh\) !important/,
+  );
   assert.doesNotMatch(editorStyles, /data-editor-kind="research"\] \.planner-item-form-header/);
   assert.match(
     editorStyles,
