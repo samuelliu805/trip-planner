@@ -178,7 +178,7 @@ async function clickElement(browser, elementExpression, label) {
     `(async () => {
       const element = (${elementExpression});
       if (!element || !element.getClientRects().length || element.disabled) return null;
-      element.scrollIntoView({ block: "center", inline: "center" });
+      element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const rect = element.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
@@ -531,6 +531,67 @@ async function navigate(browser, baseUrl, path) {
   );
 }
 
+async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
+  await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('button[aria-label="Search booking sites"]')]
+      .find((button) => button.getClientRects().length && !button.disabled))`,
+    "Global booking sites control",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button[aria-label="Search booking sites"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "Global booking sites",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[role="dialog"]'))`,
+    "Global booking sites",
+  );
+  const bookingSites = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] a')].map((link) => ({
+      href: link.getAttribute('href'),
+      label: link.getAttribute('aria-label'),
+      target: link.getAttribute('target'),
+      text: link.textContent.trim(),
+    }))`,
+  );
+  assert.equal(bookingSites.length, 3, "Global flight providers did not render one action each.");
+  assert.equal(
+    bookingSites.some(({ href, label }) =>
+      /apps\.apple\.com|download|get the .* app/i.test(`${href} ${label}`),
+    ),
+    false,
+    "Global booking sites still rendered an app-download action.",
+  );
+  assert.deepEqual(
+    bookingSites.map(({ text }) => text),
+    ["Google Flights", "Trip.com", "KAYAK"],
+  );
+  assert.equal(bookingSites.find(({ text }) => text === "Google Flights")?.target, "_blank");
+  assert.equal(bookingSites.find(({ text }) => text === "Trip.com")?.target, null);
+  assert.equal(bookingSites.find(({ text }) => text === "KAYAK")?.target, null);
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[role="dialog"]')`,
+    "Global booking sites close",
+  );
+  await navigate(browser, baseUrl, `/trips/${tripId}`);
+}
+
 async function submitGlobalLogin(browser, baseUrl, { email, password }) {
   let lastDiagnostic = { category: "not-attempted" };
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -667,6 +728,7 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
+    await verifyGlobalBookingSites(browser, baseUrl, options.tripId);
     try {
       await waitFor(
         browser,

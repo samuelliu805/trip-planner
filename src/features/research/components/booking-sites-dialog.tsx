@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, ExternalLink, Search, Smartphone } from "lucide-react";
+import { ExternalLink, Search, Smartphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   bookingSitesForItem,
 } from "../booking-sites";
 import type { ResearchCategory, ResearchItem } from "../types";
+import { openAppDeepLink } from "./open-app-deep-link";
 
 type BookingSitesDialogProps = (
   { category: ResearchCategory; item?: never } | { category?: never; item: ResearchItem }
@@ -67,14 +68,7 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
           ) : null}
           <div className="grid min-w-0 gap-2 sm:grid-cols-2">
             {sites.map((site) => (
-              <div
-                className={
-                  site.appStoreUrl
-                    ? "grid min-w-0 grid-cols-[minmax(0,1fr)_3rem] gap-1 sm:block"
-                    : "min-w-0"
-                }
-                key={site.name}
-              >
+              <div className="min-w-0" key={site.name}>
                 <Button
                   asChild
                   className="min-h-12 w-full min-w-0 justify-between px-3 text-left"
@@ -82,40 +76,28 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
                 >
                   <a
                     aria-label={t(
-                      site.opensApp
+                      site.appUrl || site.opensApp
                         ? "Open {site} in its app or website"
                         : "Open {site} in a new tab",
                       { site: site.name },
                     )}
-                    href={site.url}
+                    href={site.appUrl ?? site.url}
+                    onClick={
+                      site.appUrl
+                        ? (event) => openAppDeepLink(event, site.appUrl ?? site.url, site.url)
+                        : undefined
+                    }
                     rel="noreferrer"
-                    target={site.opensApp ? undefined : "_blank"}
+                    target={site.appUrl || site.opensApp ? undefined : "_blank"}
                   >
                     <span className="min-w-0 truncate font-semibold">{site.name}</span>
-                    {site.opensApp ? (
+                    {site.appUrl || site.opensApp ? (
                       <Smartphone aria-hidden="true" className="size-4 shrink-0" />
                     ) : (
                       <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
                     )}
                   </a>
                 </Button>
-                {site.appStoreUrl ? (
-                  <Button
-                    asChild
-                    className="size-12 p-0 sm:hidden"
-                    title={t("Get the {site} app", { site: site.name })}
-                    variant="outline"
-                  >
-                    <a
-                      aria-label={t("Get the {site} app", { site: site.name })}
-                      href={site.appStoreUrl}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      <Download aria-hidden="true" className="size-4" />
-                    </a>
-                  </Button>
-                ) : null}
               </div>
             ))}
           </div>
