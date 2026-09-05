@@ -929,17 +929,41 @@ async function saveOpenItemEditor(browser, label) {
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     await clickButtonText(browser, "Save");
-    const outcome = await waitFor(
-      browser,
-      `(() => {
-        if (!document.querySelector('[role="dialog"]')) return { status: 'saved' };
-        const alert = [...document.querySelectorAll('[role="alert"]')]
-          .find((candidate) => candidate.getClientRects().length && candidate.textContent.trim());
-        return alert ? { message: alert.textContent.trim().slice(0, 240), status: 'error' } : null;
-      })()`,
-      `${label} save result`,
-      90_000,
-    );
+    let transition;
+    try {
+      transition = await waitFor(
+        browser,
+        `(() => {
+          if (!document.querySelector('[role="dialog"]')) return { status: 'saved' };
+          const alert = [...document.querySelectorAll('[role="alert"]')]
+            .find((candidate) => candidate.getClientRects().length && candidate.textContent.trim());
+          if (alert) return { message: alert.textContent.trim().slice(0, 240), status: 'error' };
+          const save = [...document.querySelectorAll('[role="dialog"] button')]
+            .find((candidate) => candidate.getAttribute('aria-busy') === 'true');
+          return save ? { status: 'pending' } : null;
+        })()`,
+        `${label} save start`,
+        5_000,
+      );
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      if (attempt < 3) continue;
+      throw error;
+    }
+    const outcome =
+      transition.status === "pending"
+        ? await waitFor(
+            browser,
+            `(() => {
+              if (!document.querySelector('[role="dialog"]')) return { status: 'saved' };
+              const alert = [...document.querySelectorAll('[role="alert"]')]
+                .find((candidate) => candidate.getClientRects().length && candidate.textContent.trim());
+              return alert ? { message: alert.textContent.trim().slice(0, 240), status: 'error' } : null;
+            })()`,
+            `${label} save result`,
+            90_000,
+          )
+        : transition;
     if (outcome.status === "saved") return;
     lastError = outcome.message;
     if (/unexpected end of json/i.test(lastError)) {
