@@ -724,7 +724,7 @@ async function submitGuestLogin(browser, baseUrl, options) {
   return submitGlobalLogin(browser, baseUrl, options, {
     expected: `(() => {
       const match = location.pathname.match(/^\\/trips\\/([0-9a-f-]{36})$/);
-      return match && new URLSearchParams(location.search).get('share') === '1' ? match[1] : '';
+      return match && document.querySelector('.public-share-settings-dialog') ? match[1] : '';
     })()`,
     label: "guest import and share continuation",
     loginPath: "/login?guest=1",
@@ -1007,7 +1007,7 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   await waitFor(
     browser,
     `location.pathname === ${JSON.stringify(`/trips/${guestTripId}`)} &&
-      new URLSearchParams(location.search).get('share') === '1'`,
+      Boolean(document.querySelector('.public-share-settings-dialog'))`,
     "guest callback replay",
     60_000,
   );

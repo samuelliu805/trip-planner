@@ -2384,7 +2384,7 @@ async function generateLongImageThroughUi(browser) {
       .find((summary) => summary.textContent.trim() === "Advanced settings")`,
     "Advanced share settings",
   );
-  const imageActionVisible = await evaluate(
+  const imageActionVisible = await waitFor(
     browser,
     `(async () => {
       const dialog = document.querySelector('.public-share-settings-dialog');
@@ -2392,15 +2392,14 @@ async function generateLongImageThroughUi(browser) {
         .find((candidate) => candidate.textContent.trim() === "Save trip image");
       const scroller = button?.closest('.overflow-y-auto');
       if (!button || !scroller) return false;
-      const buttonRect = button.getBoundingClientRect();
-      const scrollerRect = scroller.getBoundingClientRect();
-      scroller.scrollTop +=
-        buttonRect.top - scrollerRect.top - (scroller.clientHeight - buttonRect.height) / 2;
+      button.scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const revealed = button.getBoundingClientRect();
       const boundary = scroller.getBoundingClientRect();
-      return revealed.top >= boundary.top && revealed.bottom <= boundary.bottom;
+      return revealed.top >= boundary.top - 1 && revealed.bottom <= boundary.bottom + 1;
     })()`,
+    "reachable Save trip image action",
+    5_000,
   );
   assert.equal(
     imageActionVisible,
