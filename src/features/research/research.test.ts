@@ -86,8 +86,8 @@ test("booking sites use exact saved details only for durable search links", () =
 test("booking sites are available before a comparison record exists", () => {
   assert.deepEqual(bookingSitesForCategory("flight"), [
     { name: "Google Flights", url: "https://www.google.com/travel/flights" },
-    { name: "Trip.com", url: "https://www.trip.com/flights/" },
-    { name: "KAYAK", url: "https://www.kayak.com/flights" },
+    { name: "Trip.com", opensApp: true, url: "https://www.trip.com/flights/" },
+    { name: "KAYAK", opensApp: true, url: "https://www.kayak.com/flights/" },
   ]);
 });
 
@@ -100,7 +100,7 @@ test("booking sites do not guess airport codes from city names", () => {
       start_date: "2026-10-04",
     }),
   );
-  assert.equal(sites.find(({ name }) => name === "KAYAK")!.url, "https://www.kayak.com/flights");
+  assert.equal(sites.find(({ name }) => name === "KAYAK")!.url, "https://www.kayak.com/flights/");
 });
 
 test("stay searches pass location and dates to Airbnb and Booking.com", () => {
@@ -138,7 +138,7 @@ test("rental and train provider sets open official booking pages without brittle
   );
 });
 
-test("CN Ideas use category-specific Chinese providers with mobile app fallbacks", () => {
+test("CN Ideas use category-specific providers without app-store download links", () => {
   assert.deepEqual(
     bookingSitesForCategory("flight", "cn").map(({ name }) => name),
     ["携程旅行", "飞猪旅行", "美团"],
@@ -167,8 +167,7 @@ test("CN Ideas use category-specific Chinese providers with mobile app fallbacks
   for (const category of ["flight", "stay", "train", "rental"] as const) {
     for (const site of bookingSitesForCategory(category, "cn")) {
       assert.match(site.url, /^https:\/\//);
-      if (site.appStoreUrl)
-        assert.match(site.appStoreUrl, /^https:\/\/apps\.apple\.com\/cn\/app\//);
+      assert.equal("appStoreUrl" in site, false);
     }
   }
   assert.equal(
@@ -183,6 +182,101 @@ test("CN Ideas use category-specific Chinese providers with mobile app fallbacks
     bookingSitesForCategory("flight", "cn").find(({ name }) => name === "携程旅行")?.opensApp,
     undefined,
   );
+  assert.equal(
+    bookingSitesForCategory("flight", "cn").find(({ name }) => name === "携程旅行")?.appUrl,
+    "ctrip://wireless/FlightInquire",
+  );
+  assert.equal(
+    bookingSitesForCategory("stay", "cn").find(({ name }) => name === "飞猪旅行")?.appUrl,
+    "taobaotravel://h5?url=https%3A%2F%2Fwww.fliggy.com%2F",
+  );
+});
+
+test("CN Ctrip deep links carry exact flight, train, and hotel search details", () => {
+  const flight = bookingSitesForItem(
+    item({
+      category: "flight",
+      destination_text: "PEK",
+      origin_text: "SHA",
+      start_date: "2026-10-01",
+    }),
+    "cn",
+  ).find(({ name }) => name === "携程旅行")!;
+  assert.equal(flight.appUrl, "ctrip://wireless/FlightList?dcity=SHA&acity=PEK&date=2026-10-01");
+
+  const train = bookingSitesForItem(
+    item({
+      category: "train",
+      destination_text: "北京南",
+      origin_text: "上海虹桥",
+      start_date: "2026-10-01",
+    }),
+    "cn",
+  ).find(({ name }) => name === "携程旅行")!;
+  const trainUrl = new URL(train.appUrl!);
+  assert.equal(trainUrl.pathname, "/TrainList");
+  assert.equal(trainUrl.searchParams.get("departStation"), "上海虹桥");
+  assert.equal(trainUrl.searchParams.get("arriveStation"), "北京南");
+  assert.equal(trainUrl.searchParams.get("departDate"), "2026-10-01");
+
+  const stay = bookingSitesForItem(
+    item({
+      end_date: "2026-10-03",
+      location_text: "杭州",
+      start_date: "2026-10-01",
+    }),
+    "cn",
+  ).find(({ name }) => name === "携程旅行")!;
+  const nestedHotelUrl = new URL(new URL(stay.appUrl!).searchParams.get("url")!);
+  assert.equal(nestedHotelUrl.searchParams.get("cityname"), "杭州");
+  assert.equal(nestedHotelUrl.searchParams.get("checkin"), "2026-10-01");
+  assert.equal(nestedHotelUrl.searchParams.get("checkout"), "2026-10-03");
+  assert.equal(stay.url, nestedHotelUrl.toString());
+});
+
+test("CN Fliggy deep links encode mini-program pages and UTF-8 cities once", () => {
+  const flight = bookingSitesForItem(
+    item({
+      category: "flight",
+      destination_text: "北京",
+      origin_text: "上海",
+      start_date: "2026-10-01",
+    }),
+    "cn",
+  ).find(({ name }) => name === "飞猪旅行")!;
+  const flightUrl = new URL(flight.appUrl!);
+  assert.equal(flightUrl.searchParams.get("appId"), "60000138");
+  assert.equal(
+    flightUrl.searchParams.get("page"),
+    "pages/flight/list?depCity=%E4%B8%8A%E6%B5%B7&arrCity=%E5%8C%97%E4%BA%AC&depDate=2026-10-01",
+  );
+
+  const stay = bookingSitesForItem(
+    item({
+      end_date: "2026-10-03",
+      location_text: "杭州",
+      start_date: "2026-10-01",
+    }),
+    "cn",
+  ).find(({ name }) => name === "飞猪旅行")!;
+  const stayUrl = new URL(stay.appUrl!);
+  assert.equal(stayUrl.searchParams.get("appId"), "20000139");
+  assert.equal(
+    stayUrl.searchParams.get("page"),
+    "pages/hotel/list?checkIn=2026-10-01&checkOut=2026-10-03&city=%E6%9D%AD%E5%B7%9E",
+  );
+});
+
+test("booking site dialog has one app-or-web action and no download-app control", async () => {
+  const [dialog, opener] = await Promise.all([
+    readFile(new URL("./components/booking-sites-dialog.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/open-app-deep-link.ts", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(dialog, /appStoreUrl|Get the \{site\} app|Download/);
+  assert.match(dialog, /openAppDeepLink/);
+  assert.match(opener, /window\.location\.assign\(appUrl\)/);
+  assert.match(opener, /window\.location\.assign\(fallbackUrl\)/);
+  assert.match(opener, /visibilitychange/);
 });
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {

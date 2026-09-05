@@ -662,6 +662,56 @@ async function verifyTripSectionNavigation(browser, tripId) {
     "Ideas category navigation unexpectedly discarded the browser state.",
   );
 
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('button[aria-label="Search booking sites"]')]
+      .find((button) => button.getClientRects().length && !button.disabled))`,
+    "CN booking sites control",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button[aria-label="Search booking sites"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "CN booking sites",
+  );
+  await waitFor(browser, `Boolean(document.querySelector('[role="dialog"]'))`, "CN booking sites");
+  const bookingSites = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] a')].map((link) => ({
+      href: link.getAttribute('href'),
+      label: link.getAttribute('aria-label'),
+      text: link.textContent.trim(),
+    }))`,
+  );
+  assert.equal(bookingSites.length, 8, "CN stay providers did not render one action each.");
+  assert.equal(
+    bookingSites.some(({ href, label }) =>
+      /apps\.apple\.com|download|get the .* app/i.test(`${href} ${label}`),
+    ),
+    false,
+    "CN booking sites still rendered an app-download action.",
+  );
+  assert.equal(
+    bookingSites.find(({ text }) => text === "携程旅行")?.href,
+    "ctrip://wireless/InquireHotel",
+  );
+  assert.equal(
+    bookingSites.find(({ text }) => text === "飞猪旅行")?.href,
+    "taobaotravel://h5?url=https%3A%2F%2Fwww.fliggy.com%2F",
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(browser, `!document.querySelector('[role="dialog"]')`, "CN booking sites close");
+
   await evaluate(browser, "window.__phase3SectionNavigationSentinel = true");
   await waitFor(
     browser,
@@ -1597,7 +1647,7 @@ async function clickElement(browser, elementExpression, label) {
       if (!element) return { available: false, reason: "missing" };
       if (!element.getClientRects().length) return { available: false, reason: "hidden" };
       if (element.disabled) return { available: false, reason: "disabled" };
-      element.scrollIntoView({ block: "center", inline: "center" });
+      element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const rect = element.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
@@ -2165,26 +2215,42 @@ async function publishThroughUi(browser, tripId) {
     )`,
     "share publish control",
   );
-  await clickElement(browser, `document.querySelector("#public-share-template")`, "share style");
-  await waitFor(
-    browser,
-    `[...document.querySelectorAll('[role="option"]')].some((option) =>
-      ["Journal", "手记"].includes(option.textContent.trim()) && option.getClientRects().length
-    )`,
-    "Journal share style",
-  );
-  await clickElement(
-    browser,
-    `[...document.querySelectorAll('[role="option"]')].find((option) =>
-      ["Journal", "手记"].includes(option.textContent.trim()) && option.getClientRects().length
-    )`,
-    "Journal share style",
-  );
-  await waitFor(
-    browser,
-    `["Journal", "手记"].includes(document.querySelector("#public-share-template")?.textContent.trim())`,
-    "selected Journal share style",
-  );
+  const journalOption = `[...document.querySelectorAll('[role="option"]')].find((option) =>
+    ["Journal", "手记"].includes(option.textContent.trim()) && option.getClientRects().length
+  )`;
+  let journalSelected = false;
+  for (let attempt = 0; attempt < 3 && !journalSelected; attempt += 1) {
+    await clickElement(browser, `document.querySelector("#public-share-template")`, "share style");
+    try {
+      await waitFor(browser, `Boolean(${journalOption})`, "Journal share style", 10_000);
+      await clickElement(browser, journalOption, "Journal share style");
+      await waitFor(
+        browser,
+        `["Journal", "手记"].includes(document.querySelector("#public-share-template")?.textContent.trim())`,
+        "selected Journal share style",
+        10_000,
+      );
+      journalSelected = true;
+    } catch {
+      const selectIsOpen = await evaluate(
+        browser,
+        `document.querySelector("#public-share-template")?.getAttribute("aria-expanded") === "true"`,
+      );
+      if (selectIsOpen) {
+        await browser.cdp.send(
+          "Input.dispatchKeyEvent",
+          { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+          browser.sessionId,
+        );
+        await browser.cdp.send(
+          "Input.dispatchKeyEvent",
+          { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+          browser.sessionId,
+        );
+      }
+    }
+  }
+  assert.equal(journalSelected, true, "Journal share style could not be selected.");
   const activated = await evaluate(
     browser,
     `(() => {
