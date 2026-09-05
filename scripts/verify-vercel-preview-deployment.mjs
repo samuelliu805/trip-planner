@@ -42,6 +42,16 @@ export function classifyPreviewStatuses(payload) {
   return { state: "pending" };
 }
 
+export function exactPreviewSha(environment = process.env) {
+  const sourceSha = required("PHASE5_SOURCE_SHA", environment);
+  const candidateSha = required("PHASE5_CANDIDATE_SHA", environment);
+  if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error("PHASE5_SOURCE_SHA is invalid.");
+  if (candidateSha !== sourceSha) {
+    throw new Error("PHASE5_CANDIDATE_SHA does not match PHASE5_SOURCE_SHA.");
+  }
+  return candidateSha;
+}
+
 async function githubJson(path, token) {
   const response = await fetch(`${githubApiOrigin}${path}`, {
     headers: {
@@ -58,14 +68,9 @@ async function githubJson(path, token) {
 export async function verifyVercelPreview(environment = process.env) {
   const token = required("GITHUB_TOKEN", environment);
   const repository = required("GITHUB_REPOSITORY", environment);
-  const expectedSha = required("GITHUB_SHA", environment);
-  const candidateSha = required("PHASE5_CANDIDATE_SHA", environment);
+  const expectedSha = exactPreviewSha(environment);
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
     throw new Error("GITHUB_REPOSITORY is invalid.");
-  }
-  if (!/^[a-f0-9]{40}$/.test(expectedSha)) throw new Error("GITHUB_SHA is invalid.");
-  if (candidateSha !== expectedSha) {
-    throw new Error("PHASE5_CANDIDATE_SHA does not match GITHUB_SHA.");
   }
 
   const deadline = Date.now() + 20 * 60 * 1_000;

@@ -152,6 +152,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PHASE5_SOURCE_SHA: ${{ inputs.source_sha }}
         run: node scripts/verify-vercel-preview-deployment.mjs
       - name: Run Global Auth, CRUD, RPC, RLS, share, browser, and residue suite
         env:

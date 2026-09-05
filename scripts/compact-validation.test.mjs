@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { Writable } from "node:stream";
@@ -8,6 +8,7 @@ import test from "node:test";
 import { promisify } from "node:util";
 
 import { compactCommand } from "./lib/compact-command.mjs";
+import { cleanValidationArtifacts } from "./lib/validation-cleanup.mjs";
 import {
   readStaticValidationCache,
   staticValidationFingerprint,
@@ -30,7 +31,7 @@ class TextSink extends Writable {
   }
 }
 
-test("compact commands retain complete success logs without streaming their payload", async () => {
+test("compact commands discard successful logs without streaming their payload", async () => {
   const directory = await mkdtemp(resolve(tmpdir(), "trip-planner-compact-"));
   const stdout = new TextSink();
   const stderr = new TextSink();
@@ -48,7 +49,59 @@ test("compact commands retain complete success logs without streaming their payl
     assert.match(stdout.toString(), /RUN  compact success\nPASS compact success/);
     assert.doesNotMatch(stdout.toString(), /payload-/);
     assert.equal(stderr.toString(), "");
-    assert.match(await readFile(result.logPath, "utf8"), /^payload-x{10000}$/);
+    assert.equal(result.logPath, undefined);
+    assert.deepEqual(await readdir(directory), []);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test("compact commands retain no more than three recent failure logs", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "trip-planner-compact-retention-"));
+  try {
+    for (let index = 0; index < 5; index += 1) {
+      await assert.rejects(
+        compactCommand({
+          args: ["-e", `process.stderr.write("failure-${index}"); process.exit(1)`],
+          cwd: directory,
+          env: process.env,
+          executable: process.execPath,
+          label: `failure ${index}`,
+          logDirectory: directory,
+          stderr: new TextSink(),
+          stdout: new TextSink(),
+        }),
+      );
+    }
+    const logs = (await readdir(directory)).filter((name) => name.endsWith(".log"));
+    assert.equal(logs.length, 3);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test("validation cleanup removes logs and stale temp files but preserves the static cache", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "trip-planner-cleanup-"));
+  const logs = resolve(directory, "logs");
+  try {
+    await writeFile(resolve(directory, "static.json"), "cache\n");
+    await writeFile(resolve(directory, "static-123.tmp"), "temporary\n");
+    await compactCommand({
+      args: ["-e", "process.exit(4)"],
+      cwd: directory,
+      env: process.env,
+      executable: process.execPath,
+      label: "retained failure",
+      logDirectory: logs,
+      stderr: new TextSink(),
+      stdout: new TextSink(),
+    }).catch(() => {});
+    const result = await cleanValidationArtifacts(directory);
+    assert.equal(result.removedFiles, 1);
+    assert.equal(result.removedTemporaryFiles, 1);
+    await access(resolve(directory, "static.json"));
+    await assert.rejects(access(logs), { code: "ENOENT" });
+    await assert.rejects(access(resolve(directory, "static-123.tmp")), { code: "ENOENT" });
   } finally {
     await rm(directory, { force: true, recursive: true });
   }

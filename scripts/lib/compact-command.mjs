@@ -1,10 +1,12 @@
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
-import { mkdir, open, stat } from "node:fs/promises";
+import { mkdir, open, readdir, rename, rm, stat } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { finished } from "node:stream/promises";
 
 let commandSequence = 0;
+const failureLogMaxAgeMs = 24 * 60 * 60 * 1_000;
+const failureLogLimit = 3;
 
 function slug(value) {
   return value
@@ -32,6 +34,44 @@ async function readTail(path, lineCount, byteLimit = 128 * 1024) {
   }
 }
 
+async function pruneCommandLogs(logDirectory, protectedPath = null) {
+  const now = Date.now();
+  const entries = await readdir(logDirectory, { withFileTypes: true });
+  const paths = entries
+    .filter(
+      (entry) => entry.isFile() && entry.name.startsWith("command-") && entry.name.endsWith(".log"),
+    )
+    .map((entry) => resolve(logDirectory, entry.name));
+  const logs = await Promise.all(
+    paths.map(async (path) => ({ path, modifiedAt: (await stat(path)).mtimeMs })),
+  );
+  logs.sort(
+    (left, right) =>
+      Number(right.path === protectedPath) - Number(left.path === protectedPath) ||
+      right.modifiedAt - left.modifiedAt,
+  );
+  const retained = logs.filter(
+    (log) => log.path === protectedPath || now - log.modifiedAt <= failureLogMaxAgeMs,
+  );
+  const keep = new Set(retained.slice(0, failureLogLimit).map((log) => log.path));
+  await Promise.all(
+    logs.filter((log) => !keep.has(log.path)).map((log) => rm(log.path, { force: true })),
+  );
+  await Promise.all(
+    entries
+      .filter(
+        (entry) =>
+          entry.isFile() && entry.name.startsWith("command-") && entry.name.endsWith(".tmp"),
+      )
+      .map((entry) => resolve(logDirectory, entry.name))
+      .map(async (path) => {
+        if (now - (await stat(path)).mtimeMs > failureLogMaxAgeMs) {
+          await rm(path, { force: true });
+        }
+      }),
+  );
+}
+
 export async function compactCommand({
   args,
   cwd,
@@ -44,14 +84,14 @@ export async function compactCommand({
   tailLines = 120,
 }) {
   await mkdir(logDirectory, { recursive: true });
+  await pruneCommandLogs(logDirectory);
   commandSequence += 1;
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const logPath = resolve(
-    logDirectory,
-    `${timestamp}-${process.pid}-${commandSequence}-${slug(label) || "command"}.log`,
-  );
+  const logStem = `command-${timestamp}-${process.pid}-${commandSequence}-${slug(label) || "run"}`;
+  const temporaryLogPath = resolve(logDirectory, `${logStem}.tmp`);
+  const logPath = resolve(logDirectory, `${logStem}.log`);
   const displayPath = relative(cwd, logPath) || logPath;
-  const log = createWriteStream(logPath, { flags: "wx", mode: 0o600 });
+  const log = createWriteStream(temporaryLogPath, { flags: "wx", mode: 0o600 });
   const startedAt = Date.now();
   stdout.write(`RUN  ${label}\n`);
 
@@ -67,10 +107,13 @@ export async function compactCommand({
   });
 
   if (result.code === 0) {
+    await rm(temporaryLogPath);
     stdout.write(`PASS ${label} (${elapsed(startedAt)})\n`);
-    return { durationMs: Date.now() - startedAt, logPath };
+    return { durationMs: Date.now() - startedAt };
   }
 
+  await rename(temporaryLogPath, logPath);
+  await pruneCommandLogs(logDirectory, logPath);
   const tail = await readTail(logPath, tailLines);
   stderr.write(
     `FAIL ${label} (${elapsed(startedAt)}; ${

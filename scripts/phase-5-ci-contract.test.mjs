@@ -101,6 +101,10 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
   assert.match(workflow, /GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
   assert.match(
     workflow,
+    /Require an exact-SHA Git-integrated Vercel Preview[\s\S]*PHASE5_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/,
+  );
+  assert.match(
+    workflow,
     /VERCEL_AUTOMATION_BYPASS_SECRET: \$\{\{ secrets\.VERCEL_AUTOMATION_BYPASS_SECRET \}\}/,
   );
   assert.doesNotMatch(workflow, /VERCEL_(?:TOKEN|ORG_ID|PROJECT_ID)/);

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   classifyPreviewStatuses,
+  exactPreviewSha,
   selectExactPreviewDeployment,
   verifyVercelPreview,
 } from "./verify-vercel-preview-deployment.mjs";
@@ -46,15 +47,26 @@ test("keeps pending states separate from terminal deployment failures", () => {
   assert.deepEqual(classifyPreviewStatuses([{ state: "failure" }]), { state: "failed" });
 });
 
-test("rejects a candidate SHA that differs from the workflow SHA before lookup", async () => {
+test("uses the immutable source SHA even when a pull request workflow SHA differs", () => {
+  assert.equal(
+    exactPreviewSha({
+      GITHUB_SHA: "b".repeat(40),
+      PHASE5_CANDIDATE_SHA: sha,
+      PHASE5_SOURCE_SHA: sha,
+    }),
+    sha,
+  );
+});
+
+test("rejects a candidate SHA that differs from the immutable source SHA before lookup", async () => {
   await assert.rejects(
     () =>
       verifyVercelPreview({
         GITHUB_REPOSITORY: "owner/repository",
-        GITHUB_SHA: sha,
         GITHUB_TOKEN: "test-token",
         PHASE5_CANDIDATE_SHA: "b".repeat(40),
+        PHASE5_SOURCE_SHA: sha,
       }),
-    /does not match GITHUB_SHA/,
+    /does not match PHASE5_SOURCE_SHA/,
   );
 });

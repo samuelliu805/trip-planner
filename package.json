@@ -42,6 +42,7 @@
     "test:cloudbase-pg-static": "node --test scripts/cloudbase-pg-security-regression.test.mjs",
     "test:e2e:preflight": "node scripts/e2e-regression.mjs --preflight --region all",
     "test:e2e:static": "node scripts/e2e-regression.mjs --static --region all",
+    "test:e2e:clean": "node scripts/clean-validation-state.mjs",
     "test:e2e:global": "node scripts/e2e-regression.mjs --live --region global",
     "test:e2e:cn": "node scripts/e2e-regression.mjs --live --region cn",
     "test:e2e:all": "node scripts/e2e-regression.mjs --live --region all",

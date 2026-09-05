@@ -17,7 +17,7 @@ files and apply automatically when work enters their directory:
 - Do not rerun an unchanged deterministic gate. After a failure, rerun the smallest failing stage, then the affected regional suite once after the fix.
 - Run full Global and CN live E2E for cross-region, database, auth, routing, maps, sharing, release-wide work, or an explicit full-regression request. Leaf changes use their targeted unit and browser coverage.
 - An equivalent required CI gate on the exact candidate SHA replaces a duplicate local full run. Never merge until the required matrix, cleanup, and residue audit are green.
-- Successful validation commands emit compact stage summaries and retain complete private logs. Show bounded diagnostic output only when a stage fails.
+- Successful validation commands emit compact stage summaries and delete their temporary logs immediately. Retain at most three failure logs for 24 hours, show only a bounded diagnostic tail, and use `npm run test:e2e:clean` to reclaim them sooner.
 
 ## Overlay and frozen-layer stacking
 
