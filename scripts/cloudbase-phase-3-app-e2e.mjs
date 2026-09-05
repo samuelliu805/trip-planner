@@ -853,77 +853,105 @@ async function chooseVisiblePlaceSuggestion(browser, inputSelector, query, label
 }
 
 async function verifyMobileTransportEditorScroll(browser) {
-  await browser.cdp.send(
-    "Emulation.setDeviceMetricsOverride",
-    { deviceScaleFactor: 2, height: 932, mobile: true, width: 430 },
-    browser.sessionId,
-  );
-  await openSavedItemEditor(browser, "0-2");
-  await clickElement(
-    browser,
-    `document.querySelector('button[id^="transport-mode-"]')`,
-    "mobile transport mode",
-  );
-  await clickElement(
-    browser,
-    `[...document.querySelectorAll('[role="option"]')]
-      .find((option) => option.textContent.trim() === "Bus" && option.getClientRects().length)`,
-    "Bus transport option",
-  );
-  await chooseVisiblePlaceSuggestion(
-    browser,
-    'input[aria-label="From"]',
-    "上海虹桥机场",
-    "mobile transport origin",
-  );
-  await chooseVisiblePlaceSuggestion(
-    browser,
-    'input[aria-label="To"]',
-    "上海外滩",
-    "mobile transport destination",
-  );
-  const actionEvidence = await evaluate(
-    browser,
-    `(async () => {
-      const surface = document.querySelector('[data-planner-editor-scroll]');
-      const save = [...document.querySelectorAll('[role="dialog"] button')]
-        .find((button) => button.textContent.trim() === "Save" && !button.disabled);
-      const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
-      for (let attempt = 0; attempt < 8; attempt += 1) {
-        surface.scrollTop = surface.scrollHeight;
-        await nextFrame();
-        await nextFrame();
-        if (surface.scrollTop >= surface.scrollHeight - surface.clientHeight - 2) break;
-      }
-      const rect = save?.getBoundingClientRect();
-      const hit = rect
-        ? document.elementsFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
-        : [];
-      return {
-        bottom: rect?.bottom,
-        clientHeight: surface.clientHeight,
-        maxScrollTop: surface.scrollHeight - surface.clientHeight,
-        saveIsTopmost: Boolean(save && hit.some((node) => node === save || save.contains(node))),
-        scrollTop: surface.scrollTop,
-        viewportHeight: window.visualViewport?.height ?? window.innerHeight,
-      };
-    })()`,
-  );
-  assert.ok(actionEvidence.maxScrollTop > 0, "Mobile transport editor did not become scrollable.");
-  assert.ok(
-    actionEvidence.scrollTop >= actionEvidence.maxScrollTop - 2,
-    `Mobile transport editor bounced away from its bottom action: ${JSON.stringify(actionEvidence)}.`,
-  );
-  assert.ok(
-    actionEvidence.bottom <= actionEvidence.viewportHeight + 1,
-    `Mobile transport Save action remained below the visual viewport: ${JSON.stringify(actionEvidence)}.`,
-  );
-  assert.equal(
-    actionEvidence.saveIsTopmost,
-    true,
-    `Mobile transport Save action was obstructed: ${JSON.stringify(actionEvidence)}.`,
-  );
-  await saveOpenItemEditor(browser, "mobile transport edit");
+  for (const { height, width } of [
+    { height: 844, width: 390 },
+    { height: 932, width: 430 },
+  ]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 2, height, mobile: true, width },
+      browser.sessionId,
+    );
+    await openSavedItemEditor(browser, "0-2");
+    await clickElement(
+      browser,
+      `document.querySelector('button[id^="transport-mode-"]')`,
+      `${width}px mobile transport mode`,
+    );
+    await clickElement(
+      browser,
+      `[...document.querySelectorAll('[role="option"]')]
+        .find((option) => option.textContent.trim() === "Bus" && option.getClientRects().length)`,
+      `${width}px Bus transport option`,
+    );
+    await chooseVisiblePlaceSuggestion(
+      browser,
+      'input[aria-label="From"]',
+      "上海虹桥机场",
+      `${width}px mobile transport origin`,
+    );
+    await chooseVisiblePlaceSuggestion(
+      browser,
+      'input[aria-label="To"]',
+      "上海外滩",
+      `${width}px mobile transport destination`,
+    );
+    const actionEvidence = await evaluate(
+      browser,
+      `(async () => {
+        const dialog = document.querySelector('.planner-item-dialog');
+        const surface = document.querySelector('[data-planner-editor-scroll]');
+        const save = [...document.querySelectorAll('[role="dialog"] button')]
+          .find((button) => button.textContent.trim() === "Save" && !button.disabled);
+        const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          surface.scrollTop = surface.scrollHeight;
+          await nextFrame();
+          await nextFrame();
+          if (surface.scrollTop >= surface.scrollHeight - surface.clientHeight - 2) break;
+        }
+        const dialogRect = dialog?.getBoundingClientRect();
+        const rect = save?.getBoundingClientRect();
+        const hit = rect
+          ? document.elementsFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+          : [];
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        const viewportTop = window.visualViewport?.offsetTop ?? 0;
+        return {
+          bottom: rect?.bottom,
+          clientHeight: surface.clientHeight,
+          cssViewportHeight: Number.parseFloat(
+            getComputedStyle(document.documentElement).getPropertyValue('--planner-editor-viewport-height'),
+          ),
+          dialogBottom: dialogRect?.bottom,
+          dialogTop: dialogRect?.top,
+          maxScrollTop: surface.scrollHeight - surface.clientHeight,
+          saveIsTopmost: Boolean(save && hit.some((node) => node === save || save.contains(node))),
+          scrollTop: surface.scrollTop,
+          viewportBottom: viewportTop + viewportHeight,
+          viewportHeight,
+          viewportTop,
+        };
+      })()`,
+    );
+    assert.ok(
+      actionEvidence.maxScrollTop > 0,
+      `${width}px mobile transport editor did not become scrollable.`,
+    );
+    assert.ok(
+      actionEvidence.scrollTop >= actionEvidence.maxScrollTop - 2,
+      `${width}px mobile transport editor bounced away from its bottom action: ${JSON.stringify(actionEvidence)}.`,
+    );
+    assert.ok(
+      Math.abs(actionEvidence.cssViewportHeight - actionEvidence.viewportHeight) <= 1,
+      `${width}px editor did not track the visual viewport height: ${JSON.stringify(actionEvidence)}.`,
+    );
+    assert.ok(
+      Math.abs(actionEvidence.dialogTop - actionEvidence.viewportTop) <= 1 &&
+        Math.abs(actionEvidence.dialogBottom - actionEvidence.viewportBottom) <= 1,
+      `${width}px editor did not fit the visual viewport: ${JSON.stringify(actionEvidence)}.`,
+    );
+    assert.ok(
+      actionEvidence.bottom <= actionEvidence.viewportBottom + 1,
+      `${width}px mobile transport Save action remained below the visual viewport: ${JSON.stringify(actionEvidence)}.`,
+    );
+    assert.equal(
+      actionEvidence.saveIsTopmost,
+      true,
+      `${width}px mobile transport Save action was obstructed: ${JSON.stringify(actionEvidence)}.`,
+    );
+    await saveOpenItemEditor(browser, `${width}px mobile transport edit`);
+  }
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
@@ -1267,6 +1295,49 @@ async function verifyPublicShareMapAndDialog(browser) {
       `document.querySelectorAll('.public-map-sheet [role="checkbox"]').length`,
     )) >= 2,
     "The public day route did not let visitors choose stops.",
+  );
+  const editableRoute = await evaluate(
+    browser,
+    `(() => {
+      const panel = document.querySelector('.public-map-sheet .public-map-panel');
+      const stopRows = [...panel.querySelectorAll('[data-public-route-stop]')];
+      const checkboxes = [...panel.querySelectorAll('[role="checkbox"]')];
+      return {
+        disallowedCopy: /Start|previous Hotel|today.?s Hotel|起点|前一天住宿|当天住宿/.test(
+          panel.innerText,
+        ),
+        hasReorderControl: [...panel.querySelectorAll('button')].some((button) =>
+          /Move .* (earlier|later)|前移|后移/.test(button.getAttribute('aria-label') ?? ''),
+        ),
+        selectableStopCount: checkboxes.filter((checkbox) => !checkbox.disabled).length,
+        stopOrder: stopRows.map((row) => row.getAttribute('data-public-route-stop')),
+      };
+    })()`,
+  );
+  assert.equal(editableRoute.disallowedCopy, false, "Public daily route exposed hotel role copy.");
+  assert.equal(
+    editableRoute.hasReorderControl,
+    false,
+    "Public daily route allowed stop reordering.",
+  );
+  assert.equal(
+    editableRoute.selectableStopCount,
+    editableRoute.stopOrder.length,
+    "Every mapped public daily-route stop should be selectable.",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('.public-map-sheet [data-public-route-stop] [role="checkbox"]')`,
+    "toggle first public route stop",
+  );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `[...document.querySelectorAll('.public-map-sheet [data-public-route-stop]')]
+        .map((row) => row.getAttribute('data-public-route-stop'))`,
+    ),
+    editableRoute.stopOrder,
+    "Selecting public daily-route stops changed their itinerary order.",
   );
   await clickElement(
     browser,

@@ -12,7 +12,11 @@ import { mapWithConcurrency } from "@/features/routes/calculator";
 import type { RouteLegMode } from "@/features/routes/types";
 
 import { getPublicItinerary } from "./data";
-import { publicDayRoutePlan, publicOverviewStops } from "./public-map-model";
+import {
+  publicDayRoutePlan,
+  publicDayStopOrderMatches,
+  publicOverviewStops,
+} from "./public-map-model";
 import {
   linkMutationSchema,
   publicItineraryLinkSchema,
@@ -293,10 +297,8 @@ export async function calculatePublicRoute(
   const stops = input.data.stopRefs.map((ref) => candidates.get(ref));
   if (stops.some((stop) => !stop?.place))
     return { error: "Temporary routes can use only shared itinerary stops." };
-  if (routePlan.startRef && input.data.stopRefs[0] !== routePlan.startRef)
-    return { error: "This day route must start at the previous day Hotel." };
-  if (routePlan.endRef && input.data.stopRefs.at(-1) !== routePlan.endRef)
-    return { error: "This day route must end at the current day Hotel." };
+  if (!publicDayStopOrderMatches(routePlan, input.data.stopRefs))
+    return { error: "Keep the shared itinerary stop order." };
 
   return calculatePublicStops({
     legModes: input.data.legModes,

@@ -31,7 +31,6 @@ export function PublicDayRoutePanel({
   onEdit,
   onExplore,
   onModeChange,
-  onMoveStop,
   onReset,
   onSelectDay,
   onToggleStop,
@@ -54,7 +53,6 @@ export function PublicDayRoutePanel({
   onEdit: () => void;
   onExplore: () => void;
   onModeChange: (index: number, mode: RouteLegMode) => void;
-  onMoveStop: (index: number, direction: -1 | 1) => void;
   onReset: () => void;
   onSelectDay: (dayRef: string) => void;
   onToggleStop: (ref: string, include: boolean) => void;
@@ -141,10 +139,8 @@ export function PublicDayRoutePanel({
               legModes={legModes}
               localStops={localStops}
               onModeChange={onModeChange}
-              onMoveStop={onMoveStop}
               pending={pending}
               onToggleStop={onToggleStop}
-              plan={plan}
             />
             {error ? (
               <p aria-live="polite" className="text-xs text-destructive">

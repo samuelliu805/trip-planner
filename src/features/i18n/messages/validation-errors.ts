@@ -145,6 +145,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Review the selected attachment.": "请检查所选附件。",
   Rose: "玫瑰红",
   "Route exploration is unavailable for this itinerary.": "此行程无法使用路线探索。",
+  "Keep the shared itinerary stop order.": "请保持公开行程中的停靠顺序。",
   "Route unavailable. Keep the stop sequence and try again.": "路线不可用，请保留停靠顺序后重试。",
   "Route unavailable. Try again.": "路线不可用，请重试。",
   "Selected items must be unique.": "所选项目不能重复。",
