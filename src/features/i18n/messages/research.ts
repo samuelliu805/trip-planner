@@ -99,6 +99,7 @@ export const researchZhCN: Record<string, string> = {
   "Booking link (optional)": "预订链接（选填）",
   "Open {site} in a new tab": "在新标签页中打开{site}",
   "Get the {site} app": "下载{site}应用",
+  "Open {site} in its app or website": "在{site}应用或网站中打开",
   "Price category: {category}": "价格分类：{category}",
   "Saved today": "今天保存",
 };

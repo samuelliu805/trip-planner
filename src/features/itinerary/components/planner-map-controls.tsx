@@ -77,6 +77,7 @@ export function PlannerMapControls({
                     aria-label={t(description)}
                     aria-pressed={mapMode === value}
                     className={`flex min-h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45 ${mapMode === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                    data-map-mode={value}
                     onClick={() => onMapModeChange(value)}
                     title={t(description)}
                     type="button"

@@ -50,6 +50,7 @@ export function AppBottomNavigation({
   className,
   itemClassName,
   items,
+  documentNavigation = false,
   onSelect,
 }: {
   activeId: string;
@@ -57,6 +58,7 @@ export function AppBottomNavigation({
   className?: string;
   itemClassName?: string;
   items: AppBottomNavigationItem[];
+  documentNavigation?: boolean;
   onSelect?: (id: string) => void;
 }) {
   const { t } = useI18n();
@@ -109,7 +111,20 @@ export function AppBottomNavigation({
           className={itemClasses}
           href={item.href}
           key={item.id}
-          prefetch
+          onClick={(event) => {
+            if (
+              !documentNavigation ||
+              event.button ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            )
+              return;
+            event.preventDefault();
+            window.location.assign(item.href!);
+          }}
+          prefetch={!documentNavigation}
         >
           <NavigationLinkContent active={active} item={item} />
         </Link>

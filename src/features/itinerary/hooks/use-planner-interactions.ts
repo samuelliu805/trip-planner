@@ -89,7 +89,7 @@ export function usePlannerInteractions({
     setSelectedMapItemId(undefined);
     if (!extend) {
       const category = categories[coordinate.column];
-      if (category?.id === "city") setMapMode("overview");
+      if (category?.id === "city") setMapMode("day_route");
       if (["activities", "hotel", "meals"].includes(category?.id ?? "")) {
         setMapMode("day_route");
       }

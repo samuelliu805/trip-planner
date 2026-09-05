@@ -5,6 +5,7 @@ export const plannerZhCN: Record<string, string> = {
   "Activity or place": "活动或地点",
   "Add Activities to this Day first.": "请先为当天添加活动。",
   "Add activity": "添加活动",
+  "Add first activity": "添加第一个活动",
   "Add day": "添加一天",
   "Add day after": "在后面添加一天",
   "Add day at end": "在末尾添加一天",
@@ -99,6 +100,10 @@ export const plannerZhCN: Record<string, string> = {
   "View and focus in planner": "在行程表中查看并定位",
   "Add dates later": "稍后添加日期",
   "Day actions": "当天操作",
+  "Day {day} actions": "第{day}天操作",
+  "Plan this day": "规划这一天",
+  "Start with one activity. Add the rest when you are ready.":
+    "先添加一个活动，准备好后再补充用餐和交通。",
   "Delete item": "删除项目",
   "AMap places": "高德地图地点",
   "Google Maps places": "Google 地图地点",

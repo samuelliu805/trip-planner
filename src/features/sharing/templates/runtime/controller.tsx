@@ -17,13 +17,7 @@ import {
 
 import type { PublicMapSelection } from "../../components/public-map-workspace";
 import { usePublicViewportContainment } from "../../hooks/use-public-viewport-containment";
-import type {
-  OwnerShareImageState,
-  PublicItinerary,
-  PublicItineraryLink,
-  PublicView,
-  ShareImageManifest,
-} from "../../types";
+import type { PublicItinerary, PublicView, ShareImageManifest } from "../../types";
 import type { CompiledPublicTemplateV1 } from "../schema";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
@@ -33,8 +27,6 @@ type PublicTemplateController = {
   itinerary: PublicItinerary;
   mapSheetOpen: boolean;
   mapVisible: boolean;
-  ownerImageState: OwnerShareImageState | null;
-  ownerSharePage: PublicItineraryLink | null;
   shareImage: ShareImageManifest | null;
   onSelectionChange: Dispatch<SetStateAction<PublicMapSelection>>;
   resize: (event: PointerEvent<HTMLDivElement>) => void;
@@ -70,8 +62,6 @@ export function PublicTemplateControllerProvider({
   initialView,
   itinerary,
   legacyTemplateOverride,
-  ownerImageState,
-  ownerSharePage,
   publicUrl,
   shareImage,
   template,
@@ -81,8 +71,6 @@ export function PublicTemplateControllerProvider({
   initialView: PublicView;
   itinerary: PublicItinerary;
   legacyTemplateOverride?: "bento" | "standard";
-  ownerImageState: OwnerShareImageState | null;
-  ownerSharePage: PublicItineraryLink | null;
   publicUrl: string;
   shareImage: ShareImageManifest | null;
   template: CompiledPublicTemplateV1;
@@ -195,8 +183,6 @@ export function PublicTemplateControllerProvider({
         itinerary,
         mapSheetOpen,
         mapVisible,
-        ownerImageState,
-        ownerSharePage,
         shareImage,
         onSelectionChange: setSelection,
         resize,

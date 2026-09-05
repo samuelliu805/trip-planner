@@ -12,13 +12,13 @@ export function AddItemButton({
   category,
   day,
   disabled,
-  newTripStarter = false,
+  dayStarter = false,
   onAdd,
 }: {
   category: PlannerCategory;
   day: PlannerDay;
   disabled?: boolean;
-  newTripStarter?: boolean;
+  dayStarter?: boolean;
   onAdd: () => void;
 }) {
   const { t } = useI18n();
@@ -28,7 +28,7 @@ export function AddItemButton({
     onAdd();
   };
 
-  if (newTripStarter)
+  if (dayStarter)
     return (
       <div
         className="flex h-full flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-left"
@@ -36,10 +36,10 @@ export function AddItemButton({
       >
         <div className="px-1">
           <p className="text-sm font-semibold text-foreground">
-            <T message={" Start planning "} />
+            <T message={" Plan this day "} />
           </p>
           <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-            <T message={" Add your first activity. "} />
+            <T message={" Start with one activity. Add the rest when you are ready. "} />
           </p>
         </div>
         <Button
@@ -49,7 +49,7 @@ export function AddItemButton({
           size="sm"
           type="button"
         >
-          <Plus aria-hidden="true" className="size-4" /> <T message={" Add activity "} />
+          <Plus aria-hidden="true" className="size-4" /> <T message={" Add first activity "} />
         </Button>
       </div>
     );

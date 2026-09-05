@@ -64,6 +64,7 @@ export function AmapPlannerMapCanvas({
   const { amap, apiError, apiKey, retry } = useAmapMapConfiguration();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<AmapMap>(null);
+  const overlayReleaseRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -81,9 +82,16 @@ export function AmapPlannerMapCanvas({
     });
     mapRef.current = map;
     return () => {
-      map.destroy();
-      mapRef.current = null;
-      container.replaceChildren();
+      overlayReleaseRef.current?.();
+      overlayReleaseRef.current = null;
+      try {
+        map.destroy();
+      } catch {
+        // AMap cleanup is best-effort and must never break a route or Sheet transition.
+      } finally {
+        mapRef.current = null;
+        container.replaceChildren();
+      }
     };
   }, [amap, colorScheme, compact]);
 
@@ -104,7 +112,12 @@ export function AmapPlannerMapCanvas({
       const marker = markers.find(({ itemIds }) => itemIds.includes(selectedId));
       if (marker) map.panTo(toAmapPosition(marker.latitude, marker.longitude));
     }
-    return overlaySet.release;
+    const release = overlaySet.release;
+    overlayReleaseRef.current = release;
+    return () => {
+      if (overlayReleaseRef.current === release) overlayReleaseRef.current = null;
+      release();
+    };
   }, [amap, colorScheme, compact, lines, markers, onMarkerClick, selectedId, viewportKey]);
 
   if (!apiKey)

@@ -66,6 +66,7 @@ export const sharingZhCN: Record<string, string> = {
   "Revoke public access?": "要撤销公开访问吗？",
   "Scan to explore the full itinerary": "扫码查看完整行程",
   "Send a link or save an image.": "发送链接，或保存行程长图。",
+  "Send this public link.": "发送这个公开链接。",
   "Share image": "分享长图",
   "Share itinerary": "分享行程",
   "Share link": "分享链接",

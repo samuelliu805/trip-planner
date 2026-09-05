@@ -45,7 +45,7 @@ function SheetContent({
         {children}
         {showCloseButton ? (
           <SheetPrimitive.Close
-            className="absolute right-3 top-3 z-20 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-3 top-3 z-30 flex size-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             data-sheet-close=""
           >
             <X className="size-4" aria-hidden="true" />

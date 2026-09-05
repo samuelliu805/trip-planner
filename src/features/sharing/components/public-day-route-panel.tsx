@@ -1,5 +1,5 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { Bike, Calculator, Car, Footprints, LoaderCircle, Route, TrainFront } from "lucide-react";
+import { Calculator, LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
@@ -17,18 +17,11 @@ import { PublicRouteLegDetails } from "./public-route-summary";
 import { PublicSharedRouteSummary } from "./public-shared-route-summary";
 import { PublicTemporaryRouteStops } from "./public-temporary-route-stops";
 
-const dayRouteModes = [
-  { Icon: Car, label: "Drive", value: "self_driving" },
-  { Icon: TrainFront, label: "Transit", value: "subway" },
-  { Icon: Bike, label: "Bike", value: "bike" },
-  { Icon: Footprints, label: "Walk", value: "walk" },
-] satisfies Array<{ Icon: typeof Route; label: string; value: RouteLegMode }>;
-
 export function PublicDayRoutePanel({
   allowExplore,
   calculation,
   candidates,
-  dayMode,
+  legModes,
   days,
   error,
   exploring,
@@ -51,7 +44,7 @@ export function PublicDayRoutePanel({
   allowExplore: boolean;
   calculation?: PublicRouteCalculation;
   candidates: PublicItineraryItem[];
-  dayMode: RouteLegMode;
+  legModes: RouteLegMode[];
   days: PublicItinerary["days"];
   error?: string;
   exploring: boolean;
@@ -60,7 +53,7 @@ export function PublicDayRoutePanel({
   onCalculate: () => void;
   onEdit: () => void;
   onExplore: () => void;
-  onModeChange: (mode: RouteLegMode) => void;
+  onModeChange: (index: number, mode: RouteLegMode) => void;
   onMoveStop: (index: number, direction: -1 | 1) => void;
   onReset: () => void;
   onSelectDay: (dayRef: string) => void;
@@ -142,34 +135,14 @@ export function PublicDayRoutePanel({
                 <T message={"Only you"} />
               </span>
             </div>
-            <div
-              aria-label="Temporary route travel mode"
-              data-i18n-aria-label={"Temporary route travel mode"}
-              className="grid grid-cols-4 border"
-              role="radiogroup"
-            >
-              {dayRouteModes.map(({ Icon, label, value }) => (
-                <button
-                  aria-checked={dayMode === value}
-                  aria-label={t(label)}
-                  className="flex min-h-12 flex-col items-center justify-center gap-0.5 border-r text-muted-foreground last:border-r-0 hover:bg-muted aria-checked:bg-primary aria-checked:text-primary-foreground"
-                  key={value}
-                  onClick={() => onModeChange(value)}
-                  role="radio"
-                  type="button"
-                >
-                  <Icon aria-hidden="true" className="size-4" />
-                  <span className="text-[9px] font-semibold">
-                    <Localized value={label} />
-                  </span>
-                </button>
-              ))}
-            </div>
             <PublicTemporaryRouteStops
               candidates={candidates}
               items={routeSetupItems}
+              legModes={legModes}
               localStops={localStops}
+              onModeChange={onModeChange}
               onMoveStop={onMoveStop}
+              pending={pending}
               onToggleStop={onToggleStop}
               plan={plan}
             />
@@ -205,7 +178,6 @@ export function PublicDayRoutePanel({
       ) : (
         <PublicSharedRouteSummary
           canExplore={allowExplore && candidates.length >= 2}
-          candidates={candidates}
           omittedActivityCount={omittedActivityCount}
           onExplore={onExplore}
           route={route}

@@ -16,37 +16,25 @@ import {
 } from "@/components/ui/dialog";
 
 import type { CompiledPublicTemplateV1 } from "../templates/schema";
-import type {
-  OwnerShareImageState,
-  PublicItinerary,
-  PublicItineraryLink,
-  ShareImageManifest,
-} from "../types";
+import type { PublicItinerary, ShareImageManifest } from "../types";
 import { formatShareImageExpiry } from "../long-image/expiration";
 import { localizeGeneratedPublicDescription } from "../public-copy";
-import { LongImageExportPanel } from "./long-image-export-panel";
 import { downloadShareImageParts } from "./share-image-download";
 import { ShareLinkActions } from "./share-tools";
 
 export function PublicViewerShareDialog({
   itinerary,
-  ownerImageState,
-  ownerSharePage,
   shareImage,
   template,
   url,
 }: {
   itinerary: PublicItinerary;
-  ownerImageState: OwnerShareImageState | null;
-  ownerSharePage: PublicItineraryLink | null;
   shareImage: ShareImageManifest | null;
   template: CompiledPublicTemplateV1;
   url: string;
 }) {
   const { locale } = useI18n();
-  const [currentImageState, setCurrentImageState] = useState(ownerImageState);
   const [open, setOpen] = useState(false);
-  const siteUrl = new URL(url).origin;
   useExclusivePullUpPanel("viewer-share", open, setOpen);
   return (
     <Dialog onOpenChange={setOpen} open={open}>
@@ -64,18 +52,18 @@ export function PublicViewerShareDialog({
         </Button>
       </DialogTrigger>
       <DialogContent
-        className={`mobile-pull-up-panel public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),720px)]`}
+        className={`mobile-pull-up-panel public-viewer-share-dialog public-template-${template.id} flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden [&>[data-dialog-close]]:hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),720px)] sm:[&>[data-dialog-close]]:flex`}
         data-public-template-key={template.key}
       >
         <div className="sm:hidden">
           <PullUpPanelHandle onClose={() => setOpen(false)} />
         </div>
-        <DialogHeader className="shrink-0">
+        <DialogHeader className="shrink-0 pr-5 sm:pr-16">
           <DialogTitle>
             <T message={"Share itinerary"} />
           </DialogTitle>
           <DialogDescription>
-            <T message={"Send a link or save an image."} />
+            <T message={"Send this public link."} />
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 flex-1 touch-pan-y space-y-6 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-6">
@@ -96,18 +84,7 @@ export function PublicViewerShareDialog({
             <h3 className="text-sm font-semibold" id="trip-image-heading">
               <T message={" Trip image "} />
             </h3>
-            {ownerSharePage ? (
-              <div className="border bg-muted/30 p-4">
-                <LongImageExportPanel
-                  imageState={currentImageState}
-                  itinerary={itinerary}
-                  onImageStateChange={setCurrentImageState}
-                  sharePage={ownerSharePage}
-                  siteUrl={siteUrl}
-                />
-              </div>
-            ) : null}
-            {!ownerSharePage && shareImage ? (
+            {shareImage ? (
               <div className="space-y-2 border bg-muted/30 p-4">
                 <Button asChild className="min-h-11 w-full min-[1200px]:hidden">
                   <a
@@ -135,7 +112,7 @@ export function PublicViewerShareDialog({
                 ) : null}
               </div>
             ) : null}
-            {!ownerSharePage && !shareImage ? (
+            {!shareImage ? (
               <div className="border bg-muted/30 p-4 text-sm text-muted-foreground">
                 <T message="The owner has not published a trip image yet." />
               </div>

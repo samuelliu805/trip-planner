@@ -1623,6 +1623,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./components/public-viewer-share-dialog.tsx", import.meta.url),
     "utf8",
   );
+  const publicPage = await readFile(
+    new URL("../../app/share/[token]/page.tsx", import.meta.url),
+    "utf8",
+  );
   const shareTools = await readFile(
     new URL("./components/share-tools.tsx", import.meta.url),
     "utf8",
@@ -1810,6 +1814,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     /\.public-template-bento \.overview-transport-item-v4 \{[\s\S]*background: transparent/,
   );
   assert.match(styles, /@media \(min-width: 900px\) and \(max-width: 1199px\)/);
+  assert.match(
+    styles,
+    /@media \(min-width: 640px\) and \(max-width: 1199px\) \{[\s\S]*?\.public-itinerary-shell \.public-itinerary-grid \{[\s\S]*?order: 2;[\s\S]*?\.public-itinerary-shell \.public-template-region-view-navigation \{[\s\S]*?order: 3;/,
+  );
   assert.match(
     styles,
     /\.public-template-ethereal \.timeline-node-meta-v4\.line-clamp-2 \{[\s\S]*-webkit-line-clamp: unset/,
@@ -2168,10 +2176,15 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.doesNotMatch(viewerShare, /ownerSharePage \|\| shareImage/);
   assert.match(viewerShare, /min-\[1200px\]:hidden[\s\S]*Open image/);
   assert.match(viewerShare, /hidden min-h-11 w-full min-\[1200px\]:inline-flex/);
-  assert.ok(
-    viewerShare.indexOf("<ShareLinkActions") < viewerShare.indexOf("<LongImageExportPanel"),
-    "share link actions stay above image generation",
+  assert.doesNotMatch(viewerShare, /LongImageExportPanel|OwnerShareImageState|ownerSharePage/);
+  assert.doesNotMatch(
+    publicPage,
+    /getOwnerShareImageState|getOwnerSharePageByToken|ownerSharePage/,
   );
+  assert.match(shareSettings, /<OwnerLongImageSettings/);
+  assert.match(viewerShare, /\[&>\[data-dialog-close\]\]:hidden/);
+  assert.match(shareSettings, /\[&>\[data-dialog-close\]\]:hidden/);
+  assert.match(platformParts, /useExclusivePullUpPanel\("public-map"/);
   assert.doesNotMatch(viewerShare + shareTools, /WeChat|Wechat|showWechatQr|ShareQrCode/);
   assert.match(shareSettings, /window\.open\("about:blank", "_blank"\)/);
   assert.match(shareSettings, /tab\.location\.replace\(publicUrl\)/);
@@ -2221,10 +2234,14 @@ test("route exploration is local-only and never exposes owner persistence contro
   assert.match(routeSources, /Temporary route/);
   assert.match(routeSources, /Only you/);
   assert.match(routeSources, /Shared route/);
-  assert.match(sharedRoute, /key=\{`\$\{stop\.ref\}:\$\{index\}`\}/);
-  assert.match(routeSources, /Overview connections/);
+  assert.doesNotMatch(sharedRoute, /<ol|MapPinned|transportModeLabels/);
+  assert.doesNotMatch(overviewPanel, /Overview connections/);
   assert.match(routeSources, /Day route/);
-  assert.match(routeSources, /Temporary route travel mode/);
+  assert.match(temporaryStops, /data-route-leg-mode/);
+  assert.match(workspaceController, /dayLegModes/);
+  assert.match(workspaceController, /`\$\{ref\}:\$\{localStops\[index \+ 1\]\}`/);
+  assert.match(temporaryStops, /onModeChange\(position, value as RouteLegMode\)/);
+  assert.match(sharedRoute, /Edit route/);
   assert.match(routeSources, /Drive/);
   assert.match(routeSources, /Transit/);
   assert.match(routeSources, /Bike/);

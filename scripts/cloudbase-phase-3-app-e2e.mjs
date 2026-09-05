@@ -104,6 +104,19 @@ class CdpClient {
         try {
           const response = message.params?.response;
           const url = new URL(response?.url);
+          if (response.status >= 400) {
+            this.diagnostics.push({
+              method: message.method,
+              params: {
+                path: url.pathname
+                  .replace(/^\/share\/[^/]+/, "/share/:token")
+                  .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ":id"),
+                status: response.status,
+                type: message.params?.type,
+              },
+            });
+            this.diagnostics = this.diagnostics.slice(-20);
+          }
           if (
             url.pathname.startsWith("/_AMapService/") ||
             url.pathname === "/api/maps/amap/places"
@@ -442,6 +455,239 @@ async function verifyPublicPhoneAuthAtMobileWidths(browser) {
   await clearCookies(browser);
 }
 
+async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  await navigate(browser, `/trips/${tripId}`);
+  await waitFor(browser, `Boolean(document.querySelector('[data-add-day]'))`, "mobile Add day");
+  const initial = await evaluate(
+    browser,
+    `(() => {
+      const header = document.querySelector('[data-day-header][data-day-number="1"]');
+      const button = header?.querySelector('[data-add-day]');
+      const headerRect = header?.getBoundingClientRect();
+      const buttonRect = button?.getBoundingClientRect();
+      return {
+        buttonInside:
+          Boolean(headerRect && buttonRect) &&
+          buttonRect.left >= headerRect.left - 0.5 &&
+          buttonRect.right <= headerRect.right + 0.5,
+        buttonTextFits: Boolean(button) && button.scrollWidth <= button.clientWidth + 1,
+        documentFits: document.documentElement.scrollWidth <= innerWidth,
+        hintCount: document.querySelectorAll('[data-day-actions-hint]').length,
+        starterCount: document.querySelectorAll('[data-empty-trip-actions]').length,
+      };
+    })()`,
+  );
+  assert.deepEqual(initial, {
+    buttonInside: true,
+    buttonTextFits: true,
+    documentFits: true,
+    hintCount: 1,
+    starterCount: 1,
+  });
+
+  await clickElement(browser, `document.querySelector('[data-add-day]')`, "unclipped Add day");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-day-header][data-day-number="2"]')) &&
+      document.querySelectorAll('[data-empty-trip-actions]').length === 2`,
+    "new day guidance",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('[data-day-header][data-day-number="2"]')`,
+    "Day 2 date cell",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-day-header][data-day-number="2"] [data-day-menu]'))`,
+    "Day 2 overflow action",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('[data-day-header][data-day-number="2"] [data-day-menu]')`,
+    "Day 2 overflow action",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
+      /Remove Day 2|删除第?2天/.test(item.textContent.trim())
+    )`,
+    "Day 2 remove menu item",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      /Remove Day 2|删除第?2天/.test(item.textContent.trim())
+    )`,
+    "Remove Day 2 menu item",
+  );
+  await waitFor(browser, `Boolean(document.querySelector('[role="alertdialog"]'))`, "remove Day 2");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      /Remove day|删除当天/.test(button.textContent.trim())
+    )`,
+    "confirm remove Day 2",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[data-day-header][data-day-number="2"]')`,
+    "Day 2 removal",
+    45_000,
+  );
+
+  await clickElement(browser, `document.querySelector('[data-cell="0-0"]')`, "Day 1 city cell");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button[data-i18n-aria-label="Open map and route tools"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "city-cell map entry",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('.planner-map-sheet[data-state="open"]'))`,
+    "city-cell day route map",
+  );
+  await waitFor(
+    browser,
+    `(() => {
+      const rect = document.querySelector('.planner-map-sheet')?.getBoundingClientRect();
+      return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5;
+    })()`,
+    "settled city-cell day route map",
+  );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `(() => {
+        const sheet = document.querySelector('.planner-map-sheet');
+        const rect = sheet?.getBoundingClientRect();
+        return {
+          documentFits: document.documentElement.scrollWidth <= innerWidth,
+          sheetFits: Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5,
+        };
+      })()`,
+    ),
+    { documentFits: true, sheetFits: true },
+  );
+  assert.equal(
+    await evaluate(
+      browser,
+      `Boolean([...document.querySelectorAll('[data-map-mode="day_route"][aria-pressed="true"]')]
+        .find((button) => button.getClientRects().length))`,
+    ),
+    true,
+    "A city cell opened the map in Whole trip instead of This day.",
+  );
+  assert.equal(
+    await evaluate(browser, `Boolean(document.querySelector('.public-share-settings-dialog'))`),
+    false,
+    "Opening the map left Share settings open underneath it.",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('.planner-map-sheet [data-sheet-close]')`,
+    "close city-cell map",
+  );
+  await waitFor(browser, `!document.querySelector('.planner-map-sheet')`, "city-cell map close");
+  assert.doesNotMatch(
+    await evaluate(browser, "document.body.innerText"),
+    /This page couldn.t load|This Plan could not be loaded/i,
+  );
+  assert.equal(
+    await evaluate(browser, `Boolean(document.querySelector('.public-share-settings-dialog'))`),
+    false,
+    "Closing the map revealed Share settings.",
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+}
+
+async function verifyTripSectionNavigation(browser, tripId) {
+  await evaluate(browser, "window.__phase3SectionNavigationSentinel = true");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('a')].find((link) =>
+      link.getClientRects().length && link.textContent.includes('Ideas & Options')
+    )`,
+    "Plan to Ideas",
+  );
+  await waitFor(
+    browser,
+    `location.pathname === ${JSON.stringify(`/trips/${tripId}/compare/flights`)} &&
+      window.__phase3SectionNavigationSentinel !== true`,
+    "Plan to Ideas document navigation",
+    45_000,
+  );
+  assert.doesNotMatch(
+    await evaluate(browser, "document.body.innerText"),
+    /This page couldn.t load|This Plan could not be loaded/i,
+  );
+
+  await evaluate(browser, "window.__phase3CategoryNavigationSentinel = true");
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('a[href*="/compare/stays"]')]
+      .find((link) => link.getClientRects().length))`,
+    "Ideas category navigation control",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('a[href*="/compare/stays"]')]
+      .find((link) => link.getClientRects().length)`,
+    "Ideas category navigation",
+  );
+  await waitFor(
+    browser,
+    `location.pathname === ${JSON.stringify(`/trips/${tripId}/compare/stays`)}`,
+    "Ideas category route",
+    45_000,
+  );
+  assert.equal(
+    await evaluate(browser, "window.__phase3CategoryNavigationSentinel"),
+    true,
+    "Ideas category navigation unexpectedly discarded the browser state.",
+  );
+
+  await evaluate(browser, "window.__phase3SectionNavigationSentinel = true");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('a')].some((link) =>
+      link.getClientRects().length && link.textContent.trim() === 'Plan'
+    )`,
+    "Ideas to Plan control",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('a')].find((link) =>
+      link.getClientRects().length && link.textContent.trim() === 'Plan'
+    )`,
+    "Ideas to Plan",
+  );
+  await waitFor(
+    browser,
+    `location.pathname === ${JSON.stringify(`/trips/${tripId}`)} &&
+      window.__phase3SectionNavigationSentinel !== true`,
+    "Ideas to Plan document navigation",
+    45_000,
+  );
+  assert.doesNotMatch(
+    await evaluate(browser, "document.body.innerText"),
+    /This page couldn.t load|This Plan could not be loaded/i,
+  );
+}
+
 async function openPlannerCellEditor(browser, cell, label) {
   const cellExpression = `document.querySelector('[data-cell="${cell}"]')`;
   await clickElement(browser, cellExpression, `${label} cell`);
@@ -639,8 +885,13 @@ async function verifyMobileTransportEditorScroll(browser) {
       const surface = document.querySelector('[data-planner-editor-scroll]');
       const save = [...document.querySelectorAll('[role="dialog"] button')]
         .find((button) => button.textContent.trim() === "Save" && !button.disabled);
-      surface.scrollTop = surface.scrollHeight;
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        surface.scrollTop = surface.scrollHeight;
+        await nextFrame();
+        await nextFrame();
+        if (surface.scrollTop >= surface.scrollHeight - surface.clientHeight - 2) break;
+      }
       const rect = save?.getBoundingClientRect();
       const hit = rect
         ? document.elementsFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
@@ -658,13 +909,17 @@ async function verifyMobileTransportEditorScroll(browser) {
   assert.ok(actionEvidence.maxScrollTop > 0, "Mobile transport editor did not become scrollable.");
   assert.ok(
     actionEvidence.scrollTop >= actionEvidence.maxScrollTop - 2,
-    "Mobile transport editor bounced away from its bottom action.",
+    `Mobile transport editor bounced away from its bottom action: ${JSON.stringify(actionEvidence)}.`,
   );
   assert.ok(
     actionEvidence.bottom <= actionEvidence.viewportHeight + 1,
-    "Mobile transport Save action remained below the visual viewport.",
+    `Mobile transport Save action remained below the visual viewport: ${JSON.stringify(actionEvidence)}.`,
   );
-  assert.equal(actionEvidence.saveIsTopmost, true, "Mobile transport Save action was obstructed.");
+  assert.equal(
+    actionEvidence.saveIsTopmost,
+    true,
+    `Mobile transport Save action was obstructed: ${JSON.stringify(actionEvidence)}.`,
+  );
   await saveOpenItemEditor(browser, "mobile transport edit");
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
@@ -848,6 +1103,201 @@ async function verifyMobileMapBackNavigation(browser) {
     "Closing the map remounted the Matrix instead of revealing the existing table.",
   );
   assert.doesNotMatch(await evaluate(browser, "document.body.innerText"), /could not be loaded/i);
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+}
+
+async function verifyPublicShareMapAndDialog(browser) {
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 932, mobile: true, width: 430 },
+    browser.sessionId,
+  );
+  await navigate(browser, await evaluate(browser, "location.pathname + location.search"));
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('.public-share-button')].some((button) =>
+      button.getClientRects().length && !button.disabled
+    )`,
+    "visible public Share",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('.public-share-button')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "public Share",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('.public-viewer-share-dialog[data-state="open"]'))`,
+    "public Share dialog",
+  );
+  const shareDialog = await evaluate(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('.public-viewer-share-dialog');
+      const close = dialog?.querySelector('[data-dialog-close]');
+      const handle = dialog?.querySelector('[data-pull-up-handle]');
+      return {
+        forbiddenOwnerActions: [...(dialog?.querySelectorAll('button,a') ?? [])].some((action) =>
+          /Save trip image|Create image|Manage image link|保存行程长图|创建长图|管理长图链接/.test(action.textContent ?? '')
+        ),
+        handleVisible: Boolean(handle?.getClientRects().length),
+        topRightCloseVisible: Boolean(close?.getClientRects().length),
+      };
+    })()`,
+  );
+  assert.deepEqual(shareDialog, {
+    forbiddenOwnerActions: false,
+    handleVisible: true,
+    topRightCloseVisible: false,
+  });
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('.public-viewer-share-dialog')`,
+    "public Share close",
+  );
+
+  await clickElement(
+    browser,
+    `document.querySelector('.public-mobile-map-control')`,
+    "public map entry",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('.public-map-sheet[data-state="open"]'))`,
+    "public map sheet",
+  );
+  await waitFor(
+    browser,
+    `(() => {
+      const rect = document.querySelector('.public-map-sheet')?.getBoundingClientRect();
+      return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5;
+    })()`,
+    "settled public map sheet",
+  );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `(() => {
+        const sheet = document.querySelector('.public-map-sheet');
+        const rect = sheet?.getBoundingClientRect();
+        return {
+          documentFits: document.documentElement.scrollWidth <= innerWidth,
+          sheetFits: Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5,
+        };
+      })()`,
+    ),
+    { documentFits: true, sheetFits: true },
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('.public-map-sheet .public-map-panel-toggle')`,
+    "public route panel",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.public-map-sheet .public-map-panel-toggle')?.getAttribute('aria-expanded') === 'true'`,
+    "expanded public route panel",
+  );
+  const sharedRoute = await evaluate(
+    browser,
+    `(() => {
+      const panel = document.querySelector('.public-map-sheet .public-map-panel');
+      const canvas = document.querySelector('.public-map-sheet .public-map-canvas');
+      const logo = document.querySelector('.public-map-sheet .amap-logo');
+      const summary = panel?.querySelector('[data-shared-route-summary]');
+      return {
+        amapBelowPanel:
+          !logo || Number.parseInt(getComputedStyle(logo).zIndex || '0', 10) <
+            Number.parseInt(getComputedStyle(panel).zIndex || '0', 10),
+        canvasZ: getComputedStyle(canvas).zIndex,
+        hasRemovedOverviewHeading: /Overview connections|全程连接/.test(panel?.innerText ?? ''),
+        hasRemovedStopSummary: Boolean(summary?.querySelector('ol')),
+        panelZ: getComputedStyle(panel).zIndex,
+      };
+    })()`,
+  );
+  assert.deepEqual(sharedRoute, {
+    amapBelowPanel: true,
+    canvasZ: "0",
+    hasRemovedOverviewHeading: false,
+    hasRemovedStopSummary: false,
+    panelZ: "20",
+  });
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('.public-map-sheet button')].find((button) =>
+      /Edit route|编辑路线/.test(button.textContent.trim())
+    )`,
+    "public Edit route",
+  );
+  await waitFor(
+    browser,
+    `document.querySelectorAll('.public-map-sheet [data-route-leg-mode]').length >= 1 &&
+      document.querySelectorAll('.public-map-sheet [data-shared-route-summary]').length === 0`,
+    "per-leg public route editor",
+  );
+  assert.ok(
+    (await evaluate(
+      browser,
+      `document.querySelectorAll('.public-map-sheet [data-route-leg-mode] [role="combobox"]').length`,
+    )) >= 1,
+    "The public day route did not expose a travel-mode Select after each usable stop.",
+  );
+  assert.ok(
+    (await evaluate(
+      browser,
+      `document.querySelectorAll('.public-map-sheet [role="checkbox"]').length`,
+    )) >= 2,
+    "The public day route did not let visitors choose stops.",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('.public-map-sheet [data-sheet-close]')`,
+    "close public map",
+  );
+  await waitFor(browser, `!document.querySelector('.public-map-sheet')`, "public map close");
+  const closedMapBody = await evaluate(browser, "document.body.innerText");
+  if (/This page couldn.t load|This Plan could not be loaded/i.test(closedMapBody)) {
+    const exceptionDiagnostics = browser.cdp.diagnostics
+      .filter(({ method }) => method === "Runtime.exceptionThrown")
+      .map(({ params }) =>
+        String(params?.exceptionDetails?.exception?.description ?? params?.exceptionDetails?.text)
+          .split("\n")[0]
+          .slice(0, 500),
+      );
+    const responseDiagnostics = browser.cdp.diagnostics.filter(
+      ({ method }) => method === "Network.responseReceived",
+    );
+    throw new Error(
+      `Closing the public map rendered the route error boundary: ${JSON.stringify({
+        exceptions: exceptionDiagnostics,
+        pathKind: (await evaluate(browser, "location.pathname")).startsWith("/share/")
+          ? "/share/:token"
+          : await evaluate(browser, "location.pathname"),
+        responses: responseDiagnostics,
+      })}`,
+    );
+  }
+  assert.equal(
+    await evaluate(browser, `Boolean(document.querySelector('.public-viewer-share-dialog'))`),
+    false,
+    "Closing the public map revealed the Share dialog.",
+  );
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
@@ -1070,19 +1520,30 @@ async function clickElement(browser, elementExpression, label) {
     browser,
     `(async () => {
       const element = (${elementExpression});
-      if (!element || !element.getClientRects().length || element.disabled) return null;
+      if (!element) return { available: false, reason: "missing" };
+      if (!element.getClientRects().length) return { available: false, reason: "hidden" };
+      if (element.disabled) return { available: false, reason: "disabled" };
       element.scrollIntoView({ block: "center", inline: "center" });
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const rect = element.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top + rect.height / 2;
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return null;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) {
+        return { available: false, reason: "outside-viewport", rect: rect.toJSON(), viewport: { height: innerHeight, width: innerWidth } };
+      }
       const hit = document.elementFromPoint(x, y);
-      if (!hit || (hit !== element && !element.contains(hit))) return null;
-      return { x, y };
+      if (!hit || (hit !== element && !element.contains(hit))) {
+        return {
+          available: false,
+          reason: "covered",
+          rect: rect.toJSON(),
+          hit: hit ? { className: String(hit.className).slice(0, 160), tagName: hit.tagName } : null,
+        };
+      }
+      return { available: true, x, y };
     })()`,
   );
-  assert(point, `${label} was not available.`);
+  assert(point?.available, `${label} was not available: ${JSON.stringify(point)}`);
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
     { button: "left", clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
@@ -1719,6 +2180,30 @@ async function publishThroughUi(browser, tripId) {
     { href: publicUrl, target: "_blank" },
     "Open page must launch the unscrolled share URL in a new tab.",
   );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 932, mobile: true, width: 430 },
+    browser.sessionId,
+  );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `(() => {
+        const dialog = document.querySelector('.public-share-settings-dialog');
+        return {
+          handleVisible: Boolean(dialog?.querySelector('[data-pull-up-handle]')?.getClientRects().length),
+          topRightCloseVisible: Boolean(dialog?.querySelector('[data-dialog-close]')?.getClientRects().length),
+        };
+      })()`,
+    ),
+    { handleVisible: true, topRightCloseVisible: false },
+    "Mobile Share settings must use the pull-up handle without a second top-right X.",
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
   await generateLongImageThroughUi(browser);
   await clickElement(
     browser,
@@ -1853,105 +2338,285 @@ async function updateTripTitle(browser, nextTitle) {
   }
 }
 
+const tabletViewports = [
+  { height: 1024, label: "768px portrait", width: 768 },
+  { height: 600, label: "768px landscape", width: 768 },
+  { height: 1180, label: "820px portrait", width: 820 },
+  { height: 600, label: "820px landscape", width: 820 },
+  { height: 1366, label: "1024px portrait", width: 1024 },
+  { height: 700, label: "1024px landscape", width: 1024 },
+];
+
+async function verifyTabletMatrixViewport(browser, options) {
+  const { appBarSelector, bottomNavigationSelector, matrixSelector, surface } = options;
+  await waitFor(
+    browser,
+    `document.querySelectorAll(${JSON.stringify(
+      `${matrixSelector} [role="row"]:not(.matrix-grid-header)`,
+    )}).length === 12`,
+    `${surface} twelve-day matrix`,
+    45_000,
+  );
+
+  for (const viewport of tabletViewports) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: viewport.height, mobile: false, width: viewport.width },
+      browser.sessionId,
+    );
+    await waitFor(
+      browser,
+      `(() => {
+        const matrix = document.querySelector(${JSON.stringify(matrixSelector)});
+        return matrix && matrix.getBoundingClientRect().height > 0;
+      })()`,
+      `${surface} ${viewport.label} layout`,
+      45_000,
+    );
+    const result = await evaluate(
+      browser,
+      `(async () => {
+        const matrix = document.querySelector(${JSON.stringify(matrixSelector)});
+        const appBar = document.querySelector(${JSON.stringify(appBarSelector)});
+        const bottomNavigation = document.querySelector(${JSON.stringify(
+          bottomNavigationSelector,
+        )});
+        const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+        window.scrollTo(0, 96);
+        await nextFrame();
+        await nextFrame();
+        matrix.scrollLeft = 0;
+        matrix.scrollTop = 0;
+        await nextFrame();
+        const header = matrix.querySelector('.matrix-grid-header');
+        const rows = [...matrix.querySelectorAll('[role="row"]:not(.matrix-grid-header)')];
+        const frozenHeader = header.querySelector('[role="columnheader"]:first-child');
+        const firstFrozenBody = rows[0].querySelector('[role="rowheader"]:first-child');
+        const headerAtOrigin = header.getBoundingClientRect();
+        const firstRowAtOrigin = rows[0].getBoundingClientRect();
+        const matrixAtOrigin = matrix.getBoundingClientRect();
+        const visibleBottomNavigation = bottomNavigation?.getClientRects().length
+          ? bottomNavigation.getBoundingClientRect()
+          : null;
+        const targetBottom = visibleBottomNavigation?.top ?? innerHeight;
+        const targetLeft = Math.min(360, matrix.scrollWidth - matrix.clientWidth);
+        const targetTop = Math.min(140, matrix.scrollHeight - matrix.clientHeight);
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+          matrix.scrollLeft = targetLeft;
+          matrix.scrollTop = targetTop;
+          matrix.dispatchEvent(new Event('scroll', { bubbles: true }));
+          await nextFrame();
+          if (matrix.scrollLeft > 0 && (targetTop === 0 || matrix.scrollTop > 0)) break;
+        }
+        await nextFrame();
+        const matrixRect = matrix.getBoundingClientRect();
+        const headerRect = header.getBoundingClientRect();
+        const visibleBodyRow = rows.find((row) => {
+          const rect = row.getBoundingClientRect();
+          return rect.bottom > headerRect.bottom + 2 && rect.top < matrixRect.bottom - 2;
+        });
+        const frozenBody = visibleBodyRow.querySelector('[role="rowheader"]:first-child');
+        const bodyCells = [...visibleBodyRow.querySelectorAll('[role="gridcell"]')];
+        const frozenRect = frozenBody.getBoundingClientRect();
+        const frozenHeaderRect = frozenHeader.getBoundingClientRect();
+        const firstFrozenBodyRect = firstFrozenBody.getBoundingClientRect();
+        const bodyBehindFrozen = bodyCells.some((cell) => {
+          const rect = cell.getBoundingClientRect();
+          return rect.left < frozenRect.right && rect.right > frozenRect.left;
+        });
+        const visibleFrozenTop = Math.max(frozenRect.top, headerRect.bottom + 1);
+        const visibleFrozenBottom = Math.min(frozenRect.bottom, matrixRect.bottom - 1);
+        const rowHeaderAtFrozenPoint = document
+          .elementsFromPoint(
+            frozenRect.left + frozenRect.width / 2,
+            visibleFrozenTop + (visibleFrozenBottom - visibleFrozenTop) / 2,
+          )
+          .map((element) => element.closest('[role="rowheader"]'))
+          .find(Boolean);
+        const columnHeaderAtHeaderPoint = document
+          .elementsFromPoint(matrixRect.left + Math.min(250, matrixRect.width - 2), headerRect.top + headerRect.height / 2)
+          .map((element) => element.closest('[role="columnheader"]'))
+          .find(Boolean);
+        const bodyBehindHeader = [...matrix.querySelectorAll('[role="gridcell"]')].some((cell) => {
+          const rect = cell.getBoundingClientRect();
+          return rect.top < headerRect.bottom && rect.bottom > headerRect.top;
+        });
+        matrix.scrollTop = matrix.scrollHeight - matrix.clientHeight;
+        await nextFrame();
+        const lastRowRect = rows.at(-1).getBoundingClientRect();
+        const matrixContentBottom = matrixRect.top + matrix.clientTop + matrix.clientHeight;
+        return {
+          appBarTop: appBar?.getBoundingClientRect().top,
+          bodyBehindFrozen,
+          bodyBehindHeader,
+          bodyHeight: document.body.scrollHeight,
+          bodyWidth: document.body.scrollWidth,
+          documentHeight: document.documentElement.scrollHeight,
+          documentWidth: document.documentElement.scrollWidth,
+          firstRowGap: firstRowAtOrigin.top - headerAtOrigin.bottom,
+          frozenBodyCover: getComputedStyle(frozenBody, '::before').backgroundColor,
+          frozenBodyIsTop: rowHeaderAtFrozenPoint === frozenBody,
+          frozenGeometry: {
+            bodyLeft: firstFrozenBodyRect.left,
+            bodyRight: firstFrozenBodyRect.right,
+            bodyWidth: firstFrozenBodyRect.width,
+            headerLeft: frozenHeaderRect.left,
+            headerRight: frozenHeaderRect.right,
+            headerWidth: frozenHeaderRect.width,
+          },
+          frozenHeaderCover: getComputedStyle(frozenHeader, '::before').backgroundColor,
+          headerIsTop: Boolean(columnHeaderAtHeaderPoint),
+          innerHeight,
+          innerWidth,
+          lastRowGap: matrixContentBottom - lastRowRect.bottom,
+          matrixBottomGap: targetBottom - matrixAtOrigin.bottom,
+          scrollLeft: matrix.scrollLeft,
+          scrollTop: matrix.scrollTop,
+          targetTop,
+          windowScrollY: scrollY,
+        };
+      })()`,
+    );
+    const message = `${surface} ${viewport.label}`;
+    assert(result.scrollLeft > 0, `${message} Matrix did not scroll horizontally.`);
+    assert.equal(
+      result.bodyBehindFrozen,
+      true,
+      `${message} cells did not move under frozen column.`,
+    );
+    if (result.targetTop > 0) {
+      assert.equal(result.bodyBehindHeader, true, `${message} cells did not move under header.`);
+      assert(result.scrollTop > 0, `${message} Matrix did not scroll vertically.`);
+    }
+    assert.equal(result.frozenBodyIsTop, true, `${message} body painted above frozen column.`);
+    assert.equal(result.headerIsTop, true, `${message} body painted above frozen header.`);
+    assert.doesNotMatch(result.frozenBodyCover, /transparent|rgba\(0, 0, 0, 0\)/);
+    assert.doesNotMatch(result.frozenHeaderCover, /transparent|rgba\(0, 0, 0, 0\)/);
+    assert(Math.abs(result.appBarTop) <= 1, `${message} app bar moved from top 0.`);
+    assert.equal(result.windowScrollY, 0, `${message} allowed document scrolling.`);
+    assert(
+      result.documentHeight <= result.innerHeight + 1,
+      `${message} document exceeds viewport.`,
+    );
+    assert(result.bodyHeight <= result.innerHeight + 1, `${message} body exceeds viewport.`);
+    assert(
+      result.documentWidth <= result.innerWidth + 1,
+      `${message} document overflows horizontally.`,
+    );
+    assert(result.bodyWidth <= result.innerWidth + 1, `${message} body overflows horizontally.`);
+    assert(Math.abs(result.firstRowGap) <= 1, `${message} left a gap below the table header.`);
+    assert(
+      Math.abs(result.lastRowGap) <= 1,
+      `${message} left a gap below the final row: ${JSON.stringify(result)}.`,
+    );
+    assert(Math.abs(result.matrixBottomGap) <= 1, `${message} Matrix misses its bottom boundary.`);
+    for (const property of ["Left", "Right", "Width"]) {
+      assert(
+        Math.abs(
+          result.frozenGeometry[`header${property}`] - result.frozenGeometry[`body${property}`],
+        ) <= 1,
+        `${message} frozen header/body ${property.toLowerCase()} differs.`,
+      );
+    }
+  }
+}
+
 async function verifyTabletFrozenLayers(browser) {
+  await verifyTabletMatrixViewport(browser, {
+    appBarSelector: ".trip-app-bar",
+    bottomNavigationSelector: ".trip-mobile-tab-bar",
+    matrixSelector: '[data-i18n-aria-label="Editable trip planning matrix"]',
+    surface: "Owner",
+  });
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
-    { deviceScaleFactor: 1, height: 600, mobile: false, width: 820 },
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
     browser.sessionId,
   );
+}
+
+async function verifyPublicTabletViewportMatrix(browser, publicToken) {
+  await navigate(browser, `/share/${publicToken}?view=table`);
   await waitFor(
     browser,
-    `document.querySelectorAll(
-      '[data-i18n-aria-label="Editable trip planning matrix"] [role="row"]:not(.matrix-grid-header)'
-    ).length === 12`,
-    "updated twelve-day planner",
+    `Boolean(document.querySelector('[data-i18n-aria-label="Read-only itinerary matrix"]'))`,
+    "public read-only Table",
     45_000,
   );
-  await waitFor(
-    browser,
-    `(() => {
-      const matrix = document.querySelector(
-        '[data-i18n-aria-label="Editable trip planning matrix"]'
-      );
-      return matrix
-        && matrix.scrollWidth > matrix.clientWidth + 1
-        && matrix.scrollHeight > matrix.clientHeight + 1;
-    })()`,
-    "tablet planner overflow layout",
-    45_000,
-  );
-  const result = await evaluate(
-    browser,
-    `(async () => {
-      const matrix = document.querySelector(
-        '[data-i18n-aria-label="Editable trip planning matrix"]'
-      );
-      const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
-      await nextFrame();
-      await nextFrame();
-      const targetLeft = Math.min(360, matrix.scrollWidth - matrix.clientWidth);
-      const targetTop = Math.min(140, matrix.scrollHeight - matrix.clientHeight);
-      for (let attempt = 0; attempt < 4; attempt += 1) {
-        matrix.scrollLeft = targetLeft;
-        matrix.scrollTop = targetTop;
-        matrix.dispatchEvent(new Event("scroll", { bubbles: true }));
-        await nextFrame();
-        if (matrix.scrollLeft > 0 && matrix.scrollTop > 0) break;
-      }
-      await nextFrame();
-      const header = matrix.querySelector(".matrix-grid-header");
-      const frozenHeader = header.querySelector('[role="columnheader"]:first-child');
-      const matrixRect = matrix.getBoundingClientRect();
-      const headerRect = header.getBoundingClientRect();
-      const bodyRows = [...matrix.querySelectorAll('[role="row"]:not(.matrix-grid-header)')];
-      const visibleBodyRow = bodyRows.find((row) => {
-        const rect = row.getBoundingClientRect();
-        return rect.bottom > headerRect.bottom + 2 && rect.top < matrixRect.bottom - 2;
-      });
-      const frozenBody = visibleBodyRow.querySelector('[role="rowheader"]:first-child');
-      const bodyCells = [...visibleBodyRow.querySelectorAll('[role="gridcell"]')];
-      const frozenRect = frozenBody.getBoundingClientRect();
-      const bodyBehindFrozen = bodyCells.some((cell) => {
-        const rect = cell.getBoundingClientRect();
-        return rect.left < frozenRect.right && rect.right > frozenRect.left;
-      });
-      const visibleFrozenTop = Math.max(frozenRect.top, headerRect.bottom + 1);
-      const visibleFrozenBottom = Math.min(frozenRect.bottom, matrixRect.bottom - 1);
-      const rowHeaderAtFrozenPoint = document
-        .elementsFromPoint(
-          frozenRect.left + frozenRect.width / 2,
-          visibleFrozenTop + (visibleFrozenBottom - visibleFrozenTop) / 2,
-        )
-        .map((element) => element.closest('[role="rowheader"]'))
-        .find(Boolean);
-      const columnHeaderAtHeaderPoint = document
-        .elementsFromPoint(matrixRect.left + 250, headerRect.top + headerRect.height / 2)
-        .map((element) => element.closest('[role="columnheader"]'))
-        .find(Boolean);
-      const bodyBehindHeader = [...matrix.querySelectorAll('[role="gridcell"]')].some((cell) => {
-        const rect = cell.getBoundingClientRect();
-        return rect.top < headerRect.bottom && rect.bottom > headerRect.top;
-      });
-      return {
-        bodyBehindFrozen,
-        bodyBehindHeader,
-        frozenBodyIsTop: rowHeaderAtFrozenPoint === frozenBody,
-        headerIsTop: Boolean(columnHeaderAtHeaderPoint),
-        frozenBodyCover: getComputedStyle(frozenBody, "::before").backgroundColor,
-        frozenHeaderCover: getComputedStyle(frozenHeader, "::before").backgroundColor,
-        scrollLeft: matrix.scrollLeft,
-        scrollTop: matrix.scrollTop,
-      };
-    })()`,
-  );
-  assert(result.scrollLeft > 0, "Tablet Matrix did not scroll horizontally.");
-  assert(result.scrollTop > 0, "Tablet Matrix did not scroll vertically.");
-  assert.equal(result.bodyBehindFrozen, true, "No body cell moved beneath the frozen columns.");
-  assert.equal(result.bodyBehindHeader, true, "No body cell moved beneath the frozen header row.");
-  assert.equal(result.frozenBodyIsTop, true, "A body cell painted above a frozen column.");
-  assert.equal(result.headerIsTop, true, "A body cell painted above the frozen header row.");
-  assert.doesNotMatch(result.frozenBodyCover, /transparent|rgba\(0, 0, 0, 0\)/);
-  assert.doesNotMatch(result.frozenHeaderCover, /transparent|rgba\(0, 0, 0, 0\)/);
+  await verifyTabletMatrixViewport(browser, {
+    appBarSelector: ".public-itinerary-header",
+    bottomNavigationSelector: ".public-template-region-view-navigation",
+    matrixSelector: '[data-i18n-aria-label="Read-only itinerary matrix"]',
+    surface: "Public",
+  });
+  for (const viewport of tabletViewports) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: viewport.height, mobile: false, width: viewport.width },
+      browser.sessionId,
+    );
+    await clickElement(
+      browser,
+      `[...document.querySelectorAll('.public-share-button')]
+        .find((button) => button.getClientRects().length && !button.disabled)`,
+      `public Share at ${viewport.label}`,
+    );
+    await waitFor(
+      browser,
+      `Boolean(document.querySelector('.public-viewer-share-dialog[data-state="open"]'))`,
+      `public Share dialog at ${viewport.label}`,
+    );
+    await waitFor(
+      browser,
+      `(() => {
+        const rect = document.querySelector('.public-viewer-share-dialog')?.getBoundingClientRect();
+        return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+          rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+      })()`,
+      `settled public Share dialog at ${viewport.label}`,
+      5_000,
+    );
+    const overlay = await evaluate(
+      browser,
+      `(() => {
+        const content = document.querySelector('.public-viewer-share-dialog');
+        const overlay = document.querySelector('[data-dialog-overlay]');
+        const frozen = document.querySelector('.public-matrix .matrix-grid-header [role="columnheader"]:first-child');
+        const rect = content.getBoundingClientRect();
+        return {
+          contentPosition: getComputedStyle(content).position,
+          contentZ: Number.parseInt(getComputedStyle(content).zIndex, 10),
+          fits: rect.left >= -0.5 && rect.right <= innerWidth + 0.5 && rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5,
+          frozenZ: Number.parseInt(getComputedStyle(frozen).zIndex, 10),
+          overlayPosition: getComputedStyle(overlay).position,
+          overlayZ: Number.parseInt(getComputedStyle(overlay).zIndex, 10),
+        };
+      })()`,
+    );
+    assert.equal(overlay.contentPosition, "fixed");
+    assert.equal(overlay.overlayPosition, "fixed");
+    assert.equal(overlay.fits, true, `Public ${viewport.label} Share dialog escaped viewport.`);
+    assert(overlay.overlayZ > overlay.frozenZ, `Public ${viewport.label} overlay is under Matrix.`);
+    assert(
+      overlay.contentZ > overlay.overlayZ,
+      `Public ${viewport.label} dialog is under overlay.`,
+    );
+    await browser.cdp.send(
+      "Input.dispatchKeyEvent",
+      { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+      browser.sessionId,
+    );
+    await browser.cdp.send(
+      "Input.dispatchKeyEvent",
+      { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+      browser.sessionId,
+    );
+    await waitFor(
+      browser,
+      `!document.querySelector('.public-viewer-share-dialog')`,
+      `public Share close at ${viewport.label}`,
+    );
+  }
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
@@ -2295,9 +2960,11 @@ async function run() {
       false,
     );
     await assertRealAmapBrowserAdapter(browser);
+    await verifyNewTripMobileGuidanceAndCityRoute(browser, tripId);
 
     const updatedTitle = `${runLabel}-owned-by-a`;
     await updateTripTitle(browser, updatedTitle);
+    await verifyTripSectionNavigation(browser, tripId);
     await addAmapActivityThroughUi(browser, "上海外滩", 1);
     await addAmapActivityThroughUi(browser, "上海人民广场", 2);
     await addAmapActivityThroughUi(browser, "Shanghai Hongqiao airport", 3);
@@ -2478,6 +3145,13 @@ async function run() {
       (await cookieNames(browser)).some((name) => name.startsWith("tp-cn-")),
       false,
     );
+    await verifyPublicTabletViewportMatrix(browser, publicToken);
+    await navigate(browser, `/share/${publicToken}?view=timeline`);
+    await waitFor(
+      browser,
+      `document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      "CN anonymous public timeline after tablet checks",
+    );
     if (requireAmapSmoke) {
       await waitFor(
         browser,
@@ -2493,6 +3167,7 @@ async function run() {
         false,
       );
     }
+    await verifyPublicShareMapAndDialog(browser);
 
     await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
     await navigate(browser, `/trips/${tripId}`);
@@ -2568,7 +3243,7 @@ async function run() {
   if (assertionError) throw assertionError;
   console.log(`Phase 3 application E2E passed for controlled users A and B (${tripId}).`);
   console.log(
-    "Tablet Matrix frozen header and column cover passed at 820x600 after two-axis scroll.",
+    "Owner and public Tablet Matrix viewport, edge, and frozen-layer contracts passed at 768/820/1024px in portrait and landscape layouts.",
   );
   console.log("CN accepted only tp-cn-* session cookies and logout cleared them.");
   if (requireAmapSmoke) {

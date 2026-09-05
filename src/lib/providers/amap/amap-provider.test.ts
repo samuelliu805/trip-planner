@@ -499,6 +499,8 @@ test("AMap map rebuilds restore marker and route overlays after releasing the ol
     assert.equal(markerContent.content.children[0].style.whiteSpace, "nowrap");
     first.release();
     assert.equal(removed[0].length, 2);
+    first.release();
+    assert.equal(removed[0].length, 2, "releasing an overlay set twice must be a no-op");
     const second = createAmapOverlays({ ...options, map: maps[1] });
     assert.equal(added[1].length, 2);
     assert.equal(removed[1].length, 0);

@@ -1,11 +1,9 @@
 "use client";
 
-import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { format, parseISO } from "date-fns";
-import { zhCN } from "date-fns/locale";
+import { useI18n } from "@/features/i18n/i18n-provider";
 
 import { AddItemButton } from "@/features/itinerary/components/planner-add-item-button";
-import { DayActions } from "@/features/itinerary/components/planner-grid-elements";
+import { PlannerDayHeaderCell } from "@/features/itinerary/components/planner-day-header-cell";
 import { PlannerItemRow } from "@/features/itinerary/components/planner-item-row";
 import { MatrixCityList } from "@/features/itinerary/components/matrix-city-list";
 import {
@@ -79,9 +77,8 @@ export function PlannerMatrix({
   workspace,
 }: PlannerMatrixProps) {
   const matrixRef = useInitialMatrixScrollPosition<HTMLElement>();
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   useMobileMatrixTopContainment(matrixRef);
-  const tripIsEmpty = workspace.days.every(({ items }) => items.length === 0);
 
   return (
     <div
@@ -114,51 +111,15 @@ export function PlannerMatrix({
                 role="row"
                 aria-rowindex={row + 2}
               >
-                <div
-                  aria-selected={selectedDayRow === row}
-                  className={`sticky left-0 z-20 flex w-28 shrink-0 cursor-pointer flex-col border-r px-2 py-1 font-mono text-[13px] leading-[1.35] min-[1200px]:text-[11px] ${selectedDayRow === row ? "matrix-frozen-selected shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
-                  onClick={() => selectDay(row)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      selectDay(row);
-                    }
-                  }}
-                  role="rowheader"
-                  tabIndex={0}
-                >
-                  <div className="matrix-frozen-content flex h-full flex-col">
-                    <span className="block font-sans text-[15px] font-semibold leading-[1.25] min-[1200px]:text-[13px] sm:hidden">
-                      <T message={"Day {day}"} values={{ day: day.day_number }} />
-                    </span>
-                    <span className="block text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]">
-                      {day.date
-                        ? format(parseISO(day.date), locale === "zh-CN" ? "M月d日" : "MMM d", {
-                            locale: locale === "zh-CN" ? zhCN : undefined,
-                          })
-                        : t("Date TBD")}
-                    </span>
-                    {day.date ? (
-                      <span className="block font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px]">
-                        {format(parseISO(day.date), "EEE", {
-                          locale: locale === "zh-CN" ? zhCN : undefined,
-                        })}
-                      </span>
-                    ) : (
-                      <span className="hidden font-sans text-[13px] leading-[1.35] text-muted-foreground min-[1200px]:text-[11px] sm:block">
-                        <T message={" Add dates later "} />
-                      </span>
-                    )}
-                    <DayActions
-                      day={day}
-                      isOnlyDay={workspace.days.length === 1}
-                      onInsert={(position) => void insertDay(position)}
-                      onRemove={(dayId) => void removeDay(dayId)}
-                      pending={dayMutationPending}
-                      visible={workspace.days.length === 1 || selectedDayRow === row}
-                    />
-                  </div>
-                </div>
+                <PlannerDayHeaderCell
+                  day={day}
+                  isOnlyDay={workspace.days.length === 1}
+                  onInsert={(position) => void insertDay(position)}
+                  onRemove={(dayId) => void removeDay(dayId)}
+                  onSelect={() => selectDay(row)}
+                  pending={dayMutationPending}
+                  selected={selectedDayRow === row}
+                />
                 <div
                   className="sticky left-28 z-20 w-16 shrink-0 border-r bg-background px-2 py-1 text-[15px] font-medium leading-[1.25] min-[1200px]:text-[13px]"
                   role="rowheader"
@@ -178,7 +139,13 @@ export function PlannerMatrix({
                   const lastSelected =
                     row === visibleSelectionBounds.bottom &&
                     column === visibleSelectionBounds.right;
-                  const newTripStarter = tripIsEmpty && row === 0 && category.id === "activities";
+                  const dayStarter =
+                    category.id === "activities" &&
+                    !day.items.some(({ type }) =>
+                      ["activity", "meal", "transport", "flight", "train", "car_rental"].includes(
+                        type,
+                      ),
+                    );
                   return (
                     <div
                       aria-selected={selected}
@@ -228,12 +195,12 @@ export function PlannerMatrix({
                           />
                         ))}
                       </div>
-                      {(active || newTripStarter) && category.id !== "city" ? (
+                      {(active || dayStarter) && category.id !== "city" ? (
                         <AddItemButton
                           category={category}
+                          dayStarter={dayStarter}
                           day={day}
                           disabled={category.id === "hotel" && items.length > 0}
-                          newTripStarter={newTripStarter}
                           onAdd={() => setEditor({ dayId: day.id, type: category.defaultType })}
                         />
                       ) : null}

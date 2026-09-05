@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CategorySelector } from "./category-selector";
@@ -70,6 +70,7 @@ export function CompareWorkspace({
   const { applications, currentApplicationIds, items, plan: currentPlan, selections } = workspace;
   const queryKey = researchWorkspaceQueryKey(tripId, plan.variantId);
   const pathname = usePathname();
+  const router = useRouter();
   const category = parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? activeCategory;
   const exposureReported = useRef(false);
   useEffect(() => {
@@ -165,7 +166,7 @@ export function CompareWorkspace({
                     },
                     { actorType: "authenticated" },
                   );
-                  window.history.pushState(null, "", categoryHrefs[nextCategory]);
+                  router.push(categoryHrefs[nextCategory], { scroll: false });
                 }}
               />
             </div>
