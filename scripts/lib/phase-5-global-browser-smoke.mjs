@@ -571,9 +571,10 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     bookingSites.map(({ text }) => text),
     ["Google Flights", "Trip.com", "KAYAK"],
   );
-  assert.equal(bookingSites.find(({ text }) => text === "Google Flights")?.target, "_blank");
-  assert.equal(bookingSites.find(({ text }) => text === "Trip.com")?.target, null);
-  assert.equal(bookingSites.find(({ text }) => text === "KAYAK")?.target, null);
+  for (const site of bookingSites) {
+    assert.match(site.href, /^https:\/\//, `${site.text} did not expose a normal web link.`);
+    assert.equal(site.target, "_blank", `${site.text} could replace the Ideas page.`);
+  }
   await browser.cdp.send(
     "Input.dispatchKeyEvent",
     { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },

@@ -145,6 +145,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Review the selected attachment.": "请检查所选附件。",
   Rose: "玫瑰红",
   "Route exploration is unavailable for this itinerary.": "此行程无法使用路线探索。",
+  "Room count applies only to a stay.": "房间数量只适用于住宿备选。",
   "Keep the shared itinerary stop order.": "请保持公开行程中的停靠顺序。",
   "Route unavailable. Keep the stop sequence and try again.": "路线不可用，请保留停靠顺序后重试。",
   "Route unavailable. Try again.": "路线不可用，请重试。",
@@ -169,6 +170,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Store the rental total on the pick-up item.": "请将租车总价记录在取车项目中。",
   "Temporary route stops must be unique.": "临时路线的停靠点不能重复。",
   "Temporary routes can use only shared itinerary stops.": "临时路线只能使用公开的行程停靠点。",
+  "Traveler counts do not apply to a rental car.": "出行人数不适用于租车备选。",
   "The attachment request is invalid.": "附件请求无效。",
   "The attachment target is no longer available.": "附件目标已不可用。",
   "The declared attachment type does not match its media category.":

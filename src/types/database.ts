@@ -859,7 +859,9 @@ export type Database = {
       }
       research_items: {
         Row: {
+          adult_count: number | null
           category: string
+          child_count: number | null
           created_at: string
           currency: string | null
           day_id: string | null
@@ -877,6 +879,7 @@ export type Database = {
           observed_at: string
           origin_place_id: string | null
           origin_text: string | null
+          room_count: number | null
           segments: Json
           source_url: string | null
           start_date: string | null
@@ -887,7 +890,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          adult_count?: number | null
           category: string
+          child_count?: number | null
           created_at?: string
           currency?: string | null
           day_id?: string | null
@@ -905,6 +910,7 @@ export type Database = {
           observed_at?: string
           origin_place_id?: string | null
           origin_text?: string | null
+          room_count?: number | null
           segments?: Json
           source_url?: string | null
           start_date?: string | null
@@ -915,7 +921,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          adult_count?: number | null
           category?: string
+          child_count?: number | null
           created_at?: string
           currency?: string | null
           day_id?: string | null
@@ -933,6 +941,7 @@ export type Database = {
           observed_at?: string
           origin_place_id?: string | null
           origin_text?: string | null
+          room_count?: number | null
           segments?: Json
           source_url?: string | null
           start_date?: string | null

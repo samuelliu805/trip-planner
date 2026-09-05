@@ -31,6 +31,8 @@ const optionalTime = z
   .optional()
   .nullable()
   .transform((value) => value || null);
+const optionalCount = (minimum: number, maximum: number) =>
+  z.number().int().min(minimum).max(maximum).optional().nullable();
 
 export const researchSegmentSchema = z.object({
   arrivalDate: z.iso.date().optional().nullable(),
@@ -54,7 +56,9 @@ export const researchLinkSchema = z.object({
 });
 
 const researchItemFields = {
+  adultCount: optionalCount(1, 20),
   category: z.enum(researchCategories),
+  childCount: optionalCount(0, 20),
   currency: z
     .string()
     .trim()
@@ -78,6 +82,7 @@ const researchItemFields = {
   originText: optionalText(200),
   originPlaceId: optionalUuid,
   originPlaceSnapshot: placeSnapshotSchema.optional().nullable(),
+  roomCount: optionalCount(1, 10),
   segments: z.array(researchSegmentSchema).max(12).optional().default([]),
   sourceUrl: optionalUrl,
   startDate: z.iso.date().optional().nullable(),
@@ -90,6 +95,9 @@ const researchItemFields = {
 
 function validateResearchItem(
   value: {
+    adultCount?: number | null;
+    category: (typeof researchCategories)[number];
+    childCount?: number | null;
     currency?: string | null;
     endDate?: string | null;
     note?: string | null;
@@ -98,9 +106,22 @@ function validateResearchItem(
     title?: string | null;
     totalPriceAmount?: number | null;
     segments?: Array<{ arrivalDate?: string | null; departureDate: string }>;
+    roomCount?: number | null;
   },
   context: z.RefinementCtx,
 ) {
+  if (value.category === "rental" && (value.adultCount != null || value.childCount != null))
+    context.addIssue({
+      code: "custom",
+      message: "Traveler counts do not apply to a rental car.",
+      path: ["adultCount"],
+    });
+  if (value.category !== "stay" && value.roomCount != null)
+    context.addIssue({
+      code: "custom",
+      message: "Room count applies only to a stay.",
+      path: ["roomCount"],
+    });
   if (!value.title && !value.sourceUrl && !value.note)
     context.addIssue({
       code: "custom",

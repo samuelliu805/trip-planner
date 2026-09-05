@@ -681,6 +681,7 @@ async function verifyTripSectionNavigation(browser, tripId) {
     `[...document.querySelectorAll('[role="dialog"] a')].map((link) => ({
       href: link.getAttribute('href'),
       label: link.getAttribute('aria-label'),
+      target: link.getAttribute('target'),
       text: link.textContent.trim(),
     }))`,
   );
@@ -694,11 +695,95 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   assert.equal(
     bookingSites.find(({ text }) => text === "携程旅行")?.href,
-    "ctrip://wireless/InquireHotel",
+    "https://m.ctrip.com/webapp/hotel/",
   );
   assert.equal(
     bookingSites.find(({ text }) => text === "飞猪旅行")?.href,
-    "taobaotravel://h5?url=https%3A%2F%2Fwww.fliggy.com%2F",
+    "https://www.fliggy.com/",
+  );
+  for (const site of bookingSites) {
+    assert.match(site.href, /^https:\/\//, `${site.text} did not expose a normal web link.`);
+    assert.equal(site.target, "_blank", `${site.text} could replace the Ideas page.`);
+  }
+
+  const ideasPath = `/trips/${tripId}/compare/stays`;
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 820 },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `innerWidth === 820 && matchMedia(${JSON.stringify("(max-width: 1199px)")}).matches`,
+    "CN tablet booking-link viewport",
+  );
+  await evaluate(
+    browser,
+    `(() => {
+      window.__phase3OriginalBookingOpen = window.open;
+      window.__phase3BookingOpenCalls = [];
+      window.__phase3BookingClicks = [];
+      window.open = (...args) => {
+        window.__phase3BookingOpenCalls.push(args);
+        return null;
+      };
+      document.addEventListener("click", (event) => {
+        const link = event.target.closest?.('[role="dialog"] a');
+        if (link?.textContent.trim() === "携程旅行") {
+          queueMicrotask(() => window.__phase3BookingClicks.push({
+            defaultPrevented: event.defaultPrevented,
+            width: innerWidth,
+          }));
+        }
+      }, { once: true });
+    })()`,
+  );
+  const ctripClickDispatched = await evaluate(
+    browser,
+    `(() => {
+      const link = [...document.querySelectorAll('[role="dialog"] a')]
+        .find((candidate) => candidate.textContent.trim() === "携程旅行");
+      if (!link?.getClientRects().length) return false;
+      link.click();
+      return true;
+    })()`,
+  );
+  assert.equal(ctripClickDispatched, true, "CN tablet Ctrip app link was not available.");
+  await waitFor(
+    browser,
+    "window.__phase3BookingOpenCalls.length === 1 || window.__phase3BookingClicks.length === 1",
+    "CN tablet Ctrip click dispatch",
+    5_000,
+  );
+  const appOpenEvidence = await evaluate(
+    browser,
+    `({
+      calls: window.__phase3BookingOpenCalls,
+      clicks: window.__phase3BookingClicks,
+      path: location.pathname,
+    })`,
+  );
+  assert.equal(appOpenEvidence.path, ideasPath, "Ctrip app launch replaced the Ideas edit page.");
+  assert.equal(
+    appOpenEvidence.calls.length,
+    1,
+    `Ctrip app launch was not attempted exactly once: ${JSON.stringify(appOpenEvidence.clicks)}`,
+  );
+  assert.match(appOpenEvidence.calls[0][0], /^ctrip:\/\/wireless\/InquireHotel/);
+  assert.deepEqual(appOpenEvidence.calls[0].slice(1), ["_blank", "noopener,noreferrer"]);
+  await evaluate(
+    browser,
+    `(() => {
+      window.open = window.__phase3OriginalBookingOpen;
+      delete window.__phase3OriginalBookingOpen;
+      delete window.__phase3BookingOpenCalls;
+      delete window.__phase3BookingClicks;
+    })()`,
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
   );
   await browser.cdp.send(
     "Input.dispatchKeyEvent",
@@ -2105,6 +2190,29 @@ async function generateLongImageThroughUi(browser) {
       .find((summary) => summary.textContent.trim() === "Advanced settings")`,
     "Advanced share settings",
   );
+  const imageActionVisible = await evaluate(
+    browser,
+    `(async () => {
+      const dialog = document.querySelector('.public-share-settings-dialog');
+      const button = [...dialog.querySelectorAll('button')]
+        .find((candidate) => candidate.textContent.trim() === "Save trip image");
+      const scroller = button?.closest('.overflow-y-auto');
+      if (!button || !scroller) return false;
+      const buttonRect = button.getBoundingClientRect();
+      const scrollerRect = scroller.getBoundingClientRect();
+      scroller.scrollTop +=
+        buttonRect.top - scrollerRect.top - (scroller.clientHeight - buttonRect.height) / 2;
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const revealed = button.getBoundingClientRect();
+      const boundary = scroller.getBoundingClientRect();
+      return revealed.top >= boundary.top && revealed.bottom <= boundary.bottom;
+    })()`,
+  );
+  assert.equal(
+    imageActionVisible,
+    true,
+    "Save trip image was not reachable in its dialog scroller.",
+  );
   await clickButtonText(browser, "Save trip image");
   try {
     await waitFor(
@@ -2833,7 +2941,17 @@ async function captureMutationForms(browser) {
       ([name, value]) => [name, String(value)],
     ))()`,
   );
-  await clickButtonText(browser, "Cancel");
+  const cancelDispatched = await evaluate(
+    browser,
+    `(() => {
+      const button = [...document.querySelectorAll('[role="dialog"] button')]
+        .find((candidate) => candidate.textContent.trim() === "Cancel" && !candidate.disabled);
+      if (!button) return false;
+      button.click();
+      return true;
+    })()`,
+  );
+  assert.equal(cancelDispatched, true, "Trip settings Cancel was not available.");
   await waitFor(browser, '!document.querySelector("#trip-title")', "Trip settings close");
 
   await openTripMenu(browser);
@@ -3370,6 +3488,14 @@ async function run() {
 
     await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
     await navigate(browser, `/trips/${tripId}`);
+    await waitFor(
+      browser,
+      `document.body.innerText.includes(${JSON.stringify(updatedTitle)}) &&
+        Boolean([...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+          .find((button) => button.getClientRects().length && !button.disabled))`,
+      "owner trip before UI deletion",
+      45_000,
+    );
     await deleteTripThroughUi(browser);
     await navigate(browser, "/trips");
     try {

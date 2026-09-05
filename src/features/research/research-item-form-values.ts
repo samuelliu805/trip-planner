@@ -12,6 +12,11 @@ function optional(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim() || null;
 }
 
+function optionalInteger(form: FormData, key: string) {
+  const value = optional(form, key);
+  return value === null ? null : Number(value);
+}
+
 function optionalJson<Value>(form: FormData, key: string) {
   const value = optional(form, key);
   if (!value) return null;
@@ -97,7 +102,9 @@ export function researchItemInputFromForm({
         : null;
 
   return {
+    adultCount: optionalInteger(form, "adultCount"),
     category,
+    childCount: optionalInteger(form, "childCount"),
     currency: hasPrice ? optional(form, "currency") : null,
     dayId: item?.day_id ?? context?.dayId,
     destinationPlaceId,
@@ -118,6 +125,7 @@ export function researchItemInputFromForm({
     originPlaceId,
     originPlaceSnapshot,
     originText,
+    roomCount: category === "stay" ? optionalInteger(form, "roomCount") : null,
     segments,
     sourceUrl: optional(form, "sourceUrl"),
     startDate: firstDepartureDate,

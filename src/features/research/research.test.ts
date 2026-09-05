@@ -56,6 +56,9 @@ test("Ideas field labels have authentic Simplified Chinese translations", () => 
   assert.equal(translateMessage("zh-CN", "Check-in"), "入住");
   assert.equal(translateMessage("zh-CN", "Check-out"), "退房");
   assert.equal(translateMessage("zh-CN", "Stay name"), "住宿名称");
+  assert.equal(translateMessage("zh-CN", "Adults"), "成人");
+  assert.equal(translateMessage("zh-CN", "Children"), "儿童");
+  assert.equal(translateMessage("zh-CN", "Rooms"), "房间");
 });
 
 test("booking sites use exact saved details only for durable search links", () => {
@@ -101,6 +104,28 @@ test("booking sites do not guess airport codes from city names", () => {
     }),
   );
   assert.equal(sites.find(({ name }) => name === "KAYAK")!.url, "https://www.kayak.com/flights/");
+  const ctrip = bookingSitesForItem(
+    item({
+      adult_count: 2,
+      category: "flight",
+      child_count: 1,
+      destination_text: "北京",
+      end_date: "2026-10-08",
+      origin_text: "上海",
+      start_date: "2026-10-04",
+    }),
+    "cn",
+  ).find(({ name }) => name === "携程旅行")!;
+  const appUrl = new URL(ctrip.appUrl!);
+  const wrappedUrl = new URL(appUrl.searchParams.get("url")!);
+  assert.equal(appUrl.protocol, "ctrip:");
+  assert.equal(appUrl.pathname, "/h5");
+  assert.equal(wrappedUrl.searchParams.get("dcity"), "上海");
+  assert.equal(wrappedUrl.searchParams.get("acity"), "北京");
+  assert.equal(wrappedUrl.searchParams.get("date"), "2026-10-04");
+  assert.equal(wrappedUrl.searchParams.get("rdate"), "2026-10-08");
+  assert.equal(wrappedUrl.searchParams.get("adult"), "2");
+  assert.equal(wrappedUrl.searchParams.get("children"), "1");
 });
 
 test("stay searches pass location and dates to Airbnb and Booking.com", () => {
@@ -123,6 +148,95 @@ test("stay searches pass location and dates to Airbnb and Booking.com", () => {
   assert.equal(booking.searchParams.get("checkin"), "2026-10-04");
   assert.equal(booking.searchParams.get("checkout"), "2026-10-08");
   assert.equal(bookingSearchDetails(stay), "Tokyo, Japan · 2026-10-04 → 2026-10-08");
+});
+
+test("saved travel-party counts and dates reach every detailed stay search", () => {
+  const stay = item({
+    adult_count: 2,
+    child_count: 1,
+    end_date: "2026-10-08",
+    location_text: "Tokyo, Japan",
+    room_count: 2,
+    start_date: "2026-10-04",
+  });
+  const sites = bookingSitesForItem(stay);
+  for (const site of sites) {
+    const url = new URL(site.url);
+    assert.match(url.search, /2026-10-04|10%2F04%2F2026|qCiD=04/);
+    assert.match(url.toString(), /Tokyo|qDest=Tokyo/);
+  }
+  const booking = new URL(sites.find(({ name }) => name === "Booking.com")!.url);
+  assert.equal(booking.searchParams.get("group_adults"), "2");
+  assert.equal(booking.searchParams.get("group_children"), "1");
+  assert.equal(booking.searchParams.get("no_rooms"), "2");
+  const hilton = new URL(sites.find(({ name }) => name === "Hilton")!.url);
+  assert.equal(hilton.searchParams.get("numAdults"), "2");
+  assert.equal(hilton.searchParams.get("numChildren"), "1");
+  assert.equal(hilton.searchParams.get("numRooms"), "2");
+  assert.equal(
+    bookingSearchDetails(stay),
+    "Tokyo, Japan · 2026-10-04 → 2026-10-08 · 2 adults, 1 child, 2 rooms",
+  );
+  assert.equal(
+    bookingSearchDetails(stay, "zh-CN"),
+    "Tokyo, Japan · 2026-10-04 → 2026-10-08 · 2 位成人, 1 名儿童, 2 间房",
+  );
+});
+
+test("saved route, dates, times, and travelers reach flight, train, and rental searches", () => {
+  const flight = bookingSitesForItem(
+    item({
+      adult_count: 2,
+      category: "flight",
+      child_count: 1,
+      destination_text: "LAX",
+      origin_text: "SFO",
+      start_date: "2026-10-04",
+    }),
+  );
+  const trip = new URL(flight.find(({ name }) => name === "Trip.com")!.url);
+  assert.equal(trip.searchParams.get("dcity"), "SFO");
+  assert.equal(trip.searchParams.get("acity"), "LAX");
+  assert.equal(trip.searchParams.get("adult"), "2");
+  assert.equal(trip.searchParams.get("child"), "1");
+
+  const train = bookingSitesForItem(
+    item({
+      adult_count: 2,
+      category: "train",
+      child_count: 1,
+      destination_text: "Lyon",
+      origin_text: "Paris",
+      start_date: "2026-10-04",
+    }),
+  );
+  for (const site of train) {
+    assert.match(site.url, /Paris/);
+    assert.match(site.url, /Lyon/);
+    assert.match(site.url, /2026-10-04/);
+  }
+
+  const rental = bookingSitesForItem(
+    item({
+      category: "rental",
+      destination_text: "Osaka",
+      end_date: "2026-10-08",
+      end_time: "15:30",
+      origin_text: "Tokyo",
+      start_date: "2026-10-04",
+      start_time: "09:00",
+    }),
+  );
+  for (const site of rental) {
+    assert.match(site.url, /Tokyo/);
+    assert.match(site.url, /Osaka/);
+    assert.match(site.url, /2026-10-04/);
+    assert.match(site.url, /09%3A00/);
+  }
+  const enterpriseApp = new URL(rental.find(({ name }) => name === "Enterprise")!.appUrl!);
+  assert.equal(enterpriseApp.searchParams.get("pickUpLocation.searchCriteria"), "Tokyo");
+  assert.equal(enterpriseApp.searchParams.get("dropOffLocation.searchCriteria"), "Osaka");
+  assert.equal(enterpriseApp.searchParams.get("pickUpDate"), "2026-10-04");
 });
 
 test("rental and train provider sets open official booking pages without brittle parameters", () => {
@@ -195,18 +309,28 @@ test("CN Ideas use category-specific providers without app-store download links"
 test("CN Ctrip deep links carry exact flight, train, and hotel search details", () => {
   const flight = bookingSitesForItem(
     item({
+      adult_count: 2,
       category: "flight",
+      child_count: 1,
       destination_text: "PEK",
       origin_text: "SHA",
       start_date: "2026-10-01",
     }),
     "cn",
   ).find(({ name }) => name === "携程旅行")!;
-  assert.equal(flight.appUrl, "ctrip://wireless/FlightList?dcity=SHA&acity=PEK&date=2026-10-01");
+  assert.equal(
+    flight.appUrl,
+    "ctrip://wireless/FlightList?dcity=SHA&acity=PEK&date=2026-10-01&adult=2&children=1",
+  );
+  const flightWebUrl = new URL(flight.url);
+  assert.equal(flightWebUrl.searchParams.get("dcity"), "SHA");
+  assert.equal(flightWebUrl.searchParams.get("adult"), "2");
 
   const train = bookingSitesForItem(
     item({
+      adult_count: 2,
       category: "train",
+      child_count: 1,
       destination_text: "北京南",
       origin_text: "上海虹桥",
       start_date: "2026-10-01",
@@ -218,11 +342,16 @@ test("CN Ctrip deep links carry exact flight, train, and hotel search details", 
   assert.equal(trainUrl.searchParams.get("departStation"), "上海虹桥");
   assert.equal(trainUrl.searchParams.get("arriveStation"), "北京南");
   assert.equal(trainUrl.searchParams.get("departDate"), "2026-10-01");
+  assert.equal(trainUrl.searchParams.get("adult"), "2");
+  assert.equal(trainUrl.searchParams.get("children"), "1");
 
   const stay = bookingSitesForItem(
     item({
+      adult_count: 2,
+      child_count: 1,
       end_date: "2026-10-03",
       location_text: "杭州",
+      room_count: 2,
       start_date: "2026-10-01",
     }),
     "cn",
@@ -231,13 +360,18 @@ test("CN Ctrip deep links carry exact flight, train, and hotel search details", 
   assert.equal(nestedHotelUrl.searchParams.get("cityname"), "杭州");
   assert.equal(nestedHotelUrl.searchParams.get("checkin"), "2026-10-01");
   assert.equal(nestedHotelUrl.searchParams.get("checkout"), "2026-10-03");
+  assert.equal(nestedHotelUrl.searchParams.get("adult"), "2");
+  assert.equal(nestedHotelUrl.searchParams.get("children"), "1");
+  assert.equal(nestedHotelUrl.searchParams.get("crn"), "2");
   assert.equal(stay.url, nestedHotelUrl.toString());
 });
 
 test("CN Fliggy deep links encode mini-program pages and UTF-8 cities once", () => {
   const flight = bookingSitesForItem(
     item({
+      adult_count: 2,
       category: "flight",
+      child_count: 1,
       destination_text: "北京",
       origin_text: "上海",
       start_date: "2026-10-01",
@@ -248,13 +382,19 @@ test("CN Fliggy deep links encode mini-program pages and UTF-8 cities once", () 
   assert.equal(flightUrl.searchParams.get("appId"), "60000138");
   assert.equal(
     flightUrl.searchParams.get("page"),
-    "pages/flight/list?depCity=%E4%B8%8A%E6%B5%B7&arrCity=%E5%8C%97%E4%BA%AC&depDate=2026-10-01",
+    "pages/flight/list?depCity=%E4%B8%8A%E6%B5%B7&arrCity=%E5%8C%97%E4%BA%AC&depDate=2026-10-01&adtCnt=2&childCnt=1",
   );
+  const flightWebUrl = new URL(flight.url);
+  assert.equal(flightWebUrl.searchParams.get("depCity"), "上海");
+  assert.equal(flightWebUrl.searchParams.get("adtCnt"), "2");
 
   const stay = bookingSitesForItem(
     item({
+      adult_count: 2,
+      child_count: 1,
       end_date: "2026-10-03",
       location_text: "杭州",
+      room_count: 2,
       start_date: "2026-10-01",
     }),
     "cn",
@@ -263,7 +403,7 @@ test("CN Fliggy deep links encode mini-program pages and UTF-8 cities once", () 
   assert.equal(stayUrl.searchParams.get("appId"), "20000139");
   assert.equal(
     stayUrl.searchParams.get("page"),
-    "pages/hotel/list?checkIn=2026-10-01&checkOut=2026-10-03&city=%E6%9D%AD%E5%B7%9E",
+    "pages/hotel/list?checkIn=2026-10-01&checkOut=2026-10-03&city=%E6%9D%AD%E5%B7%9E&adultNum=2&childNum=1&roomNum=2",
   );
 });
 
@@ -274,14 +414,18 @@ test("booking site dialog has one app-or-web action and no download-app control"
   ]);
   assert.doesNotMatch(dialog, /appStoreUrl|Get the \{site\} app|Download/);
   assert.match(dialog, /openAppDeepLink/);
-  assert.match(opener, /window\.location\.assign\(appUrl\)/);
-  assert.match(opener, /window\.location\.assign\(fallbackUrl\)/);
-  assert.match(opener, /visibilitychange/);
+  assert.match(dialog, /href=\{site\.url\}/);
+  assert.match(dialog, /target="_blank"/);
+  assert.match(opener, /max-width: 1199px/);
+  assert.match(opener, /window\.open\(appUrl, "_blank", "noopener,noreferrer"\)/);
+  assert.doesNotMatch(opener, /window\.location|fallbackUrl|visibilitychange/);
 });
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
   return {
+    adult_count: null,
     category: "stay",
+    child_count: null,
     created_at: "2026-08-09T12:00:00.000Z",
     currency: null,
     day_id: null,
@@ -299,6 +443,7 @@ function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
     observed_at: "2026-08-09T12:00:00.000Z",
     origin_text: null,
     origin_place_id: null,
+    room_count: null,
     segments: [],
     source_url: null,
     start_date: null,
@@ -360,6 +505,56 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
     }).segments,
     [],
   );
+});
+
+test("Ideas persist only valid category-specific traveler and room counts", async () => {
+  const parsed = createResearchItemSchema.parse({
+    adultCount: 2,
+    category: "stay",
+    childCount: 1,
+    roomCount: 2,
+    title: "Tokyo stay",
+    tripId: ids.trip,
+  });
+  assert.equal(parsed.adultCount, 2);
+  assert.equal(parsed.childCount, 1);
+  assert.equal(parsed.roomCount, 2);
+  assert.throws(() =>
+    createResearchItemSchema.parse({
+      adultCount: 2,
+      category: "rental",
+      title: "Car",
+      tripId: ids.trip,
+    }),
+  );
+  assert.throws(() =>
+    createResearchItemSchema.parse({
+      category: "flight",
+      roomCount: 2,
+      title: "Flight",
+      tripId: ids.trip,
+    }),
+  );
+  const [migration, fields, values] = await Promise.all([
+    readFile(
+      new URL(
+        "../../../supabase/migrations/20260905030000_research_travel_party.sql",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(new URL("./components/research-item-common-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./research-item-form-values.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(migration, /adult_count smallint/);
+  assert.match(migration, /child_count smallint/);
+  assert.match(migration, /room_count smallint/);
+  assert.match(fields, /name: "adultCount"/);
+  assert.match(fields, /name: "childCount"/);
+  assert.match(fields, /name: "roomCount"/);
+  assert.match(values, /adultCount: optionalInteger/);
+  assert.match(values, /childCount: optionalInteger/);
+  assert.match(values, /roomCount: category === "stay"/);
 });
 
 test("all research editors use two pages with price first on the primary step", () => {

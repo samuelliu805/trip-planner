@@ -50,7 +50,9 @@ export function researchItemValues(
 ) {
   const hasPrice = data.totalPriceAmount !== null && data.totalPriceAmount !== undefined;
   return {
+    adult_count: data.adultCount,
     category: data.category,
+    child_count: data.childCount,
     currency: hasPrice ? data.currency : null,
     day_id: data.dayId,
     destination_text: data.destinationText,
@@ -66,6 +68,7 @@ export function researchItemValues(
     observed_at: new Date().toISOString(),
     origin_text: data.originText,
     origin_place_id: places.origin,
+    room_count: data.roomCount,
     segments: data.segments as Json,
     source_url: data.sourceUrl,
     start_date: data.startDate,

@@ -1,11 +1,8 @@
 import type { ResearchCategory, ResearchItem } from "./types.ts";
 import type { AppRegion } from "@/platform/config/provider-matrix";
-import {
-  ctripDeepLink,
-  ctripHotelWebUrl,
-  fliggyDeepLink,
-  hiltonAppSearchUrl,
-} from "./booking-site-deeplinks.ts";
+import type { Locale } from "@/features/i18n/config";
+import { ctripDeepLink, fliggyDeepLink, hiltonSearchUrl } from "./booking-site-deeplinks.ts";
+import { bookingProviderWebUrl, type BookingSearchItem } from "./booking-site-web-links.ts";
 
 export type BookingSiteLink = {
   appUrl?: string;
@@ -16,13 +13,19 @@ export type BookingSiteLink = {
 
 type SearchItem = Pick<
   ResearchItem,
+  | "adult_count"
   | "category"
+  | "child_count"
   | "destination_text"
   | "end_date"
+  | "end_time"
   | "journey_type"
   | "location_text"
   | "origin_text"
+  | "room_count"
+  | "segments"
   | "start_date"
+  | "start_time"
 >;
 
 const globalProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
@@ -40,7 +43,11 @@ const globalProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
       url: "https://www.booking.com/searchresults.html",
     },
     { name: "Agoda", url: "https://www.agoda.com/" },
-    { name: "Hilton", opensApp: true, url: hiltonAppSearchUrl() },
+    {
+      appUrl: hiltonSearchUrl(undefined, true),
+      name: "Hilton",
+      url: hiltonSearchUrl(),
+    },
     { name: "Marriott", url: "https://www.marriott.com/" },
     { name: "IHG", url: "https://www.ihg.com/" },
     { name: "Hyatt", url: "https://www.hyatt.com/" },
@@ -50,7 +57,8 @@ const globalProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
     {
       name: "Enterprise",
       opensApp: true,
-      url: "https://www.enterprise.com/en/universal-deeplink.html",
+      appUrl: "https://www.enterprise.com/en/universal-deeplink.html",
+      url: "https://www.enterprise.com/en/car-rental/reservation/start.html",
     },
     { name: "Avis", url: "https://www.avis.com/en/reservation" },
     { name: "Europcar", opensApp: true, url: "https://www.europcar.com/en-us" },
@@ -120,91 +128,35 @@ export function bookingSitesForCategory(category: ResearchCategory, region: AppR
   return providerPages(region)[category];
 }
 
-function flightQueryUrl(item: SearchItem) {
-  if (
-    item.journey_type === "multi_city" ||
-    !item.origin_text?.trim() ||
-    !item.destination_text?.trim()
-  )
-    return null;
-  const parts = [`Flights from ${item.origin_text.trim()} to ${item.destination_text.trim()}`];
-  if (item.start_date) parts.push(`on ${item.start_date}`);
-  if (item.end_date) parts.push(`returning ${item.end_date}`);
-  const url = new URL("https://www.google.com/travel/flights");
-  url.searchParams.set("q", parts.join(" "));
-  return url.toString();
-}
-
-function airportCode(value: string | null) {
-  if (!value) return null;
-  const exact = value.trim().match(/^([A-Za-z]{3})$/);
-  const parenthetical = value.trim().match(/\(([A-Za-z]{3})\)$/);
-  return (exact?.[1] ?? parenthetical?.[1])?.toUpperCase() ?? null;
-}
-
-function kayakFlightUrl(item: SearchItem) {
-  if (item.journey_type === "multi_city" || !item.start_date) return null;
-  const origin = airportCode(item.origin_text);
-  const destination = airportCode(item.destination_text);
-  if (!origin || !destination) return null;
-  const dates = item.end_date ? `${item.start_date}/${item.end_date}` : item.start_date;
-  return `https://www.kayak.com/flights/${origin}-${destination}/${dates}`;
-}
-
-function staySearchUrl(item: SearchItem, provider: "airbnb" | "booking") {
-  const location = item.location_text?.trim();
-  if (!location) return null;
-  if (provider === "airbnb") {
-    const slug = encodeURIComponent(location.replace(/\s*,\s*/g, "--").replace(/\s+/g, "-"));
-    const url = new URL(`https://www.airbnb.com/s/${slug}/homes`);
-    if (item.start_date) url.searchParams.set("checkin", item.start_date);
-    if (item.end_date) url.searchParams.set("checkout", item.end_date);
-    return url.toString();
-  }
-  const url = new URL("https://www.booking.com/searchresults.html");
-  url.searchParams.set("ss", location);
-  if (item.start_date) url.searchParams.set("checkin", item.start_date);
-  if (item.end_date) url.searchParams.set("checkout", item.end_date);
-  return url.toString();
-}
-
 export function bookingSitesForItem(
   item: SearchItem,
   region: AppRegion = "global",
 ): BookingSiteLink[] {
   const category = item.category as ResearchCategory;
-  if (region === "cn")
-    return providerPages(region)[category].map((provider) => {
-      if (provider.name === "携程旅行")
-        return {
-          ...provider,
-          appUrl: ctripDeepLink(category, item) ?? provider.appUrl,
-          url: category === "stay" ? ctripHotelWebUrl(item) : provider.url,
-        };
-      if (provider.name === "飞猪旅行")
-        return { ...provider, appUrl: fliggyDeepLink(category, item) ?? provider.appUrl };
-      return provider;
-    });
-  const detailsByProvider = new Map<string, string>();
-  if (category === "flight") {
-    const google = flightQueryUrl(item);
-    const kayak = kayakFlightUrl(item);
-    if (google) detailsByProvider.set("Google Flights", google);
-    if (kayak) detailsByProvider.set("KAYAK", kayak);
-  }
-  if (category === "stay") {
-    const airbnb = staySearchUrl(item, "airbnb");
-    const booking = staySearchUrl(item, "booking");
-    if (airbnb) detailsByProvider.set("Airbnb", airbnb);
-    if (booking) detailsByProvider.set("Booking.com", booking);
-  }
-  return globalProviderPages[category].map((provider) => ({
+  return providerPages(region)[category].map((provider) => ({
     ...provider,
-    url: detailsByProvider.get(provider.name) ?? provider.url,
+    ...(provider.appUrl
+      ? {
+          appUrl: bookingProviderWebUrl(
+            provider.name,
+            provider.appUrl,
+            item as BookingSearchItem,
+            region,
+          ),
+        }
+      : {}),
+    ...(region === "cn" && provider.name === "携程旅行"
+      ? { appUrl: ctripDeepLink(category, item) ?? provider.appUrl }
+      : {}),
+    ...(region === "cn" && provider.name === "飞猪旅行"
+      ? { appUrl: fliggyDeepLink(category, item) ?? provider.appUrl }
+      : {}),
+    ...(provider.name === "Hilton" ? { appUrl: hiltonSearchUrl(item, true) } : {}),
+    url: bookingProviderWebUrl(provider.name, provider.url, item as BookingSearchItem, region),
   }));
 }
 
-export function bookingSearchDetails(item: SearchItem) {
+export function bookingSearchDetails(item: SearchItem, locale: Locale = "en") {
   const category = item.category as ResearchCategory;
   const place =
     category === "stay"
@@ -213,5 +165,25 @@ export function bookingSearchDetails(item: SearchItem) {
           .filter((value, index, values) => value && (index === 0 || value !== values[0]))
           .join(" → ");
   const dates = [item.start_date, item.end_date].filter(Boolean).join(" → ");
-  return [place, dates].filter(Boolean).join(" · ");
+  const chinese = locale === "zh-CN";
+  const party = [
+    item.adult_count == null
+      ? null
+      : chinese
+        ? `${item.adult_count} 位成人`
+        : `${item.adult_count} adult${item.adult_count === 1 ? "" : "s"}`,
+    item.child_count == null
+      ? null
+      : chinese
+        ? `${item.child_count} 名儿童`
+        : `${item.child_count} ${item.child_count === 1 ? "child" : "children"}`,
+    category === "stay" && item.room_count != null
+      ? chinese
+        ? `${item.room_count} 间房`
+        : `${item.room_count} room${item.room_count === 1 ? "" : "s"}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return [place, dates, party].filter(Boolean).join(" · ");
 }

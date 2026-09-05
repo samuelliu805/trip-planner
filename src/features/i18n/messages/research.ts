@@ -1,5 +1,9 @@
 export const researchZhCN: Record<string, string> = {
   idea: "想法",
+  Adults: "成人",
+  Children: "儿童",
+  Rooms: "房间",
+  "Travel party": "出行人数",
   "Add another flight": "再添加一段航班",
   "Remove flight {number}": "移除第{number}段航班",
   "Add price or context when you have it. These stay in the same category.":
