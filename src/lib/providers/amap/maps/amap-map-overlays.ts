@@ -162,10 +162,13 @@ export function createAmapOverlays(options: {
   }
 
   if (overlays.length) options.map.add(overlays);
+  let released = false;
   return {
     all: overlays,
     markers: markersByItem,
     release() {
+      if (released) return;
+      released = true;
       for (const { button, contentClick } of listeners) {
         button.removeEventListener("click", contentClick);
       }

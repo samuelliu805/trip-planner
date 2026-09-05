@@ -43,7 +43,7 @@ export function usePublicMapWorkspaceController({
   }>();
   const [dayRef, setDayRef] = useState(defaultDayRef);
   const [exploringDayRef, setExploringDayRef] = useState<string>();
-  const [dayMode, setDayMode] = useState<RouteLegMode>("self_driving");
+  const [dayModes, setDayModes] = useState<Record<string, RouteLegMode>>({});
   const [localStops, setLocalStops] = useState<string[]>([]);
   const [dayCalculation, setDayCalculation] = useState<PublicRouteCalculation>();
   const [overviewCalculation, setOverviewCalculation] = useState<PublicRouteCalculation>();
@@ -95,6 +95,9 @@ export function usePublicMapWorkspaceController({
     routeScope === "overview"
       ? markers.filter(({ entries }) => entries.some(({ kind }) => kind === "city"))
       : markers.filter(({ itemIds }) => itemIds.some((ref) => dayMarkerRefs.has(ref)));
+  const dayLegModes = localStops
+    .slice(0, -1)
+    .map((ref, index) => dayModes[`${ref}:${localStops[index + 1]}`] ?? "self_driving");
 
   function defaultStops(nextDayRef = day?.ref) {
     return publicDayRoutePlan(itinerary, nextDayRef).items.map(({ ref }) => ref);
@@ -102,6 +105,7 @@ export function usePublicMapWorkspaceController({
 
   function resetDay(nextDayRef = day?.ref) {
     setLocalStops(defaultStops(nextDayRef));
+    setDayModes({});
     setDayCalculation(undefined);
     setDayError(undefined);
   }
@@ -148,7 +152,7 @@ export function usePublicMapWorkspaceController({
     startTransition(async () => {
       const result = await calculatePublicRoute({
         dayRef: day.ref,
-        legModes: Array.from({ length: localStops.length - 1 }, () => dayMode),
+        legModes: dayLegModes,
         stopRefs: localStops,
         token,
       });
@@ -202,7 +206,7 @@ export function usePublicMapWorkspaceController({
       allowExplore: itinerary.settings.allowRouteExplore,
       calculation: dayCalculation,
       candidates,
-      dayMode,
+      legModes: dayLegModes,
       days: itinerary.days,
       error: dayError,
       exploring,
@@ -222,8 +226,11 @@ export function usePublicMapWorkspaceController({
         resetDay(day?.ref);
         setExploringDayRef(day?.ref);
       },
-      onModeChange: (mode: RouteLegMode) => {
-        setDayMode(mode);
+      onModeChange: (index: number, mode: RouteLegMode) => {
+        const from = localStops[index];
+        const to = localStops[index + 1];
+        if (!from || !to) return;
+        setDayModes((current) => ({ ...current, [`${from}:${to}`]: mode }));
         setDayCalculation(undefined);
       },
       onMoveStop: moveStop,

@@ -23,6 +23,7 @@ import { TripMobileTabBar } from "../../trips/components/trip-app-bar";
 import { convertPlanCostBreakdown, planCostBreakdown, planCostSummary } from "../../research/money";
 import { usePlannerViewTelemetry } from "../hooks/use-planner-view-telemetry";
 import { usePlannerMapSheetHistory } from "../hooks/use-planner-map-sheet-history";
+import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
   return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
@@ -32,6 +33,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
   usePlannerViewportContainment();
   const c = usePlannerWorkspaceController(props);
   const mapSheet = usePlannerMapSheetHistory(c.setMapExpanded);
+  useExclusivePullUpPanel("planner-map", c.mapExpanded, mapSheet.onOpenChange);
   usePlannerViewTelemetry(c.mapExpanded);
   const [itemSaveFeedback, setItemSaveFeedback] = useState<PlannerItemSaveFeedback>();
   const activeItem =

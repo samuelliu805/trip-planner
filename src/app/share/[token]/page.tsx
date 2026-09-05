@@ -7,12 +7,7 @@ import { PublicItineraryShell } from "@/features/sharing/components/public-itine
 import { PublicUnavailable } from "@/features/sharing/components/public-unavailable";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
-import {
-  getOwnerShareImageState,
-  getOwnerSharePageByToken,
-  getPublicItinerary,
-  getPublicShareImage,
-} from "@/features/sharing/data";
+import { getPublicItinerary, getPublicShareImage } from "@/features/sharing/data";
 import { localizeGeneratedPublicDescription } from "@/features/sharing/public-copy";
 import { publicShareUrlState } from "@/features/sharing/public-url-state";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
@@ -31,10 +26,6 @@ const loadItinerary = cache(async (token: string) =>
 const loadShareImage = cache(async (token: string) =>
   tokenSchema.safeParse(token).success ? getPublicShareImage(token) : null,
 );
-const loadOwnerPage = cache(async (token: string) =>
-  tokenSchema.safeParse(token).success ? getOwnerSharePageByToken(token) : null,
-);
-
 type PublicSharePageProps = {
   params: Promise<{ token: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -84,14 +75,12 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
 
 export default async function PublicSharePage({ params, searchParams }: PublicSharePageProps) {
   const [{ token }, search] = await Promise.all([params, searchParams]);
-  const [itinerary, shareImage, ownerPage, siteUrl] = await Promise.all([
+  const [itinerary, shareImage, siteUrl] = await Promise.all([
     loadItinerary(token),
     loadShareImage(token),
-    loadOwnerPage(token),
     getRequestSiteUrl(),
   ]);
   if (!itinerary) return <PublicUnavailable />;
-  const ownerImageState = ownerPage ? await getOwnerShareImageState(ownerPage.id) : null;
   const urlState = publicShareUrlState(search, itinerary.settings.defaultView);
   const resolvedTemplate = resolvePublicTemplate({
     ...publicTemplateRuntimeConfig(),
@@ -110,8 +99,6 @@ export default async function PublicSharePage({ params, searchParams }: PublicSh
       itinerary={itinerary}
       key={`${resolvedTemplate.key}:${urlState.view}`}
       legacyTemplateOverride={urlState.legacyTemplate}
-      ownerImageState={ownerImageState}
-      ownerSharePage={ownerPage}
       publicUrl={`${siteUrl}/share/${token}`}
       shareImage={shareImage}
       templateKey={resolvedTemplate.key}

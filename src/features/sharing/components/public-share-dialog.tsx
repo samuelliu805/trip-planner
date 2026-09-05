@@ -81,6 +81,18 @@ export function PublicShareDialog({
   useExclusivePullUpPanel("share-settings", open, setOpen);
 
   useEffect(() => {
+    if (!initialOpen) return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("share")) return;
+    url.searchParams.delete("share");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [initialOpen]);
+
+  useEffect(() => {
     const openShareSettings = () => setOpen(true);
     window.addEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
     return () => window.removeEventListener(OPEN_SHARE_SETTINGS_EVENT, openShareSettings);
@@ -198,11 +210,11 @@ export function PublicShareDialog({
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="mobile-pull-up-panel public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-2xl">
+      <DialogContent className="mobile-pull-up-panel public-share-settings-dialog flex max-h-[calc(var(--dialog-viewport-height,100svh)-max(8px,env(safe-area-inset-top))-max(8px,env(safe-area-inset-bottom)))] flex-col overflow-hidden [&>[data-dialog-close]]:hidden sm:max-h-[min(calc(var(--dialog-viewport-height,100svh)-2rem),860px)] sm:max-w-2xl sm:[&>[data-dialog-close]]:flex">
         <div className="sm:hidden">
           <PullUpPanelHandle onClose={() => setOpen(false)} />
         </div>
-        <DialogHeader className="shrink-0">
+        <DialogHeader className="shrink-0 pr-5 sm:pr-16">
           <DialogTitle>
             <T message={"Share trip"} />
           </DialogTitle>

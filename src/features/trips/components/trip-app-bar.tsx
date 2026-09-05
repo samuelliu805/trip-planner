@@ -64,6 +64,7 @@ export function TripMobileTabBar({
       className="trip-mobile-tab-bar z-[70] grid-cols-2 shrink-0 rounded-none border-x-0 border-b-0 pb-[max(0.35rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-1 shadow-none sm:hidden"
       itemClassName="min-h-14 flex-col gap-0.5 px-2 text-[11px] leading-none"
       items={items}
+      documentNavigation
     />
   );
 }
@@ -156,7 +157,19 @@ export function TripAppBar({
                   <Link
                     aria-current={section.id === active ? "page" : undefined}
                     href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
-                    prefetch
+                    onClick={(event) => {
+                      if (
+                        event.button ||
+                        event.metaKey ||
+                        event.ctrlKey ||
+                        event.shiftKey ||
+                        event.altKey
+                      )
+                        return;
+                      event.preventDefault();
+                      window.location.assign(event.currentTarget.href);
+                    }}
+                    prefetch={false}
                   >
                     <TripSectionLinkContent Icon={Icon} label={section.label} />
                   </Link>

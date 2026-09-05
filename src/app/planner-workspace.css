@@ -195,6 +195,17 @@ body:has(.planner-map-sheet) {
 }
 
 @media (min-width: 640px) and (max-width: 1199px) {
+  .planner-matrix {
+    scrollbar-width: none;
+    scrollbar-gutter: auto;
+  }
+
+  .planner-matrix::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   .planner-matrix > [role="grid"] {
     display: flex;
     min-height: 100%;
@@ -315,8 +326,8 @@ body:has(.planner-map-sheet) {
     box-sizing: border-box;
     background-color: var(--background);
     left: 0;
-    width: 5.5rem;
-    flex: 0 0 5.5rem;
+    width: 9.5rem;
+    flex: 0 0 9.5rem;
     z-index: 60;
   }
 
@@ -348,7 +359,7 @@ body:has(.planner-map-sheet) {
   inset: 0 !important;
   width: 100% !important;
   height: 100dvh !important;
-  max-width: none !important;
+  max-width: 100% !important;
   max-height: 100dvh !important;
   border: 0 !important;
   border-radius: 0 !important;

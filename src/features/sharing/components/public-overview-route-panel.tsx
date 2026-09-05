@@ -59,10 +59,6 @@ export function PublicOverviewRoutePanel({
   const { t } = useI18n();
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-semibold">
-        <Route aria-hidden="true" className="size-4 text-primary" />
-        <T message={" Overview connections "} />
-      </div>
       {calculation ? (
         <PublicRouteLegDetails labels={stops.map(({ title }) => title)} legs={calculation.legs} />
       ) : stops.length > 1 ? (

@@ -7,11 +7,16 @@
 }
 
 @media (min-width: 640px) and (max-width: 1199px) {
+  .public-itinerary-shell .public-itinerary-grid {
+    order: 2;
+  }
+
   .public-itinerary-shell .public-template-region-view-navigation {
     position: relative;
     inset: auto;
     z-index: 80;
     display: flex;
+    order: 3;
     width: 100%;
     height: 4rem;
     min-width: 0;

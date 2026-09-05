@@ -32,6 +32,7 @@ export const commonZhCN: Record<string, string> = {
   "Log out": "退出登录",
   "Logging out…": "正在退出登录…",
   More: "更多",
+  "More actions": "更多操作",
   Next: "下一步",
   No: "否",
   None: "无",

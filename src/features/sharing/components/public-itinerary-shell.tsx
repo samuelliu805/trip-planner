@@ -1,13 +1,7 @@
 "use client";
 
 import { T } from "@/features/i18n/i18n-provider";
-import type {
-  OwnerShareImageState,
-  PublicItinerary,
-  PublicItineraryLink,
-  PublicView,
-  ShareImageManifest,
-} from "../types";
+import type { PublicItinerary, PublicView, ShareImageManifest } from "../types";
 import {
   LEGACY_PUBLIC_TEMPLATE_KEY,
   getPublicTemplate,
@@ -20,8 +14,6 @@ export function PublicItineraryShell({
   initialView,
   itinerary,
   legacyTemplateOverride,
-  ownerImageState,
-  ownerSharePage,
   publicUrl,
   shareImage,
   templateKey,
@@ -30,8 +22,6 @@ export function PublicItineraryShell({
   initialView: PublicView;
   itinerary: PublicItinerary;
   legacyTemplateOverride?: "bento" | "standard";
-  ownerImageState: OwnerShareImageState | null;
-  ownerSharePage: PublicItineraryLink | null;
   publicUrl: string;
   shareImage: ShareImageManifest | null;
   templateKey: PublicTemplateKey;
@@ -51,8 +41,6 @@ export function PublicItineraryShell({
       initialView={initialView}
       itinerary={itinerary}
       legacyTemplateOverride={legacyTemplateOverride}
-      ownerImageState={ownerImageState}
-      ownerSharePage={ownerSharePage}
       publicUrl={publicUrl}
       shareImage={shareImage}
       template={template}

@@ -4,6 +4,7 @@ import type { AppRegion } from "@/platform/config/provider-matrix";
 export type BookingSiteLink = {
   appStoreUrl?: string;
   name: string;
+  opensApp?: boolean;
   url: string;
 };
 
@@ -66,7 +67,12 @@ const chinaProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
       url: "https://m.ctrip.com/webapp/flight/",
     },
     { appStoreUrl: fliggyAppStore, name: "飞猪旅行", url: "https://www.fliggy.com/" },
-    { appStoreUrl: meituanAppStore, name: "美团", url: "https://i.meituan.com/" },
+    {
+      appStoreUrl: meituanAppStore,
+      name: "美团",
+      opensApp: true,
+      url: "https://i.meituan.com/web",
+    },
   ],
   stay: [
     {
@@ -75,7 +81,12 @@ const chinaProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
       url: "https://m.ctrip.com/webapp/hotel/",
     },
     { appStoreUrl: fliggyAppStore, name: "飞猪旅行", url: "https://www.fliggy.com/" },
-    { appStoreUrl: meituanAppStore, name: "美团", url: "https://i.meituan.com/" },
+    {
+      appStoreUrl: meituanAppStore,
+      name: "美团",
+      opensApp: true,
+      url: "https://i.meituan.com/web",
+    },
     {
       appStoreUrl:
         "https://apps.apple.com/cn/app/%E9%80%94%E5%AE%B6%E6%B0%91%E5%AE%BF-%E6%B0%91%E5%AE%BF%E5%AE%A2%E6%A0%88%E5%92%8C%E7%9F%AD%E7%A7%9F%E9%A2%84%E8%AE%A2%E5%B9%B3%E5%8F%B0/id582934943",
@@ -110,6 +121,7 @@ const chinaProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
     {
       appStoreUrl: "https://apps.apple.com/cn/app/%E9%93%81%E8%B7%AF12306/id564818797",
       name: "铁路12306",
+      opensApp: true,
       url: "https://www.12306.cn/index/",
     },
   ],

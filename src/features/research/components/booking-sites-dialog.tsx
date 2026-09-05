@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, ExternalLink, Search } from "lucide-react";
+import { Download, ExternalLink, Search, Smartphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -81,13 +81,22 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
                   variant="outline"
                 >
                   <a
-                    aria-label={t("Open {site} in a new tab", { site: site.name })}
+                    aria-label={t(
+                      site.opensApp
+                        ? "Open {site} in its app or website"
+                        : "Open {site} in a new tab",
+                      { site: site.name },
+                    )}
                     href={site.url}
                     rel="noreferrer"
-                    target="_blank"
+                    target={site.opensApp ? undefined : "_blank"}
                   >
                     <span className="min-w-0 truncate font-semibold">{site.name}</span>
-                    <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
+                    {site.opensApp ? (
+                      <Smartphone aria-hidden="true" className="size-4 shrink-0" />
+                    ) : (
+                      <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
+                    )}
                   </a>
                 </Button>
                 {site.appStoreUrl ? (

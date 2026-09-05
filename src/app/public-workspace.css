@@ -224,10 +224,15 @@ body:has(.public-itinerary-shell) {
   inset: 0 !important;
   width: 100% !important;
   height: 100dvh !important;
-  max-width: none !important;
+  max-width: 100% !important;
   max-height: 100dvh !important;
   border: 0 !important;
   border-radius: 0 !important;
+}
+
+.public-map-workspace .amap-logo,
+.public-map-workspace .amap-copyright {
+  z-index: 1 !important;
 }
 
 @media (max-width: 899px) {

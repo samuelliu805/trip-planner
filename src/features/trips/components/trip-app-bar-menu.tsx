@@ -1,6 +1,6 @@
 "use client";
 
-import { T } from "@/features/i18n/i18n-provider";
+import { Localized, T } from "@/features/i18n/i18n-provider";
 import { LogOut, MoreHorizontal, Settings2, Share2, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
@@ -168,7 +168,9 @@ export function TripBarMenu({
                   <span className="flex size-9 items-center justify-center rounded-full bg-background text-foreground shadow-sm">
                     {action.icon}
                   </span>
-                  <span className="line-clamp-2">{action.label}</span>
+                  <span className="line-clamp-2">
+                    <Localized value={action.label} />
+                  </span>
                 </button>
               ))}
             </div>

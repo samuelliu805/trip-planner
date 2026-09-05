@@ -46,7 +46,7 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
       className="public-map-workspace relative h-full min-h-0"
     >
       <div
-        className={`public-map-canvas absolute inset-0 ${panelOpen ? "pb-[min(44%,22rem)]" : "pb-11"}`}
+        className={`public-map-canvas absolute inset-0 z-0 isolate ${panelOpen ? "pb-[min(44%,22rem)]" : "pb-11"}`}
       >
         <PublicPlannerMapCanvas
           configurationState={mapConfigurationState}
@@ -58,7 +58,7 @@ function PublicMapWorkspaceContent(props: PublicMapWorkspaceProps) {
       </div>
 
       <div
-        className={`public-map-panel absolute inset-x-0 bottom-0 overflow-y-auto border-t bg-background/97 backdrop-blur ${panelOpen ? "max-h-[52%]" : "max-h-11 overflow-hidden"}`}
+        className={`public-map-panel absolute inset-x-0 bottom-0 z-20 overflow-y-auto border-t bg-background/97 backdrop-blur ${panelOpen ? "max-h-[52%]" : "max-h-11 overflow-hidden"}`}
       >
         <button
           aria-label={t(panelOpen ? "Close route panel" : "Open route panel")}

@@ -1,7 +1,7 @@
 "use client";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 import { useState, type MouseEvent } from "react";
 
 import {
@@ -15,6 +15,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { InsertRowIcon } from "@/features/itinerary/components/insert-row-icon";
 import type { PlannerDay } from "@/features/itinerary/types";
@@ -41,60 +47,57 @@ export function DayActions({
     event.stopPropagation();
     onInsert(day.day_number + 1);
   };
-  if (isOnlyDay)
-    return (
-      <Button
-        aria-label={t("Insert day below Day {day}", { day: day.day_number })}
-        className="mx-1 mt-auto min-h-11 w-[calc(100%-0.5rem)] gap-1.5 px-3 font-sans"
-        disabled={pending}
-        onClick={addDay}
-        size="sm"
-        type="button"
-      >
-        <InsertRowIcon className="size-4 shrink-0" direction="below" />
-        <T message={"Add day"} />
-      </Button>
-    );
-  const buttonClass =
-    "flex min-h-11 items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground sm:min-h-9";
   return (
     <>
-      <div className="mt-2 grid grid-cols-2 overflow-hidden rounded-md border bg-background shadow-sm">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              aria-label={t("Insert day below Day {day}", { day: day.day_number })}
-              className={buttonClass}
-              disabled={pending}
-              onClick={addDay}
-              type="button"
-            >
-              <InsertRowIcon direction="below" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <T message={"Insert day below Day {day}"} values={{ day: day.day_number }} />
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              aria-label={t("Remove Day {day}", { day: day.day_number })}
-              className={`${buttonClass} border-l hover:bg-destructive/10 hover:text-destructive disabled:opacity-30`}
-              disabled={pending}
-              onClick={(event) => {
-                event.stopPropagation();
-                setConfirmOpen(true);
-              }}
-              type="button"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <T message={"Remove Day {day}"} values={{ day: day.day_number }} />
-          </TooltipContent>
-        </Tooltip>
+      <div className="mt-auto flex min-w-0 gap-1 pt-2">
+        <Button
+          aria-label={t("Insert day below Day {day}", { day: day.day_number })}
+          className="min-h-11 min-w-0 flex-1 gap-1.5 px-2 font-sans text-[13px]"
+          data-add-day=""
+          disabled={pending}
+          onClick={addDay}
+          size="sm"
+          type="button"
+        >
+          <InsertRowIcon className="size-4 shrink-0" direction="below" />
+          <span className="whitespace-nowrap">
+            <T message={"Add day"} />
+          </span>
+        </Button>
+        {!isOnlyDay ? (
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label={t("Day {day} actions", { day: day.day_number })}
+                    className="size-11 shrink-0 p-0"
+                    data-day-menu=""
+                    disabled={pending}
+                    onClick={(event) => event.stopPropagation()}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>
+                <T message={"Day actions"} />
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onSelect={() => setConfirmOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                <T message={"Remove Day {day}"} values={{ day: day.day_number }} />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </div>
       <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
         <AlertDialogContent>

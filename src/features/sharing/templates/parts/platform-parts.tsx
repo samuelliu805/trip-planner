@@ -4,6 +4,7 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { Map, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
 import {
   Sheet,
   SheetContent,
@@ -49,13 +50,10 @@ function DesktopMapTogglePart() {
 }
 
 function ViewerShareDialogPart() {
-  const { itinerary, ownerImageState, ownerSharePage, shareImage, shareUrl, template } =
-    usePublicTemplateController();
+  const { itinerary, shareImage, shareUrl, template } = usePublicTemplateController();
   return (
     <PublicViewerShareDialog
       itinerary={itinerary}
-      ownerImageState={ownerImageState}
-      ownerSharePage={ownerSharePage}
       shareImage={shareImage}
       template={template}
       url={shareUrl}
@@ -173,6 +171,7 @@ function MobileMapTriggerPart() {
 
 function MobileMapSheetPart() {
   const { mapSheetOpen, setMapSheetOpen, showMap, template } = usePublicTemplateController();
+  useExclusivePullUpPanel("public-map", mapSheetOpen, setMapSheetOpen);
   if (!showMap) return null;
   return (
     <Sheet onOpenChange={setMapSheetOpen} open={mapSheetOpen}>

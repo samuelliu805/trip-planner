@@ -166,6 +166,18 @@ test("CN Ideas use category-specific Chinese providers with mobile app fallbacks
         assert.match(site.appStoreUrl, /^https:\/\/apps\.apple\.com\/cn\/app\//);
     }
   }
+  assert.equal(
+    bookingSitesForCategory("flight", "cn").find(({ name }) => name === "美团")?.url,
+    "https://i.meituan.com/web",
+  );
+  assert.equal(
+    bookingSitesForCategory("train", "cn").find(({ name }) => name === "铁路12306")?.opensApp,
+    true,
+  );
+  assert.equal(
+    bookingSitesForCategory("flight", "cn").find(({ name }) => name === "携程旅行")?.opensApp,
+    undefined,
+  );
 });
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
@@ -753,9 +765,12 @@ test("Ideas & Options has direct category routes and instant in-workspace switch
   assert.match(categoryPage, /parseResearchCategoryRouteSegment/);
   assert.match(categoryPage, /ResearchCompareRoute/);
   assert.match(route, /getResearchPlanSnapshot/);
-  assert.match(workspace, /window\.history\.pushState/);
+  assert.match(workspace, /router\.push\(categoryHrefs\[nextCategory\]/);
+  assert.doesNotMatch(workspace, /window\.history\.pushState\(null/);
   assert.match(nav, /label: "Ideas & Options"/);
   assert.match(nav, /next\/link/);
+  assert.match(nav, /window\.location\.assign/);
+  assert.match(nav, /documentNavigation/);
   assert.doesNotMatch(
     `${legacyPage}\n${categoryPage}\n${nav}`,
     /activeTab|setActiveTab|\/ideas|\/options/,

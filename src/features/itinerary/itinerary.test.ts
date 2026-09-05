@@ -2409,6 +2409,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.doesNotMatch(mapHook, /firstCity|type === "location"/);
   assert.match(mapHook, /Activity city\/town stage/);
   assert.match(interactions, /\["activities", "hotel", "meals"\][\s\S]*setMapMode\("day_route"\)/);
+  assert.match(interactions, /category\?\.id === "city"\) setMapMode\("day_route"\)/);
   assert.match(
     interactions,
     /\["activity", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedMapItemId\(item\.place \? item\.id : undefined\)/,
@@ -2872,6 +2873,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   );
   for (const file of [
     "./components/planner-matrix.tsx",
+    "./components/planner-day-header-cell.tsx",
     "./components/planner-context-bar.tsx",
     "./components/planner-context-menu-items.tsx",
     "../trips/components/trip-app-bar-menu.tsx",
@@ -2986,13 +2988,12 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(dayActions, /onInsert\(day\.day_number \+ 1\)/);
   assert.doesNotMatch(dayActions, /onInsert\(day\.day_number\)/);
   assert.doesNotMatch(dayActions, /onArrange/);
-  assert.match(workspace, /visible=\{workspace\.days\.length === 1 \|\| selectedDayRow === row\}/);
-  assert.match(
-    dayActions,
-    /if \(isOnlyDay\)[\s\S]*mx-1 mt-auto min-h-11 w-\[calc\(100%-0\.5rem\)\] gap-1\.5 px-3 font-sans[\s\S]*message=\{"Add day"\}/,
-  );
+  assert.match(workspace, /visible=\{isOnlyDay \|\| selected\}/);
+  assert.match(dayActions, /min-h-11 min-w-0 flex-1 gap-1\.5 px-2 font-sans text-\[13px\]/);
+  assert.match(dayActions, /whitespace-nowrap[\s\S]*message=\{"Add day"\}/);
   assert.match(dayActions, /InsertRowIcon className="size-4 shrink-0" direction="below"/);
-  assert.match(dayActions, /grid grid-cols-2[\s\S]*<Trash2/);
+  assert.match(dayActions, /<DropdownMenu[\s\S]*<MoreHorizontal[\s\S]*<Trash2/);
+  assert.doesNotMatch(dayActions, /grid grid-cols-2/);
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /aria-label="Trip menu"/);
   assert.match(
@@ -3036,6 +3037,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
+  assert.match(styles, /width: 9\.5rem;[\s\S]*flex: 0 0 9\.5rem;/);
   assert.match(plannerDialogRule, /height: 100vh[\s\S]*height: 100lvh[\s\S]*max-height: none/);
   assert.match(plannerDialogRule, /overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/);
   assert.doesNotMatch(plannerDialogRule, /100dvh/);
@@ -3185,6 +3187,10 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.match(styles, /planner-matrix[\s\S]*touch-action: pan-x pan-y/);
   assert.match(
     styles,
+    /@media \(min-width: 640px\) and \(max-width: 1199px\) \{[\s\S]*?\.planner-matrix \{[\s\S]*?scrollbar-width: none;[\s\S]*?scrollbar-gutter: auto;/,
+  );
+  assert.match(
+    styles,
     /planner-matrix[\s\S]*overscroll-behavior-x: none[\s\S]*overscroll-behavior-y: auto/,
   );
   assert.match(
@@ -3320,8 +3326,13 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
     "utf8",
   );
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
-  assert.match(workspace, /Add your first activity/);
-  assert.match(workspace, /newTripStarter/);
+  workspace += await readFile(
+    new URL("./components/planner-day-header-cell.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(workspace, /Start with one activity/);
+  assert.match(workspace, /dayStarter/);
+  assert.match(workspace, /data-day-actions-hint/);
   assert.doesNotMatch(workspace, /onAddDay/);
   assert.match(workspace, /planner could not refresh/);
   assert.match(workspace, /Saving…[\s\S]*Saved/);
