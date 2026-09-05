@@ -1,8 +1,15 @@
-import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { compactCommand } from "./lib/compact-command.mjs";
+import {
+  readStaticValidationCache,
+  staticValidationFingerprint,
+  validationStateDirectory,
+  writeStaticValidationCache,
+} from "./lib/validation-cache.mjs";
 
 import {
   approvedCloudBaseTarget,
@@ -18,18 +25,21 @@ const envPath = resolve(root, ".env.local");
 function parseArguments(argv) {
   let mode = "preflight";
   let region = "all";
+  let fresh = false;
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--preflight") mode = "preflight";
+    else if (argument === "--static") mode = "static";
     else if (argument === "--live") mode = "live";
+    else if (argument === "--fresh") fresh = true;
     else if (argument === "--region") region = argv[++index];
-    else if (argument === "--help") return { help: true, mode, region };
+    else if (argument === "--help") return { fresh, help: true, mode, region };
     else throw new Error(`Unknown argument: ${argument}`);
   }
   if (!new Set(["all", "cn", "global"]).has(region)) {
     throw new Error("--region must be global, cn, or all");
   }
-  return { help: false, mode, region };
+  return { fresh, help: false, mode, region };
 }
 
 function selectedRegions(region) {
@@ -67,14 +77,14 @@ function printPreflight(regions, inventory) {
 }
 
 async function command(label, executable, args, env) {
-  process.stdout.write(`\n[E2E] ${label}\n`);
-  await new Promise((resolvePromise, reject) => {
-    const child = spawn(executable, args, { cwd: root, env, stdio: "inherit" });
-    child.on("error", reject);
-    child.on("exit", (code, signal) => {
-      if (code === 0) resolvePromise();
-      else reject(new Error(`${label} failed (${signal ? `signal ${signal}` : `exit ${code}`})`));
-    });
+  const stateDirectory = await validationStateDirectory(root);
+  await compactCommand({
+    args,
+    cwd: root,
+    env,
+    executable,
+    label,
+    logDirectory: resolve(stateDirectory, "logs"),
   });
 }
 
@@ -84,8 +94,24 @@ async function cleanBuildOutput() {
   await rm(output, { force: true, recursive: true });
 }
 
-async function runStatic(inventory) {
+async function runStatic(inventory, { fresh = false } = {}) {
   const env = createSanitizedEnvironment(inventory.fileNames);
+  const stateDirectory = await validationStateDirectory(root);
+  const fingerprint = await staticValidationFingerprint(root, {
+    APP_REGION: env.APP_REGION,
+    AUTH_PROVIDER: env.AUTH_PROVIDER,
+    DATA_PROVIDER: env.DATA_PROVIDER,
+    NEXT_PUBLIC_MAPS_PROVIDER: env.NEXT_PUBLIC_MAPS_PROVIDER,
+    STORAGE_PROVIDER: env.STORAGE_PROVIDER,
+  });
+  const cacheEnabled = !fresh && process.env.CI !== "true";
+  const cached = cacheEnabled ? await readStaticValidationCache(stateDirectory) : null;
+  if (cached?.fingerprint === fingerprint) {
+    process.stdout.write(
+      `REUSE static validation ${fingerprint.slice(0, 12)} (${cached.completedAt})\n`,
+    );
+    return;
+  }
   const stages = [
     ["lint", "npm", ["run", "lint"]],
     ["typecheck", "npm", ["run", "typecheck"]],
@@ -100,6 +126,8 @@ async function runStatic(inventory) {
     ["working-tree whitespace", "git", ["diff", "--check"]],
   ];
   for (const [label, executable, args] of stages) await command(label, executable, args, env);
+  await writeStaticValidationCache(stateDirectory, fingerprint);
+  process.stdout.write(`CACHE static validation ${fingerprint.slice(0, 12)}\n`);
 }
 
 async function buildRegion(region, env) {
@@ -214,11 +242,17 @@ async function runCn(env) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
-    process.stdout.write("Usage: npm run test:e2e:<preflight|global|cn|all>\n");
+    process.stdout.write(
+      "Usage: node scripts/e2e-regression.mjs <--preflight|--static|--live> [--region global|cn|all] [--fresh]\n",
+    );
     return;
   }
   const regions = selectedRegions(options.region);
   const inventory = readE2EInventory(envPath);
+  if (options.mode === "static") {
+    await runStatic(inventory, options);
+    return;
+  }
   const ready = printPreflight(regions, inventory);
   if (options.mode === "preflight") {
     if (!ready) process.exitCode = 1;
@@ -226,7 +260,7 @@ async function main() {
   }
   if (!ready) throw new Error("E2E preflight is blocked; fill only the named variables and retry.");
 
-  await runStatic(inventory);
+  await runStatic(inventory, options);
   const failures = [];
   for (const region of regions) {
     const env = createRegionEnvironment(region, inventory);

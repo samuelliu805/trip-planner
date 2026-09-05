@@ -29,7 +29,7 @@ const providerNeutralMigrationUrl = new URL(
   import.meta.url,
 );
 
-test("Phase 6 verification is manual, exact-SHA, protected, and fail-closed", async () => {
+test("Phase 6 verification accepts only an exact source SHA and stays protected", async () => {
   const [entryWorkflow, workflow] = await Promise.all([
     readFile(entryWorkflowUrl, "utf8"),
     readFile(workflowUrl, "utf8"),
@@ -39,15 +39,25 @@ test("Phase 6 verification is manual, exact-SHA, protected, and fail-closed", as
   assert.match(entryWorkflow, /\(inputs\.run_mode == 'phase5' \|\| inputs\.run_mode == 'phase6'\)/);
   assert.match(entryWorkflow, /verification_gate == 'VERIFY'/);
   assert.match(entryWorkflow, /uses: \.\/\.github\/workflows\/phase-5-dual-environment\.yml/);
+  assert.match(entryWorkflow, /pr-live-verification:[\s\S]*github\.event\.pull_request\.head\.sha/);
+  assert.match(entryWorkflow, /pr-live-verification:[\s\S]*run_static: false/);
+  assert.match(
+    entryWorkflow,
+    /github\.event\.pull_request\.user\.login == github\.repository_owner/,
+  );
+  assert.match(entryWorkflow, /verification-gate:[\s\S]*LIVE_RESULT/);
+  assert.match(entryWorkflow, /group: cloudbase-pg-[\s\S]*cancel-in-progress: false/);
   assert.match(workflow, /workflow_call:/);
   assert.match(workflow, /verification_gate == 'VERIFY'/);
   assert.equal(
     workflow.match(/test "\$\(git rev-parse HEAD\)" = "\$PHASE5_CANDIDATE_SHA"/g)?.length,
-    5,
+    3,
   );
-  assert.equal(workflow.match(/test "\$PHASE5_CANDIDATE_SHA" = "\$GITHUB_SHA"/g)?.length, 5);
-  assert.equal(workflow.match(/ref: \$\{\{ inputs\.candidate_ref \}\}/g)?.length, 5);
+  assert.equal(workflow.match(/test "\$PHASE5_CANDIDATE_SHA" = "\$PHASE5_SOURCE_SHA"/g)?.length, 3);
+  assert.equal(workflow.match(/ref: \$\{\{ inputs\.candidate_ref \}\}/g)?.length, 3);
   assert.equal(workflow.match(/environment: cloudbase-pg-dev/g)?.length, 2);
+  assert.doesNotMatch(workflow, /^  (?:global|cn)-build:/m);
+  assert.match(workflow, /group: phase-6-dual-environment\n  cancel-in-progress: false/);
   assert.doesNotMatch(`${entryWorkflow}\n${workflow}`, /continue-on-error/);
   assert.match(workflow, /cancel-in-progress: false/);
 });
@@ -89,6 +99,10 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
   }
   assert.match(workflow, /@cloudbase\/cli@3\.8\.1/);
   assert.match(workflow, /GITHUB_TOKEN: \$\{\{ github\.token \}\}/);
+  assert.match(
+    workflow,
+    /Require an exact-SHA Git-integrated Vercel Preview[\s\S]*PHASE5_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/,
+  );
   assert.match(
     workflow,
     /VERCEL_AUTOMATION_BYPASS_SECRET: \$\{\{ secrets\.VERCEL_AUTOMATION_BYPASS_SECRET \}\}/,
