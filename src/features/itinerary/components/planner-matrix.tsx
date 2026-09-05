@@ -93,6 +93,7 @@ export function PlannerMatrix({
       >
         <div
           className="min-w-max select-none"
+          data-date-column-expanded={selectedDayRow !== null ? "true" : undefined}
           data-fill-dragging={isFillDragging || undefined}
           role="grid"
           aria-label={t("{title} itinerary", { title: tripTitle })}

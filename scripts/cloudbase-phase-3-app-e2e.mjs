@@ -471,6 +471,9 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
       const header = document.querySelector('[data-day-header][data-day-number="1"]');
       const button = header?.querySelector('[data-add-day]');
       const headerRect = header?.getBoundingClientRect();
+      const matrixDateHeaderRect = document
+        .querySelector('.matrix-grid-header .matrix-date-column')
+        ?.getBoundingClientRect();
       const buttonRect = button?.getBoundingClientRect();
       return {
         buttonInside:
@@ -478,6 +481,9 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
           buttonRect.left >= headerRect.left - 0.5 &&
           buttonRect.right <= headerRect.right + 0.5,
         buttonTextFits: Boolean(button) && button.scrollWidth <= button.clientWidth + 1,
+        dateColumnTextFits: Boolean(header) && header.scrollWidth <= header.clientWidth + 1,
+        dateColumnWidth: headerRect?.width,
+        dateHeaderWidth: matrixDateHeaderRect?.width,
         documentFits: document.documentElement.scrollWidth <= innerWidth,
         hintCount: document.querySelectorAll('[data-day-actions-hint]').length,
         starterCount: document.querySelectorAll('[data-empty-trip-actions]').length,
@@ -487,6 +493,9 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
   assert.deepEqual(initial, {
     buttonInside: true,
     buttonTextFits: true,
+    dateColumnTextFits: true,
+    dateColumnWidth: 112,
+    dateHeaderWidth: 112,
     documentFits: true,
     hintCount: 0,
     starterCount: 1,
@@ -504,6 +513,32 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
     browser,
     `document.querySelector('[data-day-header][data-day-number="2"]')`,
     "Day 2 date cell",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="grid"]')?.dataset.dateColumnExpanded === "true"`,
+    "expanded mobile Date column",
+  );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `(() => {
+        const body = document.querySelector('[data-day-header][data-day-number="2"]');
+        const header = document.querySelector('.matrix-grid-header .matrix-date-column');
+        return {
+          bodyTextFits: Boolean(body) && body.scrollWidth <= body.clientWidth + 1,
+          bodyWidth: body?.getBoundingClientRect().width,
+          headerTextFits: Boolean(header) && header.scrollWidth <= header.clientWidth + 1,
+          headerWidth: header?.getBoundingClientRect().width,
+        };
+      })()`,
+    ),
+    {
+      bodyTextFits: true,
+      bodyWidth: 152,
+      headerTextFits: true,
+      headerWidth: 152,
+    },
   );
   assert.equal(
     await evaluate(browser, `Boolean(document.querySelector('[data-day-menu]'))`),

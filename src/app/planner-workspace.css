@@ -326,9 +326,21 @@ body:has(.planner-map-sheet) {
     box-sizing: border-box;
     background-color: var(--background);
     left: 0;
-    width: 9.5rem;
-    flex: 0 0 9.5rem;
+    width: 7rem;
+    flex: 0 0 7rem;
     z-index: 60;
+  }
+
+  .planner-matrix
+    [role="grid"][data-date-column-expanded="true"]
+    [role="row"]
+    > [role="columnheader"]:first-child,
+  .planner-matrix
+    [role="grid"][data-date-column-expanded="true"]
+    [role="row"]
+    > [role="rowheader"]:first-child {
+    width: 9.5rem;
+    flex-basis: 9.5rem;
   }
 
   .planner-matrix [role="row"] > [role="columnheader"]:first-child {

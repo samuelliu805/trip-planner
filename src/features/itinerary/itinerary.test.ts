@@ -3085,7 +3085,15 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(styles, /min-width: 900px[\s\S]*max-width: 1199px/);
   assert.match(styles, /minmax\(0, 56fr\) 4px minmax\(380px, 44fr\)/);
   assert.match(styles, /max-width: 899px[\s\S]*grid-template-rows: minmax\(0, 1fr\)/);
-  assert.match(styles, /width: 9\.5rem;[\s\S]*flex: 0 0 9\.5rem;/);
+  assert.match(
+    workspace,
+    /data-date-column-expanded=\{selectedDayRow !== null \? "true" : undefined\}/,
+  );
+  assert.match(styles, /width: 7rem;[\s\S]*flex: 0 0 7rem;/);
+  assert.match(
+    styles,
+    /data-date-column-expanded="true"[\s\S]*width: 9\.5rem;[\s\S]*flex-basis: 9\.5rem;/,
+  );
   assert.match(
     plannerDialogRule,
     /top: var\(--planner-editor-viewport-top, 0px\)[\s\S]*height: var\(--planner-editor-viewport-height, 100dvh\)[\s\S]*max-height: var\(--planner-editor-viewport-height, 100dvh\)/,
