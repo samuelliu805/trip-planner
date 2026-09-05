@@ -107,7 +107,7 @@ export function ResearchJourneyFields({
               label="From"
               onTextChange={(origin) => update(0, { origin })}
               placeIdName="originPlaceId"
-              placeholder={category === "flight" ? "Airport or city" : "Station or city"}
+              placeholder={category === "flight" ? "Airport or city" : undefined}
               snapshotName="originPlaceSnapshot"
               textName="originText"
             />
@@ -121,7 +121,7 @@ export function ResearchJourneyFields({
               label="To"
               onTextChange={(destination) => update(0, { destination })}
               placeIdName="destinationPlaceId"
-              placeholder={category === "flight" ? "Airport or city" : "Station or city"}
+              placeholder={category === "flight" ? "Airport or city" : undefined}
               snapshotName="destinationPlaceSnapshot"
               textName="destinationText"
             />

@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { SheetTitle } from "@/components/ui/sheet";
 import {
   PlannerEditorField,
   PlannerEditorTextField,
@@ -140,9 +140,6 @@ export function TripForm({
           >
             <Localized value={editor.title} />
           </SheetTitle>
-          <SheetDescription className="mt-0.5 max-w-prose text-sm leading-5 sm:mt-1">
-            <Localized value={editor.description} />
-          </SheetDescription>
           {state.error ? (
             <p className="mt-2 text-sm font-medium text-destructive" role="alert">
               <Localized value={state.error} />

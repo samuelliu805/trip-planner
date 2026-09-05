@@ -51,6 +51,11 @@ const ids = {
 test("Ideas field labels have authentic Simplified Chinese translations", () => {
   assert.equal(translateMessage("zh-CN", "Option name"), "备选方案名称");
   assert.equal(translateMessage("zh-CN", "Note (optional)"), "备注（选填）");
+  assert.equal(translateMessage("zh-CN", "Pick-up location"), "取车地点");
+  assert.equal(translateMessage("zh-CN", "Return location"), "还车地点");
+  assert.equal(translateMessage("zh-CN", "Check-in"), "入住");
+  assert.equal(translateMessage("zh-CN", "Check-out"), "退房");
+  assert.equal(translateMessage("zh-CN", "Stay name"), "住宿名称");
 });
 
 test("booking sites use exact saved details only for durable search links", () => {
@@ -806,7 +811,8 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
   assert.match(appBar, /useLinkStatus/);
   assert.match(appBar, /Opening \{label\}/);
   assert.match(planToolbar, /<TripAppBar[\s\S]*actions=\{<PlannerContextActions/);
-  assert.match(planToolbar, /menuItems=\{<PlannerContextMenuItems/);
+  assert.match(planToolbar, /menuItems=\{[\s\S]*<PlannerContextMenuItems/);
+  assert.match(planToolbar, /onRequestRemoveDay/);
   assert.match(compareWorkspace, /aria-label="Ideas filters"/);
   assert.doesNotMatch(compareWorkspace, /research-context-bar/);
   assert.doesNotMatch(routeState, /research-context-bar/);
@@ -1049,6 +1055,10 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.match(form, /<PlannerEditorHeader/);
   assert.match(form, /<PlannerItemStepNav/);
   assert.match(journey, /label="From"[\s\S]*label="To"/);
+  assert.doesNotMatch(journey, /Station or city/);
+  assert.match(commonFields, /message=\{nameLabels\[category\]\}[\s\S]*message="optional"/);
+  assert.doesNotMatch(commonFields, /Optional\. We’ll create/);
+  assert.match(commonFields, /We’ll create a clear route or place label when this is blank\./);
   assert.doesNotMatch(journey + multiCity + commonFields, /<details|Add times \(optional\)/);
   assert.match(schedule, /label="Departure"[\s\S]*label="Arrival"/);
   assert.match(schedule, /planner-editor-compound-field/);

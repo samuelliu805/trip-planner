@@ -32,7 +32,7 @@ export function prospectiveCityError(
     input.providerPlaceId,
     input.provider,
   );
-  if (!placeKey) return "Choose a city from Google Maps.";
+  if (!placeKey) return "Choose a city from the map.";
   const conflict = prospectiveNeighboringCityConflict(workspace.days, [
     {
       dayId: day.id,

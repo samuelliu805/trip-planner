@@ -1683,6 +1683,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(switcher, /canonicalPublicViews\.map/);
   assert.match(switcher, /AppBottomNavigation/);
   assert.match(tripAppBar, /TripMobileTabBar[\s\S]*AppBottomNavigation/);
+  assert.match(bottomNavigation, /material-ripple/);
   assert.match(bottomNavigation, /role="tablist"/);
   assert.match(bottomNavigation, /role="tab"/);
   assert.match(bottomNavigation, /aria-selected/);
@@ -1854,6 +1855,17 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     styles,
     /\.public-template-journal[\s\S]*\.timeline-node-v4:has\(\.public-item-media, \.public-item-attachments\)[\s\S]*flex-basis: 22\.5rem/,
   );
+  assert.match(
+    styles,
+    /\.public-template-journal \.public-view-switcher \{[^}]*width: 100%;[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+  );
+  assert.match(
+    styles,
+    /\.public-itinerary-shell\.public-template-journal \.public-view-switcher \{[^}]*width: 100%/,
+  );
+  assert.match(styles, /\.material-ripple::before \{[\s\S]*radial-gradient/);
+  assert.match(styles, /\.material-ripple \{[\s\S]*contain: paint/);
+  assert.doesNotMatch(styles, /\.material-ripple \{[^}]*position:/);
   assert.match(
     styles,
     /\.public-template-ethereal \.overview-day-v4,\s*\.public-template-ethereal \.overview-day-v4 \+ \.overview-day-v4 \{[^}]*padding-top: 1\.375rem;[^}]*padding-bottom: 1\.625rem/,
@@ -2134,6 +2146,8 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareVisibilityFields, /Visitor tools/);
   assert.match(shareVisibilityFields, /Image downloads/);
   assert.match(shareVisibilityFields, /allowLongImageDownload/);
+  assert.match(shareVisibilityFields, /NEXT_PUBLIC_APP_REGION !== "cn"/);
+  assert.match(shareVisibilityFields, /showGooglePlacePhotoSetting \? \(/);
   assert.doesNotMatch(shareVisibilityFields, /description=/);
   assert.doesNotMatch(shareVisibilityFields, /<details|More controls|ChevronDown/);
   assert.match(shareSettingCard, /min-\[1200px\]:hidden/);
@@ -2488,6 +2502,7 @@ test("Google place photos stay server-only, attributed, no-store, and public-tok
   assert.match(photoRoute, /private, no-store, max-age=0/);
   assert.match(media, /Photo by/);
   assert.match(media, /Google Maps/);
+  assert.match(media, /NEXT_PUBLIC_APP_REGION !== "cn"/);
   assert.match(migration, /security definer/);
   assert.match(migration, /link\.public_token = shared_token/);
   assert.match(migration, /link\.revoked_at is null/);

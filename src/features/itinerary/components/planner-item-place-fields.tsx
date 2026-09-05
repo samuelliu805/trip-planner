@@ -44,11 +44,11 @@ export function ItemTitleField({
   );
   const description = creatingActivity
     ? place
-      ? t("Filled from Google Maps. Edit if needed.")
+      ? t("Filled from the selected map place. Edit if needed.")
       : undefined
     : named
       ? place
-        ? t("Leave blank to display the selected place’s Google Maps name.")
+        ? t("Leave blank to display the selected map place name.")
         : type === "hotel"
           ? t("Use this when an exact map location is unavailable.")
           : type === "meal"

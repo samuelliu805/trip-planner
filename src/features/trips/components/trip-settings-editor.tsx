@@ -5,7 +5,6 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 
 type TripSettingsEditorContextValue = {
-  description: string;
   onClose: () => void;
   title: string;
 };
@@ -21,20 +20,18 @@ export function useTripSettingsEditorContext() {
 /** Trip settings provide copy and close behavior to the shared planner editor form. */
 export function TripSettingsEditor({
   children,
-  description,
   onOpenChange,
   open,
   title,
 }: {
   children: ReactNode;
-  description: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   title: string;
 }) {
   const context = useMemo(
-    () => ({ description, onClose: () => onOpenChange(false), title }),
-    [description, onOpenChange, title],
+    () => ({ onClose: () => onOpenChange(false), title }),
+    [onOpenChange, title],
   );
 
   return (

@@ -2,8 +2,6 @@
 
 import { format, parseISO } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { ChevronRight } from "lucide-react";
-
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import type { PlannerDay } from "@/features/itinerary/types";
 
@@ -13,7 +11,6 @@ export function PlannerDayHeaderCell({
   day,
   isOnlyDay,
   onInsert,
-  onRemove,
   onSelect,
   pending,
   selected,
@@ -21,7 +18,6 @@ export function PlannerDayHeaderCell({
   day: PlannerDay;
   isOnlyDay: boolean;
   onInsert: (position: number) => void;
-  onRemove: (dayId: string) => void;
   onSelect: () => void;
   pending: boolean;
   selected: boolean;
@@ -65,20 +61,9 @@ export function PlannerDayHeaderCell({
             <T message={" Add dates later "} />
           </span>
         )}
-        {!selected ? (
-          <span
-            className="mt-auto flex items-center gap-0.5 pt-1 font-sans text-[11px] font-semibold text-primary"
-            data-day-actions-hint=""
-          >
-            <T message={"Day actions"} />
-            <ChevronRight aria-hidden="true" className="size-3" />
-          </span>
-        ) : null}
         <DayActions
           day={day}
-          isOnlyDay={isOnlyDay}
           onInsert={onInsert}
-          onRemove={onRemove}
           pending={pending}
           visible={isOnlyDay || selected}
         />

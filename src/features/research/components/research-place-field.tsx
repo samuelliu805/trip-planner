@@ -120,7 +120,7 @@ export function ResearchPlaceField({
             value={text}
           />
           <Button
-            aria-label={t("Search Google Maps for {label}", { label: t(label) })}
+            aria-label={t("Search Maps for {label}", { label: t(label) })}
             className="size-11 shrink-0 p-0"
             onClick={() => setManual(false)}
             type="button"

@@ -187,7 +187,7 @@ export function plannerItemStepError({
   type: ItineraryItemType;
 }) {
   if (step.blocks.includes("place")) {
-    if (type === "location" && !place) return "Choose a city from Google Maps before continuing.";
+    if (type === "location" && !place) return "Choose a city from the map before continuing.";
     if (["hotel", "meal"].includes(type) && !place && !title.trim())
       return type === "hotel"
         ? "Choose a hotel location or enter a displayed hotel name."
@@ -195,7 +195,7 @@ export function plannerItemStepError({
   }
   if (step.id !== "basics") return undefined;
   if (creating && type === "activity" && !title.trim())
-    return "Search Google Maps or enter an activity name.";
+    return "Search Maps or enter an activity name.";
   if (!["car_rental", "hotel", "location", "meal", "transport"].includes(type) && !title.trim())
     return `${itemCopy[type].label} name is required.`;
   return undefined;

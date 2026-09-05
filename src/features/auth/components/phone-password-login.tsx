@@ -71,6 +71,12 @@ export function PhonePasswordLogin({
         {pending ? <LoaderCircle aria-hidden="true" className="size-5 animate-spin" /> : null}
         <T message={pending ? "Logging in…" : "Log in"} />
       </Button>
+      <p className="text-center text-sm text-muted-foreground">
+        <T message="Don’t have an account?" />{" "}
+        <Link className="font-semibold text-primary hover:underline" href="/signup">
+          <T message="Create account" />
+        </Link>
+      </p>
     </form>
   );
 }

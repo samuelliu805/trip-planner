@@ -38,6 +38,11 @@ export const tripsZhCN: Record<string, string> = {
   "Delete trip": "删除行程",
   "Deleting “": "正在删除“",
   "Edit trip": "行程设置",
+  "Trip name": "行程名称",
+  "Duration (days)": "行程天数",
+  "Changing the length moves the end date to match.": "更改行程天数会同步调整结束日期。",
+  "Add either date and the remaining date will be filled automatically.":
+    "填写任一日期后，另一个日期会自动补全。",
   "End date": "结束日期",
   "New trip": "新建行程",
   "Open planner": "打开行程表",

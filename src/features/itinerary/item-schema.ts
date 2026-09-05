@@ -178,7 +178,7 @@ function validateCommonItem(
   if (value.type === "location" && !value.placeId && !value.placeSnapshot)
     context.addIssue({
       code: "custom",
-      message: "Choose a city from Google Maps.",
+      message: "Choose a city from the map.",
       path: ["placeSnapshot"],
     });
   if (["hotel", "note"].includes(value.type) && (value.startTime || value.endTime))

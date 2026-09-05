@@ -35,9 +35,10 @@ test("keeps resend disabled through the full countdown and while a request is pe
 });
 
 test("phone auth fields share numeric typography without a fake verification code", async () => {
-  const [form, fields] = await Promise.all([
+  const [form, fields, passwordForm] = await Promise.all([
     readFile(new URL("./components/phone-auth-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/phone-credential-fields.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./components/phone-password-login.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(fields, /font-sans text-base leading-none/);
   assert.match(fields, />\+86<\/span>/);
@@ -47,4 +48,6 @@ test("phone auth fields share numeric typography without a fake verification cod
     `${form}\n${fields}`,
     /placeholder="000000"|defaultValue="000000"|value="000000"/,
   );
+  assert.match(passwordForm, /Don’t have an account\?/);
+  assert.match(passwordForm, /href="\/signup"[\s\S]*Create account/);
 });
