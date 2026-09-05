@@ -12,18 +12,25 @@ on:
       candidate_sha:
         required: true
         type: string
+      source_sha:
+        required: true
+        type: string
+      run_static:
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
   deployments: read
 
 concurrency:
-  group: phase-6-dual-environment-${{ github.sha }}
+  group: phase-6-dual-environment
   cancel-in-progress: false
 
 jobs:
   static:
-    if: ${{ inputs.verification_gate == 'VERIFY' }}
+    if: ${{ inputs.verification_gate == 'VERIFY' && inputs.run_static }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -51,9 +58,10 @@ jobs:
       - name: Verify exact workflow head
         env:
           PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PHASE5_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
-          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$PHASE5_SOURCE_SHA"
       - run: npm ci
       - name: Shared lint, types, format, i18n, and contracts
         run: |
@@ -80,87 +88,12 @@ jobs:
             "${{ inputs.candidate_sha }}" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             >> "$GITHUB_STEP_SUMMARY"
 
-  global-build:
-    if: ${{ inputs.verification_gate == 'VERIFY' }}
-    needs: static
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      APP_REGION: global
-      AUTH_PROVIDER: supabase
-      DATA_PROVIDER: supabase
-      NEXT_PUBLIC_APP_REGION: global
-      NEXT_PUBLIC_MAPS_PROVIDER: google
-      NEXT_PUBLIC_SITE_URL: https://global-preview.example.invalid
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
-      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
-      STORAGE_PROVIDER: supabase
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.candidate_ref }}
-      - uses: actions/setup-node@v5
-        with:
-          cache: npm
-          node-version: 24
-      - name: Verify exact workflow head
-        env:
-          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-        run: |
-          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
-          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
-      - run: npm ci
-      - run: npm run check:phase-5-environment -- global
-      - run: npm run build
-      - run: npm run check:build-secret-boundary
-      - run: npm run check:build-provider-isolation
-
-  cn-build:
-    if: ${{ inputs.verification_gate == 'VERIFY' }}
-    needs: static
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      AMAP_JS_SECURITY_CODE: ci-amap-security-code
-      AMAP_WEB_SERVICE_KEY: ci-amap-web-service-key
-      APP_REGION: cn
-      AUTH_PROVIDER: cloudbase
-      CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
-      CLOUDBASE_PUBLISHABLE_KEY: ci-cloudbase-publishable-key
-      CLOUDBASE_REGION: ap-shanghai
-      CN_PUBLIC_PHONE_AUTH_ENABLED: "true"
-      DATA_PROVIDER: cloudbase
-      NEXT_PUBLIC_AMAP_JS_API_KEY: ci-amap-browser-key
-      NEXT_PUBLIC_APP_REGION: cn
-      NEXT_PUBLIC_CLOUDBASE_ENV_ID: trip-planner-cn-dev-d3bz94038b26
-      NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: ci-cloudbase-publishable-key
-      NEXT_PUBLIC_CLOUDBASE_REGION: ap-shanghai
-      NEXT_PUBLIC_MAPS_PROVIDER: amap
-      NEXT_PUBLIC_SITE_URL: https://cn-preview.example.invalid
-      STORAGE_PROVIDER: cloudbase
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ inputs.candidate_ref }}
-      - uses: actions/setup-node@v5
-        with:
-          cache: npm
-          node-version: 24
-      - name: Verify exact workflow head
-        env:
-          PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
-        run: |
-          test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
-          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
-      - run: npm ci
-      - run: npm run check:phase-5-environment -- cn
-      - run: npm run build
-      - run: npm run check:build-secret-boundary
-      - run: npm run check:build-provider-isolation
-
   global-live:
-    if: ${{ inputs.verification_gate == 'VERIFY' }}
-    needs: [static, global-build]
+    if: >-
+      ${{ always() && inputs.verification_gate == 'VERIFY' &&
+      ((inputs.run_static && needs.static.result == 'success') ||
+      (!inputs.run_static && needs.static.result == 'skipped')) }}
+    needs: static
     environment: cloudbase-pg-dev
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -197,9 +130,10 @@ jobs:
       - name: Verify exact workflow head
         env:
           PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PHASE5_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
-          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$PHASE5_SOURCE_SHA"
       - run: npm ci
       - name: Require controlled Global Preview configuration
         run: |
@@ -240,8 +174,11 @@ jobs:
             >> "$GITHUB_STEP_SUMMARY"
 
   cn-live:
-    if: ${{ inputs.verification_gate == 'VERIFY' }}
-    needs: [static, cn-build]
+    if: >-
+      ${{ always() && inputs.verification_gate == 'VERIFY' &&
+      ((inputs.run_static && needs.static.result == 'success') ||
+      (!inputs.run_static && needs.static.result == 'skipped')) }}
+    needs: static
     environment: cloudbase-pg-dev
     runs-on: ubuntu-latest
     timeout-minutes: 75
@@ -284,9 +221,10 @@ jobs:
       - name: Verify exact workflow head
         env:
           PHASE5_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PHASE5_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$PHASE5_CANDIDATE_SHA"
-          test "$PHASE5_CANDIDATE_SHA" = "$GITHUB_SHA"
+          test "$PHASE5_CANDIDATE_SHA" = "$PHASE5_SOURCE_SHA"
       - run: npm ci
       - name: Validate the approved CloudBase dev target and required secrets
         run: |

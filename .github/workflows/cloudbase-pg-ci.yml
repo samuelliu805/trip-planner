@@ -21,7 +21,7 @@ on:
         required: false
         type: string
       candidate_ref:
-        description: Branch, tag, or SHA to check out (must resolve to candidate_sha and GITHUB_SHA)
+        description: Branch, tag, or SHA to check out (must resolve to candidate_sha and source event SHA)
         required: false
         type: string
       candidate_sha:
@@ -35,7 +35,7 @@ permissions:
 
 concurrency:
   group: cloudbase-pg-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   static:
@@ -78,8 +78,11 @@ jobs:
 
   global-build:
     if: >-
-      github.event_name != 'workflow_dispatch' ||
-      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')
+      (github.event_name != 'workflow_dispatch' ||
+      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')) &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository ||
+      github.event.pull_request.user.login != github.repository_owner)
     needs: static
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -109,8 +112,11 @@ jobs:
 
   cn-build:
     if: >-
-      github.event_name != 'workflow_dispatch' ||
-      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')
+      (github.event_name != 'workflow_dispatch' ||
+      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')) &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository ||
+      github.event.pull_request.user.login != github.repository_owner)
     needs: static
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -143,6 +149,49 @@ jobs:
       - run: npm run build
       - run: npm run check:build-secret-boundary
       - run: npm run check:build-provider-isolation
+
+  pr-live-verification:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner
+    needs: static
+    uses: ./.github/workflows/phase-5-dual-environment.yml
+    with:
+      candidate_ref: ${{ github.event.pull_request.head.sha }}
+      candidate_sha: ${{ github.event.pull_request.head.sha }}
+      source_sha: ${{ github.event.pull_request.head.sha }}
+      run_static: false
+      verification_gate: VERIFY
+    secrets: inherit
+
+  verification-gate:
+    if: >-
+      ${{ always() &&
+      (github.event_name != 'workflow_dispatch' ||
+      (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')) }}
+    needs: [static, global-build, cn-build, pr-live-verification]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CN_BUILD_RESULT: ${{ needs.cn-build.result }}
+      GLOBAL_BUILD_RESULT: ${{ needs.global-build.result }}
+      TRUSTED_PULL_REQUEST: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == github.repository_owner }}
+      LIVE_RESULT: ${{ needs.pr-live-verification.result }}
+      STATIC_RESULT: ${{ needs.static.result }}
+    steps:
+      - name: Require the correct exact-SHA verification matrix
+        run: |
+          test "$STATIC_RESULT" = "success"
+          if [ "$TRUSTED_PULL_REQUEST" = "true" ]; then
+            test "$LIVE_RESULT" = "success"
+            test "$GLOBAL_BUILD_RESULT" = "skipped"
+            test "$CN_BUILD_RESULT" = "skipped"
+          else
+            test "$LIVE_RESULT" = "skipped"
+            test "$GLOBAL_BUILD_RESULT" = "success"
+            test "$CN_BUILD_RESULT" = "success"
+          fi
 
   live-cloudbase-dev:
     if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'schema-security'
@@ -291,5 +340,7 @@ jobs:
     with:
       candidate_ref: ${{ inputs.candidate_ref }}
       candidate_sha: ${{ inputs.candidate_sha }}
+      source_sha: ${{ github.sha }}
+      run_static: true
       verification_gate: ${{ inputs.verification_gate }}
     secrets: inherit
