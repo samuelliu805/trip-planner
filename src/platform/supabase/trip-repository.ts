@@ -74,6 +74,24 @@ export class SupabaseTripRepository implements TripRepository {
     return trip;
   }
 
+  async importGuestDraft(input: {
+    draftId: string;
+    locale: "en" | "zh-CN";
+    payload: import("@/types/database").Json;
+  }) {
+    const supabase = await createSupabaseServerClient();
+    const { data: id, error } = await supabase.rpc("import_guest_trip_v1", {
+      guest_draft_id: input.draftId,
+      guest_locale: input.locale,
+      guest_payload: input.payload,
+    });
+    if (error || !id)
+      throw repositoryError("The local trip could not be saved to your account.", error);
+    const trip = await this.getById(id);
+    if (!trip) throw new PlatformOperationError("not_found", "The imported trip was not found.");
+    return trip;
+  }
+
   async update(id: string, input: UpdateTripInput) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.rpc("update_trip_plan", {

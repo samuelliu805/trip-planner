@@ -1552,6 +1552,7 @@ export type Database = {
           currency: string
           day_count: number
           end_date: string | null
+          guest_draft_id: string | null
           id: string
           owner_id: string
           start_date: string | null
@@ -1565,6 +1566,7 @@ export type Database = {
           currency?: string
           day_count?: number
           end_date?: string | null
+          guest_draft_id?: string | null
           id?: string
           owner_id: string
           start_date?: string | null
@@ -1578,6 +1580,7 @@ export type Database = {
           currency?: string
           day_count?: number
           end_date?: string | null
+          guest_draft_id?: string | null
           id?: string
           owner_id?: string
           start_date?: string | null
@@ -2147,6 +2150,14 @@ export type Database = {
           before_day_number: number
           target_trip_id: string
           target_variant_id: string
+        }
+        Returns: string
+      }
+      import_guest_trip_v1: {
+        Args: {
+          guest_draft_id: string
+          guest_locale?: string
+          guest_payload: Json
         }
         Returns: string
       }

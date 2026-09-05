@@ -127,6 +127,33 @@ export class CloudBaseTripRepository implements TripRepository {
     }
   }
 
+  async importGuestDraft(input: {
+    draftId: string;
+    locale: "en" | "zh-CN";
+    payload: import("@/types/database").Json;
+  }) {
+    const { db } = await createCloudBaseUserContext();
+    const id = await cloudBaseScalarUuidRpc({
+      execute: () =>
+        db.rpc("import_guest_trip_v1", {
+          guest_draft_id: input.draftId,
+          guest_locale: input.locale,
+          guest_payload: input.payload,
+        }),
+      recover: async () => {
+        const data = await rows(
+          db.from("trips").select("id").eq("guest_draft_id", input.draftId),
+          "The imported trip could not be recovered.",
+        );
+        return Array.isArray(data) && data.length === 1 ? data[0] : null;
+      },
+      safeMessage: "The local trip could not be saved to your account.",
+    });
+    const trip = await tripById(db, id);
+    if (!trip) throw new PlatformOperationError("not_found", "The imported trip was not found.");
+    return trip;
+  }
+
   async update(id: string, input: UpdateTripInput) {
     const { db } = await createCloudBaseUserContext();
     await cloudBaseScalarUuidRpc({

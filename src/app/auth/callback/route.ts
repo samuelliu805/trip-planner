@@ -9,6 +9,7 @@ import {
 } from "@/lib/telemetry/product";
 import { captureServerProductEvent } from "@/lib/telemetry/product-server";
 import { getAuthorizationCodeExchangeProvider } from "@/platform/composition/server";
+import { postLoginRefreshPath } from "@/features/auth/post-login";
 
 export async function GET(request: NextRequest) {
   const siteUrl = siteUrlFromHeaders(request.headers, request.nextUrl.origin);
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
           appUserId: user.id,
         },
       );
-      return NextResponse.redirect(new URL("/trips", siteUrl));
+      return NextResponse.redirect(new URL(postLoginRefreshPath, siteUrl));
     } catch (error) {
       await captureServerProductEvent(
         "auth_failed",

@@ -43,12 +43,14 @@ import {
 } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { placeSnapshotFromJson } from "@/lib/providers/places/types";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 export function useCreateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: CreateItineraryItemInput) =>
-      requireData(await createItineraryItem(input)),
+      persistence ? persistence.createItem(input) : requireData(await createItineraryItem(input)),
     onMutate: async (input) => {
       input.operationId ??= newTelemetryOperationId();
       input.surface ??= "planner";
@@ -61,7 +63,7 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
             operation_id: input.operationId,
             surface: input.surface,
           },
-          { actorType: "authenticated" },
+          { actorType: persistence?.actorType ?? "authenticated" },
         );
       }
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
@@ -125,18 +127,22 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(removeItem(current, context?.optimisticId ?? ""), item),
       );
-      if (affectsLocalityProjection(item.type)) void invalidateVariantComparison(client, tripId);
-      if (affectsDecisionSummary(item.type)) void invalidateVariantDecisionSummary(client, tripId);
-      void refreshResearchWorkspace(client, tripId, variantId);
+      if (!persistence) {
+        if (affectsLocalityProjection(item.type)) void invalidateVariantComparison(client, tripId);
+        if (affectsDecisionSummary(item.type))
+          void invalidateVariantDecisionSummary(client, tripId);
+        void refreshResearchWorkspace(client, tripId, variantId);
+      }
     },
   });
 }
 
 export function useUpdateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: UpdateItineraryItemInput) =>
-      requireData(await updateItineraryItem(input)),
+      persistence ? persistence.updateItem(input) : requireData(await updateItineraryItem(input)),
     onMutate: async (input) => {
       input.operationId ??= newTelemetryOperationId();
       input.surface ??= "planner";
@@ -214,20 +220,23 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(current, item),
       );
-      if (localityProjectionItemChanged(context?.existing, item))
-        void invalidateVariantComparison(client, tripId);
-      if (decisionSummaryItemChanged(context?.existing, item))
-        void invalidateVariantDecisionSummary(client, tripId);
-      void refreshResearchWorkspace(client, tripId, variantId);
+      if (!persistence) {
+        if (localityProjectionItemChanged(context?.existing, item))
+          void invalidateVariantComparison(client, tripId);
+        if (decisionSummaryItemChanged(context?.existing, item))
+          void invalidateVariantDecisionSummary(client, tripId);
+        void refreshResearchWorkspace(client, tripId, variantId);
+      }
     },
   });
 }
 
 export function useDeleteItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: DeleteItineraryItemInput) =>
-      requireData(await deleteItineraryItem(input)),
+      persistence ? persistence.deleteItem(input) : requireData(await deleteItineraryItem(input)),
     onMutate: async (input) => {
       input.operationId ??= newTelemetryOperationId();
       input.surface ??= "planner";
@@ -245,20 +254,23 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (_data, _input, context) => {
-      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-      if (context?.deletedLocalitySource) void invalidateVariantComparison(client, tripId);
-      if (context?.deletedDecisionSummaryItem)
-        void invalidateVariantDecisionSummary(client, tripId);
-      void refreshResearchWorkspace(client, tripId, variantId);
+      if (!persistence) {
+        void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+        if (context?.deletedLocalitySource) void invalidateVariantComparison(client, tripId);
+        if (context?.deletedDecisionSummaryItem)
+          void invalidateVariantDecisionSummary(client, tripId);
+        void refreshResearchWorkspace(client, tripId, variantId);
+      }
     },
   });
 }
 
 export function useClearItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: ClearItineraryItemsInput) =>
-      requireData(await clearItineraryItems(input)),
+      persistence ? persistence.clearItems(input) : requireData(await clearItineraryItems(input)),
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
@@ -278,11 +290,13 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
     onSuccess: (_data, _input, context) => {
-      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-      if (context?.clearedLocalitySource) void invalidateVariantComparison(client, tripId);
-      if (context?.clearedDecisionSummaryItem)
-        void invalidateVariantDecisionSummary(client, tripId);
-      void refreshResearchWorkspace(client, tripId, variantId);
+      if (!persistence) {
+        void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+        if (context?.clearedLocalitySource) void invalidateVariantComparison(client, tripId);
+        if (context?.clearedDecisionSummaryItem)
+          void invalidateVariantDecisionSummary(client, tripId);
+        void refreshResearchWorkspace(client, tripId, variantId);
+      }
     },
   });
 }

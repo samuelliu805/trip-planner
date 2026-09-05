@@ -13,6 +13,7 @@ import {
 } from "./lib/cloudbase-pg-live.mjs";
 import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { stopChild } from "./lib/child-process.mjs";
+import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import { resolveCnBrowserOrigin } from "./lib/phase-5-cn-browser-origin.mjs";
 
@@ -1812,6 +1813,111 @@ async function controlledData(operation, label) {
   return dataOrThrow(result, label);
 }
 
+async function verifyCloudBaseGuestImport(fixture) {
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  fixture.payload.trip.owner_id = "untrusted-client-owner";
+  const parameters = {
+    guest_draft_id: fixture.draftId,
+    guest_locale: "zh-CN",
+    guest_payload: fixture.payload,
+  };
+  await runCloudBaseSdkCall(() => db.rpc("import_guest_trip_v1", parameters), "guest import", {
+    attempts: 1,
+    timeoutMilliseconds: 30_000,
+  });
+  const imported = await controlledData(
+    () =>
+      db
+        .from("trips")
+        .select("id,owner_id,title,guest_draft_id")
+        .eq("guest_draft_id", fixture.draftId),
+    "guest import lookup",
+  );
+  assert.equal(imported.length, 1, "CN guest import did not create exactly one Trip.");
+  const tripId = imported[0].id;
+  assert.notEqual(imported[0].owner_id, "untrusted-client-owner");
+  assert.ok(imported[0].owner_id, "CN guest import did not use the authenticated owner.");
+  assert.equal(imported[0].title, fixture.title);
+
+  await runCloudBaseSdkCall(
+    () => db.rpc("import_guest_trip_v1", parameters),
+    "guest import replay",
+    { attempts: 1, timeoutMilliseconds: 30_000 },
+  );
+  const replayed = await controlledData(
+    () => db.from("trips").select("id").eq("guest_draft_id", fixture.draftId),
+    "guest import replay lookup",
+  );
+  assert.deepEqual(replayed, [{ id: tripId }], "CN guest import replay duplicated the Trip.");
+
+  const [variants, days, items, places, links] = await Promise.all([
+    controlledData(
+      () => db.from("route_variants").select("id,name").eq("trip_id", tripId),
+      "guest variant evidence",
+    ),
+    controlledData(
+      () => db.from("trip_days").select("id,title,notes").eq("variant_id", fixture.variantId),
+      "guest day evidence",
+    ),
+    controlledData(
+      () =>
+        db
+          .from("itinerary_items")
+          .select("id,title,notes,price_amount,price_currency,place_id")
+          .eq("trip_id", tripId),
+      "guest item evidence",
+    ),
+    controlledData(
+      () =>
+        db
+          .from("places")
+          .select("id,source,provider_place_id,coordinate_system")
+          .eq("trip_id", tripId),
+      "guest place evidence",
+    ),
+    controlledData(
+      () => db.from("itinerary_item_links").select("id,label,url").eq("item_id", fixture.itemId),
+      "guest link evidence",
+    ),
+  ]);
+  assert.deepEqual(variants, [{ id: fixture.variantId, name: "Main plan" }]);
+  assert.deepEqual(days, [{ id: fixture.dayId, notes: "Guest day note", title: "Arrival" }]);
+  assert.deepEqual(
+    items.map((item) => ({ ...item, price_amount: Number(item.price_amount) })),
+    [
+      {
+        id: fixture.itemId,
+        notes: "Guest import fixture",
+        place_id: fixture.placeId,
+        price_amount: 42.5,
+        price_currency: "CNY",
+        title: `${runLabel} guest activity`,
+      },
+    ],
+  );
+  assert.deepEqual(places, [
+    {
+      coordinate_system: "wgs84",
+      id: fixture.placeId,
+      provider_place_id: fixture.providerPlaceId,
+      source: "amap",
+    },
+  ]);
+  assert.deepEqual(links, [
+    { id: fixture.linkId, label: "Details", url: "https://example.com/details" },
+  ]);
+
+  const anonymous = initializeLiveClient(config);
+  const anonymousImport = await runCloudBaseSdkCall(
+    () => anonymous.db.rpc("import_guest_trip_v1", parameters),
+    "anonymous guest import denial",
+    { attempts: 1, timeoutMilliseconds: 30_000 },
+  );
+  assert.ok(anonymousImport.error, "CN anonymous client invoked guest import.");
+  return tripId;
+}
+
 async function clickElement(browser, elementExpression, label) {
   const point = await evaluate(
     browser,
@@ -3235,6 +3341,8 @@ async function run() {
   let browserTlsProxy;
   let browser;
   let tripId;
+  let guestFixture;
+  let guestTripId;
   let assertionError;
   let cleanup;
   try {
@@ -3278,6 +3386,8 @@ async function run() {
     await login(browser, userB, process.env.CLOUDBASE_TEST_USER_B_PASSWORD);
     await clearCookies(browser);
     await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
+    guestFixture = createGuestTripFixture("cn", `${runLabel} guest`);
+    guestTripId = await verifyCloudBaseGuestImport(guestFixture);
     let names = await cookieNames(browser);
     assert(names.includes("tp-cn-access-token"));
     assert(names.includes("tp-cn-refresh-token"));
@@ -3628,7 +3738,34 @@ async function run() {
       );
     };
     try {
-      cleanup = await cleanupFixture(tripId);
+      const guestRecoveryId =
+        guestTripId ||
+        (guestFixture
+          ? await (async () => {
+              const config = loadLiveConfig();
+              const { db } = await controlledDataClient(
+                userA,
+                config.CLOUDBASE_TEST_USER_A_PASSWORD,
+              );
+              const rows = await controlledData(
+                () => db.from("trips").select("id").eq("guest_draft_id", guestFixture.draftId),
+                "guest cleanup recovery",
+              );
+              return rows[0]?.id;
+            })()
+          : undefined);
+      const results = [];
+      for (const fixtureId of [tripId, guestRecoveryId]) {
+        if (fixtureId && !results.some(({ id }) => id === fixtureId))
+          results.push({ id: fixtureId, result: await cleanupFixture(fixtureId) });
+      }
+      cleanup = results.reduce(
+        (total, entry) => ({
+          deleted: total.deleted + entry.result.deleted,
+          remaining: total.remaining + entry.result.remaining,
+        }),
+        { deleted: 0, remaining: 0 },
+      );
     } catch (error) {
       recordCleanupFailure(error);
     }

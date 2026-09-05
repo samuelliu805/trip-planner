@@ -6,6 +6,7 @@ import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import type { RouteMode } from "@/lib/telemetry/events";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 import { isOverviewRouteLeg, type OverviewStage } from "./overview";
 import { useCalculateOverviewRoute } from "./queries";
@@ -58,6 +59,7 @@ export function useOverviewRoute(
   tripId: string,
   variantId: string,
 ): OverviewRouteUi {
+  const persistence = usePlannerPersistence();
   const stageKey = keyForStages(stages, defaultModes, variantId);
   const [storedState, setStoredState] = useState<OverviewRouteState | null>(null);
   const [editing, setEditing] = useState(false);
@@ -92,6 +94,10 @@ export function useOverviewRoute(
   });
 
   async function calculate() {
+    if (persistence) {
+      persistence.requestAccountFeature("route");
+      return;
+    }
     const changed = segments.filter(({ calculatedLeg, mode }) => mode && !calculatedLeg);
     if (!changed.length) {
       setEditing(false);
@@ -163,7 +169,7 @@ export function useOverviewRoute(
           route_view: "overview",
           surface: "route_panel",
         },
-        { actorType: "authenticated" },
+        { actorType: persistence?.actorType ?? "authenticated" },
       );
       updateState((current) => ({
         ...current,

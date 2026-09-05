@@ -7,15 +7,17 @@ import {
   plannerViewForLayout,
 } from "@/features/itinerary/planner-view-telemetry";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 export function usePlannerViewTelemetry(mapExpanded: boolean) {
+  const persistence = usePlannerPersistence();
   const [splitLayout, setSplitLayout] = useState<boolean | null>(null);
   const [reportView] = useState(() =>
     createPlannerViewReporter((plannerView) =>
       captureBrowserProductEvent(
         "planner_view_changed",
         { planner_view: plannerView, surface: "planner" },
-        { actorType: "authenticated" },
+        { actorType: persistence?.actorType ?? "authenticated" },
       ),
     ),
   );

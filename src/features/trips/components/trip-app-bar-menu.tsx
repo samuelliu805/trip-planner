@@ -33,6 +33,7 @@ export function TripBarMenu({
   accountEmail,
   deletePending = false,
   extraItems,
+  guest = false,
   mobileMenuItems,
   mobileQuickActions = [],
   onDeleteTrip,
@@ -42,6 +43,7 @@ export function TripBarMenu({
   accountEmail: string;
   deletePending?: boolean;
   extraItems?: ReactNode;
+  guest?: boolean;
   mobileMenuItems?: (runAction: RunMobileAction) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
   onDeleteTrip?: () => void;
@@ -114,22 +116,29 @@ export function TripBarMenu({
             <div className="px-1 py-1">
               <LanguageSwitcher className="w-full justify-start" expanded />
             </div>
-            <p className="truncate px-2 py-1.5 text-xs text-muted-foreground" title={accountEmail}>
-              {accountEmail}
-            </p>
-            <DropdownMenuItem asChild>
-              <Link href="/account">
-                <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
-              </Link>
-            </DropdownMenuItem>
-            <form action={logout}>
-              <input name="surface" type="hidden" value="planner_app_bar" />
-              <DropdownMenuItem asChild>
-                <button className="w-full" type="submit">
-                  <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
-                </button>
-              </DropdownMenuItem>
-            </form>
+            {guest ? null : (
+              <>
+                <p
+                  className="truncate px-2 py-1.5 text-xs text-muted-foreground"
+                  title={accountEmail}
+                >
+                  {accountEmail}
+                </p>
+                <DropdownMenuItem asChild>
+                  <Link href="/account">
+                    <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
+                  </Link>
+                </DropdownMenuItem>
+                <form action={logout}>
+                  <input name="surface" type="hidden" value="planner_app_bar" />
+                  <DropdownMenuItem asChild>
+                    <button className="w-full" type="submit">
+                      <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
+                    </button>
+                  </DropdownMenuItem>
+                </form>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -205,31 +214,35 @@ export function TripBarMenu({
               </Button>
             ) : null}
             <LanguageSwitcher expanded />
-            <p
-              className="truncate px-3 pb-1 pt-2 text-xs text-muted-foreground"
-              title={accountEmail}
-            >
-              {accountEmail}
-            </p>
-            <Button
-              asChild
-              className="min-h-11 w-full justify-start px-3 font-normal"
-              variant="ghost"
-            >
-              <Link href="/account" onClick={() => setPanelOpen(false)}>
-                <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
-              </Link>
-            </Button>
-            <form action={logout}>
-              <input name="surface" type="hidden" value="planner_app_bar" />
-              <Button
-                className="min-h-11 w-full justify-start px-3 font-normal"
-                type="submit"
-                variant="ghost"
-              >
-                <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
-              </Button>
-            </form>
+            {guest ? null : (
+              <>
+                <p
+                  className="truncate px-3 pb-1 pt-2 text-xs text-muted-foreground"
+                  title={accountEmail}
+                >
+                  {accountEmail}
+                </p>
+                <Button
+                  asChild
+                  className="min-h-11 w-full justify-start px-3 font-normal"
+                  variant="ghost"
+                >
+                  <Link href="/account" onClick={() => setPanelOpen(false)}>
+                    <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
+                  </Link>
+                </Button>
+                <form action={logout}>
+                  <input name="surface" type="hidden" value="planner_app_bar" />
+                  <Button
+                    className="min-h-11 w-full justify-start px-3 font-normal"
+                    type="submit"
+                    variant="ghost"
+                  >
+                    <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
+                  </Button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       </PullUpPanel>

@@ -26,6 +26,11 @@ export const browserProductEventNames = [
   "public_share_view_changed",
   "attachment_upload_started",
   "attachment_opened",
+  "guest_trip_created",
+  "guest_trip_resumed",
+  "guest_trip_local_save_failed",
+  "guest_trip_auth_gate_opened",
+  "guest_trip_discarded",
 ] as const;
 
 export const serverProductEventNames = [
@@ -78,6 +83,9 @@ export const serverProductEventNames = [
   "attachment_upload_failed",
   "attachment_deleted",
   "attachment_delete_failed",
+  "guest_trip_import_started",
+  "guest_trip_import_succeeded",
+  "guest_trip_import_failed",
 ] as const;
 
 export type BrowserProductEventName = (typeof browserProductEventNames)[number];
@@ -126,6 +134,7 @@ export type ShareArtifact = "page" | "image";
 export type ExportMode = "new" | "replace";
 export type PublicShareView = "overview" | "table" | "timeline";
 export type AttachmentTarget = "itinerary" | "research";
+export type GuestAction = "attachment" | "route" | "save" | "share";
 export type ProductSurface =
   | "account"
   | "auth_form"
@@ -142,7 +151,8 @@ export type ProductSurface =
   | "share_dialog"
   | "public_share"
   | "attachment_editor"
-  | "export_panel";
+  | "export_panel"
+  | "guest_trip";
 
 type BrowserContext = { environment: TelemetryEnvironment; telemetry_region: TelemetryRegion };
 export type ProductContext = BrowserContext & {
@@ -168,11 +178,20 @@ type ItemEditorProperties = ItemProperties & {
 type ResearchProperties = RequiredOperationContext & { ideas_category: IdeasCategory };
 type RouteProperties = RequiredOperationContext & { route_mode: RouteMode; route_view: RouteView };
 type AttachmentProperties = RequiredOperationContext & { attachment_target: AttachmentTarget };
+type GuestProperties = OperationContext & { guest_action?: GuestAction };
 
 export type ProductTelemetryEventProperties = {
   auth_failed: AuthProperties & { error_code: ErrorCode };
   auth_started: AuthProperties & { operation_id: string; surface: "auth_form" };
   auth_succeeded: AuthProperties;
+  guest_trip_auth_gate_opened: GuestProperties & { guest_action: GuestAction };
+  guest_trip_created: GuestProperties;
+  guest_trip_discarded: GuestProperties;
+  guest_trip_import_failed: GuestProperties & { error_code: ErrorCode };
+  guest_trip_import_started: GuestProperties;
+  guest_trip_import_succeeded: GuestProperties;
+  guest_trip_local_save_failed: GuestProperties & { error_code: ErrorCode };
+  guest_trip_resumed: GuestProperties;
   item_create_failed: ItemProperties & { error_code: ErrorCode };
   item_create_started: ItemProperties & { operation_id: string };
   item_created: ItemProperties;

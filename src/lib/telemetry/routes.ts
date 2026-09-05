@@ -15,6 +15,7 @@ const safeStaticRoutes = new Set([
   "/api/internal/telemetry-smoke",
   "/auth/callback",
   "/home",
+  "/guest",
   "/login",
   "/signup",
   "/trips",
@@ -105,6 +106,7 @@ export function normalizeTelemetryRoute(value: string): string {
 export function telemetryScreenForRoute(route: string): TelemetryScreen {
   if (route === "/" || route === "/home") return "landing";
   if (route === "/login") return "login";
+  if (route === "/guest") return "guest_trip";
   if (route === "/signup") return "signup";
   if (route === "/trips") return "trips_list";
   if (route === "/trips/[tripId]") return "trip_plan";
@@ -120,7 +122,7 @@ export function ideasCategoryForPath(value: string): IdeasCategory | undefined {
 }
 
 export function isAnonymousTelemetryRoute(route: string): boolean {
-  return route === "/login" || route === "/signup";
+  return route === "/guest" || route === "/login" || route === "/signup";
 }
 
 export function isPublicShareTelemetryRoute(route: string): boolean {

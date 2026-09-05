@@ -3,6 +3,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 
 import { createClient } from "@supabase/supabase-js";
 
+import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { runGlobalBrowserSmoke } from "./lib/phase-5-global-browser-smoke.mjs";
 
 const runLabel = `phase5-global-${Date.now()}-${randomUUID()}`;
@@ -86,6 +87,66 @@ async function updateTrip(database, tripId, title) {
   );
 }
 
+async function verifyGuestImport(database, ownerId) {
+  const fixture = createGuestTripFixture("global", runLabel);
+  fixture.payload.trip.owner_id = "untrusted-client-owner";
+  const parameters = {
+    guest_draft_id: fixture.draftId,
+    guest_locale: "en",
+    guest_payload: fixture.payload,
+  };
+  const firstId = ok(await database.rpc("import_guest_trip_v1", parameters), "guest import");
+  const replayId = ok(
+    await database.rpc("import_guest_trip_v1", parameters),
+    "guest import replay",
+  );
+  assert.equal(replayId, firstId, "Guest import replay created a different Trip.");
+
+  const [trips, variants, days, items, places, links] = await Promise.all([
+    database.from("trips").select("id,owner_id,title,guest_draft_id").eq("id", firstId),
+    database.from("route_variants").select("id,name").eq("trip_id", firstId),
+    database.from("trip_days").select("id,title,notes").eq("variant_id", fixture.variantId),
+    database
+      .from("itinerary_items")
+      .select("id,title,notes,price_amount,price_currency,place_id")
+      .eq("trip_id", firstId),
+    database
+      .from("places")
+      .select("id,source,provider_place_id,coordinate_system")
+      .eq("trip_id", firstId),
+    database.from("itinerary_item_links").select("id,label,url").eq("item_id", fixture.itemId),
+  ]).then((results) =>
+    results.map((result, index) => rows(result, `guest import evidence ${index + 1}`)),
+  );
+  assert.deepEqual(trips, [
+    { guest_draft_id: fixture.draftId, id: firstId, owner_id: ownerId, title: fixture.title },
+  ]);
+  assert.deepEqual(variants, [{ id: fixture.variantId, name: "Main plan" }]);
+  assert.deepEqual(days, [{ id: fixture.dayId, notes: "Guest day note", title: "Arrival" }]);
+  assert.deepEqual(items, [
+    {
+      id: fixture.itemId,
+      notes: "Guest import fixture",
+      place_id: fixture.placeId,
+      price_amount: 42.5,
+      price_currency: "USD",
+      title: `${runLabel} activity`,
+    },
+  ]);
+  assert.deepEqual(places, [
+    {
+      coordinate_system: "wgs84",
+      id: fixture.placeId,
+      provider_place_id: fixture.providerPlaceId,
+      source: "google",
+    },
+  ]);
+  assert.deepEqual(links, [
+    { id: fixture.linkId, label: "Details", url: "https://example.com/details" },
+  ]);
+  return { ...fixture, tripId: firstId };
+}
+
 async function requireProviderNeutralPlaceSchema(database) {
   const result = await database
     .from("places")
@@ -129,6 +190,7 @@ async function run() {
   const password = `${randomBytes(24).toString("base64url")}aA1!`;
   const entries = [];
   const tripIds = [];
+  let guestFixture;
   let failure;
 
   try {
@@ -199,6 +261,8 @@ async function run() {
     ok(await userB.client.auth.signOut(), "B logout");
 
     await signIn(userA, password);
+    guestFixture = await verifyGuestImport(userA.client, userA.id);
+    tripIds.push(guestFixture.tripId);
     assert.equal(
       rows(await userA.client.from("trips").select("id").eq("id", bTrip), "A cross read").length,
       0,
@@ -249,6 +313,16 @@ async function run() {
     ok(await userA.client.auth.signOut(), "A final logout");
 
     const anonymous = client(url, publishableKey);
+    assert.ok(
+      (
+        await anonymous.rpc("import_guest_trip_v1", {
+          guest_draft_id: guestFixture.draftId,
+          guest_locale: "en",
+          guest_payload: guestFixture.payload,
+        })
+      ).error,
+      "Anonymous client invoked guest import.",
+    );
     const anonymousTrips = await anonymous.from("trips").select("id").in("id", tripIds);
     assert.ok(anonymousTrips.error || rows(anonymousTrips, "anonymous trips").length === 0);
     const projection = ok(
@@ -257,7 +331,7 @@ async function run() {
     );
     assertPublicProjection(projection, intendedTitle, privateTitle, userA.id);
     if (process.env.PHASE5_REQUIRE_BROWSER_SMOKE === "1") {
-      await runGlobalBrowserSmoke({
+      const guestTripId = await runGlobalBrowserSmoke({
         email: userA.email,
         intendedTitle,
         password,
@@ -265,6 +339,7 @@ async function run() {
         publicToken: share.publicToken,
         tripId: aTrip,
       });
+      if (guestTripId) tripIds.push(guestTripId);
     }
     const expired = await anonymous.auth.setSession({
       access_token: "expired.invalid.token",
@@ -275,9 +350,10 @@ async function run() {
     failure = error;
   } finally {
     try {
-      if (tripIds.length) ok(await admin.from("trips").delete().in("id", tripIds), "trip cleanup");
-      for (const entry of entries) ok(await admin.auth.admin.deleteUser(entry.id), "user cleanup");
       const ownerIds = entries.map(({ id }) => id);
+      if (ownerIds.length)
+        ok(await admin.from("trips").delete().in("owner_id", ownerIds), "trip cleanup");
+      for (const entry of entries) ok(await admin.auth.admin.deleteUser(entry.id), "user cleanup");
       const tripResidue = ownerIds.length
         ? ((
             await admin

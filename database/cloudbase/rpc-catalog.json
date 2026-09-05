@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 144,
+  "publicFunctionCount": 145,
   "catalog": [
     {
       "schema": "public",
@@ -965,6 +965,20 @@
       "safeSearchPath": true,
       "category": "external_anonymous",
       "authorization": "public_token_snapshot"
+    },
+    {
+      "schema": "public",
+      "signature": "import_guest_trip_v1(uuid,jsonb,text)",
+      "arguments": [
+        { "name": "guest_draft_id", "type": "uuid" },
+        { "name": "guest_payload", "type": "jsonb" },
+        { "name": "guest_locale", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "claim_bound_create"
     },
     {
       "schema": "public",

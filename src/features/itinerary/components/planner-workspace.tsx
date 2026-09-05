@@ -40,7 +40,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
     c.selectedItem ??
     (c.selectedCount === 1 && c.selectedItems.length === 1 ? c.selectedItems[0] : undefined);
   const researchContext =
-    c.selectedCount === 1
+    !props.guestExperience && c.selectedCount === 1
       ? planResearchContext(c.workspace.variant.id, c.activeDay, c.activeCategory, activeItem)
       : undefined;
   const rawCostLines = useMemo(
@@ -105,6 +105,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         deleteError={props.deleteError}
         fillLabel={c.fillLabel}
         fillThroughDay={c.workspace.days[c.selectionEnd.row]?.day_number}
+        guestExperience={props.guestExperience}
         insertDay={c.insertDay}
         interactionError={c.interactionError}
         isFillDragging={c.isFillDragging}
@@ -133,17 +134,23 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         workspaceDayCount={c.projectedWorkspace.days.length}
         workspaceError={Boolean(c.workspaceError)}
         variantControls={
-          <RouteVariantControls
-            activeVariantId={c.workspace.variant.id}
-            comparisonBlockingReason={c.map.comparison.blockingReason}
-            onCompare={() => {
-              c.map.enterComparison();
-              mapSheet.open();
-            }}
-            title={props.trip.title}
-            tripId={props.trip.id}
-            variants={c.variants}
-          />
+          props.guestExperience ? (
+            <span className="block truncate text-sm font-extrabold sm:text-base">
+              {props.trip.title}
+            </span>
+          ) : (
+            <RouteVariantControls
+              activeVariantId={c.workspace.variant.id}
+              comparisonBlockingReason={c.map.comparison.blockingReason}
+              onCompare={() => {
+                c.map.enterComparison();
+                mapSheet.open();
+              }}
+              title={props.trip.title}
+              tripId={props.trip.id}
+              variants={c.variants}
+            />
+          )
         }
         variantId={c.workspace.variant.id}
       />
@@ -204,7 +211,9 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         visibleSelectionBounds={c.visibleSelectionBounds}
         workspace={c.projectedWorkspace}
       />
-      <TripMobileTabBar active="plan" tripId={props.trip.id} variantId={c.workspace.variant.id} />
+      {props.guestExperience ? null : (
+        <TripMobileTabBar active="plan" tripId={props.trip.id} variantId={c.workspace.variant.id} />
+      )}
       <PlannerSheets
         compactMapEmptyState={c.map.compactMapEmptyState}
         compactMapLines={c.map.compactMapLines}

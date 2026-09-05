@@ -81,6 +81,7 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
           },
         ]}
         mutating={props.mutating}
+        guestExperience={props.guestExperience}
         onTripSettings={() => props.setSettingsOpen(true)}
         shareControls={props.shareControls}
         title={props.trip.title}

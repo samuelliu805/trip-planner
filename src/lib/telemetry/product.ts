@@ -30,6 +30,7 @@ const surfaces = new Set<ProductSurface>([
   "public_share",
   "attachment_editor",
   "export_panel",
+  "guest_trip",
 ]);
 
 export function newTelemetryOperationId(): string {

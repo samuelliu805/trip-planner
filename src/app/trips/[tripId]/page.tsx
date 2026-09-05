@@ -16,7 +16,13 @@ import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
-  searchParams: Promise<{ error?: string; settings?: string; share?: string; variant?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    item?: string;
+    settings?: string;
+    share?: string;
+    variant?: string;
+  }>;
 };
 
 export default async function TripPage({ params, searchParams }: TripPageProps) {
@@ -70,6 +76,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             exchangeRates={exchangeRates}
             initialResearchItems={researchItemsResult.data}
             initialResearchSelections={planState.selections}
+            initialEditorItemId={query.item}
             initialSettingsOpen={query.settings === "1"}
             initialVariants={variantsResult.data}
             initialWorkspace={workspace}

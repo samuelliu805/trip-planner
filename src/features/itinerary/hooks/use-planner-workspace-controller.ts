@@ -27,13 +27,14 @@ import { usePlannerMap } from "./use-planner-map";
 import { usePlannerMutations } from "./use-planner-mutations";
 
 export function usePlannerWorkspaceController({
+  initialEditorItemId,
   initialSettingsOpen = false,
   initialVariants,
   initialWorkspace,
   trip,
 }: Pick<
   PlannerWorkspaceProps,
-  "initialSettingsOpen" | "initialVariants" | "initialWorkspace" | "trip"
+  "initialEditorItemId" | "initialSettingsOpen" | "initialVariants" | "initialWorkspace" | "trip"
 >) {
   const { data: workspace = initialWorkspace, error: workspaceError } = usePlannerWorkspace(
     trip.id,
@@ -49,7 +50,14 @@ export function usePlannerWorkspaceController({
   const [selectionAnchor, setSelectionAnchor] = useState<GridCoordinate>(() => initialSelection);
   const [selectionEnd, commitSelectionEnd] = useState<GridCoordinate>(() => initialSelection);
   const [selectedDayRow, setSelectedDayRow] = useState<number | null>(null);
-  const [editor, setEditor] = useState<EditorState | null>(null);
+  const [editor, setEditor] = useState<EditorState | null>(() => {
+    if (!initialEditorItemId) return null;
+    for (const day of initialWorkspace.days) {
+      const item = day.items.find(({ id }) => id === initialEditorItemId);
+      if (item) return { dayId: day.id, item, type: item.type };
+    }
+    return null;
+  });
   const [draftItem, setDraftItem] = useState<ItineraryItem | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(initialSettingsOpen);
   const [arrangeActivitiesRequest, setArrangeActivitiesRequest] = useState<{

@@ -36,10 +36,23 @@ class CdpClient {
   constructor(socket) {
     this.nextId = 1;
     this.pending = new Map();
+    this.requests = [];
     this.socket = socket;
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data));
-      if (!message.id) return;
+      if (!message.id) {
+        if (message.method === "Network.requestWillBeSent") {
+          const request = message.params?.request;
+          this.requests.push({
+            hasNextAction: Object.keys(request?.headers ?? {}).some(
+              (name) => name.toLowerCase() === "next-action",
+            ),
+            method: request?.method,
+            url: request?.url,
+          });
+        }
+        return;
+      }
       const pending = this.pending.get(message.id);
       if (!pending) return;
       this.pending.delete(message.id);
@@ -198,6 +211,19 @@ async function clickElement(browser, elementExpression, label) {
     { button: "left", clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
     browser.sessionId,
   );
+}
+
+async function clickElementWhenAvailable(browser, elementExpression, label, timeoutMs = 45_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await clickElement(browser, elementExpression, label);
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+  }
+  throw new Error(`Timed out waiting to click ${label}.`);
 }
 
 async function setInputValue(browser, selector, value) {
@@ -615,12 +641,17 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       };
     })()`,
   );
-  await clickElement(
+  const tabletClick = await evaluate(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] a')]
-      .find((link) => link.textContent.trim() === "Trip.com")`,
-    "Global tablet Trip.com app link",
+    `(() => {
+      const link = [...document.querySelectorAll('[role="dialog"] a')]
+        .find((candidate) => candidate.textContent.trim() === "Trip.com");
+      if (!link || !link.getClientRects().length) return false;
+      link.click();
+      return true;
+    })()`,
   );
+  assert.equal(tabletClick, true, "Global tablet Trip.com app link was not available.");
   await waitFor(
     browser,
     "window.__phase5BookingOpenCalls.length === 1",
@@ -689,13 +720,376 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await navigate(browser, baseUrl, `/trips/${tripId}`);
 }
 
-async function submitGlobalLogin(browser, baseUrl, { email, password }) {
+async function submitGuestLogin(browser, baseUrl, options) {
+  return submitGlobalLogin(browser, baseUrl, options, {
+    expected: `(() => {
+      const match = location.pathname.match(/^\\/trips\\/([0-9a-f-]{36})$/);
+      return match && new URLSearchParams(location.search).get('share') === '1' ? match[1] : '';
+    })()`,
+    label: "guest import and share continuation",
+    loginPath: "/login?guest=1",
+    timeoutMs: 90_000,
+  });
+}
+
+async function verifyGuestTripFlow(browser, baseUrl, options) {
+  const activeKey = "trip-planner:guest-trip:global:active";
+  const intentKey = "trip-planner:guest-trip:global:intent";
+  const markerKey = "trip-planner:guest-trip:global:imported";
+  const title = `Global guest browser ${Date.now()}`;
+
+  await navigate(browser, baseUrl, "/");
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('a')].find((link) =>
+      link.getClientRects().length && new URL(link.href).pathname === '/guest')`,
+    "landing guest planning CTA",
+  );
+  await waitFor(
+    browser,
+    `location.pathname === '/guest' &&
+      Boolean(document.querySelector('[data-guest-planner]')) &&
+      document.querySelector('[data-guest-save-state]')?.dataset.guestSaveState === 'saved'`,
+    "saved guest planner",
+  );
+  const initialDraft = await evaluate(
+    browser,
+    `JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)}))`,
+  );
+  assert.equal(initialDraft.region, "global");
+  assert.equal(initialDraft.trip.owner_id, "guest");
+  const guestRequestStart = browser.cdp.requests.length;
+
+  await clickElementWhenAvailable(
+    browser,
+    `document.querySelector('button[aria-label="Save to account"]')`,
+    "guest Save to account",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="alertdialog"]')?.innerText.includes('Save this trip to your account')`,
+    "guest save account dialog",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      button.textContent.trim() === 'Keep planning')`,
+    "keep planning after save gate",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[role="alertdialog"]')`,
+    "closed guest save account dialog",
+  );
+
+  await clickElementWhenAvailable(
+    browser,
+    `document.querySelector('button[data-i18n-aria-label="Trip menu"]')`,
+    "guest Trip menu",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.getClientRects().length && item.textContent.trim() === 'Trip settings')`,
+    "guest Trip settings",
+  );
+  await waitFor(browser, `Boolean(document.querySelector('#guest-trip-title'))`, "guest settings");
+  await setInputValue(browser, "#guest-trip-title", title);
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const form = document.querySelector('#guest-trip-title')?.closest('form');
+        if (!(form instanceof HTMLFormElement)) return false;
+        form.requestSubmit();
+        return true;
+      })()`,
+    ),
+    true,
+    "Guest settings form was not submit-ready.",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('#guest-trip-title') &&
+      document.querySelector('[data-guest-save-state]')?.dataset.guestSaveState === 'saved' &&
+      JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)})).trip.title === ${JSON.stringify(title)}`,
+    "guest settings local save",
+  );
+
+  await navigate(browser, baseUrl, "/");
+  await navigate(browser, baseUrl, "/guest");
+  await waitFor(
+    browser,
+    `document.querySelector('[data-guest-save-state]')?.dataset.guestSaveState === 'saved' &&
+      JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)})).draftId === ${JSON.stringify(initialDraft.draftId)} &&
+      JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)})).trip.title === ${JSON.stringify(title)}`,
+    "reopened guest draft",
+  );
+
+  await navigate(browser, baseUrl, "/");
+  const seededItemId = await evaluate(
+    browser,
+    `(() => {
+      const draft = JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)}));
+      const id = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
+      draft.workspace.days[0].items.push({
+        attachments: [], booking_url: null, created_at: timestamp,
+        day_id: draft.workspace.days[0].id, details: {}, end_time: null, id,
+        links: [], notes: null, place: null, place_id: null, price_amount: null,
+        price_currency: null, schedule_kind: 'none', schedule_text: null, sort_order: 0,
+        start_time: null, title: 'Guest attachment activity', trip_id: draft.draftId,
+        type: 'activity', updated_at: timestamp, variant_id: draft.workspace.variant.id,
+      });
+      draft.revision += 1;
+      draft.trip.updated_at = timestamp;
+      draft.updatedAt = timestamp;
+      localStorage.setItem(${JSON.stringify(activeKey)}, JSON.stringify(draft));
+      return id;
+    })()`,
+  );
+  await navigate(browser, baseUrl, "/guest");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-edit-item="${seededItemId}"]'))`,
+    "restored guest item",
+  );
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const item = document.querySelector('[data-edit-item="${seededItemId}"]');
+        if (!item) return false;
+        item.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+        return true;
+      })()`,
+    ),
+    true,
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-step-id="files"]'))`,
+    "guest item editor",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `document.querySelector('[data-step-id="files"]')`,
+    "guest item Links step",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-guest-attachment-gate]'))`,
+    "guest attachment gate",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `document.querySelector('[data-guest-attachment-gate] button')`,
+    "guest attachment Save to account",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="alertdialog"]')?.innerText.includes('before adding files')`,
+    "guest attachment account dialog",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      button.textContent.trim() === 'Keep planning')`,
+    "keep planning after attachment gate",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[role="alertdialog"]')`,
+    "closed guest attachment account dialog",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `document.querySelector('[data-i18n-aria-label="Close editor"]')`,
+    "close guest item editor",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[data-step-id="files"]')`,
+    "closed guest editor",
+  );
+
+  const remoteWrites = browser.cdp.requests.slice(guestRequestStart).filter((entry) => {
+    try {
+      const url = new URL(entry.url);
+      return (
+        url.origin === new URL(baseUrl).origin &&
+        !["GET", "HEAD", "OPTIONS"].includes(entry.method) &&
+        (entry.hasNextAction || url.pathname.startsWith("/api/trips/"))
+      );
+    } catch {
+      return false;
+    }
+  });
+  assert.deepEqual(remoteWrites, [], "Guest editing issued a remote Trip write.");
+
+  async function openShareGate() {
+    await clickElementWhenAvailable(
+      browser,
+      `document.querySelector('button[data-i18n-aria-label="Trip menu"]')`,
+      "guest Trip menu",
+    );
+    await clickElementWhenAvailable(
+      browser,
+      `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+        item.getClientRects().length && item.textContent.trim() === 'Share trip')`,
+      "guest Share trip",
+    );
+    await waitFor(
+      browser,
+      `document.querySelector('[role="alertdialog"]')?.innerText.includes('before sharing')`,
+      "guest share account dialog",
+    );
+  }
+
+  await openShareGate();
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      button.textContent.trim() === 'Continue to sign in')`,
+    "continue guest sign-in",
+  );
+  await waitFor(
+    browser,
+    `location.pathname === '/login' && new URLSearchParams(location.search).get('guest') === '1'`,
+    "guest login redirect",
+  );
+  assert.ok(await evaluate(browser, `localStorage.getItem(${JSON.stringify(activeKey)})`));
+  assert.equal(
+    await evaluate(
+      browser,
+      `JSON.parse(localStorage.getItem(${JSON.stringify(intentKey)})).action`,
+    ),
+    "share",
+  );
+
+  await navigate(browser, baseUrl, "/guest");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-guest-planner]')) &&
+      localStorage.getItem(${JSON.stringify(activeKey)}) &&
+      !localStorage.getItem(${JSON.stringify(intentKey)})`,
+    "guest draft after canceled login",
+  );
+  await openShareGate();
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      button.textContent.trim() === 'Continue to sign in')`,
+    "continue guest sign-in after retry",
+  );
+  await waitFor(browser, `location.pathname === '/login'`, "retried guest login redirect");
+  const guestTripId = await submitGuestLogin(browser, baseUrl, options);
+  const imported = await evaluate(
+    browser,
+    `({
+      active: localStorage.getItem(${JSON.stringify(activeKey)}),
+      intent: localStorage.getItem(${JSON.stringify(intentKey)}),
+      marker: JSON.parse(localStorage.getItem(${JSON.stringify(markerKey)})),
+    })`,
+  );
+  assert.equal(imported.active, null);
+  assert.equal(imported.intent, null);
+  assert.equal(imported.marker.draftId, initialDraft.draftId);
+  assert.equal(imported.marker.tripId, guestTripId);
+  assert.equal(imported.marker.intent.action, "share");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('.public-share-settings-dialog'))`,
+    "continued guest share action",
+  );
+
+  await navigate(browser, baseUrl, "/guest?claim=1");
+  await waitFor(
+    browser,
+    `location.pathname === ${JSON.stringify(`/trips/${guestTripId}`)} &&
+      new URLSearchParams(location.search).get('share') === '1'`,
+    "guest callback replay",
+    60_000,
+  );
+  assert.equal(await evaluate(browser, `localStorage.getItem(${JSON.stringify(activeKey)})`), null);
+
+  await evaluate(browser, `localStorage.removeItem(${JSON.stringify(markerKey)})`);
+  await navigate(browser, baseUrl, "/guest");
+  await waitFor(
+    browser,
+    `document.querySelector('[data-guest-save-state]')?.dataset.guestSaveState === 'saved'`,
+    "authenticated local draft",
+  );
+  const failedDraftId = await evaluate(
+    browser,
+    `(() => {
+      const draft = JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)}));
+      draft.workspace.variant.id = ${JSON.stringify(initialDraft.workspace.variant.id)};
+      for (const day of draft.workspace.days) {
+        day.variant_id = draft.workspace.variant.id;
+        for (const item of day.items) item.variant_id = draft.workspace.variant.id;
+      }
+      draft.revision += 1;
+      draft.updatedAt = new Date().toISOString();
+      draft.trip.updated_at = draft.updatedAt;
+      localStorage.setItem(${JSON.stringify(activeKey)}, JSON.stringify(draft));
+      return draft.draftId;
+    })()`,
+  );
+  await navigate(browser, baseUrl, "/guest");
+  await waitFor(
+    browser,
+    `JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)})).draftId === ${JSON.stringify(failedDraftId)}`,
+    "guest import failure fixture",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `document.querySelector('button[aria-label="Save to account"]')`,
+    "authenticated guest Save to account",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="alertdialog"]')?.innerText.includes('Save this trip to your account')`,
+    "authenticated guest save account dialog",
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      button.textContent.trim() === 'Save to account')`,
+    "confirm authenticated guest import",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-guest-claim-error]')) &&
+      JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)})).draftId === ${JSON.stringify(failedDraftId)}`,
+    "failed guest import retained local draft",
+  );
+  await evaluate(
+    browser,
+    `[${JSON.stringify(activeKey)}, ${JSON.stringify(intentKey)}, ${JSON.stringify(markerKey)}]
+      .forEach((key) => localStorage.removeItem(key))`,
+  );
+  return guestTripId;
+}
+
+async function submitGlobalLogin(
+  browser,
+  baseUrl,
+  { email, password },
+  target = {
+    expected:
+      'location.pathname === "/trips" && !location.search && window.__phase5PostLoginDocument !== true',
+    label: "Global authenticated hard refresh",
+    loginPath: "/login",
+    timeoutMs: 45_000,
+  },
+) {
   let lastDiagnostic = { category: "not-attempted" };
   for (let attempt = 0; attempt < 2; attempt += 1) {
     if (attempt > 0) {
-      await navigate(browser, baseUrl, "/trips");
-      if ((await evaluate(browser, "location.pathname")) === "/trips") return;
-      await navigate(browser, baseUrl, "/login");
+      await navigate(browser, baseUrl, target.loginPath);
+      const recovered = await evaluate(browser, target.expected);
+      if (recovered) return recovered;
     }
     await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
     const submitted = await evaluate(
@@ -721,12 +1115,7 @@ async function submitGlobalLogin(browser, baseUrl, { email, password }) {
     );
     assert.equal(submitted, true, "Global login form was not submit-ready.");
     try {
-      await waitFor(
-        browser,
-        'location.pathname === "/trips" && !location.search && window.__phase5PostLoginDocument !== true',
-        "Global authenticated hard refresh",
-      );
-      return;
+      return await waitFor(browser, target.expected, target.label, target.timeoutMs);
     } catch (error) {
       lastDiagnostic = {
         ...(await boundedPageDiagnostic(browser)),
@@ -810,8 +1199,7 @@ export async function runGlobalBrowserSmoke(options) {
     }
     browser = await launchBrowser();
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
-    await navigate(browser, baseUrl, "/login");
-    await submitGlobalLogin(browser, baseUrl, options);
+    const guestTripId = await verifyGuestTripFlow(browser, baseUrl, options);
     await navigate(browser, baseUrl, `/trips/${options.tripId}`);
     try {
       await waitFor(
@@ -928,6 +1316,7 @@ export async function runGlobalBrowserSmoke(options) {
       headers: { ...protectionHeaders, authorization: `Bearer ${cronSecret}` },
     });
     await requireAuthorizedCleanup(authorizedCleanup);
+    return guestTripId;
   } finally {
     if (browser) await browser.close();
     if (server) await stopChild(server, { processGroup: true });
