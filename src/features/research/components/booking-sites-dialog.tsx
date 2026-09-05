@@ -26,11 +26,11 @@ type BookingSitesDialogProps = (
 ) & { toolbar?: boolean };
 
 export function BookingSitesDialog(props: BookingSitesDialogProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const region = process.env.NEXT_PUBLIC_APP_REGION === "cn" ? "cn" : "global";
   const { item, toolbar = false } = props;
   const category = item ? (item.category as ResearchCategory) : props.category;
-  const details = item ? bookingSearchDetails(item) : null;
+  const details = item ? bookingSearchDetails(item, locale) : null;
   const sites = item
     ? bookingSitesForItem(item, region)
     : bookingSitesForCategory(category, region);
@@ -81,18 +81,27 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
                         : "Open {site} in a new tab",
                       { site: site.name },
                     )}
-                    href={site.appUrl ?? site.url}
+                    href={site.url}
                     onClick={
                       site.appUrl
-                        ? (event) => openAppDeepLink(event, site.appUrl ?? site.url, site.url)
+                        ? (event) => openAppDeepLink(event, site.appUrl ?? site.url)
                         : undefined
                     }
-                    rel="noreferrer"
-                    target={site.appUrl || site.opensApp ? undefined : "_blank"}
+                    rel="noopener noreferrer"
+                    target="_blank"
                   >
                     <span className="min-w-0 truncate font-semibold">{site.name}</span>
                     {site.appUrl || site.opensApp ? (
-                      <Smartphone aria-hidden="true" className="size-4 shrink-0" />
+                      <>
+                        <Smartphone
+                          aria-hidden="true"
+                          className="size-4 shrink-0 min-[1200px]:hidden"
+                        />
+                        <ExternalLink
+                          aria-hidden="true"
+                          className="hidden size-4 shrink-0 min-[1200px]:block"
+                        />
+                      </>
                     ) : (
                       <ExternalLink aria-hidden="true" className="size-4 shrink-0" />
                     )}

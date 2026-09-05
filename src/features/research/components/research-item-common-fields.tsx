@@ -19,6 +19,65 @@ const nameLabels: Record<ResearchCategory, string> = {
   train: "Option name",
 };
 
+export function ResearchTravelPartyFields({
+  category,
+  item,
+}: {
+  category: Exclude<ResearchCategory, "rental">;
+  item?: ResearchItem;
+}) {
+  const fields = [
+    { defaultValue: item?.adult_count ?? "", label: "Adults", max: 20, min: 1, name: "adultCount" },
+    {
+      defaultValue: item?.child_count ?? "",
+      label: "Children",
+      max: 20,
+      min: 0,
+      name: "childCount",
+    },
+    ...(category === "stay"
+      ? [
+          {
+            defaultValue: item?.room_count ?? "",
+            label: "Rooms",
+            max: 10,
+            min: 1,
+            name: "roomCount",
+          },
+        ]
+      : []),
+  ];
+  return (
+    <section
+      aria-label="Travel party"
+      className={`grid min-w-0 gap-4 ${category === "stay" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+      data-i18n-aria-label={"Travel party"}
+    >
+      {fields.map((field) => (
+        <PlannerEditorTextField
+          defaultValue={field.defaultValue}
+          id={`research-${item?.id ?? category}-${field.name}`}
+          inputMode="numeric"
+          key={field.name}
+          label={
+            <>
+              <T message={field.label} />{" "}
+              <span className="font-normal text-muted-foreground">
+                <T message="optional" />
+              </span>
+            </>
+          }
+          max={field.max}
+          min={field.min}
+          name={field.name}
+          step="1"
+          type="number"
+        />
+      ))}
+    </section>
+  );
+}
+
 export function ResearchPriceFields({
   defaultCurrency,
   item,

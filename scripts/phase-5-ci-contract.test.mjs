@@ -149,7 +149,7 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cnDeploy, /CN_PUBLIC_PHONE_AUTH_ENABLED: "true"/);
   assert.match(
     cnDeploy,
-    /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment[\s\\]*\n[\s\S]*20260903180000 20260903193000 20260905010000 20260905020000/,
+    /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment[\s\\]*\n[\s\S]*20260903180000 20260903193000 20260905010000 20260905020000 20260905030000/,
   );
   assert.match(cnDeploy, /deploy-cloudbase-run-with-evidence\.mjs/);
   assert.doesNotMatch(cnDeploy, /sleep 10|deploy_cloudbase_run/);

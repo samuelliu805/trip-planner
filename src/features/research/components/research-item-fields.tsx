@@ -6,7 +6,11 @@ import { useState, type ReactNode } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { DateRangeFields } from "./date-range-fields";
-import { ResearchItemDetailFields, ResearchPriceFields } from "./research-item-common-fields";
+import {
+  ResearchItemDetailFields,
+  ResearchPriceFields,
+  ResearchTravelPartyFields,
+} from "./research-item-common-fields";
 import { ResearchJourneyDetailFields, ResearchJourneyFields } from "./research-journey-fields";
 import { ResearchPlaceField } from "./research-place-field";
 import { ResearchDateTimeField, ResearchSegmentScheduleFields } from "./research-schedule-fields";
@@ -233,6 +237,9 @@ export function ResearchItemFields({
         {category === "stay" ? <StayFields item={item} /> : null}
       </div>
       <div className="min-w-0 space-y-8" hidden={activeStepId !== "details"}>
+        {category !== "rental" ? (
+          <ResearchTravelPartyFields category={category} item={item} />
+        ) : null}
         <ResearchItemDetailFields attachments={attachments} category={category} item={item} />
       </div>
     </div>
