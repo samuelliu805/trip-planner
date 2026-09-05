@@ -43,7 +43,7 @@ export function JourneyEndpointFields({
             setOriginPlace(nextPlace);
             setOrigin(nextPlace?.displayName ?? "");
           }}
-          placeholder="Search origin on Google Maps"
+          placeholder="Search origin on Maps"
           value={originPlace}
         />
       </div>
@@ -58,7 +58,7 @@ export function JourneyEndpointFields({
             setDestinationPlace(nextPlace);
             setDestination(nextPlace?.displayName ?? "");
           }}
-          placeholder="Search destination on Google Maps"
+          placeholder="Search destination on Maps"
           value={destinationPlace}
         />
       </div>

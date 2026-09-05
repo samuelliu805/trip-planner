@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 
 import { Textarea } from "@/components/ui/textarea";
+import { T } from "@/features/i18n/i18n-provider";
 import {
   PlannerEditorField,
   PlannerEditorTextField,
@@ -77,9 +78,20 @@ export function ResearchItemDetailFields({
   const name = (
     <PlannerEditorTextField
       defaultValue={item?.title ?? ""}
-      description="Optional. We’ll create a clear route or place label when this is blank."
+      description="We’ll create a clear route or place label when this is blank."
       id={`${idPrefix}-name`}
-      label={nameLabels[category]}
+      label={
+        ["flight", "train"].includes(category) ? (
+          <>
+            <T message={nameLabels[category]} />{" "}
+            <span className="font-normal text-muted-foreground">
+              <T message="optional" />
+            </span>
+          </>
+        ) : (
+          nameLabels[category]
+        )
+      }
       maxLength={300}
       name="title"
     />

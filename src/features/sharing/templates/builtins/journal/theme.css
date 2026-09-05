@@ -114,9 +114,9 @@
 
 .public-template-journal .public-view-switcher {
   position: static;
-  width: max-content;
+  width: 100%;
   height: 2.875rem;
-  grid-template-columns: repeat(3, 6.5rem);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem;
   border: 0;
   background: transparent;

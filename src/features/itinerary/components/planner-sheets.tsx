@@ -206,7 +206,6 @@ export function PlannerSheets({
         </SheetContent>
       </Sheet>
       <TripSettingsEditor
-        description="Rename the trip, change its length, or adjust its dates and currency."
         onOpenChange={onSettingsOpenChange}
         open={settingsOpen}
         title="Trip settings"

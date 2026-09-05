@@ -422,7 +422,7 @@ async function verifyPublicPhoneAuthAtMobileWidths(browser) {
         `${path} did not use the CN regional locale default.`,
       );
       assert.equal(evidence.forbiddenCredential, false, `${path} exposed a non-phone credential.`);
-      assert.doesNotMatch(evidence.body, /Continue with Google|Username|Email address/);
+      assert.doesNotMatch(evidence.body, /Google|Username|Email address/i);
       assert.equal(
         evidence.passwordCount,
         path === "/login" || path === "/signup" ? 1 : 0,
@@ -438,6 +438,8 @@ async function verifyPublicPhoneAuthAtMobileWidths(browser) {
         assert.match(evidence.body, /密码/);
         assert.match(evidence.body, /短信验证码/);
         assert.match(evidence.body, /忘记密码/);
+        assert.match(evidence.body, /没有账户/);
+        assert.match(evidence.body, /创建账户/);
         await clickButtonText(browser, "短信验证码");
         await waitFor(
           browser,
@@ -486,7 +488,7 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
     buttonInside: true,
     buttonTextFits: true,
     documentFits: true,
-    hintCount: 1,
+    hintCount: 0,
     starterCount: 1,
   });
 
@@ -503,29 +505,30 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
     `document.querySelector('[data-day-header][data-day-number="2"]')`,
     "Day 2 date cell",
   );
-  await waitFor(
-    browser,
-    `Boolean(document.querySelector('[data-day-header][data-day-number="2"] [data-day-menu]'))`,
-    "Day 2 overflow action",
+  assert.equal(
+    await evaluate(browser, `Boolean(document.querySelector('[data-day-menu]'))`),
+    false,
+    "The Date column still rendered a second Day overflow menu.",
   );
   await clickElement(
     browser,
-    `document.querySelector('[data-day-header][data-day-number="2"] [data-day-menu]')`,
-    "Day 2 overflow action",
+    `[...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "Trip overflow action",
   );
   await waitFor(
     browser,
-    `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
-      /Remove Day 2|删除第?2天/.test(item.textContent.trim())
+    `[...document.querySelectorAll('button')].some((button) =>
+      button.getClientRects().length && /Remove Day 2|移除第?2天/.test(button.textContent.trim())
     )`,
-    "Day 2 remove menu item",
+    "Day 2 remove quick action",
   );
   await clickElement(
     browser,
-    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
-      /Remove Day 2|删除第?2天/.test(item.textContent.trim())
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.getClientRects().length && /Remove Day 2|移除第?2天/.test(button.textContent.trim())
     )`,
-    "Remove Day 2 menu item",
+    "Remove Day 2 quick action",
   );
   await waitFor(browser, `Boolean(document.querySelector('[role="alertdialog"]'))`, "remove Day 2");
   await clickElement(
@@ -1854,14 +1857,14 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
     await waitFor(
       browser,
       `[...document.querySelectorAll('[role="option"]')].some((option) =>
-        ["Driving", "驾车"].includes(option.textContent.trim()) && option.getClientRects().length
+        ["Drive", "Driving", "驾车"].includes(option.textContent.trim()) && option.getClientRects().length
       )`,
       `driving option for AMap leg ${index + 1}`,
     );
     await clickElement(
       browser,
       `[...document.querySelectorAll('[role="option"]')].find((option) =>
-        ["Driving", "驾车"].includes(option.textContent.trim()) && option.getClientRects().length
+        ["Drive", "Driving", "驾车"].includes(option.textContent.trim()) && option.getClientRects().length
       )`,
       `Driving for AMap leg ${index + 1}`,
     );
@@ -2091,6 +2094,26 @@ async function publishThroughUi(browser, tripId) {
     )`,
     "share publish control",
   );
+  await clickElement(browser, `document.querySelector("#public-share-template")`, "share style");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].some((option) =>
+      ["Journal", "手记"].includes(option.textContent.trim()) && option.getClientRects().length
+    )`,
+    "Journal share style",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].find((option) =>
+      ["Journal", "手记"].includes(option.textContent.trim()) && option.getClientRects().length
+    )`,
+    "Journal share style",
+  );
+  await waitFor(
+    browser,
+    `["Journal", "手记"].includes(document.querySelector("#public-share-template")?.textContent.trim())`,
+    "selected Journal share style",
+  );
   const activated = await evaluate(
     browser,
     `(() => {
@@ -2216,13 +2239,13 @@ async function publishThroughUi(browser, tripId) {
 
 async function openTripMenu(browser) {
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    await pressElement(
-      browser,
-      `[...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
-        .find((candidate) => candidate.getClientRects().length && !candidate.disabled)`,
-      "Trip menu",
-    );
     try {
+      await clickElement(
+        browser,
+        `[...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+          .find((candidate) => candidate.getClientRects().length && !candidate.disabled)`,
+        "Trip menu",
+      );
       await waitFor(
         browser,
         "Boolean(document.querySelector('[role=\"menu\"]'))",
@@ -2555,6 +2578,27 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
       { deviceScaleFactor: 1, height: viewport.height, mobile: false, width: viewport.width },
       browser.sessionId,
     );
+    const journalNavigation = await evaluate(
+      browser,
+      `(() => {
+        const shell = document.querySelector('.public-itinerary-shell');
+        const navigation = document.querySelector('.public-template-region-view-navigation');
+        const switcher = document.querySelector('.public-view-switcher');
+        const navigationStyle = getComputedStyle(navigation);
+        return {
+          availableWidth: navigation.getBoundingClientRect().width -
+            Number.parseFloat(navigationStyle.paddingLeft) -
+            Number.parseFloat(navigationStyle.paddingRight),
+          switcherWidth: switcher.getBoundingClientRect().width,
+          template: shell?.dataset.publicTemplate,
+        };
+      })()`,
+    );
+    assert.equal(journalNavigation.template, "journal");
+    assert(
+      Math.abs(journalNavigation.switcherWidth - journalNavigation.availableWidth) <= 1,
+      `Journal selector did not fill ${viewport.label}: ${JSON.stringify(journalNavigation)}.`,
+    );
     await clickElement(
       browser,
       `[...document.querySelectorAll('.public-share-button')]
@@ -2621,6 +2665,24 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
     browser.sessionId,
+  );
+  const desktopJournalNavigation = await evaluate(
+    browser,
+    `(() => {
+      const navigation = document.querySelector('.public-template-region-view-navigation');
+      const switcher = document.querySelector('.public-view-switcher');
+      const navigationStyle = getComputedStyle(navigation);
+      return {
+        availableWidth: navigation.getBoundingClientRect().width -
+          Number.parseFloat(navigationStyle.paddingLeft) -
+          Number.parseFloat(navigationStyle.paddingRight),
+        switcherWidth: switcher.getBoundingClientRect().width,
+      };
+    })()`,
+  );
+  assert(
+    Math.abs(desktopJournalNavigation.switcherWidth - desktopJournalNavigation.availableWidth) <= 1,
+    `Journal selector did not fill the desktop navigation: ${JSON.stringify(desktopJournalNavigation)}.`,
   );
 }
 

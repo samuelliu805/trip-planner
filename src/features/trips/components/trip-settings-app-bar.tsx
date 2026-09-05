@@ -13,12 +13,7 @@ export function TripSettingsAppBar({
   return (
     <>
       <TripAppBar {...props} onTripSettings={() => setOpen(true)} />
-      <TripSettingsEditor
-        description="Rename the trip, change its length, or adjust its dates and currency."
-        onOpenChange={setOpen}
-        open={open}
-        title="Trip settings"
-      >
+      <TripSettingsEditor onOpenChange={setOpen} open={open} title="Trip settings">
         {settings}
       </TripSettingsEditor>
     </>

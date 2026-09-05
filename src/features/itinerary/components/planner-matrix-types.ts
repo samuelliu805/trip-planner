@@ -63,7 +63,6 @@ export type PlannerMatrixProps = {
   onMarkerClick: (id?: string) => void;
   openEditorFromDoubleClick: (event: MouseEvent<HTMLDivElement>) => void;
   overviewRoute: OverviewRouteUi;
-  removeDay: (id: string) => Promise<void>;
   selectedCount: number;
   selectedDayRow: number | null;
   selectedItemId?: string;

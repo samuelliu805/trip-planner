@@ -30,7 +30,7 @@ export function RouteIconButton({
     <button
       aria-label={t(label)}
       className={cn(
-        "flex size-11 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+        "material-ripple flex size-11 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         variantClasses[variant],
         className,
       )}

@@ -43,6 +43,10 @@
     transform: none;
   }
 
+  .public-itinerary-shell.public-template-journal .public-view-switcher {
+    width: 100%;
+  }
+
   .public-itinerary-shell .public-view-switcher .app-bottom-navigation-item {
     height: 2.75rem;
     min-height: 2.75rem;

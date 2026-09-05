@@ -10,7 +10,9 @@ import { PlannerResearchActions } from "@/features/research/components/planner-r
 import { OPEN_PLAN_COST_EVENT } from "@/features/research/events";
 
 /** Table actions for the trip menu; the bar itself only keeps the contextual primary action. */
-export function PlannerContextMenuItems(props: PlannerContextProps) {
+export function PlannerContextMenuItems(
+  props: PlannerContextProps & { onRequestRemoveDay: () => void },
+) {
   const showResearch = props.selectedCount === 1 && Boolean(props.researchContext);
   const researchSourceItem = props.researchContext?.itemId
     ? props.planDays
@@ -51,9 +53,19 @@ export function PlannerContextMenuItems(props: PlannerContextProps) {
         <Plus className="size-4" /> <T message={" Add day at end "} />
       </DropdownMenuItem>
       {props.activeDay ? (
-        <DropdownMenuItem onSelect={() => props.onArrangeActivities(props.activeDay!)}>
-          <ListOrdered className="size-4" /> <T message={" Arrange Activities "} />
-        </DropdownMenuItem>
+        <>
+          <DropdownMenuItem onSelect={() => props.onArrangeActivities(props.activeDay!)}>
+            <ListOrdered className="size-4" /> <T message={" Arrange Activities "} />
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+            disabled={props.workspaceDayCount <= 1 || props.dayMutationPending}
+            onSelect={props.onRequestRemoveDay}
+          >
+            <Trash2 className="size-4" />
+            <T message={"Remove Day {day}"} values={{ day: props.activeDay.day_number }} />
+          </DropdownMenuItem>
+        </>
       ) : null}
       <DropdownMenuSeparator />
       <p className="px-3 py-1.5 text-xs font-semibold text-muted-foreground">

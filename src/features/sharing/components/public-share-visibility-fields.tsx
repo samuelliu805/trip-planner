@@ -12,6 +12,8 @@ export function PublicShareVisibilityFields({
   settings: ShareSettings;
   sharePages: PublicItineraryLink[];
 }) {
+  const showGooglePlacePhotoSetting = process.env.NEXT_PUBLIC_APP_REGION !== "cn";
+
   return (
     <>
       <ShareSettingSection title="Page content">
@@ -36,11 +38,13 @@ export function PublicShareVisibilityFields({
             label="Notes"
             onCheckedChange={(value) => onSettingChange("showNotes", value)}
           />
-          <ShareSettingOption
-            checked={settings.showPlacePhotos}
-            label="Place photos from Google"
-            onCheckedChange={(value) => onSettingChange("showPlacePhotos", value)}
-          />
+          {showGooglePlacePhotoSetting ? (
+            <ShareSettingOption
+              checked={settings.showPlacePhotos}
+              label="Place photos from Google"
+              onCheckedChange={(value) => onSettingChange("showPlacePhotos", value)}
+            />
+          ) : null}
           <ShareSettingOption
             checked={settings.showQuickActionLinks}
             label="Action links"

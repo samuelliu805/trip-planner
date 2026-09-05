@@ -66,6 +66,32 @@ body {
   @apply bg-background text-foreground antialiased;
 }
 
+.material-ripple {
+  contain: paint;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.material-ripple::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle, currentcolor 10%, transparent 10.01%) center/1000% 1000%
+    no-repeat;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    background-size 520ms ease-out,
+    opacity 620ms ease-out;
+}
+
+.material-ripple:not(:disabled):active::before {
+  background-size: 0 0;
+  opacity: 0.16;
+  transition-duration: 0s;
+}
+
 html[lang="zh-CN"] body {
   font-family:
     "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", Arial, sans-serif;
@@ -137,6 +163,14 @@ html[lang="zh-CN"] .public-header-actions {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .material-ripple:not(:disabled):active::before {
+    transition-duration: 0s;
+  }
+
+  .material-ripple::before {
+    transition-duration: 1ms;
+  }
+
   .alert-countdown-progress {
     animation-timing-function: steps(5, end);
   }

@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const capabilities = getBackendCapabilities();
 
   const errorMessage =
-    error === "google"
+    error === "google" && capabilities.publicAuthMethods.includes("google_oauth")
       ? "Google sign-in could not be completed. Please try again."
       : error === "confirmation"
         ? "The confirmation link is invalid or expired. Please try again."

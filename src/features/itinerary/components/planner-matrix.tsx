@@ -53,7 +53,6 @@ export function PlannerMatrix({
   onMapSelectionClear,
   openEditorFromDoubleClick,
   overviewRoute,
-  removeDay,
   insertDay,
   selectedCount,
   selectDay,
@@ -115,7 +114,6 @@ export function PlannerMatrix({
                   day={day}
                   isOnlyDay={workspace.days.length === 1}
                   onInsert={(position) => void insertDay(position)}
-                  onRemove={(dayId) => void removeDay(dayId)}
                   onSelect={() => selectDay(row)}
                   pending={dayMutationPending}
                   selected={selectedDayRow === row}

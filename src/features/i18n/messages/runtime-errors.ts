@@ -12,7 +12,8 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "Check the item and try again.": "请检查项目后重试。",
   "Check the price candidate details.": "请检查价格备选项的详情。",
   "Check the route variant details.": "请检查方案详情。",
-  "Choose a city from Google Maps before continuing.": "请先从 Google 地图中选择城市，再继续。",
+  "Choose a city from the map before continuing.": "请先从地图中选择城市，再继续。",
+  "Choose a city from the map.": "请从地图中选择城市。",
   "Choose a different City. Neighboring City items on the same day cannot use the same map place.":
     "请选择其他城市；同一天相邻的城市项目不能使用同一个地图地点。",
   "Choose a hotel location or enter a displayed hotel name.":
@@ -63,7 +64,7 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "Return time": "还车时间",
   "Route stops must belong to this day, except the first stop may be the previous day Hotel.":
     "路线停靠点必须属于当天，但第一个停靠点可以是前一天的住宿。",
-  "Search Google Maps or enter an activity name.": "请搜索 Google 地图，或输入活动名称。",
+  "Search Maps or enter an activity name.": "请搜索地图，或输入活动名称。",
   Source: "来源",
   Station: "车站",
   "Stay ideas": "住宿备选",

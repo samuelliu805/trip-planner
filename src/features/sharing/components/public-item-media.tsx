@@ -148,7 +148,8 @@ export function PublicItemMediaGallery({
   const googleMedia = media.filter(
     (entry): entry is GoogleMedia => entry.source === "google_place",
   );
-  const showGoogleMedia = variant === "overview" && googleMedia.length > 0;
+  const showGoogleMedia =
+    process.env.NEXT_PUBLIC_APP_REGION !== "cn" && variant === "overview" && googleMedia.length > 0;
   if (!showGoogleMedia && !attachmentMedia.length) return null;
 
   function openAttachment(attachment: AttachmentMedia, trigger: HTMLElement) {

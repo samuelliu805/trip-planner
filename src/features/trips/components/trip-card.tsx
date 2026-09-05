@@ -217,12 +217,7 @@ export function TripCard({
         </AutoDismissAlert>
       </Card>
 
-      <TripSettingsEditor
-        description="Rename the trip, change its length, or adjust dates and currency."
-        onOpenChange={setEditorOpen}
-        open={editorOpen}
-        title="Trip settings"
-      >
+      <TripSettingsEditor onOpenChange={setEditorOpen} open={editorOpen} title="Trip settings">
         <TripForm
           onSaved={() => {
             setEditorOpen(false);

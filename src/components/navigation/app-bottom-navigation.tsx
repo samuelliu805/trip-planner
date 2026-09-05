@@ -97,7 +97,7 @@ export function AppBottomNavigation({
       </>
     );
     const itemClasses = cn(
-      "app-bottom-navigation-item flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold outline-none transition-[background-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+      "app-bottom-navigation-item material-ripple flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-3 text-xs font-semibold outline-none transition-[background-color,color,box-shadow] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
       active
         ? "is-active bg-primary text-primary-foreground shadow-sm"
         : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",

@@ -503,7 +503,33 @@ test("browser locale parsing distinguishes an absent preference from default Eng
 });
 
 test("all selectable transport modes include the requested options and zh-CN labels", () => {
+  assert.deepEqual(selectableTransportModes.slice(0, 7), [
+    "self_driving",
+    "flight",
+    "train",
+    "subway",
+    "taxi",
+    "bike",
+    "walk",
+  ]);
+  assert.equal(transportModeLabels.self_driving, "Drive");
+  assert.deepEqual(selectableRouteLegModes.slice(0, 7), selectableTransportModes.slice(0, 7));
+  assert.equal(transportModeLabels.taxi, "Taxi");
   assert.equal(translateMessage("zh-CN", "Bus"), "大巴");
+  for (const [message, translation] of [
+    ["Pick-up location", "取车地点"],
+    ["Return location", "还车地点"],
+    ["Optional", "选填"],
+    ["Rental car", "租车"],
+    ["Check-in", "入住"],
+    ["Check-out", "退房"],
+    ["Stay name", "住宿名称"],
+    ["Trip name", "行程名称"],
+    ["Duration (days)", "行程天数"],
+    ["Links", "链接"],
+    ["Displayed meal name", "显示的餐厅名称"],
+  ])
+    assert.equal(translateMessage("zh-CN", message), translation);
   for (const mode of ["ferry", "walk", "subway", "bike", "self_driving", "taxi"] as const) {
     assert.ok(selectableTransportModes.includes(mode));
     assert.notEqual(
@@ -732,7 +758,11 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.doesNotMatch(form, /<PlannerEditorHeader/);
   assert.match(form, /header=\{null\}/);
   assert.match(form, /<SheetTitle[\s\S]*data-trip-settings-title[\s\S]*tabIndex=\{-1\}/);
-  assert.match(form, /<SheetTitle[\s\S]*\{editor\.title\}[\s\S]*<SheetDescription/);
+  assert.match(form, /<SheetTitle[\s\S]*\{editor\.title\}/);
+  assert.doesNotMatch(
+    form + settingsEditor,
+    /Rename the trip, change its length, or adjust its dates and currency\.|SheetDescription/,
+  );
   assert.match(form, /<Settings2/);
   assert.match(form, /onCancel=\{editor\.onClose\}/);
   assert.match(form, /gap-3 border-b pb-4 sm:gap-4 sm:pb-6/);
@@ -2400,6 +2430,8 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(overviewUi, /overviewRouteModes/);
   assert.match(overviewUi, /SelectTrigger/);
   assert.match(overviewUi, /Close Overview panel/);
+  assert.match(overviewUi, /<RouteIconButton[\s\S]*Edit Overview route[\s\S]*<Pencil/);
+  assert.doesNotMatch(overviewUi, /Route details/);
   assert.match(overviewHook, /useCalculateOverviewRoute/);
   assert.match(overviewHook, /mutation\.mutateAsync/);
   assert.doesNotMatch(overviewHook, /calculateGoogleRouteLeg/);
@@ -2992,7 +3024,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(dayActions, /min-h-11 min-w-0 flex-1 gap-1\.5 px-2 font-sans text-\[13px\]/);
   assert.match(dayActions, /whitespace-nowrap[\s\S]*message=\{"Add day"\}/);
   assert.match(dayActions, /InsertRowIcon className="size-4 shrink-0" direction="below"/);
-  assert.match(dayActions, /<DropdownMenu[\s\S]*<MoreHorizontal[\s\S]*<Trash2/);
+  assert.doesNotMatch(dayActions, /DropdownMenu|MoreHorizontal|Trash2|data-day-menu/);
+  assert.match(workspace, /id: "remove-day"[\s\S]*tone: "destructive"/);
+  assert.match(workspace, /onRequestRemoveDay/);
+  assert.match(workspace, /activeDay=\{c\.selectedDay \?\? c\.activeDay\}/);
   assert.doesNotMatch(dayActions, /grid grid-cols-2/);
   assert.match(workspace, /min-w-max select-none/);
   assert.match(workspace, /aria-label="Trip menu"/);
@@ -3332,7 +3367,7 @@ test("planner exposes Phase 2 empty, refresh-error, save, and recovery states", 
   );
   assert.match(workspace, /Start with one activity/);
   assert.match(workspace, /dayStarter/);
-  assert.match(workspace, /data-day-actions-hint/);
+  assert.doesNotMatch(workspace, /data-day-actions-hint|Day actions/);
   assert.doesNotMatch(workspace, /onAddDay/);
   assert.match(workspace, /planner could not refresh/);
   assert.match(workspace, /Saving…[\s\S]*Saved/);
@@ -4131,7 +4166,7 @@ test("the item editor groups every type into short steps and gates required fiel
   const cityBasics = plannerItemFormSteps({ ...rail, type: "location" })[0];
   assert.match(
     plannerItemStepError({ place: null, step: cityBasics, title: "Kyoto", type: "location" }) ?? "",
-    /Google Maps/,
+    /from the map/,
   );
   assert.equal(
     plannerItemStepError({ place, step: cityBasics, title: "", type: "location" }),
@@ -4167,7 +4202,7 @@ test("the item editor groups every type into short steps and gates required fiel
       title: "",
       type: "activity",
     }),
-    "Search Google Maps or enter an activity name.",
+    "Search Maps or enter an activity name.",
   );
   assert.equal(
     plannerItemStepError({ place: null, step: activity[3], title: "", type: "activity" }),

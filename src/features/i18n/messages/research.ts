@@ -5,6 +5,17 @@ export const researchZhCN: Record<string, string> = {
   "Add price or context when you have it. These stay in the same category.":
     "之后可随时补充价格或背景信息；这些内容会保留在同一分类中。",
   "Add price or idea": "添加价格或灵感",
+  "Add the price, route, departure, and arrival for each flight.":
+    "添加每段航班的价格、路线、出发与抵达信息。",
+  "Add airline and flight numbers and any booking records.": "添加航空公司、航班号和预订信息。",
+  "Add the price, locations, pick-up, and return. Times start at 12:00 PM.":
+    "添加价格、取还车地点和时间；默认时间为中午 12:00。",
+  "Add the rental company, notes, and any booking records.": "添加租车公司、备注和预订信息。",
+  "Add the price, hotel or area, and the check-in and check-out dates.":
+    "添加价格、住宿或区域以及入住和退房日期。",
+  "Add booking records, a helpful name, and notes.": "添加预订信息、易识别的名称和备注。",
+  "Add the price, route, departure, and arrival.": "添加价格、路线、出发与抵达信息。",
+  "Add the train number and any booking records or notes.": "添加车次、预订信息或备注。",
   "Apply to Plan": "应用到行程",
   "Applied to": "已应用到",
   "Automatic Revert stopped safely.": "已安全停止自动还原。",
@@ -72,6 +83,14 @@ export const researchZhCN: Record<string, string> = {
   "Hilton member rate…": "希尔顿会员价…",
   "Hotel and dates": "住宿与日期",
   "Hotel or area": "住宿或区域",
+  "Check-in": "入住",
+  "Check-out": "退房",
+  "Pick-up location": "取车地点",
+  "Return location": "还车地点",
+  "Rental car": "租车",
+  "Stay name": "住宿名称",
+  "We’ll create a clear route or place label when this is blank.":
+    "留空时会根据路线或地点生成清晰的名称。",
   "Rental locations": "租车地点",
   "Pick-up and return": "取车与还车",
   Airline: "航空公司",
@@ -80,7 +99,7 @@ export const researchZhCN: Record<string, string> = {
   "Mobile price categories": "移动端价格分类",
   "Ideas filters": "灵感筛选",
   "Enter a name or area": "输入名称或区域",
-  "Search Google Maps for {label}": "在 Google 地图中搜索{label}",
+  "Search Maps for {label}": "在地图中搜索{label}",
   "Search booking sites": "搜索预订网站",
   "Search sites": "搜索网站",
   "Train number": "车次",

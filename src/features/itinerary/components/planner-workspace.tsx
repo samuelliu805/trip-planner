@@ -96,7 +96,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
       <PlannerToolbar
         activeCategory={c.activeCategory}
         activeCellAtCapacity={c.activeCellAtCapacity}
-        activeDay={c.activeDay}
+        activeDay={c.selectedDay ?? c.activeDay}
         clearItemCount={c.selectedItems.length}
         clearPending={c.clearPending}
         copyPreviousDay={c.clipboard.copyPreviousDay}
@@ -184,7 +184,6 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         onMarkerClick={c.selectMapMarker}
         openEditorFromDoubleClick={c.interactions.openEditorFromDoubleClick}
         overviewRoute={c.map.overviewRoute}
-        removeDay={c.removeDay}
         selectedCount={c.selectedCount}
         selectedDayRow={c.selectedDayRow}
         selectedItemId={c.selectedItemId}

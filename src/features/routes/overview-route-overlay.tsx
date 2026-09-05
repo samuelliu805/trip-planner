@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { LoaderCircle, RotateCcw, Route, X } from "lucide-react";
+import { LoaderCircle, Pencil, RotateCcw, Route, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
@@ -85,15 +85,15 @@ export function OverviewRouteOverlay({
               <X className="size-4" />
             </RouteIconButton>
           ) : (
-            <Button
+            <RouteIconButton
               className="col-start-2 row-start-1"
+              label={hasPendingCalculation ? "Set up route" : "Edit Overview route"}
               onClick={() => route.setEditing(true)}
-              size="sm"
-              type="button"
-              variant={hasPendingCalculation ? "default" : "outline"}
+              title={hasPendingCalculation ? "Set up route" : "Edit Overview route"}
+              variant={hasPendingCalculation ? "primary" : "secondary"}
             >
-              <Localized value={hasPendingCalculation ? "Set up route" : "Route details"} />
-            </Button>
+              <Pencil className="size-4" />
+            </RouteIconButton>
           )}
           {!route.editing ? (
             <RouteIconButton

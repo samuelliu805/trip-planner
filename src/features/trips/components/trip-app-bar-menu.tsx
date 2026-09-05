@@ -23,6 +23,7 @@ export type TripMobileQuickAction = {
   id: string;
   label: string;
   onSelect: () => void;
+  tone?: "default" | "destructive";
 };
 
 type RunMobileAction = (action: () => void) => void;
@@ -154,12 +155,12 @@ export function TripBarMenu({
             <div
               className="grid gap-2 border-b pb-4"
               style={{
-                gridTemplateColumns: `repeat(${Math.min(quickActions.length, 4)}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${Math.min(quickActions.length, 5)}, minmax(0, 1fr))`,
               }}
             >
-              {quickActions.slice(0, 4).map((action) => (
+              {quickActions.slice(0, 5).map((action) => (
                 <button
-                  className="flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-muted/70 px-2 py-3 text-center text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-40"
+                  className={`material-ripple flex min-h-20 min-w-0 flex-col items-center justify-center gap-2 rounded-xl bg-muted/70 px-1 py-3 text-center text-xs font-semibold hover:bg-muted disabled:opacity-40 ${action.tone === "destructive" ? "text-destructive" : "text-foreground"}`}
                   disabled={action.disabled}
                   key={action.id}
                   onClick={() => runMobileAction(action.onSelect)}

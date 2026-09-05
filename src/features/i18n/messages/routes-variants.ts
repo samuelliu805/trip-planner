@@ -41,6 +41,7 @@ export const routesVariantsZhCN: Record<string, string> = {
   "Reset Overview route": "重置全程路线",
   "Route coverage": "路线覆盖情况",
   "Route details": "路线详情",
+  "Edit Overview route": "编辑全程路线",
   Routes: "路线",
   "Saved Day route modes": "已保存的单日路线方式",
   "Saved distance by mode": "按出行方式统计的已保存距离",
