@@ -129,39 +129,23 @@ export function ctripDeepLink(category: ResearchCategory, item?: BookingDeepLink
   return null;
 }
 
-function alipayMiniProgramUrl(appId: string, page: string, values: Record<string, string | null>) {
-  const pageQuery = new URLSearchParams();
-  for (const [key, value] of Object.entries(values)) if (value) pageQuery.set(key, value);
-  const pageTarget = pageQuery.size ? `${page}?${pageQuery.toString()}` : page;
-  return schemeUrl("alipays://platformapi/startapp", { appId, page: pageTarget });
-}
-
 export function fliggyDeepLink(category: ResearchCategory, item?: BookingDeepLinkItem) {
   if (category === "flight") {
     const origin = trimmed(item?.origin_text ?? null);
     const destination = trimmed(item?.destination_text ?? null);
     if (origin && destination && item?.start_date)
-      return alipayMiniProgramUrl("60000138", "pages/flight/list", {
+      return schemeUrl("taobaotravel://flight/search", {
         depCity: origin,
         arrCity: destination,
         depDate: item.start_date,
+        returnDate: item.end_date ?? null,
         adtCnt: count(item.adult_count),
         childCnt: count(item.child_count),
       });
     return "taobaotravel://flight/search";
   }
   if (category === "stay") {
-    const location = trimmed(item?.location_text ?? null);
-    if (location)
-      return alipayMiniProgramUrl("20000139", "pages/hotel/list", {
-        checkIn: item?.start_date ?? null,
-        checkOut: item?.end_date ?? null,
-        city: location,
-        adultNum: count(item?.adult_count),
-        childNum: count(item?.child_count),
-        roomNum: count(item?.room_count),
-      });
-    return wrappedH5Url("taobaotravel://h5", "https://www.fliggy.com/");
+    return wrappedH5Url("taobaotravel://h5", fliggyHotelWebUrl(item));
   }
   return null;
 }

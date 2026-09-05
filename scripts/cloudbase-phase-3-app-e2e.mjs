@@ -707,9 +707,19 @@ async function verifyTripSectionNavigation(browser, tripId) {
   }
 
   const ideasPath = `/trips/${tripId}/compare/stays`;
+  const desktopUserAgent = await evaluate(browser, "navigator.userAgent");
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 820 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Emulation.setUserAgentOverride",
+    {
+      platform: "MacIntel",
+      userAgent:
+        "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+    },
     browser.sessionId,
   );
   await waitFor(
@@ -720,18 +730,15 @@ async function verifyTripSectionNavigation(browser, tripId) {
   await evaluate(
     browser,
     `(() => {
-      window.__phase3OriginalBookingOpen = window.open;
-      window.__phase3BookingOpenCalls = [];
       window.__phase3BookingClicks = [];
-      window.open = (...args) => {
-        window.__phase3BookingOpenCalls.push(args);
-        return null;
-      };
       document.addEventListener("click", (event) => {
         const link = event.target.closest?.('[role="dialog"] a');
         if (link?.textContent.trim() === "携程旅行") {
+          event.preventDefault();
           queueMicrotask(() => window.__phase3BookingClicks.push({
             defaultPrevented: event.defaultPrevented,
+            href: link.getAttribute("href"),
+            target: link.getAttribute("target"),
             width: innerWidth,
           }));
         }
@@ -751,38 +758,84 @@ async function verifyTripSectionNavigation(browser, tripId) {
   assert.equal(ctripClickDispatched, true, "CN tablet Ctrip app link was not available.");
   await waitFor(
     browser,
-    "window.__phase3BookingOpenCalls.length === 1 || window.__phase3BookingClicks.length === 1",
+    "window.__phase3BookingClicks.length === 1",
     "CN tablet Ctrip click dispatch",
     5_000,
   );
   const appOpenEvidence = await evaluate(
     browser,
     `({
-      calls: window.__phase3BookingOpenCalls,
       clicks: window.__phase3BookingClicks,
       path: location.pathname,
     })`,
   );
   assert.equal(appOpenEvidence.path, ideasPath, "Ctrip app launch replaced the Ideas edit page.");
   assert.equal(
-    appOpenEvidence.calls.length,
-    1,
-    `Ctrip app launch was not attempted exactly once: ${JSON.stringify(appOpenEvidence.clicks)}`,
+    appOpenEvidence.clicks[0].href,
+    "ctrip://wireless/InquireHotel",
+    `Ctrip app launch did not use the current-tab custom scheme: ${JSON.stringify(appOpenEvidence.clicks)}`,
   );
-  assert.match(appOpenEvidence.calls[0][0], /^ctrip:\/\/wireless\/InquireHotel/);
-  assert.deepEqual(appOpenEvidence.calls[0].slice(1), ["_blank", "noopener,noreferrer"]);
+  assert.equal(appOpenEvidence.clicks[0].target, "_self");
+  assert.equal(appOpenEvidence.clicks[0].defaultPrevented, true);
   await evaluate(
     browser,
     `(() => {
-      window.open = window.__phase3OriginalBookingOpen;
-      delete window.__phase3OriginalBookingOpen;
-      delete window.__phase3BookingOpenCalls;
+      window.__phase3BookingClicks = [];
+      document.addEventListener("click", (event) => {
+        const link = event.target.closest?.('[role="dialog"] a');
+        if (link?.textContent.trim() === "飞猪旅行") {
+          event.preventDefault();
+          queueMicrotask(() => window.__phase3BookingClicks.push({
+            defaultPrevented: event.defaultPrevented,
+            href: link.getAttribute("href"),
+            target: link.getAttribute("target"),
+          }));
+        }
+      }, { once: true });
+    })()`,
+  );
+  const fliggyClickDispatched = await evaluate(
+    browser,
+    `(() => {
+      const link = [...document.querySelectorAll('[role="dialog"] a')]
+        .find((candidate) => candidate.textContent.trim() === "飞猪旅行");
+      if (!link?.getClientRects().length) return false;
+      link.click();
+      return true;
+    })()`,
+  );
+  assert.equal(fliggyClickDispatched, true, "CN tablet Fliggy app link was not available.");
+  await waitFor(
+    browser,
+    "window.__phase3BookingClicks.length === 1",
+    "CN tablet Fliggy click dispatch",
+    5_000,
+  );
+  const fliggyOpenEvidence = await evaluate(
+    browser,
+    `({ clicks: window.__phase3BookingClicks, path: location.pathname })`,
+  );
+  assert.equal(fliggyOpenEvidence.path, ideasPath, "Fliggy app launch replaced the Ideas page.");
+  assert.equal(
+    fliggyOpenEvidence.clicks[0].href,
+    "taobaotravel://h5?url=https%3A%2F%2Fhotel.fliggy.com%2Fhotel_list.htm",
+  );
+  assert.equal(fliggyOpenEvidence.clicks[0].target, "_self");
+  assert.equal(fliggyOpenEvidence.clicks[0].defaultPrevented, true);
+  await evaluate(
+    browser,
+    `(() => {
       delete window.__phase3BookingClicks;
     })()`,
   );
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Emulation.setUserAgentOverride",
+    { userAgent: desktopUserAgent },
     browser.sessionId,
   );
   await browser.cdp.send(
