@@ -575,6 +575,102 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     assert.match(site.href, /^https:\/\//, `${site.text} did not expose a normal web link.`);
     assert.equal(site.target, "_blank", `${site.text} could replace the Ideas page.`);
   }
+
+  const desktopUserAgent = await evaluate(browser, "navigator.userAgent");
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 820 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Emulation.setUserAgentOverride",
+    {
+      platform: "MacIntel",
+      userAgent:
+        "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+    },
+    browser.sessionId,
+  );
+  await evaluate(
+    browser,
+    `(() => {
+      window.__phase5OriginalBookingOpen = window.open;
+      window.__phase5BookingPopup = {
+        closed: false,
+        destination: null,
+        opener: {},
+        timerDelay: null,
+        close() { this.closed = true; },
+        location: { replace(url) { window.__phase5BookingPopup.destination = url; } },
+        setTimeout(callback, delay) {
+          window.__phase5BookingPopupClose = callback;
+          this.timerDelay = delay;
+          return 1;
+        },
+      };
+      window.__phase5BookingOpenCalls = [];
+      window.open = (...args) => {
+        window.__phase5BookingOpenCalls.push(args);
+        return window.__phase5BookingPopup;
+      };
+    })()`,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] a')]
+      .find((link) => link.textContent.trim() === "Trip.com")`,
+    "Global tablet Trip.com app link",
+  );
+  await waitFor(
+    browser,
+    "window.__phase5BookingOpenCalls.length === 1",
+    "Global tablet managed app popup",
+    5_000,
+  );
+  let appPopupEvidence = await evaluate(
+    browser,
+    `({
+      calls: window.__phase5BookingOpenCalls,
+      closed: window.__phase5BookingPopup.closed,
+      destination: window.__phase5BookingPopup.destination,
+      opener: window.__phase5BookingPopup.opener,
+      path: location.pathname,
+      timerDelay: window.__phase5BookingPopup.timerDelay,
+    })`,
+  );
+  assert.equal(appPopupEvidence.path, `/trips/${tripId}/compare/flights`);
+  assert.deepEqual(appPopupEvidence.calls[0], ["about:blank", "_blank"]);
+  assert.equal(appPopupEvidence.opener, null, "Managed app popup retained its opener.");
+  assert.equal(appPopupEvidence.timerDelay, 1_500);
+  assert.match(appPopupEvidence.destination, /^https:\/\/www\.trip\.com\/flights\//);
+  assert.equal(appPopupEvidence.closed, false);
+  await evaluate(browser, "window.__phase5BookingPopupClose()");
+  appPopupEvidence = await evaluate(
+    browser,
+    `({ closed: window.__phase5BookingPopup.closed, path: location.pathname })`,
+  );
+  assert.equal(appPopupEvidence.closed, true, "Uncommitted app popup did not close on return.");
+  assert.equal(appPopupEvidence.path, `/trips/${tripId}/compare/flights`);
+  await evaluate(
+    browser,
+    `(() => {
+      window.open = window.__phase5OriginalBookingOpen;
+      delete window.__phase5OriginalBookingOpen;
+      delete window.__phase5BookingOpenCalls;
+      delete window.__phase5BookingPopup;
+      delete window.__phase5BookingPopupClose;
+    })()`,
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Emulation.setUserAgentOverride",
+    { userAgent: desktopUserAgent },
+    browser.sessionId,
+  );
   await browser.cdp.send(
     "Input.dispatchKeyEvent",
     { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },

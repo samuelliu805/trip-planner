@@ -8,6 +8,11 @@ import {
   bookingSitesForCategory,
   bookingSitesForItem,
 } from "./booking-sites.ts";
+import {
+  isBookingAppDevice,
+  openManagedAppWindow,
+  prepareCustomSchemeLaunch,
+} from "./components/open-app-deep-link.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import { initialResearchSegments } from "./journey.ts";
 import { researchDecisionSlotKey } from "./decision-slot.ts";
@@ -302,7 +307,7 @@ test("CN Ideas use category-specific providers without app-store download links"
   );
   assert.equal(
     bookingSitesForCategory("stay", "cn").find(({ name }) => name === "飞猪旅行")?.appUrl,
-    "taobaotravel://h5?url=https%3A%2F%2Fwww.fliggy.com%2F",
+    "taobaotravel://h5?url=https%3A%2F%2Fhotel.fliggy.com%2Fhotel_list.htm",
   );
 });
 
@@ -366,7 +371,7 @@ test("CN Ctrip deep links carry exact flight, train, and hotel search details", 
   assert.equal(stay.url, nestedHotelUrl.toString());
 });
 
-test("CN Fliggy deep links encode mini-program pages and UTF-8 cities once", () => {
+test("CN Fliggy app links use the browser-compatible app scheme and encode details once", () => {
   const flight = bookingSitesForItem(
     item({
       adult_count: 2,
@@ -379,11 +384,14 @@ test("CN Fliggy deep links encode mini-program pages and UTF-8 cities once", () 
     "cn",
   ).find(({ name }) => name === "飞猪旅行")!;
   const flightUrl = new URL(flight.appUrl!);
-  assert.equal(flightUrl.searchParams.get("appId"), "60000138");
-  assert.equal(
-    flightUrl.searchParams.get("page"),
-    "pages/flight/list?depCity=%E4%B8%8A%E6%B5%B7&arrCity=%E5%8C%97%E4%BA%AC&depDate=2026-10-01&adtCnt=2&childCnt=1",
-  );
+  assert.equal(flightUrl.protocol, "taobaotravel:");
+  assert.equal(flightUrl.hostname, "flight");
+  assert.equal(flightUrl.pathname, "/search");
+  assert.equal(flightUrl.searchParams.get("depCity"), "上海");
+  assert.equal(flightUrl.searchParams.get("arrCity"), "北京");
+  assert.equal(flightUrl.searchParams.get("depDate"), "2026-10-01");
+  assert.equal(flightUrl.searchParams.get("adtCnt"), "2");
+  assert.equal(flightUrl.searchParams.get("childCnt"), "1");
   const flightWebUrl = new URL(flight.url);
   assert.equal(flightWebUrl.searchParams.get("depCity"), "上海");
   assert.equal(flightWebUrl.searchParams.get("adtCnt"), "2");
@@ -400,11 +408,80 @@ test("CN Fliggy deep links encode mini-program pages and UTF-8 cities once", () 
     "cn",
   ).find(({ name }) => name === "飞猪旅行")!;
   const stayUrl = new URL(stay.appUrl!);
-  assert.equal(stayUrl.searchParams.get("appId"), "20000139");
+  assert.equal(stayUrl.protocol, "taobaotravel:");
+  assert.equal(stayUrl.hostname, "h5");
+  const nestedStayUrl = new URL(stayUrl.searchParams.get("url")!);
+  assert.equal(nestedStayUrl.searchParams.get("checkIn"), "2026-10-01");
+  assert.equal(nestedStayUrl.searchParams.get("checkOut"), "2026-10-03");
+  assert.equal(nestedStayUrl.searchParams.get("city"), "杭州");
+  assert.equal(nestedStayUrl.searchParams.get("adultNum"), "2");
+  assert.equal(nestedStayUrl.searchParams.get("childNum"), "1");
+  assert.equal(nestedStayUrl.searchParams.get("roomNum"), "2");
+});
+
+test("app launching is limited to mobile and tablet devices, not narrow desktop windows", () => {
   assert.equal(
-    stayUrl.searchParams.get("page"),
-    "pages/hotel/list?checkIn=2026-10-01&checkOut=2026-10-03&city=%E6%9D%AD%E5%B7%9E&adultNum=2&childNum=1&roomNum=2",
+    isBookingAppDevice({
+      maxTouchPoints: 0,
+      platform: "Linux x86_64",
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/140 Safari/537.36",
+      viewportMatches: true,
+    }),
+    false,
   );
+  assert.equal(
+    isBookingAppDevice({
+      maxTouchPoints: 5,
+      platform: "MacIntel",
+      userAgent: "Mozilla/5.0 (Macintosh) Version/18.0 Mobile Safari/605.1.15",
+      viewportMatches: true,
+    }),
+    true,
+  );
+  assert.equal(
+    isBookingAppDevice({
+      maxTouchPoints: 5,
+      platform: "Linux armv8l",
+      userAgent: "Mozilla/5.0 (Linux; Android 16; Pixel Tablet) Chrome/140 Safari/537.36",
+      viewportMatches: true,
+    }),
+    true,
+  );
+});
+
+test("custom schemes stay in the current tab and universal links close an uncommitted popup", () => {
+  const anchor = { href: "https://m.ctrip.com/", target: "_blank" };
+  prepareCustomSchemeLaunch(anchor, "ctrip://wireless/InquireHotel");
+  assert.deepEqual(anchor, { href: "ctrip://wireless/InquireHotel", target: "_self" });
+
+  let closePopup = () => {};
+  let closed = false;
+  let opened: string[] = [];
+  let replaced = "";
+  const launched = openManagedAppWindow((url, target) => {
+    opened = [url, target];
+    return {
+      close() {
+        closed = true;
+      },
+      location: {
+        replace(destination) {
+          replaced = destination;
+        },
+      },
+      opener: {},
+      setTimeout(handler, timeout) {
+        assert.equal(timeout, 1_500);
+        closePopup = handler;
+        return 1;
+      },
+    };
+  }, "https://www.kayak.com/flights/SFO-LAX/2026-10-04");
+  assert.equal(launched, true);
+  assert.deepEqual(opened, ["about:blank", "_blank"]);
+  assert.equal(replaced, "https://www.kayak.com/flights/SFO-LAX/2026-10-04");
+  closePopup();
+  assert.equal(closed, true);
 });
 
 test("booking site dialog has one app-or-web action and no download-app control", async () => {
@@ -417,8 +494,10 @@ test("booking site dialog has one app-or-web action and no download-app control"
   assert.match(dialog, /href=\{site\.url\}/);
   assert.match(dialog, /target="_blank"/);
   assert.match(opener, /max-width: 1199px/);
-  assert.match(opener, /window\.open\(appUrl, "_blank", "noopener,noreferrer"\)/);
-  assert.doesNotMatch(opener, /window\.location|fallbackUrl|visibilitychange/);
+  assert.match(opener, /anchor\.target = "_self"/);
+  assert.match(opener, /openWindow\("about:blank", "_blank"\)/);
+  assert.match(opener, /popup\.setTimeout\(\(\) => popup\.close\(\), 1_500\)/);
+  assert.doesNotMatch(opener, /fallbackUrl|visibilitychange/);
 });
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {

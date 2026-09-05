@@ -83,7 +83,7 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
                     )}
                     href={site.url}
                     onClick={
-                      site.appUrl
+                      site.appUrl || site.opensApp
                         ? (event) => openAppDeepLink(event, site.appUrl ?? site.url)
                         : undefined
                     }
