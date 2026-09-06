@@ -13,6 +13,7 @@ import {
   useDeleteItineraryItem,
 } from "@/features/itinerary/item-mutations";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 export function usePlannerMutations(
   tripId: string,
@@ -20,6 +21,7 @@ export function usePlannerMutations(
   setInteractionError: Dispatch<SetStateAction<string | undefined>>,
 ) {
   const router = useRouter();
+  const persistence = usePlannerPersistence();
   const deleteMutation = useDeleteItineraryItem(tripId, variantId);
   const clearMutation = useClearItineraryItems(tripId, variantId);
   const insertDayMutation = useInsertTripDay(tripId, variantId);
@@ -30,7 +32,7 @@ export function usePlannerMutations(
     try {
       await insertDayMutation.mutateAsync({ beforeDayNumber, tripId, variantId });
       setInteractionError(undefined);
-      router.refresh();
+      if (!persistence) router.refresh();
     } catch (error) {
       setInteractionError(
         error instanceof Error ? error.message : "The day could not be inserted.",
@@ -42,7 +44,7 @@ export function usePlannerMutations(
     try {
       await removeDayMutation.mutateAsync({ dayId, tripId, variantId });
       setInteractionError(undefined);
-      router.refresh();
+      if (!persistence) router.refresh();
     } catch (error) {
       setInteractionError(error instanceof Error ? error.message : "The day could not be removed.");
     }

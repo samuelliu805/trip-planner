@@ -26,6 +26,7 @@ export type ServerTelemetryEventName = Exclude<TelemetryEventName, BrowserTeleme
 export type TelemetryScreen =
   | "account"
   | "ideas_options"
+  | "guest_trip"
   | "landing"
   | "login"
   | "public_share"

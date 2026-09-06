@@ -566,6 +566,11 @@ test("advanced intent events and authoritative outcome events keep exact ownersh
     "public_share_view_changed",
     "attachment_upload_started",
     "attachment_opened",
+    "guest_trip_created",
+    "guest_trip_resumed",
+    "guest_trip_local_save_failed",
+    "guest_trip_auth_gate_opened",
+    "guest_trip_discarded",
   ];
   const expectedServer = [
     "research_created",
@@ -601,6 +606,9 @@ test("advanced intent events and authoritative outcome events keep exact ownersh
     "attachment_upload_failed",
     "attachment_deleted",
     "attachment_delete_failed",
+    "guest_trip_import_started",
+    "guest_trip_import_succeeded",
+    "guest_trip_import_failed",
   ];
   const foundationBrowserCount = 6;
   const foundationServerCount = 16;

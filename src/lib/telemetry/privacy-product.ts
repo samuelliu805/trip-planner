@@ -6,6 +6,7 @@ import {
   featureAreaForProductEvent,
   type ItemEditorCloseReason,
   type ItemKind,
+  type GuestAction,
   type PlannerView,
   type ProductEventName,
   type ProductSurface,
@@ -63,7 +64,9 @@ const surfaces = new Set<ProductSurface>([
   "public_share",
   "attachment_editor",
   "export_panel",
+  "guest_trip",
 ]);
+const guestActions = new Set<GuestAction>(["attachment", "route", "save", "share"]);
 
 const common = ["actor_type", "environment", "telemetry_region", "route", "screen"] as const;
 const operation = ["operation_id", "surface"] as const;
@@ -74,6 +77,14 @@ const foundationProductEventPropertyAllowlists = {
   auth_failed: [...common, ...operation, ...auth, "error_code", "release"],
   auth_started: [...common, ...operation, ...auth],
   auth_succeeded: [...common, ...operation, ...auth, "release"],
+  guest_trip_auth_gate_opened: [...common, ...operation, "guest_action"],
+  guest_trip_created: [...common, ...operation],
+  guest_trip_discarded: [...common, ...operation],
+  guest_trip_import_failed: [...common, ...operation, "error_code", "release"],
+  guest_trip_import_started: [...common, ...operation, "release"],
+  guest_trip_import_succeeded: [...common, ...operation, "release"],
+  guest_trip_local_save_failed: [...common, ...operation, "error_code"],
+  guest_trip_resumed: [...common, ...operation],
   item_create_failed: [...common, ...operation, ...item, "error_code", "release"],
   item_create_started: [...common, ...operation, ...item],
   item_created: [...common, ...operation, ...item, "release"],
@@ -215,6 +226,7 @@ export function sanitizeProductEventProperties(
     member(properties.editor_mode, new Set(["create", "edit"] as const)),
   );
   addIfAllowed(safe, allowed, "item_kind", member(properties.item_kind, itemKinds));
+  addIfAllowed(safe, allowed, "guest_action", member(properties.guest_action, guestActions));
   addIfAllowed(
     safe,
     allowed,

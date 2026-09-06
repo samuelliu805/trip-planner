@@ -25,6 +25,7 @@ import { PhonePasswordLogin } from "./phone-password-login";
 
 type PhoneAuthFormProps = {
   action: (state: PhoneOtpActionState, formData: FormData) => Promise<PhoneOtpActionState>;
+  guest?: boolean;
   mode: "login" | "signup";
   passwordAction?: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
 };
@@ -43,7 +44,7 @@ function safePhoneError(error: unknown) {
   return "Phone sign-in could not be completed. Please try again.";
 }
 
-export function PhoneAuthForm({ action, mode, passwordAction }: PhoneAuthFormProps) {
+export function PhoneAuthForm({ action, guest = false, mode, passwordAction }: PhoneAuthFormProps) {
   const { t } = useI18n();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -125,8 +126,11 @@ export function PhoneAuthForm({ action, mode, passwordAction }: PhoneAuthFormPro
   }
 
   const heading = mode === "login" ? "Welcome back" : "Create your account";
-  const description =
-    mode === "login"
+  const description = guest
+    ? mode === "login"
+      ? "Sign in to save the local trip from this device to your account."
+      : "Create an account to save the local trip from this device."
+    : mode === "login"
       ? "Use your mainland China mobile number to continue."
       : "Use your mainland China mobile number and create a password.";
 
@@ -165,7 +169,10 @@ export function PhoneAuthForm({ action, mode, passwordAction }: PhoneAuthFormPro
           </div>
         ) : null}
         {mode === "login" && loginMethod === "password" && passwordAction ? (
-          <PhonePasswordLogin action={passwordAction} />
+          <PhonePasswordLogin
+            action={passwordAction}
+            signupHref={guest ? "/signup?guest=1" : "/signup"}
+          />
         ) : (
           <form
             action={formAction}
@@ -265,7 +272,11 @@ export function PhoneAuthForm({ action, mode, passwordAction }: PhoneAuthFormPro
               />{" "}
               <Link
                 className="font-semibold text-primary hover:underline"
-                href={mode === "login" ? "/signup" : "/login"}
+                href={
+                  mode === "login"
+                    ? `/signup${guest ? "?guest=1" : ""}`
+                    : `/login${guest ? "?guest=1" : ""}`
+                }
               >
                 <T message={mode === "login" ? "Create account" : "Log in"} />
               </Link>

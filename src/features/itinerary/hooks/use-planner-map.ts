@@ -21,6 +21,7 @@ import { useVariantComparison } from "@/features/variants/use-variant-comparison
 import { useVariantDecisionSummary } from "@/features/variants/use-variant-decision-summary";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -30,6 +31,7 @@ export function usePlannerMap(
   dayRoute: DayRouteUi,
   variants: PlannerVariant[],
 ) {
+  const persistence = usePlannerPersistence();
   const { locale, t } = useI18n();
   const [mapMode, setMapMode] = useState<PlannerMapMode>("overview");
   const [comparisonDayNumber, setComparisonDayNumber] = useState<number>();
@@ -190,7 +192,7 @@ export function usePlannerMap(
           operation_id: newTelemetryOperationId(),
           surface: "variant_comparison",
         },
-        { actorType: "authenticated" },
+        { actorType: persistence?.actorType ?? "authenticated" },
       );
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
@@ -206,7 +208,7 @@ export function usePlannerMap(
           route_view: mode === "day_route" ? "day" : "overview",
           surface: "route_panel",
         },
-        { actorType: "authenticated" },
+        { actorType: persistence?.actorType ?? "authenticated" },
       );
     setMapMode(mode);
     setSelectedItemId(undefined);
@@ -279,7 +281,7 @@ export function usePlannerMap(
           operation_id: newTelemetryOperationId(),
           surface: "variant_comparison",
         },
-        { actorType: "authenticated" },
+        { actorType: persistence?.actorType ?? "authenticated" },
       );
       setComparisonReturnMode(returnMode);
       setComparisonDayNumber(
@@ -315,7 +317,7 @@ export function usePlannerMap(
             operation_id: newTelemetryOperationId(),
             surface: "variant_comparison",
           },
-          { actorType: "authenticated" },
+          { actorType: persistence?.actorType ?? "authenticated" },
         );
       setDecisionSummaryPanelOpen(open);
     },
@@ -328,7 +330,7 @@ export function usePlannerMap(
             operation_id: newTelemetryOperationId(),
             surface: "variant_comparison",
           },
-          { actorType: "authenticated" },
+          { actorType: persistence?.actorType ?? "authenticated" },
         );
       setDecisionSummarySheetOpen(open);
     },

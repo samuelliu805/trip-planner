@@ -12,8 +12,14 @@ export type PlannerWorkspaceProps = {
   accountEmail: string;
   deleteError: boolean;
   exchangeRates: ExchangeRateTable | null;
+  guestExperience?: {
+    onSaveToAccount: () => void;
+    onShare: () => void;
+    saveStatus: ReactNode;
+  };
   initialResearchItems: PlanResearchItem[];
   initialResearchSelections: VariantResearchSelection[];
+  initialEditorItemId?: string;
   initialSettingsOpen?: boolean;
   initialVariants: PlannerVariant[];
   initialWorkspace: PlannerWorkspace;

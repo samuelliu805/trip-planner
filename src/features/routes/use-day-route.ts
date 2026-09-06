@@ -6,6 +6,7 @@ import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/iti
 import type { RouteMode } from "@/lib/telemetry/events";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 import { wgs84Coordinates } from "@/lib/providers/maps/types";
 
 import { eligibleDayRouteItems } from "./day-route-map";
@@ -65,6 +66,7 @@ export function useDayRoute(
   activeDay: PlannerDay | undefined,
   tripId: string,
 ): DayRouteUi {
+  const persistence = usePlannerPersistence();
   const [draftState, setDraftState] = useState<{
     dayId: string;
     value: DayRouteEditorDraft;
@@ -195,7 +197,7 @@ export function useDayRoute(
         route_view: "day",
         surface: "route_panel",
       },
-      { actorType: "authenticated" },
+      { actorType: persistence?.actorType ?? "authenticated" },
     );
     updateDraft((current) => ({
       ...current,
@@ -244,7 +246,7 @@ export function useDayRoute(
         route_view: "day",
         surface: "route_panel",
       },
-      { actorType: "authenticated" },
+      { actorType: persistence?.actorType ?? "authenticated" },
     );
     try {
       const saved = await saveMutation.mutateAsync({
@@ -303,10 +305,18 @@ export function useDayRoute(
     error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
     fitKey: calculatedFitKey ? `day-route:${activeDay?.id}:${calculatedFitKey}` : undefined,
     openCreate: () => {
+      if (persistence) {
+        persistence.requestAccountFeature("route");
+        return;
+      }
       setDraft(defaultDraft());
       setError(undefined);
     },
     openEdit: () => {
+      if (persistence) {
+        persistence.requestAccountFeature("route");
+        return;
+      }
       if (plan)
         setDraft(
           fixedDayRouteDraft(

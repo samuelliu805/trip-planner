@@ -32,6 +32,7 @@
     ],
     ["finalize_share_image_version_v1(uuid,jsonb)", "owner_guard"],
     ["insert_variant_day(uuid,uuid,integer)", "owner_guard"],
+    ["import_guest_trip_v1(uuid,jsonb,text)", "claim_bound_create"],
     ["is_trip_owner(uuid)", "claim_bound_owner_check"],
     ["list_share_pages_v2(uuid)", "owner_guard"],
     ["owner_asset_access_v1(uuid,text)", "owner_guard"],

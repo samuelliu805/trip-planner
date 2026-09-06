@@ -7,6 +7,7 @@ import type { ItineraryItem, ItineraryItemType } from "@/features/itinerary/type
 import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
 import { itemKindForTelemetry } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 export function useItemEditorTelemetry({
   dirty,
@@ -23,12 +24,15 @@ export function useItemEditorTelemetry({
   onSaved: (item: ItineraryItem) => void;
   type: ItineraryItemType;
 }) {
+  const persistence = usePlannerPersistence();
   const [session] = useState(() => {
     const itemKind = itemKindForTelemetry(type);
     return itemKind
       ? createItemEditorTelemetrySession({
           capture: (eventName, properties) =>
-            captureBrowserProductEvent(eventName, properties, { actorType: "authenticated" }),
+            captureBrowserProductEvent(eventName, properties, {
+              actorType: persistence?.actorType ?? "authenticated",
+            }),
           editorMode: item ? "edit" : "create",
           itemKind,
         })

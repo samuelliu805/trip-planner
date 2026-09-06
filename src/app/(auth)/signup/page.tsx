@@ -15,23 +15,31 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: translateMessage(locale, "Sign up") };
 }
 
-export default async function SignupPage() {
-  const user = await getAuthProvider().getCurrentUser();
-  if (user) redirect("/trips");
+type SignupPageProps = {
+  searchParams: Promise<{ guest?: string }>;
+};
+
+export default async function SignupPage({ searchParams }: SignupPageProps) {
+  const [{ guest }, user] = await Promise.all([searchParams, getAuthProvider().getCurrentUser()]);
+  if (user) redirect(guest === "1" ? "/guest?claim=1" : "/trips");
   const capabilities = getBackendCapabilities();
 
   if (capabilities.publicAuthMethods.includes("phone_otp"))
-    return <PhoneAuthForm action={phoneOtpAuth} mode="signup" />;
+    return <PhoneAuthForm action={phoneOtpAuth} guest={guest === "1"} mode="signup" />;
   if (!capabilities.publicAuthMethods.includes("email_password"))
     return <AuthUnavailable mode="signup" />;
 
   return (
     <AuthForm
       action={signup}
-      alternateHref="/login"
+      alternateHref={`/login${guest === "1" ? "?guest=1" : ""}`}
       alternateLead="Already have an account?"
       alternateLabel="Log in"
-      description="Start with your first trip in a few minutes."
+      description={
+        guest === "1"
+          ? "Create an account to save the local trip from this device."
+          : "Start with your first trip in a few minutes."
+      }
       heading="Create your account"
       identifier="email"
       mode="signup"

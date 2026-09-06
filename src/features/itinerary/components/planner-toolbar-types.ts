@@ -23,6 +23,11 @@ export type PlannerToolbarProps = {
   deleteError: boolean;
   fillLabel: string;
   fillThroughDay?: number;
+  guestExperience?: {
+    onSaveToAccount: () => void;
+    onShare: () => void;
+    saveStatus: ReactNode;
+  };
   insertDay: (position: number) => Promise<void>;
   interactionError?: string;
   isFillDragging: boolean;

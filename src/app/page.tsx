@@ -38,7 +38,7 @@ export default function Home() {
           <div className="flex items-center gap-1">
             <LanguageSwitcher />
             <Button asChild className="min-h-11 px-3 sm:px-4">
-              <Link href="/login">
+              <Link href="/guest">
                 <T message={"Start planning"} />
               </Link>
             </Button>
@@ -64,7 +64,7 @@ export default function Home() {
           </p>
           <div className="mt-8">
             <Button asChild className="min-h-12 px-6 text-base">
-              <Link href="/login">
+              <Link href="/guest">
                 <T message={"Start planning"} />
               </Link>
             </Button>

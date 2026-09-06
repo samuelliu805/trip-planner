@@ -33,6 +33,7 @@ import {
 import { refreshResearchWorkspace } from "@/features/research/research-query";
 import { itemKindsForTelemetry, newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 function invalidateDayStructure(client: QueryClient, tripId: string) {
   void invalidateVariantComparison(client, tripId);
@@ -45,24 +46,32 @@ function refreshResearch(client: QueryClient, tripId: string, variantId: string)
 
 export function useInsertTripDay(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
-    mutationFn: async (input: InsertTripDayInput) => requireData(await insertTripDay(input)),
+    mutationFn: async (input: InsertTripDayInput) =>
+      persistence ? persistence.insertDay(input) : requireData(await insertTripDay(input)),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-      invalidateDayStructure(client, tripId);
-      refreshResearch(client, tripId, variantId);
+      if (!persistence) {
+        invalidateDayStructure(client, tripId);
+        refreshResearch(client, tripId, variantId);
+      }
     },
   });
 }
 
 export function useRemoveTripDay(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
-    mutationFn: async (input: RemoveTripDayInput) => requireData(await removeTripDay(input)),
+    mutationFn: async (input: RemoveTripDayInput) =>
+      persistence ? persistence.removeDay(input) : requireData(await removeTripDay(input)),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-      invalidateDayStructure(client, tripId);
-      refreshResearch(client, tripId, variantId);
+      if (!persistence) {
+        invalidateDayStructure(client, tripId);
+        refreshResearch(client, tripId, variantId);
+      }
     },
   });
 }
@@ -93,9 +102,10 @@ export function useReorderVariantDays(tripId: string, variantId: string) {
 
 export function useCopyItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: CopyItineraryItemsInput) =>
-      requireData(await copyItineraryItems(input)),
+      persistence ? persistence.copyItems(input) : requireData(await copyItineraryItems(input)),
     onMutate: async (input) => {
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
@@ -115,7 +125,7 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
             operation_id: input.operationId!,
             surface: "planner",
           },
-          { actorType: "authenticated" },
+          { actorType: persistence?.actorType ?? "authenticated" },
         ),
       );
       const destination = previous?.days.find(({ id }) => id === input.targetDayId);
@@ -167,20 +177,25 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
           context?.optimisticIds.reduce((workspace, id) => removeItem(workspace, id), current),
         ),
       );
-      if (context?.sources.some(({ type }) => affectsLocalityProjection(type)))
-        void invalidateVariantComparison(client, tripId);
-      if (context?.sources.some(({ type }) => affectsDecisionSummary(type)))
-        void invalidateVariantDecisionSummary(client, tripId);
-      refreshResearch(client, tripId, variantId);
+      if (!persistence) {
+        if (context?.sources.some(({ type }) => affectsLocalityProjection(type)))
+          void invalidateVariantComparison(client, tripId);
+        if (context?.sources.some(({ type }) => affectsDecisionSummary(type)))
+          void invalidateVariantDecisionSummary(client, tripId);
+        refreshResearch(client, tripId, variantId);
+      }
     },
   });
 }
 
 export function useReorderItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
+  const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: ReorderItineraryItemsInput) =>
-      requireData(await reorderItineraryItems(input)),
+      persistence
+        ? persistence.reorderItems(input)
+        : requireData(await reorderItineraryItems(input)),
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
@@ -228,10 +243,12 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
           replaceItem(current, item),
         ),
       );
-      if (context?.reorderedLocalitySource) void invalidateVariantComparison(client, tripId);
-      if (context?.reorderedDecisionSummaryItem)
-        void invalidateVariantDecisionSummary(client, tripId);
-      refreshResearch(client, tripId, variantId);
+      if (!persistence) {
+        if (context?.reorderedLocalitySource) void invalidateVariantComparison(client, tripId);
+        if (context?.reorderedDecisionSummaryItem)
+          void invalidateVariantDecisionSummary(client, tripId);
+        refreshResearch(client, tripId, variantId);
+      }
     },
   });
 }

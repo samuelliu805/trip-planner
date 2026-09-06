@@ -18,6 +18,7 @@ import {
 import type { VariantComparisonProjection } from "./comparison-types";
 import type { VariantDecisionSummaryProjection } from "./decision-summary-types";
 import type { RouteVariantIdentityInput, UpdateRouteVariantInput } from "./schema";
+import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 
 export const variantListQueryKey = (tripId: string) => ["planner-variants", tripId] as const;
 export const variantComparisonQueryKey = (tripId: string, dayNumber?: number) =>
@@ -34,7 +35,9 @@ export function invalidateVariantDecisionSummary(client: QueryClient, tripId: st
 }
 
 export function useRouteVariants(tripId: string, initialData: PlannerVariant[]) {
+  const persistence = usePlannerPersistence();
   return useQuery({
+    enabled: !persistence,
     initialData,
     queryFn: async () => requireData(await loadRouteVariants(tripId)),
     queryKey: variantListQueryKey(tripId),

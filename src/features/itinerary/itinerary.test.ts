@@ -738,6 +738,8 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(tripAppBar, /<DeleteTripDialog/);
   assert.match(tripAppBar, /countActiveSharePages\(tripId\)/);
   assert.match(tripAppBar, /Deleting/);
+  assert.match(tripAppBar, /guestExperience[\s\S]*sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
+  assert.match(tripAppBar, /sm:grid-cols-\[minmax\(0,1fr\)_auto_minmax\(0,1fr\)\]/);
   assert.match(tripBarMenu, /onDeleteTrip/);
   assert.equal(tripBarMenu.match(/Delete trip/g)?.length, 2);
   assert.match(tripActions, /deleteTrip[\s\S]*redirect\("\/trips"\)/);
@@ -3352,7 +3354,11 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   );
   assert.match(
     styles,
-    /min-width: 900px[\s\S]*\.planner-matrix \[role="row"\] > :first-child \{[\s\S]*width: 6rem;[\s\S]*flex: 0 0 6rem/,
+    /min-width: 900px[\s\S]*\.planner-matrix \[role="row"\] > :first-child \{[\s\S]*width: 7rem;[\s\S]*flex: 0 0 7rem/,
+  );
+  assert.match(
+    styles,
+    /min-width: 640px[\s\S]*max-width: 1199px[\s\S]*\.planner-matrix \[role="row"\] > :nth-child\(3\) \{[\s\S]*width: 8rem;[\s\S]*flex: 0 0 8rem/,
   );
   assert.match(
     styles,

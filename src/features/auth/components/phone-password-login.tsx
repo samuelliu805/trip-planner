@@ -15,8 +15,10 @@ import { AuthPasswordField, MainlandPhoneField } from "./phone-credential-fields
 
 export function PhonePasswordLogin({
   action,
+  signupHref = "/signup",
 }: {
   action: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
+  signupHref?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const [phone, setPhone] = useState("");
@@ -73,9 +75,15 @@ export function PhonePasswordLogin({
       </Button>
       <p className="text-center text-sm text-muted-foreground">
         <T message="Don’t have an account?" />{" "}
-        <Link className="font-semibold text-primary hover:underline" href="/signup">
-          <T message="Create account" />
-        </Link>
+        {signupHref === "/signup" ? (
+          <Link className="font-semibold text-primary hover:underline" href="/signup">
+            <T message="Create account" />
+          </Link>
+        ) : (
+          <Link className="font-semibold text-primary hover:underline" href={signupHref}>
+            <T message="Create account" />
+          </Link>
+        )}
       </p>
     </form>
   );

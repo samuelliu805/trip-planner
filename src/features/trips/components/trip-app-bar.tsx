@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ArrowLeft, Lightbulb, LoaderCircle, Table2 } from "lucide-react";
+import { ArrowLeft, CloudUpload, Lightbulb, LoaderCircle, Table2 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { useState, type ReactNode } from "react";
 
@@ -73,6 +73,11 @@ export type TripAppBarProps = {
   accountEmail: string;
   actions?: ReactNode;
   active: TripSection;
+  guestExperience?: {
+    onSaveToAccount: () => void;
+    onShare: () => void;
+    saveStatus: ReactNode;
+  };
   menuItems?: ReactNode;
   mobileMenuItems?: (runAction: (action: () => void) => void) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
@@ -94,6 +99,7 @@ export function TripAppBar({
   accountEmail,
   actions,
   active,
+  guestExperience,
   menuItems,
   mobileMenuItems,
   mobileQuickActions,
@@ -122,63 +128,100 @@ export function TripAppBar({
         aria-busy={deletePending}
         className="trip-app-bar z-[70] shrink-0 border-b bg-background/95 backdrop-blur"
       >
-        <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
+        <div
+          className={`trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:gap-2 ${
+            guestExperience
+              ? "sm:grid-cols-[minmax(0,1fr)_auto]"
+              : "sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
+          }`}
+        >
           <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-            <Button
-              aria-label="Back to Trips"
-              className="-ml-1 size-11 shrink-0 p-0"
-              data-i18n-aria-label={"Back to Trips"}
-              onClick={() => window.location.assign("/trips")}
-              variant="ghost"
-            >
-              <ArrowLeft aria-hidden="true" className="size-4" />
-            </Button>
+            {guestExperience ? (
+              <Button
+                aria-label="Back to home"
+                className="-ml-1 size-11 shrink-0 p-0"
+                data-i18n-aria-label="Back to home"
+                onClick={() => window.location.assign("/")}
+                variant="ghost"
+              >
+                <ArrowLeft aria-hidden="true" className="size-4" />
+              </Button>
+            ) : (
+              <Button
+                aria-label="Back to Trips"
+                className="-ml-1 size-11 shrink-0 p-0"
+                data-i18n-aria-label="Back to Trips"
+                onClick={() => window.location.assign("/trips")}
+                variant="ghost"
+              >
+                <ArrowLeft aria-hidden="true" className="size-4" />
+              </Button>
+            )}
             <div className="min-w-0 flex-1" title={title}>
               <h1 className="sr-only">{title}</h1>
               {variantControls}
             </div>
           </div>
 
-          <nav
-            aria-label="Trip sections"
-            data-i18n-aria-label={"Trip sections"}
-            className="hidden items-center rounded-lg bg-muted p-1 sm:flex"
-          >
-            {sections.map((section) => {
-              const Icon = section.id === "plan" ? Table2 : Lightbulb;
-              return (
-                <Button
-                  asChild
-                  className="h-9 min-h-9 gap-1.5 px-3 text-xs"
-                  key={section.id}
-                  size="sm"
-                  variant={section.id === active ? "default" : "ghost"}
-                >
-                  <Link
-                    aria-current={section.id === active ? "page" : undefined}
-                    href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
-                    onClick={(event) => {
-                      if (
-                        event.button ||
-                        event.metaKey ||
-                        event.ctrlKey ||
-                        event.shiftKey ||
-                        event.altKey
-                      )
-                        return;
-                      event.preventDefault();
-                      window.location.assign(event.currentTarget.href);
-                    }}
-                    prefetch={false}
+          {guestExperience ? null : (
+            <nav
+              aria-label="Trip sections"
+              data-i18n-aria-label={"Trip sections"}
+              className="hidden items-center rounded-lg bg-muted p-1 sm:flex"
+            >
+              {sections.map((section) => {
+                const Icon = section.id === "plan" ? Table2 : Lightbulb;
+                return (
+                  <Button
+                    asChild
+                    className="h-9 min-h-9 gap-1.5 px-3 text-xs"
+                    key={section.id}
+                    size="sm"
+                    variant={section.id === active ? "default" : "ghost"}
                   >
-                    <TripSectionLinkContent Icon={Icon} label={section.label} />
-                  </Link>
-                </Button>
-              );
-            })}
-          </nav>
+                    <Link
+                      aria-current={section.id === active ? "page" : undefined}
+                      href={tripSectionHref(tripId, section.id, variantId, researchCategory)}
+                      onClick={(event) => {
+                        if (
+                          event.button ||
+                          event.metaKey ||
+                          event.ctrlKey ||
+                          event.shiftKey ||
+                          event.altKey
+                        )
+                          return;
+                        event.preventDefault();
+                        window.location.assign(event.currentTarget.href);
+                      }}
+                      prefetch={false}
+                    >
+                      <TripSectionLinkContent Icon={Icon} label={section.label} />
+                    </Link>
+                  </Button>
+                );
+              })}
+            </nav>
+          )}
 
           <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:ml-0 sm:gap-1.5">
+            {guestExperience ? (
+              <>
+                <div className="hidden lg:block">{guestExperience.saveStatus}</div>
+                <Button
+                  aria-label="Save to account"
+                  className="h-11 gap-1.5 px-2.5 sm:px-3"
+                  data-i18n-aria-label={"Save to account"}
+                  onClick={guestExperience.onSaveToAccount}
+                  size="sm"
+                >
+                  <CloudUpload aria-hidden="true" className="size-4" />
+                  <span className="hidden min-[430px]:inline">
+                    <T message={"Save to account"} />
+                  </span>
+                </Button>
+              </>
+            ) : null}
             {mutating ? (
               <span
                 aria-live="polite"
@@ -196,11 +239,14 @@ export function TripAppBar({
               extraItems={menuItems}
               mobileMenuItems={mobileMenuItems}
               mobileQuickActions={mobileQuickActions}
-              onDeleteTrip={requestTripDelete}
+              guest={Boolean(guestExperience)}
+              onDeleteTrip={guestExperience ? undefined : requestTripDelete}
               onShareTrip={
-                shareControls
-                  ? () => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
-                  : undefined
+                guestExperience
+                  ? guestExperience.onShare
+                  : shareControls
+                    ? () => window.dispatchEvent(new Event(OPEN_SHARE_SETTINGS_EVENT))
+                    : undefined
               }
               onTripSettings={onTripSettings}
             />
@@ -208,16 +254,18 @@ export function TripAppBar({
           <div className="contents">{shareControls}</div>
         </div>
       </header>
-      <DeleteTripDialog
-        activeSharePageCount={sharePageCount}
-        onOpenChange={setDeleteOpen}
-        onPendingChange={setDeletePending}
-        open={deleteOpen}
-        renderTrigger={false}
-        surface="planner_app_bar"
-        title={title}
-        tripId={tripId}
-      />
+      {guestExperience ? null : (
+        <DeleteTripDialog
+          activeSharePageCount={sharePageCount}
+          onOpenChange={setDeleteOpen}
+          onPendingChange={setDeletePending}
+          open={deleteOpen}
+          renderTrigger={false}
+          surface="planner_app_bar"
+          title={title}
+          tripId={tripId}
+        />
+      )}
       {deletePending ? (
         <div
           aria-live="assertive"

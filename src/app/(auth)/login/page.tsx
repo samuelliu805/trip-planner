@@ -16,12 +16,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 type LoginPageProps = {
-  searchParams: Promise<{ error?: string | string[] }>;
+  searchParams: Promise<{ error?: string | string[]; guest?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const [{ error }, user] = await Promise.all([searchParams, getAuthProvider().getCurrentUser()]);
-  if (user) redirect("/trips");
+  const [{ error, guest }, user] = await Promise.all([
+    searchParams,
+    getAuthProvider().getCurrentUser(),
+  ]);
+  if (user) redirect(guest === "1" ? "/guest?claim=1" : "/trips");
   const capabilities = getBackendCapabilities();
 
   const errorMessage =
@@ -32,7 +35,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         : undefined;
 
   if (capabilities.publicAuthMethods.includes("phone_otp")) {
-    return <PhoneAuthForm action={phoneOtpAuth} mode="login" passwordAction={login} />;
+    return (
+      <PhoneAuthForm
+        action={phoneOtpAuth}
+        guest={guest === "1"}
+        mode="login"
+        passwordAction={login}
+      />
+    );
   }
 
   const identifier = capabilities.publicAuthMethods.includes("email_password")
@@ -46,7 +56,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <AuthForm
       action={login}
       alternateHref={
-        capabilities.publicAuthMethods.includes("email_password") ? "/signup" : undefined
+        capabilities.publicAuthMethods.includes("email_password")
+          ? `/signup${guest === "1" ? "?guest=1" : ""}`
+          : undefined
       }
       alternateLead={
         capabilities.publicAuthMethods.includes("email_password")
@@ -56,7 +68,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       alternateLabel={
         capabilities.publicAuthMethods.includes("email_password") ? "Create account" : undefined
       }
-      description="Sign in to continue planning your trips."
+      description={
+        guest === "1"
+          ? "Sign in to save the local trip from this device to your account."
+          : "Sign in to continue planning your trips."
+      }
       errorMessage={errorMessage}
       heading="Welcome back"
       identifier={identifier}

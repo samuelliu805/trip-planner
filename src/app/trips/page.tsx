@@ -12,6 +12,7 @@ import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { resolveTripStatusFilter, type TripStatusFilter } from "@/features/trips/status";
 import { getBackendCapabilities } from "@/platform/composition/server";
+import { getServerProviderConfig } from "@/platform/config/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -39,7 +40,7 @@ export default async function TripsPage({
   searchParams: Promise<{ post_login?: string; status?: string }>;
 }) {
   const { post_login: postLogin, status } = await searchParams;
-  if (postLogin === "1") return <PostLoginRefresh />;
+  if (postLogin === "1") return <PostLoginRefresh region={getServerProviderConfig().appRegion} />;
   const filter = resolveTripStatusFilter(status);
   const { data: trips, error } = await listTrips(filter);
   const empty = emptyCopy[filter];
