@@ -1,0 +1,270 @@
+.dock-fragment-copy {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+  height: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+}
+.dock-fragment-copy > svg {
+  background: rgba(78, 156, 166, 0.1);
+  border-radius: 7px;
+  color: #347b86;
+  height: 30px;
+  padding: 7px;
+  width: 30px;
+}
+.dock-fragment-copy div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.dock-fragment-copy span {
+  color: #68727a;
+  font-size: 0.54rem;
+  line-height: 1.3;
+}
+.dock-fragment-copy strong {
+  font-size: 0.62rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.moving-fragment {
+  background: rgba(251, 250, 246, 0.98);
+  border: 1px solid rgba(120, 183, 154, 0.62);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  box-sizing: border-box;
+  color: var(--dock-navy);
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  transform-origin: center;
+  will-change: left, top, width, height, transform;
+  z-index: 24;
+}
+.moving-fragment .dock-fragment-copy span {
+  font-size: 0.68rem;
+}
+.moving-fragment .dock-fragment-copy strong {
+  font-size: 0.8rem;
+}
+.fragment-layer {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 20;
+}
+.completion-label {
+  bottom: 4.5vh;
+  opacity: 0;
+  position: absolute;
+  right: clamp(1rem, 4vw, 4rem);
+  text-align: right;
+  transition: opacity 300ms ease;
+  z-index: 30;
+}
+.completion-label span,
+.completion-label strong {
+  display: block;
+}
+.completion-label span {
+  color: #9dd3c4;
+  font-size: 0.67rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+.completion-label strong {
+  font-size: 0.8rem;
+  margin-top: 5px;
+}
+.route-dock-track[data-dock-state="assembled"] .completion-label {
+  opacity: 1;
+}
+.scroll-cue {
+  bottom: 24px;
+  left: clamp(1.25rem, 5vw, 5.5rem);
+  opacity: 0.45;
+  position: absolute;
+  z-index: 30;
+}
+.scroll-cue svg {
+  height: 18px;
+  width: 18px;
+}
+.route-dock-track[data-dock-state="assembled"] .scroll-cue {
+  opacity: 0;
+}
+
+@media (max-width: 900px) {
+  .plandock-nav-links {
+    display: none;
+  }
+  .hero-copy {
+    max-width: 48vw;
+  }
+  .workspace-stage {
+    right: 1rem;
+    width: 62vw;
+  }
+}
+
+@media (max-width: 699px) {
+  .plandock-nav {
+    padding-inline: 1rem;
+  }
+  .plandock-nav .nav-sign-in {
+    display: none;
+  }
+  .plandock-nav .nav-start {
+    padding-inline: 0.75rem;
+  }
+  .hero-copy {
+    left: 1.15rem;
+    max-width: calc(100% - 2.3rem);
+    right: 1.15rem;
+    top: 86px;
+  }
+  .hero-copy h1 {
+    font-size: clamp(2.65rem, 13vw, 3.65rem);
+    max-width: 22rem;
+  }
+  .hero-support {
+    font-size: 0.92rem;
+    line-height: 1.48;
+    margin-top: 1rem;
+    max-width: 23rem;
+  }
+  .hero-actions {
+    margin-top: 1rem;
+  }
+  .hero-actions a {
+    min-height: 44px;
+    padding-inline: 1rem;
+  }
+  .hero-detail {
+    display: none;
+  }
+  .workspace-stage {
+    left: 10px;
+    right: 10px;
+    top: 45vh;
+    width: auto;
+  }
+  .route-dock-track[data-dock-state="assembled"] .workspace-stage {
+    top: 16vh;
+  }
+  .plandock-workspace {
+    border-radius: 12px;
+    min-height: 410px;
+  }
+  .workspace-header {
+    align-items: center;
+    min-height: 76px;
+    padding: 10px 11px;
+  }
+  .workspace-header h2 {
+    font-size: 1rem;
+  }
+  .workspace-header p:last-child {
+    font-size: 0.56rem;
+  }
+  .workspace-view-tabs span {
+    font-size: 0;
+    padding: 7px;
+  }
+  .workspace-main {
+    grid-template-columns: 1.55fr 0.8fr;
+    min-height: 260px;
+  }
+  .workspace-row {
+    grid-template-columns: 42px 40px minmax(56px, 1fr) minmax(62px, 1.08fr);
+    min-height: 56px;
+  }
+  .workspace-row > span,
+  .workspace-row > .plandock-target {
+    padding: 5px 4px;
+  }
+  .workspace-row > span {
+    font-size: 0.49rem;
+  }
+  .workspace-row.is-header {
+    min-height: 28px;
+  }
+  .workspace-row.is-header span {
+    font-size: 0.44rem;
+  }
+  .target-stay,
+  .target-activity {
+    height: 56px;
+  }
+  .workspace-map {
+    padding: 7px;
+  }
+  .target-route {
+    bottom: 48px;
+    height: 54px;
+    left: 7px;
+    right: 7px;
+  }
+  .workspace-options {
+    bottom: 7px;
+    left: 7px;
+    padding: 6px;
+    right: 7px;
+  }
+  .workspace-options small {
+    display: none;
+  }
+  .workspace-resources {
+    height: 70px;
+    padding: 7px 10px;
+  }
+  .resources-label {
+    font-size: 0;
+    width: 18px;
+  }
+  .target-document {
+    height: 54px;
+  }
+  .dock-fragment-copy {
+    gap: 5px;
+    padding: 5px;
+  }
+  .dock-fragment-copy > svg {
+    height: 23px;
+    padding: 5px;
+    width: 23px;
+  }
+  .dock-fragment-copy strong {
+    font-size: 0.49rem;
+  }
+  .moving-fragment .dock-fragment-copy strong {
+    font-size: 0.67rem;
+  }
+  .moving-fragment .dock-fragment-copy span {
+    font-size: 0.55rem;
+  }
+  .completion-label {
+    bottom: 2.5vh;
+    right: 1rem;
+  }
+  .completion-label strong {
+    font-size: 0.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy,
+  .completion-label,
+  .plandock-target-content,
+  .workspace-stage {
+    transition: none;
+  }
+  .hero-copy {
+    opacity: 0;
+    pointer-events: none;
+  }
+}

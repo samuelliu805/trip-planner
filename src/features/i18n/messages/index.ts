@@ -11,6 +11,7 @@ import { routesVariantsZhCN } from "./routes-variants.ts";
 import { sharingZhCN } from "./sharing.ts";
 import { tripsZhCN } from "./trips.ts";
 import { guestZhCN } from "./guest.ts";
+import { landingZhCN } from "./landing.ts";
 import { validationErrorsZhCN } from "./validation-errors.ts";
 
 export const zhCNMessages: Record<string, string> = {
@@ -19,6 +20,7 @@ export const zhCNMessages: Record<string, string> = {
   ...attachmentsZhCN,
   ...tripsZhCN,
   ...guestZhCN,
+  ...landingZhCN,
   ...plannerZhCN,
   ...researchZhCN,
   ...sharingZhCN,
