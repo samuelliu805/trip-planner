@@ -1322,10 +1322,18 @@ export async function runGlobalBrowserSmoke(options) {
     await verifyVariantAffordance(browser);
     await verifyHardNewTabShare(browser, options.publicToken);
     await verifyVariantNavigation(browser);
+    await waitFor(
+      browser,
+      "Boolean(window.google?.maps)",
+      "Google Places after variant navigation",
+      45_000,
+    );
     const place = await evaluate(
       browser,
       `(async () => {
-        const places = await google.maps.importLibrary("places");
+        const maps = window.google?.maps;
+        if (!maps) throw new Error("Google Maps is unavailable after variant navigation");
+        const places = await maps.importLibrary("places");
         const sessionToken = new places.AutocompleteSessionToken();
         const { suggestions } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
           input: "Golden Gate Bridge",
