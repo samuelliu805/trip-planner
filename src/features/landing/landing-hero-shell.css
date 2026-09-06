@@ -1,0 +1,174 @@
+.plandock-page {
+  --dock-navy: #132238;
+  --dock-paper: #f7f4ec;
+  --dock-cyan: #4e9ca6;
+  --dock-mint: #78b79a;
+  --dock-border: #d9d5ca;
+  background: var(--dock-paper);
+  color: var(--dock-navy);
+  font-family: var(--font-journal-sans), sans-serif;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.plandock-nav {
+  align-items: center;
+  color: #f7f4ec;
+  display: flex;
+  height: 72px;
+  justify-content: space-between;
+  left: 0;
+  margin: auto;
+  padding: 0 clamp(1rem, 4vw, 4rem);
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 80;
+}
+
+.plandock-wordmark {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.plandock-nav-links,
+.plandock-nav-actions {
+  align-items: center;
+  display: flex;
+  gap: 0.25rem;
+}
+.plandock-nav-links {
+  gap: clamp(0.75rem, 2.5vw, 2rem);
+  margin-left: auto;
+  margin-right: clamp(1rem, 3vw, 2.5rem);
+}
+.plandock-nav-links a {
+  font-size: 0.82rem;
+  font-weight: 700;
+  opacity: 0.78;
+}
+.plandock-nav-links a:hover {
+  opacity: 1;
+}
+.plandock-nav button,
+.plandock-nav-actions a {
+  color: inherit;
+}
+.plandock-nav .nav-start {
+  background: var(--dock-mint);
+  color: var(--dock-navy);
+  min-height: 44px;
+}
+.plandock-nav .nav-sign-in {
+  min-height: 44px;
+}
+
+.route-dock-track {
+  height: 360svh;
+  position: relative;
+}
+.route-dock-viewport {
+  background: var(--dock-navy);
+  color: var(--dock-paper);
+  height: 100svh;
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+}
+.route-dock-viewport::after {
+  background: linear-gradient(
+    90deg,
+    rgba(19, 34, 56, 0.88) 0%,
+    rgba(19, 34, 56, 0.38) 42%,
+    transparent 68%
+  );
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+.route-dock-canvas {
+  inset: 0;
+  position: absolute;
+  z-index: 0;
+}
+.route-dock-canvas canvas {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+.route-dock-canvas[data-webgl-state="fallback"]::before {
+  background: radial-gradient(circle at 75% 50%, rgba(120, 183, 154, 0.12), transparent 28%);
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+
+.hero-copy {
+  left: clamp(1.25rem, 5vw, 5.5rem);
+  max-width: min(39rem, 42vw);
+  position: absolute;
+  top: clamp(7.5rem, 19vh, 12rem);
+  transition:
+    opacity 360ms ease,
+    transform 500ms ease;
+  z-index: 30;
+}
+.landing-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.4;
+}
+.hero-copy .landing-eyebrow {
+  color: #99cec0;
+}
+.hero-copy h1 {
+  font-size: clamp(3.35rem, 6.6vw, 6.9rem);
+  font-weight: 700;
+  letter-spacing: -0.07em;
+  line-height: 0.91;
+  margin-top: 1.25rem;
+  text-wrap: balance;
+}
+.hero-support {
+  color: rgba(247, 244, 236, 0.78);
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  line-height: 1.65;
+  margin-top: 1.6rem;
+  max-width: 35rem;
+}
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+.hero-actions a:first-child {
+  background: var(--dock-mint);
+  color: var(--dock-navy);
+}
+.hero-actions a:last-child {
+  background: rgba(247, 244, 236, 0.04);
+  border-color: rgba(247, 244, 236, 0.32);
+  color: var(--dock-paper);
+}
+.hero-detail {
+  color: rgba(247, 244, 236, 0.55);
+  font-size: 0.8rem;
+  margin-top: 1.15rem;
+}
+.route-dock-track[data-dock-state="routing"] .hero-copy {
+  opacity: 0.78;
+  transform: translateY(-10px);
+}
+.route-dock-track[data-dock-state="docking"] .hero-copy {
+  opacity: 0.12;
+  transform: translateY(-24px);
+}
+.route-dock-track[data-dock-state="assembled"] .hero-copy {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-32px);
+}

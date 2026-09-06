@@ -1,94 +1,37 @@
-import { Localized, T } from "@/features/i18n/i18n-provider";
-import { ChartNoAxesCombined, MapPinned, Users } from "lucide-react";
-import Link from "next/link";
+import type { Metadata } from "next";
 
-import { Button } from "@/components/ui/button";
-import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+import { LandingPage } from "@/features/landing/landing-page";
+import { getRequestLocale } from "@/features/i18n/server";
+import { translateMessage } from "@/features/i18n/translate";
 
-const capabilities = [
-  {
-    description: "Visualize locations and transit routes as your itinerary evolves.",
-    icon: MapPinned,
-    label: "Real-time mapping",
-  },
-  {
-    description: "Coordinate plans with co-travelers in one structured workspace.",
-    icon: Users,
-    label: "Shared blueprints",
-  },
-  {
-    description: "Connect bookings, reservations, and timings into a cohesive timeline.",
-    icon: ChartNoAxesCombined,
-    label: "Data-driven itinerary",
-  },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getRequestLocale();
+  const description = translateMessage(
+    locale,
+    "Build the route, compare options, keep travel documents close, and share one usable trip plan.",
+  );
+  return {
+    title: { absolute: "Plandock" },
+    description,
+    icons: { icon: "/icon.svg" },
+    openGraph: {
+      description,
+      images: [{ alt: "Plandock route dock", height: 630, url: "/opengraph-image", width: 1200 }],
+      locale: locale === "zh-CN" ? "zh_CN" : "en_US",
+      siteName: "Plandock",
+      title: "Plandock",
+      type: "website",
+      url: "/",
+    },
+    twitter: {
+      card: "summary_large_image",
+      description,
+      images: ["/opengraph-image"],
+      title: "Plandock",
+    },
+  };
+}
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-background text-foreground">
-      <nav
-        className="border-b bg-background/95"
-        aria-label="Primary navigation"
-        data-i18n-aria-label={"Primary navigation"}
-      >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link className="text-xl font-bold text-primary sm:text-2xl" href="/">
-            <T message={" Trip Planner "} />
-          </Link>
-          <div className="flex items-center gap-1">
-            <LanguageSwitcher />
-            <Button asChild className="min-h-11 px-3 sm:px-4">
-              <Link href="/guest">
-                <T message={"Start planning"} />
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      <section
-        className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl items-center gap-12 overflow-hidden px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-20"
-        id="overview"
-      >
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(var(--border)_1px,transparent_1px)] bg-[size:24px_24px] opacity-40" />
-        <div className="max-w-2xl">
-          <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-            <T message={" Your whole trip, beyond the spreadsheet. "} />
-          </h1>
-          <p className="mt-6 max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">
-            <T
-              message={
-                " A structured, reliable blueprint for complex itineraries. Architect your journey with precision and keep every plan in one calm workspace. "
-              }
-            />
-          </p>
-          <div className="mt-8">
-            <Button asChild className="min-h-12 px-6 text-base">
-              <Link href="/guest">
-                <T message={"Start planning"} />
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        <ul className="grid gap-4" id="features">
-          {capabilities.map(({ description, icon: Icon, label }) => (
-            <li className="flex gap-4 rounded-xl border bg-card p-4 shadow-sm sm:p-5" key={label}>
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-accent text-primary">
-                <Icon aria-hidden="true" className="size-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">
-                  <Localized value={label} />
-                </h2>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                  <Localized value={description} />
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </main>
-  );
+  return <LandingPage year={new Date().getFullYear()} />;
 }

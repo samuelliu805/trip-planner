@@ -231,11 +231,13 @@ test("guest import reuses provider identity when local drafts repeat a place", (
 });
 
 test("landing and post-login flows route the browser-held draft without serializing it", () => {
-  const landing = readFileSync(new URL("../../app/page.tsx", import.meta.url), "utf8");
+  const landingRoute = readFileSync(new URL("../../app/page.tsx", import.meta.url), "utf8");
+  const landing = readFileSync(new URL("../landing/landing-page.tsx", import.meta.url), "utf8");
   const refresh = readFileSync(
     new URL("../auth/components/post-login-refresh.tsx", import.meta.url),
     "utf8",
   );
+  assert.match(landingRoute, /<LandingPage/);
   assert.match(landing, /href="\/guest"/);
   assert.match(refresh, /\/guest\?claim=1/);
   assert.match(refresh, /\/guest\?claim=prompt/);
