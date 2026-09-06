@@ -13,10 +13,17 @@ const requiredFiles = [
   "src/app.ts",
   "scripts/cloudbase-runtime-entrypoint.mjs",
 ];
+const deploymentEvidence = "docs/landing-evidence/assembled.png";
+const retainedDocumentation = "docs/operations-runbook.md";
 
 function createFixture() {
   const root = mkdtempSync(join(tmpdir(), "prepare-cloudbase-run-"));
   for (const path of requiredFiles) {
+    const fullPath = join(root, path);
+    mkdirSync(dirname(fullPath), { recursive: true });
+    writeFileSync(fullPath, `tracked:${path}`);
+  }
+  for (const path of [deploymentEvidence, retainedDocumentation]) {
     const fullPath = join(root, path);
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, `tracked:${path}`);
@@ -32,7 +39,9 @@ test("copies only the supplied tracked source snapshot", (t) => {
   const root = createFixture();
   t.after(() => rmSync(root, { force: true, recursive: true }));
 
-  const output = prepareCloudBaseRun(root, { trackedFiles: requiredFiles });
+  const output = prepareCloudBaseRun(root, {
+    trackedFiles: [...requiredFiles, deploymentEvidence, retainedDocumentation],
+  });
 
   for (const path of requiredFiles) {
     assert.equal(readFileSync(join(output, path), "utf8"), `tracked:${path}`);
@@ -40,6 +49,11 @@ test("copies only the supplied tracked source snapshot", (t) => {
   assert.equal(existsSync(join(output, ".env.local")), false);
   assert.equal(existsSync(join(output, "untracked.txt")), false);
   assert.equal(existsSync(join(output, "stale.txt")), false);
+  assert.equal(existsSync(join(output, deploymentEvidence)), false);
+  assert.equal(
+    readFileSync(join(output, retainedDocumentation), "utf8"),
+    `tracked:${retainedDocumentation}`,
+  );
 });
 
 test("rejects a tracked path outside the project root", (t) => {
