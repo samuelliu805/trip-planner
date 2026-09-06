@@ -128,7 +128,13 @@ export function TripAppBar({
         aria-busy={deletePending}
         className="trip-app-bar z-[70] shrink-0 border-b bg-background/95 backdrop-blur"
       >
-        <div className="trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-2">
+        <div
+          className={`trip-app-bar-inner flex h-14 min-w-0 items-center gap-1.5 sm:grid sm:gap-2 ${
+            guestExperience
+              ? "sm:grid-cols-[minmax(0,1fr)_auto]"
+              : "sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
+          }`}
+        >
           <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
             {guestExperience ? (
               <Button

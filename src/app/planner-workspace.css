@@ -134,7 +134,7 @@ body:has(.planner-map-sheet) {
 }
 
 .planner-matrix .matrix-grid-header > [role="columnheader"]:nth-child(2) {
-  left: 6rem;
+  left: 7rem;
   z-index: 75;
 }
 
@@ -149,7 +149,7 @@ body:has(.planner-map-sheet) {
 }
 
 .planner-matrix [role="row"]:not(.matrix-grid-header) > [role="rowheader"]:nth-child(2) {
-  left: 6rem;
+  left: 7rem;
   z-index: 50;
 }
 
@@ -219,6 +219,12 @@ body:has(.planner-map-sheet) {
   .planner-matrix [role="row"]:not(.matrix-grid-header) {
     flex: 1 0 auto;
   }
+
+  .planner-matrix [role="row"] > :nth-child(3) {
+    box-sizing: border-box;
+    width: 8rem;
+    flex: 0 0 8rem;
+  }
 }
 
 @media (min-width: 900px) and (max-width: 1199px) {
@@ -248,8 +254,8 @@ body:has(.planner-map-sheet) {
 
   .planner-matrix [role="row"] > :first-child {
     box-sizing: border-box;
-    width: 6rem;
-    flex: 0 0 6rem;
+    width: 7rem;
+    flex: 0 0 7rem;
   }
 
   .planner-matrix [role="row"] > :nth-child(2) {

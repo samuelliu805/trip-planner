@@ -1307,6 +1307,29 @@ async function uploadAttachmentThroughUi(browser) {
   );
   assert.equal(queued, 1, "The browser did not queue the attachment fixture.");
   try {
+    const uploadOutcome = await waitFor(
+      browser,
+      `(() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        if (dialog?.innerText.includes("1/5") && !dialog.innerText.includes("Failed")) {
+          return "complete";
+        }
+        return [...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+          button.textContent.trim() === "Retry" && !button.disabled && button.getClientRects().length
+        ) ? "retry" : "";
+      })()`,
+      "signed browser attachment upload outcome",
+      60_000,
+    );
+    if (uploadOutcome === "retry") {
+      await clickElement(
+        browser,
+        `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+          button.textContent.trim() === "Retry" && !button.disabled && button.getClientRects().length
+        )`,
+        "Retry signed browser attachment upload",
+      );
+    }
     await waitFor(
       browser,
       `document.querySelector('[role="dialog"]')?.innerText.includes("1/5") &&
@@ -1889,7 +1912,8 @@ async function verifyCloudBaseGuestImport(fixture) {
         db
           .from("itinerary_items")
           .select("id,title,notes,price_amount,price_currency,place_id")
-          .eq("trip_id", tripId),
+          .eq("trip_id", tripId)
+          .order("sort_order"),
       "guest item evidence",
     ),
     controlledData(
@@ -1908,7 +1932,10 @@ async function verifyCloudBaseGuestImport(fixture) {
   assert.deepEqual(variants, [{ id: fixture.variantId, name: "Main plan" }]);
   assert.deepEqual(days, [{ id: fixture.dayId, notes: "Guest day note", title: "Arrival" }]);
   assert.deepEqual(
-    items.map((item) => ({ ...item, price_amount: Number(item.price_amount) })),
+    items.map((item) => ({
+      ...item,
+      price_amount: item.price_amount === null ? null : Number(item.price_amount),
+    })),
     [
       {
         id: fixture.itemId,
@@ -1917,6 +1944,14 @@ async function verifyCloudBaseGuestImport(fixture) {
         price_amount: 42.5,
         price_currency: "CNY",
         title: `${runLabel} guest activity`,
+      },
+      {
+        id: fixture.duplicateItemId,
+        notes: "Repeated provider place fixture",
+        place_id: fixture.placeId,
+        price_amount: null,
+        price_currency: null,
+        title: `${runLabel} guest repeated activity`,
       },
     ],
   );

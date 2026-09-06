@@ -213,6 +213,23 @@ test("guest import migration is authenticated, bounded, idempotent, and never gr
   assert.doesNotMatch(sql, /GRANT EXECUTE[^;]+ TO anon/);
 });
 
+test("guest import reuses provider identity when local drafts repeat a place", () => {
+  const sql = readFileSync(
+    new URL(
+      "../../../database/shared/migrations/20260906010000_guest_trip_import_place_dedup.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(sql, /Guest import place block was not recognized/);
+  assert.match(
+    sql,
+    /ON CONFLICT \(trip_id, source, provider_place_id\)[\s\S]*WHERE provider_place_id IS NOT NULL/,
+  );
+  assert.match(sql, /RETURNING id INTO item_place_id/);
+  assert.match(sql, /'legacy_city'/);
+});
+
 test("landing and post-login flows route the browser-held draft without serializing it", () => {
   const landing = readFileSync(new URL("../../app/page.tsx", import.meta.url), "utf8");
   const refresh = readFileSync(

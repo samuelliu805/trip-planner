@@ -226,6 +226,16 @@ async function clickElementWhenAvailable(browser, elementExpression, label, time
   throw new Error(`Timed out waiting to click ${label}.`);
 }
 
+async function clickElementUntil(browser, elementExpression, targetExpression, label) {
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    if (await evaluate(browser, targetExpression).catch(() => false)) return;
+    await clickElement(browser, elementExpression, label).catch(() => undefined);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  throw new Error(`Timed out waiting for ${label}.`);
+}
+
 async function setInputValue(browser, selector, value) {
   const changed = await evaluate(
     browser,
@@ -732,6 +742,73 @@ async function submitGuestLogin(browser, baseUrl, options) {
   });
 }
 
+async function verifyGuestTabletLayout(browser) {
+  const viewports = [
+    { height: 600, width: 768 },
+    { height: 600, width: 820 },
+    { height: 700, width: 1024 },
+  ];
+  for (const viewport of viewports) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, mobile: false, ...viewport },
+      browser.sessionId,
+    );
+    await waitFor(
+      browser,
+      `innerWidth === ${viewport.width} && Boolean(document.querySelector('.trip-app-bar-inner'))`,
+      `guest ${viewport.width}px tablet layout`,
+    );
+    const evidence = await evaluate(
+      browser,
+      `(() => {
+        const inner = document.querySelector('.trip-app-bar-inner');
+        const menu = [...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+          .find((button) => button.getClientRects().length);
+        const header = document.querySelector('.planner-matrix .matrix-grid-header');
+        const date = header?.querySelector('[role="columnheader"]:first-child');
+        const city = header?.querySelector('[role="columnheader"]:nth-child(3)');
+        const innerRect = inner?.getBoundingClientRect();
+        const menuRect = menu?.getBoundingClientRect();
+        const style = inner ? getComputedStyle(inner) : null;
+        return {
+          cityWidth: city?.getBoundingClientRect().width,
+          dateWidth: date?.getBoundingClientRect().width,
+          documentWidth: document.documentElement.scrollWidth,
+          expectedMenuRight: innerRect && style
+            ? innerRect.right - Number.parseFloat(style.paddingRight)
+            : null,
+          innerWidth,
+          menuRight: menuRect?.right,
+        };
+      })()`,
+    );
+    assert(
+      Math.abs(evidence.menuRight - evidence.expectedMenuRight) <= 1,
+      `Guest actions did not reach the ${viewport.width}px tablet app-bar edge: ${JSON.stringify(evidence)}.`,
+    );
+    assert.equal(
+      evidence.dateWidth,
+      112,
+      `Guest Date column width drifted at ${viewport.width}px.`,
+    );
+    assert.equal(
+      evidence.cityWidth,
+      128,
+      `Guest City column width drifted at ${viewport.width}px.`,
+    );
+    assert(
+      evidence.documentWidth <= evidence.innerWidth + 1,
+      `Guest layout overflowed at ${viewport.width}px: ${JSON.stringify(evidence)}.`,
+    );
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+}
+
 async function verifyGuestTripFlow(browser, baseUrl, options) {
   const activeKey = "trip-planner:guest-trip:global:active";
   const intentKey = "trip-planner:guest-trip:global:intent";
@@ -758,6 +835,7 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   );
   assert.equal(initialDraft.region, "global");
   assert.equal(initialDraft.trip.owner_id, "guest");
+  await verifyGuestTabletLayout(browser);
   const guestRequestStart = browser.cdp.requests.length;
 
   await clickElementWhenAvailable(
@@ -832,14 +910,33 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
     `(() => {
       const draft = JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)}));
       const id = crypto.randomUUID();
+      const duplicateId = crypto.randomUUID();
+      const placeId = crypto.randomUUID();
+      const duplicatePlaceId = crypto.randomUUID();
       const timestamp = new Date().toISOString();
-      draft.workspace.days[0].items.push({
+      const item = {
         attachments: [], booking_url: null, created_at: timestamp,
         day_id: draft.workspace.days[0].id, details: {}, end_time: null, id,
-        links: [], notes: null, place: null, place_id: null, price_amount: null,
+        links: [], notes: null,
+        place: {
+          coordinateSystem: 'wgs84', countryCode: 'JP', displayName: 'Osaka',
+          formattedAddress: 'Osaka, Japan', id: placeId, latitude: 34.6937,
+          localityKind: 'locality', localityName: 'Osaka',
+          localitySource: 'google_address_component', longitude: 135.5023,
+          provider: 'google', providerPlaceId: 'guest-browser-repeated-osaka',
+        },
+        place_id: placeId, price_amount: null,
         price_currency: null, schedule_kind: 'none', schedule_text: null, sort_order: 0,
         start_time: null, title: 'Guest attachment activity', trip_id: draft.draftId,
         type: 'activity', updated_at: timestamp, variant_id: draft.workspace.variant.id,
+      };
+      draft.workspace.days[0].items.push(item, {
+        ...item,
+        id: duplicateId,
+        place: { ...item.place, id: duplicatePlaceId },
+        place_id: duplicatePlaceId,
+        sort_order: 1,
+        title: 'Repeated Osaka activity',
       });
       draft.revision += 1;
       draft.trip.updated_at = timestamp;
@@ -871,15 +968,11 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
     `Boolean(document.querySelector('[data-step-id="files"]'))`,
     "guest item editor",
   );
-  await clickElementWhenAvailable(
+  await clickElementUntil(
     browser,
     `document.querySelector('[data-step-id="files"]')`,
-    "guest item Links step",
-  );
-  await waitFor(
-    browser,
     `Boolean(document.querySelector('[data-guest-attachment-gate]'))`,
-    "guest attachment gate",
+    "guest item Files step",
   );
   await clickElementWhenAvailable(
     browser,

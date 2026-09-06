@@ -109,7 +109,8 @@ async function verifyGuestImport(database, ownerId) {
     database
       .from("itinerary_items")
       .select("id,title,notes,price_amount,price_currency,place_id")
-      .eq("trip_id", firstId),
+      .eq("trip_id", firstId)
+      .order("sort_order"),
     database
       .from("places")
       .select("id,source,provider_place_id,coordinate_system")
@@ -131,6 +132,14 @@ async function verifyGuestImport(database, ownerId) {
       price_amount: 42.5,
       price_currency: "USD",
       title: `${runLabel} activity`,
+    },
+    {
+      id: fixture.duplicateItemId,
+      notes: "Repeated provider place fixture",
+      place_id: fixture.placeId,
+      price_amount: null,
+      price_currency: null,
+      title: `${runLabel} repeated activity`,
     },
   ]);
   assert.deepEqual(places, [
