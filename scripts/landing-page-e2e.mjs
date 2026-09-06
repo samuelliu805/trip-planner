@@ -331,14 +331,21 @@ try {
     `Promise.all(['/guest','/login','/privacy','/terms','/support'].map(async (path) => [path, (await fetch(path)).status]))`,
   );
   for (const [path, status] of routes) assert.equal(status, 200, `${path} returned ${status}`);
-  assert.equal(
-    await evaluate(browser, `document.querySelector('a[href="#sample-trip"]') !== null`),
-    true,
+  const landingCopy = await evaluate(
+    browser,
+    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), tripPlannerMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'Trip Planner').length })`,
   );
+  assert.deepEqual(landingCopy, {
+    hasHowItWorksLink: true,
+    hasSampleLink: false,
+    mentionsOldBrand: false,
+    mentionsSampleTrip: false,
+    tripPlannerMarks: 2,
+  });
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('一次旅行')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('在一处规划')`,
     "Simplified Chinese landing copy",
   );
 

@@ -6,7 +6,6 @@ import { T } from "@/features/i18n/i18n-provider";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
 import { RouteDockHero } from "./route-dock-hero";
-import { SampleTripSection } from "./sample-trip-section";
 
 import "./landing-hero-shell.css";
 import "./landing-workspace.css";
@@ -21,7 +20,6 @@ export function LandingPage({ year }: { year: number }) {
       <LandingNavigation />
       <RouteDockHero />
       <FeatureSections />
-      <SampleTripSection />
       <section className="landing-final-cta">
         <p className="landing-eyebrow">
           <T message="YOUR TRIP, READY TO USE" />
@@ -40,10 +38,10 @@ export function LandingPage({ year }: { year: number }) {
       </section>
       <footer className="plandock-footer">
         <Link className="plandock-wordmark" href="/">
-          <T message="Plandock" />
+          <T message="Trip Planner" />
         </Link>
         <p>
-          © {year} <T message="Plandock" />
+          © {year} <T message="Trip Planner" />
         </p>
         <nav aria-label="Legal and support" data-i18n-aria-label="Legal and support">
           <Link href="/privacy">

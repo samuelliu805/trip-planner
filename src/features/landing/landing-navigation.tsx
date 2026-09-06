@@ -11,8 +11,8 @@ export function LandingNavigation() {
       aria-label="Primary navigation"
       data-i18n-aria-label="Primary navigation"
     >
-      <Link className="plandock-wordmark" href="/" aria-label="Plandock home">
-        <T message="Plandock" />
+      <Link className="plandock-wordmark" href="/" aria-label="Trip Planner home">
+        <T message="Trip Planner" />
       </Link>
       <div className="plandock-nav-links">
         <Link href="#features">
@@ -20,9 +20,6 @@ export function LandingNavigation() {
         </Link>
         <Link href="#how-it-works">
           <T message="How it works" />
-        </Link>
-        <Link href="#sample-trip">
-          <T message="Sample trip" />
         </Link>
       </div>
       <div className="plandock-nav-actions">

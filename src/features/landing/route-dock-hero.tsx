@@ -202,7 +202,7 @@ export function RouteDockHero() {
             <T message="THE CALM WAY TO PLAN A TRIP" />
           </p>
           <h1>
-            <T message="Every trip, docked in one place." />
+            <T message="Plan every trip in one place." />
           </h1>
           <p className="hero-support">
             <T message="Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road." />
@@ -214,8 +214,8 @@ export function RouteDockHero() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="#sample-trip">
-                <T message="Explore a sample trip" />
+              <Link href="#how-it-works">
+                <T message="See how it works" />
               </Link>
             </Button>
           </div>

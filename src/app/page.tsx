@@ -6,20 +6,28 @@ import { translateMessage } from "@/features/i18n/translate";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
+  const siteName = translateMessage(locale, "Trip Planner");
   const description = translateMessage(
     locale,
     "Build the route, compare options, keep travel documents close, and share one usable trip plan.",
   );
   return {
-    title: { absolute: "Plandock" },
+    title: { absolute: siteName },
     description,
     icons: { icon: "/icon.svg" },
     openGraph: {
       description,
-      images: [{ alt: "Plandock route dock", height: 630, url: "/opengraph-image", width: 1200 }],
+      images: [
+        {
+          alt: `${siteName} itinerary workspace`,
+          height: 630,
+          url: "/opengraph-image",
+          width: 1200,
+        },
+      ],
       locale: locale === "zh-CN" ? "zh_CN" : "en_US",
-      siteName: "Plandock",
-      title: "Plandock",
+      siteName,
+      title: siteName,
       type: "website",
       url: "/",
     },
@@ -27,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
       description,
       images: ["/opengraph-image"],
-      title: "Plandock",
+      title: siteName,
     },
   };
 }

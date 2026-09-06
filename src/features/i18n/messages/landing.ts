@@ -1,9 +1,9 @@
 export const landingZhCN: Record<string, string> = {
   "THE CALM WAY TO PLAN A TRIP": "从容规划每一次旅行",
-  "Every trip, docked in one place.": "一次旅行，归于一处。",
+  "Plan every trip in one place.": "在一处规划每一次旅行。",
   "Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road.":
     "规划路线、比较方案，把预订与票据放在手边，再分享一份真正能在旅途中使用的行程。",
-  "Explore a sample trip": "查看示例行程",
+  "See how it works": "了解使用方式",
   "Timeline, table, map, options and travel documents—finally connected.":
     "时间线、表格、地图、备选方案和旅行文件，终于连在一起。",
   "EVERYTHING IN ONE TRIP": "一切都在同一段旅程中",
@@ -11,8 +11,9 @@ export const landingZhCN: Record<string, string> = {
   "TRIP WORKSPACE": "行程工作区",
   "4 days": "4 天",
   Matrix: "矩阵",
-  "Paris Trip itinerary workspace": "巴黎行程工作区",
-  "Paris sample itinerary": "巴黎示例行程",
+  "Trip itinerary workspace": "行程工作区",
+  "Itinerary preview": "行程预览",
+  "Day route preview": "单日路线预览",
   "Paris day route": "巴黎单日路线",
   "Ideas & options": "想法与备选",
   "routes saved": "条路线已保存",
@@ -21,17 +22,16 @@ export const landingZhCN: Record<string, string> = {
   Document: "文件",
   Features: "功能",
   "How it works": "使用方式",
-  "Sample trip": "示例行程",
   "Sign in": "登录",
   "FROM LOOSE PIECES TO A WORKING ROUTE": "从零散信息到可用路线",
   "Plan with the shape of the trip in view.": "看清整段旅程，再开始规划。",
-  "Plandock keeps days, places, route choices and source material connected without pretending the decisions make themselves.":
-    "Plandock 把日期、地点、路线选择和原始资料连在一起，但不会替你虚构决定。",
+  "Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves.":
+    "行程规划把日期、地点、路线选择和原始资料连在一起，但不会替你虚构决定。",
   "01 · PLAN THE WHOLE TRIP": "01 · 规划完整旅程",
   "See every day at once.": "一次看清每一天。",
   "Use a structured Matrix or Timeline for accommodation, transport, activities, meals and notes. Reorder the day when the plan changes.":
     "用矩阵或时间线整理住宿、交通、活动、用餐和备注。计划变化时，也能重新安排当天顺序。",
-  "Sample itinerary matrix": "示例行程矩阵",
+  "Itinerary matrix preview": "行程矩阵预览",
   "Meals / notes": "用餐 / 备注",
   "Metro to hotel": "乘地铁前往酒店",
   "Walk + Metro": "步行 + 地铁",
@@ -45,11 +45,10 @@ export const landingZhCN: Record<string, string> = {
   "Keep alternatives visible.": "让备选方案清晰可见。",
   "Save route and trip options side by side. Compare their known details without invented scores or automatic winners.":
     "并排保存路线和行程备选，根据已知信息自行比较，不使用虚构评分，也不自动宣布胜者。",
-  Plandock: "Plandock",
-  "Privacy | Plandock": "隐私 | Plandock",
-  "Terms | Plandock": "条款 | Plandock",
-  "Support | Plandock": "支持 | Plandock",
   "Paris Trip": "巴黎之旅",
+  "Privacy | Trip Planner": "隐私 | 行程规划",
+  "Terms | Trip Planner": "条款 | 行程规划",
+  "Support | Trip Planner": "支持 | 行程规划",
   "RER B + Metro": "RER B + 地铁",
   "RER B + walk": "RER B + 步行",
   "Direct · 38 min": "直达 · 38 分钟",
@@ -88,11 +87,11 @@ export const landingZhCN: Record<string, string> = {
   "Legal and support": "法律信息与支持",
   "Build the route, compare options, keep travel documents close, and share one usable trip plan.":
     "规划路线、比较方案、随手查看旅行文件，并分享一份可用的行程计划。",
-  "Back to Plandock": "返回 Plandock",
+  "Back to Trip Planner": "返回行程规划",
   PRIVACY: "隐私",
   "Your trip information should stay understandable.": "你的行程信息应当清晰可控。",
-  "Plandock uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.":
-    "Plandock 使用账户、行程和必要的技术信息，以提供规划工作区、你主动启用的公开分享与服务稳定性。",
+  "Trip Planner uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.":
+    "行程规划使用账户、行程和必要的技术信息，以提供规划工作区、你主动启用的公开分享与服务稳定性。",
   "What is stored": "存储哪些信息",
   "Signed-in plans are stored by the configured regional service. Guest plans stay in this browser unless you choose to save them to an account.":
     "登录后的计划由当前区域配置的服务存储。访客计划保留在此浏览器中，除非你选择将其保存到账户。",
@@ -103,9 +102,9 @@ export const landingZhCN: Record<string, string> = {
   "Authentication, storage, mapping and optional telemetry follow the provider configured for the application region.":
     "身份验证、存储、地图和可选遥测均遵循应用所在区域配置的服务提供方。",
   TERMS: "条款",
-  "Plandock helps you organize a plan.": "Plandock 帮你整理计划。",
-  "Plandock is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.":
-    "Plandock 是旅行规划工作区，不销售旅行产品、不代为预订、不保证可用性，也不能替代旅行服务商的意见。",
+  "Trip Planner helps you organize a plan.": "行程规划帮助你整理计划。",
+  "Trip Planner is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.":
+    "行程规划是旅行规划工作区，不销售旅行产品、不代为预订、不保证可用性，也不能替代旅行服务商的意见。",
   "Your responsibility": "你的责任",
   "Check dates, reservations, entry requirements, prices and transport details with the relevant provider before you travel.":
     "出行前，请向相关服务商核对日期、预订、入境要求、价格和交通详情。",
@@ -113,8 +112,8 @@ export const landingZhCN: Record<string, string> = {
   "You are responsible for the trip information and files you add, and for choosing what to publish through a share link.":
     "你需对添加的行程信息和文件负责，并自行决定通过分享链接发布哪些内容。",
   Availability: "可用性",
-  "Features may change as the product develops. Do not rely on Plandock as the only copy of an essential ticket or travel document.":
-    "产品功能可能随发展而变化。请勿将 Plandock 作为重要票据或旅行文件的唯一备份。",
+  "Features may change as the product develops. Do not rely on Trip Planner as the only copy of an essential ticket or travel document.":
+    "产品功能可能随发展而变化。请勿将行程规划作为重要票据或旅行文件的唯一备份。",
   SUPPORT: "支持",
   "Need a hand with your plan?": "规划遇到问题？",
   "For product questions or a reproducible issue, use the project support channel and include the route, device and steps that led to the problem.":

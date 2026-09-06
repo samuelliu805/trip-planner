@@ -19,9 +19,9 @@ function Target({ kind, opacity }: { kind: DockKind; opacity: number }) {
 export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number }) {
   return (
     <section
-      aria-label="Paris Trip itinerary workspace"
+      aria-label="Trip itinerary workspace"
       className="plandock-workspace"
-      data-i18n-aria-label="Paris Trip itinerary workspace"
+      data-i18n-aria-label="Trip itinerary workspace"
       data-testid="assembled-product"
     >
       <header className="workspace-header">
@@ -57,8 +57,8 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
         <div
           className="workspace-matrix"
           role="table"
-          aria-label="Paris sample itinerary"
-          data-i18n-aria-label="Paris sample itinerary"
+          aria-label="Itinerary preview"
+          data-i18n-aria-label="Itinerary preview"
         >
           <div className="workspace-row workspace-labels" role="row">
             <span>
@@ -98,8 +98,8 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
         </div>
         <aside
           className="workspace-map"
-          aria-label="Paris day route"
-          data-i18n-aria-label="Paris day route"
+          aria-label="Day route preview"
+          data-i18n-aria-label="Day route preview"
         >
           <div className="workspace-map-label">
             <Map aria-hidden="true" />

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Plandock — every trip, docked in one place";
+export const alt = "Trip Planner — plan every trip in one place";
 export const size = { height: 630, width: 1200 };
 export const contentType = "image/png";
 
@@ -20,7 +20,7 @@ export default function OpenGraphImage() {
     >
       <div style={{ display: "flex", flexDirection: "column", maxWidth: 650 }}>
         <span style={{ color: "#91cdb9", fontSize: 28, fontWeight: 700, letterSpacing: 4 }}>
-          {"PLANDOCK"}
+          {"TRIP PLANNER"}
         </span>
         <span
           style={{
@@ -31,7 +31,7 @@ export default function OpenGraphImage() {
             marginTop: 28,
           }}
         >
-          {"Every trip, docked in one place."}
+          {"Plan every trip in one place."}
         </span>
       </div>
       <div

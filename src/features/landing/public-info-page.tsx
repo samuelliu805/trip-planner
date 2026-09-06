@@ -10,7 +10,7 @@ const content = {
     eyebrow: "PRIVACY",
     title: "Your trip information should stay understandable.",
     intro:
-      "Plandock uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.",
+      "Trip Planner uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.",
     sections: [
       [
         "What is stored",
@@ -28,9 +28,9 @@ const content = {
   },
   terms: {
     eyebrow: "TERMS",
-    title: "Plandock helps you organize a plan.",
+    title: "Trip Planner helps you organize a plan.",
     intro:
-      "Plandock is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.",
+      "Trip Planner is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.",
     sections: [
       [
         "Your responsibility",
@@ -42,7 +42,7 @@ const content = {
       ],
       [
         "Availability",
-        "Features may change as the product develops. Do not rely on Plandock as the only copy of an essential ticket or travel document.",
+        "Features may change as the product develops. Do not rely on Trip Planner as the only copy of an essential ticket or travel document.",
       ],
     ],
   },
@@ -71,10 +71,10 @@ export function PublicInfoPage({ kind }: { kind: keyof typeof content }) {
       <nav>
         <Link href="/">
           <ArrowLeft aria-hidden="true" />
-          <T message="Back to Plandock" />
+          <T message="Back to Trip Planner" />
         </Link>
         <span className="plandock-wordmark">
-          <T message="Plandock" />
+          <T message="Trip Planner" />
         </span>
       </nav>
       <article>

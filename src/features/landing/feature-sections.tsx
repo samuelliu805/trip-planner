@@ -32,8 +32,8 @@ function MatrixDemo() {
   return (
     <div
       className="feature-matrix"
-      aria-label="Sample itinerary matrix"
-      data-i18n-aria-label="Sample itinerary matrix"
+      aria-label="Itinerary matrix preview"
+      data-i18n-aria-label="Itinerary matrix preview"
     >
       <div className="feature-matrix-row is-header">
         <span>
@@ -210,7 +210,7 @@ export function FeatureSections() {
           <T message="Plan with the shape of the trip in view." />
         </h2>
         <p>
-          <T message="Plandock keeps days, places, route choices and source material connected without pretending the decisions make themselves." />
+          <T message="Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves." />
         </p>
       </section>
       <section className="feature-section matrix-section">
