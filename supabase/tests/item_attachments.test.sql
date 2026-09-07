@@ -1,5 +1,8 @@
 begin;
 
+grant execute on function public.set_item_asset_share_v2(uuid, uuid, text, boolean) to authenticated;
+grant execute on function public.detach_item_asset_v1(uuid, uuid, text) to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 
 select plan(53);

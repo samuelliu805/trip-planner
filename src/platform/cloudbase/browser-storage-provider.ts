@@ -10,9 +10,9 @@ import type {
 import { PlatformOperationError } from "../contracts/errors.ts";
 import { normalizeCloudBaseStorageUrl } from "./storage-url.ts";
 
-const maximumSignedUploadAttempts = 3;
+const maximumSignedUploadAttempts = 4;
 const signedUploadRetryDelayMs = 250;
-const signedUploadTimeoutMs = 20_000;
+const signedUploadTimeoutMs = 18_000;
 
 type CloudBaseBrowserStorageProviderOptions = Readonly<{
   uploadTimeoutMs?: number;
@@ -95,6 +95,7 @@ export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
       });
     }
     let response: Response | undefined;
+    let uploadAccepted = false;
     for (let attempt = 1; attempt <= maximumSignedUploadAttempts; attempt += 1) {
       const body = new FormData();
       if (input.cacheControl) body.append("cacheControl", input.cacheControl);
@@ -115,17 +116,17 @@ export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
         await this.waitForRetry(signedUploadRetryDelayMs * 2 ** (attempt - 1));
         continue;
       }
-      if (
-        response.ok ||
-        !retryableSignedUploadStatus(response.status) ||
-        attempt === maximumSignedUploadAttempts
-      )
+      if (response.ok || (response.status === 409 && attempt > 1)) {
+        uploadAccepted = true;
+        break;
+      }
+      if (!retryableSignedUploadStatus(response.status) || attempt === maximumSignedUploadAttempts)
         break;
       await response.body?.cancel().catch(() => undefined);
       await this.waitForRetry(signedUploadRetryDelayMs * 2 ** (attempt - 1));
     }
     if (!response) throw new PlatformOperationError("unexpected", "Signed storage upload failed.");
-    if (!response.ok)
+    if (!uploadAccepted)
       throw new PlatformOperationError(
         "unexpected",
         `Signed storage upload returned ${response.status}.`,

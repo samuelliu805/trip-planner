@@ -17,12 +17,14 @@ import {
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { replaceItem } from "@/features/itinerary/query-cache";
 import type { PlannerWorkspace } from "@/features/itinerary/types";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 type ItemSaveValues = NonNullable<ReturnType<typeof plannerItemSaveValues>>;
 
 export function usePlannerItemSaveFlow({
   dayId,
   item,
+  expectedVersion,
   onCancel,
   onCreateAnother,
   onError,
@@ -43,7 +45,7 @@ export function usePlannerItemSaveFlow({
   | "tripId"
   | "type"
   | "variantId"
->) {
+> & { expectedVersion?: number }) {
   const client = useQueryClient();
   const createMutation = useCreateItineraryItem(tripId, variantId);
   const updateMutation = useUpdateItineraryItem(tripId, variantId);
@@ -61,15 +63,35 @@ export function usePlannerItemSaveFlow({
   async function persistSave(intent: PlannerEditorSaveIntent, values: ItemSaveValues) {
     if (pending) return;
     try {
+      const workspace = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
+      const targetDayId = item?.day_id ?? dayId;
+      const expectedItemsVersion = workspace?.days.find(
+        ({ id }) => id === targetDayId,
+      )?.items_version;
+      if (!expectedItemsVersion)
+        throw new Error("Reload this day before saving; its collaboration version is unavailable.");
+      const operationId = newTelemetryOperationId();
       const savedItem = item
         ? await updateMutation.mutateAsync({
             ...values,
-            expectedVersion: item.version ?? 1,
+            dayId: targetDayId,
+            expectedItemsVersion,
+            expectedVersion: expectedVersion ?? item.version,
             id: item.id,
+            operationId,
             surface: "item_editor",
+            uploadSessionId: attachmentSession.uploadSessionId,
           })
-        : await createMutation.mutateAsync({ ...values, dayId, surface: "item_editor" });
-      const committedItem = await attachmentSession.commit(savedItem);
+        : await createMutation.mutateAsync({
+            ...values,
+            dayId,
+            expectedItemsVersion,
+            operationId,
+            surface: "item_editor",
+            uploadSessionId: attachmentSession.uploadSessionId,
+          });
+      attachmentSession.markHandled();
+      const committedItem = savedItem;
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(current, committedItem),
       );
@@ -113,5 +135,9 @@ export function usePlannerItemSaveFlow({
     pending,
     pendingLabel: attachmentSession.attachmentPending ? "Updating attachments…" : "Saving…",
     requestSave,
+    resetMutationErrors() {
+      createMutation.reset();
+      updateMutation.reset();
+    },
   };
 }

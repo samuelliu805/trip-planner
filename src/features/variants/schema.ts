@@ -11,7 +11,7 @@ export const variantColorPalette = [
 const variantIdentitySchema = z.string().uuid();
 const variantNameSchema = z.string().trim().min(1, "Enter a route name.").max(80);
 const variantColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Choose a route color.");
-const operationIdSchema = z.uuid().optional();
+const operationIdSchema = z.uuid();
 
 export const createRouteVariantSchema = z.object({
   color: variantColorSchema,
@@ -25,6 +25,7 @@ export const duplicateRouteVariantSchema = createRouteVariantSchema;
 
 export const updateRouteVariantSchema = z.object({
   color: variantColorSchema,
+  expectedVersion: z.number().int().positive(),
   name: variantNameSchema,
   tripId: variantIdentitySchema,
   variantId: variantIdentitySchema,
@@ -32,6 +33,7 @@ export const updateRouteVariantSchema = z.object({
 });
 
 export const routeVariantIdentitySchema = z.object({
+  expectedVersion: z.number().int().positive(),
   tripId: variantIdentitySchema,
   variantId: variantIdentitySchema,
   operationId: operationIdSchema,

@@ -207,6 +207,15 @@ export function DayRouteEditor({
         >
           {route.error ? <Localized value={route.error} /> : null}
         </AutoDismissAlert>
+        {route.conflict ? (
+          <button
+            className="mt-2 min-h-11 w-full rounded-md border border-destructive px-3 text-sm font-medium text-destructive"
+            onClick={() => void route.reloadLatest()}
+            type="button"
+          >
+            <T message="Reload latest" />
+          </button>
+        ) : null}
       </div>
       <footer className="flex items-center gap-2 border-t p-3">
         {route.plan ? (

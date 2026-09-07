@@ -59,6 +59,7 @@ export function TripForm({
   const [reloading, setReloading] = useState(false);
   const [reloadError, setReloadError] = useState<string>();
   const [conflictCleared, setConflictCleared] = useState(false);
+  const [latestTrip, setLatestTrip] = useState<Trip>();
   const savedRef = useRef(onSaved);
   const operationRef = useRef<HTMLInputElement>(null);
   const optimisticSnapshotsRef = useRef<Array<[QueryKey, PlannerWorkspace | undefined]>>([]);
@@ -84,12 +85,6 @@ export function TripForm({
   }, [editor, queryClient, router, state, trip.id]);
 
   async function reloadLatest() {
-    if (
-      !window.confirm(
-        "Replace this form with the latest saved values? Unsaved changes will be lost.",
-      )
-    )
-      return;
     setReloading(true);
     setReloadError(undefined);
     try {
@@ -97,11 +92,7 @@ export function TripForm({
       if (!response.ok) throw new Error("Latest trip settings could not be loaded.");
       const payload = (await response.json()) as { trip: Trip };
       setCurrentTrip(payload.trip);
-      setTitle(payload.trip.title);
-      setDayCount(String(payload.trip.day_count));
-      setStartDate(payload.trip.start_date ?? "");
-      setEndDate(payload.trip.end_date ?? "");
-      setCurrency(payload.trip.currency);
+      setLatestTrip(payload.trip);
       setConflictCleared(true);
     } catch (error) {
       setReloadError(
@@ -110,6 +101,19 @@ export function TripForm({
     } finally {
       setReloading(false);
     }
+  }
+
+  function replaceDraftWithLatest() {
+    if (!latestTrip) return;
+    if (!window.confirm("Replace your local trip-settings draft with the latest saved values?"))
+      return;
+    setTitle(latestTrip.title);
+    setDayCount(String(latestTrip.day_count));
+    setStartDate(latestTrip.start_date ?? "");
+    setEndDate(latestTrip.end_date ?? "");
+    setCurrency(latestTrip.currency);
+    setLatestTrip(undefined);
+    setReloadError(undefined);
   }
 
   function optimisticallyUpdateDates() {
@@ -183,32 +187,54 @@ export function TripForm({
           >
             <Localized value={editor.title} />
           </SheetTitle>
-          {state.error ? (
+          {state.error && !(state.conflict && conflictCleared) ? (
             <p className="mt-2 text-sm font-medium text-destructive" role="alert">
               <Localized value={state.error} />
             </p>
           ) : null}
-          {state.conflict && !conflictCleared ? (
+          {(state.conflict && !conflictCleared) || latestTrip ? (
             <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
               <p className="text-sm text-muted-foreground">
                 <T
-                  message={"Reloading replaces only these trip settings and keeps the editor open."}
+                  message={
+                    latestTrip
+                      ? "Latest trip settings loaded. Your local draft is still here."
+                      : "Reload only these trip settings to compare them with your local draft."
+                  }
                 />
               </p>
-              <Button
-                className="mt-2 min-h-11"
-                disabled={reloading}
-                onClick={reloadLatest}
-                type="button"
-                variant="outline"
-              >
-                {reloading ? (
-                  <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              <div className="mt-2 flex min-w-0 flex-wrap gap-2">
+                {!latestTrip ? (
+                  <Button
+                    className="min-h-11"
+                    disabled={reloading}
+                    onClick={reloadLatest}
+                    type="button"
+                    variant="outline"
+                  >
+                    {reloading ? (
+                      <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                    ) : (
+                      <RotateCcw aria-hidden="true" className="size-4" />
+                    )}
+                    <T message={"Reload latest"} />
+                  </Button>
                 ) : (
-                  <RotateCcw aria-hidden="true" className="size-4" />
+                  <>
+                    <Button
+                      className="min-h-11"
+                      onClick={() => setLatestTrip(undefined)}
+                      type="button"
+                      variant="outline"
+                    >
+                      <T message={"Reapply my draft"} />
+                    </Button>
+                    <Button className="min-h-11" onClick={replaceDraftWithLatest} type="button">
+                      <T message={"Replace draft"} />
+                    </Button>
+                  </>
                 )}
-                <T message={"Reload latest"} />
-              </Button>
+              </div>
             </div>
           ) : null}
           {reloadError ? (

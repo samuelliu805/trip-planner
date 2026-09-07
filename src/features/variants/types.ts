@@ -6,4 +6,5 @@ export type VariantMutationData = {
 };
 
 export type VariantMutationResult =
-  { data: VariantMutationData; error?: never } | { data?: never; error: string };
+  | { data: VariantMutationData; error?: never; code?: never }
+  | { data?: never; error: string; code?: "conflict" | "forbidden" | "unexpected" | "validation" };

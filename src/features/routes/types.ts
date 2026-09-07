@@ -89,16 +89,19 @@ export type RouteCalculationConfig = {
 
 export type SaveDayRoutePlanInput = {
   dayId: string;
+  expectedVersion: number;
   itemIds: string[];
   legModes: RouteLegMode[];
   tripId: string;
   variantId: string;
-  operationId?: string;
+  operationId: string;
   telemetryRouteMode?: import("@/lib/telemetry/events").RouteMode;
 };
 
 export type CalculateDayRouteInput = {
-  operationId?: string;
+  expectedPlanVersion: number;
+  expectedVersion: number;
+  operationId: string;
   planId: string;
   telemetryRouteMode?: import("@/lib/telemetry/events").RouteMode;
   tripId: string;
@@ -106,13 +109,24 @@ export type CalculateDayRouteInput = {
 };
 export type CalculateOverviewRouteInput = {
   legs: Array<{ mode: OverviewRouteMode; position: number }>;
-  operationId?: string;
+  operationId: string;
   telemetryRouteMode?: import("@/lib/telemetry/events").RouteMode;
   tripId: string;
   variantId: string;
 };
-export type ClearDayRouteInput = { dayId: string; tripId: string; variantId: string };
+export type ClearDayRouteInput = {
+  dayId: string;
+  expectedVersion: number;
+  operationId: string;
+  tripId: string;
+  variantId: string;
+};
 
 export type RouteActionResult<T> =
   | { cache?: "full" | "partial" | "miss"; data: T; error?: never }
-  | { cache?: never; data?: never; error: string };
+  | {
+      cache?: never;
+      data?: never;
+      error: string;
+      code?: "conflict" | "forbidden" | "unexpected" | "validation";
+    };

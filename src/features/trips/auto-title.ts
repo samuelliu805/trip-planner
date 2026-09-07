@@ -12,7 +12,13 @@ export async function nameTripAfterFirstPlace(tripId: string, snapshot: PlaceSna
 
   const title = tripTitleFromPlace(snapshot);
   if (!title || title === trip.title) return;
-  const renamed = await repository.renameIfTitle(tripId, trip.title, title);
+  const renamed = await repository.renameIfTitle(
+    tripId,
+    trip.title,
+    title,
+    trip.version,
+    crypto.randomUUID(),
+  );
   if (!renamed) return;
   revalidatePath("/trips");
   revalidatePath(`/trips/${tripId}`);

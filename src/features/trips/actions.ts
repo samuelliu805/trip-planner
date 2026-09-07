@@ -47,7 +47,7 @@ export async function createTrip(
   _state: TripActionState,
   formData: FormData,
 ): Promise<TripActionState> {
-  const operationId = telemetryOperationId(formData.get("operation_id"));
+  const operationId = telemetryOperationId(formData.get("operation_id")) ?? crypto.randomUUID();
   const parsed = createTripSchema.safeParse({
     timezone: formData.get("timezone"),
     today: formData.get("today"),
@@ -81,6 +81,7 @@ export async function createTrip(
       currency,
       dayCount: defaultTripDayCount,
       locale,
+      operationId,
       timezone: parsed.data.timezone,
       title: defaultTripTitle(today),
     });
@@ -208,6 +209,7 @@ export async function deleteTrip(
   const surface = telemetrySurface(formData.get("surface")) ?? "trip_list";
   const parsed = deleteTripSchema.safeParse({
     expectedVersion: formData.get("expected_version"),
+    operationId,
     tripId: formData.get("trip_id"),
   });
   if (!parsed.success) {
@@ -229,7 +231,11 @@ export async function deleteTrip(
     redirect("/login");
   }
   try {
-    await getTripRepository().remove(parsed.data.tripId, parsed.data.expectedVersion);
+    await getTripRepository().remove(
+      parsed.data.tripId,
+      parsed.data.expectedVersion,
+      parsed.data.operationId,
+    );
   } catch (error) {
     await captureServerProductEvent(
       "trip_delete_failed",

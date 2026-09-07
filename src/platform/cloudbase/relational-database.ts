@@ -7,6 +7,7 @@ import { createCloudBaseUserContext } from "./database";
 import { isCloudBaseScalarUuidParseError } from "./errors";
 import {
   cloudBaseDayRoutePlanRecoveryKey,
+  cloudBaseItemSaveRecoveryKey,
   cloudBaseOrderMutationRecoveryKey,
   cloudBasePlaceUpsertRecoveryKey,
   cloudBaseScalarMutationRecoveryKey,
@@ -27,6 +28,19 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
   const rpc = ((name: string, parameters: Readonly<Record<string, unknown>>) => {
     return db.rpc(name, parameters).then(async (value) => {
       const recoverable = isCloudBaseScalarUuidParseError(value.error);
+      const itemSaveKey = cloudBaseItemSaveRecoveryKey(name, parameters, recoverable);
+      if (itemSaveKey) {
+        const lookup = await db
+          .from("itinerary_items")
+          .select("id")
+          .eq("id", itemSaveKey.itemId)
+          .eq("trip_id", itemSaveKey.tripId)
+          .eq("variant_id", itemSaveKey.variantId)
+          .eq("day_id", itemSaveKey.dayId);
+        if (!lookup.error && Array.isArray(lookup.data) && lookup.data.length === 1)
+          return { data: { id: itemSaveKey.itemId }, error: null };
+        return value;
+      }
       const recoveryKey = cloudBasePlaceUpsertRecoveryKey(name, parameters, recoverable);
       if (recoveryKey) {
         const lookup = await db

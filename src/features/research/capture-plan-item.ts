@@ -109,12 +109,12 @@ export function capturePlanItemAsResearch({
   days: PlannerDay[];
   item: ItineraryItem;
   tripId: string;
-}): CreateResearchItemInput {
+}): Omit<CreateResearchItemInput, "operationId"> {
   const related = relatedBookingItems(item, days);
   const links = capturedLinks(related);
   const price = capturedPrice(related);
   const itemDetails = details(item);
-  const base: CreateResearchItemInput = {
+  const base: Omit<CreateResearchItemInput, "operationId"> = {
     category,
     currency: price.currency,
     dayId: item.day_id,

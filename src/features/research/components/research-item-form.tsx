@@ -14,7 +14,7 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import { ResearchItemFields } from "./research-item-fields";
-import { createResearchItem, updateResearchItem } from "../actions";
+import { createResearchItem, loadResearchItem, updateResearchItem } from "../actions";
 import { researchDraftCanSave, researchItemInputFromForm } from "../research-item-form-values";
 import {
   researchItemFormSteps,
@@ -49,6 +49,9 @@ export function ResearchItemForm({
   const [formDirty, setFormDirty] = useState(false);
   const [canSave, setCanSave] = useState(Boolean(item));
   const [error, setError] = useState<string>();
+  const [conflict, setConflict] = useState(false);
+  const [baseVersion, setBaseVersion] = useState(item?.version);
+  const [latestItem, setLatestItem] = useState<ResearchItem>();
   const [exitOpen, setExitOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const scrollNodeRef = useRef<HTMLDivElement | null>(null);
@@ -134,10 +137,16 @@ export function ResearchItemForm({
           { actorType: "authenticated" },
         );
       const result = item
-        ? await updateResearchItem({ ...input, id: item.id, operationId })
+        ? await updateResearchItem({
+            ...input,
+            expectedVersion: baseVersion ?? item.version,
+            id: item.id,
+            operationId,
+          })
         : await createResearchItem({ ...input, operationId });
       if (result.error || !result.data) {
         setMutationPending(false);
+        setConflict(result.code === "conflict");
         setError(result.error ?? "This idea could not be saved.");
         return;
       }
@@ -157,6 +166,16 @@ export function ResearchItemForm({
           : "The idea was saved, but its new files could not be committed.",
       );
     }
+  }
+
+  async function reloadLatest() {
+    if (!item) return;
+    const result = await loadResearchItem(tripId, item.id);
+    if (!result.data) return setError(result.error ?? "The latest idea could not be loaded.");
+    setBaseVersion(result.data.version);
+    setLatestItem(result.data);
+    setConflict(false);
+    setError(undefined);
   }
 
   return (
@@ -211,6 +230,27 @@ export function ResearchItemForm({
       pendingLabel={attachmentPending ? "Updating attachments…" : "Saving…"}
       saveDisabled={!canSave && !attachmentOnlySave}
     >
+      {conflict ? (
+        <button
+          className="min-h-11 rounded-md border border-destructive px-4 text-sm font-medium text-destructive"
+          onClick={() => void reloadLatest()}
+          type="button"
+        >
+          {t("Reload latest")}
+        </button>
+      ) : null}
+      {latestItem ? (
+        <div className="rounded-md border bg-muted/40 p-3 text-sm" role="status">
+          <p>{t("Latest loaded. Your draft is still here and can be saved again.")}</p>
+          <button
+            className="mt-2 min-h-11 rounded-md border px-3 font-medium"
+            onClick={() => onSaved(latestItem)}
+            type="button"
+          >
+            {t("Use latest values")}
+          </button>
+        </div>
+      ) : null}
       <ResearchItemFields
         activeStepId={stepId}
         attachments={

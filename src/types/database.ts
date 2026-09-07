@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       asset_deletion_queue: {
@@ -71,6 +96,7 @@ export type Database = {
           sort_order: number
           trip_id: string
           updated_at: string
+          version: number
         }
         Insert: {
           applied_from_research_application_id?: string | null
@@ -89,6 +115,7 @@ export type Database = {
           sort_order?: number
           trip_id: string
           updated_at?: string
+          version?: number
         }
         Update: {
           applied_from_research_application_id?: string | null
@@ -107,6 +134,7 @@ export type Database = {
           sort_order?: number
           trip_id?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -143,13 +171,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "research_items"
             referencedColumns: ["id", "trip_id"]
-          },
-          {
-            foreignKeyName: "asset_links_trip_owner_fkey"
-            columns: ["trip_id", "owner_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id", "owner_id"]
           },
         ]
       }
@@ -228,6 +249,7 @@ export type Database = {
           provider_schema_version: string
           total_distance_meters: number
           total_duration_seconds: number | null
+          version: number
         }
         Insert: {
           calculated_legs: Json
@@ -237,6 +259,7 @@ export type Database = {
           provider_schema_version?: string
           total_distance_meters: number
           total_duration_seconds?: number | null
+          version?: number
         }
         Update: {
           calculated_legs?: Json
@@ -246,6 +269,7 @@ export type Database = {
           provider_schema_version?: string
           total_distance_meters?: number
           total_duration_seconds?: number | null
+          version?: number
         }
         Relationships: [
           {
@@ -320,6 +344,7 @@ export type Database = {
           trip_id: string
           updated_at: string
           variant_id: string
+          version: number
         }
         Insert: {
           created_at?: string
@@ -328,6 +353,7 @@ export type Database = {
           trip_id: string
           updated_at?: string
           variant_id: string
+          version?: number
         }
         Update: {
           created_at?: string
@@ -336,6 +362,7 @@ export type Database = {
           trip_id?: string
           updated_at?: string
           variant_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -674,6 +701,7 @@ export type Database = {
           trip_id: string | null
           updated_at: string
           variant_id: string | null
+          version: number
         }
         Insert: {
           allow_long_image_download?: boolean
@@ -705,6 +733,7 @@ export type Database = {
           trip_id?: string | null
           updated_at?: string
           variant_id?: string | null
+          version?: number
         }
         Update: {
           allow_long_image_download?: boolean
@@ -736,6 +765,7 @@ export type Database = {
           trip_id?: string | null
           updated_at?: string
           variant_id?: string | null
+          version?: number
         }
         Relationships: [
           {
@@ -891,6 +921,7 @@ export type Database = {
           total_price_amount: number | null
           trip_id: string
           updated_at: string
+          version: number
         }
         Insert: {
           adult_count?: number | null
@@ -922,6 +953,7 @@ export type Database = {
           total_price_amount?: number | null
           trip_id: string
           updated_at?: string
+          version?: number
         }
         Update: {
           adult_count?: number | null
@@ -953,6 +985,7 @@ export type Database = {
           total_price_amount?: number | null
           trip_id?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1142,6 +1175,7 @@ export type Database = {
           superseded_at: string | null
           superseded_by: string | null
           trip_id: string
+          version: number
         }
         Insert: {
           affected_entity_ids: string[]
@@ -1161,6 +1195,7 @@ export type Database = {
           superseded_at?: string | null
           superseded_by?: string | null
           trip_id: string
+          version?: number
         }
         Update: {
           affected_entity_ids?: string[]
@@ -1180,6 +1215,7 @@ export type Database = {
           superseded_at?: string | null
           superseded_by?: string | null
           trip_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1306,26 +1342,35 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          days_version: number
           id: string
           is_primary: boolean
+          items_version: number
           name: string
           trip_id: string
+          version: number
         }
         Insert: {
           color?: string
           created_at?: string
+          days_version?: number
           id?: string
           is_primary?: boolean
+          items_version?: number
           name: string
           trip_id: string
+          version?: number
         }
         Update: {
           color?: string
           created_at?: string
+          days_version?: number
           id?: string
           is_primary?: boolean
+          items_version?: number
           name?: string
           trip_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1485,30 +1530,68 @@ export type Database = {
           },
         ]
       }
+      trip_creation_receipts: {
+        Row: {
+          actor_user_id: string
+          created_at: string
+          operation_id: string
+          payload_fingerprint: string
+          trip_id: string
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string
+          operation_id: string
+          payload_fingerprint: string
+          trip_id: string
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string
+          operation_id?: string
+          payload_fingerprint?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_creation_receipts_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_days: {
         Row: {
           date: string | null
           day_number: number
           id: string
+          items_version: number
           notes: string | null
           title: string | null
           variant_id: string
+          version: number
         }
         Insert: {
           date?: string | null
           day_number: number
           id?: string
+          items_version?: number
           notes?: string | null
           title?: string | null
           variant_id: string
+          version?: number
         }
         Update: {
           date?: string | null
           day_number?: number
           id?: string
+          items_version?: number
           notes?: string | null
           title?: string | null
           variant_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1520,15 +1603,42 @@ export type Database = {
           },
         ]
       }
+      trip_deletion_receipts: {
+        Row: {
+          actor_user_id: string
+          deleted_at: string
+          operation_id: string
+          payload_fingerprint: string
+          trip_id: string
+        }
+        Insert: {
+          actor_user_id: string
+          deleted_at?: string
+          operation_id: string
+          payload_fingerprint: string
+          trip_id: string
+        }
+        Update: {
+          actor_user_id?: string
+          deleted_at?: string
+          operation_id?: string
+          payload_fingerprint?: string
+          trip_id?: string
+        }
+        Relationships: []
+      }
       trip_history: {
         Row: {
           actor_label_snapshot: string
           actor_user_id: string
           changes: Json
           created_at: string
+          entity_id: string | null
+          entity_type: string
           event_type: string
           id: string
           operation_id: string
+          operation_kind: string
           trip_id: string
         }
         Insert: {
@@ -1536,9 +1646,12 @@ export type Database = {
           actor_user_id: string
           changes?: Json
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string
           event_type: string
           id?: string
           operation_id: string
+          operation_kind?: string
           trip_id: string
         }
         Update: {
@@ -1546,9 +1659,12 @@ export type Database = {
           actor_user_id?: string
           changes?: Json
           created_at?: string
+          entity_id?: string | null
+          entity_type?: string
           event_type?: string
           id?: string
           operation_id?: string
+          operation_kind?: string
           trip_id?: string
         }
         Relationships: [
@@ -1589,6 +1705,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "trip_members_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trip_operations: {
+        Row: {
+          actor_user_id: string
+          completed_at: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          operation_id: string
+          operation_kind: string
+          payload_fingerprint: string
+          result: Json | null
+          trip_id: string
+        }
+        Insert: {
+          actor_user_id: string
+          completed_at?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          operation_id: string
+          operation_kind: string
+          payload_fingerprint: string
+          result?: Json | null
+          trip_id: string
+        }
+        Update: {
+          actor_user_id?: string
+          completed_at?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          operation_id?: string
+          operation_kind?: string
+          payload_fingerprint?: string
+          result?: Json | null
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_operations_trip_id_fkey"
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
@@ -1654,6 +1817,7 @@ export type Database = {
           route_variant_id: string
           trip_id: string
           updated_at: string
+          version: number
         }
         Insert: {
           category: string
@@ -1664,6 +1828,7 @@ export type Database = {
           route_variant_id: string
           trip_id: string
           updated_at?: string
+          version?: number
         }
         Update: {
           category?: string
@@ -1674,6 +1839,7 @@ export type Database = {
           route_variant_id?: string
           trip_id?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1790,6 +1956,38 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_research_item_to_variant_v2_phase_attachment_transfer: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v2_phase_canonical_transport_tit: {
+        Args: {
+          schedule_choice?: string
+          target_item_id?: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      apply_research_item_to_variant_v3: {
+        Args: {
+          expected_research_version: number
+          schedule_choice: string
+          target_item_id: string
+          target_operation_id: string
+          target_research_item_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       apply_selected_research_item: {
         Args: {
           target_research_item_id: string
@@ -1814,9 +2012,20 @@ export type Database = {
         Args: { target_link_id: string }
         Returns: Json
       }
+      can_edit_trip: { Args: { target_trip_id: string }; Returns: boolean }
       clear_day_route_plan: {
         Args: { target_day_id: string; target_variant_id: string }
         Returns: undefined
+      }
+      clear_day_route_plan_v2: {
+        Args: {
+          expected_version: number
+          target_day_id: string
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
       }
       clear_research_item_selection: {
         Args: {
@@ -1834,6 +2043,16 @@ export type Database = {
         }
         Returns: number
       }
+      clear_route_variant_items_v2: {
+        Args: {
+          expected_items_version: number
+          target_item_ids: string[]
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       commit_item_asset_session_v1: {
         Args: {
           requested_draft_session_id: string
@@ -1850,6 +2069,23 @@ export type Database = {
         }
         Returns: Json
       }
+      copy_itinerary_items_to_days: {
+        Args: { source_item_ids: string[]; target_day_ids: string[] }
+        Returns: number
+      }
+      copy_itinerary_items_v2: {
+        Args: {
+          expected_items_version: number
+          preserve_place: boolean
+          replace_target_item_ids: string[]
+          source_item_ids: string[]
+          target_day_id: string
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       copy_research_assets_to_items_v1: {
         Args: {
           target_application_id: string
@@ -1858,10 +2094,6 @@ export type Database = {
           target_trip_id: string
         }
         Returns: undefined
-      }
-      copy_itinerary_items_to_days: {
-        Args: { source_item_ids: string[]; target_day_ids: string[] }
-        Returns: number
       }
       create_public_itinerary_link: {
         Args: {
@@ -1968,6 +2200,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_route_variant_v2: {
+        Args: {
+          duplicate_content: boolean
+          source_variant_id: string
+          target_operation_id: string
+          target_trip_id: string
+          variant_color: string
+          variant_name: string
+        }
+        Returns: Json
+      }
       create_share_page_v1: {
         Args: {
           requested_allow_long_image_download?: boolean
@@ -2036,6 +2279,32 @@ export type Database = {
         }
         Returns: Json
       }
+      create_share_page_v4: {
+        Args: {
+          expected_variant_version: number
+          requested_allow_long_image_download?: boolean
+          requested_allow_route_explore?: boolean
+          requested_default_view?: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_end_day_number?: number
+          requested_long_image_qr_destination?: string
+          requested_long_image_qr_share_page_id?: string
+          requested_long_image_start_day_number?: number
+          requested_share_description?: string
+          requested_share_title?: string
+          requested_show_addresses?: boolean
+          requested_show_attachments?: boolean
+          requested_show_map_routes?: boolean
+          requested_show_notes?: boolean
+          requested_show_place_photos?: boolean
+          requested_show_quick_action_links?: boolean
+          requested_show_times?: boolean
+          requested_template_id?: string
+          requested_template_version?: number
+          target_operation_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       create_trip: {
         Args: {
           trip_currency?: string
@@ -2059,13 +2328,67 @@ export type Database = {
         }
         Returns: string
       }
+      create_trip_v3: {
+        Args: {
+          target_operation_id: string
+          trip_currency: string
+          trip_day_count: number
+          trip_end_date: string
+          trip_locale: string
+          trip_start_date: string
+          trip_timezone: string
+          trip_title: string
+        }
+        Returns: string
+      }
       current_research_plan_application_ids: {
         Args: { target_trip_id: string; target_variant_id: string }
         Returns: string[]
       }
+      delete_itinerary_item_v2: {
+        Args: {
+          expected_items_version: number
+          expected_version: number
+          target_item_id: string
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      delete_research_item_v2: {
+        Args: {
+          expected_version: number
+          target_operation_id: string
+          target_research_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
       delete_route_variant: {
         Args: { target_trip_id: string; target_variant_id: string }
         Returns: string
+      }
+      delete_route_variant_v2: {
+        Args: {
+          expected_version: number
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      delete_trip_v1: {
+        Args: { expected_version: number; target_trip_id: string }
+        Returns: boolean
+      }
+      delete_trip_v2: {
+        Args: {
+          expected_version: number
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: boolean
       }
       detach_item_asset_v1: {
         Args: {
@@ -2075,6 +2398,16 @@ export type Database = {
         }
         Returns: string
       }
+      detach_item_asset_v2: {
+        Args: {
+          expected_version: number
+          requested_public_ref: string
+          target_item_id: string
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
       detach_research_asset_v1: {
         Args: {
           requested_public_ref: string
@@ -2082,6 +2415,16 @@ export type Database = {
           target_trip_id: string
         }
         Returns: string
+      }
+      detach_research_asset_v2: {
+        Args: {
+          expected_version: number
+          requested_public_ref: string
+          target_operation_id: string
+          target_research_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
       }
       discard_item_asset_session_v1: {
         Args: {
@@ -2182,6 +2525,10 @@ export type Database = {
       get_public_itinerary_v2: { Args: { shared_token: string }; Returns: Json }
       get_public_itinerary_v3: { Args: { shared_token: string }; Returns: Json }
       get_public_itinerary_v4: { Args: { shared_token: string }; Returns: Json }
+      get_public_itinerary_v4_without_amap_geometry: {
+        Args: { shared_token: string }
+        Returns: Json
+      }
       get_public_share_page_v1: {
         Args: { shared_token: string }
         Returns: Json
@@ -2193,6 +2540,14 @@ export type Database = {
       get_public_share_page_v3: {
         Args: { shared_token: string }
         Returns: Json
+      }
+      import_guest_trip_v1: {
+        Args: {
+          guest_draft_id: string
+          guest_locale?: string
+          guest_payload: Json
+        }
+        Returns: string
       }
       insert_trip_day: {
         Args: { before_day_number: number; target_trip_id: string }
@@ -2206,13 +2561,27 @@ export type Database = {
         }
         Returns: string
       }
-      import_guest_trip_v1: {
+      insert_variant_day_v2: {
         Args: {
-          guest_draft_id: string
-          guest_locale?: string
-          guest_payload: Json
+          before_day_number: number
+          expected_days_version: number
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
         }
-        Returns: string
+        Returns: Json
+      }
+      invite_trip_collaborator: {
+        Args: {
+          target_identifier: string
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: boolean
+      }
+      is_actual_trip_owner: {
+        Args: { target_trip_id: string }
+        Returns: boolean
       }
       is_trip_member: { Args: { target_trip_id: string }; Returns: boolean }
       is_trip_owner: { Args: { target_trip_id: string }; Returns: boolean }
@@ -2234,6 +2603,43 @@ export type Database = {
       }
       list_share_pages_v1: { Args: { target_trip_id: string }; Returns: Json }
       list_share_pages_v2: { Args: { target_trip_id: string }; Returns: Json }
+      list_trip_history: {
+        Args: {
+          before_created_at?: string
+          before_id?: string
+          requested_limit?: number
+          target_trip_id: string
+        }
+        Returns: {
+          actor_label_snapshot: string
+          actor_user_id: string
+          changes: Json
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          operation_id: string
+          operation_kind: string
+          trip_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trip_history"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_trip_members: {
+        Args: { target_trip_id: string }
+        Returns: {
+          display_label: string
+          joined_at: string
+          member_id: string
+          member_key: string
+          role: string
+        }[]
+      }
       owner_asset_access_v1: {
         Args: { requested_public_ref: string; target_trip_id: string }
         Returns: Json
@@ -2362,6 +2768,18 @@ export type Database = {
         }
         Returns: Json
       }
+      recover_trip_creation_v1: {
+        Args: { target_operation_id: string }
+        Returns: Json
+      }
+      remove_trip_collaborator: {
+        Args: {
+          target_member_id: string
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: boolean
+      }
       remove_trip_day: {
         Args: { target_day_id: string; target_trip_id: string }
         Returns: string
@@ -2374,9 +2792,40 @@ export type Database = {
         }
         Returns: string
       }
+      remove_variant_day_v2: {
+        Args: {
+          expected_day_version: number
+          expected_days_version: number
+          target_day_id: string
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      rename_trip_if_title_v2: {
+        Args: {
+          current_title: string
+          expected_version: number
+          next_title: string
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: boolean
+      }
       reorder_itinerary_items: {
         Args: { ordered_item_ids: string[]; target_day_id: string }
         Returns: undefined
+      }
+      reorder_itinerary_items_v2: {
+        Args: {
+          expected_items_version: number
+          ordered_item_ids: string[]
+          target_day_id: string
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: Json
       }
       reorder_variant_days: {
         Args: {
@@ -2385,6 +2834,16 @@ export type Database = {
           target_variant_id: string
         }
         Returns: undefined
+      }
+      reorder_variant_days_v2: {
+        Args: {
+          expected_days_version: number
+          ordered_day_ids: string[]
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
       }
       research_application_matches_current: {
         Args: { target_application_id: string }
@@ -2487,6 +2946,19 @@ export type Database = {
         Args: { target_application_id: string; target_trip_id: string }
         Returns: Json
       }
+      revert_research_plan_application_phase_attachment_transfer: {
+        Args: { target_application_id: string; target_trip_id: string }
+        Returns: Json
+      }
+      revert_research_plan_application_v2: {
+        Args: {
+          expected_version: number
+          target_application_id: string
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
       revoke_public_itinerary_link: {
         Args: { target_link_id: string }
         Returns: undefined
@@ -2498,6 +2970,14 @@ export type Database = {
       revoke_share_page_v1: {
         Args: { target_share_page_id: string }
         Returns: undefined
+      }
+      revoke_share_page_v2: {
+        Args: {
+          expected_version: number
+          target_operation_id: string
+          target_share_page_id: string
+        }
+        Returns: Json
       }
       rotate_public_itinerary_link: {
         Args: { target_link_id: string }
@@ -2522,6 +3002,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      save_day_route_calculation_v2: {
+        Args: {
+          calculated_config_signature: string
+          calculated_provider_schema_version: string
+          calculated_total_distance_meters: number
+          calculated_total_duration_seconds: number
+          expected_plan_version: number
+          expected_version: number
+          normalized_calculated_legs: Json
+          target_operation_id: string
+          target_plan_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
       save_day_route_plan: {
         Args: {
           ordered_item_ids: string[]
@@ -2530,6 +3025,59 @@ export type Database = {
           target_variant_id: string
         }
         Returns: string
+      }
+      save_day_route_plan_v2: {
+        Args: {
+          expected_version: number
+          ordered_item_ids: string[]
+          requested_leg_modes: string[]
+          target_day_id: string
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      save_itinerary_item_v2: {
+        Args: {
+          expected_items_version: number
+          expected_version: number
+          ordered_item_ids: string[]
+          requested_item: Json
+          requested_links: Json
+          target_day_id: string
+          target_item_id: string
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      save_itinerary_item_v3: {
+        Args: {
+          expected_items_version: number
+          expected_version: number
+          ordered_item_ids: string[]
+          requested_draft_session_id: string
+          requested_item: Json
+          requested_links: Json
+          target_day_id: string
+          target_item_id: string
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
+      save_research_item_v2: {
+        Args: {
+          expected_version: number
+          requested_item: Json
+          target_operation_id: string
+          target_research_item_id: string
+          target_trip_id: string
+        }
+        Returns: Json
       }
       select_research_item_for_variant: {
         Args: {
@@ -2573,13 +3121,37 @@ export type Database = {
         }
         Returns: Json
       }
+      set_item_asset_share_v3: {
+        Args: {
+          expected_version: number
+          requested_include_in_share: boolean
+          requested_public_ref: string
+          target_item_id: string
+          target_operation_id: string
+          target_trip_id: string
+        }
+        Returns: Json
+      }
       set_primary_route_variant: {
         Args: { target_trip_id: string; target_variant_id: string }
         Returns: string
       }
+      set_primary_route_variant_v2: {
+        Args: {
+          expected_version: number
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+        }
+        Returns: Json
+      }
       sync_trip_schedule_from_primary_days: {
         Args: { target_trip_id: string }
         Returns: undefined
+      }
+      trip_history_storage_stats: {
+        Args: { target_trip_id: string }
+        Returns: Json
       }
       untracked_asset_storage_batch_v1: {
         Args: { requested_limit?: number }
@@ -2661,6 +3233,17 @@ export type Database = {
         }
         Returns: string
       }
+      update_route_variant_v2: {
+        Args: {
+          expected_version: number
+          target_operation_id: string
+          target_trip_id: string
+          target_variant_id: string
+          variant_color: string
+          variant_name: string
+        }
+        Returns: Json
+      }
       update_share_page_v1: {
         Args: {
           requested_allow_long_image_download: boolean
@@ -2729,20 +3312,59 @@ export type Database = {
         }
         Returns: Json
       }
-      update_trip_plan: {
+      update_share_page_v4: {
         Args: {
           expected_version: number
+          requested_allow_long_image_download: boolean
+          requested_allow_route_explore: boolean
+          requested_default_view: Database["public"]["Enums"]["public_itinerary_view"]
+          requested_long_image_end_day_number?: number
+          requested_long_image_qr_destination: string
+          requested_long_image_qr_share_page_id?: string
+          requested_long_image_start_day_number?: number
+          requested_share_description: string
+          requested_share_title: string
+          requested_show_addresses: boolean
+          requested_show_attachments?: boolean
+          requested_show_map_routes: boolean
+          requested_show_notes: boolean
+          requested_show_place_photos: boolean
+          requested_show_quick_action_links: boolean
+          requested_show_times: boolean
+          requested_template_id: string
+          requested_template_version: number
           target_operation_id: string
-          target_trip_id: string
-          trip_currency: string
-          trip_day_count: number
-          trip_end_date: string
-          trip_start_date: string
-          trip_timezone: string
-          trip_title: string
+          target_share_page_id: string
         }
-        Returns: string
+        Returns: Json
       }
+      update_trip_plan:
+        | {
+            Args: {
+              target_trip_id: string
+              trip_currency: string
+              trip_day_count: number
+              trip_end_date: string
+              trip_start_date: string
+              trip_timezone: string
+              trip_title: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              expected_version: number
+              target_operation_id: string
+              target_trip_id: string
+              trip_currency: string
+              trip_day_count: number
+              trip_end_date: string
+              trip_start_date: string
+              trip_timezone: string
+              trip_title: string
+            }
+            Returns: string
+          }
       update_trip_status: {
         Args: {
           expected_version: number
@@ -2751,37 +3373,6 @@ export type Database = {
           target_trip_id: string
         }
         Returns: string
-      }
-      delete_trip_v1: {
-        Args: { expected_version: number; target_trip_id: string }
-        Returns: boolean
-      }
-      invite_trip_collaborator: {
-        Args: { target_identifier: string; target_operation_id: string; target_trip_id: string }
-        Returns: boolean
-      }
-      list_trip_members: {
-        Args: { target_trip_id: string }
-        Returns: {
-          display_label: string
-          joined_at: string
-          member_id: string
-          role: string
-          member_key: string
-        }[]
-      }
-      list_trip_history: {
-        Args: {
-          before_created_at?: string
-          before_id?: string
-          requested_limit?: number
-          target_trip_id: string
-        }
-        Returns: Database["public"]["Tables"]["trip_history"]["Row"][]
-      }
-      remove_trip_collaborator: {
-        Args: { target_member_id: string; target_operation_id: string; target_trip_id: string }
-        Returns: boolean
       }
       upsert_google_place_snapshot: {
         Args: {
@@ -2867,12 +3458,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2896,11 +3487,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2921,11 +3512,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2946,11 +3537,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2963,11 +3554,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2977,6 +3568,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       asset_media_kind: ["image", "pdf", "video"],

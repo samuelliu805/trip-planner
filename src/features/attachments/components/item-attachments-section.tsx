@@ -164,6 +164,8 @@ export function SavedItemAttachmentsSection({
       const result = await setAttachmentShare({
         includeInShare: checked,
         itemId: item.id,
+        expectedVersion: attachment.version,
+        operationId: newTelemetryOperationId(),
         publicRef: attachment.publicRef,
         tripId,
       });
@@ -185,6 +187,7 @@ export function SavedItemAttachmentsSection({
     startMutation(async () => {
       const result = await detachAttachment({
         itemId: item.id,
+        expectedVersion: target.version,
         operationId: newTelemetryOperationId(),
         publicRef: target.publicRef,
         tripId,

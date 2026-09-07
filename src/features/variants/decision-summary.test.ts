@@ -867,11 +867,22 @@ test("Phase 5C cached summaries reconcile to authoritative variant identity and 
       {
         ...variants[1],
         color: "#f97316",
+        days_version: 1,
         is_primary: true,
+        items_version: 1,
         name: "New Primary",
         trip_id: tripId,
+        version: 1,
       },
-      { ...variants[0], is_primary: false, name: "Renamed A", trip_id: tripId },
+      {
+        ...variants[0],
+        days_version: 1,
+        is_primary: false,
+        items_version: 1,
+        name: "Renamed A",
+        trip_id: tripId,
+        version: 1,
+      },
     ],
     cached,
   );
@@ -883,7 +894,18 @@ test("Phase 5C cached summaries reconcile to authoritative variant identity and 
   assert.equal(reconciled[0].isPrimary, true);
   assert.equal(reconciled[0].color, "#f97316");
   assert.equal(
-    reconcileDecisionSummaryProjections([{ ...variants[0], trip_id: tripId }], cached).length,
+    reconcileDecisionSummaryProjections(
+      [
+        {
+          ...variants[0],
+          days_version: 1,
+          items_version: 1,
+          trip_id: tripId,
+          version: 1,
+        },
+      ],
+      cached,
+    ).length,
     1,
     "deleted cached variants are removed",
   );

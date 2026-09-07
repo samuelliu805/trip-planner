@@ -191,7 +191,7 @@ async function readItineraryQueryModules() {
 async function readItineraryItemActions() {
   return (
     await Promise.all(
-      ["./actions.ts", "./item-create-action.ts"].map((path) =>
+      ["./actions.ts", "./atomic-item-action.ts", "./item-create-action.ts"].map((path) =>
         readFile(new URL(path, import.meta.url), "utf8"),
       ),
     )
@@ -201,8 +201,7 @@ async function readItineraryItemActions() {
 test("hotel and transport duplicate checks avoid CloudBase empty HEAD responses", async () => {
   const actions = await readItineraryItemActions();
   assert.doesNotMatch(actions, /head:\s*true/);
-  assert.match(actions, /data: hotels[\s\S]*hotels\?\.length/);
-  assert.match(actions, /data: transports[\s\S]*transports\?\.length/);
+  assert.match(actions, /save_itinerary_item_v3/);
 });
 
 async function readAppStyles() {
@@ -229,6 +228,8 @@ const ids = {
 const base = {
   dayId: ids.day,
   details: {},
+  expectedItemsVersion: 1,
+  operationId: "00000000-0000-4000-8000-000000000099",
   title: "Museum",
   tripId: ids.trip,
   type: "activity" as const,
@@ -278,10 +279,13 @@ test("planner initially selects the first Activity cell", () => {
 test("active variant resolution honors a valid query and safely falls back to primary", () => {
   const primary = {
     color: "#0f766e",
+    days_version: 1,
     id: ids.variant,
     is_primary: true,
+    items_version: 1,
     name: "Route A",
     trip_id: ids.trip,
+    version: 1,
   };
   const routeB = {
     ...primary,
@@ -933,7 +937,10 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(page, /resolveActiveVariant\(variantsResult\.data, query\.variant\)/);
   assert.match(page, /getPlannerWorkspace\(\s*tripId,\s*resolution\.activeVariant\.id/);
   assert.match(data, /getPlannerVariants/);
-  assert.match(data, /select\("id, trip_id, name, color, is_primary"\)/);
+  assert.match(
+    data,
+    /select\("id, trip_id, name, color, is_primary, version, days_version, items_version"\)/,
+  );
   assert.match(data, /getPlannerWorkspace\(\s*tripId: string,\s*variantId: string/);
   assert.match(data, /\.eq\("id", variantId\)/);
   assert.match(queries, /\["planner", tripId, variantId\]/);
@@ -967,7 +974,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
   assert.match(toolbar, /Clear selected cells/);
   assert.match(toolbar, /Trip Planner \/|Back to Trips/);
-  assert.match(itineraryActions, /rpc\("clear_route_variant_items"/);
+  assert.match(itineraryActions, /rpc\("clear_route_variant_items_v2"/);
   assert.match(
     variantUi,
     /wasActive[\s\S]*find\(\(\{ is_primary \}\) => is_primary\)[\s\S]*window\.location\.assign/,
@@ -1114,6 +1121,7 @@ test("route calculation uses full cache hits and only recalculates changed legs"
     provider_schema_version: "routes-v1",
     total_distance_meters: first.totalDistanceMeters,
     total_duration_seconds: first.totalDurationSeconds,
+    version: 1,
   };
 
   calls = 0;
@@ -1203,6 +1211,7 @@ test("failed recalculation leaves the prior snapshot untouched and caps concurre
         provider_schema_version: "routes-v1",
         total_distance_meters: result.totalDistanceMeters,
         total_duration_seconds: result.totalDurationSeconds,
+        version: 1,
       },
       routeProviderResolver(async () => {
         throw new RouteProviderError("quota", "Quota reached.");
@@ -2356,6 +2365,7 @@ test("route status ignores display changes and detects coordinate, deletion, and
     trip_id: ids.trip,
     updated_at: now,
     variant_id: ids.variant,
+    version: 1,
   };
   workspace.routePlans = [plan];
   const resolved = resolveRouteCalculationConfig(workspace, plan);
@@ -2368,6 +2378,7 @@ test("route status ignores display changes and detects coordinate, deletion, and
     provider_schema_version: "routes-v1",
     total_distance_meters: 0,
     total_duration_seconds: 0,
+    version: 1,
   };
   assert.equal(dayRouteStatus(workspace, plan), "current");
 
@@ -2503,7 +2514,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.doesNotMatch(canvas, /draggable|editable/);
   assert.match(canvas, /day-city/);
   assert.match(canvas, /#2563eb/);
-  assert.match(itemActions, /City is now derived from Activity places/);
+  assert.match(itemActions, /save_itinerary_item_v3/);
   assert.doesNotMatch(itemActions, /validateProspectiveCity|prospectiveCityError/);
   assert.doesNotMatch(dayActions, /prospectiveNeighboringCityConflict/);
   assert.match(itemValidation, /validateVariantDay/);
@@ -2540,7 +2551,10 @@ test("Routes server key stays in the server-only provider and out of client modu
 test("edit and delete inputs validate", () => {
   assert.equal(
     updateItineraryItemSchema.safeParse({
+      expectedItemsVersion: 1,
+      expectedVersion: 1,
       id: ids.item,
+      operationId: "00000000-0000-4000-8000-000000000090",
       tripId: ids.trip,
       title: "Edited",
       type: "activity",
@@ -2551,7 +2565,10 @@ test("edit and delete inputs validate", () => {
   assert.equal(
     updateItineraryItemSchema.safeParse({
       endTime: "",
+      expectedItemsVersion: 1,
+      expectedVersion: 1,
       id: ids.item,
+      operationId: "00000000-0000-4000-8000-000000000091",
       startTime: "",
       tripId: ids.trip,
       type: "activity",
@@ -2560,13 +2577,11 @@ test("edit and delete inputs validate", () => {
     true,
   );
   assert.equal(
-    deleteItineraryItemSchema.safeParse({ id: ids.item, tripId: ids.trip, variantId: ids.variant })
-      .success,
-    true,
-  );
-  assert.equal(
-    clearItineraryItemsSchema.safeParse({
-      itemIds: [ids.item],
+    deleteItineraryItemSchema.safeParse({
+      expectedItemsVersion: 1,
+      expectedVersion: 1,
+      id: ids.item,
+      operationId: "00000000-0000-4000-8000-000000000092",
       tripId: ids.trip,
       variantId: ids.variant,
     }).success,
@@ -2574,7 +2589,19 @@ test("edit and delete inputs validate", () => {
   );
   assert.equal(
     clearItineraryItemsSchema.safeParse({
+      expectedItemsVersion: 1,
+      itemIds: [ids.item],
+      operationId: "00000000-0000-4000-8000-000000000093",
+      tripId: ids.trip,
+      variantId: ids.variant,
+    }).success,
+    true,
+  );
+  assert.equal(
+    clearItineraryItemsSchema.safeParse({
+      expectedItemsVersion: 1,
       itemIds: [ids.item, ids.item],
+      operationId: "00000000-0000-4000-8000-000000000094",
       tripId: ids.trip,
       variantId: ids.variant,
     }).success,
@@ -2656,7 +2683,9 @@ test("canonical booking fields share route details and one currency-paired Plan 
 test("reorder payload persists explicit unique sort orders", () => {
   const parsed = reorderItineraryItemsSchema.parse({
     dayId: ids.day,
+    expectedItemsVersion: 1,
     items: [{ id: ids.item, sortOrder: 1 }],
+    operationId: "00000000-0000-4000-8000-000000000095",
     tripId: ids.trip,
     variantId: ids.variant,
   });
@@ -2664,10 +2693,12 @@ test("reorder payload persists explicit unique sort orders", () => {
   assert.equal(
     reorderItineraryItemsSchema.safeParse({
       dayId: ids.day,
+      expectedItemsVersion: 1,
       items: [
         { id: ids.item, sortOrder: 0 },
         { id: ids.item, sortOrder: 1 },
       ],
+      operationId: "00000000-0000-4000-8000-000000000096",
       tripId: ids.trip,
       variantId: ids.variant,
     }).success,
@@ -2679,6 +2710,8 @@ test("day insertion and removal inputs stay scoped to a trip and variant", () =>
   assert.equal(
     insertTripDaySchema.safeParse({
       beforeDayNumber: 2,
+      expectedDaysVersion: 1,
+      operationId: "00000000-0000-4000-8000-000000000080",
       tripId: ids.trip,
       variantId: ids.variant,
     }).success,
@@ -2687,6 +2720,8 @@ test("day insertion and removal inputs stay scoped to a trip and variant", () =>
   assert.equal(
     insertTripDaySchema.safeParse({
       beforeDayNumber: 0,
+      expectedDaysVersion: 1,
+      operationId: "00000000-0000-4000-8000-000000000081",
       tripId: ids.trip,
       variantId: ids.variant,
     }).success,
@@ -2695,6 +2730,9 @@ test("day insertion and removal inputs stay scoped to a trip and variant", () =>
   assert.equal(
     removeTripDaySchema.safeParse({
       dayId: ids.day,
+      expectedDaysVersion: 1,
+      expectedVersion: 1,
+      operationId: "00000000-0000-4000-8000-000000000082",
       tripId: ids.trip,
       variantId: ids.variant,
     }).success,
@@ -2723,6 +2761,7 @@ test("copies get new IDs, destination ordering, and independent values", () => {
     type: "activity",
     updated_at: "2026-01-01",
     variant_id: ids.variant,
+    version: 1,
   } satisfies ItineraryItem;
   const [copy] = buildCopyRows(
     [source],
@@ -2738,6 +2777,8 @@ test("copies get new IDs, destination ordering, and independent values", () => {
   assert.equal(source.title, "Museum");
   assert.equal(
     copyItineraryItemsSchema.safeParse({
+      expectedItemsVersion: 1,
+      operationId: "00000000-0000-4000-8000-000000000083",
       sourceItemIds: [ids.item],
       targetDayId: ids.targetDay,
       tripId: ids.trip,
@@ -2764,8 +2805,8 @@ test("schedule metadata follows nullable start and end times", async () => {
   assert.equal(scheduleKind("09:00", null), "exact");
   assert.equal(scheduleKind(null, "10:00"), "exact");
   assert.equal(scheduleKind("09:00", "10:00"), "range");
-  assert.match(actions, /schedule_kind: scheduleKind/);
-  assert.match(actions, /values\.schedule_kind = scheduleKind/);
+  assert.match(actions, /scheduleKind: scheduleKind/);
+  assert.match(actions, /requested_item: requestedItem/);
 });
 
 test("keyboard navigation wraps rows and clamps to the grid", () => {
@@ -3122,7 +3163,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.match(workspace, /open=\{mapExpanded\}/);
   assert.doesNotMatch(workspace, /setMapExpanded\(!open\)/);
   assert.match(mapShell, /PlannerMapCanvas/);
-  assert.match(workspace, /Promise\.all\(\s*replacements\.flatMap/);
+  assert.match(workspace, /Promise\.all\(\s*\[\.\.\.grouped\.values\(\)\]/);
   assert.match(workspace, /replacedIds/);
   assert.doesNotMatch(workspace, /DndContext|useSortable|DndDescribedBy/);
   assert.doesNotMatch(workspace, /@\/components\/ui\/popover/);
@@ -3731,6 +3772,8 @@ test("Tap-to-Place ordering handles every edge and preserves stable Day relation
   assert.equal(reordered.days[0].items[0].day_id, "c");
   assert.equal(
     reorderVariantDaysSchema.safeParse({
+      expectedDaysVersion: 1,
+      operationId: "00000000-0000-4000-8000-000000000084",
       orderedDayIds: [ids.day, ids.targetDay],
       tripId: ids.trip,
       variantId: ids.variant,
@@ -3739,6 +3782,8 @@ test("Tap-to-Place ordering handles every edge and preserves stable Day relation
   );
   assert.equal(
     reorderVariantDaysSchema.safeParse({
+      expectedDaysVersion: 1,
+      operationId: "00000000-0000-4000-8000-000000000085",
       orderedDayIds: [ids.day, ids.day],
       tripId: ids.trip,
       variantId: ids.variant,
@@ -4011,15 +4056,14 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(mapShell, /item\?\.price_amount/);
 });
 
-test("replace-copy clears constrained destination rows before inserting preserved places", async () => {
+test("replace-copy submits one atomic copy-and-replace mutation with preserved places", async () => {
   const workspace = await readFile(
     new URL("./hooks/use-planner-clipboard.ts", import.meta.url),
     "utf8",
   );
   const queries = await readItineraryQueryModules();
-  const deletePosition = workspace.indexOf("deleteMutation.mutateAsync");
-  const copyPosition = workspace.indexOf("copyMutation.mutateAsync", deletePosition);
-  assert.ok(deletePosition >= 0 && copyPosition > deletePosition);
+  assert.match(workspace, /copyMutation\.mutateAsync[\s\S]*replaceTargetItemIds/);
+  assert.doesNotMatch(workspace, /deleteMutation\.mutateAsync/);
   assert.match(queries, /place_id === item\.place_id/);
   assert.match(queries, /source\?\.place/);
 });

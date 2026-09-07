@@ -1,7 +1,5 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
-
 import { PlatformOperationError } from "@/platform/contracts/errors";
 import type {
   CreateTripInput,
@@ -80,48 +78,32 @@ export class CloudBaseTripRepository implements TripRepository {
 
   async create(input: CreateTripInput) {
     const { db } = await createCloudBaseUserContext();
-    const recoveryTitle = `__trip_create_${randomUUID()}`;
     const id = await cloudBaseScalarUuidRpc({
       execute: () =>
-        db.rpc("create_trip_v2", {
+        db.rpc("create_trip_v3", {
+          target_operation_id: input.operationId,
           trip_currency: input.currency,
           trip_day_count: input.dayCount,
           trip_end_date: null,
           trip_locale: input.locale,
           trip_start_date: null,
           trip_timezone: input.timezone,
-          trip_title: recoveryTitle,
+          trip_title: input.title,
         }),
       recover: async () => {
-        const data = await rows(
-          db.from("trips").select("id").eq("title", recoveryTitle),
+        const recovered = cloudBaseData(
+          await db.rpc("recover_trip_creation_v1", {
+            target_operation_id: input.operationId,
+          }),
           "The created trip could not be recovered.",
-        );
-        if (!Array.isArray(data) || data.length !== 1) {
-          throw new PlatformOperationError(
-            "unexpected",
-            "The created trip could not be uniquely recovered.",
-          );
-        }
-        return data[0];
+        ) as { tripId?: string } | null;
+        return recovered?.tripId ? { id: recovered.tripId } : null;
       },
       safeMessage: "The trip could not be created.",
     });
-    try {
-      return await this.update(id, {
-        currency: input.currency,
-        dayCount: input.dayCount,
-        endDate: null,
-        startDate: null,
-        timezone: input.timezone,
-        title: input.title,
-        expectedVersion: 1,
-        operationId: randomUUID(),
-      });
-    } catch (error) {
-      await db.from("trips").delete().eq("id", id);
-      throw error;
-    }
+    const trip = await this.getById(id);
+    if (!trip) throw new PlatformOperationError("not_found", "The created trip was not found.");
+    return trip;
   }
 
   async importGuestDraft(input: {
@@ -203,27 +185,33 @@ export class CloudBaseTripRepository implements TripRepository {
     return trip;
   }
 
-  async renameIfTitle(id: string, currentTitle: string, nextTitle: string) {
-    const { db, user } = await createCloudBaseUserContext();
-    const trip = await tripById(db, id, user.id);
-    if (!trip || trip.title !== currentTitle) return false;
-    const data = await rows(
-      db
-        .from("trips")
-        .update({ title: nextTitle, version: trip.version + 1 })
-        .eq("id", id)
-        .eq("title", currentTitle)
-        .eq("version", trip.version)
-        .select("id"),
-      "The trip title could not be updated.",
+  async renameIfTitle(
+    id: string,
+    currentTitle: string,
+    nextTitle: string,
+    expectedVersion: number,
+    operationId: string,
+  ) {
+    const { db } = await createCloudBaseUserContext();
+    return Boolean(
+      cloudBaseData(
+        await db.rpc("rename_trip_if_title_v2", {
+          current_title: currentTitle,
+          expected_version: expectedVersion,
+          next_title: nextTitle,
+          target_operation_id: operationId,
+          target_trip_id: id,
+        }),
+        "The trip title could not be updated.",
+      ),
     );
-    return Array.isArray(data) && data.length === 1;
   }
 
-  async remove(id: string, expectedVersion: number) {
+  async remove(id: string, expectedVersion: number, operationId: string) {
     const { db } = await createCloudBaseUserContext();
-    const result = await db.rpc("delete_trip_v1", {
+    const result = await db.rpc("delete_trip_v2", {
       expected_version: expectedVersion,
+      target_operation_id: operationId,
       target_trip_id: id,
     });
     cloudBaseData(result, "The trip could not be removed.");

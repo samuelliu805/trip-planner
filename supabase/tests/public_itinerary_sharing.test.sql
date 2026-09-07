@@ -1,5 +1,10 @@
 begin;
 
+grant execute on function public.create_route_variant(uuid, uuid, text, text) to authenticated;
+grant execute on function public.save_day_route_plan(uuid, uuid, uuid[], text[]) to authenticated;
+grant execute on function public.set_primary_route_variant(uuid, uuid) to authenticated;
+grant execute on function public.delete_route_variant(uuid, uuid) to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 
 select plan(70);
@@ -695,9 +700,9 @@ select throws_ok(
     (select id from phase_6a_state where key = 'route_b'),
     '61000000-0000-4000-8000-000000000002'
   ),
-  '23514',
-  'PUBLIC_LINK_OWNER_MISMATCH',
-  'table constraint trigger rejects a non-owner creator'
+  '42501',
+  'PUBLIC_LINK_MEMBERSHIP_MISMATCH',
+  'table trigger canonicalizes Share Page ownership through membership-aware writes'
 );
 set local role authenticated;
 

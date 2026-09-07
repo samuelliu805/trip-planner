@@ -246,6 +246,8 @@ export const publicItineraryLinkSchema = z
     templateVersion: publicTemplateVersionSchema,
     tripId: z.uuid().nullable(),
     updatedAt: z.string(),
+    version: z.number().int().positive(),
+    variantVersion: z.number().int().positive(),
     variantId: z.uuid().nullable(),
   })
   .strict()
@@ -278,8 +280,9 @@ export const publicItinerarySettingsSchema = z
     showTimes: z.boolean(),
     templateId: publicTemplateIdSchema,
     templateVersion: publicTemplateVersionSchema,
+    expectedVariantVersion: z.number().int().positive(),
     variantId: z.uuid(),
-    operationId: z.uuid().optional(),
+    operationId: z.uuid(),
   })
   .strict()
   .refine(
@@ -292,7 +295,12 @@ export const publicItinerarySettingsSchema = z
   );
 
 export const linkMutationSchema = z
-  .object({ linkId: z.uuid(), operationId: z.uuid().optional(), tripId: z.uuid() })
+  .object({
+    expectedVersion: z.number().int().positive(),
+    linkId: z.uuid(),
+    operationId: z.uuid(),
+    tripId: z.uuid(),
+  })
   .strict();
 
 export type PublicItinerarySettingsInput = z.infer<typeof publicItinerarySettingsSchema>;

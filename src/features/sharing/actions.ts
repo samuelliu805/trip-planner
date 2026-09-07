@@ -11,7 +11,7 @@ import { buildRouteLegSignature } from "@/features/routes/signatures";
 import { mapWithConcurrency } from "@/features/routes/calculator";
 import type { RouteLegMode } from "@/features/routes/types";
 
-import { getPublicItinerary } from "./data";
+import { getPublicItinerary, listPublicItineraryLinks } from "./data";
 import {
   publicDayRoutePlan,
   publicDayStopOrderMatches,
@@ -46,6 +46,13 @@ function managementError(error?: string) {
   if (error?.match(/OWNER|permission|row-level security/i))
     return "Only the trip owner can manage public links.";
   return "The public link could not be changed. Try again.";
+}
+
+const managementCode = (code?: string): "conflict" | "forbidden" | "unexpected" =>
+  code === "40001" ? "conflict" : code === "42501" ? "forbidden" : "unexpected";
+
+export async function loadPublicItineraryLinks(tripId: string) {
+  return listPublicItineraryLinks(tripId);
 }
 
 const rpcSettings = (input: PublicItinerarySettingsInput) => ({
@@ -96,7 +103,9 @@ export async function createPublicItineraryLink(
       result: { error: "Review the public link settings." },
     });
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("create_share_page_v3", {
+  const { data, error } = await database.rpc("create_share_page_v4", {
+    expected_variant_version: parsed.data.expectedVariantVersion,
+    target_operation_id: parsed.data.operationId,
     target_variant_id: parsed.data.variantId,
     ...rpcSettings(parsed.data),
   });
@@ -105,7 +114,7 @@ export async function createPublicItineraryLink(
       artifact: "page",
       mutation: "publish",
       operationId: parsed.data.operationId,
-      result: { error: managementError(error.message) },
+      result: { error: managementError(error.message), code: managementCode(error.code) },
     });
   await reportSharingMutation({
     artifact: "page",
@@ -121,6 +130,7 @@ export async function createPublicItineraryLink(
 
 export async function updatePublicItineraryLink(
   linkId: string,
+  expectedVersion: number,
   rawInput: PublicItinerarySettingsInput,
 ): Promise<ShareActionResult> {
   if (!getBackendCapabilities().signedUrls)
@@ -141,7 +151,9 @@ export async function updatePublicItineraryLink(
       result: { error: "Review the public link settings." },
     });
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("update_share_page_v3", {
+  const { data, error } = await database.rpc("update_share_page_v4", {
+    expected_version: expectedVersion,
+    target_operation_id: settings.data.operationId,
     target_share_page_id: linkId,
     ...rpcSettings(settings.data),
   });
@@ -150,7 +162,7 @@ export async function updatePublicItineraryLink(
       artifact: "page",
       mutation: "settings",
       operationId: settings.data.operationId,
-      result: { error: managementError(error.message) },
+      result: { error: managementError(error.message), code: managementCode(error.code) },
     });
   await reportSharingMutation({
     artifact: "page",
@@ -158,15 +170,20 @@ export async function updatePublicItineraryLink(
     operationId: settings.data.operationId,
     result: { data: true },
   });
-  const link = publicItineraryLinkSchema.safeParse(data);
+  const link = publicItineraryLinkSchema.safeParse(
+    data && typeof data === "object" && !Array.isArray(data)
+      ? { ...data, variantVersion: settings.data.expectedVariantVersion }
+      : data,
+  );
   if (!link.success) return { error: "The saved public link could not be read." };
   if (link.data.tripId) revalidatePath(`/trips/${link.data.tripId}`);
   return { data: link.data };
 }
 
 export async function revokePublicItineraryLink(rawInput: {
+  expectedVersion: number;
   linkId: string;
-  operationId?: string;
+  operationId: string;
   tripId: string;
 }): Promise<ShareActionResult<null>> {
   if (!getBackendCapabilities().signedUrls)
@@ -180,7 +197,9 @@ export async function revokePublicItineraryLink(rawInput: {
       result: { error: "The public link request is invalid." },
     });
   const database = await getRelationalDatabase();
-  const { error } = await database.rpc("revoke_share_page_v1", {
+  const { error } = await database.rpc("revoke_share_page_v2", {
+    expected_version: input.data.expectedVersion,
+    target_operation_id: input.data.operationId,
     target_share_page_id: input.data.linkId,
   });
   if (error)
@@ -188,7 +207,7 @@ export async function revokePublicItineraryLink(rawInput: {
       artifact: "page",
       mutation: "revoke",
       operationId: input.data.operationId,
-      result: { error: managementError(error.message) },
+      result: { error: managementError(error.message), code: managementCode(error.code) },
     });
   revalidatePath(`/trips/${input.data.tripId}`);
   return reportSharingMutation({

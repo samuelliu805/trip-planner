@@ -60,6 +60,7 @@ export function ManageRouteVariantsDialog({
     setNotice(undefined);
     try {
       await primaryMutation.mutateAsync({
+        expectedVersion: variant.version,
         operationId: newTelemetryOperationId(),
         tripId,
         variantId: variant.id,
@@ -77,6 +78,7 @@ export function ManageRouteVariantsDialog({
     try {
       const wasActive = deleteVariant.id === activeVariantId;
       const result = await deleteMutation.mutateAsync({
+        expectedVersion: deleteVariant.version,
         operationId: newTelemetryOperationId(),
         tripId,
         variantId: deleteVariant.id,

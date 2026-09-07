@@ -61,7 +61,8 @@ export const researchCategorySingularLabels: Record<ResearchCategory, string> = 
 export type PlanResearchItem = ResearchItem;
 
 export type ResearchMutationResult<T> =
-  { data: T; error?: never } | { data?: never; error: string };
+  | { data: T; error?: never; code?: never }
+  | { data?: never; error: string; code?: "conflict" | "forbidden" | "unexpected" | "validation" };
 
 export type ResearchSort = "price" | "recent";
 

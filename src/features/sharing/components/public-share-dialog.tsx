@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ExternalLink, LoaderCircle, Share2 } from "lucide-react";
+import { ExternalLink, LoaderCircle, RotateCcw, Share2 } from "lucide-react";
 import { useEffect, useState, useTransition, type MouseEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import type { Trip } from "@/platform/contracts/trips";
 
 import {
   createPublicItineraryLink,
+  loadPublicItineraryLinks,
   revokePublicItineraryLink,
   updatePublicItineraryLink,
 } from "../actions";
@@ -67,6 +68,10 @@ export function PublicShareDialog({
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [pending, startTransition] = useTransition();
+  const [conflict, setConflict] = useState(false);
+  const [variantVersions, setVariantVersions] = useState(() =>
+    Object.fromEntries(variants.map(({ id, version }) => [id, version])),
+  );
   const variant = variants.find(({ id }) => id === variantId) ?? variants[0];
   const activeLink = links.find((link) => link.id === selectedPageId);
   const suggestedTitle = `${trip.title} · ${variant?.name ?? "Route"}`;
@@ -135,15 +140,27 @@ export function PublicShareDialog({
           { operation_id: operationId, share_artifact: "page", surface: "share_dialog" },
           { actorType: "authenticated" },
         );
-      const input = { ...settings, operationId, variantId };
+      const expectedVariantVersion = variantVersions[variantId];
+      if (!expectedVariantVersion) {
+        setError("Reload the trip before changing Share Page settings.");
+        return;
+      }
+      const input = { ...settings, expectedVariantVersion, operationId, variantId };
       const result = activeLink
-        ? await updatePublicItineraryLink(activeLink.id, input)
+        ? await updatePublicItineraryLink(activeLink.id, activeLink.version, input)
         : await createPublicItineraryLink(input);
       if ("error" in result) {
         setError(result.error);
+        setConflict(result.code === "conflict");
         return;
       }
       const savedLink = result.data;
+      if (savedLink.variantVersion)
+        setVariantVersions((current) => ({
+          ...current,
+          [variantId]: savedLink.variantVersion!,
+        }));
+      setConflict(false);
       setLinks((current) => [...current.filter(({ id }) => id !== savedLink.id), savedLink]);
       setSelectedPageId(savedLink.id);
       setSettings(settingsFromLink(savedLink));
@@ -157,18 +174,43 @@ export function PublicShareDialog({
     setNotice(undefined);
     startTransition(async () => {
       const result = await revokePublicItineraryLink({
+        expectedVersion: activeLink.version,
         linkId: activeLink.id,
         operationId: newTelemetryOperationId(),
         tripId: trip.id,
       });
       if ("error" in result) {
         setError(result.error);
+        setConflict(result.code === "conflict");
         return;
       }
+      setConflict(false);
       setLinks((current) => current.filter(({ id }) => id !== activeLink.id));
       setSelectedPageId("new");
       setSettings(defaultShareSettings);
       setNotice("Public access revoked. Other shareable pages and permanent images are unchanged.");
+    });
+  }
+
+  function reloadConflictedSharePage() {
+    startTransition(async () => {
+      const latest = await loadPublicItineraryLinks(trip.id);
+      if (latest.error) {
+        setError(latest.error);
+        return;
+      }
+      setLinks(latest.data);
+      setVariantVersions((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          latest.data.flatMap((link) =>
+            link.variantId ? [[link.variantId, link.variantVersion] as const] : [],
+          ),
+        ),
+      }));
+      setError(undefined);
+      setConflict(false);
+      setNotice("Latest Share Page loaded. Your local settings draft is still here.");
     });
   }
 
@@ -237,6 +279,23 @@ export function PublicShareDialog({
         >
           {error || notice ? <Localized value={error ?? notice} /> : null}
         </AutoDismissAlert>
+
+        {conflict ? (
+          <div className="mx-4 shrink-0 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:mx-6">
+            <p className="text-sm text-muted-foreground">
+              <T message="Reload only this Share Page and keep this settings draft open." />
+            </p>
+            <Button
+              className="mt-2 min-h-11"
+              disabled={pending}
+              onClick={reloadConflictedSharePage}
+              type="button"
+              variant="outline"
+            >
+              <RotateCcw className="size-4" /> <T message="Reload latest" />
+            </Button>
+          </div>
+        ) : null}
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="min-w-0 space-y-4 px-4 py-4 sm:px-6 sm:py-5">

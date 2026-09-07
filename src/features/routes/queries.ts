@@ -80,6 +80,7 @@ const optimisticPlan = (
     trip_id: input.tripId,
     updated_at: now,
     variant_id: input.variantId,
+    version: existing?.version ?? 1,
   };
 };
 

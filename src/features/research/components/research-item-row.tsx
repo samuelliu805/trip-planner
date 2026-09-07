@@ -247,6 +247,7 @@ export function ResearchItemRow({
               onClick={async () => {
                 const result = await deleteResearchItem({
                   category: item.category as "flight" | "rental" | "stay" | "train",
+                  expectedVersion: item.version,
                   id: item.id,
                   operationId: newTelemetryOperationId(),
                   tripId: item.trip_id,

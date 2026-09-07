@@ -13,9 +13,9 @@ import {
   type PlannerClipboard,
 } from "@/features/itinerary/grid-interactions";
 import { useCopyItineraryItems } from "@/features/itinerary/day-mutations";
-import { useDeleteItineraryItem } from "@/features/itinerary/item-mutations";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import type { ItineraryItemType, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 export function usePlannerClipboard({
   selectionAnchor,
@@ -33,7 +33,6 @@ export function usePlannerClipboard({
   const queryClient = useQueryClient();
   const variantId = workspace.variant.id;
   const copyMutation = useCopyItineraryItems(tripId, variantId);
-  const deleteMutation = useDeleteItineraryItem(tripId, variantId);
   const [copyDaysOpen, setCopyDaysOpen] = useState(false);
   const [targetDays, setTargetDays] = useState<Set<string>>(new Set());
   const [internalClipboard, setInternalClipboard] = useState<PlannerClipboard | null>(null);
@@ -114,6 +113,20 @@ export function usePlannerClipboard({
             operation.types.includes(item.type),
           ),
         }));
+      const grouped = new Map<
+        string,
+        { sourceItemIds: string[]; replaceTargetItemIds: string[]; targetDay: PlannerDay }
+      >();
+      for (const { replacedItems, sourceItemIds, targetDay } of replacements) {
+        const group = grouped.get(targetDay.id) ?? {
+          replaceTargetItemIds: [],
+          sourceItemIds: [],
+          targetDay,
+        };
+        group.sourceItemIds.push(...sourceItemIds);
+        group.replaceTargetItemIds.push(...replacedItems.map(({ id }) => id));
+        grouped.set(targetDay.id, group);
+      }
       try {
         const replacedIds = new Set(
           replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
@@ -130,23 +143,16 @@ export function usePlannerClipboard({
             : current,
         );
         await Promise.all(
-          replacements.flatMap(({ replacedItems }) =>
-            replacedItems.map((item) =>
-              deleteMutation.mutateAsync({
-                id: item.id,
-                itemKind: item.type,
-                surface: "planner",
-                tripId,
-                variantId,
-              }),
-            ),
-          ),
-        );
-        await Promise.all(
-          replacements
-            .filter(({ sourceItemIds }) => sourceItemIds.length > 0)
-            .map(({ sourceItemIds, targetDay }) =>
+          [...grouped.values()]
+            .filter(
+              ({ replaceTargetItemIds, sourceItemIds }) =>
+                sourceItemIds.length > 0 || replaceTargetItemIds.length > 0,
+            )
+            .map(({ replaceTargetItemIds, sourceItemIds, targetDay }) =>
               copyMutation.mutateAsync({
+                expectedItemsVersion: targetDay.items_version,
+                operationId: newTelemetryOperationId(),
+                replaceTargetItemIds,
                 sourceItemIds,
                 targetDayId: targetDay.id,
                 tripId,

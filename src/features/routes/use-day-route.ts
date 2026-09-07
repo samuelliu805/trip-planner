@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 import type { RouteMode } from "@/lib/telemetry/events";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
+import { isItineraryConflict } from "@/features/itinerary/query-cache";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { wgs84Coordinates } from "@/lib/providers/maps/types";
 
 import { eligibleDayRouteItems } from "./day-route-map";
@@ -35,6 +38,7 @@ export type DayRouteUi = {
   editing: boolean;
   eligibleItems: ItineraryItem[];
   error?: string;
+  conflict: boolean;
   fitKey?: string;
   openCreate: () => void;
   openEdit: () => void;
@@ -43,6 +47,7 @@ export type DayRouteUi = {
   previousDay?: PlannerDay;
   removeItem: (itemId: string) => void;
   removeStop: (index: number) => void;
+  reloadLatest: () => Promise<void>;
   saveAndCalculate: () => Promise<void>;
   setLegMode: (index: number, mode: RouteLegMode) => void;
   status?: DayRouteStatus;
@@ -66,14 +71,17 @@ export function useDayRoute(
   activeDay: PlannerDay | undefined,
   tripId: string,
 ): DayRouteUi {
+  const queryClient = useQueryClient();
   const persistence = usePlannerPersistence();
   const [draftState, setDraftState] = useState<{
     dayId: string;
     value: DayRouteEditorDraft;
   } | null>(null);
   const [errorState, setErrorState] = useState<{ dayId: string; value: string } | null>(null);
+  const [conflictDayId, setConflictDayId] = useState<string>();
   const rawDraft = draftState && draftState.dayId === activeDay?.id ? draftState.value : null;
   const error = errorState && errorState.dayId === activeDay?.id ? errorState.value : undefined;
+  const conflict = conflictDayId === activeDay?.id;
   const plan = workspace.routePlans.find(
     (candidate) =>
       candidate.day_id === activeDay?.id && candidate.variant_id === workspace.variant.id,
@@ -116,6 +124,16 @@ export function useDayRoute(
 
   function setError(value?: string) {
     setErrorState(value && activeDay ? { dayId: activeDay.id, value } : null);
+  }
+
+  async function reloadLatest() {
+    if (!activeDay) return;
+    await queryClient.refetchQueries({
+      queryKey: plannerQueryKey(tripId, variantId),
+      type: "active",
+    });
+    setConflictDayId(undefined);
+    setError(undefined);
   }
 
   function setDraft(value: DayRouteEditorDraft | null) {
@@ -251,6 +269,7 @@ export function useDayRoute(
     try {
       const saved = await saveMutation.mutateAsync({
         dayId: activeDay.id,
+        expectedVersion: plan?.version ?? 0,
         itemIds: draft.itemIds,
         legModes: draft.legModes,
         tripId,
@@ -259,7 +278,9 @@ export function useDayRoute(
         telemetryRouteMode: routeMode,
       });
       await calculateMutation.mutateAsync({
-        operationId,
+        expectedPlanVersion: saved.version,
+        expectedVersion: saved.calculation?.version ?? 0,
+        operationId: newTelemetryOperationId(),
         planId: saved.id,
         telemetryRouteMode: routeMode,
         tripId,
@@ -267,6 +288,7 @@ export function useDayRoute(
       });
       setDraft(null);
     } catch (caught) {
+      setConflictDayId(isItineraryConflict(caught) ? activeDay.id : undefined);
       setError(caught instanceof Error ? caught.message : "The day route could not be calculated.");
     }
   }
@@ -277,11 +299,14 @@ export function useDayRoute(
     try {
       await clearMutation.mutateAsync({
         dayId: activeDay.id,
+        expectedVersion: plan.version,
+        operationId: newTelemetryOperationId(),
         tripId,
         variantId: workspace.variant.id,
       });
       setDraft(null);
     } catch (caught) {
+      setConflictDayId(isItineraryConflict(caught) ? activeDay.id : undefined);
       setError(caught instanceof Error ? caught.message : "The day route could not be cleared.");
     }
   }
@@ -299,6 +324,7 @@ export function useDayRoute(
       setError(undefined);
     },
     clearRoute,
+    conflict,
     draft,
     editing: draft !== null,
     eligibleItems,
@@ -335,6 +361,7 @@ export function useDayRoute(
     previousDay,
     removeItem,
     removeStop,
+    reloadLatest,
     saveAndCalculate,
     setLegMode,
     status,

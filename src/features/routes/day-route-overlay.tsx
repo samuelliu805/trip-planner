@@ -66,6 +66,15 @@ function DayRouteSummary({
       >
         {route.error ? <Localized value={route.error} /> : null}
       </AutoDismissAlert>
+      {route.conflict ? (
+        <button
+          className="mx-3 mb-3 min-h-11 rounded-md border border-destructive px-3 text-sm font-medium text-destructive"
+          onClick={() => void route.reloadLatest()}
+          type="button"
+        >
+          <T message="Reload latest" />
+        </button>
+      ) : null}
     </section>
   );
 }

@@ -68,10 +68,13 @@ export class SupabaseTripRepository implements TripRepository {
 
   async create(input: CreateTripInput) {
     const supabase = await createSupabaseServerClient();
-    const { data: id, error } = await supabase.rpc("create_trip_v2", {
+    const { data: id, error } = await supabase.rpc("create_trip_v3", {
+      target_operation_id: input.operationId,
       trip_currency: input.currency,
       trip_day_count: input.dayCount,
+      trip_end_date: null as unknown as string,
       trip_locale: input.locale,
+      trip_start_date: null as unknown as string,
       trip_timezone: input.timezone,
       trip_title: input.title,
     });
@@ -133,26 +136,30 @@ export class SupabaseTripRepository implements TripRepository {
     return trip;
   }
 
-  async renameIfTitle(id: string, currentTitle: string, nextTitle: string) {
+  async renameIfTitle(
+    id: string,
+    currentTitle: string,
+    nextTitle: string,
+    expectedVersion: number,
+    operationId: string,
+  ) {
     const supabase = await createSupabaseServerClient();
-    const trip = await this.getById(id);
-    if (!trip || trip.title !== currentTitle) return false;
-    const { data, error } = await supabase
-      .from("trips")
-      .update({ title: nextTitle, version: trip.version + 1 })
-      .eq("id", id)
-      .eq("title", currentTitle)
-      .eq("version", trip.version)
-      .select("id")
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("rename_trip_if_title_v2", {
+      current_title: currentTitle,
+      expected_version: expectedVersion,
+      next_title: nextTitle,
+      target_operation_id: operationId,
+      target_trip_id: id,
+    });
     if (error) throw repositoryError("The trip title could not be updated.", error);
     return Boolean(data);
   }
 
-  async remove(id: string, expectedVersion: number) {
+  async remove(id: string, expectedVersion: number, operationId: string) {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.rpc("delete_trip_v1", {
+    const { data, error } = await supabase.rpc("delete_trip_v2", {
       expected_version: expectedVersion,
+      target_operation_id: operationId,
       target_trip_id: id,
     });
     if (error) throw repositoryError("The trip could not be removed.", error);

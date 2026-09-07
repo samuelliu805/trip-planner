@@ -10,7 +10,7 @@ export function routeActionError(error: unknown) {
   if (error instanceof RouteProviderError) return error.message;
   if (error instanceof Error) {
     if (/permission|row-level security|owner/i.test(error.message))
-      return "Only the trip owner can configure or calculate routes.";
+      return "You do not have permission to configure or calculate routes.";
     return error.message;
   }
   return "The day route could not be changed.";
@@ -34,6 +34,7 @@ export function withCalculatedRoute(plan: DayRoutePlan, calculated: CalculationR
           provider_schema_version: "routes-v1",
           total_distance_meters: calculated.totalDistanceMeters,
           total_duration_seconds: calculated.totalDurationSeconds,
+          version: (plan.calculation?.version ?? 0) + 1,
         };
   return { ...plan, calculation } satisfies DayRoutePlan;
 }

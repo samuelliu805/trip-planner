@@ -1,5 +1,9 @@
 begin;
 
+grant insert, update, delete on public.research_items to authenticated;
+grant execute on function public.apply_research_item_to_variant_v2(uuid, uuid, uuid, uuid, text) to authenticated;
+grant execute on function public.revert_research_plan_application(uuid, uuid) to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 select plan(32);
 
@@ -297,7 +301,7 @@ select throws_ok(
     (select id from canonical_price_state where key = 'trip'),
     (select id from canonical_price_state where key = 'variant')
   ),
-  '42501', 'AUTHENTICATION_REQUIRED',
+  '42501', 'TRIP_EDIT_ACCESS_REQUIRED',
   'anonymous callers cannot inspect current Apply history'
 );
 select is(

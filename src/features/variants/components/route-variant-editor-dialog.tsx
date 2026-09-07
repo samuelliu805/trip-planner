@@ -18,11 +18,13 @@ import {
 import { PlannerEditorForm } from "@/features/itinerary/components/planner-editor-form";
 import { PlannerEditorHeader } from "@/features/itinerary/components/planner-editor-header";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
+import { ItineraryMutationError } from "@/features/itinerary/query-cache";
 import type { PlannerVariant } from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { cn } from "@/lib/utils";
 
 import { useCreateRouteVariant, useDuplicateRouteVariant, useUpdateRouteVariant } from "../queries";
+import { loadRouteVariants } from "../actions";
 import { nextVariantName } from "../default-name";
 import { variantColorPalette } from "../schema";
 
@@ -99,6 +101,9 @@ export function RouteVariantEditorDialog({
   const [color, setColor] = useState(initialValues.color);
   const [sourceVariantId, setSourceVariantId] = useState(activeVariant.id);
   const [error, setError] = useState<string>();
+  const [conflict, setConflict] = useState(false);
+  const [baseVersion, setBaseVersion] = useState(activeVariant.version);
+  const [latestVariant, setLatestVariant] = useState<PlannerVariant>();
   const createMutation = useCreateRouteVariant(tripId);
   const duplicateMutation = useDuplicateRouteVariant(tripId);
   const updateMutation = useUpdateRouteVariant(tripId);
@@ -129,6 +134,7 @@ export function RouteVariantEditorDialog({
               })
             : await updateMutation.mutateAsync({
                 color,
+                expectedVersion: baseVersion,
                 name,
                 tripId,
                 variantId: activeVariant.id,
@@ -137,8 +143,19 @@ export function RouteVariantEditorDialog({
       onOpenChange(false);
       onSaved?.(result.variantId);
     } catch (caught) {
+      setConflict(caught instanceof ItineraryMutationError && caught.code === "conflict");
       setError(caught instanceof Error ? caught.message : "The Plan could not be saved.");
     }
+  }
+
+  async function reloadLatest() {
+    const result = await loadRouteVariants(tripId);
+    const latest = result.data?.find(({ id }) => id === activeVariant.id);
+    if (!latest) return setError(result.error ?? "The latest Plan could not be loaded.");
+    setBaseVersion(latest.version);
+    setLatestVariant(latest);
+    setConflict(false);
+    setError(undefined);
   }
 
   const title =
@@ -181,6 +198,33 @@ export function RouteVariantEditorDialog({
               : "Save changes"
         }
       >
+        {conflict ? (
+          <button
+            className="min-h-11 rounded-md border border-destructive px-4 text-sm font-medium text-destructive"
+            onClick={() => void reloadLatest()}
+            type="button"
+          >
+            <Localized value="Reload latest" />
+          </button>
+        ) : null}
+        {latestVariant ? (
+          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm" role="status">
+            <p>
+              <Localized value="Latest loaded. Your draft is still here and can be saved again." />
+            </p>
+            <button
+              className="mt-2 min-h-11 rounded-md border px-3 font-medium"
+              onClick={() => {
+                setName(latestVariant.name);
+                setColor(latestVariant.color.toLowerCase());
+                setLatestVariant(undefined);
+              }}
+              type="button"
+            >
+              <Localized value="Use latest values" />
+            </button>
+          </div>
+        ) : null}
         {mode === "duplicate" ? (
           <PlannerEditorField id={`${nameId}-source`} label="Copy from">
             <Select onValueChange={setSourceVariantId} value={sourceVariantId}>

@@ -48,5 +48,6 @@ export const setTripStatusSchema = z.object({
 
 export const deleteTripSchema = z.object({
   expectedVersion: z.coerce.number().int().positive(),
+  operationId: z.uuid(),
   tripId: z.uuid(),
 });

@@ -71,9 +71,11 @@ const daySchema = z
     day_number: z.number().int().min(1).max(366),
     id: z.uuid(),
     items: z.array(itemSchema).max(2000),
+    items_version: z.number().int().positive().optional().default(1),
     notes: z.string().nullable(),
     title: z.string().nullable(),
     variant_id: z.uuid(),
+    version: z.number().int().positive().optional().default(1),
   })
   .strict();
 
@@ -84,10 +86,13 @@ const workspaceSchema = z
     variant: z
       .object({
         color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        days_version: z.number().int().positive().optional().default(1),
         id: z.uuid(),
         is_primary: z.literal(true),
+        items_version: z.number().int().positive().optional().default(1),
         name: z.string().min(1).max(80),
         trip_id: z.uuid(),
+        version: z.number().int().positive().optional().default(1),
       })
       .strict(),
   })

@@ -9,6 +9,7 @@ import type { Json } from "@/types/database";
 import { createResearchItemSchema } from "./schema";
 
 const researchDomainMessages: Record<string, string> = {
+  APP_CONFLICT: "Someone else changed this record first. Reload its latest version.",
   AUTHENTICATION_REQUIRED: "Sign in again before changing this Plan.",
   RESEARCH_APPLICATION_NOT_FOUND: "That Apply record is no longer available.",
   RESEARCH_APPLICATION_SUPERSEDED:
