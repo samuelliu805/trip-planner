@@ -87,3 +87,112 @@ test("CloudBase browser signed uploads tolerate an empty successful response", a
     globalThis.fetch = originalFetch;
   }
 });
+
+test("CloudBase browser signed uploads retry transient server responses with bounded backoff", async () => {
+  const originalFetch = globalThis.fetch;
+  const delays: number[] = [];
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return calls === 1
+      ? new Response("bad gateway", { status: 502 })
+      : new Response(null, { status: 204 });
+  }) as typeof fetch;
+  try {
+    await new CloudBaseBrowserStorageProvider("share-images", {
+      waitForRetry: async (milliseconds) => {
+        delays.push(milliseconds);
+      },
+    }).uploadToSignedUrl({
+      body: new Blob(["image"], { type: "image/jpeg" }),
+      path: "owner/export/part-1.jpg",
+      signedUrl: "https://storage.example/upload?token=signed",
+      token: "signed",
+    });
+
+    assert.equal(calls, 2);
+    assert.deepEqual(delays, [250]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("CloudBase browser signed uploads retry network failures", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError("fetch failed");
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+  try {
+    await new CloudBaseBrowserStorageProvider("share-images", {
+      waitForRetry: async () => undefined,
+    }).uploadToSignedUrl({
+      body: new Blob(["image"]),
+      path: "owner/export/part-1.jpg",
+      signedUrl: "https://storage.example/upload?token=signed",
+      token: "signed",
+    });
+
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("CloudBase browser signed uploads do not retry client errors", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response("bad request", { status: 400 });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      () =>
+        new CloudBaseBrowserStorageProvider("share-images", {
+          waitForRetry: async () => assert.fail("client errors must not wait for retry"),
+        }).uploadToSignedUrl({
+          body: new Blob(["image"]),
+          path: "owner/export/part-1.jpg",
+          signedUrl: "https://storage.example/upload?token=signed",
+          token: "signed",
+        }),
+      /Signed storage upload returned 400/,
+    );
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("CloudBase browser signed uploads stop at the transient retry limit", async () => {
+  const originalFetch = globalThis.fetch;
+  const delays: number[] = [];
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response("bad gateway", { status: 502 });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      () =>
+        new CloudBaseBrowserStorageProvider("share-images", {
+          waitForRetry: async (milliseconds) => {
+            delays.push(milliseconds);
+          },
+        }).uploadToSignedUrl({
+          body: new Blob(["image"]),
+          path: "owner/export/part-1.jpg",
+          signedUrl: "https://storage.example/upload?token=signed",
+          token: "signed",
+        }),
+      /Signed storage upload returned 502/,
+    );
+    assert.equal(calls, 3);
+    assert.deepEqual(delays, [250, 500]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

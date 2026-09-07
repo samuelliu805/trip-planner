@@ -10,6 +10,21 @@ import type {
 import { PlatformOperationError } from "../contracts/errors.ts";
 import { normalizeCloudBaseStorageUrl } from "./storage-url.ts";
 
+const maximumSignedUploadAttempts = 3;
+const signedUploadRetryDelayMs = 250;
+
+type CloudBaseBrowserStorageProviderOptions = Readonly<{
+  waitForRetry?: (milliseconds: number) => Promise<void>;
+}>;
+
+function retryableSignedUploadStatus(status: number) {
+  return status === 408 || status === 429 || status >= 500;
+}
+
+async function defaultWaitForRetry(milliseconds: number) {
+  await new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 function required(name: string, value: string | undefined) {
   if (value?.trim()) return value.trim();
   throw new PlatformOperationError(
@@ -34,9 +49,11 @@ function createCloudBaseBrowserStorage() {
 
 export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
   private readonly bucket: string;
+  private readonly waitForRetry: (milliseconds: number) => Promise<void>;
 
-  constructor(bucket: string) {
+  constructor(bucket: string, options: CloudBaseBrowserStorageProviderOptions = {}) {
     this.bucket = bucket;
+    this.waitForRetry = options.waitForRetry ?? defaultWaitForRetry;
   }
 
   private storage() {
@@ -59,9 +76,6 @@ export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
   async uploadToSignedUrl(input: SignedUploadInput) {
     const target = new URL(normalizeCloudBaseStorageUrl(input.signedUrl));
     if (!target.searchParams.has("token")) target.searchParams.set("token", input.token);
-    const body = new FormData();
-    if (input.cacheControl) body.append("cacheControl", input.cacheControl);
-    if (input.contentType) body.append("contentType", input.contentType);
     let uploadBody: Blob;
     if (input.body instanceof Blob) {
       uploadBody = input.body;
@@ -76,17 +90,36 @@ export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
         type: input.contentType ?? "application/octet-stream",
       });
     }
-    body.append("", uploadBody);
-    let response: Response;
-    try {
-      response = await fetch(target, {
-        body,
-        credentials: "omit",
-        method: "PUT",
-      });
-    } catch (cause) {
-      throw new PlatformOperationError("unexpected", "Signed storage upload failed.", { cause });
+    let response: Response | undefined;
+    for (let attempt = 1; attempt <= maximumSignedUploadAttempts; attempt += 1) {
+      const body = new FormData();
+      if (input.cacheControl) body.append("cacheControl", input.cacheControl);
+      if (input.contentType) body.append("contentType", input.contentType);
+      body.append("", uploadBody);
+      try {
+        response = await fetch(target, {
+          body,
+          credentials: "omit",
+          method: "PUT",
+        });
+      } catch (cause) {
+        if (attempt === maximumSignedUploadAttempts)
+          throw new PlatformOperationError("unexpected", "Signed storage upload failed.", {
+            cause,
+          });
+        await this.waitForRetry(signedUploadRetryDelayMs * 2 ** (attempt - 1));
+        continue;
+      }
+      if (
+        response.ok ||
+        !retryableSignedUploadStatus(response.status) ||
+        attempt === maximumSignedUploadAttempts
+      )
+        break;
+      await response.body?.cancel().catch(() => undefined);
+      await this.waitForRetry(signedUploadRetryDelayMs * 2 ** (attempt - 1));
     }
+    if (!response) throw new PlatformOperationError("unexpected", "Signed storage upload failed.");
     if (!response.ok)
       throw new PlatformOperationError(
         "unexpected",
