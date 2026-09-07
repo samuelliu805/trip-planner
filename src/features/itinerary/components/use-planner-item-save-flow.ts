@@ -62,7 +62,12 @@ export function usePlannerItemSaveFlow({
     if (pending) return;
     try {
       const savedItem = item
-        ? await updateMutation.mutateAsync({ ...values, id: item.id, surface: "item_editor" })
+        ? await updateMutation.mutateAsync({
+            ...values,
+            expectedVersion: item.version ?? 1,
+            id: item.id,
+            surface: "item_editor",
+          })
         : await createMutation.mutateAsync({ ...values, dayId, surface: "item_editor" });
       const committedItem = await attachmentSession.commit(savedItem);
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>

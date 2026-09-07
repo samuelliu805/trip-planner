@@ -1,8 +1,12 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { RotateCcw } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { ItemAttachmentsSection } from "@/features/attachments/components/item-attachments";
-import { useI18n } from "@/features/i18n/i18n-provider";
+import { T, useI18n } from "@/features/i18n/i18n-provider";
 import {
   PlannerEditorForm,
   type PlannerEditorSaveIntent,
@@ -30,8 +34,53 @@ import { useItemEditorTelemetry } from "@/features/itinerary/components/use-item
 import { itemOrderSlots } from "@/features/itinerary/activity-order";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
+import { replaceItem } from "@/features/itinerary/query-cache";
+import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 
-export function PlannerItemForm({
+export function PlannerItemForm(props: PlannerItemFormProps) {
+  const client = useQueryClient();
+  const [item, setItem] = useState(props.item);
+  const [reloadError, setReloadError] = useState<string>();
+
+  async function reloadLatest() {
+    if (
+      !item ||
+      !window.confirm(
+        "Replace this item form with the latest saved values? Unsaved changes will be lost.",
+      )
+    )
+      return;
+    setReloadError(undefined);
+    try {
+      const response = await fetch(`/api/itinerary-items/${item.id}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("The latest item could not be loaded.");
+      const payload = (await response.json()) as { item: ItineraryItem };
+      const latest = { ...payload.item, attachments: item.attachments };
+      client.setQueryData<PlannerWorkspace>(
+        plannerQueryKey(props.tripId, props.variantId),
+        (current) => replaceItem(current, latest),
+      );
+      setItem(latest);
+    } catch (error) {
+      setReloadError(
+        error instanceof Error ? error.message : "The latest item could not be loaded.",
+      );
+    }
+  }
+
+  return (
+    <PlannerItemFormInner
+      {...props}
+      item={item}
+      key={`${item?.id ?? "new"}:${item?.version ?? 1}`}
+      onReloadLatest={reloadLatest}
+      reloadError={reloadError}
+    />
+  );
+}
+
+function PlannerItemFormInner({
   dayDate,
   dayId,
   dayItems,
@@ -49,7 +98,9 @@ export function PlannerItemForm({
   type,
   unavailableTransportModes = [],
   variantId,
-}: PlannerItemFormProps) {
+  onReloadLatest,
+  reloadError,
+}: PlannerItemFormProps & { onReloadLatest: () => Promise<void>; reloadError?: string }) {
   const { t } = useI18n();
   // Keep the Order preview on the items that existed when this editor opened. An optimistic create
   // must not appear both as the moving item and as a newly-placeable row before the editor closes.
@@ -231,6 +282,24 @@ export function PlannerItemForm({
       }
       backDisabled={stepIndex === 0}
       fieldsRef={motionSurfaceRef}
+      footer={
+        mutationError?.message.includes("Someone else saved this item") ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+            <p className="text-sm text-muted-foreground">
+              <T message={"Reloading replaces only this item and keeps the editor open."} />
+            </p>
+            <Button
+              className="mt-2 min-h-11"
+              onClick={() => void onReloadLatest()}
+              type="button"
+              variant="outline"
+            >
+              <RotateCcw aria-hidden="true" className="size-4" />
+              <T message={"Reload latest"} />
+            </Button>
+          </div>
+        ) : undefined
+      }
       header={
         <PlannerEditorHeader
           closeDisabled={itemMutationPending}
@@ -243,7 +312,7 @@ export function PlannerItemForm({
               ? "Confirm the Order step before saving."
               : "The item can be saved from any step.",
           )}`}
-          error={stepError ?? mutationError?.message}
+          error={reloadError ?? stepError ?? mutationError?.message}
           navigation={
             <PlannerItemStepNav activeStepId={activeStep.id} onSelect={goToStep} steps={steps} />
           }

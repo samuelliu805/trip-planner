@@ -1,6 +1,7 @@
 import type { Json } from "@/types/database";
 
 export type TripStatus = "done" | "open" | string;
+export type TripRole = "owner" | "collaborator";
 
 export type Trip = Readonly<{
   created_at: string;
@@ -9,6 +10,7 @@ export type Trip = Readonly<{
   end_date: string | null;
   id: string;
   owner_id: string;
+  role: TripRole;
   route_variants?: ReadonlyArray<
     Readonly<{ color: string; id: string; is_primary: boolean; name: string }>
   >;
@@ -17,6 +19,7 @@ export type Trip = Readonly<{
   timezone: string;
   title: string;
   updated_at: string;
+  version: number;
 }>;
 
 export type CreateTripInput = Readonly<{
@@ -34,6 +37,28 @@ export type UpdateTripInput = Readonly<{
   startDate: string | null;
   timezone: string;
   title: string;
+  expectedVersion: number;
+  operationId: string;
+}>;
+
+export type TripMember = Readonly<{
+  displayLabel: string;
+  joinedAt: string;
+  memberId: string;
+  role: TripRole;
+  userId: string;
+}>;
+
+export type TripHistoryEntry = Readonly<{
+  actorLabel: string;
+  changes: Json;
+  createdAt: string;
+  eventType: string;
+  id: string;
+}>;
+export type TripHistoryPage = Readonly<{
+  entries: TripHistoryEntry[];
+  nextCursor: Readonly<{ createdAt: string; id: string }> | null;
 }>;
 
 export interface TripRepository {
@@ -47,7 +72,16 @@ export interface TripRepository {
     payload: Json;
   }): Promise<Trip>;
   update(id: string, input: UpdateTripInput): Promise<Trip>;
-  setStatus(id: string, status: TripStatus): Promise<Trip>;
+  setStatus(
+    id: string,
+    status: TripStatus,
+    expectedVersion: number,
+    operationId: string,
+  ): Promise<Trip>;
   renameIfTitle(id: string, currentTitle: string, nextTitle: string): Promise<boolean>;
-  remove(id: string): Promise<void>;
+  remove(id: string, expectedVersion: number): Promise<void>;
+  listMembers(id: string): Promise<TripMember[]>;
+  inviteCollaborator(id: string, identifier: string, operationId: string): Promise<void>;
+  removeCollaborator(id: string, memberId: string, operationId: string): Promise<void>;
+  listHistory(id: string, cursor?: { createdAt: string; id: string }): Promise<TripHistoryPage>;
 }

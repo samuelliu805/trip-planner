@@ -6,6 +6,7 @@ import { zhCN } from "date-fns/locale";
 import {
   CalendarDays,
   CircleCheck,
+  History,
   MoreVertical,
   Pencil,
   RotateCcw,
@@ -104,6 +105,7 @@ export function TripCard({
     startStatusChange(async () => {
       setStatusError(null);
       const result = await setTripStatus({
+        expectedVersion: trip.version,
         operationId: newTelemetryOperationId(),
         status: toggle.next,
         surface: "trip_list",
@@ -144,6 +146,9 @@ export function TripCard({
                 <T message={" Completed "} />
               </p>
             ) : null}
+            <p className="mt-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+              <T message={trip.role === "owner" ? "Owner" : "Collaborator"} />
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -174,6 +179,11 @@ export function TripCard({
                   </Link>
                 </DropdownMenuItem>
               ) : null}
+              <DropdownMenuItem asChild>
+                <Link href={`/trips/${trip.id}/history`}>
+                  <History aria-hidden="true" className="size-4" /> <T message={" History "} />
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem disabled={statusPending} onSelect={changeStatus}>
                 {status === "done" ? (
                   <RotateCcw aria-hidden="true" className="size-4" />
@@ -182,13 +192,15 @@ export function TripCard({
                 )}
                 <Localized value={toggle.label} />
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                onSelect={() => afterMenu(confirmDelete)}
-              >
-                <Trash2 aria-hidden="true" className="size-4" /> <T message={" Delete trip "} />
-              </DropdownMenuItem>
+              {trip.role === "owner" ? <DropdownMenuSeparator /> : null}
+              {trip.role === "owner" ? (
+                <DropdownMenuItem
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                  onSelect={() => afterMenu(confirmDelete)}
+                >
+                  <Trash2 aria-hidden="true" className="size-4" /> <T message={" Delete trip "} />
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
@@ -219,23 +231,26 @@ export function TripCard({
 
       <TripSettingsEditor onOpenChange={setEditorOpen} open={editorOpen} title="Trip settings">
         <TripForm
+          key={trip.version}
           onSaved={() => {
             setEditorOpen(false);
-            router.refresh();
           }}
           surface="trip_list"
           trip={trip}
         />
       </TripSettingsEditor>
-      <DeleteTripDialog
-        activeSharePageCount={sharePageCount}
-        onOpenChange={setDeleteOpen}
-        onPendingChange={onDeletePendingChange}
-        open={deleteOpen}
-        renderTrigger={false}
-        title={trip.title}
-        tripId={trip.id}
-      />
+      {trip.role === "owner" ? (
+        <DeleteTripDialog
+          activeSharePageCount={sharePageCount}
+          onOpenChange={setDeleteOpen}
+          onPendingChange={onDeletePendingChange}
+          open={deleteOpen}
+          renderTrigger={false}
+          title={trip.title}
+          tripId={trip.id}
+          version={trip.version}
+        />
+      ) : null}
     </>
   );
 }

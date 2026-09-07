@@ -130,6 +130,7 @@ const itemBaseSchema = z.object({
   links: z.array(itemLinkSchema).max(20, "Add no more than 20 links.").optional(),
   dayId: z.uuid(),
   endTime: optionalTime,
+  expectedVersion: z.number().int().positive().optional(),
   notes: optionalText(5000),
   operationId: z.uuid().optional(),
   placeId: z.uuid().optional().nullable(),
@@ -272,6 +273,7 @@ export const updateItineraryItemSchema = z
   });
 
 export const deleteItineraryItemSchema = z.object({
+  expectedVersion: z.number().int().positive().optional(),
   id: z.uuid(),
   itemKind: z.enum(itineraryItemTypes).optional(),
   operationId: z.uuid().optional(),

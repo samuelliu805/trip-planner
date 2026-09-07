@@ -39,7 +39,7 @@ async function deleteItineraryItemMutation(
   const database = await getRelationalDatabase();
   const { data: currentItem, error: readError } = await database
     .from("itinerary_items")
-    .select("id, type")
+    .select("id, type, version")
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
@@ -65,8 +65,16 @@ async function deleteItineraryItemMutation(
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
+    .eq("version", parsed.data.expectedVersion ?? currentItem.version)
     .select("id")
     .maybeSingle();
+  if (!error && !data)
+    return {
+      itemType: currentItem.type,
+      result: {
+        error: "Someone else saved this item first. Reload the latest item and try again.",
+      },
+    };
   if (error || !data)
     return {
       itemType: currentItem.type,

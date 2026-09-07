@@ -1,7 +1,15 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import { LogOut, MoreHorizontal, Settings2, Share2, Trash2, UserRound } from "lucide-react";
+import {
+  History,
+  LogOut,
+  MoreHorizontal,
+  Settings2,
+  Share2,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
@@ -34,6 +42,7 @@ export function TripBarMenu({
   deletePending = false,
   extraItems,
   guest = false,
+  historyHref,
   mobileMenuItems,
   mobileQuickActions = [],
   onDeleteTrip,
@@ -44,6 +53,7 @@ export function TripBarMenu({
   deletePending?: boolean;
   extraItems?: ReactNode;
   guest?: boolean;
+  historyHref?: string;
   mobileMenuItems?: (runAction: RunMobileAction) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
   onDeleteTrip?: () => void;
@@ -98,6 +108,13 @@ export function TripBarMenu({
               <DropdownMenuItem onSelect={onTripSettings}>
                 <Settings2 aria-hidden="true" className="size-4" />{" "}
                 <T message={" Trip settings "} />
+              </DropdownMenuItem>
+            ) : null}
+            {historyHref ? (
+              <DropdownMenuItem asChild>
+                <Link href={historyHref}>
+                  <History aria-hidden="true" className="size-4" /> <T message={"History"} />
+                </Link>
               </DropdownMenuItem>
             ) : null}
             {onDeleteTrip ? (
@@ -201,6 +218,17 @@ export function TripBarMenu({
               >
                 <Settings2 aria-hidden="true" className="size-4" />{" "}
                 <T message={" Trip settings "} />
+              </Button>
+            ) : null}
+            {historyHref ? (
+              <Button
+                asChild
+                className="min-h-11 w-full justify-start px-3 font-normal"
+                variant="ghost"
+              >
+                <Link href={historyHref} onClick={() => setPanelOpen(false)}>
+                  <History aria-hidden="true" className="size-4" /> <T message={"History"} />
+                </Link>
               </Button>
             ) : null}
             {onDeleteTrip ? (

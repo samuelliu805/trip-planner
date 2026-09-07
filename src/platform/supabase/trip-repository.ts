@@ -19,13 +19,17 @@ function repositoryError(message: string, cause?: { code?: string; message?: str
     });
   if (code === "22023" || code === "23514")
     return new PlatformOperationError("validation_failed", cause?.message ?? message, { cause });
-  if (code === "23505") return new PlatformOperationError("conflict", message, { cause });
+  if (code === "23505" || code === "40001")
+    return new PlatformOperationError("conflict", "Someone else saved this trip first.", { cause });
   return new PlatformOperationError("unexpected", message, { cause });
 }
 
 export class SupabaseTripRepository implements TripRepository {
   async listForCurrentUser(input: { status?: string } = {}) {
     const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     let query = supabase
       .from("trips")
       .select("*, route_variants(id, name, color, is_primary)")
@@ -33,14 +37,17 @@ export class SupabaseTripRepository implements TripRepository {
     if (input.status) query = query.eq("status", input.status);
     const { data, error } = await query.order("start_date", { ascending: true });
     if (error) throw repositoryError("Trips could not be loaded.", error);
-    return normalizeTrips(data ?? []);
+    return normalizeTrips(data ?? [], user?.id);
   }
 
   async getById(id: string) {
     const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const { data, error } = await supabase.from("trips").select("*").eq("id", id).maybeSingle();
     if (error) throw repositoryError("The trip could not be loaded.", error);
-    return data ? normalizeTrip(data) : null;
+    return data ? normalizeTrip(data, user?.id) : null;
   }
 
   async getDefaultCurrencyForCurrentUser() {
@@ -102,6 +109,8 @@ export class SupabaseTripRepository implements TripRepository {
       trip_start_date: input.startDate,
       trip_timezone: input.timezone,
       trip_title: input.title,
+      expected_version: input.expectedVersion,
+      target_operation_id: input.operationId,
     } as never);
     if (error || !data) throw repositoryError("The trip could not be updated.", error);
     const trip = await this.getById(id);
@@ -109,63 +118,102 @@ export class SupabaseTripRepository implements TripRepository {
     return trip;
   }
 
-  async setStatus(id: string, status: TripStatus) {
+  async setStatus(id: string, status: TripStatus, expectedVersion: number, operationId: string) {
     const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user)
-      throw new PlatformOperationError("authentication_required", "Authentication is required.");
-    const { data, error } = await supabase
-      .from("trips")
-      .update({ status })
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .select("*")
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("update_trip_status", {
+      expected_version: expectedVersion,
+      target_operation_id: operationId,
+      target_status: status,
+      target_trip_id: id,
+    });
     if (error) throw repositoryError("The trip status could not be updated.", error);
-    if (!data)
-      throw new PlatformOperationError(
-        "forbidden",
-        "You do not have permission to update this trip.",
-      );
-    return normalizeTrip(data);
+    if (!data) throw new PlatformOperationError("unexpected", "The trip status was not confirmed.");
+    const trip = await this.getById(id);
+    if (!trip) throw new PlatformOperationError("not_found", "The trip was not found.");
+    return trip;
   }
 
   async renameIfTitle(id: string, currentTitle: string, nextTitle: string) {
     const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user)
-      throw new PlatformOperationError("authentication_required", "Authentication is required.");
+    const trip = await this.getById(id);
+    if (!trip || trip.title !== currentTitle) return false;
     const { data, error } = await supabase
       .from("trips")
-      .update({ title: nextTitle })
+      .update({ title: nextTitle, version: trip.version + 1 })
       .eq("id", id)
-      .eq("owner_id", user.id)
       .eq("title", currentTitle)
+      .eq("version", trip.version)
       .select("id")
       .maybeSingle();
     if (error) throw repositoryError("The trip title could not be updated.", error);
     return Boolean(data);
   }
 
-  async remove(id: string) {
+  async remove(id: string, expectedVersion: number) {
     const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user)
-      throw new PlatformOperationError("authentication_required", "Authentication is required.");
-    const { data, error } = await supabase
-      .from("trips")
-      .delete()
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .select("id")
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("delete_trip_v1", {
+      expected_version: expectedVersion,
+      target_trip_id: id,
+    });
     if (error) throw repositoryError("The trip could not be removed.", error);
     if (!data) throw new PlatformOperationError("not_found", "The trip was not found.");
+  }
+
+  async listMembers(id: string) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc("list_trip_members", { target_trip_id: id });
+    if (error) throw repositoryError("Trip members could not be loaded.", error);
+    return (data ?? []).map((row) => ({
+      displayLabel: row.display_label,
+      joinedAt: row.joined_at,
+      memberId: row.member_id,
+      role: row.role as "owner" | "collaborator",
+      userId: row.member_key,
+    }));
+  }
+
+  async inviteCollaborator(id: string, identifier: string, operationId: string) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.rpc("invite_trip_collaborator", {
+      target_identifier: identifier,
+      target_operation_id: operationId,
+      target_trip_id: id,
+    });
+    if (error) throw repositoryError("The collaborator could not be invited.", error);
+  }
+
+  async removeCollaborator(id: string, memberId: string, operationId: string) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.rpc("remove_trip_collaborator", {
+      target_member_id: memberId,
+      target_operation_id: operationId,
+      target_trip_id: id,
+    });
+    if (error) throw repositoryError("The collaborator could not be removed.", error);
+  }
+
+  async listHistory(id: string, cursor?: { createdAt: string; id: string }) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc("list_trip_history", {
+      target_trip_id: id,
+      before_created_at: cursor?.createdAt,
+      before_id: cursor?.id,
+      requested_limit: 51,
+    });
+    if (error) throw repositoryError("Trip history could not be loaded.", error);
+    const rows = data ?? [];
+    const visible = rows.slice(0, 50);
+    const entries = visible.map((row) => ({
+      actorLabel: row.actor_label_snapshot,
+      changes: row.changes,
+      createdAt: row.created_at,
+      eventType: row.event_type,
+      id: row.id,
+    }));
+    const last = visible.at(-1);
+    return {
+      entries,
+      nextCursor: rows.length > 50 && last ? { createdAt: last.created_at, id: last.id } : null,
+    };
   }
 }

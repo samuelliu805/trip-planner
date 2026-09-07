@@ -21,22 +21,17 @@ import { createCloudBaseUserContext } from "./database";
 import { cloudBaseData } from "./errors";
 import { cloudBaseScalarUuidRpc } from "./rpc-compat";
 import { explicitCloudBaseCurrency } from "./profile-currency";
-import {
-  removeCloudBaseTrip,
-  renameCloudBaseTripIfTitle,
-  setCloudBaseTripStatus,
-} from "./trip-mutations";
 
 async function rows(query: PromiseLike<{ data: unknown; error: unknown }>, message: string) {
   return cloudBaseData(await query, message);
 }
 
-async function tripById(db: CloudBaseDatabase, id: string) {
+async function tripById(db: CloudBaseDatabase, id: string, currentUserId: string) {
   const data = await rows(
     db.from("trips").select("*").eq("id", id),
     "The trip could not be loaded.",
   );
-  const trips = normalizeTrips(data);
+  const trips = normalizeTrips(data, currentUserId);
   if (trips.length > 1) {
     throw new PlatformOperationError("unexpected", "The trip query returned duplicate rows.");
   }
@@ -57,10 +52,10 @@ async function attachPrimaryVariant(db: CloudBaseDatabase, trip: Trip) {
 
 export class CloudBaseTripRepository implements TripRepository {
   async listForCurrentUser(input: { status?: TripStatus } = {}) {
-    const { db } = await createCloudBaseUserContext();
+    const { db, user } = await createCloudBaseUserContext();
     let query = db.from("trips").select("*");
     if (input.status) query = query.eq("status", input.status);
-    const trips = normalizeTrips(await rows(query, "Trips could not be loaded."));
+    const trips = normalizeTrips(await rows(query, "Trips could not be loaded."), user.id);
     const withVariants = await Promise.all(trips.map((trip) => attachPrimaryVariant(db, trip)));
     return withVariants.sort((left, right) =>
       (left.start_date ?? "9999-12-31").localeCompare(right.start_date ?? "9999-12-31"),
@@ -68,8 +63,8 @@ export class CloudBaseTripRepository implements TripRepository {
   }
 
   async getById(id: string) {
-    const { db } = await createCloudBaseUserContext();
-    return tripById(db, id);
+    const { db, user } = await createCloudBaseUserContext();
+    return tripById(db, id, user.id);
   }
 
   async getDefaultCurrencyForCurrentUser() {
@@ -120,6 +115,8 @@ export class CloudBaseTripRepository implements TripRepository {
         startDate: null,
         timezone: input.timezone,
         title: input.title,
+        expectedVersion: 1,
+        operationId: randomUUID(),
       });
     } catch (error) {
       await db.from("trips").delete().eq("id", id);
@@ -132,7 +129,7 @@ export class CloudBaseTripRepository implements TripRepository {
     locale: "en" | "zh-CN";
     payload: import("@/types/database").Json;
   }) {
-    const { db } = await createCloudBaseUserContext();
+    const { db, user } = await createCloudBaseUserContext();
     const id = await cloudBaseScalarUuidRpc({
       execute: () =>
         db.rpc("import_guest_trip_v1", {
@@ -149,13 +146,13 @@ export class CloudBaseTripRepository implements TripRepository {
       },
       safeMessage: "The local trip could not be saved to your account.",
     });
-    const trip = await tripById(db, id);
+    const trip = await tripById(db, id, user.id);
     if (!trip) throw new PlatformOperationError("not_found", "The imported trip was not found.");
     return trip;
   }
 
   async update(id: string, input: UpdateTripInput) {
-    const { db } = await createCloudBaseUserContext();
+    const { db, user } = await createCloudBaseUserContext();
     await cloudBaseScalarUuidRpc({
       execute: () =>
         db.rpc("update_trip_plan", {
@@ -166,9 +163,11 @@ export class CloudBaseTripRepository implements TripRepository {
           trip_start_date: input.startDate,
           trip_timezone: input.timezone,
           trip_title: input.title,
+          expected_version: input.expectedVersion,
+          target_operation_id: input.operationId,
         }),
       recover: async () => {
-        const trip = await tripById(db, id);
+        const trip = await tripById(db, id, user.id);
         return trip &&
           trip.currency === input.currency &&
           trip.day_count === input.dayCount &&
@@ -181,23 +180,127 @@ export class CloudBaseTripRepository implements TripRepository {
       },
       safeMessage: "The trip could not be updated.",
     });
-    const trip = await tripById(db, id);
+    const trip = await tripById(db, id, user.id);
     if (!trip) throw new PlatformOperationError("not_found", "The updated trip was not found.");
     return trip;
   }
 
-  async setStatus(id: string, status: TripStatus) {
+  async setStatus(id: string, status: TripStatus, expectedVersion: number, operationId: string) {
     const { db, user } = await createCloudBaseUserContext();
-    return setCloudBaseTripStatus(db, user.id, id, status);
+    await cloudBaseScalarUuidRpc({
+      execute: () =>
+        db.rpc("update_trip_status", {
+          expected_version: expectedVersion,
+          target_operation_id: operationId,
+          target_status: status,
+          target_trip_id: id,
+        }),
+      recover: async () => ((await tripById(db, id, user.id))?.status === status ? id : null),
+      safeMessage: "The trip status could not be updated.",
+    });
+    const trip = await tripById(db, id, user.id);
+    if (!trip) throw new PlatformOperationError("not_found", "The trip was not found.");
+    return trip;
   }
 
   async renameIfTitle(id: string, currentTitle: string, nextTitle: string) {
     const { db, user } = await createCloudBaseUserContext();
-    return renameCloudBaseTripIfTitle(db, user.id, id, currentTitle, nextTitle);
+    const trip = await tripById(db, id, user.id);
+    if (!trip || trip.title !== currentTitle) return false;
+    const data = await rows(
+      db
+        .from("trips")
+        .update({ title: nextTitle, version: trip.version + 1 })
+        .eq("id", id)
+        .eq("title", currentTitle)
+        .eq("version", trip.version)
+        .select("id"),
+      "The trip title could not be updated.",
+    );
+    return Array.isArray(data) && data.length === 1;
   }
 
-  async remove(id: string) {
-    const { db, user } = await createCloudBaseUserContext();
-    await removeCloudBaseTrip(db, user.id, id);
+  async remove(id: string, expectedVersion: number) {
+    const { db } = await createCloudBaseUserContext();
+    const result = await db.rpc("delete_trip_v1", {
+      expected_version: expectedVersion,
+      target_trip_id: id,
+    });
+    cloudBaseData(result, "The trip could not be removed.");
+  }
+
+  async listMembers(id: string) {
+    const { db } = await createCloudBaseUserContext();
+    const data = await rows(
+      db.rpc("list_trip_members", { target_trip_id: id }),
+      "Trip members could not be loaded.",
+    );
+    if (!Array.isArray(data))
+      throw new PlatformOperationError("unexpected", "Trip members returned invalid data.");
+    return data.map((value) => {
+      const row = value as Record<string, unknown>;
+      return {
+        displayLabel: String(row.display_label),
+        joinedAt: String(row.joined_at),
+        memberId: String(row.member_id),
+        role: String(row.role) as "owner" | "collaborator",
+        userId: String(row.member_key),
+      };
+    });
+  }
+
+  async inviteCollaborator(id: string, identifier: string, operationId: string) {
+    const { db } = await createCloudBaseUserContext();
+    cloudBaseData(
+      await db.rpc("invite_trip_collaborator", {
+        target_identifier: identifier,
+        target_operation_id: operationId,
+        target_trip_id: id,
+      }),
+      "The collaborator could not be invited.",
+    );
+  }
+
+  async removeCollaborator(id: string, memberId: string, operationId: string) {
+    const { db } = await createCloudBaseUserContext();
+    cloudBaseData(
+      await db.rpc("remove_trip_collaborator", {
+        target_member_id: memberId,
+        target_operation_id: operationId,
+        target_trip_id: id,
+      }),
+      "The collaborator could not be removed.",
+    );
+  }
+
+  async listHistory(id: string, cursor?: { createdAt: string; id: string }) {
+    const { db } = await createCloudBaseUserContext();
+    const data = await rows(
+      db.rpc("list_trip_history", {
+        target_trip_id: id,
+        before_created_at: cursor?.createdAt ?? null,
+        before_id: cursor?.id ?? null,
+        requested_limit: 51,
+      }),
+      "Trip history could not be loaded.",
+    );
+    if (!Array.isArray(data))
+      throw new PlatformOperationError("unexpected", "Trip history returned invalid data.");
+    const visible = data.slice(0, 50);
+    const entries = visible.map((value) => {
+      const row = value as Record<string, unknown>;
+      return {
+        actorLabel: String(row.actor_label_snapshot),
+        changes: row.changes as import("@/types/database").Json,
+        createdAt: String(row.created_at),
+        eventType: String(row.event_type),
+        id: String(row.id),
+      };
+    });
+    const last = entries.at(-1);
+    return {
+      entries,
+      nextCursor: data.length > 50 && last ? { createdAt: last.createdAt, id: last.id } : null,
+    };
   }
 }

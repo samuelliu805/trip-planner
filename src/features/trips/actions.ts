@@ -12,7 +12,12 @@ import {
   defaultTripTitle,
   tripDateInZone,
 } from "@/features/trips/create-defaults";
-import { createTripSchema, setTripStatusSchema, tripIdSchema } from "@/features/trips/schema";
+import {
+  createTripSchema,
+  deleteTripSchema,
+  setTripStatusSchema,
+  tripIdSchema,
+} from "@/features/trips/schema";
 import type { TripStatus } from "@/features/trips/status";
 import type { TripActionState } from "@/features/trips/types";
 import { updateTrip as updateTripAction } from "@/features/trips/update-trip-action";
@@ -103,6 +108,7 @@ export async function createTrip(
 
 /** Completing a trip only changes which Trips filter shows it. */
 export async function setTripStatus(input: {
+  expectedVersion: number;
   operationId?: string;
   surface?: "trip_list";
   status: TripStatus;
@@ -144,7 +150,12 @@ export async function setTripStatus(input: {
     return { error: "Sign in to update this trip." };
   }
   try {
-    await getTripRepository().setStatus(parsed.data.tripId, parsed.data.status);
+    await getTripRepository().setStatus(
+      parsed.data.tripId,
+      parsed.data.status,
+      parsed.data.expectedVersion,
+      parsed.data.operationId,
+    );
   } catch (error) {
     await captureServerProductEvent(
       "trip_status_changed",
@@ -195,7 +206,10 @@ export async function deleteTrip(
 ): Promise<TripActionState> {
   const operationId = telemetryOperationId(formData.get("operation_id"));
   const surface = telemetrySurface(formData.get("surface")) ?? "trip_list";
-  const parsed = tripIdSchema.safeParse(formData.get("trip_id"));
+  const parsed = deleteTripSchema.safeParse({
+    expectedVersion: formData.get("expected_version"),
+    tripId: formData.get("trip_id"),
+  });
   if (!parsed.success) {
     await captureServerProductEvent(
       "trip_delete_failed",
@@ -215,7 +229,7 @@ export async function deleteTrip(
     redirect("/login");
   }
   try {
-    await getTripRepository().remove(parsed.data);
+    await getTripRepository().remove(parsed.data.tripId, parsed.data.expectedVersion);
   } catch (error) {
     await captureServerProductEvent(
       "trip_delete_failed",
@@ -230,7 +244,7 @@ export async function deleteTrip(
         appUserId: user.id,
       },
     );
-    redirect(`/trips/${parsed.data}?error=delete`);
+    redirect(`/trips/${parsed.data.tripId}?error=delete`);
   }
   await captureServerProductEvent(
     "trip_deleted",

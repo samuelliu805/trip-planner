@@ -1,6 +1,7 @@
 import type { Trip } from "@/platform/contracts/trips";
 
 export type TripActionState = {
+  conflict?: boolean;
   error?: string;
   success?: string;
 };

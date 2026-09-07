@@ -15,6 +15,7 @@
     ["create_trip_v2(text,date,date,text,text,integer,text)", "claim_bound_create"],
     ["current_research_plan_application_ids(uuid,uuid)", "owner_guard"],
     ["delete_route_variant(uuid,uuid)", "owner_guard"],
+    ["delete_trip_v1(uuid,bigint)", "owner_guard"],
     ["detach_item_asset_v1(uuid,uuid,text)", "owner_guard"],
     ["detach_research_asset_v1(uuid,uuid,text)", "owner_guard"],
     ["discard_item_asset_session_v1(uuid,uuid,uuid)", "owner_guard"],
@@ -33,7 +34,11 @@
     ["finalize_share_image_version_v1(uuid,jsonb)", "owner_guard"],
     ["insert_variant_day(uuid,uuid,integer)", "owner_guard"],
     ["import_guest_trip_v1(uuid,jsonb,text)", "claim_bound_create"],
+    ["is_actual_trip_owner(uuid)", "claim_bound_owner_check"],
     ["is_trip_owner(uuid)", "claim_bound_owner_check"],
+    ["invite_trip_collaborator(uuid,text,uuid)", "member_guard"],
+    ["list_trip_members(uuid)", "member_guard"],
+    ["list_trip_history(uuid,timestamptz,uuid,integer)", "member_guard"],
     ["list_share_pages_v2(uuid)", "owner_guard"],
     ["owner_asset_access_v1(uuid,text)", "owner_guard"],
     ["owner_share_image_export_paths_v1(uuid)", "owner_guard"],
@@ -58,11 +63,14 @@
     ["set_primary_route_variant(uuid,uuid)", "owner_guard"],
     ["set_item_asset_share_v2(uuid,uuid,text,boolean)", "owner_guard"],
     ["update_route_variant_metadata(uuid,uuid,text,text)", "owner_guard"],
+    ["update_trip_status(uuid,text,bigint,uuid)", "member_guard"],
+    ["update_trip_plan(uuid,text,date,date,integer,text,text)", "owner_guard"],
     [
       "update_share_page_v3(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
       "owner_guard"
     ],
-    ["update_trip_plan(uuid,text,date,date,integer,text,text)", "owner_guard"],
+    ["remove_trip_collaborator(uuid,uuid,uuid)", "owner_guard"],
+    ["update_trip_plan(uuid,text,date,date,integer,text,text,bigint,uuid)", "member_guard"],
     [
       "upsert_google_place_snapshot_v2(uuid,text,text,text,double precision,double precision,text,text,text,text)",
       "owner_guard"
@@ -79,6 +87,7 @@
     ["public_share_page_image_v1(uuid)", "public_token_snapshot"]
   ],
   "policyHelpers": [
+    ["can_edit_trip(uuid)", "rls_policy_helper"],
     ["itinerary_item_trip_id(uuid)", "rls_policy_helper"],
     ["research_context_matches_trip(uuid,uuid,uuid,uuid,uuid)", "rls_policy_helper"]
   ],

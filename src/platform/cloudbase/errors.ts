@@ -31,7 +31,10 @@ export function normalizeCloudBaseError(error: unknown, fallbackMessage: string)
 
   let platformCode: PlatformErrorCode = "unexpected";
   let safeMessage = fallbackMessage;
-  if (code.includes("4001") || combined.includes("captcha")) {
+  if (code.includes("40001") || combined.includes("version conflict")) {
+    platformCode = "conflict";
+    safeMessage = "Someone else saved this trip first.";
+  } else if (code.includes("4001") || combined.includes("captcha")) {
     platformCode = "captcha_required";
     safeMessage = "Complete the security check, then try again.";
   } else if (
