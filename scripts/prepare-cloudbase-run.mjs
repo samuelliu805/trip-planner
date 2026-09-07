@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
+const runtimeExcludedPrefixes = ["docs/landing-evidence/"];
 
 export function listTrackedProjectFiles(projectRoot) {
   return execFileSync("git", ["ls-files", "-z"], {
@@ -50,6 +51,7 @@ export function prepareCloudBaseRun(
   mkdirSync(output, { recursive: true });
   for (const trackedPath of trackedFiles) {
     const source = checkedSourcePath(projectRoot, trackedPath);
+    if (runtimeExcludedPrefixes.some((prefix) => trackedPath.startsWith(prefix))) continue;
     const destination = join(output, trackedPath);
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(source, destination, { recursive: true });
