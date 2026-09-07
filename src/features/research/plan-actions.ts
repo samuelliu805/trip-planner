@@ -14,7 +14,8 @@ import { reportResearchMutation } from "./telemetry.server";
 
 export async function applyResearchItem(input: {
   category: "flight" | "rental" | "stay" | "train";
-  operationId?: string;
+  expectedVersion: number;
+  operationId: string;
   researchItemId: string;
   scheduleChoice?: "automatic" | "keep_extra_days";
   targetItemId?: string | null;
@@ -24,9 +25,11 @@ export async function applyResearchItem(input: {
   const parsed = researchApplySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("apply_research_item_to_variant_v2", {
-    schedule_choice: parsed.data.scheduleChoice,
-    target_item_id: parsed.data.targetItemId ?? undefined,
+  const { data, error } = await database.rpc("apply_research_item_to_variant_v3", {
+    expected_research_version: parsed.data.expectedVersion,
+    schedule_choice: parsed.data.scheduleChoice ?? "automatic",
+    target_item_id: parsed.data.targetItemId as string,
+    target_operation_id: parsed.data.operationId,
     target_research_item_id: parsed.data.researchItemId,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
@@ -69,14 +72,17 @@ export async function applyResearchItem(input: {
 export async function revertResearchApplication(input: {
   applicationId: string;
   category: "flight" | "rental" | "stay" | "train";
-  operationId?: string;
+  expectedVersion: number;
+  operationId: string;
   tripId: string;
 }): Promise<ResearchMutationResult<RevertRpcResult>> {
   const parsed = researchApplicationSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("revert_research_plan_application", {
+  const { data, error } = await database.rpc("revert_research_plan_application_v2", {
+    expected_version: parsed.data.expectedVersion,
     target_application_id: parsed.data.applicationId,
+    target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
   });
   if (error || !data)

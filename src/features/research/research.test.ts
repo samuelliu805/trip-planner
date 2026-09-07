@@ -49,6 +49,7 @@ import {
 const ids = {
   day: "00000000-0000-4000-8000-000000000003",
   item: "00000000-0000-4000-8000-000000000004",
+  operation: "00000000-0000-4000-8000-000000000099",
   trip: "00000000-0000-4000-8000-000000000001",
   variant: "00000000-0000-4000-8000-000000000002",
 };
@@ -531,6 +532,7 @@ function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
     total_price_amount: null,
     trip_id: ids.trip,
     updated_at: "2026-08-09T12:00:00.000Z",
+    version: 1,
     ...overrides,
   };
 }
@@ -564,13 +566,18 @@ function plan(): ResearchPlanSnapshot {
 
 test("ResearchItem saves with category and only a title or only a URL", () => {
   assert.equal(
-    createResearchItemSchema.parse({ category: "stay", title: "Hilton Tokyo", tripId: ids.trip })
-      .title,
+    createResearchItemSchema.parse({
+      category: "stay",
+      operationId: ids.operation,
+      title: "Hilton Tokyo",
+      tripId: ids.trip,
+    }).title,
     "Hilton Tokyo",
   );
   assert.equal(
     createResearchItemSchema.parse({
       category: "flight",
+      operationId: ids.operation,
       sourceUrl: "https://example.com/fare",
       tripId: ids.trip,
     }).sourceUrl,
@@ -579,6 +586,7 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
   assert.deepEqual(
     createResearchItemSchema.parse({
       category: "flight",
+      operationId: ids.operation,
       title: "ANA idea",
       tripId: ids.trip,
     }).segments,
@@ -591,6 +599,7 @@ test("Ideas persist only valid category-specific traveler and room counts", asyn
     adultCount: 2,
     category: "stay",
     childCount: 1,
+    operationId: ids.operation,
     roomCount: 2,
     title: "Tokyo stay",
     tripId: ids.trip,
@@ -602,6 +611,7 @@ test("Ideas persist only valid category-specific traveler and room counts", asyn
     createResearchItemSchema.parse({
       adultCount: 2,
       category: "rental",
+      operationId: ids.operation,
       title: "Car",
       tripId: ids.trip,
     }),
@@ -609,6 +619,7 @@ test("Ideas persist only valid category-specific traveler and room counts", asyn
   assert.throws(() =>
     createResearchItemSchema.parse({
       category: "flight",
+      operationId: ids.operation,
       roomCount: 2,
       title: "Flight",
       tripId: ids.trip,
@@ -669,6 +680,7 @@ test("route-only journey drafts normalize blank dates before ISO validation", ()
 test("each journey segment keeps its own carrier", () => {
   const parsed = createResearchItemSchema.parse({
     category: "flight",
+    operationId: ids.operation,
     segments: [
       { carrier: "ANA", departureDate: "2026-10-04", destination: "NRT", origin: "SFO" },
       { carrier: "United", departureDate: "2026-10-12", destination: "SFO", origin: "NRT" },
@@ -686,6 +698,7 @@ test("price is optional and partial ResearchItems derive as Ideas", () => {
   const parsed = createResearchItemSchema.parse({
     category: "stay",
     note: "Check the member rate",
+    operationId: ids.operation,
     tripId: ids.trip,
   });
   assert.equal(parsed.totalPriceAmount, undefined);
@@ -1244,8 +1257,8 @@ test("selection, Apply, and Revert use owner-authorized RPC boundaries with dura
   );
   const migration = `${foundationMigration}\n${applyMigration}\n${readinessMigration}`;
   assert.doesNotMatch(serverActions, /export async function (select|clear)Research/);
-  assert.match(serverActions, /rpc\("apply_research_item_to_variant_v2"/);
-  assert.match(serverActions, /rpc\("revert_research_plan_application"/);
+  assert.match(serverActions, /rpc\("apply_research_item_to_variant_v3"/);
+  assert.match(serverActions, /rpc\("revert_research_plan_application_v2"/);
   assert.doesNotMatch(planActions, /Select for Plan/);
   assert.match(planActions, /Apply to Plan/);
   assert.match(planActions, /We’ll update the Plan for you/);
@@ -1282,7 +1295,7 @@ test("Apply review offers large explicit target choices only when matching Plan 
 
 test("the same-row update path never creates a separate Option", async () => {
   const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
-  assert.match(actions, /from\("research_items"\)[\s\S]*\.update/);
+  assert.match(actions, /save_research_item_v2/);
   assert.doesNotMatch(actions, /research_options|create_research_option|sourceIdea/);
 });
 

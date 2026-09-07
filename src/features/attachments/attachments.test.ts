@@ -84,6 +84,7 @@ test("prepare validation uses matching media kinds and per-type limits", () => {
     fileName: "ticket.pdf",
     kind: "pdf" as const,
     mimeType: "application/pdf" as const,
+    operationId: "00000000-0000-4000-8000-000000000099",
     sha256: "a".repeat(64),
     uploadSessionId: "00000000-0000-4000-8000-000000000002",
   };
@@ -197,6 +198,7 @@ test("owner attachment query rows remain attached to saved planner items", () =>
         include_in_share: true,
         public_ref: publicRef,
         sort_order: 0,
+        version: 1,
       },
     ]),
     [
@@ -214,6 +216,7 @@ test("owner attachment query rows remain attached to saved planner items", () =>
         publicRef,
         sortOrder: 0,
         status: "ready",
+        version: 1,
         width: 1_200,
       },
     ],
@@ -364,8 +367,8 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
     viewerStyles,
     /data-attachment-viewer-scroll[\s\S]*-webkit-overflow-scrolling: touch/,
   );
-  assert.match(itemAction, /attachments:asset_links/);
-  assert.match(itemAction, /ownerAttachmentsFromRows\(attachmentRows\)/);
+  assert.match(itemAction, /saveAtomicItineraryItem/);
+  assert.match(itemSaveFlow, /uploadSessionId/);
   assert.match(attachmentSection, /onPendingChange\?\.\(pending\)/);
   assert.match(attachmentSection, /ShareAttachmentsCallout/);
   assert.match(itemSaveFlow, /attachmentSession\.attachmentPending \? "Updating attachments…"/);

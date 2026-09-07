@@ -19,6 +19,13 @@ type CloudBaseDayRoutePlanRecoveryKey = Readonly<{
   variantId: string;
 }>;
 
+type CloudBaseItemSaveRecoveryKey = Readonly<{
+  dayId: string;
+  itemId: string;
+  tripId: string;
+  variantId: string;
+}>;
+
 type CloudBaseScalarMutationRecoveryKey =
   | Readonly<{ dayNumber: number; kind: "insert-day"; tripId: string; variantId: string }>
   | Readonly<{ dayId: string; kind: "remove-day"; tripId: string; variantId: string }>
@@ -52,6 +59,12 @@ export function cloudBaseDayRoutePlanRecoveryKey(
   parameters: Readonly<Record<string, unknown>>,
   recoverable: boolean,
 ): CloudBaseDayRoutePlanRecoveryKey | null;
+
+export function cloudBaseItemSaveRecoveryKey(
+  name: string,
+  parameters: Readonly<Record<string, unknown>>,
+  recoverable: boolean,
+): CloudBaseItemSaveRecoveryKey | null;
 
 export function cloudBaseScalarMutationRecoveryKey(
   name: string,

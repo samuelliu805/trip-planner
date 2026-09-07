@@ -15,6 +15,7 @@ export type OwnerAttachmentRow = Pick<
   | "include_in_share"
   | "public_ref"
   | "sort_order"
+  | "version"
 > & { asset: AttachmentAssetRow | null };
 
 export function ownerAttachmentsFromRows(
@@ -39,6 +40,7 @@ export function ownerAttachmentsFromRows(
           sortOrder: link.sort_order,
           status: link.asset.status,
           width: link.asset.width,
+          version: link.version,
         },
       ];
     })

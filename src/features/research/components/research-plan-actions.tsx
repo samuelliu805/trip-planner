@@ -100,6 +100,7 @@ export function ResearchPlanActions({
     setError(undefined);
     const result = await applyResearchItem({
       category: item.category as "flight" | "rental" | "stay" | "train",
+      expectedVersion: item.version,
       operationId,
       researchItemId: item.id,
       scheduleChoice:
@@ -139,6 +140,7 @@ export function ResearchPlanActions({
     const result = await revertResearchApplication({
       applicationId: application.id,
       category: item.category as "flight" | "rental" | "stay" | "train",
+      expectedVersion: application.version,
       operationId,
       tripId: item.trip_id,
     });

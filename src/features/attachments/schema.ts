@@ -25,6 +25,7 @@ export const ownerAttachmentSchema = z
     sortOrder: z.number().int().min(0).max(4),
     status: z.enum(["pending", "ready", "failed", "deleting"]),
     width: z.number().int().positive().nullable(),
+    version: z.number().int().positive(),
   })
   .strict();
 
@@ -43,7 +44,7 @@ export const prepareAttachmentInputSchema = z
     mimeType: z.enum(attachmentMimeTypes),
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
     uploadSessionId: z.uuid(),
-    operationId: z.uuid().optional(),
+    operationId: z.uuid(),
   })
   .strict()
   .superRefine((value, context) => {

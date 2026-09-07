@@ -50,18 +50,23 @@ export function createGuestTripDraft(
           day_number: 1,
           id: createId(),
           items: [],
+          items_version: 1,
           notes: null,
           title: null,
           variant_id: variantId,
+          version: 1,
         },
       ],
       routePlans: [],
       variant: {
         color: "#167A5A",
+        days_version: 1,
         id: variantId,
         is_primary: true,
+        items_version: 1,
         name: "Main plan",
         trip_id: draftId,
+        version: 1,
       },
     },
   };
@@ -81,9 +86,11 @@ export function guestDaysForCount(
         day_number: index + 1,
         id: createId(),
         items: [],
+        items_version: 1,
         notes: null,
         title: null,
         variant_id: draft.workspace.variant.id,
+        version: 1,
       }
     );
   });

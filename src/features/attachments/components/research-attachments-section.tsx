@@ -145,6 +145,7 @@ export function SavedResearchAttachments({
     setError(undefined);
     startMutation(async () => {
       const result = await detachResearchAttachment({
+        expectedVersion: target.version,
         operationId: newTelemetryOperationId(),
         publicRef: target.publicRef,
         researchItemId: item.id,

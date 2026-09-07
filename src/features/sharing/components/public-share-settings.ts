@@ -1,7 +1,10 @@
 import type { PublicItinerarySettingsInput } from "../schema";
 import type { PublicItineraryLink, PublicView } from "../types";
 
-export type ShareSettings = Omit<PublicItinerarySettingsInput, "variantId">;
+export type ShareSettings = Omit<
+  PublicItinerarySettingsInput,
+  "expectedVariantVersion" | "operationId" | "variantId"
+>;
 
 export const defaultShareSettings: ShareSettings = {
   allowLongImageDownload: true,

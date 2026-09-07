@@ -10,10 +10,15 @@ import type { Json } from "@/types/database";
 
 function changeLines(changes: Json) {
   if (!changes || Array.isArray(changes) || typeof changes !== "object") return [];
+  const formatValue = (value: Json | undefined) => {
+    if (value === null || value === undefined || value === "") return "empty";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
   return Object.entries(changes).map(([field, value]) => {
     const change = value && !Array.isArray(value) && typeof value === "object" ? value : {};
-    const from = "from" in change ? String(change.from ?? "empty") : "empty";
-    const to = "to" in change ? String(change.to ?? "empty") : "empty";
+    const from = formatValue("before" in change ? change.before : change.from);
+    const to = formatValue("after" in change ? change.after : change.to);
     return `${field.replaceAll("_", " ")}: ${from} → ${to}`;
   });
 }

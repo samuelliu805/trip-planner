@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 154,
+  "publicFunctionCount": 185,
   "catalog": [
     {
       "schema": "public",
@@ -162,6 +162,24 @@
     },
     {
       "schema": "public",
+      "signature": "apply_research_item_to_variant_v3(uuid,uuid,uuid,text,uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "schedule_choice", "type": "text" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "expected_research_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "apply_research_item_to_variant(uuid,uuid,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -233,7 +251,7 @@
       "signature": "asset_link_owner_json_v2(uuid)",
       "arguments": [{ "name": "target_link_id", "type": "uuid" }],
       "returns": "jsonb",
-      "securityDefiner": false,
+      "securityDefiner": true,
       "safeSearchPath": true,
       "category": "phase_4",
       "authorization": null
@@ -247,6 +265,22 @@
       "safeSearchPath": true,
       "category": "policy_helper",
       "authorization": "rls_policy_helper"
+    },
+    {
+      "schema": "public",
+      "signature": "clear_day_route_plan_v2(uuid,uuid,uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -274,6 +308,22 @@
       "safeSearchPath": true,
       "category": "obsolete_legacy",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "clear_route_variant_items_v2(uuid,uuid,uuid[],bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_item_ids", "type": "uuid[]" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -329,6 +379,25 @@
       "safeSearchPath": true,
       "category": "obsolete_legacy",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "copy_itinerary_items_v2(uuid,uuid,uuid[],uuid[],uuid,boolean,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "source_item_ids", "type": "uuid[]" },
+        { "name": "replace_target_item_ids", "type": "uuid[]" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "preserve_place", "type": "boolean" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -473,6 +542,23 @@
     },
     {
       "schema": "public",
+      "signature": "create_route_variant_v2(uuid,uuid,text,text,uuid,boolean)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "source_variant_id", "type": "uuid" },
+        { "name": "variant_name", "type": "text" },
+        { "name": "variant_color", "type": "text" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "duplicate_content", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "create_route_variant(uuid,uuid,text,text)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -574,6 +660,38 @@
     },
     {
       "schema": "public",
+      "signature": "create_share_page_v4(uuid,bigint,uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
+      "arguments": [
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "expected_variant_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" },
+        { "name": "requested_long_image_start_day_number", "type": "integer" },
+        { "name": "requested_long_image_end_day_number", "type": "integer" },
+        { "name": "requested_show_attachments", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "create_trip_v2(text,date,date,text,text,integer,text)",
       "arguments": [
         { "name": "trip_title", "type": "text" },
@@ -583,6 +701,25 @@
         { "name": "trip_currency", "type": "text" },
         { "name": "trip_day_count", "type": "integer" },
         { "name": "trip_locale", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "claim_bound_create"
+    },
+    {
+      "schema": "public",
+      "signature": "create_trip_v3(text,text,text,text,integer,date,date,uuid)",
+      "arguments": [
+        { "name": "trip_title", "type": "text" },
+        { "name": "trip_timezone", "type": "text" },
+        { "name": "trip_currency", "type": "text" },
+        { "name": "trip_locale", "type": "text" },
+        { "name": "trip_day_count", "type": "integer" },
+        { "name": "trip_start_date", "type": "date" },
+        { "name": "trip_end_date", "type": "date" },
+        { "name": "target_operation_id", "type": "uuid" }
       ],
       "returns": "uuid",
       "securityDefiner": true,
@@ -622,6 +759,53 @@
     },
     {
       "schema": "public",
+      "signature": "delete_itinerary_item_v2(uuid,uuid,uuid,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "delete_research_item_v2(uuid,uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "delete_route_variant_v2(uuid,uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "delete_route_variant(uuid,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -648,6 +832,20 @@
     },
     {
       "schema": "public",
+      "signature": "delete_trip_v2(uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "boolean",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
       "signature": "detach_item_asset_v1(uuid,uuid,text)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -662,6 +860,22 @@
     },
     {
       "schema": "public",
+      "signature": "detach_item_asset_v2(uuid,uuid,text,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "detach_research_asset_v1(uuid,uuid,text)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -673,6 +887,22 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "detach_research_asset_v2(uuid,uuid,text,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1018,6 +1248,22 @@
     },
     {
       "schema": "public",
+      "signature": "insert_variant_day_v2(uuid,uuid,integer,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "before_day_number", "type": "integer" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "insert_variant_day(uuid,uuid,integer)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -1132,7 +1378,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1412,6 +1658,16 @@
     },
     {
       "schema": "public",
+      "signature": "recover_trip_creation_v1(uuid)",
+      "arguments": [{ "name": "target_operation_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "claim_bound_create"
+    },
+    {
+      "schema": "public",
       "signature": "remove_trip_collaborator(uuid,uuid,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -1439,6 +1695,23 @@
     },
     {
       "schema": "public",
+      "signature": "remove_variant_day_v2(uuid,uuid,uuid,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "expected_day_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "remove_variant_day(uuid,uuid,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -1453,6 +1726,38 @@
     },
     {
       "schema": "public",
+      "signature": "rename_trip_if_title_v2(uuid,text,text,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "current_title", "type": "text" },
+        { "name": "next_title", "type": "text" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "boolean",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "reorder_itinerary_items_v2(uuid,uuid,uuid[],bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "ordered_item_ids", "type": "uuid[]" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "reorder_itinerary_items(uuid,uuid[])",
       "arguments": [
         { "name": "target_day_id", "type": "uuid" },
@@ -1463,6 +1768,22 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "reorder_variant_days_v2(uuid,uuid,uuid[],bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "ordered_day_ids", "type": "uuid[]" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1670,6 +1991,21 @@
     },
     {
       "schema": "public",
+      "signature": "revert_research_plan_application_v2(uuid,uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_application_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "revert_research_plan_application(uuid,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -1713,6 +2049,20 @@
     },
     {
       "schema": "public",
+      "signature": "revoke_share_page_v2(uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "rotate_public_itinerary_link_v2(uuid)",
       "arguments": [{ "name": "target_link_id", "type": "uuid" }],
       "returns": "jsonb",
@@ -1743,6 +2093,27 @@
     },
     {
       "schema": "public",
+      "signature": "save_day_route_calculation_v2(uuid,uuid,text,jsonb,integer,integer,text,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_plan_id", "type": "uuid" },
+        { "name": "calculated_config_signature", "type": "text" },
+        { "name": "normalized_calculated_legs", "type": "jsonb" },
+        { "name": "calculated_total_distance_meters", "type": "integer" },
+        { "name": "calculated_total_duration_seconds", "type": "integer" },
+        { "name": "calculated_provider_schema_version", "type": "text" },
+        { "name": "expected_plan_version", "type": "bigint" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "save_day_route_calculation(uuid,text,jsonb,integer,integer,text)",
       "arguments": [
         { "name": "target_plan_id", "type": "uuid" },
@@ -1760,6 +2131,24 @@
     },
     {
       "schema": "public",
+      "signature": "save_day_route_plan_v2(uuid,uuid,uuid,uuid[],text[],bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "ordered_item_ids", "type": "uuid[]" },
+        { "name": "requested_leg_modes", "type": "text[]" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "save_day_route_plan(uuid,uuid,uuid[],text[])",
       "arguments": [
         { "name": "target_day_id", "type": "uuid" },
@@ -1772,6 +2161,65 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "save_itinerary_item_v2(uuid,uuid,uuid,uuid,jsonb,jsonb,uuid[],bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_item", "type": "jsonb" },
+        { "name": "requested_links", "type": "jsonb" },
+        { "name": "ordered_item_ids", "type": "uuid[]" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "save_itinerary_item_v3(uuid,uuid,uuid,uuid,jsonb,jsonb,uuid[],bigint,bigint,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_item", "type": "jsonb" },
+        { "name": "requested_links", "type": "jsonb" },
+        { "name": "ordered_item_ids", "type": "uuid[]" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "save_research_item_v2(uuid,uuid,bigint,jsonb,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "requested_item", "type": "jsonb" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1846,6 +2294,38 @@
     },
     {
       "schema": "public",
+      "signature": "set_item_asset_share_v3(uuid,uuid,text,boolean,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" },
+        { "name": "requested_include_in_share", "type": "boolean" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "set_primary_route_variant_v2(uuid,uuid,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "set_primary_route_variant(uuid,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -1886,6 +2366,16 @@
       "safeSearchPath": true,
       "category": "internal_helper",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "trip_history_storage_stats(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -2005,6 +2495,23 @@
     },
     {
       "schema": "public",
+      "signature": "update_route_variant_v2(uuid,uuid,text,text,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "variant_name", "type": "text" },
+        { "name": "variant_color", "type": "text" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "update_share_page_v1(uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid)",
       "arguments": [
         { "name": "target_share_page_id", "type": "uuid" },
@@ -2088,6 +2595,38 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "owner_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "update_share_page_v4(uuid,bigint,uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
+      "arguments": [
+        { "name": "target_share_page_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "requested_default_view", "type": "public_itinerary_view" },
+        { "name": "requested_show_times", "type": "boolean" },
+        { "name": "requested_show_map_routes", "type": "boolean" },
+        { "name": "requested_allow_route_explore", "type": "boolean" },
+        { "name": "requested_show_addresses", "type": "boolean" },
+        { "name": "requested_show_notes", "type": "boolean" },
+        { "name": "requested_show_quick_action_links", "type": "boolean" },
+        { "name": "requested_show_place_photos", "type": "boolean" },
+        { "name": "requested_share_title", "type": "text" },
+        { "name": "requested_share_description", "type": "text" },
+        { "name": "requested_template_id", "type": "text" },
+        { "name": "requested_template_version", "type": "integer" },
+        { "name": "requested_allow_long_image_download", "type": "boolean" },
+        { "name": "requested_long_image_qr_destination", "type": "text" },
+        { "name": "requested_long_image_qr_share_page_id", "type": "uuid" },
+        { "name": "requested_long_image_start_day_number", "type": "integer" },
+        { "name": "requested_long_image_end_day_number", "type": "integer" },
+        { "name": "requested_show_attachments", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -2219,11 +2758,23 @@
     "add_public_amap_route_geometry_v1(uuid,jsonb)",
     "app_current_user_id()",
     "append_trip_history(uuid,uuid,text,jsonb)",
+    "append_trip_history_v2(uuid,uuid,text,text,uuid,text,jsonb)",
+    "asset_link_member_json(uuid)",
     "audit_itinerary_item()",
+    "begin_trip_operation(uuid,uuid,text,text,uuid,jsonb)",
+    "collaboration_identifier_user_id(text)",
+    "collaboration_user_id()",
+    "complete_trip_operation(uuid,uuid,jsonb)",
+    "day_route_plan_structure_is_canonical(uuid)",
     "guard_trip_owner_identity()",
     "guard_trip_owner_membership()",
+    "insert_collaboration_member(uuid,text,text)",
     "is_trip_member(uuid)",
+    "operation_fingerprint(text,text,uuid,jsonb)",
+    "safe_jsonb_diff(jsonb,jsonb,text)",
+    "share_settings_json(public_itinerary_links)",
     "trip_actor_label()",
+    "validate_share_settings(uuid,integer,text,integer,text,uuid,integer,integer)",
     "variant_trip_id(uuid)"
   ]
 }

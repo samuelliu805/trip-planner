@@ -75,7 +75,7 @@ function useVariantMutation<TInput>(
     input: TInput,
   ) => Promise<
     | { data: { variantId: string; variants: PlannerVariant[] }; error?: never }
-    | { data?: never; error: string }
+    | { data?: never; error: string; code?: "conflict" | "forbidden" | "unexpected" | "validation" }
   >,
 ) {
   const client = useQueryClient();

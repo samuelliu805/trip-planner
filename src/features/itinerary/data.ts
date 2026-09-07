@@ -36,7 +36,65 @@ const placeSelection =
   "place:places(id, source, provider_place_id, google_place_id, coordinate_system, display_name, formatted_address, latitude, longitude, locality_name, locality_kind, country_code, administrative_area_name, locality_source)";
 const linkSelection = "links:itinerary_item_links(id, item_id, label, url, sort_order)";
 const attachmentSelection =
-  "attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))";
+  "attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, version, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))";
+
+function plannerItemFromRow(row: WorkspaceItemRow): import("./types").ItineraryItem {
+  const snapshot = row.place;
+  return {
+    ...row,
+    attachments: ownerAttachmentsFromRows(row.attachments),
+    links: [...(row.links ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    place:
+      snapshot?.display_name &&
+      snapshot.coordinate_system === "wgs84" &&
+      snapshot.latitude !== null &&
+      snapshot.longitude !== null
+        ? {
+            id: snapshot.id,
+            coordinateSystem: "wgs84",
+            provider: snapshot.source,
+            ...((snapshot.provider_place_id ?? snapshot.google_place_id) && {
+              providerPlaceId: snapshot.provider_place_id ?? snapshot.google_place_id!,
+            }),
+            displayName: snapshot.display_name,
+            ...(snapshot.formatted_address && { formattedAddress: snapshot.formatted_address }),
+            ...(snapshot.locality_name && { localityName: snapshot.locality_name }),
+            ...(snapshot.locality_kind && {
+              localityKind:
+                snapshot.locality_kind as import("@/lib/providers/places/types").LocalityKind,
+            }),
+            ...(snapshot.country_code && { countryCode: snapshot.country_code }),
+            ...(snapshot.administrative_area_name && {
+              administrativeAreaName: snapshot.administrative_area_name,
+            }),
+            ...(snapshot.locality_source && {
+              localitySource:
+                snapshot.locality_source as import("@/lib/providers/places/types").LocalitySource,
+            }),
+            latitude: snapshot.latitude,
+            longitude: snapshot.longitude,
+          }
+        : null,
+  };
+}
+
+export async function getItineraryItem(itemId: string) {
+  const database = await getRelationalDatabase();
+  const capabilities = getBackendCapabilities();
+  const { data, error } = await database
+    .from("itinerary_items")
+    .select<WorkspaceItemRow>(
+      [
+        "*",
+        placeSelection,
+        ...(capabilities.itineraryItemLinks ? [linkSelection] : []),
+        ...(capabilities.signedUrls ? [attachmentSelection] : []),
+      ].join(", "),
+    )
+    .eq("id", itemId)
+    .maybeSingle();
+  return { data: data ? plannerItemFromRow(data) : null, error: error?.message ?? null };
+}
 
 export async function getPlannerVariants(
   tripId: string,
@@ -44,7 +102,7 @@ export async function getPlannerVariants(
   const database = await getRelationalDatabase();
   const { data, error } = await database
     .from("route_variants")
-    .select("id, trip_id, name, color, is_primary")
+    .select("id, trip_id, name, color, is_primary, version, days_version, items_version")
     .eq("trip_id", tripId)
     .order("is_primary", { ascending: false })
     .order("created_at", { ascending: true });
@@ -61,7 +119,7 @@ export async function getPlannerWorkspace(
   const capabilities = getBackendCapabilities();
   const { data: variant, error: variantError } = await database
     .from("route_variants")
-    .select("id, trip_id, name, color, is_primary")
+    .select("id, trip_id, name, color, is_primary, version, days_version, items_version")
     .eq("trip_id", tripId)
     .eq("id", variantId)
     .maybeSingle();
@@ -79,7 +137,7 @@ export async function getPlannerWorkspace(
   ] = await Promise.all([
     database
       .from("trip_days")
-      .select("id, variant_id, day_number, date, title, notes")
+      .select("id, variant_id, day_number, date, title, notes, version, items_version")
       .eq("variant_id", variant.id)
       .order("day_number", { ascending: true }),
     database
@@ -149,43 +207,7 @@ export async function getPlannerWorkspace(
 
   const itemsByDay = new Map<string, import("./types").ItineraryItem[]>();
   for (const row of items ?? []) {
-    const snapshot = row.place;
-    const item = {
-      ...row,
-      attachments: ownerAttachmentsFromRows(row.attachments),
-      links: [...(row.links ?? [])].sort((a, b) => a.sort_order - b.sort_order),
-      place:
-        snapshot?.display_name &&
-        snapshot.coordinate_system === "wgs84" &&
-        snapshot.latitude !== null &&
-        snapshot.longitude !== null
-          ? {
-              id: snapshot.id,
-              coordinateSystem: "wgs84" as const,
-              provider: snapshot.source,
-              ...((snapshot.provider_place_id ?? snapshot.google_place_id) && {
-                providerPlaceId: snapshot.provider_place_id ?? snapshot.google_place_id!,
-              }),
-              displayName: snapshot.display_name,
-              ...(snapshot.formatted_address && { formattedAddress: snapshot.formatted_address }),
-              ...(snapshot.locality_name && { localityName: snapshot.locality_name }),
-              ...(snapshot.locality_kind && {
-                localityKind:
-                  snapshot.locality_kind as import("@/lib/providers/places/types").LocalityKind,
-              }),
-              ...(snapshot.country_code && { countryCode: snapshot.country_code }),
-              ...(snapshot.administrative_area_name && {
-                administrativeAreaName: snapshot.administrative_area_name,
-              }),
-              ...(snapshot.locality_source && {
-                localitySource:
-                  snapshot.locality_source as import("@/lib/providers/places/types").LocalitySource,
-              }),
-              latitude: snapshot.latitude,
-              longitude: snapshot.longitude,
-            }
-          : null,
-    } satisfies import("./types").ItineraryItem;
+    const item = plannerItemFromRow(row);
     const dayItems = itemsByDay.get(item.day_id) ?? [];
     dayItems.push(item);
     itemsByDay.set(item.day_id, dayItems);
@@ -209,6 +231,7 @@ export async function getPlannerWorkspace(
                 provider_schema_version: calculation.provider_schema_version,
                 total_distance_meters: calculation.total_distance_meters,
                 total_duration_seconds: calculation.total_duration_seconds,
+                version: calculation.version,
                 calculatedLegs,
               }
             : null;

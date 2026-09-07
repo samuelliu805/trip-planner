@@ -4,12 +4,13 @@ import { overviewRouteModes, routeLegModes } from "./types";
 
 const identitySchema = z.string().uuid();
 const telemetryFields = {
-  operationId: identitySchema.optional(),
+  operationId: identitySchema,
   telemetryRouteMode: z.enum([...routeLegModes, "mixed", "unset"] as const).optional(),
 };
 
 export const saveRouteSchema = z.object({
   dayId: identitySchema,
+  expectedVersion: z.number().int().nonnegative(),
   itemIds: z.array(identitySchema).min(2).max(20),
   legModes: z.array(z.enum(routeLegModes)),
   tripId: identitySchema,
@@ -17,6 +18,8 @@ export const saveRouteSchema = z.object({
   ...telemetryFields,
 });
 export const calculateRouteSchema = z.object({
+  expectedPlanVersion: z.number().int().positive(),
+  expectedVersion: z.number().int().nonnegative(),
   planId: identitySchema,
   tripId: identitySchema,
   variantId: identitySchema,
@@ -42,6 +45,8 @@ export const calculateOverviewRouteSchema = z.object({
 });
 export const clearRouteSchema = z.object({
   dayId: identitySchema,
+  expectedVersion: z.number().int().positive(),
+  operationId: identitySchema,
   tripId: identitySchema,
   variantId: identitySchema,
 });

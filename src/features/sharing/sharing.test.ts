@@ -2378,8 +2378,8 @@ test("public template route, hydration, persistence, and rollback contracts stay
     /PlatformOperationError[\s\S]*error\.code === "authentication_required"[\s\S]*return null/,
   );
   assert.match(data, /list_share_pages_v2/);
-  assert.match(actions, /create_share_page_v3/);
-  assert.match(actions, /update_share_page_v3/);
+  assert.match(actions, /create_share_page_v4/);
+  assert.match(actions, /update_share_page_v4/);
   assert.doesNotMatch(actions, /rotate_public_itinerary_link/);
   assert.match(baseMigration, /set template_id = 'standard', template_version = 1/);
   assert.ok(

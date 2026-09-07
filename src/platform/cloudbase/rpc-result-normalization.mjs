@@ -87,6 +87,20 @@ export function cloudBaseDayRoutePlanRecoveryKey(name, parameters, recoverable) 
   return { dayId, variantId };
 }
 
+export function cloudBaseItemSaveRecoveryKey(name, parameters, recoverable) {
+  if (name !== "save_itinerary_item_v3" || !recoverable) return null;
+  const input = parametersObject(parameters);
+  if (!input) return null;
+  const dayId = uuidParameter(input, "target_day_id");
+  const itemId = uuidParameter(input, "target_item_id");
+  const operationId = uuidParameter(input, "target_operation_id");
+  const tripId = uuidParameter(input, "target_trip_id");
+  const variantId = uuidParameter(input, "target_variant_id");
+  return dayId && itemId && operationId && tripId && variantId
+    ? { dayId, itemId, tripId, variantId }
+    : null;
+}
+
 export function cloudBaseScalarMutationRecoveryKey(name, parameters, recoverable) {
   if (!recoverable) return null;
   const input = parametersObject(parameters);

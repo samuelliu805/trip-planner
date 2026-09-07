@@ -82,6 +82,7 @@ export class GuestDraftMutations {
         type: values.type,
         updated_at: timestamp,
         variant_id: draft.workspace.variant.id,
+        version: 1,
       };
       created = item;
       const days = draft.workspace.days.map((candidate) =>
@@ -201,9 +202,11 @@ export class GuestDraftMutations {
         day_number: insertion + 1,
         id: this.createId(),
         items: [],
+        items_version: 1,
         notes: null,
         title: null,
         variant_id: draft.workspace.variant.id,
+        version: 1,
       });
       return withTripDates(draft, days);
     });

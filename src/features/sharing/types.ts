@@ -31,4 +31,5 @@ export type ShareImageManifest = z.infer<typeof shareImageManifestSchema>;
 export type ShareImagePartInput = z.infer<typeof shareImagePartInputSchema>;
 
 export type ShareActionResult<T = PublicItineraryLink> =
-  { data: T; error?: never } | { data?: never; error: string };
+  | { data: T; error?: never; code?: never }
+  | { data?: never; error: string; code?: "conflict" | "forbidden" | "unexpected" };

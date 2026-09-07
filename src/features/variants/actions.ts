@@ -51,7 +51,7 @@ function variantError(message?: string) {
 async function mutationResult(
   tripId: string,
   variantId: string | null,
-  rpcError?: string,
+  rpcError?: { code?: string; message: string } | null,
   telemetry?: {
     action?: "blank" | "duplicate";
     mutation: "create" | "update" | "delete" | "primary";
@@ -59,7 +59,18 @@ async function mutationResult(
   },
 ): Promise<VariantMutationResult> {
   if (rpcError || !variantId) {
-    const result = { error: variantError(rpcError) };
+    const result = {
+      code:
+        rpcError?.code === "40001"
+          ? ("conflict" as const)
+          : rpcError?.code === "42501"
+            ? ("forbidden" as const)
+            : ("unexpected" as const),
+      error:
+        rpcError?.code === "40001"
+          ? "Someone else changed this Plan first. Reload the latest Plan."
+          : variantError(rpcError?.message),
+    };
     return telemetry ? reportVariantMutation({ ...telemetry, result }) : result;
   }
   if (telemetry) await reportVariantMutation({ ...telemetry, result: { data: { variantId } } });
@@ -89,17 +100,24 @@ export async function createRouteVariant(
   const parsed = createRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("create_route_variant", {
+  const { data, error } = await database.rpc("create_route_variant_v2", {
+    duplicate_content: false,
     source_variant_id: parsed.data.sourceVariantId,
+    target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message, {
-    action: "blank",
-    mutation: "create",
-    operationId: parsed.data.operationId,
-  });
+  return mutationResult(
+    parsed.data.tripId,
+    (data as { variantId?: string } | null)?.variantId ?? null,
+    error,
+    {
+      action: "blank",
+      mutation: "create",
+      operationId: parsed.data.operationId,
+    },
+  );
 }
 
 export async function duplicateRouteVariant(
@@ -108,17 +126,24 @@ export async function duplicateRouteVariant(
   const parsed = duplicateRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("duplicate_route_variant", {
+  const { data, error } = await database.rpc("create_route_variant_v2", {
+    duplicate_content: true,
     source_variant_id: parsed.data.sourceVariantId,
+    target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message, {
-    action: "duplicate",
-    mutation: "create",
-    operationId: parsed.data.operationId,
-  });
+  return mutationResult(
+    parsed.data.tripId,
+    (data as { variantId?: string } | null)?.variantId ?? null,
+    error,
+    {
+      action: "duplicate",
+      mutation: "create",
+      operationId: parsed.data.operationId,
+    },
+  );
 }
 
 export async function updateRouteVariant(
@@ -127,16 +152,23 @@ export async function updateRouteVariant(
   const parsed = updateRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("update_route_variant_metadata", {
+  const { data, error } = await database.rpc("update_route_variant_v2", {
+    expected_version: parsed.data.expectedVersion,
+    target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
     variant_color: parsed.data.color,
     variant_name: parsed.data.name,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message, {
-    mutation: "update",
-    operationId: parsed.data.operationId,
-  });
+  return mutationResult(
+    parsed.data.tripId,
+    (data as { variantId?: string } | null)?.variantId ?? null,
+    error,
+    {
+      mutation: "update",
+      operationId: parsed.data.operationId,
+    },
+  );
 }
 
 export async function setPrimaryRouteVariant(
@@ -145,14 +177,21 @@ export async function setPrimaryRouteVariant(
   const parsed = routeVariantIdentitySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("set_primary_route_variant", {
+  const { data, error } = await database.rpc("set_primary_route_variant_v2", {
+    expected_version: parsed.data.expectedVersion,
+    target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message, {
-    mutation: "primary",
-    operationId: parsed.data.operationId,
-  });
+  return mutationResult(
+    parsed.data.tripId,
+    (data as { variantId?: string } | null)?.variantId ?? null,
+    error,
+    {
+      mutation: "primary",
+      operationId: parsed.data.operationId,
+    },
+  );
 }
 
 export async function deleteRouteVariant(
@@ -161,12 +200,19 @@ export async function deleteRouteVariant(
   const parsed = routeVariantIdentitySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("delete_route_variant", {
+  const { data, error } = await database.rpc("delete_route_variant_v2", {
+    expected_version: parsed.data.expectedVersion,
+    target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
   });
-  return mutationResult(parsed.data.tripId, data, error?.message, {
-    mutation: "delete",
-    operationId: parsed.data.operationId,
-  });
+  return mutationResult(
+    parsed.data.tripId,
+    (data as { variantId?: string } | null)?.variantId ?? null,
+    error,
+    {
+      mutation: "delete",
+      operationId: parsed.data.operationId,
+    },
+  );
 }

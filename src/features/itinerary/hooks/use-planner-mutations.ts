@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Dispatch, SetStateAction } from "react";
 
 import {
@@ -12,8 +13,10 @@ import {
   useClearItineraryItems,
   useDeleteItineraryItem,
 } from "@/features/itinerary/item-mutations";
-import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
+import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
+import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
 
 export function usePlannerMutations(
   tripId: string,
@@ -21,6 +24,7 @@ export function usePlannerMutations(
   setInteractionError: Dispatch<SetStateAction<string | undefined>>,
 ) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const persistence = usePlannerPersistence();
   const deleteMutation = useDeleteItineraryItem(tripId, variantId);
   const clearMutation = useClearItineraryItems(tripId, variantId);
@@ -30,7 +34,18 @@ export function usePlannerMutations(
 
   async function insertDay(beforeDayNumber: number) {
     try {
-      await insertDayMutation.mutateAsync({ beforeDayNumber, tripId, variantId });
+      const workspace = queryClient.getQueryData<PlannerWorkspace>(
+        plannerQueryKey(tripId, variantId),
+      );
+      if (!workspace?.variant.days_version)
+        throw new Error("Reload this plan before adding a day.");
+      await insertDayMutation.mutateAsync({
+        beforeDayNumber,
+        expectedDaysVersion: workspace.variant.days_version,
+        operationId: newTelemetryOperationId(),
+        tripId,
+        variantId,
+      });
       setInteractionError(undefined);
       if (!persistence) router.refresh();
     } catch (error) {
@@ -42,7 +57,20 @@ export function usePlannerMutations(
 
   async function removeDay(dayId: string) {
     try {
-      await removeDayMutation.mutateAsync({ dayId, tripId, variantId });
+      const workspace = queryClient.getQueryData<PlannerWorkspace>(
+        plannerQueryKey(tripId, variantId),
+      );
+      const day = workspace?.days.find(({ id }) => id === dayId);
+      if (!workspace?.variant.days_version || !day)
+        throw new Error("Reload this plan before removing the day.");
+      await removeDayMutation.mutateAsync({
+        dayId,
+        expectedDaysVersion: workspace.variant.days_version,
+        expectedVersion: day.version,
+        operationId: newTelemetryOperationId(),
+        tripId,
+        variantId,
+      });
       setInteractionError(undefined);
       if (!persistence) router.refresh();
     } catch (error) {
@@ -54,9 +82,11 @@ export function usePlannerMutations(
     try {
       await reorderMutation.mutateAsync({
         dayId: day.id,
+        expectedItemsVersion: day.items_version,
         items: orderedItemIds.map((id, sortOrder) => ({ id, sortOrder })),
         tripId,
         variantId,
+        operationId: newTelemetryOperationId(),
       });
       setInteractionError(undefined);
       return true;
@@ -68,12 +98,20 @@ export function usePlannerMutations(
 
   async function deleteItem(item: ItineraryItem) {
     try {
+      const workspace = queryClient.getQueryData<PlannerWorkspace>(
+        plannerQueryKey(tripId, variantId),
+      );
+      const dayVersion = workspace?.days.find(({ id }) => id === item.day_id)?.items_version;
+      if (!dayVersion) throw new Error("Reload this day before deleting the item.");
       await deleteMutation.mutateAsync({
+        expectedItemsVersion: dayVersion,
+        expectedVersion: item.version,
         id: item.id,
         itemKind: item.type,
         surface: "planner",
         tripId,
         variantId,
+        operationId: newTelemetryOperationId(),
       });
       setInteractionError(undefined);
     } catch {
@@ -83,8 +121,15 @@ export function usePlannerMutations(
 
   async function clearItems(items: ItineraryItem[]) {
     try {
+      const workspace = queryClient.getQueryData<PlannerWorkspace>(
+        plannerQueryKey(tripId, variantId),
+      );
+      const itemsVersion = workspace?.variant.items_version;
+      if (!itemsVersion) throw new Error("Reload this plan before clearing items.");
       await clearMutation.mutateAsync({
+        expectedItemsVersion: itemsVersion,
         itemIds: items.map(({ id }) => id),
+        operationId: newTelemetryOperationId(),
         tripId,
         variantId,
       });

@@ -151,6 +151,8 @@ test("guest item and day mutations stay local and preserve importable identifier
   const item = await local.createItem({
     dayId,
     details: { location: "Kyoto" },
+    expectedItemsVersion: 1,
+    operationId: "00000000-0000-4000-8000-000000000999",
     placeSnapshot: {
       coordinateSystem: "wgs84",
       displayName: "Kiyomizu-dera",
@@ -169,9 +171,17 @@ test("guest item and day mutations stay local and preserve importable identifier
   });
   assert.equal(current.workspace.days[0].items[0].id, item.id);
   assert.equal(current.trip.title, "Kyoto Trip");
-  await local.insertDay({ beforeDayNumber: 2, tripId, variantId });
+  await local.insertDay({
+    beforeDayNumber: 2,
+    expectedDaysVersion: 1,
+    operationId: "00000000-0000-4000-8000-000000000174",
+    tripId,
+    variantId,
+  });
   assert.equal(current.workspace.days.length, 2);
   const copied = await local.copyItems({
+    expectedItemsVersion: 1,
+    operationId: "00000000-0000-4000-8000-000000000176",
     sourceItemIds: [item.id],
     targetDayId: current.workspace.days[1].id,
     tripId,
@@ -179,7 +189,14 @@ test("guest item and day mutations stay local and preserve importable identifier
   });
   assert.notEqual(copied[0].id, item.id);
   assert.equal(copied[0].place_id, item.place_id);
-  await local.deleteItem({ id: item.id, tripId, variantId });
+  await local.deleteItem({
+    expectedItemsVersion: 1,
+    expectedVersion: item.version,
+    id: item.id,
+    operationId: "00000000-0000-4000-8000-000000000998",
+    tripId,
+    variantId,
+  });
   assert.equal(current.workspace.days[0].items.length, 0);
   assert.equal(guestTripDraftSchema.safeParse(current).success, true);
 });

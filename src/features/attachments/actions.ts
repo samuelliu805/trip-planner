@@ -11,9 +11,10 @@ import { reportAttachmentMutation } from "./telemetry.server";
 const attachmentMutationSchema = z
   .object({
     itemId: z.uuid(),
+    expectedVersion: z.number().int().positive(),
     publicRef: z.string().regex(/^[0-9a-f]{64}$/),
     tripId: z.uuid(),
-    operationId: z.uuid().optional(),
+    operationId: z.uuid(),
   })
   .strict();
 
@@ -25,10 +26,12 @@ export async function setAttachmentShare(
     .safeParse(rawInput);
   if (!input.success) return { error: "The attachment request is invalid." };
   const database = await getRelationalDatabase();
-  const result = await database.rpc("set_item_asset_share_v2", {
+  const result = await database.rpc("set_item_asset_share_v3", {
+    expected_version: input.data.expectedVersion,
     requested_include_in_share: input.data.includeInShare,
     requested_public_ref: input.data.publicRef,
     target_item_id: input.data.itemId,
+    target_operation_id: input.data.operationId,
     target_trip_id: input.data.tripId,
   });
   const attachment = ownerAttachmentSchema.safeParse(result.data);
@@ -41,9 +44,11 @@ export async function detachAttachment(rawInput: z.input<typeof attachmentMutati
   const input = attachmentMutationSchema.safeParse(rawInput);
   if (!input.success) return { error: "The attachment request is invalid." };
   const database = await getRelationalDatabase();
-  const result = await database.rpc("detach_item_asset_v1", {
+  const result = await database.rpc("detach_item_asset_v2", {
+    expected_version: input.data.expectedVersion,
     requested_public_ref: input.data.publicRef,
     target_item_id: input.data.itemId,
+    target_operation_id: input.data.operationId,
     target_trip_id: input.data.tripId,
   });
   if (result.error)
@@ -64,7 +69,8 @@ export async function detachAttachment(rawInput: z.input<typeof attachmentMutati
 }
 
 export async function detachResearchAttachment(rawInput: {
-  operationId?: string;
+  expectedVersion: number;
+  operationId: string;
   publicRef: string;
   researchItemId: string;
   tripId: string;
@@ -75,9 +81,11 @@ export async function detachResearchAttachment(rawInput: {
     .safeParse(rawInput);
   if (!input.success) return { error: "The attachment request is invalid." };
   const database = await getRelationalDatabase();
-  const result = await database.rpc("detach_research_asset_v1", {
+  const result = await database.rpc("detach_research_asset_v2", {
+    expected_version: input.data.expectedVersion,
     requested_public_ref: input.data.publicRef,
     target_research_item_id: input.data.researchItemId,
+    target_operation_id: input.data.operationId,
     target_trip_id: input.data.tripId,
   });
   if (result.error)

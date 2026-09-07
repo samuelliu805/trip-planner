@@ -92,14 +92,26 @@ export async function saveDayRoutePlan(
     }
 
     const database = await getRelationalDatabase();
-    const { data: planId, error } = await database.rpc("save_day_route_plan", {
+    const { data: savedPlan, error } = await database.rpc("save_day_route_plan_v2", {
+      expected_version: parsed.data.expectedVersion,
       ordered_item_ids: parsed.data.itemIds,
       requested_leg_modes: parsed.data.legModes,
       target_day_id: parsed.data.dayId,
+      target_operation_id: parsed.data.operationId,
+      target_trip_id: parsed.data.tripId,
       target_variant_id: parsed.data.variantId,
     });
-    if (error || !planId)
-      throw new Error(error?.message ?? "The route configuration was not saved.");
+    const planId = (savedPlan as { planId?: string } | null)?.planId;
+    if (error)
+      return {
+        code:
+          error.code === "40001" ? "conflict" : error.code === "42501" ? "forbidden" : "unexpected",
+        error:
+          error.code === "40001"
+            ? "Someone else changed this day route first. Reload the latest route."
+            : routeActionError(new Error(error.message)),
+      };
+    if (!planId) throw new Error("The route configuration was not saved.");
     const refreshed = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
     const plan = refreshed.routePlans.find(({ id }) => id === planId);
     if (!plan) throw new Error("The saved route could not be reloaded.");
@@ -125,10 +137,10 @@ export async function calculateDayRoute(
 
   try {
     const database = await getRelationalDatabase();
-    const { data: owner, error: ownerError } = await database.rpc("is_trip_owner", {
+    const { data: owner, error: ownerError } = await database.rpc("can_edit_trip", {
       target_trip_id: parsed.data.tripId,
     });
-    if (ownerError || !owner) throw new Error("Trip owner access required.");
+    if (ownerError || !owner) throw new Error("Trip edit access required.");
 
     const workspace = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
     const plan = workspace.routePlans.find(
@@ -153,16 +165,32 @@ export async function calculateDayRoute(
     const normalizedLegs = serializeRoutesV1CalculatedLegs(calculated.legs);
     if (calculated.cache !== "full") {
       const normalized = JSON.parse(JSON.stringify(normalizedLegs)) as Json;
-      const { error } = await database.rpc("save_day_route_calculation", {
+      const { error } = await database.rpc("save_day_route_calculation_v2", {
         calculated_config_signature: calculated.configSignature,
         calculated_provider_schema_version: "routes-v1",
         calculated_total_distance_meters: calculated.totalDistanceMeters,
         // Postgres accepts NULL here; the generated RPC argument omits nullability.
         calculated_total_duration_seconds: calculated.totalDurationSeconds as number,
+        expected_plan_version: parsed.data.expectedPlanVersion,
+        expected_version: parsed.data.expectedVersion,
         normalized_calculated_legs: normalized,
+        target_operation_id: parsed.data.operationId,
         target_plan_id: plan.id,
+        target_trip_id: parsed.data.tripId,
       });
-      if (error) throw new Error(error.message);
+      if (error)
+        return reportRouteCalculation({
+          operationId: parsed.data.operationId,
+          result: {
+            code: error.code === "40001" ? ("conflict" as const) : ("unexpected" as const),
+            error:
+              error.code === "40001"
+                ? "Someone else calculated this route first. Reload the latest route."
+                : routeActionError(new Error(error.message)),
+          },
+          routeMode: parsed.data.telemetryRouteMode,
+          routeView: "day",
+        });
     }
 
     revalidatePath(`/trips/${parsed.data.tripId}`);
@@ -190,10 +218,10 @@ export async function calculateOverviewRoute(
 
   try {
     const database = await getRelationalDatabase();
-    const { data: owner, error: ownerError } = await database.rpc("is_trip_owner", {
+    const { data: owner, error: ownerError } = await database.rpc("can_edit_trip", {
       target_trip_id: parsed.data.tripId,
     });
-    if (ownerError || !owner) throw new Error("Trip owner access required.");
+    if (ownerError || !owner) throw new Error("Trip edit access required.");
 
     const workspace = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
     const stages = deriveOverviewStages(workspace.days);
@@ -277,11 +305,22 @@ export async function clearDayRoutePlan(
   if (!parsed.success) return { error: "The route clear request is invalid." };
   try {
     const database = await getRelationalDatabase();
-    const { error } = await database.rpc("clear_day_route_plan", {
+    const { error } = await database.rpc("clear_day_route_plan_v2", {
+      expected_version: parsed.data.expectedVersion,
       target_day_id: parsed.data.dayId,
+      target_operation_id: parsed.data.operationId,
+      target_trip_id: parsed.data.tripId,
       target_variant_id: parsed.data.variantId,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      return {
+        code:
+          error.code === "40001" ? "conflict" : error.code === "42501" ? "forbidden" : "unexpected",
+        error:
+          error.code === "40001"
+            ? "Someone else changed this day route first. Reload the latest route."
+            : routeActionError(new Error(error.message)),
+      };
     revalidatePath(`/trips/${parsed.data.tripId}`);
     return { data: { dayId: parsed.data.dayId } };
   } catch (error) {

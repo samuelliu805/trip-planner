@@ -1,7 +1,29 @@
 import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 
-export function requireData<T>(result: { data?: T | null; error?: string | null }) {
-  if (!result.data) throw new Error(result.error ?? "The itinerary change could not be saved.");
+export class ItineraryMutationError extends Error {
+  constructor(
+    message: string,
+    readonly code?: "conflict" | "forbidden" | "unexpected" | "validation",
+  ) {
+    super(message);
+    this.name = "ItineraryMutationError";
+  }
+}
+
+export function isItineraryConflict(error: unknown): error is ItineraryMutationError {
+  return error instanceof ItineraryMutationError && error.code === "conflict";
+}
+
+export function requireData<T>(result: {
+  code?: "conflict" | "forbidden" | "unexpected" | "validation";
+  data?: T | null;
+  error?: string | null;
+}) {
+  if (!result.data)
+    throw new ItineraryMutationError(
+      result.error ?? "The itinerary change could not be saved.",
+      result.code,
+    );
   return result.data;
 }
 

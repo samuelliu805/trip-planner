@@ -12,6 +12,29 @@ export const tripsZhCN: Record<string, string> = {
   Owner: "所有者",
   People: "协作成员",
   "Reload latest": "重新加载最新版本",
+  "The complete item draft is required.": "需要完整的项目草稿。",
+  "The saved itinerary item could not be read.": "无法读取已保存的行程项目。",
+  "Latest saved item loaded (version {version}). Your draft is still here.":
+    "已加载最新保存的项目（版本 {version}），你的草稿仍然保留。",
+  "Latest day loaded. Your draft is still here and can be saved again.":
+    "已加载当天的最新版本，你的草稿仍然保留，可以再次保存。",
+  "Reload only this item to compare it with your local draft; this keeps the editor open.":
+    "仅重新加载此项目以与本地草稿比较，编辑器会保持打开。",
+  "Reapply my draft": "重新应用我的草稿",
+  "Replace draft": "替换草稿",
+  "City is derived from Activity places and cannot be added separately.":
+    "城市由活动地点自动推导，不能单独添加。",
+  "The candidate could not be saved.": "无法保存此备选项。",
+  "The candidate could not be updated.": "无法更新此备选项。",
+  "Latest loaded. Your draft is still here and can be saved again.":
+    "已加载最新版本，你的草稿仍然保留，可以再次保存。",
+  "Use latest values": "使用最新内容",
+  "Reload only this Share Page and keep this settings draft open.":
+    "仅重新加载此分享页面，并保持当前设置草稿打开。",
+  "Latest trip settings loaded. Your local draft is still here.":
+    "已加载最新行程设置，你的本地草稿仍然保留。",
+  "Reload only these trip settings to compare them with your local draft.":
+    "仅重新加载这些行程设置以与本地草稿比较。",
   "Reloading replaces only these trip settings and keeps the editor open.":
     "重新加载只会替换当前行程设置，并保持编辑器打开。",
   "Reloading replaces only this item and keeps the editor open.":

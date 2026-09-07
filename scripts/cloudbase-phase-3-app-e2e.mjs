@@ -1898,37 +1898,37 @@ async function verifyCloudBaseGuestImport(fixture) {
   );
   assert.deepEqual(replayed, [{ id: tripId }], "CN guest import replay duplicated the Trip.");
 
-  const [variants, days, items, places, links] = await Promise.all([
-    controlledData(
-      () => db.from("route_variants").select("id,name").eq("trip_id", tripId),
-      "guest variant evidence",
-    ),
-    controlledData(
-      () => db.from("trip_days").select("id,title,notes").eq("variant_id", fixture.variantId),
-      "guest day evidence",
-    ),
-    controlledData(
-      () =>
-        db
-          .from("itinerary_items")
-          .select("id,title,notes,price_amount,price_currency,place_id")
-          .eq("trip_id", tripId)
-          .order("sort_order"),
-      "guest item evidence",
-    ),
-    controlledData(
-      () =>
-        db
-          .from("places")
-          .select("id,source,provider_place_id,coordinate_system")
-          .eq("trip_id", tripId),
-      "guest place evidence",
-    ),
-    controlledData(
-      () => db.from("itinerary_item_links").select("id,label,url").eq("item_id", fixture.itemId),
-      "guest link evidence",
-    ),
-  ]);
+  // The CloudBase Node adapter shares one authenticated transport per client.
+  // Keep the evidence reads sequential so retries cannot race that transport.
+  const variants = await controlledData(
+    () => db.from("route_variants").select("id,name").eq("trip_id", tripId),
+    "guest variant evidence",
+  );
+  const days = await controlledData(
+    () => db.from("trip_days").select("id,title,notes").eq("variant_id", fixture.variantId),
+    "guest day evidence",
+  );
+  const items = await controlledData(
+    () =>
+      db
+        .from("itinerary_items")
+        .select("id,title,notes,price_amount,price_currency,place_id")
+        .eq("trip_id", tripId)
+        .order("sort_order"),
+    "guest item evidence",
+  );
+  const places = await controlledData(
+    () =>
+      db
+        .from("places")
+        .select("id,source,provider_place_id,coordinate_system")
+        .eq("trip_id", tripId),
+    "guest place evidence",
+  );
+  const links = await controlledData(
+    () => db.from("itinerary_item_links").select("id,label,url").eq("item_id", fixture.itemId),
+    "guest link evidence",
+  );
   assert.deepEqual(variants, [{ id: fixture.variantId, name: "Main plan" }]);
   assert.deepEqual(days, [{ id: fixture.dayId, notes: "Guest day note", title: "Arrival" }]);
   assert.deepEqual(
@@ -2424,13 +2424,37 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
     "route draft without deleted activity",
   );
   await clickButtonText(browser, "Save & calculate");
-  await waitFor(
-    browser,
-    `!document.querySelector('[data-i18n-aria-label="Edit Route A"]') &&
-      Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
-    "route recalculated after activity delete",
-    60_000,
-  );
+  const observedAlerts = new Set();
+  const routeDeadline = Date.now() + 60_000;
+  let diagnostic;
+  while (Date.now() < routeDeadline) {
+    diagnostic = await evaluate(
+      browser,
+      `({
+        alerts: [...document.querySelectorAll('[role="alert"]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 160))
+          .filter(Boolean)
+          .slice(-3),
+        editorOpen: Boolean(document.querySelector('[data-i18n-aria-label="Edit Route A"]')),
+        lineCount: Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount ?? -1),
+        saveAction: (() => {
+          const button = [...document.querySelectorAll('button')]
+            .find((candidate) => ['Save & calculate', 'Saving…'].includes(candidate.textContent.trim()));
+          return button ? { disabled: button.disabled, text: button.textContent.trim() } : null;
+        })(),
+        complete: !document.querySelector('[data-i18n-aria-label="Edit Route A"]') &&
+          Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0,
+      })`,
+    );
+    diagnostic.alerts.forEach((message) => observedAlerts.add(message));
+    if (diagnostic.complete) break;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  if (!diagnostic?.complete)
+    throw new Error(
+      `Timed out waiting for route recalculated after activity delete; bounded route-recalculation diagnostic: ${JSON.stringify({ ...diagnostic, observedAlerts: [...observedAlerts].slice(-3) })}`,
+    );
   const persisted = await loadPersistedAmapEvidence(tripId);
   assert.equal(persisted.items.length, before.itemCount - 1);
   assert.equal(persisted.calculations.length, 1);

@@ -26,6 +26,7 @@ export type CreateTripInput = Readonly<{
   currency: string;
   dayCount: number;
   locale: "en" | "zh-CN";
+  operationId: string;
   timezone: string;
   title: string;
 }>;
@@ -78,8 +79,14 @@ export interface TripRepository {
     expectedVersion: number,
     operationId: string,
   ): Promise<Trip>;
-  renameIfTitle(id: string, currentTitle: string, nextTitle: string): Promise<boolean>;
-  remove(id: string, expectedVersion: number): Promise<void>;
+  renameIfTitle(
+    id: string,
+    currentTitle: string,
+    nextTitle: string,
+    expectedVersion: number,
+    operationId: string,
+  ): Promise<boolean>;
+  remove(id: string, expectedVersion: number, operationId: string): Promise<void>;
   listMembers(id: string): Promise<TripMember[]>;
   inviteCollaborator(id: string, identifier: string, operationId: string): Promise<void>;
   removeCollaborator(id: string, memberId: string, operationId: string): Promise<void>;

@@ -130,9 +130,9 @@ const itemBaseSchema = z.object({
   links: z.array(itemLinkSchema).max(20, "Add no more than 20 links.").optional(),
   dayId: z.uuid(),
   endTime: optionalTime,
-  expectedVersion: z.number().int().positive().optional(),
+  expectedItemsVersion: z.number().int().positive(),
   notes: optionalText(5000),
-  operationId: z.uuid().optional(),
+  operationId: z.uuid(),
   placeId: z.uuid().optional().nullable(),
   placeSnapshot: placeSnapshotSchema.optional().nullable(),
   priceAmount: z.number().min(0).max(9_999_999_999.99).optional().nullable(),
@@ -147,6 +147,7 @@ const itemBaseSchema = z.object({
   surface: z.enum(["item_editor", "planner"]).optional(),
   title: z.string().trim().min(1, "Enter an item title.").max(200),
   tripId: z.uuid(),
+  uploadSessionId: z.uuid().optional(),
   variantId: z.uuid(),
 });
 
@@ -241,8 +242,11 @@ export const updateItineraryItemSchema = z
   .object({
     ...itemBaseSchema.partial().shape,
     details: z.record(z.string(), z.json()).optional(),
+    expectedItemsVersion: z.number().int().positive(),
+    expectedVersion: z.number().int().positive(),
     id: z.uuid(),
     insertAfterItemId: z.uuid().nullable().optional(),
+    operationId: z.uuid(),
     tripId: z.uuid(),
     type: z.enum(itineraryItemTypes),
     variantId: z.uuid(),
@@ -273,10 +277,11 @@ export const updateItineraryItemSchema = z
   });
 
 export const deleteItineraryItemSchema = z.object({
-  expectedVersion: z.number().int().positive().optional(),
+  expectedItemsVersion: z.number().int().positive(),
+  expectedVersion: z.number().int().positive(),
   id: z.uuid(),
   itemKind: z.enum(itineraryItemTypes).optional(),
-  operationId: z.uuid().optional(),
+  operationId: z.uuid(),
   surface: z.enum(["item_editor", "planner"]).optional(),
   tripId: z.uuid(),
   variantId: z.uuid(),

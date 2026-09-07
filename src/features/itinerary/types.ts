@@ -7,21 +7,20 @@ export type ItineraryItemLink = Pick<
   AppRow<"itinerary_item_links">,
   "id" | "item_id" | "label" | "url" | "sort_order"
 >;
-export type ItineraryItem = Omit<AppRow<"itinerary_items">, "version"> & {
+export type ItineraryItem = AppRow<"itinerary_items"> & {
   attachments?: OwnerAttachment[];
   links?: ItineraryItemLink[];
   place?: PersistedPlaceSnapshot | null;
-  version?: number;
 };
 export type PersistedPlaceSnapshot = PlaceSnapshot & { id: string };
 export type TripDay = Pick<
   AppRow<"trip_days">,
-  "date" | "day_number" | "id" | "notes" | "title" | "variant_id"
+  "date" | "day_number" | "id" | "items_version" | "notes" | "title" | "variant_id" | "version"
 >;
 
 export type PlannerVariant = Pick<
   AppRow<"route_variants">,
-  "color" | "id" | "is_primary" | "name" | "trip_id"
+  "color" | "days_version" | "id" | "is_primary" | "items_version" | "name" | "trip_id" | "version"
 >;
 
 export type PlannerDay = TripDay & { items: ItineraryItem[] };
@@ -121,4 +120,5 @@ export function normalizeTransportMode(value?: string): TransportMode {
 }
 
 export type MutationResult<T = ItineraryItem> =
-  { data: T; error?: never } | { data?: never; error: string };
+  | { data: T; error?: never; code?: never }
+  | { data?: never; error: string; code?: "conflict" | "forbidden" | "unexpected" | "validation" };

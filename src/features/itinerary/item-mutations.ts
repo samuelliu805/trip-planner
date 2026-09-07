@@ -103,6 +103,7 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
         type: input.type,
         updated_at: new Date().toISOString(),
         variant_id: input.variantId,
+        version: 1,
       };
       const orderedItems = insertActivityAtPlacement(
         day?.items ?? [],
@@ -123,11 +124,14 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (item, _input, context) => {
+    onSuccess: async (item, _input, context) => {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(removeItem(current, context?.optimisticId ?? ""), item),
       );
       if (!persistence) {
+        // A create advances the day's aggregate items version. Await the refresh so
+        // Save & create another cannot submit the stale collection version.
+        await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         if (affectsLocalityProjection(item.type)) void invalidateVariantComparison(client, tripId);
         if (affectsDecisionSummary(item.type))
           void invalidateVariantDecisionSummary(client, tripId);
@@ -149,7 +153,6 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const existing = plannerWorkspaceItems(previous).find(({ id }) => id === input.id);
-      input.expectedVersion ??= existing?.version ?? 1;
       const optimisticPlace = placeSnapshotFromJson(input.placeSnapshot);
       if (existing) {
         const optimistic = {
@@ -244,7 +247,6 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const deleted = plannerWorkspaceItems(previous).find((item) => item.id === input.id);
-      input.expectedVersion ??= deleted?.version ?? 1;
       input.itemKind ??= deleted?.type;
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItem(previous, input.id));
       return {

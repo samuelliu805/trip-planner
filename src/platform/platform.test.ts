@@ -21,6 +21,7 @@ import {
 } from "./cloudbase/profile-currency.ts";
 import {
   cloudBaseDayRoutePlanRecoveryKey,
+  cloudBaseItemSaveRecoveryKey,
   cloudBaseOrderMutationRecoveryKey,
   cloudBasePlaceUpsertRecoveryKey,
   cloudBaseScalarMutationRecoveryKey,
@@ -554,6 +555,24 @@ test("CloudBase committed mutation recovery covers CN scalar and empty JSON resp
     ),
     null,
   );
+});
+
+test("CloudBase atomic item recovery is exact and scoped to the committed entity", () => {
+  const parameters = {
+    target_day_id: "123e4567-e89b-42d3-a456-426614174000",
+    target_item_id: "223e4567-e89b-42d3-a456-426614174000",
+    target_operation_id: "323e4567-e89b-42d3-a456-426614174000",
+    target_trip_id: "423e4567-e89b-42d3-a456-426614174000",
+    target_variant_id: "523e4567-e89b-42d3-a456-426614174000",
+  };
+  assert.deepEqual(cloudBaseItemSaveRecoveryKey("save_itinerary_item_v3", parameters, true), {
+    dayId: parameters.target_day_id,
+    itemId: parameters.target_item_id,
+    tripId: parameters.target_trip_id,
+    variantId: parameters.target_variant_id,
+  });
+  assert.equal(cloudBaseItemSaveRecoveryKey("save_itinerary_item_v3", parameters, false), null);
+  assert.equal(cloudBaseItemSaveRecoveryKey("save_itinerary_item_v2", parameters, true), null);
 });
 
 test("CloudBase CN uses CNY until the traveller explicitly saves a currency", () => {
