@@ -301,7 +301,7 @@ select throws_ok(
     (select id from canonical_price_state where key = 'trip'),
     (select id from canonical_price_state where key = 'variant')
   ),
-  '42501', 'AUTHENTICATION_REQUIRED',
+  '42501', 'TRIP_EDIT_ACCESS_REQUIRED',
   'anonymous callers cannot inspect current Apply history'
 );
 select is(

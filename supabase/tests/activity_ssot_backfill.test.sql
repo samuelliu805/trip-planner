@@ -2,6 +2,7 @@ begin;
 
 grant execute on function public.create_route_variant(uuid, uuid, text, text) to authenticated;
 grant execute on function public.save_day_route_plan(uuid, uuid, uuid[], text[]) to authenticated;
+grant execute on function public.reorder_variant_days(uuid, uuid, uuid[]) to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 
