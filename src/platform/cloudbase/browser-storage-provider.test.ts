@@ -175,6 +175,31 @@ test("CloudBase browser signed uploads retry network failures", async () => {
   }
 });
 
+test("CloudBase browser signed uploads accept a retry conflict after an ambiguous timeout", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError("fetch timed out after the object was stored");
+    return new Response("already exists", { status: 409 });
+  }) as typeof fetch;
+  try {
+    const result = await new CloudBaseBrowserStorageProvider("share-images", {
+      waitForRetry: async () => undefined,
+    }).uploadToSignedUrl({
+      body: new Blob(["image"]),
+      path: "owner/export/part-1.jpg",
+      signedUrl: "https://storage.example/upload?token=signed",
+      token: "signed",
+    });
+
+    assert.equal(calls, 2);
+    assert.equal(result.path, "owner/export/part-1.jpg");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("CloudBase browser signed uploads retry requests that exceed their deadline", async () => {
   const originalFetch = globalThis.fetch;
   let calls = 0;
@@ -229,6 +254,32 @@ test("CloudBase browser signed uploads do not retry client errors", async () => 
           token: "signed",
         }),
       /Signed storage upload returned 400/,
+    );
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("CloudBase browser signed uploads reject an unexplained first-attempt conflict", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response("already exists", { status: 409 });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      () =>
+        new CloudBaseBrowserStorageProvider("share-images", {
+          waitForRetry: async () => assert.fail("a first-attempt conflict must not retry"),
+        }).uploadToSignedUrl({
+          body: new Blob(["image"]),
+          path: "owner/export/part-1.jpg",
+          signedUrl: "https://storage.example/upload?token=signed",
+          token: "signed",
+        }),
+      /Signed storage upload returned 409/,
     );
     assert.equal(calls, 1);
   } finally {
