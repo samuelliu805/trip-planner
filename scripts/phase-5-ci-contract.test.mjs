@@ -89,7 +89,8 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
     "npm run test:cloudbase-phase-4-storage",
     "npm run test:cloudbase-phase-4-cleanup",
     "node scripts/verify-cloudbase-migration-plan.mjs",
-    "node scripts/select-amap-ci-edge.mjs",
+    "node scripts/select-amap-ci-edge.mjs restapi.amap.com",
+    "node scripts/select-amap-ci-edge.mjs webapi.amap.com",
     "VERCEL_AUTOMATION_BYPASS_SECRET",
     "node scripts/invoke-cloudbase-cleanup-http.mjs",
     "--require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY",
@@ -119,7 +120,8 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
   assert.doesNotMatch(workflow, /tcb fn invoke|CLOUDBASE_CAM_SECRET_/);
   assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 1);
   assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);
-  assert.match(workflow, /restapi\.amap\.com[\\n'\"]+.*\/etc\/hosts/);
+  assert.match(workflow, /printf '%s restapi\.amap\.com\\n%s webapi\.amap\.com\\n'/);
+  assert.match(workflow, /sudo --non-interactive tee -a \/etc\/hosts/);
   assert.ok(
     workflow.indexOf("Pin a reachable AMap edge for the CN runner") <
       workflow.indexOf("Run real AMap route and place Web Service smoke"),

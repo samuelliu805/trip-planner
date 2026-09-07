@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ipv4AddressesFromDnsJson, selectReachableAmapAddress } from "./select-amap-ci-edge.mjs";
+import {
+  ipv4AddressesFromDnsJson,
+  probeAmapAddress,
+  selectReachableAmapAddress,
+} from "./select-amap-ci-edge.mjs";
 
 test("AMap edge selection accepts only IPv4 A records", () => {
   assert.deepEqual(
@@ -21,15 +25,30 @@ test("AMap edge selection accepts only IPv4 A records", () => {
 test("AMap edge selection keeps failures isolated and returns a reachable address", async () => {
   const attempts = [];
   const selected = await selectReachableAmapAddress(["203.0.113.1", "198.51.100.2"], {
-    probeImplementation: async (address) => {
-      attempts.push(address);
+    hostname: "webapi.amap.com",
+    probeImplementation: async (address, options) => {
+      attempts.push({ address, hostname: options.hostname });
       if (address === "203.0.113.1") throw new Error("unreachable");
       return address;
     },
   });
 
   assert.equal(selected, "198.51.100.2");
-  assert.deepEqual(attempts, ["203.0.113.1", "198.51.100.2"]);
+  assert.deepEqual(attempts, [
+    { address: "203.0.113.1", hostname: "webapi.amap.com" },
+    { address: "198.51.100.2", hostname: "webapi.amap.com" },
+  ]);
+});
+
+test("AMap edge selection rejects hosts outside the fixed REST and browser SDK upstreams", async () => {
+  await assert.rejects(
+    selectReachableAmapAddress(["203.0.113.1"], { hostname: "attacker.example" }),
+    /not approved/,
+  );
+  await assert.rejects(
+    probeAmapAddress("203.0.113.1", { hostname: "attacker.example" }),
+    /not approved/,
+  );
 });
 
 test("AMap edge selection fails closed when no candidate is reachable", async () => {
