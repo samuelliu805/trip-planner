@@ -285,7 +285,9 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(amapSmoke, /web-service-key-platform-mismatch/);
   assert.match(amapSmoke, /assert\.notEqual\(\s*browserKey,\s*key/);
   assert.match(amapSmoke, /boundedRetryFetch/);
-  assert.match(amapSmoke, /attempts: 6/);
+  assert.match(amapSmoke, /boundedFetch = createBoundedAmapFetch\(\{ attempts: 6 \}\)/);
+  assert.match(amapSmoke, /routeFetch = createBoundedAmapFetch\(\{ attempts: 2 \}\)/);
+  assert.match(amapSmoke, /fetchImplementation: routeFetch/);
   assert.match(amapSmoke, /timeoutMs: 15_000/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("key", browserKey\)/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("jscode"/);
