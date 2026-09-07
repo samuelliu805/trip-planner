@@ -12,8 +12,10 @@ import { normalizeCloudBaseStorageUrl } from "./storage-url.ts";
 
 const maximumSignedUploadAttempts = 3;
 const signedUploadRetryDelayMs = 250;
+const signedUploadTimeoutMs = 20_000;
 
 type CloudBaseBrowserStorageProviderOptions = Readonly<{
+  uploadTimeoutMs?: number;
   waitForRetry?: (milliseconds: number) => Promise<void>;
 }>;
 
@@ -49,10 +51,12 @@ function createCloudBaseBrowserStorage() {
 
 export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
   private readonly bucket: string;
+  private readonly uploadTimeoutMs: number;
   private readonly waitForRetry: (milliseconds: number) => Promise<void>;
 
   constructor(bucket: string, options: CloudBaseBrowserStorageProviderOptions = {}) {
     this.bucket = bucket;
+    this.uploadTimeoutMs = options.uploadTimeoutMs ?? signedUploadTimeoutMs;
     this.waitForRetry = options.waitForRetry ?? defaultWaitForRetry;
   }
 
@@ -101,6 +105,7 @@ export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
           body,
           credentials: "omit",
           method: "PUT",
+          signal: AbortSignal.timeout(this.uploadTimeoutMs),
         });
       } catch (cause) {
         if (attempt === maximumSignedUploadAttempts)
@@ -125,12 +130,8 @@ export class CloudBaseBrowserStorageProvider implements BrowserStorageProvider {
         "unexpected",
         `Signed storage upload returned ${response.status}.`,
       );
-    const payload: unknown = await response.json().catch(() => null);
-    const fullPath =
-      payload && typeof payload === "object" && "Key" in payload && typeof payload.Key === "string"
-        ? payload.Key
-        : `${this.bucket}/${input.path}`;
-    return { fullPath, path: input.path };
+    await response.body?.cancel().catch(() => undefined);
+    return { fullPath: `${this.bucket}/${input.path}`, path: input.path };
   }
 
   async remove(paths: string[]) {

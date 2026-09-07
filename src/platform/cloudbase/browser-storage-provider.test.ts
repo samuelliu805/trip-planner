@@ -88,6 +88,40 @@ test("CloudBase browser signed uploads tolerate an empty successful response", a
   }
 });
 
+test("CloudBase browser signed uploads do not wait for an unused successful response body", async () => {
+  const originalFetch = globalThis.fetch;
+  let canceled = false;
+  globalThis.fetch = (async () =>
+    new Response(
+      new ReadableStream({
+        cancel() {
+          canceled = true;
+        },
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"Key":"ignored"'));
+        },
+      }),
+      { status: 200 },
+    )) as typeof fetch;
+  try {
+    assert.deepEqual(
+      await new CloudBaseBrowserStorageProvider("share-images").uploadToSignedUrl({
+        body: new Blob(["image"]),
+        path: "owner/export/part-1.jpg",
+        signedUrl: "https://storage.example/upload?token=signed",
+        token: "signed",
+      }),
+      {
+        fullPath: "share-images/owner/export/part-1.jpg",
+        path: "owner/export/part-1.jpg",
+      },
+    );
+    assert.equal(canceled, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("CloudBase browser signed uploads retry transient server responses with bounded backoff", async () => {
   const originalFetch = globalThis.fetch;
   const delays: number[] = [];
@@ -127,6 +161,41 @@ test("CloudBase browser signed uploads retry network failures", async () => {
   }) as typeof fetch;
   try {
     await new CloudBaseBrowserStorageProvider("share-images", {
+      waitForRetry: async () => undefined,
+    }).uploadToSignedUrl({
+      body: new Blob(["image"]),
+      path: "owner/export/part-1.jpg",
+      signedUrl: "https://storage.example/upload?token=signed",
+      token: "signed",
+    });
+
+    assert.equal(calls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("CloudBase browser signed uploads retry requests that exceed their deadline", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = (async (_input, init) => {
+    calls += 1;
+    if (calls > 1) return new Response(null, { status: 204 });
+    return new Promise((_resolve, reject) => {
+      const keepAlive = setTimeout(() => undefined, 100);
+      init?.signal?.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(keepAlive);
+          reject(init.signal?.reason);
+        },
+        { once: true },
+      );
+    });
+  }) as typeof fetch;
+  try {
+    await new CloudBaseBrowserStorageProvider("share-images", {
+      uploadTimeoutMs: 1,
       waitForRetry: async () => undefined,
     }).uploadToSignedUrl({
       body: new Blob(["image"]),
