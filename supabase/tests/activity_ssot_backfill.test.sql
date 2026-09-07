@@ -1,6 +1,7 @@
 begin;
 
-grant execute on all functions in schema public to authenticated;
+grant execute on function public.create_route_variant(uuid, uuid, text, text) to authenticated;
+grant execute on function public.save_day_route_plan(uuid, uuid, uuid[], text[]) to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

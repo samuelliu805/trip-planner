@@ -1,6 +1,6 @@
 begin;
 
-grant execute on all functions in schema public to authenticated;
+grant execute on function public.set_item_asset_share_v2(uuid, uuid, text, boolean) to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

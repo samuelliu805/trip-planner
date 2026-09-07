@@ -51,12 +51,12 @@ select is((select count(*)::integer from public.trip_members where
   trip_id=(select value::uuid from collaboration_state where key='trip') and role='collaborator'),1,
   'duplicate and missing invitations create no extra membership');
 
-select lives_ok(format($sql$select public.save_itinerary_item_v2(
+select lives_ok(format($sql$select public.save_itinerary_item_v3(
   %L,%L,%L,%L,
   '{"type":"activity","title":"Museum","details":{},"placeId":null,"placeSnapshot":null,
     "bookingUrl":null,"startTime":null,"endTime":null,"scheduleKind":"none",
     "priceAmount":null,"priceCurrency":null}'::jsonb,
-  '[]'::jsonb,array[%L::uuid],null,1,%L)$sql$,
+  '[]'::jsonb,array[%L::uuid],null,1,%L,null)$sql$,
   (select value from collaboration_state where key='trip'),
   (select value from collaboration_state where key='variant'),
   (select value from collaboration_state where key='day'),
@@ -72,12 +72,12 @@ select lives_ok(format($sql$select public.current_research_plan_application_ids(
   (select value from collaboration_state where key='trip'),
   (select value from collaboration_state where key='variant')),
   'collaborator can open the research-backed trip detail');
-select lives_ok(format($sql$select public.save_itinerary_item_v2(
+select lives_ok(format($sql$select public.save_itinerary_item_v3(
   %L,%L,%L,%L,
   '{"type":"activity","title":"Museum updated","details":{"origin":"draft"},
     "placeId":null,"placeSnapshot":null,"bookingUrl":null,"startTime":null,"endTime":null,
     "scheduleKind":"none","priceAmount":null,"priceCurrency":null}'::jsonb,
-  '[]'::jsonb,array[%L::uuid],1,2,%L)$sql$,
+  '[]'::jsonb,array[%L::uuid],1,2,%L,null)$sql$,
   (select value from collaboration_state where key='trip'),
   (select value from collaboration_state where key='variant'),
   (select value from collaboration_state where key='day'),
@@ -94,12 +94,12 @@ select ok((select changes ? 'details.origin' from public.trip_history where
 
 select set_config('request.jwt.claims',
   '{"sub":"75000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
-select throws_ok(format($sql$select public.save_itinerary_item_v2(
+select throws_ok(format($sql$select public.save_itinerary_item_v3(
   %L,%L,%L,%L,
   '{"type":"activity","title":"Stale owner","details":{},"placeId":null,"placeSnapshot":null,
     "bookingUrl":null,"startTime":null,"endTime":null,"scheduleKind":"none",
     "priceAmount":null,"priceCurrency":null}'::jsonb,
-  '[]'::jsonb,array[%L::uuid],1,2,%L)$sql$,
+  '[]'::jsonb,array[%L::uuid],1,2,%L,null)$sql$,
   (select value from collaboration_state where key='trip'),
   (select value from collaboration_state where key='variant'),
   (select value from collaboration_state where key='day'),
@@ -110,12 +110,12 @@ select is((select count(*)::integer from public.trip_history where
   operation_id='75000000-0000-4000-8000-000000000022'),0,
   'a conflict writes no history');
 
-select lives_ok(format($sql$select public.save_itinerary_item_v2(
+select lives_ok(format($sql$select public.save_itinerary_item_v3(
   %L,%L,%L,%L,
   '{"type":"activity","title":"Museum updated","details":{"origin":"draft"},
     "placeId":null,"placeSnapshot":null,"bookingUrl":null,"startTime":null,"endTime":null,
     "scheduleKind":"none","priceAmount":null,"priceCurrency":null}'::jsonb,
-  '[]'::jsonb,array[%L::uuid],2,2,%L)$sql$,
+  '[]'::jsonb,array[%L::uuid],2,2,%L,null)$sql$,
   (select value from collaboration_state where key='trip'),
   (select value from collaboration_state where key='variant'),
   (select value from collaboration_state where key='day'),
@@ -126,23 +126,23 @@ select is((select version::integer from public.itinerary_items where
 select is((select count(*)::integer from public.trip_history where
   operation_id='75000000-0000-4000-8000-000000000023'),0,'no-op save writes no history');
 
-select lives_ok(format($sql$select public.save_itinerary_item_v2(
+select lives_ok(format($sql$select public.save_itinerary_item_v3(
   %L,%L,%L,%L,
   '{"type":"activity","title":"Museum updated","details":{"origin":"draft"},
     "placeId":null,"placeSnapshot":null,"bookingUrl":null,"startTime":null,"endTime":null,
     "scheduleKind":"none","priceAmount":null,"priceCurrency":null}'::jsonb,
-  '[]'::jsonb,array[%L::uuid],2,2,%L)$sql$,
+  '[]'::jsonb,array[%L::uuid],2,2,%L,null)$sql$,
   (select value from collaboration_state where key='trip'),
   (select value from collaboration_state where key='variant'),
   (select value from collaboration_state where key='day'),
   '75000000-0000-4000-8000-000000000020','75000000-0000-4000-8000-000000000020',
   '75000000-0000-4000-8000-000000000023'), 'same operation and payload replays safely');
-select throws_ok(format($sql$select public.save_itinerary_item_v2(
+select throws_ok(format($sql$select public.save_itinerary_item_v3(
   %L,%L,%L,%L,
   '{"type":"activity","title":"Different payload","details":{},"placeId":null,
     "placeSnapshot":null,"bookingUrl":null,"startTime":null,"endTime":null,
     "scheduleKind":"none","priceAmount":null,"priceCurrency":null}'::jsonb,
-  '[]'::jsonb,array[%L::uuid],2,2,%L)$sql$,
+  '[]'::jsonb,array[%L::uuid],2,2,%L,null)$sql$,
   (select value from collaboration_state where key='trip'),
   (select value from collaboration_state where key='variant'),
   (select value from collaboration_state where key='day'),
