@@ -10,9 +10,9 @@ import type {
 import { PlatformOperationError } from "../contracts/errors.ts";
 import { normalizeCloudBaseStorageUrl } from "./storage-url.ts";
 
-const maximumSignedUploadAttempts = 3;
+const maximumSignedUploadAttempts = 4;
 const signedUploadRetryDelayMs = 250;
-const signedUploadTimeoutMs = 20_000;
+const signedUploadTimeoutMs = 18_000;
 
 type CloudBaseBrowserStorageProviderOptions = Readonly<{
   uploadTimeoutMs?: number;

@@ -259,8 +259,8 @@ test("CloudBase browser signed uploads stop at the transient retry limit", async
         }),
       /Signed storage upload returned 502/,
     );
-    assert.equal(calls, 3);
-    assert.deepEqual(delays, [250, 500]);
+    assert.equal(calls, 4);
+    assert.deepEqual(delays, [250, 500, 1_000]);
   } finally {
     globalThis.fetch = originalFetch;
   }
