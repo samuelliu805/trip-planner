@@ -58,9 +58,13 @@ function MatrixDemo() {
             <b>
               <T message={day.day} />
             </b>
-            <small>{day.date}</small>
+            <small>
+              <T message={day.date} />
+            </small>
           </span>
-          <span>{day.stay}</span>
+          <span>
+            <T message={day.stay} />
+          </span>
           <span>
             {index === 0 ? (
               <>
@@ -71,8 +75,12 @@ function MatrixDemo() {
               <T message="Walk + Metro" />
             )}
           </span>
-          <span>{day.activity}</span>
-          <span>{day.meal}</span>
+          <span>
+            <T message={day.activity} />
+          </span>
+          <span>
+            <T message={day.meal} />
+          </span>
         </div>
       ))}
       <div className="manual-order">
@@ -109,7 +117,9 @@ function RouteDemo() {
           <li key={stop}>
             <span>{index + 1}</span>
             <div>
-              <strong>{stop}</strong>
+              <strong>
+                <T message={stop} />
+              </strong>
               <small>
                 {index === 0 ? (
                   <T message="Arrival" />
@@ -185,7 +195,8 @@ function DocumentsDemo() {
             <T message={parisLandingFixture.document.label} />
           </strong>
           <small>
-            {parisLandingFixture.document.meta} · <T message="Connected to Louvre Museum" />
+            <T message={parisLandingFixture.document.meta} /> ·{" "}
+            <T message="Connected to Louvre Museum" />
           </small>
         </div>
       </div>

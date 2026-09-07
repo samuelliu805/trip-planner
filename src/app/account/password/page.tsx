@@ -7,7 +7,10 @@ import { translateMessage } from "@/features/i18n/translate";
 import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: translateMessage(await getRequestLocale(), "Change password") };
+  return {
+    robots: { follow: false, index: false, noarchive: true },
+    title: translateMessage(await getRequestLocale(), "Change password"),
+  };
 }
 
 export default async function AccountPasswordPage() {

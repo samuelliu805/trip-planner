@@ -13,7 +13,10 @@ import { getAuthProvider } from "@/platform/composition/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  return { title: translateMessage(locale, "Home") };
+  return {
+    robots: { follow: false, index: false, noarchive: true },
+    title: translateMessage(locale, "Home"),
+  };
 }
 
 const capabilities = [

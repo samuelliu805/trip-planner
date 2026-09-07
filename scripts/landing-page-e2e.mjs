@@ -229,9 +229,23 @@ try {
   await navigate(browser, app.baseUrl);
   const initial = await evaluate(
     browser,
-    `({ fragments: [...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && Number(getComputedStyle(node).opacity) > .9).length, state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState, webgl: Boolean(document.querySelector('[data-testid="route-dock-canvas"]')?.getContext('webgl2')) })`,
+    `({ fragments: [...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && Number(getComputedStyle(node).opacity) > .9).length, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState, webgl: Boolean(document.querySelector('[data-testid="route-dock-canvas"]')?.getContext('webgl2')) })`,
   );
-  assert.deepEqual(initial, { fragments: 4, state: "scattered", webgl: true });
+  assert.deepEqual(initial, {
+    fragments: 4,
+    navPosition: "fixed",
+    navTop: 0,
+    state: "scattered",
+    webgl: true,
+  });
+  const seo = await evaluate(
+    browser,
+    `(() => { const canonical = document.querySelector('link[rel="canonical"]'); const data = JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent); return { canonicalPath: new URL(canonical.href).pathname, description: document.querySelector('meta[name="description"]').content, graphTypes: data['@graph'].map((entry) => entry['@type']), title: document.title }; })()`,
+  );
+  assert.equal(seo.canonicalPath, "/");
+  assert.match(seo.description, /route/i);
+  assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
+  assert.match(seo.title, /^Trip Planner/);
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
 
   for (const [progress, expected] of [
@@ -276,17 +290,21 @@ try {
 
   for (const [width, height] of [
     [1024, 768],
+    [820, 1180],
     [768, 1024],
+    [430, 932],
     [390, 844],
   ]) {
     await viewport(browser, width, height, width < 700);
     await setProgress(browser, 0.9);
     const responsive = await evaluate(
       browser,
-      `({ assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, overflow: document.documentElement.scrollWidth - innerWidth, state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState })`,
+      `({ assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState })`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
+    assert.equal(responsive.navPosition, "fixed");
+    assert.equal(responsive.navTop, 0);
     assert.ok(responsive.overflow <= 1, `${width}px overflowed by ${responsive.overflow}px`);
     if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
   }
@@ -328,9 +346,25 @@ try {
   );
   const routes = await evaluate(
     browser,
-    `Promise.all(['/guest','/login','/privacy','/terms','/support'].map(async (path) => [path, (await fetch(path)).status]))`,
+    `Promise.all(['/guest','/login','/privacy','/terms','/support','/robots.txt','/sitemap.xml'].map(async (path) => [path, (await fetch(path)).status]))`,
   );
   for (const [path, status] of routes) assert.equal(status, 200, `${path} returned ${status}`);
+  const discoveryFiles = await evaluate(
+    browser,
+    `Promise.all(['/robots.txt','/sitemap.xml'].map(async (path) => [path, await (await fetch(path)).text()]))`,
+  );
+  const discoveryByPath = Object.fromEntries(discoveryFiles);
+  assert.match(discoveryByPath["/robots.txt"], /Disallow: \/api\//);
+  assert.match(discoveryByPath["/robots.txt"], /Sitemap: .*\/sitemap\.xml/);
+  assert.match(discoveryByPath["/sitemap.xml"], /<loc>.*<\/loc>/);
+  assert.match(discoveryByPath["/sitemap.xml"], /\/support<\/loc>/);
+  const privateRobots = await evaluate(
+    browser,
+    `Promise.all(['/guest','/login','/signup','/home'].map(async (path) => { const html = await (await fetch(path)).text(); const page = new DOMParser().parseFromString(html, 'text/html'); return [path, page.querySelector('meta[name="robots"]')?.content.includes('noindex') === true]; }))`,
+  );
+  for (const [path, noindex] of privateRobots) {
+    assert.equal(noindex, true, `${path} did not render noindex metadata`);
+  }
   const landingCopy = await evaluate(
     browser,
     `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), tripPlannerMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'Trip Planner').length })`,
@@ -345,9 +379,23 @@ try {
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('在一处规划')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('一站搞定')`,
     "Simplified Chinese landing copy",
   );
+  await viewport(browser, 390, 844, true);
+  await navigate(browser, app.baseUrl);
+  const chineseLanding = await evaluate(
+    browser,
+    `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'Trip Planner').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,
+  );
+  assert.equal(chineseLanding.brandMarks, 2);
+  assert.ok(
+    chineseLanding.h1Lines <= 2.1,
+    `Chinese hero wrapped to ${chineseLanding.h1Lines} lines`,
+  );
+  assert.ok(chineseLanding.navClearance >= 12);
+  assert.ok(chineseLanding.overflow <= 1);
+  assert.deepEqual(chineseLanding.untranslatedFixture, []);
 
   assert.deepEqual(browser.cdp.errors, []);
   assert.deepEqual(browser.cdp.failedRequests, []);

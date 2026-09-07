@@ -1,4 +1,5 @@
 import { BedDouble, FileText, MapPin, Route } from "lucide-react";
+import { Fragment } from "react";
 
 import { T } from "@/features/i18n/i18n-provider";
 
@@ -14,7 +15,16 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
           <strong>
             <T message={parisLandingFixture.route.label} />
           </strong>
-          {!compact ? <span>{parisLandingFixture.route.stops.join(" · ")}</span> : null}
+          {!compact ? (
+            <span>
+              {parisLandingFixture.route.stops.map((stop, index) => (
+                <Fragment key={stop}>
+                  {index > 0 ? " · " : null}
+                  <T message={stop} />
+                </Fragment>
+              ))}
+            </span>
+          ) : null}
         </div>
       </div>
     );
@@ -27,7 +37,9 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
           <span>
             <T message="Stay" />
           </span>
-          <strong>{parisLandingFixture.days[0].stay}</strong>
+          <strong>
+            <T message={parisLandingFixture.days[0].stay} />
+          </strong>
         </div>
       </div>
     );
@@ -40,7 +52,9 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
           <span>
             <T message="Activity" />
           </span>
-          <strong>{parisLandingFixture.days[0].activity}</strong>
+          <strong>
+            <T message={parisLandingFixture.days[0].activity} />
+          </strong>
         </div>
       </div>
     );
@@ -55,7 +69,11 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
         <strong>
           <T message={parisLandingFixture.document.label} />
         </strong>
-        {!compact ? <span>{parisLandingFixture.document.meta}</span> : null}
+        {!compact ? (
+          <span>
+            <T message={parisLandingFixture.document.meta} />
+          </span>
+        ) : null}
       </div>
     </div>
   );

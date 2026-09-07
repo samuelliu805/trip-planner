@@ -4,23 +4,31 @@
   --dock-cyan: #4e9ca6;
   --dock-mint: #78b79a;
   --dock-border: #d9d5ca;
+  --landing-nav-height: calc(72px + env(safe-area-inset-top, 0px));
   background: var(--dock-paper);
   color: var(--dock-navy);
   font-family: var(--font-journal-sans), sans-serif;
   min-width: 0;
   overflow-x: clip;
+  scroll-padding-top: calc(var(--landing-nav-height) + 1rem);
 }
 
 .plandock-nav {
   align-items: center;
+  backdrop-filter: blur(16px);
+  background: rgba(19, 34, 56, 0.94);
+  border-bottom: 1px solid rgba(247, 244, 236, 0.12);
+  box-shadow: 0 8px 30px rgba(9, 18, 31, 0.12);
+  box-sizing: border-box;
   color: #f7f4ec;
   display: flex;
-  height: 72px;
+  height: var(--landing-nav-height);
   justify-content: space-between;
   left: 0;
   margin: auto;
   padding: 0 clamp(1rem, 4vw, 4rem);
-  position: absolute;
+  padding-top: env(safe-area-inset-top, 0px);
+  position: fixed;
   right: 0;
   top: 0;
   z-index: 80;
@@ -30,6 +38,7 @@
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 .plandock-nav-links,
 .plandock-nav-actions {
@@ -138,6 +147,22 @@
   line-height: 1.65;
   margin-top: 1.6rem;
   max-width: 35rem;
+  text-wrap: pretty;
+}
+
+#features,
+#how-it-works {
+  scroll-margin-top: calc(var(--landing-nav-height) + 1rem);
+}
+
+html[lang="zh-CN"] .hero-copy {
+  max-width: min(44rem, 54vw);
+}
+
+html[lang="zh-CN"] .hero-copy h1 {
+  font-size: clamp(3rem, 5.7vw, 6rem);
+  letter-spacing: -0.045em;
+  line-height: 1;
 }
 .hero-actions {
   display: flex;

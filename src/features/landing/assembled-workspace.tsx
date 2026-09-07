@@ -33,7 +33,7 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
             <T message={parisLandingFixture.title} />
           </h2>
           <p>
-            <CalendarDays aria-hidden="true" /> {parisLandingFixture.dateRange} ·{" "}
+            <CalendarDays aria-hidden="true" /> <T message={parisLandingFixture.dateRange} /> ·{" "}
             <T message="4 days" />
           </p>
         </div>
@@ -80,18 +80,24 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
                 <strong>
                   <T message={day.day} />
                 </strong>
-                {day.date}
+                <T message={day.date} />
               </span>
-              <span>{day.city}</span>
+              <span>
+                <T message={day.city} />
+              </span>
               {index === 0 ? (
                 <Target kind="stay" opacity={targetOpacity} />
               ) : (
-                <span>{day.stay}</span>
+                <span>
+                  <T message={day.stay} />
+                </span>
               )}
               {index === 0 ? (
                 <Target kind="activity" opacity={targetOpacity} />
               ) : (
-                <span>{day.activity}</span>
+                <span>
+                  <T message={day.activity} />
+                </span>
               )}
             </div>
           ))}

@@ -18,7 +18,10 @@ import { getServerProviderConfig } from "@/platform/config/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  return { title: translateMessage(locale, "Account") };
+  return {
+    robots: { follow: false, index: false, noarchive: true },
+    title: translateMessage(locale, "Account"),
+  };
 }
 
 export default async function AccountPage() {

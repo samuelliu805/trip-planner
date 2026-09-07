@@ -1,25 +1,32 @@
 import type { Metadata } from "next";
 
+import { tripPlannerBrandName } from "@/features/landing/brand";
 import { LandingPage } from "@/features/landing/landing-page";
+import {
+  getLandingStructuredData,
+  landingDescriptionMessage,
+  serializeStructuredData,
+} from "@/features/landing/seo";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
+import { getSiteUrl } from "@/features/sharing/site-url";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  const siteName = translateMessage(locale, "Trip Planner");
-  const description = translateMessage(
-    locale,
-    "Build the route, compare options, keep travel documents close, and share one usable trip plan.",
-  );
+  const siteName = tripPlannerBrandName;
+  const title = translateMessage(locale, "Trip Planner — Plan routes, stays and travel details");
+  const description = translateMessage(locale, landingDescriptionMessage);
   return {
-    title: { absolute: siteName },
+    alternates: { canonical: "/" },
+    applicationName: siteName,
+    category: "travel",
     description,
     icons: { icon: "/icon.svg" },
     openGraph: {
       description,
       images: [
         {
-          alt: `${siteName} itinerary workspace`,
+          alt: translateMessage(locale, "Trip Planner itinerary workspace"),
           height: 630,
           url: "/opengraph-image",
           width: 1200,
@@ -27,19 +34,33 @@ export async function generateMetadata(): Promise<Metadata> {
       ],
       locale: locale === "zh-CN" ? "zh_CN" : "en_US",
       siteName,
-      title: siteName,
+      title,
       type: "website",
       url: "/",
     },
+    robots: { follow: true, index: true },
+    title: { absolute: title },
     twitter: {
       card: "summary_large_image",
       description,
       images: ["/opengraph-image"],
-      title: siteName,
+      title,
     },
   };
 }
 
-export default function Home() {
-  return <LandingPage year={new Date().getFullYear()} />;
+export default async function Home() {
+  const locale = await getRequestLocale();
+  const structuredData = getLandingStructuredData(locale, getSiteUrl());
+
+  return (
+    <>
+      <script
+        data-testid="landing-structured-data"
+        dangerouslySetInnerHTML={{ __html: serializeStructuredData(structuredData) }}
+        type="application/ld+json"
+      />
+      <LandingPage year={new Date().getFullYear()} />
+    </>
+  );
 }
