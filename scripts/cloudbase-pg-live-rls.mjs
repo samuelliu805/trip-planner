@@ -86,19 +86,21 @@ async function assertSignedOut(auth, label) {
 }
 
 async function createTrip(db, title) {
-  const rpc = await db.rpc("create_trip", {
+  const rpc = await db.rpc("create_trip_v3", {
     trip_title: title,
     trip_start_date: null,
     trip_end_date: null,
     trip_timezone: "UTC",
     trip_currency: "USD",
     trip_day_count: 1,
+    trip_locale: "en",
+    target_operation_id: crypto.randomUUID(),
   });
   if (
     rpc.error &&
     !/(?:SyntaxError:.*JSON|not valid JSON|JSON at position)/i.test(String(rpc.error.message ?? ""))
   ) {
-    dataOrThrow(rpc, "fixture create_trip");
+    dataOrThrow(rpc, "fixture create_trip_v3");
   }
   // SDK 3.9.0 currently tries to JSON.parse a scalar UUID response. The RPC commits first, so
   // resolve the fixture through the unique controlled title under the same RLS session.
@@ -141,21 +143,30 @@ async function deleteOwnedFixtures(auth, db, username, password, knownTripId) {
   try {
     await signIn(auth, username, password);
     const discovered = rows(
-      await db.from("trips").select("id").like("title", `${runLabel}%`),
+      await db.from("trips").select("id,version,content_version").like("title", `${runLabel}%`),
       `${username} cleanup lookup`,
-    ).map((trip) => trip.id);
-    const tripIds = [...new Set([knownTripId, ...discovered].filter(Boolean))];
+    );
+    const tripIds = [...new Set([knownTripId, ...discovered.map(({ id }) => id)].filter(Boolean))];
     const graph = await fixtureGraph(db, tripIds);
 
     for (const id of tripIds) {
       try {
-        const deleted = rows(
-          await db.from("trips").delete().eq("id", id).select("id"),
+        const trip =
+          discovered.find((candidate) => candidate.id === id) ??
+          rows(
+            await db.from("trips").select("id,version,content_version").eq("id", id),
+            `${username} cleanup version`,
+          )[0];
+        if (!trip) continue;
+        dataOrThrow(
+          await db.rpc("delete_trip_v3", {
+            expected_content_version: trip.content_version,
+            expected_version: trip.version,
+            target_operation_id: crypto.randomUUID(),
+            target_trip_id: id,
+          }),
           `${username} cleanup delete`,
         );
-        if (deleted.length !== 1 || deleted[0].id !== id) {
-          failures.push(`${username} cleanup delete returned no exact row for ${id}`);
-        }
       } catch (error) {
         failures.push(`${username} cleanup delete ${id}: ${failureMessage(error)}`);
       }
@@ -202,7 +213,11 @@ async function runAssertions(auth, db, config) {
     const aId = await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
     await assertSessionLifecycle(auth, aId);
     aTrip = await createTrip(db, `${runLabel}-a`);
-    const updated = await db.rpc("update_trip_plan", {
+    const initialTrip = rows(
+      await db.from("trips").select("content_version").eq("id", aTrip),
+      "A trip content version",
+    )[0];
+    const updated = await db.rpc("update_trip_plan_v2", {
       target_trip_id: aTrip,
       trip_title: `${runLabel}-a-updated`,
       trip_start_date: null,
@@ -211,6 +226,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 1,
+      expected_content_version: initialTrip.content_version,
       target_operation_id: crypto.randomUUID(),
     });
     if (
@@ -219,7 +235,7 @@ async function runAssertions(auth, db, config) {
         String(updated.error.message ?? ""),
       )
     ) {
-      dataOrThrow(updated, "A own update_trip_plan");
+      dataOrThrow(updated, "A own update_trip_plan_v2");
     }
     const statusUpdate = await db.rpc("update_trip_status", {
       expected_version: 2,
@@ -236,7 +252,11 @@ async function runAssertions(auth, db, config) {
       dataOrThrow(statusUpdate, "A own status update");
     const intendedTitle = `${runLabel}-published`;
     const privateTitle = `${runLabel}-private-after-publish`;
-    const publishUpdate = await db.rpc("update_trip_plan", {
+    const publishTrip = rows(
+      await db.from("trips").select("content_version").eq("id", aTrip),
+      "A publish content version",
+    )[0];
+    const publishUpdate = await db.rpc("update_trip_plan_v2", {
       target_trip_id: aTrip,
       trip_title: intendedTitle,
       trip_start_date: null,
@@ -245,6 +265,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 3,
+      expected_content_version: publishTrip.content_version,
       target_operation_id: crypto.randomUUID(),
     });
     if (
@@ -256,17 +277,32 @@ async function runAssertions(auth, db, config) {
       dataOrThrow(publishUpdate, "A publish title update");
     }
     aVariant = rows(
-      await db.from("route_variants").select("id").eq("trip_id", aTrip).eq("is_primary", true),
+      await db
+        .from("route_variants")
+        .select("id,version")
+        .eq("trip_id", aTrip)
+        .eq("is_primary", true),
       "A primary variant",
     )[0]?.id;
     if (!aVariant) throw new Error("A primary variant was unavailable");
     const share = dataOrThrow(
-      await db.rpc("create_share_page_v3", { target_variant_id: aVariant }),
+      await db.rpc("create_share_page_v4", {
+        expected_variant_version: rows(
+          await db.from("route_variants").select("version").eq("id", aVariant),
+          "A share variant version",
+        )[0].version,
+        target_operation_id: crypto.randomUUID(),
+        target_variant_id: aVariant,
+      }),
       "A immutable public share",
     );
     publicToken = share?.publicToken;
     if (!publicToken) throw new Error("A public share token was unavailable");
-    const privateUpdate = await db.rpc("update_trip_plan", {
+    const privateTrip = rows(
+      await db.from("trips").select("content_version").eq("id", aTrip),
+      "A private content version",
+    )[0];
+    const privateUpdate = await db.rpc("update_trip_plan_v2", {
       target_trip_id: aTrip,
       trip_title: privateTitle,
       trip_start_date: null,
@@ -275,6 +311,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 4,
+      expected_content_version: privateTrip.content_version,
       target_operation_id: crypto.randomUUID(),
     });
     if (
@@ -291,7 +328,11 @@ async function runAssertions(auth, db, config) {
     const bId = await signIn(auth, userB, config.CLOUDBASE_TEST_USER_B_PASSWORD);
     if (bId === aId) throw new Error("Controlled users A and B resolved to the same identity");
     bTrip = await createTrip(db, `${runLabel}-b`);
-    const crossPublish = await db.rpc("create_share_page_v3", { target_variant_id: aVariant });
+    const crossPublish = await db.rpc("create_share_page_v4", {
+      expected_variant_version: 1,
+      target_operation_id: crypto.randomUUID(),
+      target_variant_id: aVariant,
+    });
     if (!crossPublish.error) throw new Error("B published A's route variant");
     dataOrThrow(await auth.signOut(), "B sign out");
 
@@ -301,19 +342,14 @@ async function runAssertions(auth, db, config) {
     if (rows(await db.from("trips").select("id").eq("id", bTrip), "A cross read").length) {
       throw new Error("A read B's trip");
     }
-    const crossUpdate = rows(
-      await db
-        .from("trips")
-        .update({ title: `${runLabel}-forbidden` })
-        .eq("id", bTrip)
-        .select("id"),
-      "A cross update",
-    );
-    const crossDelete = rows(
-      await db.from("trips").delete().eq("id", bTrip).select("id"),
-      "A cross delete",
-    );
-    if (crossUpdate.length || crossDelete.length) throw new Error("A mutated B's trip directly");
+    const crossUpdate = await db
+      .from("trips")
+      .update({ title: `${runLabel}-forbidden` })
+      .eq("id", bTrip)
+      .select("id");
+    const crossDelete = await db.from("trips").delete().eq("id", bTrip).select("id");
+    if (!crossUpdate.error || !crossDelete.error)
+      throw new Error("Direct table DML did not fail closed");
 
     const forgedInsert = await db
       .from("trips")
@@ -338,7 +374,7 @@ async function runAssertions(auth, db, config) {
     if (!spoof.error && rows(spoof, "owner spoof")[0]?.owner_id !== aId) {
       throw new Error("A forged owner_id");
     }
-    const crossRpc = await db.rpc("update_trip_plan", {
+    const crossRpc = await db.rpc("update_trip_plan_v2", {
       target_trip_id: bTrip,
       trip_title: `${runLabel}-rpc-forbidden`,
       trip_start_date: null,
@@ -347,6 +383,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 1,
+      expected_content_version: 1,
       target_operation_id: crypto.randomUUID(),
     });
     if (!crossRpc.error) throw new Error("A business RPC mutated B's trip");

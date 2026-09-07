@@ -90,6 +90,7 @@ const researchItemFields = {
   title: optionalText(300),
   totalPriceAmount: z.number().min(0).max(9_999_999_999.99).optional().nullable(),
   tripId: z.uuid(),
+  draftSessionId: z.uuid().optional(),
   operationId: telemetryOperationId,
 };
 

@@ -1,6 +1,15 @@
 begin;
 
+-- Historical mechanics below run with test-only grants inside this rolled-back
+-- transaction. Production privilege coverage lives in
+-- collaboration_rpc_only_surface.test.sql and denies these legacy signatures.
 grant insert, update, delete on public.research_items to authenticated;
+grant insert, update, delete on public.itinerary_items to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant execute on function public.prepare_research_asset_v1(uuid,uuid,text,text,bigint,public.asset_media_kind,text,uuid) to authenticated;
+grant execute on function public.finalize_research_asset_v1(uuid,text,bigint,public.asset_media_kind,text,integer,integer,numeric,boolean) to authenticated;
+grant execute on function public.commit_research_asset_session_v1(uuid,uuid,uuid) to authenticated;
+grant execute on function public.select_research_item_for_variant(uuid,uuid,uuid) to authenticated;
 grant execute on function public.apply_research_item_to_variant_v2(uuid, uuid, uuid, uuid, text) to authenticated;
 grant execute on function public.revert_research_plan_application(uuid, uuid) to authenticated;
 

@@ -33,7 +33,10 @@ export async function insertTripDay(
     target_variant_id: parsed.data.variantId,
   });
   if (error || !data)
-    return { error: mutationError(error?.message ?? "The day could not be inserted.") };
+    return {
+      code: error?.code === "40001" ? "conflict" : "unexpected",
+      error: mutationError(error?.message ?? "The day could not be inserted."),
+    };
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data: { id: String((data as { dayId?: string }).dayId) } };
 }
@@ -44,7 +47,8 @@ export async function removeTripDay(
   const parsed = removeTripDaySchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("remove_variant_day_v2", {
+  const { data, error } = await database.rpc("remove_variant_day_v3", {
+    expected_day_content_version: parsed.data.expectedContentVersion,
     expected_day_version: parsed.data.expectedVersion,
     expected_days_version: parsed.data.expectedDaysVersion,
     target_day_id: parsed.data.dayId,
@@ -53,7 +57,10 @@ export async function removeTripDay(
     target_variant_id: parsed.data.variantId,
   });
   if (error || !data)
-    return { error: mutationError(error?.message ?? "The day could not be removed.") };
+    return {
+      code: error?.code === "40001" ? "conflict" : "unexpected",
+      error: mutationError(error?.message ?? "The day could not be removed."),
+    };
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data: { id: parsed.data.dayId } };
 }
@@ -71,7 +78,11 @@ export async function reorderVariantDays(
     target_trip_id: parsed.data.tripId,
     target_variant_id: parsed.data.variantId,
   });
-  if (error) return { error: mutationError(error.message) };
+  if (error)
+    return {
+      code: error.code === "40001" ? "conflict" : "unexpected",
+      error: mutationError(error.message),
+    };
   const workspace = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
   if (workspace.error || !workspace.data)
     return { error: workspace.error ?? "The saved Day order could not be reloaded." };
@@ -106,7 +117,11 @@ async function reorderItineraryItemsMutation(
     target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
   });
-  if (error) return { error: mutationError(error.message) };
+  if (error)
+    return {
+      code: error.code === "40001" ? "conflict" : "unexpected",
+      error: mutationError(error.message),
+    };
 
   const workspaceResult = await getPlannerWorkspace(parsed.data.tripId, parsed.data.variantId);
   const data = workspaceResult.data?.days.find(({ id }) => id === parsed.data.dayId)?.items;
@@ -136,8 +151,10 @@ async function copyItineraryItemsMutation(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   const database = await getRelationalDatabase();
-  const { data: copyResult, error } = await database.rpc("copy_itinerary_items_v2", {
+  const { data: copyResult, error } = await database.rpc("copy_itinerary_items_v3", {
     expected_items_version: parsed.data.expectedItemsVersion,
+    expected_replace_versions: parsed.data.replaceTargetVersions,
+    expected_source_versions: parsed.data.sourceVersions,
     preserve_place: parsed.data.preservePlace,
     replace_target_item_ids: parsed.data.replaceTargetItemIds,
     source_item_ids: parsed.data.sourceItemIds,

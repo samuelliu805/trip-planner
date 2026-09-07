@@ -62,6 +62,7 @@ export function DeleteTripDialog({
   title,
   tripId,
   version,
+  contentVersion,
 }: {
   activeSharePageCount: number | null;
   onOpenChange?: (open: boolean) => void;
@@ -72,6 +73,7 @@ export function DeleteTripDialog({
   title: string;
   tripId: string;
   version: number;
+  contentVersion: number;
 }) {
   const { t } = useI18n();
   const checkingSharePages = activeSharePageCount === null;
@@ -134,6 +136,7 @@ export function DeleteTripDialog({
         <form action={action}>
           <input name="trip_id" type="hidden" value={tripId} />
           <input name="expected_version" type="hidden" value={version} />
+          <input name="expected_content_version" type="hidden" value={contentVersion} />
           <input name="surface" type="hidden" value={surface} />
           <input name="operation_id" ref={operationRef} type="hidden" />
           <AlertDialogFooter>

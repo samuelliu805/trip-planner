@@ -4,6 +4,12 @@ grant insert, update, delete on public.research_items to authenticated;
 grant execute on function public.apply_research_item_to_variant_v2(uuid, uuid, uuid, uuid, text) to authenticated;
 grant execute on function public.revert_research_plan_application(uuid, uuid) to authenticated;
 grant execute on function public.duplicate_route_variant(uuid, uuid, text, text) to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant execute on function public.select_research_item_for_variant(uuid,uuid,uuid) to authenticated;
+grant execute on function public.apply_selected_research_item(uuid,uuid,uuid) to authenticated;
+grant execute on function public.apply_research_item_to_variant_phase_6b_p0(uuid,uuid,uuid) to authenticated;
+grant execute on function public.get_public_itinerary_v2(uuid) to authenticated;
+grant insert, update, delete on public.itinerary_items, public.trip_days to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

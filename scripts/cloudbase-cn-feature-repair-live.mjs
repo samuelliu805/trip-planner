@@ -80,7 +80,7 @@ async function run() {
     const variants = rows(
       await db
         .from("route_variants")
-        .select("id,days_version,items_version")
+        .select("id,version,content_version,days_version,items_version")
         .eq("trip_id", tripId)
         .eq("is_primary", true),
       "primary variant",
@@ -243,9 +243,20 @@ async function run() {
       "trip auto-title",
     );
 
+    const blankSource = rows(
+      await db
+        .from("route_variants")
+        .select("version,content_version,days_version,items_version")
+        .eq("id", primaryVariantId),
+      "blank variant source versions",
+    )[0];
     await committedScalar(
-      await db.rpc("create_route_variant_v2", {
+      await db.rpc("create_route_variant_v3", {
         duplicate_content: false,
+        expected_source_content_version: blankSource.content_version,
+        expected_source_days_version: blankSource.days_version,
+        expected_source_items_version: blankSource.items_version,
+        expected_source_version: blankSource.version,
         source_variant_id: primaryVariantId,
         target_trip_id: tripId,
         target_operation_id: randomUUID(),
@@ -261,9 +272,20 @@ async function run() {
           .eq("color", "#2563eb"),
       "blank variant create",
     );
+    const copySource = rows(
+      await db
+        .from("route_variants")
+        .select("version,content_version,days_version,items_version")
+        .eq("id", primaryVariantId),
+      "copy variant source versions",
+    )[0];
     const duplicateVariantId = await committedScalar(
-      await db.rpc("create_route_variant_v2", {
+      await db.rpc("create_route_variant_v3", {
         duplicate_content: true,
+        expected_source_content_version: copySource.content_version,
+        expected_source_days_version: copySource.days_version,
+        expected_source_items_version: copySource.items_version,
+        expected_source_version: copySource.version,
         source_variant_id: primaryVariantId,
         target_trip_id: tripId,
         target_operation_id: randomUUID(),
@@ -288,8 +310,9 @@ async function run() {
 
     const ideaId = randomUUID();
     await committedScalar(
-      await db.rpc("save_research_item_v2", {
+      await db.rpc("save_research_item_v3", {
         expected_version: null,
+        requested_draft_session_id: null,
         requested_item: {
           category: "stay",
           operationId: ideaId,
@@ -313,11 +336,12 @@ async function run() {
   } finally {
     if (tripId) {
       const trip = rows(
-        await db.from("trips").select("version").eq("id", tripId),
+        await db.from("trips").select("version,content_version").eq("id", tripId),
         "trip version",
       )[0];
       dataOrThrow(
-        await db.rpc("delete_trip_v2", {
+        await db.rpc("delete_trip_v3", {
+          expected_content_version: trip.content_version,
           expected_version: trip.version,
           target_operation_id: randomUUID(),
           target_trip_id: tripId,

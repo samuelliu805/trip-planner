@@ -1,5 +1,17 @@
 begin;
 
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant execute on function public.create_share_page_v1(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid) to authenticated;
+grant execute on function public.list_share_pages_v1(uuid) to authenticated;
+grant execute on function public.prepare_share_image_version_v1(uuid,text,uuid,text,text,jsonb) to authenticated;
+grant execute on function public.get_public_share_page_v1(uuid) to authenticated;
+grant execute on function public.owner_share_page_by_token_v1(uuid) to authenticated;
+grant execute on function public.owns_pending_share_image_object_v1(text) to authenticated;
+grant execute on function public.public_share_image_manifest_v1(text) to authenticated;
+grant execute on function public.fail_share_image_version_v1(uuid,text) to authenticated;
+grant execute on function public.revoke_share_image_export_v1(uuid) to authenticated;
+grant insert, update, delete on public.trips to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 
 select plan(26);

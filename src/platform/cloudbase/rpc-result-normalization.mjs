@@ -1,5 +1,24 @@
 export function normalizeCloudBaseRpcResult(name, result) {
-  if (name !== "owns_pending_share_image_object_v1" || result?.error) return result;
+  if (result?.error) {
+    const candidate = result.error;
+    const shape = candidate && typeof candidate === "object" ? candidate : {};
+    const codeText = [shape.code, shape.errorCode, shape.category]
+      .filter((value) => typeof value === "string")
+      .join(" ");
+    const sqlState = codeText.match(/(?:^|_)([0-9A-Z]{5})(?:$|_)/)?.[1];
+    if (sqlState) {
+      return {
+        ...result,
+        error: {
+          ...shape,
+          code: sqlState,
+          message: typeof shape.message === "string" ? shape.message : "Database operation failed.",
+        },
+      };
+    }
+    return result;
+  }
+  if (name !== "owns_pending_share_image_object_v1") return result;
   const data = result?.data;
   if (!data || typeof data !== "object" || Array.isArray(data)) return result;
   const keys = Object.keys(data);
@@ -108,17 +127,35 @@ export function cloudBaseScalarMutationRecoveryKey(name, parameters, recoverable
   const tripId = uuidParameter(input, "target_trip_id");
   const variantId = uuidParameter(input, "target_variant_id");
 
-  if (name === "insert_variant_day") {
+  if (name === "insert_variant_day" || name === "insert_variant_day_v2") {
     const dayNumber = input.before_day_number;
     if (!tripId || !variantId || !Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > 366)
       return null;
-    return { dayNumber, kind: "insert-day", tripId, variantId };
+    return {
+      dayNumber,
+      kind: "insert-day",
+      resultKey: name === "insert_variant_day_v2" ? "dayId" : null,
+      tripId,
+      variantId,
+    };
   }
-  if (name === "remove_variant_day") {
+  if (name === "remove_variant_day" || name === "remove_variant_day_v3") {
     const dayId = uuidParameter(input, "target_day_id");
-    return tripId && variantId && dayId ? { dayId, kind: "remove-day", tripId, variantId } : null;
+    return tripId && variantId && dayId
+      ? {
+          dayId,
+          kind: "remove-day",
+          resultKey: name === "remove_variant_day_v3" ? "dayId" : null,
+          tripId,
+          variantId,
+        }
+      : null;
   }
-  if (name === "create_route_variant" || name === "duplicate_route_variant") {
+  if (
+    name === "create_route_variant" ||
+    name === "duplicate_route_variant" ||
+    name === "create_route_variant_v3"
+  ) {
     const sourceVariantId = uuidParameter(input, "source_variant_id");
     const variantName = typeof input.variant_name === "string" ? input.variant_name.trim() : "";
     const variantColor =
@@ -131,9 +168,15 @@ export function cloudBaseScalarMutationRecoveryKey(name, parameters, recoverable
       !/^#[0-9a-f]{6}$/.test(variantColor)
     )
       return null;
-    return { kind: "create-variant", tripId, variantColor, variantName };
+    return {
+      kind: "create-variant",
+      resultKey: name === "create_route_variant_v3" ? "variantId" : null,
+      tripId,
+      variantColor,
+      variantName,
+    };
   }
-  if (name === "update_route_variant_metadata") {
+  if (name === "update_route_variant_metadata" || name === "update_route_variant_v2") {
     const variantName = typeof input.variant_name === "string" ? input.variant_name.trim() : "";
     const variantColor =
       typeof input.variant_color === "string" ? input.variant_color.toLowerCase() : "";
@@ -145,12 +188,37 @@ export function cloudBaseScalarMutationRecoveryKey(name, parameters, recoverable
       !/^#[0-9a-f]{6}$/.test(variantColor)
     )
       return null;
-    return { kind: "update-variant", tripId, variantColor, variantId, variantName };
+    return {
+      kind: "update-variant",
+      resultKey: name === "update_route_variant_v2" ? "variantId" : null,
+      tripId,
+      variantColor,
+      variantId,
+      variantName,
+    };
   }
-  if (name === "set_primary_route_variant" && tripId && variantId)
-    return { kind: "primary-variant", tripId, variantId };
-  if (name === "delete_route_variant" && tripId && variantId)
-    return { kind: "delete-variant", tripId, variantId };
+  if (
+    (name === "set_primary_route_variant" || name === "set_primary_route_variant_v2") &&
+    tripId &&
+    variantId
+  )
+    return {
+      kind: "primary-variant",
+      resultKey: name === "set_primary_route_variant_v2" ? "variantId" : null,
+      tripId,
+      variantId,
+    };
+  if (
+    (name === "delete_route_variant" || name === "delete_route_variant_v3") &&
+    tripId &&
+    variantId
+  )
+    return {
+      kind: "delete-variant",
+      resultKey: name === "delete_route_variant_v3" ? "variantId" : null,
+      tripId,
+      variantId,
+    };
   return null;
 }
 
@@ -191,6 +259,18 @@ export function recoverCloudBaseDeletedUuidResult(original, lookup, expectedId) 
   )
     return original;
   return { ...original, data: expectedId, error: null };
+}
+
+export function recoverCloudBaseMutationResult(original, lookup, resultKey) {
+  const recovered = recoverCloudBaseScalarUuidResult(original, lookup);
+  if (recovered.error || !resultKey) return recovered;
+  return { ...recovered, data: { [resultKey]: recovered.data } };
+}
+
+export function recoverCloudBaseDeletedMutationResult(original, lookup, expectedId, resultKey) {
+  const recovered = recoverCloudBaseDeletedUuidResult(original, lookup, expectedId);
+  if (recovered.error || !resultKey) return recovered;
+  return { ...recovered, data: { [resultKey]: recovered.data } };
 }
 
 export function recoverCloudBaseOrderedVoidResult(original, lookup, expectedIds) {

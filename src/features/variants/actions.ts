@@ -10,10 +10,12 @@ import { getVariantDecisionSummary } from "./decision-summary-data";
 
 import {
   createRouteVariantSchema,
+  deleteRouteVariantSchema,
   duplicateRouteVariantSchema,
   routeVariantIdentitySchema,
   updateRouteVariantSchema,
   type CreateRouteVariantInput,
+  type DeleteRouteVariantInput,
   type DuplicateRouteVariantInput,
   type RouteVariantIdentityInput,
   type UpdateRouteVariantInput,
@@ -100,8 +102,12 @@ export async function createRouteVariant(
   const parsed = createRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("create_route_variant_v2", {
+  const { data, error } = await database.rpc("create_route_variant_v3", {
     duplicate_content: false,
+    expected_source_content_version: parsed.data.expectedSourceContentVersion,
+    expected_source_days_version: parsed.data.expectedSourceDaysVersion,
+    expected_source_items_version: parsed.data.expectedSourceItemsVersion,
+    expected_source_version: parsed.data.expectedSourceVersion,
     source_variant_id: parsed.data.sourceVariantId,
     target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
@@ -126,8 +132,12 @@ export async function duplicateRouteVariant(
   const parsed = duplicateRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("create_route_variant_v2", {
+  const { data, error } = await database.rpc("create_route_variant_v3", {
     duplicate_content: true,
+    expected_source_content_version: parsed.data.expectedSourceContentVersion,
+    expected_source_days_version: parsed.data.expectedSourceDaysVersion,
+    expected_source_items_version: parsed.data.expectedSourceItemsVersion,
+    expected_source_version: parsed.data.expectedSourceVersion,
     source_variant_id: parsed.data.sourceVariantId,
     target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,
@@ -195,12 +205,15 @@ export async function setPrimaryRouteVariant(
 }
 
 export async function deleteRouteVariant(
-  input: RouteVariantIdentityInput,
+  input: DeleteRouteVariantInput,
 ): Promise<VariantMutationResult> {
-  const parsed = routeVariantIdentitySchema.safeParse(input);
+  const parsed = deleteRouteVariantSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("delete_route_variant_v2", {
+  const { data, error } = await database.rpc("delete_route_variant_v3", {
+    expected_content_version: parsed.data.expectedContentVersion,
+    expected_days_version: parsed.data.expectedDaysVersion,
+    expected_items_version: parsed.data.expectedItemsVersion,
     expected_version: parsed.data.expectedVersion,
     target_operation_id: parsed.data.operationId,
     target_trip_id: parsed.data.tripId,

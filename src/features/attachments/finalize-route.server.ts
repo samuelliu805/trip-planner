@@ -19,7 +19,11 @@ import {
 import { reportAttachmentMutation } from "@/features/attachments/telemetry.server";
 
 const finalizeBodySchema = z
-  .object({ operationId: z.uuid().optional(), posterUploaded: z.boolean().default(false) })
+  .object({
+    expectedVersion: z.number().int().positive(),
+    operationId: z.uuid().optional(),
+    posterUploaded: z.boolean().default(false),
+  })
   .strict();
 const deleteBodySchema = z
   .object({ failure: z.boolean().default(false), operationId: z.uuid().optional() })
@@ -178,9 +182,16 @@ export async function finalizeAttachmentUpload(request: Request, route: Attachme
     verified_mime_type: detected.mimeType,
     verified_sha256: actualHash,
     ...(width === null ? {} : { verified_width: width }),
+    ...(route.researchItemId
+      ? {
+          expected_research_version: body.data.expectedVersion,
+          target_research_item_id: route.researchItemId,
+          target_trip_id: route.tripId,
+        }
+      : {}),
   };
   const finalizeRpc = route.researchItemId
-    ? "finalize_research_asset_v1"
+    ? "finalize_research_asset_v2"
     : "finalize_item_asset_v2";
   let result = await database.rpc(finalizeRpc, rpcInput);
   if (result.error?.message.includes("ATTACHMENT_FINALIZE_CONFLICT"))

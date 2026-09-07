@@ -102,7 +102,9 @@ export async function getPlannerVariants(
   const database = await getRelationalDatabase();
   const { data, error } = await database
     .from("route_variants")
-    .select("id, trip_id, name, color, is_primary, version, days_version, items_version")
+    .select(
+      "id, trip_id, name, color, is_primary, version, days_version, items_version, content_version",
+    )
     .eq("trip_id", tripId)
     .order("is_primary", { ascending: false })
     .order("created_at", { ascending: true });
@@ -119,7 +121,9 @@ export async function getPlannerWorkspace(
   const capabilities = getBackendCapabilities();
   const { data: variant, error: variantError } = await database
     .from("route_variants")
-    .select("id, trip_id, name, color, is_primary, version, days_version, items_version")
+    .select(
+      "id, trip_id, name, color, is_primary, version, days_version, items_version, content_version",
+    )
     .eq("trip_id", tripId)
     .eq("id", variantId)
     .maybeSingle();
@@ -137,7 +141,9 @@ export async function getPlannerWorkspace(
   ] = await Promise.all([
     database
       .from("trip_days")
-      .select("id, variant_id, day_number, date, title, notes, version, items_version")
+      .select(
+        "id, variant_id, day_number, date, title, notes, version, items_version, content_version",
+      )
       .eq("variant_id", variant.id)
       .order("day_number", { ascending: true }),
     database

@@ -1,4 +1,6 @@
 export const tripsZhCN: Record<string, string> = {
+  "Approximate collaboration storage": "协作存储用量估算",
+  "Creation receipts": "创建回执",
   Collaborator: "协作者",
   "Collaborator removed.": "已移除协作者。",
   "Check the invitation and try again.": "请检查邀请信息后重试。",
@@ -12,6 +14,11 @@ export const tripsZhCN: Record<string, string> = {
   Owner: "所有者",
   People: "协作成员",
   "Reload latest": "重新加载最新版本",
+  "Reload this trip": "重新加载此行程",
+  "Replay operations": "重放操作",
+  "Storage usage": "存储用量",
+  "History is durable. Replay operations and receipts expire after {days} days.":
+    "修改记录会长期保留；重放操作与回执会在 {days} 天后过期。",
   "The complete item draft is required.": "需要完整的项目草稿。",
   "The saved itinerary item could not be read.": "无法读取已保存的行程项目。",
   "Latest saved item loaded (version {version}). Your draft is still here.":

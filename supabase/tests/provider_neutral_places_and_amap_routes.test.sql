@@ -1,5 +1,13 @@
 begin;
 
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant execute on function public.create_share_page_v3(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean) to authenticated;
+grant execute on function public.get_public_share_page_v3(uuid) to authenticated;
+grant execute on function public.upsert_place_snapshot_v3(uuid,text,text,text,text,double precision,double precision,text,text,text,text,text,text) to authenticated;
+grant execute on function public.upsert_google_place_snapshot_v2(uuid,text,text,text,double precision,double precision,text,text,text,text) to authenticated;
+grant insert, update, delete on public.places, public.itinerary_items, public.day_route_plans,
+  public.day_route_stops, public.day_route_legs, public.day_route_calculations to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 select plan(18);
 

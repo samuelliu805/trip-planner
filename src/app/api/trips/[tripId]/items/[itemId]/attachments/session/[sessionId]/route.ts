@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { drainAssetDeletionQueue } from "@/features/attachments/cleanup.server";
-import { attachmentError, attachmentSessionSchema } from "@/features/attachments/schema";
+import { attachmentError } from "@/features/attachments/schema";
 import {
   getAuthProvider,
   getBackendCapabilities,
@@ -27,29 +27,26 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ itemId: string; sessionId: string; tripId: string }> },
 ) {
-  const authorized = await authorizedRoute(params);
-  if ("error" in authorized) return authorized.error;
-  const { route, database } = authorized;
-  const result = await database.rpc("commit_item_asset_session_v1", {
-    requested_draft_session_id: route.sessionId,
-    target_item_id: route.itemId,
-    target_trip_id: route.tripId,
-  });
-  const attachments = attachmentSessionSchema.safeParse(result.data);
-  if (result.error || !attachments.success)
-    return Response.json({ error: attachmentError(result.error?.message) }, { status: 400 });
-  revalidatePath(`/trips/${route.tripId}`);
-  return Response.json(attachments.data, { headers: { "Cache-Control": "no-store" } });
+  void params;
+  return Response.json(
+    { error: "Attachment drafts are committed by saving the itinerary item." },
+    { status: 405 },
+  );
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ itemId: string; sessionId: string; tripId: string }> },
 ) {
   const authorized = await authorizedRoute(params);
   if ("error" in authorized) return authorized.error;
   const { route, database } = authorized;
-  const result = await database.rpc("discard_item_asset_session_v1", {
+  const body = await request.json().catch(() => null);
+  const input = z.object({ expectedVersion: z.number().int().positive() }).safeParse(body);
+  if (!input.success)
+    return Response.json({ error: "Reload the item and try again." }, { status: 400 });
+  const result = await database.rpc("discard_item_asset_session_v2", {
+    expected_item_version: input.data.expectedVersion,
     requested_draft_session_id: route.sessionId,
     target_item_id: route.itemId,
     target_trip_id: route.tripId,

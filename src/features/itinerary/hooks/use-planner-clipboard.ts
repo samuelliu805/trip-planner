@@ -131,6 +131,12 @@ export function usePlannerClipboard({
         const replacedIds = new Set(
           replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
         );
+        const itemVersions = new Map(
+          (previous?.days.flatMap(({ items }) => items) ?? []).map((item) => [
+            item.id,
+            item.version,
+          ]),
+        );
         queryClient.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
           current
             ? {
@@ -153,7 +159,9 @@ export function usePlannerClipboard({
                 expectedItemsVersion: targetDay.items_version,
                 operationId: newTelemetryOperationId(),
                 replaceTargetItemIds,
+                replaceTargetVersions: replaceTargetItemIds.map((id) => itemVersions.get(id) ?? 0),
                 sourceItemIds,
+                sourceVersions: sourceItemIds.map((id) => itemVersions.get(id) ?? 0),
                 targetDayId: targetDay.id,
                 tripId,
                 variantId,

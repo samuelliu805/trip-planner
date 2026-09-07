@@ -88,6 +88,7 @@ export type TripAppBarProps = {
   shareControls?: ReactNode;
   title: string;
   tripId: string;
+  tripContentVersion?: number;
   tripVersion?: number;
   variantControls: ReactNode;
   variantId: string;
@@ -112,6 +113,7 @@ export function TripAppBar({
   shareControls,
   title,
   tripId,
+  tripContentVersion = 1,
   tripVersion = 1,
   variantControls,
   variantId,
@@ -262,6 +264,7 @@ export function TripAppBar({
       {guestExperience || !canDelete ? null : (
         <DeleteTripDialog
           activeSharePageCount={sharePageCount}
+          contentVersion={tripContentVersion}
           onOpenChange={setDeleteOpen}
           onPendingChange={setDeletePending}
           open={deleteOpen}

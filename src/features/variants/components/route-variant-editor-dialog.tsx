@@ -104,6 +104,7 @@ export function RouteVariantEditorDialog({
   const [conflict, setConflict] = useState(false);
   const [baseVersion, setBaseVersion] = useState(activeVariant.version);
   const [latestVariant, setLatestVariant] = useState<PlannerVariant>();
+  const [latestVariants, setLatestVariants] = useState<PlannerVariant[]>();
   const createMutation = useCreateRouteVariant(tripId);
   const duplicateMutation = useDuplicateRouteVariant(tripId);
   const updateMutation = useUpdateRouteVariant(tripId);
@@ -114,11 +115,26 @@ export function RouteVariantEditorDialog({
   async function submit() {
     setError(undefined);
     const operationId = newTelemetryOperationId();
+    const source = (latestVariants ?? variants).find(
+      ({ id }) => id === (mode === "blank" ? activeVariant.id : sourceVariantId),
+    );
+    if (!source) {
+      setConflict(true);
+      setError("The source Plan is no longer available. Reload the latest Plans.");
+      return;
+    }
+    const sourceVersions = {
+      expectedSourceContentVersion: source.content_version,
+      expectedSourceDaysVersion: source.days_version,
+      expectedSourceItemsVersion: source.items_version,
+      expectedSourceVersion: source.version,
+    };
     try {
       const result =
         mode === "blank"
           ? await createMutation.mutateAsync({
               color,
+              ...sourceVersions,
               name,
               sourceVariantId: activeVariant.id,
               tripId,
@@ -127,6 +143,7 @@ export function RouteVariantEditorDialog({
           : mode === "duplicate"
             ? await duplicateMutation.mutateAsync({
                 color,
+                ...sourceVersions,
                 name,
                 operationId,
                 sourceVariantId,
@@ -154,6 +171,7 @@ export function RouteVariantEditorDialog({
     if (!latest) return setError(result.error ?? "The latest Plan could not be loaded.");
     setBaseVersion(latest.version);
     setLatestVariant(latest);
+    setLatestVariants(result.data ?? []);
     setConflict(false);
     setError(undefined);
   }

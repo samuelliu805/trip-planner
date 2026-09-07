@@ -16,6 +16,13 @@ const supabaseDir = join(root, "supabase/migrations");
 const cloudbaseDir = join(root, "cloudbase/migrations");
 const providerManifestPath = join(root, "database/provider-only-migrations.json");
 const allowlistPath = join(root, "database/cloudbase/rpc-allowlist.json");
+const historicalAllowlistPath = join(
+  root,
+  "database/cloudbase/rpc-allowlist-before-20260907100000.json",
+);
+const cutoverAllowlistPath = join(root, "database/cloudbase/rpc-allowlist-at-20260907100000.json");
+const forwardAclCutover = "20260907100000_close_collaboration_history_gaps.sql";
+const attachmentAclCutover = "20260907101000_version_item_attachment_draft_edges.sql";
 
 function filesAt(path) {
   return existsSync(path)
@@ -166,21 +173,46 @@ export function renderProviderMigration({ file, provider, shared, overlay = "", 
   return `${pieces.join("\n\n")}\n`;
 }
 
-function render(file, provider, overlayDir, allowlist) {
+function render(file, provider, overlayDir, allowlist, historicalAllowlist, cutoverAllowlist) {
   const shared = readFileSync(join(sharedDir, file), "utf8");
   const overlayPath = join(overlayDir, file);
   const overlay = existsSync(overlayPath) ? readFileSync(overlayPath, "utf8") : "";
-  return renderProviderMigration({ file, provider, shared, overlay, allowlist });
+  return renderProviderMigration({
+    file,
+    provider,
+    shared,
+    overlay,
+    allowlist:
+      file < forwardAclCutover
+        ? historicalAllowlist
+        : file < attachmentAclCutover
+          ? cutoverAllowlist
+          : allowlist,
+  });
 }
 
-function expectedArtifacts(manifest, allowlist) {
+function expectedArtifacts(manifest, allowlist, historicalAllowlist, cutoverAllowlist) {
   const lastFrozen = manifest.migrations.at(-1)[0];
   return filesAt(sharedDir).map((file) => {
     if (file <= lastFrozen) throw new Error(`Migration 64+ must sort after ${lastFrozen}: ${file}`);
     return {
       file,
-      supabase: render(file, "Supabase", supabaseOverlayDir, allowlist),
-      cloudbase: render(file, "CloudBase", cloudbaseOverlayDir, allowlist),
+      supabase: render(
+        file,
+        "Supabase",
+        supabaseOverlayDir,
+        allowlist,
+        historicalAllowlist,
+        cutoverAllowlist,
+      ),
+      cloudbase: render(
+        file,
+        "CloudBase",
+        cloudbaseOverlayDir,
+        allowlist,
+        historicalAllowlist,
+        cutoverAllowlist,
+      ),
     };
   });
 }
@@ -225,7 +257,14 @@ function checkInventory(bootstrap, providerManifest) {
 function build() {
   const bootstrap = verifyBootstrapManifest();
   const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
-  for (const artifact of expectedArtifacts(bootstrap, allowlist)) {
+  const historicalAllowlist = JSON.parse(readFileSync(historicalAllowlistPath, "utf8"));
+  const cutoverAllowlist = JSON.parse(readFileSync(cutoverAllowlistPath, "utf8"));
+  for (const artifact of expectedArtifacts(
+    bootstrap,
+    allowlist,
+    historicalAllowlist,
+    cutoverAllowlist,
+  )) {
     writeFileSync(join(supabaseDir, artifact.file), artifact.supabase);
     writeFileSync(join(cloudbaseDir, artifact.file), artifact.cloudbase);
   }
@@ -236,8 +275,15 @@ function check() {
   const bootstrap = verifyBootstrapManifest();
   const providerManifest = loadProviderManifest();
   const allowlist = JSON.parse(readFileSync(allowlistPath, "utf8"));
+  const historicalAllowlist = JSON.parse(readFileSync(historicalAllowlistPath, "utf8"));
+  const cutoverAllowlist = JSON.parse(readFileSync(cutoverAllowlistPath, "utf8"));
   checkInventory(bootstrap, providerManifest);
-  for (const artifact of expectedArtifacts(bootstrap, allowlist)) {
+  for (const artifact of expectedArtifacts(
+    bootstrap,
+    allowlist,
+    historicalAllowlist,
+    cutoverAllowlist,
+  )) {
     for (const provider of ["supabase", "cloudbase"]) {
       const target = join(provider === "supabase" ? supabaseDir : cloudbaseDir, artifact.file);
       if (!existsSync(target) || readFileSync(target, "utf8") !== artifact[provider]) {

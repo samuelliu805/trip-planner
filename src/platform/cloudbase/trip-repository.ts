@@ -13,6 +13,7 @@ import {
   normalizeTrip,
   normalizeTrips,
 } from "@/platform/trips/normalization";
+import { normalizeTripStorageStats } from "@/platform/trips/storage-stats";
 
 import type { CloudBaseDatabase } from "./client";
 import { createCloudBaseUserContext } from "./database";
@@ -135,33 +136,21 @@ export class CloudBaseTripRepository implements TripRepository {
 
   async update(id: string, input: UpdateTripInput) {
     const { db, user } = await createCloudBaseUserContext();
-    await cloudBaseScalarUuidRpc({
-      execute: () =>
-        db.rpc("update_trip_plan", {
-          target_trip_id: id,
-          trip_currency: input.currency,
-          trip_day_count: input.dayCount,
-          trip_end_date: input.endDate,
-          trip_start_date: input.startDate,
-          trip_timezone: input.timezone,
-          trip_title: input.title,
-          expected_version: input.expectedVersion,
-          target_operation_id: input.operationId,
-        }),
-      recover: async () => {
-        const trip = await tripById(db, id, user.id);
-        return trip &&
-          trip.currency === input.currency &&
-          trip.day_count === input.dayCount &&
-          trip.end_date === input.endDate &&
-          trip.start_date === input.startDate &&
-          trip.timezone === input.timezone &&
-          trip.title === input.title
-          ? id
-          : null;
-      },
-      safeMessage: "The trip could not be updated.",
-    });
+    cloudBaseData(
+      await db.rpc("update_trip_plan_v2", {
+        target_trip_id: id,
+        trip_currency: input.currency,
+        trip_day_count: input.dayCount,
+        trip_end_date: input.endDate,
+        trip_start_date: input.startDate,
+        trip_timezone: input.timezone,
+        trip_title: input.title,
+        expected_version: input.expectedVersion,
+        expected_content_version: input.expectedContentVersion,
+        target_operation_id: input.operationId,
+      }),
+      "The trip could not be updated.",
+    );
     const trip = await tripById(db, id, user.id);
     if (!trip) throw new PlatformOperationError("not_found", "The updated trip was not found.");
     return trip;
@@ -207,9 +196,15 @@ export class CloudBaseTripRepository implements TripRepository {
     );
   }
 
-  async remove(id: string, expectedVersion: number, operationId: string) {
+  async remove(
+    id: string,
+    expectedVersion: number,
+    expectedContentVersion: number,
+    operationId: string,
+  ) {
     const { db } = await createCloudBaseUserContext();
-    const result = await db.rpc("delete_trip_v2", {
+    const result = await db.rpc("delete_trip_v3", {
+      expected_content_version: expectedContentVersion,
       expected_version: expectedVersion,
       target_operation_id: operationId,
       target_trip_id: id,
@@ -290,5 +285,14 @@ export class CloudBaseTripRepository implements TripRepository {
       entries,
       nextCursor: data.length > 50 && last ? { createdAt: last.createdAt, id: last.id } : null,
     };
+  }
+
+  async getStorageStats(id: string) {
+    const { db } = await createCloudBaseUserContext();
+    const data = cloudBaseData(
+      await db.rpc("trip_collaboration_storage_stats_v2", { target_trip_id: id }),
+      "Trip storage usage could not be loaded.",
+    );
+    return normalizeTripStorageStats(data);
   }
 }

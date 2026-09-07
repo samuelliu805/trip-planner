@@ -20,7 +20,10 @@ function client(url, key) {
 }
 
 function ok(result, label) {
-  if (result.error) throw new Error(`${label}: ${result.error.code ?? "error"}`);
+  if (result.error)
+    throw new Error(
+      `${label}: ${result.error.code ?? "error"} ${String(result.error.message ?? "").slice(0, 240)}`,
+    );
   return result.data;
 }
 
@@ -57,13 +60,15 @@ async function signIn(entry, password) {
 
 async function createTrip(database, title) {
   ok(
-    await database.rpc("create_trip", {
+    await database.rpc("create_trip_v3", {
       trip_currency: "USD",
       trip_day_count: 1,
       trip_end_date: null,
+      trip_locale: "en",
       trip_start_date: null,
       trip_timezone: "UTC",
       trip_title: title,
+      target_operation_id: randomUUID(),
     }),
     "create_trip",
   );
@@ -73,8 +78,12 @@ async function createTrip(database, title) {
 }
 
 async function updateTrip(database, tripId, title, expectedVersion) {
+  const current = rows(
+    await database.from("trips").select("content_version").eq("id", tripId),
+    "trip content version",
+  )[0];
   ok(
-    await database.rpc("update_trip_plan", {
+    await database.rpc("update_trip_plan_v2", {
       target_trip_id: tripId,
       trip_currency: "USD",
       trip_day_count: 1,
@@ -83,9 +92,10 @@ async function updateTrip(database, tripId, title, expectedVersion) {
       trip_timezone: "UTC",
       trip_title: title,
       expected_version: expectedVersion,
+      expected_content_version: current.content_version,
       target_operation_id: randomUUID(),
     }),
-    "update_trip_plan",
+    "update_trip_plan_v2",
   );
 }
 
@@ -248,14 +258,18 @@ async function run() {
     const variant = rows(
       await userA.client
         .from("route_variants")
-        .select("id")
+        .select("id,version")
         .eq("trip_id", aTrip)
         .eq("is_primary", true),
       "A primary variant",
     )[0];
     assert.ok(variant?.id);
     const share = ok(
-      await userA.client.rpc("create_share_page_v3", { target_variant_id: variant.id }),
+      await userA.client.rpc("create_share_page_v4", {
+        expected_variant_version: variant.version,
+        target_operation_id: randomUUID(),
+        target_variant_id: variant.id,
+      }),
       "A publish immutable share",
     );
     assert.ok(share?.publicToken);
@@ -266,7 +280,9 @@ async function run() {
     await signIn(userB, password);
     const bTrip = await createTrip(userB.client, `${runLabel}-b`);
     tripIds.push(bTrip);
-    const crossPublish = await userB.client.rpc("create_share_page_v3", {
+    const crossPublish = await userB.client.rpc("create_share_page_v4", {
+      expected_variant_version: variant.version,
+      target_operation_id: randomUUID(),
       target_variant_id: variant.id,
     });
     assert.ok(crossPublish.error, "B published A's variant");
@@ -279,25 +295,23 @@ async function run() {
       rows(await userA.client.from("trips").select("id").eq("id", bTrip), "A cross read").length,
       0,
     );
-    assert.equal(
-      rows(
+    assert.ok(
+      (
         await userA.client
           .from("trips")
           .update({ title: `${runLabel}-forged` })
           .eq("id", bTrip)
-          .select("id"),
-        "A cross update",
-      ).length,
-      0,
+          .select("id")
+      ).error,
+      "authenticated direct UPDATE must be privilege denied",
     );
-    assert.equal(
-      rows(await userA.client.from("trips").delete().eq("id", bTrip).select("id"), "A cross delete")
-        .length,
-      0,
+    assert.ok(
+      (await userA.client.from("trips").delete().eq("id", bTrip).select("id")).error,
+      "authenticated direct DELETE must be privilege denied",
     );
     assert.ok(
       (
-        await userA.client.rpc("update_trip_plan", {
+        await userA.client.rpc("update_trip_plan_v2", {
           target_trip_id: bTrip,
           trip_currency: "USD",
           trip_day_count: 1,
@@ -306,6 +320,7 @@ async function run() {
           trip_timezone: "UTC",
           trip_title: `${runLabel}-rpc-forged`,
           expected_version: 1,
+          expected_content_version: 1,
           target_operation_id: randomUUID(),
         })
       ).error,

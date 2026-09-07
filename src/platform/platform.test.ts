@@ -25,7 +25,9 @@ import {
   cloudBaseOrderMutationRecoveryKey,
   cloudBasePlaceUpsertRecoveryKey,
   cloudBaseScalarMutationRecoveryKey,
+  normalizeCloudBaseRpcResult,
   recoverCloudBaseDeletedUuidResult,
+  recoverCloudBaseMutationResult,
   recoverCloudBaseOrderedVoidResult,
   recoverCloudBasePlaceUpsertResult,
 } from "./cloudbase/rpc-result-normalization.mjs";
@@ -440,6 +442,13 @@ test("CloudBase committed mutation recovery covers CN scalar and empty JSON resp
     isCloudBaseScalarUuidParseError({ message: "Unexpected number in JSON at position 1" }),
     true,
   );
+  assert.deepEqual(
+    normalizeCloudBaseRpcResult("create_route_variant_v3", {
+      data: null,
+      error: { code: "DATABASE_40001", message: "APP_CONFLICT" },
+    }),
+    { data: null, error: { code: "40001", message: "APP_CONFLICT" } },
+  );
   assert.equal(
     isCloudBaseScalarUuidParseError({ message: "Syntax error: Unexpected end of JSON input" }),
     true,
@@ -454,7 +463,34 @@ test("CloudBase committed mutation recovery covers CN scalar and empty JSON resp
       },
       true,
     ),
-    { dayNumber: 2, kind: "insert-day", tripId, variantId },
+    { dayNumber: 2, kind: "insert-day", resultKey: null, tripId, variantId },
+  );
+  assert.deepEqual(
+    cloudBaseScalarMutationRecoveryKey(
+      "create_route_variant_v3",
+      {
+        source_variant_id: variantId,
+        target_trip_id: tripId,
+        variant_color: "#0F766E",
+        variant_name: " Route B ",
+      },
+      true,
+    ),
+    {
+      kind: "create-variant",
+      resultKey: "variantId",
+      tripId,
+      variantColor: "#0f766e",
+      variantName: "Route B",
+    },
+  );
+  assert.deepEqual(
+    recoverCloudBaseMutationResult(
+      { data: null, error: { message: "Unexpected end of JSON input" } },
+      { data: [{ id: variantId }], error: null },
+      "variantId",
+    ),
+    { data: { variantId }, error: null },
   );
   assert.deepEqual(
     cloudBaseScalarMutationRecoveryKey(
@@ -467,7 +503,13 @@ test("CloudBase committed mutation recovery covers CN scalar and empty JSON resp
       },
       true,
     ),
-    { kind: "create-variant", tripId, variantColor: "#0f766e", variantName: "Route B" },
+    {
+      kind: "create-variant",
+      resultKey: null,
+      tripId,
+      variantColor: "#0f766e",
+      variantName: "Route B",
+    },
   );
   assert.deepEqual(
     cloudBaseOrderMutationRecoveryKey(

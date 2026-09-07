@@ -34,6 +34,7 @@ export type AttachmentUploadProgress = {
 };
 
 type UploadOptions = {
+  expectedVersion: number;
   file: File;
   itemId?: string;
   onProgress: (progress: AttachmentUploadProgress) => void;
@@ -178,6 +179,7 @@ async function videoPoster(file: File) {
 }
 
 export async function uploadFileAttachment({
+  expectedVersion,
   file,
   itemId,
   onProgress,
@@ -215,6 +217,7 @@ export async function uploadFileAttachment({
   const prepareResponse = await fetch(`/api/trips/${tripId}/${targetPath}/attachments/prepare`, {
     body: JSON.stringify({
       byteSize: file.size,
+      expectedVersion,
       fileName: file.name,
       kind: detected.kind,
       mimeType: detected.mimeType,
@@ -286,7 +289,7 @@ export async function uploadFileAttachment({
 
     onProgress({ percent: 88, stage: "finalizing" });
     const finalizeResponse = await fetch(lifecycleUrl, {
-      body: JSON.stringify({ operationId, posterUploaded }),
+      body: JSON.stringify({ expectedVersion, operationId, posterUploaded }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
       signal,
@@ -360,10 +363,21 @@ export async function commitAttachmentUploadSession(input: {
 }
 
 export async function discardAttachmentUploadSession(
-  input: { itemId?: string; researchItemId?: string; tripId: string; uploadSessionId: string },
+  input: {
+    expectedVersion: number;
+    itemId?: string;
+    researchItemId?: string;
+    tripId: string;
+    uploadSessionId: string;
+  },
   keepalive = false,
 ) {
-  const response = await fetch(attachmentSessionUrl(input), { keepalive, method: "DELETE" });
+  const response = await fetch(attachmentSessionUrl(input), {
+    body: JSON.stringify({ expectedVersion: input.expectedVersion }),
+    headers: { "Content-Type": "application/json" },
+    keepalive,
+    method: "DELETE",
+  });
   if (response.ok) return;
   const payload: unknown = await response.json().catch(() => null);
   throw new Error(responseError(payload, "The unused attachments could not be removed."));

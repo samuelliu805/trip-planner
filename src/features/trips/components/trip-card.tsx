@@ -81,6 +81,7 @@ export function TripCard({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sharePageCount, setSharePageCount] = useState<number | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusConflict, setStatusConflict] = useState(false);
   const [statusPending, startStatusChange] = useTransition();
   const setTripListLoading = useTripListLoading();
   const status = tripStatusOf(trip);
@@ -104,6 +105,7 @@ export function TripCard({
   function changeStatus() {
     startStatusChange(async () => {
       setStatusError(null);
+      setStatusConflict(false);
       const result = await setTripStatus({
         expectedVersion: trip.version,
         operationId: newTelemetryOperationId(),
@@ -113,6 +115,7 @@ export function TripCard({
       });
       if (result.error) {
         setStatusError(result.error);
+        setStatusConflict(Boolean(result.conflict));
         return;
       }
       router.refresh();
@@ -226,6 +229,20 @@ export function TripCard({
           value={statusError}
         >
           {statusError ? <Localized value={statusError} /> : null}
+          {statusConflict ? (
+            <Button
+              className="ml-3 min-h-11"
+              onClick={() => {
+                setStatusConflict(false);
+                setStatusError(null);
+                router.refresh();
+              }}
+              type="button"
+              variant="outline"
+            >
+              <RotateCcw aria-hidden="true" className="size-4" /> <T message="Reload this trip" />
+            </Button>
+          ) : null}
         </AutoDismissAlert>
       </Card>
 
@@ -242,6 +259,7 @@ export function TripCard({
       {trip.role === "owner" ? (
         <DeleteTripDialog
           activeSharePageCount={sharePageCount}
+          contentVersion={trip.content_version}
           onOpenChange={setDeleteOpen}
           onPendingChange={onDeletePendingChange}
           open={deleteOpen}

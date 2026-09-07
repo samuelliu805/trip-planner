@@ -81,6 +81,7 @@ test("spoofed and explicitly unsupported formats fail before upload", () => {
 test("prepare validation uses matching media kinds and per-type limits", () => {
   const base = {
     byteSize: 1_024,
+    expectedVersion: 1,
     fileName: "ticket.pdf",
     kind: "pdf" as const,
     mimeType: "application/pdf" as const,
@@ -398,8 +399,9 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   assert.doesNotMatch(attachmentSession, /\[item, tripId, uploadSessionId\]/);
   assert.match(attachmentSession, /commitAttachmentUploadSession/);
   assert.match(attachmentSession, /discardAttachmentUploadSession/);
-  assert.match(sessionRoute, /commit_item_asset_session_v1/);
-  assert.match(sessionRoute, /discard_item_asset_session_v1/);
+  assert.match(sessionRoute, /committed by saving the itinerary item/);
+  assert.doesNotMatch(sessionRoute, /commit_item_asset_session_v1/);
+  assert.match(sessionRoute, /discard_item_asset_session_v2/);
   assert.match(cleanup, /drainQueue\(getAdminCleanupBackend\(\), limit\)/);
   assert.match(cleanupCore, /asset_cleanup_batch_v2/);
   assert.match(cleanupCore, /untracked_asset_storage_batch_v1/);

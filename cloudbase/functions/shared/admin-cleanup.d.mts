@@ -32,12 +32,23 @@ export function cleanupExpiredShareImages(
   backend: CleanupBackend,
   limit?: number,
 ): Promise<ShareImageCleanupResult>;
+export function cleanupCollaborationReplay(
+  backend: CleanupBackend,
+  limit?: number,
+): Promise<{
+  deleted: { creationReceipts: number; deletionReceipts: number; operations: number };
+  error: string | null;
+}>;
 export function runCleanupJobs(
   backend: CleanupBackend,
   limit?: number,
 ): Promise<{
   assets: AssetCleanupResult;
   backlog: boolean;
+  collaborationReplay: {
+    deleted: { creationReceipts: number; deletionReceipts: number; operations: number };
+    error: string | null;
+  };
   error: string | null;
   shareImages: ShareImageCleanupResult;
 }>;

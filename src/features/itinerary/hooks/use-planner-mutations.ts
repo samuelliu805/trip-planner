@@ -65,6 +65,7 @@ export function usePlannerMutations(
         throw new Error("Reload this plan before removing the day.");
       await removeDayMutation.mutateAsync({
         dayId,
+        expectedContentVersion: day.content_version,
         expectedDaysVersion: workspace.variant.days_version,
         expectedVersion: day.version,
         operationId: newTelemetryOperationId(),
@@ -129,6 +130,7 @@ export function usePlannerMutations(
       await clearMutation.mutateAsync({
         expectedItemsVersion: itemsVersion,
         itemIds: items.map(({ id }) => id),
+        itemVersions: items.map(({ version }) => version),
         operationId: newTelemetryOperationId(),
         tripId,
         variantId,

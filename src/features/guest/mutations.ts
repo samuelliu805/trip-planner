@@ -198,6 +198,7 @@ export class GuestDraftMutations {
       const insertion = Math.max(0, Math.min(beforeDayNumber - 1, draft.workspace.days.length));
       const days = [...draft.workspace.days];
       days.splice(insertion, 0, {
+        content_version: 1,
         date: null,
         day_number: insertion + 1,
         id: this.createId(),

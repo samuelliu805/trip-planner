@@ -39,7 +39,15 @@ export async function applyResearchItem(input: {
       category: parsed.data.category,
       mutation: "apply",
       operationId: parsed.data.operationId,
-      result: { error: researchDomainError(error?.message) },
+      result: {
+        code:
+          error?.code === "40001"
+            ? "conflict"
+            : error?.code === "42501"
+              ? "forbidden"
+              : "unexpected",
+        error: researchDomainError(error?.message),
+      },
     });
   const result = data as ApplyRpcResult;
   await reportResearchMutation({
@@ -90,7 +98,15 @@ export async function revertResearchApplication(input: {
       category: parsed.data.category,
       mutation: "revert",
       operationId: parsed.data.operationId,
-      result: { error: researchDomainError(error?.message) },
+      result: {
+        code:
+          error?.code === "40001"
+            ? "conflict"
+            : error?.code === "42501"
+              ? "forbidden"
+              : "unexpected",
+        error: researchDomainError(error?.message),
+      },
     });
   revalidateResearch(parsed.data.tripId);
   const result = data as RevertRpcResult;

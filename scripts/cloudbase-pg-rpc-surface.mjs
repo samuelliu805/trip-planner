@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { format } from "prettier";
-import { root } from "./lib/cloudbase-pg-baseline-lib.mjs";
+import { root, splitStatements } from "./lib/cloudbase-pg-baseline-lib.mjs";
 import { parseFunctions } from "./lib/cloudbase-pg-functions.mjs";
 
 const migrationDir = join(root, "cloudbase/migrations");
@@ -165,18 +165,56 @@ function verifyCatalog({ allowlist, functions, catalog, privateHelpers, baseline
     .replaceAll("public.public_itinerary_view", "public_itinerary_view")
     .replaceAll("public.asset_media_kind", "asset_media_kind");
   const actualGrants = new Map();
-  for (const match of normalizedGrants.matchAll(
-    /GRANT EXECUTE ON FUNCTION public\.([^;]+?)\s+TO\s+([a-z, ]+);/gi,
-  )) {
-    const roles = match[2].replace(/\s+/g, "");
-    if (!roles.split(",").some((role) => role === "anon" || role === "authenticated")) continue;
-    actualGrants.set(
-      match[1].replace(/\s+/g, "").replaceAll("doubleprecision", "double precision"),
-      roles,
+  const normalizeSignature = (value) =>
+    value.replace(/\s+/g, "").replaceAll("doubleprecision", "double precision");
+  for (const statement of splitStatements(normalizedGrants)) {
+    const command = statement.replace(/^(?:\s|--[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/)+/g, "").trim();
+    if (
+      /^\s*REVOKE\s+EXECUTE\s+ON\s+ALL\s+FUNCTIONS\s+IN\s+SCHEMA\s+public\s+FROM\s+/i.test(command)
+    ) {
+      actualGrants.clear();
+      continue;
+    }
+    const revoke = command.match(
+      /^\s*REVOKE\s+(?:ALL|EXECUTE)\s+ON\s+FUNCTION\s+public\.([\s\S]+?)\s+FROM\s+([a-z, ]+)\s*;?\s*$/i,
+    );
+    if (revoke) {
+      const signature = normalizeSignature(revoke[1]);
+      const revoked = new Set(revoke[2].replace(/\s+/g, "").split(","));
+      const retained = new Set(actualGrants.get(signature)?.split(",") ?? []);
+      if (revoked.has("public")) {
+        retained.delete("anon");
+        retained.delete("authenticated");
+      }
+      if (revoked.has("anon")) retained.delete("anon");
+      if (revoked.has("authenticated")) retained.delete("authenticated");
+      if (retained.size) actualGrants.set(signature, [...retained].sort().join(","));
+      else actualGrants.delete(signature);
+      continue;
+    }
+    const grant = command.match(
+      /^\s*GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.([\s\S]+?)\s+TO\s+([a-z, ]+)\s*;?\s*$/i,
+    );
+    if (!grant) continue;
+    const signature = normalizeSignature(grant[1]);
+    const roles = new Set(actualGrants.get(signature)?.split(",") ?? []);
+    for (const role of grant[2].replace(/\s+/g, "").split(",")) {
+      if (role === "anon" || role === "authenticated") roles.add(role);
+    }
+    if (roles.size) actualGrants.set(signature, [...roles].sort().join(","));
+  }
+  if (actualGrants.size !== expectedGrantCount) {
+    const expected = new Set([
+      ...allowlist.authenticated.map(([signature]) => signature),
+      ...allowlist.anonymous.map(([signature]) => signature),
+      ...(allowlist.policyHelpers ?? []).map(([signature]) => signature),
+    ]);
+    const unexpected = [...actualGrants.keys()].filter((signature) => !expected.has(signature));
+    const missing = [...expected].filter((signature) => !actualGrants.has(signature));
+    throw new Error(
+      `Public RPC ACL mismatch; unexpected: ${unexpected.join(", ") || "none"}; missing: ${missing.join(", ") || "none"}`,
     );
   }
-  if (actualGrants.size !== expectedGrantCount)
-    throw new Error("Unexpected extra public RPC grant");
   for (const [signature] of [
     ...allowlist.authenticated,
     ...allowlist.anonymous,

@@ -5,6 +5,7 @@ export type TripRole = "owner" | "collaborator";
 
 export type Trip = Readonly<{
   created_at: string;
+  content_version: number;
   currency: string;
   day_count: number;
   end_date: string | null;
@@ -39,6 +40,7 @@ export type UpdateTripInput = Readonly<{
   timezone: string;
   title: string;
   expectedVersion: number;
+  expectedContentVersion: number;
   operationId: string;
 }>;
 
@@ -60,6 +62,18 @@ export type TripHistoryEntry = Readonly<{
 export type TripHistoryPage = Readonly<{
   entries: TripHistoryEntry[];
   nextCursor: Readonly<{ createdAt: string; id: string }> | null;
+}>;
+export type TripStorageStats = Readonly<{
+  history: { bytes: number; newestAt: string | null; oldestAt: string | null; rows: number };
+  operations: {
+    bytes: number;
+    newestAt: string | null;
+    oldestAt: string | null;
+    resultBytes: number;
+    rows: number;
+  };
+  receipts: { bytes: number; newestAt: string | null; oldestAt: string | null; rows: number };
+  replayWindowDays: number;
 }>;
 
 export interface TripRepository {
@@ -86,9 +100,15 @@ export interface TripRepository {
     expectedVersion: number,
     operationId: string,
   ): Promise<boolean>;
-  remove(id: string, expectedVersion: number, operationId: string): Promise<void>;
+  remove(
+    id: string,
+    expectedVersion: number,
+    expectedContentVersion: number,
+    operationId: string,
+  ): Promise<void>;
   listMembers(id: string): Promise<TripMember[]>;
   inviteCollaborator(id: string, identifier: string, operationId: string): Promise<void>;
   removeCollaborator(id: string, memberId: string, operationId: string): Promise<void>;
   listHistory(id: string, cursor?: { createdAt: string; id: string }): Promise<TripHistoryPage>;
+  getStorageStats(id: string): Promise<TripStorageStats | null>;
 }

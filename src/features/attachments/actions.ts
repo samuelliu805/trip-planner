@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { drainAssetDeletionQueue } from "./cleanup.server";
+import { ownerAttachmentsFromRows, type OwnerAttachmentRow } from "./owner-attachment-records";
 import { attachmentError, ownerAttachmentSchema } from "./schema";
 import { getRelationalDatabase } from "@/platform/composition/server";
 import { reportAttachmentMutation } from "./telemetry.server";
@@ -17,6 +18,50 @@ const attachmentMutationSchema = z
     operationId: z.uuid(),
   })
   .strict();
+
+export async function loadLatestAttachments(input: {
+  entityId: string;
+  target: "itinerary" | "research";
+  tripId: string;
+}) {
+  const parsed = z
+    .object({ entityId: z.uuid(), target: z.enum(["itinerary", "research"]), tripId: z.uuid() })
+    .safeParse(input);
+  if (!parsed.success) return { error: "The attachment request is invalid." };
+  const database = await getRelationalDatabase();
+  const entity =
+    parsed.data.target === "itinerary"
+      ? await database
+          .from("itinerary_items")
+          .select("version")
+          .eq("id", parsed.data.entityId)
+          .eq("trip_id", parsed.data.tripId)
+          .maybeSingle()
+      : await database
+          .from("research_items")
+          .select("version")
+          .eq("id", parsed.data.entityId)
+          .eq("trip_id", parsed.data.tripId)
+          .maybeSingle();
+  if (entity.error) return { error: attachmentError(entity.error.message) };
+  if (!entity.data)
+    return { deleted: true as const, error: "This item was deleted or your access was revoked." };
+  const column = parsed.data.target === "itinerary" ? "itinerary_item_id" : "research_item_id";
+  const links = await database
+    .from("asset_links")
+    .select(
+      "id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, version, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds)",
+    )
+    .eq("trip_id", parsed.data.tripId)
+    .eq(column, parsed.data.entityId)
+    .is("draft_session_id", null)
+    .order("sort_order", { ascending: true });
+  if (links.error) return { error: attachmentError(links.error.message) };
+  return {
+    data: ownerAttachmentsFromRows(links.data as unknown as OwnerAttachmentRow[]),
+    version: Number(entity.data.version),
+  };
+}
 
 export async function setAttachmentShare(
   rawInput: z.input<typeof attachmentMutationSchema> & { includeInShare: boolean },
@@ -69,20 +114,26 @@ export async function detachAttachment(rawInput: z.input<typeof attachmentMutati
 }
 
 export async function detachResearchAttachment(rawInput: {
-  expectedVersion: number;
+  expectedLinkVersion: number;
+  expectedResearchVersion: number;
   operationId: string;
   publicRef: string;
   researchItemId: string;
   tripId: string;
 }) {
   const input = attachmentMutationSchema
-    .omit({ itemId: true })
-    .extend({ researchItemId: z.uuid() })
+    .omit({ expectedVersion: true, itemId: true })
+    .extend({
+      expectedLinkVersion: z.number().int().positive(),
+      expectedResearchVersion: z.number().int().positive(),
+      researchItemId: z.uuid(),
+    })
     .safeParse(rawInput);
   if (!input.success) return { error: "The attachment request is invalid." };
   const database = await getRelationalDatabase();
-  const result = await database.rpc("detach_research_asset_v2", {
-    expected_version: input.data.expectedVersion,
+  const result = await database.rpc("detach_research_asset_v3", {
+    expected_link_version: input.data.expectedLinkVersion,
+    expected_research_version: input.data.expectedResearchVersion,
     requested_public_ref: input.data.publicRef,
     target_research_item_id: input.data.researchItemId,
     target_operation_id: input.data.operationId,
@@ -92,7 +143,10 @@ export async function detachResearchAttachment(rawInput: {
     return reportAttachmentMutation({
       mutation: "delete",
       operationId: input.data.operationId,
-      result: { error: attachmentError(result.error.message) },
+      result: {
+        code: result.error.code === "40001" ? "conflict" : "unexpected",
+        error: attachmentError(result.error.message),
+      },
       target: "research",
     });
   await drainAssetDeletionQueue(10);
@@ -100,7 +154,12 @@ export async function detachResearchAttachment(rawInput: {
   return reportAttachmentMutation({
     mutation: "delete",
     operationId: input.data.operationId,
-    result: { data: { publicRef: input.data.publicRef } },
+    result: {
+      data: {
+        publicRef: input.data.publicRef,
+        version: Number((result.data as { version?: number } | null)?.version),
+      },
+    },
     target: "research",
   });
 }

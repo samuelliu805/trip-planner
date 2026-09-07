@@ -27,6 +27,7 @@ export async function updateTrip(
     endDate: formData.get("end_date"),
     dayCount: formData.get("day_count"),
     expectedVersion: formData.get("expected_version"),
+    expectedContentVersion: formData.get("expected_content_version"),
     operationId,
   });
   if (!parsed.success) {
@@ -56,6 +57,7 @@ export async function updateTrip(
       timezone: parsed.data.timezone,
       title: parsed.data.title,
       expectedVersion: parsed.data.expectedVersion,
+      expectedContentVersion: parsed.data.expectedContentVersion,
       operationId: parsed.data.operationId,
     });
   } catch (error) {

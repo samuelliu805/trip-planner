@@ -3,6 +3,8 @@ begin;
 -- Legacy fixture helpers are revoked in production. Restore them only inside
 -- this rolled-back test transaction so the historical assertions remain valid.
 grant execute on function public.reorder_itinerary_items(uuid, uuid[]) to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant insert, update, delete on public.itinerary_items to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

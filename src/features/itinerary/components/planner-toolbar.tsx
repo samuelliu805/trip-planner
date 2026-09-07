@@ -87,6 +87,7 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         shareControls={props.shareControls}
         title={props.trip.title}
         tripId={props.trip.id}
+        tripContentVersion={props.trip.content_version}
         tripVersion={props.trip.version}
         variantControls={props.variantControls}
         variantId={props.variantId}

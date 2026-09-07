@@ -155,7 +155,7 @@ select set_config('request.jwt.claims',
 select is((select count(*)::integer from public.trips where
   id=(select value::uuid from collaboration_state where key='trip')),0,
   'an unrelated registered user cannot read the trip');
-select throws_ok(format('select public.delete_trip_v2(%L,1,%L)',
+select throws_ok(format('select public.delete_trip_v3(%L,1,1,%L)',
   (select value from collaboration_state where key='trip'),
   '75000000-0000-4000-8000-000000000030'), '42501','TRIP_OWNER_REQUIRED',
   'an unrelated user cannot delete the trip');

@@ -34,6 +34,7 @@ export type OwnerAttachment = z.infer<typeof ownerAttachmentSchema>;
 export const prepareAttachmentInputSchema = z
   .object({
     byteSize: z.number().int().positive().max(MAX_VIDEO_BYTES),
+    expectedVersion: z.number().int().positive(),
     fileName: z
       .string()
       .trim()
@@ -118,6 +119,8 @@ export const assetAccessSchema = z
   .strict();
 
 export function attachmentError(message?: string) {
+  if (message?.includes("APP_CONFLICT"))
+    return "Someone else changed these attachments first. Reload the latest attachments.";
   if (message?.includes("ATTACHMENT_DUPLICATE")) return "This file is already attached here.";
   if (message?.includes("ATTACHMENT_COUNT_LIMIT"))
     return "This saved item already has five attachments.";
@@ -130,6 +133,6 @@ export function attachmentError(message?: string) {
   if (message?.includes("ATTACHMENT_FILE_BYTES_LIMIT"))
     return "This file exceeds the allowed size for its type.";
   if (message?.match(/OWNER|permission|row-level security/i))
-    return "Only the trip owner can manage attachments.";
+    return "You do not have permission to manage these attachments.";
   return "The attachment could not be changed. Please try again.";
 }

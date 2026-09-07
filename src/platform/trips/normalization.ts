@@ -34,11 +34,13 @@ export function normalizeTrip(value: unknown, currentUserId?: string): Trip {
     throw new PlatformOperationError("unexpected", "Trip data is missing day_count.");
   }
   const version = typeof row.version === "number" ? row.version : 1;
+  const contentVersion = typeof row.content_version === "number" ? row.content_version : 1;
   const variants = Array.isArray(row.route_variants)
     ? Object.freeze(row.route_variants.map(routeVariant))
     : undefined;
   return Object.freeze({
     created_at: string(row, "created_at"),
+    content_version: contentVersion,
     currency: string(row, "currency"),
     day_count: row.day_count,
     end_date: nullableString(row, "end_date"),
