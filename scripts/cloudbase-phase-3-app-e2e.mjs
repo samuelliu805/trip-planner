@@ -2437,29 +2437,78 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
 }
 
 async function generateLongImageThroughUi(browser) {
-  await clickElement(
+  const advancedSettings = `[...document.querySelectorAll('.public-share-settings-dialog[data-state="open"] summary')]
+    .find((summary) => summary.textContent.trim() === "Advanced settings" && summary.getClientRects().length)`;
+  const alreadyOpen = await evaluate(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] summary')]
-      .find((summary) => summary.textContent.trim() === "Advanced settings")`,
-    "Advanced share settings",
+    `Boolean((${advancedSettings})?.closest('details')?.open)`,
   );
-  const imageActionVisible = await waitFor(
+  if (!alreadyOpen) await clickElement(browser, advancedSettings, "Advanced share settings");
+  await waitFor(
     browser,
-    `(async () => {
-      const dialog = document.querySelector('.public-share-settings-dialog');
-      const button = [...dialog.querySelectorAll('button')]
-        .find((candidate) => candidate.textContent.trim() === "Save trip image");
-      const scroller = button?.closest('.overflow-y-auto');
-      if (!button || !scroller) return false;
-      button.scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      const revealed = button.getBoundingClientRect();
-      const boundary = scroller.getBoundingClientRect();
-      return revealed.top >= boundary.top - 1 && revealed.bottom <= boundary.bottom + 1;
-    })()`,
-    "reachable Save trip image action",
-    5_000,
+    `Boolean((${advancedSettings})?.closest('details')?.open)`,
+    "open Advanced share settings",
+    10_000,
   );
+  let imageActionVisible;
+  try {
+    imageActionVisible = await waitFor(
+      browser,
+      `(async () => {
+        const dialog = [...document.querySelectorAll('.public-share-settings-dialog[data-state="open"]')]
+          .find((candidate) => candidate.getClientRects().length);
+        const button = [...(dialog?.querySelectorAll('button') ?? [])]
+          .find((candidate) =>
+            candidate.textContent.trim() === "Save trip image" && candidate.getClientRects().length
+          );
+        const scroller = button?.closest('.overflow-y-auto');
+        if (!button || !scroller || scroller.clientHeight < button.offsetHeight) return false;
+        const current = button.getBoundingClientRect();
+        const boundary = scroller.getBoundingClientRect();
+        const centeredTop =
+          scroller.scrollTop + current.top - boundary.top -
+          (scroller.clientHeight - current.height) / 2;
+        scroller.scrollTop = Math.max(
+          0,
+          Math.min(centeredTop, scroller.scrollHeight - scroller.clientHeight),
+        );
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const revealed = button.getBoundingClientRect();
+        const settledBoundary = scroller.getBoundingClientRect();
+        return revealed.top >= settledBoundary.top - 1 &&
+          revealed.bottom <= settledBoundary.bottom + 1;
+      })()`,
+      "reachable Save trip image action",
+      15_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `(() => {
+        const dialog = [...document.querySelectorAll('.public-share-settings-dialog')]
+          .find((candidate) => candidate.dataset.state === "open" && candidate.getClientRects().length);
+        const button = [...(dialog?.querySelectorAll('button') ?? [])]
+          .find((candidate) => candidate.textContent.trim() === "Save trip image");
+        const scroller = button?.closest('.overflow-y-auto');
+        return {
+          buttonRect: button?.getBoundingClientRect().toJSON() ?? null,
+          buttonVisible: Boolean(button?.getClientRects().length),
+          detailsOpen: Boolean(button?.closest('details')?.open),
+          dialogRect: dialog?.getBoundingClientRect().toJSON() ?? null,
+          scroller: scroller ? {
+            clientHeight: scroller.clientHeight,
+            rect: scroller.getBoundingClientRect().toJSON(),
+            scrollHeight: scroller.scrollHeight,
+            scrollTop: scroller.scrollTop,
+          } : null,
+          viewport: { height: innerHeight, width: innerWidth },
+        };
+      })()`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; long-image action diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
   assert.equal(
     imageActionVisible,
     true,
