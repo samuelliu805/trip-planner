@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { T } from "@/features/i18n/i18n-provider";
 
+import { tripPlannerBrandName } from "./brand";
+
 export function LandingNavigation() {
   return (
     <nav
@@ -12,7 +14,7 @@ export function LandingNavigation() {
       data-i18n-aria-label="Primary navigation"
     >
       <Link className="plandock-wordmark" href="/" aria-label="Trip Planner home">
-        <T message="Trip Planner" />
+        {tripPlannerBrandName}
       </Link>
       <div className="plandock-nav-links">
         <Link href="#features">

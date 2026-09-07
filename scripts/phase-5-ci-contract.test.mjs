@@ -89,6 +89,8 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
     "npm run test:cloudbase-phase-4-storage",
     "npm run test:cloudbase-phase-4-cleanup",
     "node scripts/verify-cloudbase-migration-plan.mjs",
+    "node scripts/select-amap-ci-edge.mjs restapi.amap.com",
+    "node scripts/select-amap-ci-edge.mjs webapi.amap.com",
     "VERCEL_AUTOMATION_BYPASS_SECRET",
     "node scripts/invoke-cloudbase-cleanup-http.mjs",
     "--require-runtime-env NEXT_PUBLIC_AMAP_JS_API_KEY",
@@ -118,6 +120,12 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
   assert.doesNotMatch(workflow, /tcb fn invoke|CLOUDBASE_CAM_SECRET_/);
   assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 1);
   assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);
+  assert.match(workflow, /printf '%s restapi\.amap\.com\\n%s webapi\.amap\.com\\n'/);
+  assert.match(workflow, /sudo --non-interactive tee -a \/etc\/hosts/);
+  assert.ok(
+    workflow.indexOf("Pin a reachable AMap edge for the CN runner") <
+      workflow.indexOf("Run real AMap route and place Web Service smoke"),
+  );
   assert.ok(
     workflow.indexOf("Run real AMap route and place Web Service smoke") <
       workflow.indexOf("Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite"),
@@ -285,7 +293,9 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(amapSmoke, /web-service-key-platform-mismatch/);
   assert.match(amapSmoke, /assert\.notEqual\(\s*browserKey,\s*key/);
   assert.match(amapSmoke, /boundedRetryFetch/);
-  assert.match(amapSmoke, /attempts: 6/);
+  assert.match(amapSmoke, /boundedFetch = createBoundedAmapFetch\(\{ attempts: 6 \}\)/);
+  assert.match(amapSmoke, /routeFetch = createBoundedAmapFetch\(\{ attempts: 2 \}\)/);
+  assert.match(amapSmoke, /fetchImplementation: routeFetch/);
   assert.match(amapSmoke, /timeoutMs: 15_000/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("key", browserKey\)/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("jscode"/);

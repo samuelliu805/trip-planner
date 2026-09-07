@@ -105,6 +105,9 @@
   .hero-copy {
     max-width: 48vw;
   }
+  html[lang="zh-CN"] .hero-copy {
+    max-width: 55vw;
+  }
   .workspace-stage {
     right: 1rem;
     width: 62vw;
@@ -130,6 +133,14 @@
   .hero-copy h1 {
     font-size: clamp(2.65rem, 13vw, 3.65rem);
     max-width: 22rem;
+  }
+  html[lang="zh-CN"] .hero-copy {
+    max-width: calc(100% - 2.3rem);
+  }
+  html[lang="zh-CN"] .hero-copy h1 {
+    font-size: clamp(2.45rem, 11vw, 3.2rem);
+    letter-spacing: -0.035em;
+    line-height: 1.04;
   }
   .hero-support {
     font-size: 0.92rem;

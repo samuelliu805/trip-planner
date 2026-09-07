@@ -10,27 +10,7 @@ import {
 } from "@/platform/composition/server";
 
 import { authorizePendingShareImageUpload } from "./storage-authorization.mjs";
-
-const shareImageUploadPathSchema = z
-  .string()
-  .min(1)
-  .max(1_000)
-  .refine((path) => {
-    const parts = path.split("/");
-    return (
-      parts.length === 4 &&
-      z.uuid().safeParse(parts[1]).success &&
-      z.uuid().safeParse(parts[2]).success &&
-      /^part-[1-9][0-9]*\.jpg$/.test(parts[3])
-    );
-  });
-
-function ownedShareImagePath(path: string, userId: string, versionId?: string) {
-  const parsed = shareImageUploadPathSchema.safeParse(path);
-  if (!parsed.success) return false;
-  const parts = parsed.data.split("/");
-  return parts[0] === userId && (!versionId || parts[2] === versionId);
-}
+import { ownedShareImagePath, shareImageUploadPathSchema } from "./storage-path";
 
 export async function authorizeShareImageUpload(input: { path: string; versionId: string }) {
   if (!getBackendCapabilities().signedUrls)

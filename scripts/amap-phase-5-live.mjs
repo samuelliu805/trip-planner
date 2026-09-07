@@ -45,31 +45,35 @@ if (process.env.NEXT_PUBLIC_MAPS_PROVIDER !== "amap") {
 }
 
 const requestedUrls = [];
-const boundedFetch = async (input, init = {}) => {
-  const url = new URL(input instanceof Request ? input.url : String(input));
-  assert.equal(url.protocol, "https:");
-  assert.equal(url.hostname, "restapi.amap.com");
-  return boundedRetryFetch(
-    url,
-    { ...init, redirect: "error" },
-    {
-      attempts: 6,
-      fetchImplementation: async (target, options) => {
-        requestedUrls.push(new URL(target).hostname);
-        return fetch(target, options);
+function createBoundedAmapFetch({ attempts }) {
+  return async (input, init = {}) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    assert.equal(url.protocol, "https:");
+    assert.equal(url.hostname, "restapi.amap.com");
+    return boundedRetryFetch(
+      url,
+      { ...init, redirect: "error" },
+      {
+        attempts,
+        fetchImplementation: async (target, options) => {
+          requestedUrls.push(new URL(target).hostname);
+          return fetch(target, options);
+        },
+        retryDelayMs: 500,
+        timeoutMs: 15_000,
       },
-      retryDelayMs: 500,
-      timeoutMs: 15_000,
-    },
-  );
-};
+    );
+  };
+}
 
-// Keep the provider deadline above the bounded transport retry window. The production adapter's
-// shorter default is appropriate for interactive requests, but would otherwise abort this
-// idempotent live verification after the first transient AMap connect timeout.
+const boundedFetch = createBoundedAmapFetch({ attempts: 6 });
+const routeFetch = createBoundedAmapFetch({ attempts: 2 });
+
+// The route adapter already makes three attempts. Give each adapter attempt two transport tries,
+// keeping all six real requests while ensuring the adapter's deadline can contain each pair.
 const routeProvider = createAmapRoutesProvider({
   apiKey: key,
-  fetchImplementation: boundedFetch,
+  fetchImplementation: routeFetch,
   timeoutMs: 45_000,
 });
 const route = await routeProvider.calculateLeg({

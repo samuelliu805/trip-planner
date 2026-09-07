@@ -8,7 +8,10 @@ import { getServerProviderConfig } from "@/platform/config/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  return { title: translateMessage(locale, "Local trip") };
+  return {
+    robots: { follow: false, index: false, noarchive: true },
+    title: translateMessage(locale, "Local trip"),
+  };
 }
 
 export default async function GuestTripPage({

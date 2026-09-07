@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
+
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+
+export const metadata: Metadata = {
+  robots: { follow: false, index: false, noarchive: true },
+};
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (

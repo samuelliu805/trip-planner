@@ -1,6 +1,7 @@
 import { T } from "@/features/i18n/i18n-provider";
 import { LogOut, UserRound } from "lucide-react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,10 @@ import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { getRequestLocale } from "@/features/i18n/server";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 import { getAuthProvider } from "@/platform/composition/server";
+
+export const metadata: Metadata = {
+  robots: { follow: false, index: false, noarchive: true },
+};
 
 export default async function TripsLayout({ children }: { children: React.ReactNode }) {
   const user = await getAuthProvider().getCurrentUser();

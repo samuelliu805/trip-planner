@@ -3,6 +3,7 @@ import { z } from "zod";
 import { defaultLocale, supportedLocales } from "../../i18n/config.ts";
 
 import { publicItinerarySchema } from "../schema.ts";
+import { MAX_SHARE_IMAGE_PART_BYTES } from "./storage-path.ts";
 
 const imageDestinationUrlSchema = z.url().refine((value) => {
   const url = new URL(value);
@@ -112,7 +113,7 @@ export const prepareShareImageSchema = z
 
 export const shareImagePartInputSchema = z
   .object({
-    byteSize: z.number().int().positive().max(10_485_760),
+    byteSize: z.number().int().positive().max(MAX_SHARE_IMAGE_PART_BYTES),
     checksum: z.string().regex(/^[0-9a-f]{64}$/),
     contentType: z.literal("image/jpeg"),
     height: z.number().int().min(320).max(12_000),

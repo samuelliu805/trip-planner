@@ -274,6 +274,15 @@ jobs:
           npm run build
           npm run check:build-secret-boundary
           npm run check:build-provider-isolation
+      - name: Pin a reachable AMap edge for the CN runner
+        run: |
+          restapi_address="$(node scripts/select-amap-ci-edge.mjs restapi.amap.com)"
+          webapi_address="$(node scripts/select-amap-ci-edge.mjs webapi.amap.com)"
+          test -n "$restapi_address"
+          test -n "$webapi_address"
+          printf '%s restapi.amap.com\n%s webapi.amap.com\n' \
+            "$restapi_address" "$webapi_address" | \
+            sudo --non-interactive tee -a /etc/hosts > /dev/null
       - name: Run real AMap route and place Web Service smoke
         run: npm run test:amap-phase-5-live
       - name: Run CN repaired mutation and Ideas workflow smoke

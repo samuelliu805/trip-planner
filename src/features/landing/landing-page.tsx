@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
 
+import { tripPlannerBrandName } from "./brand";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
 import { RouteDockHero } from "./route-dock-hero";
@@ -38,10 +39,10 @@ export function LandingPage({ year }: { year: number }) {
       </section>
       <footer className="plandock-footer">
         <Link className="plandock-wordmark" href="/">
-          <T message="Trip Planner" />
+          {tripPlannerBrandName}
         </Link>
         <p>
-          © {year} <T message="Trip Planner" />
+          © {year} {tripPlannerBrandName}
         </p>
         <nav aria-label="Legal and support" data-i18n-aria-label="Legal and support">
           <Link href="/privacy">

@@ -21,6 +21,7 @@ import type {
 } from "../types";
 import { copyTextToClipboard } from "./copy-to-clipboard";
 import { downloadShareImageParts } from "./share-image-download";
+import { uploadShareImagePart } from "./upload-share-image-part";
 
 type GenerateMode = "new_export" | "replace_existing";
 
@@ -88,7 +89,7 @@ export function useLongImageExport({
             versionId: prepared.data.versionId,
           });
           if ("error" in authorization) throw new Error(authorization.error);
-          await storage.uploadToSignedUrl({
+          await uploadShareImagePart(storage, {
             body: rendered.blob,
             cacheControl: "31536000",
             contentType: "image/jpeg",
@@ -96,6 +97,7 @@ export function useLongImageExport({
             signedUrl: authorization.data.signedUrl,
             token: authorization.data.token,
             upsert: false,
+            versionId: prepared.data.versionId,
           });
           uploadedPaths.push(storagePath);
           metadata.push({
