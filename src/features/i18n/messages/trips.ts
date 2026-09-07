@@ -1,4 +1,25 @@
 export const tripsZhCN: Record<string, string> = {
+  Collaborator: "协作者",
+  "Collaborator removed.": "已移除协作者。",
+  "Check the invitation and try again.": "请检查邀请信息后重试。",
+  History: "修改记录",
+  Invite: "邀请",
+  "If an account exists, access has been added.": "如果该账户已注册，访问权限已添加。",
+  "No saved changes yet.": "还没有保存记录。",
+  "Older changes": "更早的记录",
+  "Only registered accounts are added. No email or text message is sent.":
+    "只有已注册账户会被添加，系统不会发送邮件或短信。",
+  Owner: "所有者",
+  People: "协作成员",
+  "Reload latest": "重新加载最新版本",
+  "Reloading replaces only these trip settings and keeps the editor open.":
+    "重新加载只会替换当前行程设置，并保持编辑器打开。",
+  "Reloading replaces only this item and keeps the editor open.":
+    "重新加载只会替换当前项目，并保持编辑器打开。",
+  "Sign in to invite someone.": "请先登录再邀请成员。",
+  "The collaborator could not be removed.": "无法移除协作者。",
+  "Trip history": "行程修改记录",
+  "Trip members could not be loaded.": "无法加载行程成员。",
   "A modern workspace for planning complex trips.": "一个清晰高效的复杂行程规划空间。",
   "A structured, reliable blueprint for complex itineraries. Architect your journey with precision and keep every plan in one calm workspace.":
     "为复杂行程建立清晰可靠的蓝图，细致安排每段旅途，把所有计划安心收在一处。",

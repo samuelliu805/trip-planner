@@ -34,11 +34,13 @@ export function createGuestTripDraft(
       end_date: null,
       id: draftId,
       owner_id: "guest",
+      role: "owner",
       start_date: null,
       status: "open",
       timezone,
       title: defaultTripTitle(today),
       updated_at: createdAt,
+      version: 1,
     },
     updatedAt: createdAt,
     workspace: {

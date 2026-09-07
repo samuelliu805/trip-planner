@@ -210,6 +210,8 @@ async function runAssertions(auth, db, config) {
       trip_day_count: 1,
       trip_timezone: "UTC",
       trip_currency: "USD",
+      expected_version: 1,
+      target_operation_id: crypto.randomUUID(),
     });
     if (
       updated.error &&
@@ -219,13 +221,19 @@ async function runAssertions(auth, db, config) {
     ) {
       dataOrThrow(updated, "A own update_trip_plan");
     }
-    const status = rows(
-      await db.from("trips").update({ status: "done" }).eq("id", aTrip).select("id,status"),
-      "A own status update",
-    );
-    if (status.length !== 1 || status[0].status !== "done") {
-      throw new Error("A own status update mismatch");
-    }
+    const statusUpdate = await db.rpc("update_trip_status", {
+      expected_version: 2,
+      target_operation_id: crypto.randomUUID(),
+      target_status: "done",
+      target_trip_id: aTrip,
+    });
+    if (
+      statusUpdate.error &&
+      !/(?:SyntaxError:.*JSON|not valid JSON|JSON at position)/i.test(
+        String(statusUpdate.error.message ?? ""),
+      )
+    )
+      dataOrThrow(statusUpdate, "A own status update");
     const intendedTitle = `${runLabel}-published`;
     const privateTitle = `${runLabel}-private-after-publish`;
     const publishUpdate = await db.rpc("update_trip_plan", {
@@ -236,6 +244,8 @@ async function runAssertions(auth, db, config) {
       trip_day_count: 1,
       trip_timezone: "UTC",
       trip_currency: "USD",
+      expected_version: 3,
+      target_operation_id: crypto.randomUUID(),
     });
     if (
       publishUpdate.error &&
@@ -264,6 +274,8 @@ async function runAssertions(auth, db, config) {
       trip_day_count: 1,
       trip_timezone: "UTC",
       trip_currency: "USD",
+      expected_version: 4,
+      target_operation_id: crypto.randomUUID(),
     });
     if (
       privateUpdate.error &&
@@ -334,6 +346,8 @@ async function runAssertions(auth, db, config) {
       trip_day_count: 1,
       trip_timezone: "UTC",
       trip_currency: "USD",
+      expected_version: 1,
+      target_operation_id: crypto.randomUUID(),
     });
     if (!crossRpc.error) throw new Error("A business RPC mutated B's trip");
 

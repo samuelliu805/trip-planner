@@ -71,6 +71,7 @@ export function TripMobileTabBar({
 
 export type TripAppBarProps = {
   accountEmail: string;
+  canDelete?: boolean;
   actions?: ReactNode;
   active: TripSection;
   guestExperience?: {
@@ -87,6 +88,7 @@ export type TripAppBarProps = {
   shareControls?: ReactNode;
   title: string;
   tripId: string;
+  tripVersion?: number;
   variantControls: ReactNode;
   variantId: string;
 };
@@ -97,6 +99,7 @@ export type TripAppBarProps = {
  */
 export function TripAppBar({
   accountEmail,
+  canDelete = true,
   actions,
   active,
   guestExperience,
@@ -109,6 +112,7 @@ export function TripAppBar({
   shareControls,
   title,
   tripId,
+  tripVersion = 1,
   variantControls,
   variantId,
 }: TripAppBarProps) {
@@ -240,7 +244,8 @@ export function TripAppBar({
               mobileMenuItems={mobileMenuItems}
               mobileQuickActions={mobileQuickActions}
               guest={Boolean(guestExperience)}
-              onDeleteTrip={guestExperience ? undefined : requestTripDelete}
+              historyHref={guestExperience ? undefined : `/trips/${tripId}/history`}
+              onDeleteTrip={guestExperience || !canDelete ? undefined : requestTripDelete}
               onShareTrip={
                 guestExperience
                   ? guestExperience.onShare
@@ -254,7 +259,7 @@ export function TripAppBar({
           <div className="contents">{shareControls}</div>
         </div>
       </header>
-      {guestExperience ? null : (
+      {guestExperience || !canDelete ? null : (
         <DeleteTripDialog
           activeSharePageCount={sharePageCount}
           onOpenChange={setDeleteOpen}
@@ -264,6 +269,7 @@ export function TripAppBar({
           surface="planner_app_bar"
           title={title}
           tripId={tripId}
+          version={tripVersion}
         />
       )}
       {deletePending ? (

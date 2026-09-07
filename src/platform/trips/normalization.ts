@@ -28,11 +28,12 @@ function routeVariant(value: unknown) {
   });
 }
 
-export function normalizeTrip(value: unknown): Trip {
+export function normalizeTrip(value: unknown, currentUserId?: string): Trip {
   const row = record(value, "Trip query");
   if (typeof row.day_count !== "number") {
     throw new PlatformOperationError("unexpected", "Trip data is missing day_count.");
   }
+  const version = typeof row.version === "number" ? row.version : 1;
   const variants = Array.isArray(row.route_variants)
     ? Object.freeze(row.route_variants.map(routeVariant))
     : undefined;
@@ -43,20 +44,22 @@ export function normalizeTrip(value: unknown): Trip {
     end_date: nullableString(row, "end_date"),
     id: string(row, "id"),
     owner_id: string(row, "owner_id"),
+    role: currentUserId && currentUserId !== string(row, "owner_id") ? "collaborator" : "owner",
     ...(variants ? { route_variants: variants } : {}),
     start_date: nullableString(row, "start_date"),
     status: string(row, "status"),
     timezone: string(row, "timezone"),
     title: string(row, "title"),
     updated_at: string(row, "updated_at"),
+    version,
   });
 }
 
-export function normalizeTrips(value: unknown) {
+export function normalizeTrips(value: unknown, currentUserId?: string) {
   if (!Array.isArray(value)) {
     throw new PlatformOperationError("unexpected", "Trip query returned an invalid result.");
   }
-  return value.map(normalizeTrip);
+  return value.map((trip) => normalizeTrip(trip, currentUserId));
 }
 
 export function normalizeRouteVariants(value: unknown) {

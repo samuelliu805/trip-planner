@@ -1,13 +1,12 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import { updateTripSchema } from "@/features/trips/schema";
 import type { TripActionState } from "@/features/trips/types";
 import { safeMutationErrorCode } from "@/lib/telemetry/errors";
 import { telemetryOperationId, telemetrySurface } from "@/lib/telemetry/product";
 import { captureServerProductEvent } from "@/lib/telemetry/product-server";
 import { getAuthProvider, getTripRepository } from "@/platform/composition/server";
+import { PlatformOperationError } from "@/platform/contracts/errors";
 
 function firstIssue(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Check the form and try again.";
@@ -27,6 +26,8 @@ export async function updateTrip(
     startDate: formData.get("start_date"),
     endDate: formData.get("end_date"),
     dayCount: formData.get("day_count"),
+    expectedVersion: formData.get("expected_version"),
+    operationId,
   });
   if (!parsed.success) {
     await captureServerProductEvent(
@@ -54,6 +55,8 @@ export async function updateTrip(
       startDate: parsed.data.startDate || null,
       timezone: parsed.data.timezone,
       title: parsed.data.title,
+      expectedVersion: parsed.data.expectedVersion,
+      operationId: parsed.data.operationId,
     });
   } catch (error) {
     await captureServerProductEvent(
@@ -70,6 +73,7 @@ export async function updateTrip(
       },
     );
     return {
+      conflict: error instanceof PlatformOperationError && error.code === "conflict",
       error:
         error instanceof Error ? error.message : "You do not have permission to update this trip.",
     };
@@ -79,7 +83,5 @@ export async function updateTrip(
     { operation_id: operationId, surface },
     { actorType: "authenticated", route: "/trips/[tripId]", appUserId: user.id },
   );
-  revalidatePath("/trips");
-  revalidatePath(`/trips/${parsed.data.tripId}`);
   return { success: "Trip settings saved." };
 }

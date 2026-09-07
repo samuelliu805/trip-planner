@@ -72,7 +72,7 @@ async function createTrip(database, title) {
   return created[0].id;
 }
 
-async function updateTrip(database, tripId, title) {
+async function updateTrip(database, tripId, title, expectedVersion) {
   ok(
     await database.rpc("update_trip_plan", {
       target_trip_id: tripId,
@@ -82,6 +82,8 @@ async function updateTrip(database, tripId, title) {
       trip_start_date: null,
       trip_timezone: "UTC",
       trip_title: title,
+      expected_version: expectedVersion,
+      target_operation_id: randomUUID(),
     }),
     "update_trip_plan",
   );
@@ -233,14 +235,15 @@ async function run() {
     const privateTitle = `${runLabel}-private-after-publish`;
     const aTrip = await createTrip(userA.client, `${runLabel}-a`);
     tripIds.push(aTrip);
-    await updateTrip(userA.client, aTrip, intendedTitle);
-    const ownUpdate = rows(
-      await userA.client.from("trips").update({ status: "done" }).eq("id", aTrip).select("id"),
+    await updateTrip(userA.client, aTrip, intendedTitle, 1);
+    ok(
+      await userA.client.rpc("update_trip_status", {
+        expected_version: 2,
+        target_operation_id: randomUUID(),
+        target_status: "done",
+        target_trip_id: aTrip,
+      }),
       "A own update",
-    );
-    assert.deepEqual(
-      ownUpdate.map(({ id }) => id),
-      [aTrip],
     );
     const variant = rows(
       await userA.client
@@ -256,7 +259,7 @@ async function run() {
       "A publish immutable share",
     );
     assert.ok(share?.publicToken);
-    await updateTrip(userA.client, aTrip, privateTitle);
+    await updateTrip(userA.client, aTrip, privateTitle, 3);
     ok(await userA.client.auth.signOut(), "A logout");
     assert.equal((await userA.client.auth.getSession()).data.session, null);
 
@@ -302,6 +305,8 @@ async function run() {
           trip_start_date: null,
           trip_timezone: "UTC",
           trip_title: `${runLabel}-rpc-forged`,
+          expected_version: 1,
+          target_operation_id: randomUUID(),
         })
       ).error,
       "A invoked an owner RPC against B",

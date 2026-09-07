@@ -145,7 +145,7 @@ async function updateItineraryItemMutation(
   const database = await getRelationalDatabase();
   const { data: existingItem, error: existingItemError } = await database
     .from("itinerary_items")
-    .select("type, day_id, start_time, end_time, price_amount, price_currency")
+    .select("type, day_id, start_time, end_time, price_amount, price_currency, version")
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
@@ -233,6 +233,8 @@ async function updateItineraryItemMutation(
     if (parsed.data.endTime === undefined) endTime = existingItem.end_time;
     values.schedule_kind = scheduleKind(startTime, endTime);
   }
+  const expectedVersion = parsed.data.expectedVersion ?? existingItem.version;
+  values.version = expectedVersion + 1;
 
   const { data, error } = await database
     .from("itinerary_items")
@@ -240,12 +242,15 @@ async function updateItineraryItemMutation(
     .eq("id", parsed.data.id)
     .eq("trip_id", parsed.data.tripId)
     .eq("variant_id", parsed.data.variantId)
+    .eq("version", expectedVersion)
     .select<SavedItineraryItemRow>(
       getBackendCapabilities().signedUrls
         ? "*, attachments:asset_links(id, public_ref, display_filename, sort_order, include_in_share, draft_session_id, created_at, asset:assets!asset_links_asset_owner_fkey(media_kind, mime_type, byte_size, status, width, height, duration_seconds))"
         : "*",
     )
     .maybeSingle();
+  if (!error && !data)
+    return { error: "Someone else saved this item first. Reload the latest item and try again." };
   if (error || !data)
     return {
       error: mutationError(error?.message ?? "You do not have permission to change this item."),

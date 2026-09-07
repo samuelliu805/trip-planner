@@ -1,4 +1,9 @@
 export const runtimeErrorsZhCN: Record<string, string> = {
+  "Authentication required.": "需要登录。",
+  "Item not found.": "找不到该项目。",
+  "Trip not found.": "找不到该行程。",
+  "Someone else saved this item first. Reload the latest item and try again.":
+    "其他人已先保存此项目，请重新加载最新版本后重试。",
   "The comparison summary could not be loaded.": "无法加载对比摘要。",
   "A day route requires at least two distinct coordinate locations.":
     "当天路线至少需要两个坐标不同的地点。",

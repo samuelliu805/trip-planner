@@ -2,11 +2,12 @@
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { Settings2 } from "lucide-react";
+import { LoaderCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -33,6 +34,7 @@ import {
 } from "@/features/trips/date-fields";
 import type { Trip } from "@/platform/contracts/trips";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { TripPeopleSection } from "@/features/trips/components/trip-people-section";
 
 /** Trip settings supply their fields and server action to the shared planner editor form. */
 export function TripForm({
@@ -48,10 +50,15 @@ export function TripForm({
   const queryClient = useQueryClient();
   const router = useRouter();
   const [state, action, pending] = useActionState(updateTrip, {});
+  const [currentTrip, setCurrentTrip] = useState(trip);
+  const [title, setTitle] = useState(trip.title);
   const [dayCount, setDayCount] = useState(String(trip.day_count));
   const [startDate, setStartDate] = useState(trip.start_date ?? "");
   const [endDate, setEndDate] = useState(trip.end_date ?? "");
   const [currency, setCurrency] = useState(trip.currency);
+  const [reloading, setReloading] = useState(false);
+  const [reloadError, setReloadError] = useState<string>();
+  const [conflictCleared, setConflictCleared] = useState(false);
   const savedRef = useRef(onSaved);
   const operationRef = useRef<HTMLInputElement>(null);
   const optimisticSnapshotsRef = useRef<Array<[QueryKey, PlannerWorkspace | undefined]>>([]);
@@ -71,10 +78,39 @@ export function TripForm({
     if (!state.success) return;
     optimisticSnapshotsRef.current = [];
     void queryClient.invalidateQueries({ queryKey: ["planner", trip.id] });
-    router.refresh();
     if (savedRef.current) savedRef.current();
     else editor.onClose();
+    window.setTimeout(() => router.refresh(), 0);
   }, [editor, queryClient, router, state, trip.id]);
+
+  async function reloadLatest() {
+    if (
+      !window.confirm(
+        "Replace this form with the latest saved values? Unsaved changes will be lost.",
+      )
+    )
+      return;
+    setReloading(true);
+    setReloadError(undefined);
+    try {
+      const response = await fetch(`/api/trips/${trip.id}/settings`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Latest trip settings could not be loaded.");
+      const payload = (await response.json()) as { trip: Trip };
+      setCurrentTrip(payload.trip);
+      setTitle(payload.trip.title);
+      setDayCount(String(payload.trip.day_count));
+      setStartDate(payload.trip.start_date ?? "");
+      setEndDate(payload.trip.end_date ?? "");
+      setCurrency(payload.trip.currency);
+      setConflictCleared(true);
+    } catch (error) {
+      setReloadError(
+        error instanceof Error ? error.message : "Latest trip settings could not be loaded.",
+      );
+    } finally {
+      setReloading(false);
+    }
+  }
 
   function optimisticallyUpdateDates() {
     const snapshots = queryClient.getQueriesData<PlannerWorkspace>({
@@ -110,7 +146,13 @@ export function TripForm({
           <input name="trip_id" type="hidden" value={trip.id} />
           <input name="surface" type="hidden" value={surface} />
           <input name="operation_id" ref={operationRef} type="hidden" />
-          <input defaultValue={trip.timezone} name="timezone" type="hidden" />
+          <input name="expected_version" type="hidden" value={currentTrip.version} />
+          <input
+            defaultValue={currentTrip.timezone}
+            key={currentTrip.version}
+            name="timezone"
+            type="hidden"
+          />
           <input name="start_date" type="hidden" value={startDate} />
           <input name="end_date" type="hidden" value={endDate} />
           <input name="currency" type="hidden" value={currency} />
@@ -119,6 +161,7 @@ export function TripForm({
       onCancel={editor.onClose}
       onClose={editor.onClose}
       onSubmitStart={() => {
+        setConflictCleared(false);
         if (operationRef.current) operationRef.current.value = newTelemetryOperationId();
         optimisticallyUpdateDates();
       }}
@@ -145,12 +188,40 @@ export function TripForm({
               <Localized value={state.error} />
             </p>
           ) : null}
+          {state.conflict && !conflictCleared ? (
+            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-sm text-muted-foreground">
+                <T
+                  message={"Reloading replaces only these trip settings and keeps the editor open."}
+                />
+              </p>
+              <Button
+                className="mt-2 min-h-11"
+                disabled={reloading}
+                onClick={reloadLatest}
+                type="button"
+                variant="outline"
+              >
+                {reloading ? (
+                  <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                ) : (
+                  <RotateCcw aria-hidden="true" className="size-4" />
+                )}
+                <T message={"Reload latest"} />
+              </Button>
+            </div>
+          ) : null}
+          {reloadError ? (
+            <p className="mt-2 text-sm font-medium text-destructive" role="alert">
+              {reloadError}
+            </p>
+          ) : null}
         </div>
       </div>
 
       <PlannerEditorTextField
         autoComplete="off"
-        defaultValue={trip.title}
+        onChange={(event) => setTitle(event.currentTarget.value)}
         focusRegion="title"
         id="trip-title"
         label="Trip name"
@@ -158,6 +229,7 @@ export function TripForm({
         name="title"
         placeholder="e.g. Kyoto in autumn"
         required
+        value={title}
       />
 
       <PlannerEditorTextField
@@ -242,6 +314,8 @@ export function TripForm({
           </SelectContent>
         </Select>
       </PlannerEditorField>
+
+      <TripPeopleSection role={currentTrip.role} tripId={currentTrip.id} />
 
       {state.success ? (
         <p className="text-sm font-medium text-primary" role="status">

@@ -7,10 +7,11 @@ export type ItineraryItemLink = Pick<
   AppRow<"itinerary_item_links">,
   "id" | "item_id" | "label" | "url" | "sort_order"
 >;
-export type ItineraryItem = AppRow<"itinerary_items"> & {
+export type ItineraryItem = Omit<AppRow<"itinerary_items">, "version"> & {
   attachments?: OwnerAttachment[];
   links?: ItineraryItemLink[];
   place?: PersistedPlaceSnapshot | null;
+  version?: number;
 };
 export type PersistedPlaceSnapshot = PlaceSnapshot & { id: string };
 export type TripDay = Pick<

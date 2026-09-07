@@ -149,6 +149,7 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const existing = plannerWorkspaceItems(previous).find(({ id }) => id === input.id);
+      input.expectedVersion ??= existing?.version ?? 1;
       const optimisticPlace = placeSnapshotFromJson(input.placeSnapshot);
       if (existing) {
         const optimistic = {
@@ -243,6 +244,7 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       const deleted = plannerWorkspaceItems(previous).find((item) => item.id === input.id);
+      input.expectedVersion ??= deleted?.version ?? 1;
       input.itemKind ??= deleted?.type;
       client.setQueryData(plannerQueryKey(tripId, variantId), removeItem(previous, input.id));
       return {

@@ -46,6 +46,7 @@ const itemSchema = z
     trip_id: z.uuid(),
     type: z.enum(itineraryItemTypes),
     updated_at: z.iso.datetime(),
+    version: z.number().int().positive().optional().default(1),
     variant_id: z.uuid(),
   })
   .strict()
@@ -100,11 +101,13 @@ const tripSchema = z
     end_date: z.iso.date().nullable(),
     id: z.uuid(),
     owner_id: z.literal("guest"),
+    role: z.literal("owner").optional().default("owner"),
     start_date: z.iso.date().nullable(),
     status: z.literal("open"),
     timezone: z.string().min(1).max(120),
     title: z.string().trim().min(1).max(120),
     updated_at: z.iso.datetime(),
+    version: z.number().int().positive().optional().default(1),
   })
   .strict();
 

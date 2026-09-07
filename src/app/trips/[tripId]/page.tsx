@@ -63,10 +63,10 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   if (planState.error) throw new Error(planState.error);
 
   const user = await getAuthProvider().getCurrentUser();
-  const owner = user?.id === trip.owner_id;
   const sharingEnabled = getBackendCapabilities().signedUrls;
-  const shareLinks =
-    owner && sharingEnabled ? await listPublicItineraryLinks(trip.id) : { data: [], error: null };
+  const shareLinks = sharingEnabled
+    ? await listPublicItineraryLinks(trip.id)
+    : { data: [], error: null };
   return (
     <main className="trip-detail-page trip-planner-page flex h-dvh min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -83,7 +83,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             trip={trip}
             deleteError={query.error === "delete"}
             shareControls={
-              owner && sharingEnabled ? (
+              sharingEnabled ? (
                 <PublicShareDialog
                   activeVariantId={workspace.variant.id}
                   initialOpen={query.share === "1"}
@@ -96,7 +96,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                 />
               ) : null
             }
-            settings={<TripForm trip={trip} />}
+            settings={<TripForm key={trip.version} trip={trip} />}
             shareAttachmentsEnabled={shareLinks.data.some(
               (link) => link.variantId === workspace.variant.id && link.showAttachments,
             )}

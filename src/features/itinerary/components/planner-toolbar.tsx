@@ -35,6 +35,7 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
     <>
       <TripAppBar
         accountEmail={props.accountEmail}
+        canDelete={props.trip.role === "owner"}
         actions={<PlannerContextActions {...props} />}
         active="plan"
         menuItems={
@@ -86,6 +87,7 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         shareControls={props.shareControls}
         title={props.trip.title}
         tripId={props.trip.id}
+        tripVersion={props.trip.version}
         variantControls={props.variantControls}
         variantId={props.variantId}
       />

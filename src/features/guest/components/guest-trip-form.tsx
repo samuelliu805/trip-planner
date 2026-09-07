@@ -66,6 +66,8 @@ export function GuestTripForm({
       currency,
       dayCount,
       endDate,
+      expectedVersion: trip.version,
+      operationId: crypto.randomUUID(),
       startDate,
       timezone: trip.timezone,
       title,

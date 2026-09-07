@@ -459,6 +459,7 @@ export type Database = {
           type: Database["public"]["Enums"]["itinerary_item_type"]
           updated_at: string
           variant_id: string
+          version: number
         }
         Insert: {
           booking_url?: string | null
@@ -480,6 +481,7 @@ export type Database = {
           type: Database["public"]["Enums"]["itinerary_item_type"]
           updated_at?: string
           variant_id: string
+          version?: number
         }
         Update: {
           booking_url?: string | null
@@ -501,6 +503,7 @@ export type Database = {
           type?: Database["public"]["Enums"]["itinerary_item_type"]
           updated_at?: string
           variant_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1517,21 +1520,68 @@ export type Database = {
           },
         ]
       }
+      trip_history: {
+        Row: {
+          actor_label_snapshot: string
+          actor_user_id: string
+          changes: Json
+          created_at: string
+          event_type: string
+          id: string
+          operation_id: string
+          trip_id: string
+        }
+        Insert: {
+          actor_label_snapshot: string
+          actor_user_id: string
+          changes?: Json
+          created_at?: string
+          event_type: string
+          id?: string
+          operation_id: string
+          trip_id: string
+        }
+        Update: {
+          actor_label_snapshot?: string
+          actor_user_id?: string
+          changes?: Json
+          created_at?: string
+          event_type?: string
+          id?: string
+          operation_id?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_history_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_members: {
         Row: {
+          created_at: string
           id: string
+          invited_by: string | null
           role: Database["public"]["Enums"]["trip_member_role"]
           trip_id: string
           user_id: string
         }
         Insert: {
+          created_at?: string
           id?: string
+          invited_by?: string | null
           role: Database["public"]["Enums"]["trip_member_role"]
           trip_id: string
           user_id: string
         }
         Update: {
+          created_at?: string
           id?: string
+          invited_by?: string | null
           role?: Database["public"]["Enums"]["trip_member_role"]
           trip_id?: string
           user_id?: string
@@ -1560,6 +1610,7 @@ export type Database = {
           timezone: string
           title: string
           updated_at: string
+          version: number
         }
         Insert: {
           created_at?: string
@@ -1574,6 +1625,7 @@ export type Database = {
           timezone: string
           title: string
           updated_at?: string
+          version?: number
         }
         Update: {
           created_at?: string
@@ -1588,6 +1640,7 @@ export type Database = {
           timezone?: string
           title?: string
           updated_at?: string
+          version?: number
         }
         Relationships: []
       }
@@ -2678,6 +2731,8 @@ export type Database = {
       }
       update_trip_plan: {
         Args: {
+          expected_version: number
+          target_operation_id: string
           target_trip_id: string
           trip_currency: string
           trip_day_count: number
@@ -2687,6 +2742,46 @@ export type Database = {
           trip_title: string
         }
         Returns: string
+      }
+      update_trip_status: {
+        Args: {
+          expected_version: number
+          target_operation_id: string
+          target_status: string
+          target_trip_id: string
+        }
+        Returns: string
+      }
+      delete_trip_v1: {
+        Args: { expected_version: number; target_trip_id: string }
+        Returns: boolean
+      }
+      invite_trip_collaborator: {
+        Args: { target_identifier: string; target_operation_id: string; target_trip_id: string }
+        Returns: boolean
+      }
+      list_trip_members: {
+        Args: { target_trip_id: string }
+        Returns: {
+          display_label: string
+          joined_at: string
+          member_id: string
+          role: string
+          member_key: string
+        }[]
+      }
+      list_trip_history: {
+        Args: {
+          before_created_at?: string
+          before_id?: string
+          requested_limit?: number
+          target_trip_id: string
+        }
+        Returns: Database["public"]["Tables"]["trip_history"]["Row"][]
+      }
+      remove_trip_collaborator: {
+        Args: { target_member_id: string; target_operation_id: string; target_trip_id: string }
+        Returns: boolean
       }
       upsert_google_place_snapshot: {
         Args: {
@@ -2756,7 +2851,7 @@ export type Database = {
         | "range"
       place_source: "google" | "amap" | "custom"
       public_itinerary_view: "overview" | "table" | "timeline"
-      trip_member_role: "owner" | "editor" | "viewer"
+      trip_member_role: "owner" | "collaborator" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2907,7 +3002,7 @@ export const Constants = {
       ],
       place_source: ["google", "amap", "custom"],
       public_itinerary_view: ["overview", "table", "timeline"],
-      trip_member_role: ["owner", "editor", "viewer"],
+      trip_member_role: ["owner", "collaborator", "viewer"],
     },
   },
 } as const
