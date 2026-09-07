@@ -24,7 +24,10 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 
 insert into collaboration_state
-select 'trip', public.create_trip_v2('Collaboration behavior',null,null,'UTC','USD',1,'en')::text;
+select 'trip', public.create_trip_v3(
+  'Collaboration behavior','UTC','USD','en',1,null,null,
+  '75000000-0000-4000-8000-000000000004'
+)::text;
 insert into collaboration_state
 select 'variant', id::text from public.route_variants
 where trip_id=(select value::uuid from collaboration_state where key='trip') and is_primary;

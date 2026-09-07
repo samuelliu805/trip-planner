@@ -1,5 +1,7 @@
 begin;
 
+grant execute on all functions in schema public to authenticated;
+
 create extension if not exists pgtap with schema extensions;
 
 select plan(25);
