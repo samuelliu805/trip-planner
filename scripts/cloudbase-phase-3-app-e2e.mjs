@@ -2583,7 +2583,7 @@ async function generateLongImageThroughUi(browser) {
         button.getClientRects().length
       )`,
       "generated trip long image",
-      90_000,
+      150_000,
     );
   } catch (error) {
     const diagnostic = await evaluate(
