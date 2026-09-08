@@ -50,15 +50,18 @@ function isReleased(latest) {
   );
 }
 
+function isTerminalFailure(latest) {
+  const status = typeof latest.Status === "string" ? latest.Status.toLowerCase() : "";
+  return /(?:^|_)failed$/.test(status) || ["error", "canceled", "cancelled"].includes(status);
+}
+
 export function classifyCloudBaseRunRecords(payload, previousDeployId) {
   const { latest, deployId } = inspectCloudBaseRunRecords(payload);
   if (deployId === previousDeployId) return "unchanged";
   if (isReleased(latest)) return "released";
 
   const status = typeof latest.Status === "string" ? latest.Status.toLowerCase() : "";
-  if (/(?:^|_)failed$/.test(status) || ["error", "canceled", "cancelled"].includes(status)) {
-    return "failed";
-  }
+  if (isTerminalFailure(latest)) return "failed";
   if (
     latest.IsReleasing === true ||
     ["building", "creating", "deploying", "normal", "pending", "releasing", "running"].includes(
@@ -74,6 +77,14 @@ export function assertCloudBaseRunBaseline(payload) {
   const { latest, deployId } = inspectCloudBaseRunRecords(payload);
   if (!isReleased(latest)) throw new Error();
   return deployId;
+}
+
+export function assertCloudBaseRunSubmissionBaseline(payload) {
+  const { latest, deployId } = inspectCloudBaseRunRecords(payload);
+  if (isReleased(latest)) return deployId;
+  const records = payload.data.DeployRecords;
+  if (isTerminalFailure(latest) && records.slice(1).some(isReleased)) return deployId;
+  throw new Error();
 }
 
 async function main() {

@@ -3,12 +3,16 @@ import { pathToFileURL } from "node:url";
 
 import { parseFirstJsonObject } from "./cloudbase-cli-json.mjs";
 import {
+  printCloudBaseFailureEvidence,
+  redactCloudBaseDiagnosticOutput,
+} from "./cloudbase-run-failure-evidence.mjs";
+import {
   prepareCloudBaseSourceArchive,
   runCommand,
   submitCloudBaseRunSource,
 } from "./cloudbase-run-source-submitter.mjs";
 import {
-  assertCloudBaseRunBaseline,
+  assertCloudBaseRunSubmissionBaseline,
   classifyCloudBaseRunRecords,
   cloudBaseRunId,
   inspectCloudBaseRunRecords,
@@ -30,12 +34,12 @@ async function waitForRelease({
     const state = classifyCloudBaseRunRecords(payload, previousDeployId);
     if (state === "released") {
       const { deployId } = inspectCloudBaseRunRecords(payload);
-      return { deployId, runId: cloudBaseRunId(payload) };
+      return { state, deployId, runId: cloudBaseRunId(payload) };
     }
     if (state === "failed") {
-      const { deployId } = inspectCloudBaseRunRecords(payload);
+      const { deployId, latest } = inspectCloudBaseRunRecords(payload);
       log(`CloudBase Run deployment ${deployId} reached a terminal failure state.`);
-      throw new Error("CloudBase Run registered a failed deployment.");
+      return { state, deployId, record: latest };
     }
     if (state !== "pending") throw new Error("CloudBase Run deployment state regressed.");
     if (check < releaseChecks) {
@@ -50,6 +54,7 @@ export async function deployCloudBaseRunWithEvidence({
   attempts = 3,
   deploy,
   log = () => undefined,
+  onFailedDeployment = async () => undefined,
   queryRecords,
   registrationChecks = 13,
   registrationPollMs = 15_000,
@@ -66,13 +71,14 @@ export async function deployCloudBaseRunWithEvidence({
     !Number.isInteger(releaseChecks) ||
     releaseChecks < 1 ||
     typeof deploy !== "function" ||
-    typeof queryRecords !== "function"
+    typeof queryRecords !== "function" ||
+    typeof onFailedDeployment !== "function"
   ) {
     throw new TypeError("CloudBase Run deployment retry configuration was invalid.");
   }
 
-  const previousDeployId = assertCloudBaseRunBaseline(await queryRecords());
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+  let previousDeployId = assertCloudBaseRunSubmissionBaseline(await queryRecords());
+  submissionAttempts: for (let attempt = 1; attempt <= attempts; attempt += 1) {
     log(`Submitting CloudBase Run deployment (attempt ${attempt}/${attempts}).`);
     const commandSucceeded = await deploy(attempt);
 
@@ -81,8 +87,8 @@ export async function deployCloudBaseRunWithEvidence({
       const state = classifyCloudBaseRunRecords(payload, previousDeployId);
       if (state !== "unchanged") {
         const { deployId } = inspectCloudBaseRunRecords(payload);
-        log(`CloudBase Run registered deployment ${deployId}; retries are now disabled.`);
-        return waitForRelease({
+        log(`CloudBase Run registered deployment ${deployId}; waiting for its terminal state.`);
+        const outcome = await waitForRelease({
           initialPayload: payload,
           log,
           previousDeployId,
@@ -91,6 +97,28 @@ export async function deployCloudBaseRunWithEvidence({
           releasePollMs,
           waitImplementation,
         });
+        if (outcome.state === "released") {
+          return { deployId: outcome.deployId, runId: outcome.runId };
+        }
+        try {
+          await onFailedDeployment({
+            attempt,
+            deployId: outcome.deployId,
+            record: outcome.record,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          log(`CloudBase Run failure evidence collection failed: ${message}`);
+        }
+        if (attempt === attempts) {
+          throw new Error(
+            `CloudBase Run deployment ${outcome.deployId} failed on the final attempt.`,
+          );
+        }
+        previousDeployId = outcome.deployId;
+        log(`Retrying the same CloudBase source archive after deployment ${outcome.deployId}.`);
+        await waitImplementation(retryDelayMs * attempt);
+        continue submissionAttempts;
       }
       if (check < registrationChecks) await waitImplementation(registrationPollMs);
     }
@@ -164,12 +192,18 @@ async function main() {
             serviceName,
           });
           return true;
-        } catch {
-          process.stderr.write("CloudBase source submission failed before release evidence.\n");
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          process.stderr.write(
+            `CloudBase source submission failed before release evidence: ${redactCloudBaseDiagnosticOutput(message)}\n`,
+          );
           return false;
         }
       },
       log: (message) => process.stdout.write(`${message}\n`),
+      onFailedDeployment: async ({ deployId, record }) => {
+        await printCloudBaseFailureEvidence({ cli, deployId, envId, record, serviceName });
+      },
       queryRecords,
     });
   } finally {
@@ -187,8 +221,11 @@ async function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch(() => {
-    process.stderr.write("CloudBase Run deployment orchestration failed.\n");
+  main().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(
+      `CloudBase Run deployment orchestration failed: ${redactCloudBaseDiagnosticOutput(message)}\n`,
+    );
     process.exitCode = 1;
   });
 }
