@@ -13,6 +13,7 @@ import {
   Share2,
   SquareArrowOutUpRight,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,7 @@ import {
 } from "@/features/trips/actions";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripForm } from "@/features/trips/components/trip-form";
+import { TripPeopleEditor } from "@/features/trips/components/trip-people-editor";
 import { TripSettingsEditor } from "@/features/trips/components/trip-settings-editor";
 import { useTripListLoading } from "@/features/trips/components/trip-status-filter";
 import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
@@ -82,6 +84,7 @@ export function TripCard({
   const { locale, t } = useI18n();
   const router = useRouter();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sharePageCount, setSharePageCount] = useState<number | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -205,6 +208,9 @@ export function TripCard({
               <DropdownMenuItem onSelect={() => afterMenu(() => setEditorOpen(true))}>
                 <Pencil aria-hidden="true" className="size-4" /> <T message={" Edit trip "} />
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => afterMenu(() => setPeopleOpen(true))}>
+                <UserPlus aria-hidden="true" className="size-4" /> <T message="Invite" />
+              </DropdownMenuItem>
               {sharingEnabled ? (
                 <DropdownMenuItem asChild>
                   <Link href={`/trips/${trip.id}?share=1`}>
@@ -285,6 +291,12 @@ export function TripCard({
           trip={trip}
         />
       </TripSettingsEditor>
+      <TripPeopleEditor
+        onOpenChange={setPeopleOpen}
+        open={peopleOpen}
+        role={trip.role}
+        tripId={trip.id}
+      />
       {trip.role === "owner" ? (
         <DeleteTripDialog
           activeSharePageCount={sharePageCount}

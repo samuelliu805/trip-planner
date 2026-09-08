@@ -51,11 +51,13 @@ export function usePlannerMutations(
       });
       setInteractionError(undefined);
       if (!persistence) router.refresh();
+      return true;
     } catch (error) {
       setInteractionConflict(isItineraryConflict(error));
       setInteractionError(
         error instanceof Error ? error.message : "The day could not be inserted.",
       );
+      return false;
     }
   }
 

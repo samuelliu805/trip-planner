@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,65 +30,26 @@ import { usePlannerItemFormState } from "@/features/itinerary/components/use-pla
 import { usePlannerItemSaveFlow } from "@/features/itinerary/components/use-planner-item-save-flow";
 import { usePlannerItemStepSwipe } from "@/features/itinerary/components/use-planner-item-step-swipe";
 import { useItemEditorTelemetry } from "@/features/itinerary/components/use-item-editor-telemetry";
+import {
+  usePlannerItemConflictReload,
+  type PlannerItemReloadResult,
+} from "@/features/itinerary/components/use-planner-item-conflict-reload";
 import { itemOrderSlots } from "@/features/itinerary/activity-order";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ItemEditorCloseReason } from "@/lib/telemetry/events";
-import { plannerQueryKey } from "@/features/itinerary/planner-query";
-import { replaceItem } from "@/features/itinerary/query-cache";
 import { isItineraryConflict } from "@/features/itinerary/query-cache";
-import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 
 export function PlannerItemForm(props: PlannerItemFormProps) {
-  const client = useQueryClient();
-  const [item, setItem] = useState(props.item);
-  const [reloadError, setReloadError] = useState<string>();
-
-  async function reloadLatest() {
-    if (!item) return;
-    setReloadError(undefined);
-    try {
-      const response = await fetch(`/api/itinerary-items/${item.id}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("The latest item could not be loaded.");
-      const payload = (await response.json()) as { item: ItineraryItem };
-      const latest = payload.item;
-      client.setQueryData<PlannerWorkspace>(
-        plannerQueryKey(props.tripId, props.variantId),
-        (current) => replaceItem(current, latest),
-      );
-      return latest;
-    } catch (error) {
-      setReloadError(
-        error instanceof Error ? error.message : "The latest item could not be loaded.",
-      );
-      return undefined;
-    }
-  }
-
-  async function reloadLatestDay() {
-    setReloadError(undefined);
-    try {
-      await client.refetchQueries({
-        queryKey: plannerQueryKey(props.tripId, props.variantId),
-        type: "active",
-      });
-      return true;
-    } catch (error) {
-      setReloadError(
-        error instanceof Error ? error.message : "The latest day could not be loaded.",
-      );
-      return false;
-    }
-  }
+  const reload = usePlannerItemConflictReload(props);
 
   return (
     <PlannerItemFormInner
       {...props}
-      item={item}
-      key={`${item?.id ?? "new"}:${item?.version ?? 1}`}
-      onReloadLatestDay={reloadLatestDay}
-      onReloadLatest={reloadLatest}
-      onReplaceLatest={setItem}
-      reloadError={reloadError}
+      dayItems={reload.currentDayItems ?? props.dayItems}
+      item={reload.currentItem}
+      key={`${reload.currentItem?.id ?? "new"}:${reload.currentItem?.version ?? 1}:${reload.revision}`}
+      onReloadLatest={reload.reloadLatest}
+      reloadError={reload.reloadError}
     />
   );
 }
@@ -113,22 +73,16 @@ function PlannerItemFormInner({
   unavailableTransportModes = [],
   variantId,
   onReloadLatest,
-  onReloadLatestDay,
-  onReplaceLatest,
   reloadError,
 }: PlannerItemFormProps & {
-  onReloadLatest: () => Promise<ItineraryItem | undefined>;
-  onReloadLatestDay: () => Promise<boolean>;
-  onReplaceLatest: (item: ItineraryItem) => void;
+  onReloadLatest: () => Promise<PlannerItemReloadResult | undefined>;
   reloadError?: string;
 }) {
   const { t } = useI18n();
   // Keep the Order preview on the items that existed when this editor opened. An optimistic create
   // must not appear both as the moving item and as a newly-placeable row before the editor closes.
-  const [orderPreviewItems] = useState(() => dayItems);
+  const [orderPreviewItems, setOrderPreviewItems] = useState(() => dayItems);
   const [baseVersion, setBaseVersion] = useState(item?.version);
-  const [latestItem, setLatestItem] = useState<ItineraryItem>();
-  const [latestDayLoaded, setLatestDayLoaded] = useState(false);
   const [reloadPending, setReloadPending] = useState(false);
   const state = usePlannerItemFormState({
     dayDate,
@@ -172,28 +126,14 @@ function PlannerItemFormInner({
     resetMutationErrors,
   } = saveFlow;
 
-  async function loadLatestForComparison() {
+  async function loadLatest() {
     setReloadPending(true);
-    if (!item) {
-      const loaded = await onReloadLatestDay();
-      setReloadPending(false);
-      if (!loaded) return;
-      setLatestDayLoaded(true);
-      resetMutationErrors();
-      return;
-    }
     const latest = await onReloadLatest();
     setReloadPending(false);
     if (!latest) return;
-    setLatestItem(latest);
-    setBaseVersion(latest.version);
+    setOrderPreviewItems(latest.items);
+    if (latest.item) setBaseVersion(latest.item.version);
     resetMutationErrors();
-  }
-
-  function replaceDraftWithLatest() {
-    if (!latestItem) return;
-    if (!window.confirm("Replace your local draft with the latest saved item?")) return;
-    onReplaceLatest(latestItem);
   }
   const orderSlots = useMemo(
     () => itemOrderSlots(orderPreviewItems, item?.id),
@@ -334,64 +274,28 @@ function PlannerItemFormInner({
       backDisabled={stepIndex === 0}
       fieldsRef={motionSurfaceRef}
       footer={
-        isItineraryConflict(mutationError) || latestItem || latestDayLoaded ? (
+        isItineraryConflict(mutationError) ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
             <p className="text-sm text-muted-foreground">
-              {latestDayLoaded ? (
-                <T
-                  message={"Latest day loaded. Your draft is still here and can be saved again."}
-                />
-              ) : latestItem ? (
-                <T
-                  message={
-                    "Latest saved item loaded (version {version}). Your draft is still here."
-                  }
-                  values={{ version: latestItem.version }}
-                />
-              ) : (
-                <T
-                  message={
-                    "Reload only this item to compare it with your local draft; this keeps the editor open."
-                  }
-                />
-              )}
+              <T
+                message={
+                  item
+                    ? "Reloading replaces only this item and keeps the editor open."
+                    : "Reload the latest day and keep this draft open."
+                }
+              />
             </p>
             <div className="mt-2 flex min-w-0 flex-wrap gap-2">
-              {!latestItem && !latestDayLoaded ? (
-                <Button
-                  className="min-h-11"
-                  disabled={reloadPending}
-                  onClick={() => void loadLatestForComparison()}
-                  type="button"
-                  variant="outline"
-                >
-                  <RotateCcw aria-hidden="true" className="size-4" />
-                  <T message={reloadPending ? "Loading…" : "Reload latest"} />
-                </Button>
-              ) : latestDayLoaded ? (
-                <Button
-                  className="min-h-11"
-                  onClick={() => setLatestDayLoaded(false)}
-                  type="button"
-                  variant="outline"
-                >
-                  <T message={"Reapply my draft"} />
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    className="min-h-11"
-                    onClick={() => setLatestItem(undefined)}
-                    type="button"
-                    variant="outline"
-                  >
-                    <T message={"Reapply my draft"} />
-                  </Button>
-                  <Button className="min-h-11" onClick={replaceDraftWithLatest} type="button">
-                    <T message={"Replace draft"} />
-                  </Button>
-                </>
-              )}
+              <Button
+                className="min-h-11"
+                disabled={reloadPending}
+                onClick={() => void loadLatest()}
+                type="button"
+                variant="outline"
+              >
+                <RotateCcw aria-hidden="true" className="size-4" />
+                <T message={reloadPending ? "Loading…" : "Reload latest"} />
+              </Button>
             </div>
           </div>
         ) : undefined

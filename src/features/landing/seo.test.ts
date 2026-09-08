@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { getLandingStructuredData, serializeStructuredData } from "./seo.ts";
@@ -28,4 +29,14 @@ test("landing structured data localizes Chinese search copy and escapes markup",
   ]);
   data["@graph"][0].name = "<Trip Planner>";
   assert.doesNotMatch(serializeStructuredData(data), /</);
+});
+
+test("mobile landing navigation keeps the sign-in action visible", async () => {
+  const responsive = await readFile(
+    new URL("./landing-hero-responsive.css", import.meta.url),
+    "utf8",
+  );
+  const mobile = responsive.match(/@media \(max-width: 699px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  assert.match(mobile, /\.nav-sign-in \{[\s\S]*display: inline-flex/);
+  assert.doesNotMatch(mobile, /\.plandock-nav \.nav-sign-in \{\s*display: none/);
 });

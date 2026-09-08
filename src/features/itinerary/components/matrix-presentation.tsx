@@ -55,7 +55,7 @@ export function MatrixItemSummary({
   return (
     <>
       <span
-        className={`flex min-w-0 items-center gap-1.5 ${transportMode ? "matrix-transport-summary flex-wrap" : ""}`}
+        className={`flex min-w-0 items-center gap-1.5 ${transportMode ? "matrix-transport-summary flex-nowrap" : ""}`}
       >
         {ModeIcon ? <ModeIcon className="size-3.5 shrink-0 text-muted-foreground" /> : null}
         {startTime ? (

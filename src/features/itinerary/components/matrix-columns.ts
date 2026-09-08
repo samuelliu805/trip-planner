@@ -14,7 +14,7 @@ export const matrixCategoryColumns: MatrixCategoryColumn[] = [
     id: "transport",
     label: "Transport",
     types: ["transport", "flight", "train"],
-    width: "w-44",
+    width: "w-52",
   },
   { id: "hotel", label: "Hotel", types: ["hotel"], width: "w-44" },
   { id: "car_rental", label: "Car rental", types: ["car_rental"], width: "w-44" },

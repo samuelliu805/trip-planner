@@ -2978,6 +2978,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   for (const file of [
+    "./components/matrix-columns.ts",
+    "./components/matrix-presentation.tsx",
     "./components/planner-matrix.tsx",
     "./components/planner-day-header-cell.tsx",
     "./components/planner-context-bar.tsx",
@@ -2992,6 +2994,10 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   ])
     workspace += await readFile(new URL(file, import.meta.url), "utf8");
   let form = await readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8");
+  form += await readFile(
+    new URL("./components/use-planner-item-conflict-reload.ts", import.meta.url),
+    "utf8",
+  );
   form += await readFile(
     new URL("./components/planner-editor-header.tsx", import.meta.url),
     "utf8",
@@ -3095,6 +3101,7 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
   assert.doesNotMatch(dayActions, /onInsert\(day\.day_number\)/);
   assert.doesNotMatch(dayActions, /onArrange/);
   assert.match(workspace, /visible=\{isOnlyDay \|\| selected\}/);
+  assert.match(workspace, /if \(await insertDay\(beforeDayNumber\)\) setSelectedDayRow\(null\)/);
   assert.match(dayActions, /min-h-11 min-w-0 flex-1 gap-1\.5 px-2 font-sans text-\[13px\]/);
   assert.match(dayActions, /whitespace-nowrap[\s\S]*message=\{"Add day"\}/);
   assert.match(dayActions, /InsertRowIcon className="size-4 shrink-0" direction="below"/);
@@ -3110,7 +3117,18 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     /oneCell &&[\s\S]*!props\.selectedItem &&[\s\S]*!props\.activeCellAtCapacity/,
   );
   assert.match(form, /insertAfterItemId/);
-  assert.match(form, /const \[orderPreviewItems\] = useState\(\(\) => dayItems\)/);
+  assert.match(
+    form,
+    /const \[orderPreviewItems, setOrderPreviewItems\] = useState\(\(\) => dayItems\)/,
+  );
+  assert.match(form, /setOrderPreviewItems\(latest\.items\)/);
+  assert.match(
+    form,
+    /client\.refetchQueries\(\{ queryKey, type: "active" \}, \{ throwOnError: true \}\)/,
+  );
+  assert.doesNotMatch(form, /Reapply my draft|Replace draft|loadLatestForComparison/);
+  assert.match(workspace, /id: "transport"[\s\S]*width: "w-52"/);
+  assert.match(workspace, /matrix-transport-summary flex-nowrap/);
   assert.match(form, /saveDisabled=\{Boolean\(formError\)\}/);
   assert.doesNotMatch(form, /"Place item"/);
   assert.match(form, /Step \{current\} of \{total\}: \{step\}/);

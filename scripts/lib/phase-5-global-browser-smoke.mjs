@@ -510,6 +510,24 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
   assert.equal(historyBody.includes("Traveler"), false);
   assert.equal(historyBody.includes("Storage usage"), false);
   assert.equal(historyBody.includes('{"'), false, "History still exposes raw JSON.");
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `(() => {
+        const filter = document.querySelector('#history-filter');
+        return {
+          filterHeight: filter?.getBoundingClientRect().height ?? 0,
+          filterValue: filter?.value,
+          options: [...(filter?.options ?? [])].map((option) => option.value),
+        };
+      })()`,
+    ),
+    {
+      filterHeight: 44,
+      filterValue: "all",
+      options: ["all", "plans", "itinerary", "people", "sharing", "ideas"],
+    },
+  );
 
   await navigate(browser, baseUrl, `/trips/${options.tripId}`);
   await waitFor(
