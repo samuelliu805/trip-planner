@@ -1845,42 +1845,28 @@ async function verifyVariantNavigationThroughUi(browser) {
 }
 
 async function openVariantDeleteConfirmation(browser, planName) {
+  const deleteActionExpression = `document.querySelector(${JSON.stringify(
+    `button[aria-label="Delete ${planName}"]`,
+  )})`;
   await clickElement(
     browser,
     `[...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
       .find((button) => button.getClientRects().length && !button.disabled)`,
     "Plans menu for delete",
   );
-  await waitFor(
+  await waitForClickableElement(
     browser,
-    `(() => {
-      const button = [...document.querySelectorAll('button')]
-        .find((candidate) => candidate.textContent.trim() === "Manage Plans" && !candidate.disabled);
-      if (!button?.getClientRects().length) return false;
-      const rect = button.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
-      const hit = document.elementFromPoint(x, y);
-      return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight
-        && Boolean(hit && (hit === button || button.contains(hit)));
-    })()`,
+    `[...document.querySelectorAll('button')]
+      .find((button) => button.textContent.trim() === "Manage Plans" && !button.disabled)`,
     "settled Manage Plans action",
   );
   await clickButtonText(browser, "Manage Plans");
-  await waitFor(
+  await waitForClickableElement(browser, deleteActionExpression, "Manage Plans delete action");
+  await clickElement(browser, deleteActionExpression, `Delete ${planName}`);
+  await waitForClickableElement(
     browser,
-    `Boolean(document.querySelector(${JSON.stringify(`button[aria-label="Delete ${planName}"]`)}))`,
-    "Manage Plans delete action",
-  );
-  await clickElement(
-    browser,
-    `document.querySelector(${JSON.stringify(`button[aria-label="Delete ${planName}"]`)})`,
-    `Delete ${planName}`,
-  );
-  await waitFor(
-    browser,
-    "Boolean(document.querySelector('[role=\"alertdialog\"]'))",
-    "Plan delete confirmation",
+    `document.querySelector('[role="alertdialog"]')`,
+    "settled Plan delete confirmation",
   );
 }
 
@@ -2173,6 +2159,24 @@ async function verifyCloudBaseGuestImport(fixture) {
   );
   assert.ok(anonymousImport.error, "CN anonymous client invoked guest import.");
   return tripId;
+}
+
+async function waitForClickableElement(browser, elementExpression, label) {
+  await waitFor(
+    browser,
+    `(() => {
+      const element = (${elementExpression});
+      if (!element || !element.getClientRects().length || element.disabled) return false;
+      element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+      const rect = element.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false;
+      const hit = document.elementFromPoint(x, y);
+      return hit === element || element.contains(hit);
+    })()`,
+    label,
+  );
 }
 
 async function clickElement(browser, elementExpression, label) {
