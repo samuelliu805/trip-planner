@@ -1217,7 +1217,7 @@ test("public and owner Matrix use the same canonical category columns", async ()
     matrixPresentation,
     /matrix-transport-mode-label shrink-0 whitespace-nowrap font-medium/,
   );
-  assert.match(matrixPresentation, /matrix-transport-summary flex-wrap/);
+  assert.match(matrixPresentation, /matrix-transport-summary flex-nowrap/);
   assert.match(dialog, /fixed inset-0 z-\[100\]/);
   assert.match(dialog, /z-\[110\]/);
 });

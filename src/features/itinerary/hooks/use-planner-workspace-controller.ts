@@ -145,6 +145,10 @@ export function usePlannerWorkspaceController({
     removeDay,
   } = mutations;
 
+  async function insertDayAndClearDaySelection(beforeDayNumber: number) {
+    if (await insertDay(beforeDayNumber)) setSelectedDayRow(null);
+  }
+
   const map = usePlannerMap(
     projectedWorkspace,
     selectionEnd,
@@ -352,7 +356,7 @@ export function usePlannerWorkspaceController({
     visibleSelectionBounds,
     workspace,
     workspaceError,
-    insertDay,
+    insertDay: insertDayAndClearDaySelection,
   };
 }
 

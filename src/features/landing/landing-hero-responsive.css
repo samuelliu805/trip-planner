@@ -119,7 +119,8 @@
     padding-inline: 1rem;
   }
   .plandock-nav .nav-sign-in {
-    display: none;
+    display: inline-flex;
+    padding-inline: 0.5rem;
   }
   .plandock-nav .nav-sign-in.nav-account {
     display: inline-flex;

@@ -84,6 +84,18 @@ const fieldLabels: Record<string, string> = {
 
 const technicalField =
   /(^|\.)(?:id|.*_id|.*Id|.*Ids|ref|.*Ref|.*hash|.*Hash|version|.*Version|sort_order|position|stableId)$/;
+const uuidValue = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const itemTypeLabels: Record<string, string> = {
+  activity: "Activity",
+  car_rental: "Car rental",
+  flight: "Flight",
+  hotel: "Hotel",
+  location: "City / town",
+  meal: "Meal",
+  note: "Note",
+  train: "Train",
+  transport: "Transport",
+};
 
 function words(value: string) {
   return value
@@ -92,14 +104,32 @@ function words(value: string) {
     .replace(/^./, (letter) => letter.toUpperCase());
 }
 
+function presentedOrderEntry(value: Json) {
+  if (!value || Array.isArray(value) || typeof value !== "object") return undefined;
+  const name = typeof value.name === "string" ? value.name : value.title;
+  const type = typeof value.type === "string" ? value.type : undefined;
+  if (typeof name !== "string") return undefined;
+  return type ? `${name} (${itemTypeLabels[type] ?? words(type)})` : name;
+}
+
 function presentedValue(value: Json | undefined): string | undefined {
   if (value === null || value === undefined || value === "") return undefined;
   if (typeof value === "boolean") return value ? "On" : "Off";
   if (typeof value === "string" || typeof value === "number") return String(value);
   if (Array.isArray(value)) {
+    const orderEntries = value.map(presentedOrderEntry);
+    if (orderEntries.length && orderEntries.every(Boolean)) {
+      const visible = orderEntries.slice(0, 6) as string[];
+      return `${visible.join(" · ")}${orderEntries.length > visible.length ? ` · +${orderEntries.length - visible.length} more` : ""}`;
+    }
     const simple = value.filter(
       (entry): entry is string | number => typeof entry === "string" || typeof entry === "number",
     );
+    if (
+      simple.length === value.length &&
+      simple.every((entry) => typeof entry === "string" && uuidValue.test(entry))
+    )
+      return `${value.length} itinerary ${value.length === 1 ? "item" : "items"}`;
     if (simple.length === value.length && value.length <= 4) return simple.join(", ");
     return `${value.length} ${value.length === 1 ? "item" : "items"}`;
   }

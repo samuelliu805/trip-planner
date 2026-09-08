@@ -58,6 +58,15 @@ export const tripsZhCN: Record<string, string> = {
   "Collaborator removed.": "已移除协作者。",
   "Check the invitation and try again.": "请检查邀请信息后重试。",
   History: "修改记录",
+  "History pages": "修改记录分页",
+  "Filter history": "筛选修改记录",
+  "All changes": "全部修改",
+  "Trip & Plans": "行程与方案",
+  Itinerary: "行程项目",
+  "Apply filter": "应用筛选",
+  "No changes match this filter.": "没有符合此筛选条件的修改。",
+  "Newer changes": "较新的记录",
+  "Page {page}": "第 {page} 页",
   Invite: "邀请",
   "If an account exists, access has been added.": "如果该账户已注册，访问权限已添加。",
   "No saved changes yet.": "还没有保存记录。",
@@ -109,6 +118,7 @@ export const tripsZhCN: Record<string, string> = {
     "重新加载只会替换当前行程设置，并保持编辑器打开。",
   "Reloading replaces only this item and keeps the editor open.":
     "重新加载只会替换当前项目，并保持编辑器打开。",
+  "Reload the latest day and keep this draft open.": "重新加载当天的最新版本，并保留当前草稿。",
   "This Research item is no longer available. Its open action was closed safely.":
     "此 Research 项目已不存在，相关操作已安全关闭。",
   "This trip is no longer available. Its actions have been disabled.":

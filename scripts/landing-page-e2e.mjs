@@ -299,13 +299,17 @@ try {
     await setProgress(browser, 0.9);
     const responsive = await evaluate(
       browser,
-      `({ assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState })`,
+      `(() => { const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState }; })()`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
     assert.equal(responsive.navPosition, "fixed");
     assert.equal(responsive.navTop, 0);
     assert.ok(responsive.overflow <= 1, `${width}px overflowed by ${responsive.overflow}px`);
+    if (width < 700) {
+      assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
+      assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
+    }
     if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
   }
 

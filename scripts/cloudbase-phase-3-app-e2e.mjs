@@ -503,6 +503,16 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
     starterCount: 1,
   });
 
+  await clickElement(
+    browser,
+    `document.querySelector('[data-day-header][data-day-number="1"]')`,
+    "selected Day 1 date cell",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[data-day-header][data-day-number="1"]')?.getAttribute('aria-selected') === 'true'`,
+    "selected Day 1 before adding a day",
+  );
   await clickElement(browser, `document.querySelector('[data-add-day]')`, "unclipped Add day");
   await waitFor(
     browser,
@@ -510,6 +520,16 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
       document.querySelectorAll('[data-empty-trip-actions]').length === 2`,
     "new day guidance",
     45_000,
+  );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `({
+        dateColumnExpanded: document.querySelector('[role="grid"]')?.dataset.dateColumnExpanded ?? null,
+        selected: document.querySelector('[data-day-header][data-day-number="1"]')?.getAttribute('aria-selected'),
+      })`,
+    ),
+    { dateColumnExpanded: null, selected: "false" },
   );
   await clickElement(
     browser,
@@ -1201,6 +1221,51 @@ async function verifyMobileTransportEditorScroll(browser) {
     );
     await saveOpenItemEditor(browser, `${width}px mobile transport edit`);
   }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  await openSavedItemEditor(browser, "0-2");
+  await clickElement(
+    browser,
+    `document.querySelector('button[id^="transport-mode-"]')`,
+    "390px transport mode",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')]
+      .find((option) => option.textContent.trim() === "Subway / metro" && option.getClientRects().length)`,
+    "390px Subway / metro option",
+  );
+  await saveOpenItemEditor(browser, "390px Subway / metro transport edit");
+  await waitFor(
+    browser,
+    `document.querySelector('[data-cell="0-2"] .matrix-transport-mode-label')?.textContent.trim() === "Subway / metro"`,
+    "390px Subway / metro Matrix summary",
+  );
+  const transportSummary = await evaluate(
+    browser,
+    `(() => {
+      const cell = document.querySelector('[data-cell="0-2"]');
+      const summary = cell?.querySelector('.matrix-transport-summary');
+      const icon = summary?.querySelector('svg');
+      const label = summary?.querySelector('.matrix-transport-mode-label');
+      const iconRect = icon?.getBoundingClientRect();
+      const labelRect = label?.getBoundingClientRect();
+      return {
+        cellWidth: cell?.getBoundingClientRect().width ?? 0,
+        centerDelta: iconRect && labelRect
+          ? Math.abs(iconRect.top + iconRect.height / 2 - labelRect.top - labelRect.height / 2)
+          : Number.POSITIVE_INFINITY,
+      };
+    })()`,
+  );
+  assert.ok(transportSummary.cellWidth >= 208, "Transport column did not retain its wider width.");
+  assert.ok(
+    transportSummary.centerDelta <= 1,
+    `Subway / metro wrapped away from its icon: ${JSON.stringify(transportSummary)}.`,
+  );
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
@@ -3444,6 +3509,24 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
   assert.equal(historyBody.includes("Traveler"), false);
   assert.equal(historyBody.includes("Storage usage"), false);
   assert.equal(historyBody.includes('{"'), false, "CN History still exposes raw JSON.");
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `(() => {
+        const filter = document.querySelector('#history-filter');
+        return {
+          filterHeight: filter?.getBoundingClientRect().height ?? 0,
+          filterValue: filter?.value,
+          options: [...(filter?.options ?? [])].map((option) => option.value),
+        };
+      })()`,
+    ),
+    {
+      filterHeight: 44,
+      filterValue: "all",
+      options: ["all", "plans", "itinerary", "people", "sharing", "ideas"],
+    },
+  );
 
   await navigate(browser, `/trips/${tripId}`);
   await waitFor(

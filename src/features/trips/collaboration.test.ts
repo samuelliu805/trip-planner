@@ -53,19 +53,22 @@ test("trip saves use atomic versions, idempotent history, and no conflict audit"
 });
 
 test("conflicts offer entity-local reload and roles/history remain discoverable", async () => {
-  const [tripForm, itemForm, card, menu] = await Promise.all([
+  const [tripForm, itemForm, itemReload, card, menu] = await Promise.all([
     source("src/features/trips/components/trip-form.tsx"),
     source("src/features/itinerary/components/planner-item-form.tsx"),
+    source("src/features/itinerary/components/use-planner-item-conflict-reload.ts"),
     source("src/features/trips/components/trip-card.tsx"),
     source("src/features/trips/components/trip-app-bar-menu.tsx"),
   ]);
   assert.match(tripForm, /Reload latest/);
   assert.match(tripForm, /api\/trips\/\$\{tripId\}\/settings/);
-  assert.match(itemForm, /api\/itinerary-items\/\$\{item\.id\}/);
-  assert.match(itemForm, /keeps the editor open/);
+  assert.match(itemReload, /refetchQueries[\s\S]*currentDayItems[\s\S]*currentItem/);
+  assert.match(itemForm, /setOrderPreviewItems\(latest\.items\)/);
+  assert.doesNotMatch(itemForm, /Reapply my draft|Replace draft/);
   assert.match(card, /trip\.role === "owner" \? "Owner" : "Collaborator"/);
   assert.match(card, /trip\.role === "owner" \?[\s\S]{0,40}<DeleteTripDialog/);
   assert.match(card, /loadTripStatusSnapshot[\s\S]*Reload latest/);
+  assert.match(card, /setPeopleOpen\(true\)[\s\S]*<TripPeopleEditor/);
   assert.match(menu, /historyHref/);
 });
 
@@ -138,7 +141,7 @@ test("the conflict boundary prevents deterministic PostgREST retries without wid
 });
 
 test("collaboration labels use provider account identities in history and the People editor", async () => {
-  const [shared, globalOverlay, cnOverlay, peopleEditor, tripForm, menu] = await Promise.all([
+  const [shared, globalOverlay, cnOverlay, peopleEditor, tripForm, menu, card] = await Promise.all([
     source("database/shared/migrations/20260908100000_account_identity_in_collaboration.sql"),
     source(
       "database/supabase/overlays/migrations/20260908100000_account_identity_in_collaboration.sql",
@@ -149,6 +152,7 @@ test("collaboration labels use provider account identities in history and the Pe
     source("src/features/trips/components/trip-people-editor.tsx"),
     source("src/features/trips/components/trip-form.tsx"),
     source("src/features/trips/components/trip-app-bar-menu.tsx"),
+    source("src/features/trips/components/trip-card.tsx"),
   ]);
   assert.match(shared, /collaboration_user_label\(member\.user_id::text\)/);
   assert.match(shared, /collaboration_user_label\(app_private\.collaboration_user_id\(\)\)/);
@@ -157,7 +161,20 @@ test("collaboration labels use provider account identities in history and the Pe
   assert.match(globalOverlay + cnOverlay, /UPDATE public\.trip_history history/);
   assert.match(peopleEditor, /PlannerEditorScreen/);
   assert.match(menu, /onInviteTrip[\s\S]*<T message="Invite"/);
+  assert.match(card, /<T message="Invite"[\s\S]*<TripPeopleEditor/);
   assert.doesNotMatch(tripForm, /TripPeople/);
+});
+
+test("itinerary reorder history stores readable item names and types", async () => {
+  const migration = await source(
+    "database/shared/migrations/20260908103000_readable_itinerary_order_history.sql",
+  );
+  assert.match(migration, /jsonb_build_object\('name',item\.title,'type',item\.type\)/);
+  assert.match(
+    migration,
+    /jsonb_build_object\('order',jsonb_build_object\('before',previous_labels,'after',ordered_labels\)\)/,
+  );
+  assert.doesNotMatch(migration, /'before',previous_order,'after',ordered_item_ids/);
 });
 
 test("publishing keeps the source Plan version stable and refreshes aggregate trip versions", async () => {
