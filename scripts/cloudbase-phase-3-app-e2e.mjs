@@ -1851,6 +1851,21 @@ async function openVariantDeleteConfirmation(browser, planName) {
       .find((button) => button.getClientRects().length && !button.disabled)`,
     "Plans menu for delete",
   );
+  await waitFor(
+    browser,
+    `(() => {
+      const button = [...document.querySelectorAll('button')]
+        .find((candidate) => candidate.textContent.trim() === "Manage Plans" && !candidate.disabled);
+      if (!button?.getClientRects().length) return false;
+      const rect = button.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight
+        && Boolean(hit && (hit === button || button.contains(hit)));
+    })()`,
+    "settled Manage Plans action",
+  );
   await clickButtonText(browser, "Manage Plans");
   await waitFor(
     browser,
