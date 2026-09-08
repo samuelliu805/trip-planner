@@ -1870,6 +1870,174 @@ async function openVariantDeleteConfirmation(browser, planName) {
   );
 }
 
+async function openManageVariantsDialog(browser) {
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "Plans menu for management",
+  );
+  await waitForClickableElement(
+    browser,
+    `[...document.querySelectorAll('button')]
+      .find((button) => button.textContent.trim() === "Manage Plans" && !button.disabled)`,
+    "settled Manage Plans action",
+  );
+  await clickButtonText(browser, "Manage Plans");
+  await waitForClickableElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')]
+      .find((button) => button.textContent.trim() === "Set as primary" && !button.disabled)`,
+    "settled Set as primary action",
+  );
+}
+
+async function assertMobileManagePlansConflict(browser, width) {
+  const evidence = await evaluate(
+    browser,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"]')]
+        .find((node) => node.textContent.includes('Manage Plans'));
+      const overlay = dialog?.previousElementSibling;
+      const reload = [...(dialog?.querySelectorAll('button') ?? [])]
+        .find((button) => button.textContent.trim() === 'Reload latest');
+      const dialogRect = dialog?.getBoundingClientRect();
+      const reloadRect = reload?.getBoundingClientRect();
+      const frozen = document.querySelector('.matrix-grid-header');
+      return {
+        dialogZ: Number.parseInt(getComputedStyle(dialog).zIndex, 10),
+        documentFits: document.documentElement.scrollWidth <= innerWidth,
+        fits: Boolean(dialogRect) && dialogRect.left >= 0 && dialogRect.right <= innerWidth && dialogRect.top >= 0 && dialogRect.bottom <= innerHeight,
+        frozenZ: frozen ? Number.parseInt(getComputedStyle(frozen).zIndex, 10) : 0,
+        overlayZ: Number.parseInt(getComputedStyle(overlay).zIndex, 10),
+        reloadFits: Boolean(dialogRect && reloadRect) && reloadRect.left >= dialogRect.left && reloadRect.right <= dialogRect.right,
+        reloadHeight: reloadRect?.height ?? 0,
+        reloadVisible: Boolean(reload && reload.getClientRects().length && !reload.disabled),
+      };
+    })()`,
+  );
+  assert.equal(evidence.fits, true, `Manage Plans escaped ${width}px viewport.`);
+  assert.equal(evidence.documentFits, true, `Manage Plans overflowed at ${width}px.`);
+  assert.equal(evidence.reloadVisible, true, `Reload latest was unavailable at ${width}px.`);
+  assert.equal(evidence.reloadFits, true, `Reload latest escaped Manage Plans at ${width}px.`);
+  assert.ok(evidence.reloadHeight >= 44, `Reload latest was below 44px at ${width}px.`);
+  assert.ok(
+    evidence.overlayZ > evidence.frozenZ,
+    `Manage Plans overlay was under Matrix at ${width}px.`,
+  );
+  assert.ok(
+    evidence.dialogZ > evidence.overlayZ,
+    `Manage Plans was below its overlay at ${width}px.`,
+  );
+}
+
+async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdVariant) {
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  await openManageVariantsDialog(browser);
+
+  const before = await controlledData(
+    () =>
+      db
+        .from("route_variants")
+        .select("id,name,color,version")
+        .eq("id", createdVariant.createdVariantId),
+    "Set Primary conflict V1 lookup",
+  );
+  assert.equal(before.length, 1, "The Set Primary target was unavailable at V1.");
+  const v2Name = `${createdVariant.planName}-primary-v2`;
+  await controlledData(
+    () =>
+      db.rpc("update_route_variant_v2", {
+        expected_version: before[0].version,
+        target_operation_id: randomUUID(),
+        target_trip_id: tripId,
+        target_variant_id: createdVariant.createdVariantId,
+        variant_color: before[0].color,
+        variant_name: v2Name,
+      }),
+    "Set Primary conflict V2 update",
+  );
+
+  await clickButtonText(browser, "Set as primary");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')]
+      .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
+    "Set Primary structured conflict",
+    45_000,
+  );
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: width === 390 ? 844 : 932, mobile: true, width },
+      browser.sessionId,
+    );
+    await assertMobileManagePlansConflict(browser, width);
+  }
+
+  await clickButtonText(browser, "Reload latest");
+  await waitFor(
+    browser,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"]')]
+        .find((node) => node.textContent.includes('Manage Plans'));
+      return dialog?.textContent.includes('Latest Plans loaded. You can retry setting the primary Plan.') &&
+        dialog.textContent.includes(${JSON.stringify(v2Name)}) &&
+        !dialog.querySelector('[role="alert"]');
+    })()`,
+    "Set Primary V2 reload",
+  );
+  assert.equal(
+    await evaluate(
+      browser,
+      `[...document.querySelectorAll('[role="dialog"]')]
+        .some((node) => node.textContent.includes('Manage Plans'))`,
+    ),
+    true,
+    "Manage Plans closed after Set Primary reload.",
+  );
+
+  await clickButtonText(browser, "Set as primary");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] [role="status"]')]
+      .some((node) => node.textContent.includes(${JSON.stringify(`${v2Name} is now the primary Plan.`)}))`,
+    "Set Primary V2 retry success",
+    45_000,
+  );
+  const primary = await controlledData(
+    () =>
+      db.from("route_variants").select("id,is_primary").eq("id", createdVariant.createdVariantId),
+    "Set Primary retry evidence",
+  );
+  assert.deepEqual(primary, [{ id: createdVariant.createdVariantId, is_primary: true }]);
+
+  await clickButtonText(browser, "Set as primary");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] [role="status"]')]
+      .some((node) => node.textContent.includes('is now the primary Plan.')) &&
+      Boolean(document.querySelector(${JSON.stringify(`button[aria-label="Delete ${v2Name}"]`)}))`,
+    "restore original primary Plan",
+    45_000,
+  );
+  await clickButtonText(browser, "Done");
+  await waitFor(
+    browser,
+    `![...document.querySelectorAll('[role="dialog"]')]
+      .some((node) => node.textContent.includes('Manage Plans'))`,
+    "Manage Plans close after Set Primary retry",
+  );
+  return { ...createdVariant, planName: v2Name };
+}
+
 async function assertMobileDeleteConfirmation(browser, width, actionText) {
   const evidence = await evaluate(
     browser,
@@ -3576,7 +3744,9 @@ async function forgeForm(browser, path, entries, replacements = {}) {
   );
 }
 
-async function deleteTripThroughUi(browser) {
+async function deleteTripThroughUi(browser, tripId) {
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
   for (const width of [390, 430]) {
     await browser.cdp.send(
       "Emulation.setDeviceMetricsOverride",
@@ -3601,6 +3771,114 @@ async function deleteTripThroughUi(browser) {
       );
     }
   }
+
+  const initialDeleteVersion = await evaluate(
+    browser,
+    `document.querySelector('[role="alertdialog"] input[name="expected_version"]')?.value`,
+  );
+  assert.match(initialDeleteVersion ?? "", /^\d+$/, "Trip delete V1 token was unavailable.");
+  const trip = await controlledData(
+    () => db.from("trips").select("id,status,version").eq("id", tripId),
+    "Trip delete session conflict V1 lookup",
+  );
+  assert.equal(trip.length, 1, "The Trip delete target was unavailable at V1.");
+  const statusOperationId = randomUUID();
+  const statusUpdate = await runCloudBaseSdkCall(
+    () =>
+      db.rpc("update_trip_status", {
+        expected_version: trip[0].version,
+        target_operation_id: statusOperationId,
+        target_trip_id: tripId,
+        target_status: trip[0].status === "open" ? "done" : "open",
+      }),
+    "Trip delete session conflict V2 update",
+    { attempts: 3, backoffMilliseconds: 500, timeoutMilliseconds: 30_000 },
+  );
+  if (
+    statusUpdate.error &&
+    !/(?:SyntaxError:.*JSON|not valid JSON|JSON at position)/i.test(
+      String(statusUpdate.error.message ?? ""),
+    )
+  ) {
+    dataOrThrow(statusUpdate, "Trip delete session conflict V2 update");
+  }
+  const updatedTrip = await controlledData(
+    () => db.from("trips").select("version").eq("id", tripId),
+    "Trip delete session conflict V2 evidence",
+  );
+  assert.equal(updatedTrip.length, 1, "The Trip delete target disappeared during V2 update.");
+  assert.ok(
+    updatedTrip[0].version > trip[0].version,
+    "The Trip delete V2 update did not advance its version.",
+  );
+  await clickButtonText(browser, "Delete trip");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')]
+      .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
+    "Trip delete session structured conflict",
+    45_000,
+  );
+  await clickButtonText(browser, "Reload latest");
+  await waitFor(
+    browser,
+    `document.querySelector('[role="alertdialog"]')?.textContent.includes('Latest trip loaded. You can retry deletion.') &&
+      document.querySelector('input[name="expected_version"]')?.value !== ${JSON.stringify(initialDeleteVersion)}`,
+    "Trip delete session V2 reload",
+  );
+  await clickButtonText(browser, "Cancel");
+  await waitFor(
+    browser,
+    "!document.querySelector('[role=\"alertdialog\"]')",
+    "Trip delete conflicted session close",
+  );
+
+  await openTripMenu(browser);
+  await clickButtonText(browser, "Delete trip");
+  await waitForClickableElement(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')]
+      .find((button) => button.textContent.trim() === "Delete trip" && !button.disabled)`,
+    "reopened Trip delete session",
+  );
+  const reopenedSession = await evaluate(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      return {
+        expectedVersion: dialog?.querySelector('input[name="expected_version"]')?.value,
+        hasOldConflict: Boolean(dialog?.querySelector('[role="alert"]')),
+        hasOldReloadSuccess: dialog?.textContent.includes('Latest trip loaded. You can retry deletion.'),
+      };
+    })()`,
+  );
+  assert.deepEqual(reopenedSession, {
+    expectedVersion: initialDeleteVersion,
+    hasOldConflict: false,
+    hasOldReloadSuccess: false,
+  });
+  await clickButtonText(browser, "Cancel");
+  await waitFor(
+    browser,
+    "!document.querySelector('[role=\"alertdialog\"]')",
+    "reopened Trip delete session close",
+  );
+  await navigate(browser, `/trips/${tripId}`);
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+      .find((button) => button.getClientRects().length && !button.disabled))`,
+    "refreshed Trip before final deletion",
+    45_000,
+  );
+  await openTripMenu(browser);
+  await clickButtonText(browser, "Delete trip");
+  await waitForClickableElement(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')]
+      .find((button) => button.textContent.trim() === "Delete trip" && !button.disabled)`,
+    "final refreshed Trip delete confirmation",
+  );
   await clickButtonText(browser, "Delete trip");
   await waitFor(browser, 'location.pathname === "/trips"', "trip deletion", 45_000);
   await browser.cdp.send(
@@ -3888,7 +4166,8 @@ async function run() {
     await verifyFeedbackCountdown(browser);
     await saveWalkingTransportThroughUi(browser);
     await verifyMobileTransportEditorScroll(browser);
-    const createdVariant = await verifyVariantNavigationThroughUi(browser);
+    let createdVariant = await verifyVariantNavigationThroughUi(browser);
+    createdVariant = await verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdVariant);
     await verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant);
     await navigate(browser, `/trips/${tripId}`);
     await navigate(browser, `/trips/${tripId}`);
@@ -4096,7 +4375,7 @@ async function run() {
       "owner trip before UI deletion",
       45_000,
     );
-    await deleteTripThroughUi(browser);
+    await deleteTripThroughUi(browser, tripId);
     await navigate(browser, "/trips");
     try {
       await waitFor(

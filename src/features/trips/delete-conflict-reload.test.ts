@@ -5,11 +5,14 @@ import type { PlannerVariant } from "../itinerary/types.ts";
 import {
   buildDeleteVariantInput,
   findRefreshedDeleteVariant,
+  resolveManageVariantReload,
   resolveDeleteVariantReload,
 } from "../variants/delete-variant-reload.ts";
+import { refetchRouteVariantList } from "../variants/variant-list-reload.ts";
 import {
   completedTripDeleteReload,
   effectiveTripDeleteSnapshot,
+  openedTripDeleteSession,
   startedTripDeleteSubmission,
   type TripDeleteSnapshot,
 } from "./delete-trip-reload.ts";
@@ -78,6 +81,57 @@ test("Plan deletion reload reports an entity deleted by another user", () => {
   assert.equal(outcome.notice, "That Plan was already deleted. The latest Plans are now visible.");
 });
 
+test("Set Primary conflict reloads the exact Plan list once and retries with V2", async () => {
+  const v1 = variant({ version: 1 });
+  const v2 = variant({ name: "Alternate V2", version: 2 });
+  const submittedVersions: number[] = [];
+  const refetches: unknown[] = [];
+  let cachedVariants = [v1];
+  const dialogOpen = true;
+  let conflict = false;
+  let error: string | undefined;
+
+  async function setPrimary(target: PlannerVariant) {
+    submittedVersions.push(target.version);
+    if (target.version === 1) {
+      throw Object.assign(new Error("Plan version conflict"), { code: "conflict" as const });
+    }
+  }
+
+  await assert.rejects(setPrimary(v1), {
+    code: "conflict",
+    message: "Plan version conflict",
+  });
+  conflict = true;
+  error = "Plan version conflict";
+
+  const latest = await refetchRouteVariantList(
+    {
+      getQueryData: <T>() => cachedVariants as T,
+      refetchQueries: async (filters) => {
+        refetches.push(filters);
+        cachedVariants = [v2];
+      },
+    },
+    "trip-1",
+  );
+  const reload = resolveManageVariantReload(latest, undefined);
+  const notice = reload.notice;
+  conflict = false;
+  error = undefined;
+
+  assert.deepEqual(refetches, [
+    { exact: true, queryKey: ["planner-variants", "trip-1"], type: "active" },
+  ]);
+  assert.equal(error, undefined);
+  assert.equal(conflict, false);
+  assert.equal(notice, "Latest Plans loaded. You can retry setting the primary Plan.");
+  assert.equal(dialogOpen, true);
+
+  await setPrimary(latest![0]);
+  assert.deepEqual(submittedVersions, [1, 2]);
+});
+
 test("Trip deletion reload hides the stale error and submits refreshed hidden versions", () => {
   const initial: TripDeleteSnapshot = {
     activeSharePageCount: 1,
@@ -122,4 +176,21 @@ test("Trip deletion reload preserves initial values until a snapshot is availabl
     version: 6,
   };
   assert.equal(effectiveTripDeleteSnapshot(initial, null), initial);
+});
+
+test("Trip deletion starts each open session without stale action or reload state", () => {
+  const staleConflict = { conflict: true, error: "Trip version conflict" };
+  const reopened = openedTripDeleteSession(staleConflict);
+
+  assert.equal(reopened.hiddenErrorState, staleConflict);
+  assert.equal(reopened.latestSnapshot, null);
+  assert.equal(reopened.reloadSucceeded, false);
+  assert.equal(staleConflict === reopened.hiddenErrorState, true, "the old error is hidden");
+
+  const currentSessionError = { conflict: false, error: "Current session action failed" };
+  assert.equal(
+    currentSessionError === reopened.hiddenErrorState,
+    false,
+    "a new action error remains visible",
+  );
 });

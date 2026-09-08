@@ -19,8 +19,9 @@ import type { VariantComparisonProjection } from "./comparison-types";
 import type { VariantDecisionSummaryProjection } from "./decision-summary-types";
 import type { RouteVariantIdentityInput, UpdateRouteVariantInput } from "./schema";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
+import { variantListQueryKey } from "./variant-list-reload";
 
-export const variantListQueryKey = (tripId: string) => ["planner-variants", tripId] as const;
+export { refetchRouteVariantList, variantListQueryKey } from "./variant-list-reload";
 export const variantComparisonQueryKey = (tripId: string, dayNumber?: number) =>
   ["variant-comparison", tripId, dayNumber ?? "overview"] as const;
 export const variantDecisionSummaryQueryKey = (tripId: string) =>

@@ -95,10 +95,14 @@ test("every destructive workspace conflict exposes a structured scope-local relo
   assert.match(plannerStatus, /interactionConflict[\s\S]*Reload latest/);
   assert.match(compare, /researchWorkspaceQueryKey[\s\S]*plannerQueryKey/);
   assert.match(research, /result\.code === "conflict"[\s\S]*Reload latest/);
-  assert.match(plans, /isItineraryConflict\(caught\)[\s\S]*variantListQueryKey/);
+  assert.match(plans, /isItineraryConflict\(caught\)[\s\S]*refetchRouteVariantList/);
   assert.match(deleteAction, /PlatformOperationError[\s\S]*error\.code === "conflict"/);
   assert.match(deleteAction, /return \{ conflict: true[\s\S]*\?error=delete/);
   assert.match(dialog, /loadTripDeleteSnapshot[\s\S]*state\.conflict[\s\S]*Reload latest/);
+  assert.match(
+    dialog,
+    /if \(pending && !nextOpen\) return;[\s\S]*setReloadState\(openedTripDeleteSession\(state\)\)/,
+  );
 });
 
 test("the forward migration fail-closes the complete installed Research function graph", async () => {

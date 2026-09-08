@@ -15,6 +15,8 @@ export const tripsZhCN: Record<string, string> = {
   People: "协作成员",
   "Reload latest": "重新加载最新版本",
   "Latest Plan loaded. You can retry deletion.": "已加载最新方案，可以重试删除。",
+  "Latest Plans loaded. You can retry setting the primary Plan.":
+    "已加载最新方案列表，可以重试设置主方案。",
   "Latest trip loaded. You can retry deletion.": "已加载最新行程，可以重试删除。",
   "Reload this trip": "重新加载此行程",
   "That day was already removed. The latest Plan is now visible.":

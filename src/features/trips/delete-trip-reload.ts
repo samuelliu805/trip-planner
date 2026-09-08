@@ -17,6 +17,16 @@ export function completedTripDeleteReload<TActionState>(
   return { hiddenErrorState: actionState, latestSnapshot: snapshot, reloadSucceeded: true };
 }
 
+export function openedTripDeleteSession<TActionState>(
+  actionState: TActionState,
+): TripDeleteReloadState<TActionState> {
+  return {
+    hiddenErrorState: actionState,
+    latestSnapshot: null,
+    reloadSucceeded: false,
+  };
+}
+
 export function startedTripDeleteSubmission<TActionState>(
   state: TripDeleteReloadState<TActionState>,
 ): TripDeleteReloadState<TActionState> {

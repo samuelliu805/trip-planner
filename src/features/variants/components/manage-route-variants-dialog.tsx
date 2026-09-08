@@ -30,8 +30,12 @@ import { isItineraryConflict } from "@/features/itinerary/query-cache";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { variantHref } from "../active";
-import { buildDeleteVariantInput, resolveDeleteVariantReload } from "../delete-variant-reload";
-import { useDeleteRouteVariant, useSetPrimaryRouteVariant, variantListQueryKey } from "../queries";
+import { buildDeleteVariantInput, resolveManageVariantReload } from "../delete-variant-reload";
+import {
+  refetchRouteVariantList,
+  useDeleteRouteVariant,
+  useSetPrimaryRouteVariant,
+} from "../queries";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { VariantIdentity } from "./route-variant-identity";
 
@@ -102,24 +106,20 @@ export function ManageRouteVariantsDialog({
   }
 
   async function reloadLatest() {
-    if (!deleteVariant) return;
-    const deleteVariantId = deleteVariant.id;
+    const deleteVariantId = deleteVariant?.id;
     setReloadPending(true);
     try {
-      await queryClient.refetchQueries({
-        exact: true,
-        queryKey: variantListQueryKey(tripId),
-        type: "active",
-      });
-      const latest = queryClient.getQueryData<PlannerVariant[]>(variantListQueryKey(tripId));
-      const { notice: reloadNotice, refreshedVariant } = resolveDeleteVariantReload(
+      const latest = await refetchRouteVariantList(queryClient, tripId);
+      const { notice: reloadNotice, refreshedVariant } = resolveManageVariantReload(
         latest,
         deleteVariantId,
       );
-      if (refreshedVariant) setDeleteVariant(refreshedVariant);
-      else {
-        setDeleteVariant(undefined);
-        onOpenChange(true);
+      if (deleteVariantId) {
+        if (refreshedVariant) setDeleteVariant(refreshedVariant);
+        else {
+          setDeleteVariant(undefined);
+          onOpenChange(true);
+        }
       }
       setNotice(t(reloadNotice));
       setConflict(false);
