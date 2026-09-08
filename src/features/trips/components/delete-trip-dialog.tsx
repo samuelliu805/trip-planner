@@ -16,6 +16,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { deleteTrip, loadTripDeleteSnapshot } from "@/features/trips/actions";
+import {
+  completedTripDeleteReload,
+  effectiveTripDeleteSnapshot,
+  startedTripDeleteSubmission,
+  type TripDeleteReloadState,
+} from "@/features/trips/delete-trip-reload";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 function DeleteAction({
@@ -34,6 +40,7 @@ function DeleteAction({
   return (
     <Button
       aria-busy={loading}
+      className="min-h-11"
       disabled={loading}
       onClick={() => {
         onSubmitStart?.();
@@ -79,14 +86,17 @@ export function DeleteTripDialog({
 }) {
   const { t } = useI18n();
   const [state, action, pending] = useActionState(deleteTrip, {});
-  const [latestSnapshot, setLatestSnapshot] = useState<Awaited<
-    ReturnType<typeof loadTripDeleteSnapshot>
-  > | null>(null);
+  const [reloadState, setReloadState] = useState<TripDeleteReloadState<typeof state>>({
+    latestSnapshot: null,
+    reloadSucceeded: false,
+  });
   const [reloadPending, setReloadPending] = useState(false);
-  const latestVersion = latestSnapshot?.version ?? version;
-  const latestContentVersion = latestSnapshot?.contentVersion ?? contentVersion;
-  const latestSharePageCount = latestSnapshot?.activeSharePageCount ?? activeSharePageCount;
-  const checkingSharePages = latestSharePageCount === null;
+  const effectiveSnapshot = effectiveTripDeleteSnapshot(
+    { activeSharePageCount, contentVersion, version },
+    reloadState.latestSnapshot,
+  );
+  const checkingSharePages = effectiveSnapshot.activeSharePageCount === null;
+  const visibleError = state !== reloadState.hiddenErrorState ? state.error : undefined;
   const operationRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => onPendingChange?.(pending), [onPendingChange, pending]);
@@ -101,7 +111,7 @@ export function DeleteTripDialog({
         onUnavailable?.("This trip is no longer available. The delete dialog was closed safely.");
         return;
       }
-      setLatestSnapshot(snapshot);
+      setReloadState(completedTripDeleteReload(snapshot, state));
     } finally {
       setReloadPending(false);
     }
@@ -111,7 +121,9 @@ export function DeleteTripDialog({
     <AlertDialog
       onOpenChange={(nextOpen) => {
         if (pending && !nextOpen) return;
-        if (nextOpen) setLatestSnapshot(null);
+        if (nextOpen) {
+          setReloadState({ latestSnapshot: null, reloadSucceeded: false });
+        }
         onOpenChange?.(nextOpen);
       }}
       open={open}
@@ -148,11 +160,11 @@ export function DeleteTripDialog({
                 <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
                 <T message={" Checking published Share Pages… "} />
               </span>
-            ) : latestSharePageCount ? (
+            ) : effectiveSnapshot.activeSharePageCount ? (
               <span className="mt-3 block border-l-2 border-primary bg-primary/5 px-3 py-2 text-foreground">
                 {t(
                   "{count} published Share Page(s) and their permanent images will remain online as independent snapshots. They will no longer be updateable from this trip. Revoke them before deleting if they should stop working.",
-                  { count: latestSharePageCount },
+                  { count: effectiveSnapshot.activeSharePageCount },
                 )}
               </span>
             ) : null}
@@ -160,14 +172,18 @@ export function DeleteTripDialog({
         </AlertDialogHeader>
         <form action={action}>
           <input name="trip_id" type="hidden" value={tripId} />
-          <input name="expected_version" type="hidden" value={latestVersion} />
-          <input name="expected_content_version" type="hidden" value={latestContentVersion} />
+          <input name="expected_version" type="hidden" value={effectiveSnapshot.version} />
+          <input
+            name="expected_content_version"
+            type="hidden"
+            value={effectiveSnapshot.contentVersion}
+          />
           <input name="surface" type="hidden" value={surface} />
           <input name="operation_id" ref={operationRef} type="hidden" />
-          {state.error ? (
+          {visibleError ? (
             <div className="px-5 pb-3 text-sm text-destructive sm:px-6" role="alert">
-              <Localized value={state.error} />
-              {state.conflict ? (
+              <Localized value={visibleError} />
+              {state.conflict && state !== reloadState.hiddenErrorState ? (
                 <Button
                   className="mt-3 min-h-11 w-full sm:w-auto"
                   disabled={reloadPending}
@@ -181,7 +197,12 @@ export function DeleteTripDialog({
               ) : null}
             </div>
           ) : null}
-          <AlertDialogFooter>
+          {reloadState.reloadSucceeded ? (
+            <div className="px-5 pb-3 text-sm text-emerald-700 sm:px-6" role="status">
+              <Localized value="Latest trip loaded. You can retry deletion." />
+            </div>
+          ) : null}
+          <AlertDialogFooter className="[&_button]:min-h-11">
             <AlertDialogCancel disabled={pending} type="button">
               <T message={"Cancel"} />
             </AlertDialogCancel>
@@ -189,6 +210,7 @@ export function DeleteTripDialog({
               checking={checkingSharePages}
               onPendingChange={onPendingChange}
               onSubmitStart={() => {
+                setReloadState(startedTripDeleteSubmission);
                 if (operationRef.current) operationRef.current.value = newTelemetryOperationId();
               }}
               pending={pending}
