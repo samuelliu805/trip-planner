@@ -2161,7 +2161,7 @@ async function verifyCloudBaseGuestImport(fixture) {
   return tripId;
 }
 
-async function waitForClickableElement(browser, elementExpression, label) {
+async function waitForClickableElement(browser, elementExpression, label, timeoutMs = 30_000) {
   await waitFor(
     browser,
     `(() => {
@@ -2181,6 +2181,7 @@ async function waitForClickableElement(browser, elementExpression, label) {
       return hit === element || element.contains(hit);
     })()`,
     label,
+    timeoutMs,
   );
 }
 
@@ -3015,6 +3016,9 @@ async function publishThroughUi(browser, tripId) {
 }
 
 async function openTripMenu(browser) {
+  const surfaceExpression = `document.querySelector('[role="menu"]') ??
+    [...document.querySelectorAll('[role="dialog"]')]
+      .find((dialog) => dialog.textContent.includes("More actions"))`;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     try {
       await clickElement(
@@ -3023,12 +3027,7 @@ async function openTripMenu(browser) {
           .find((candidate) => candidate.getClientRects().length && !candidate.disabled)`,
         "Trip menu",
       );
-      await waitFor(
-        browser,
-        "Boolean(document.querySelector('[role=\"menu\"]'))",
-        "Trip menu",
-        2_000,
-      );
+      await waitForClickableElement(browser, surfaceExpression, "Trip menu", 2_000);
       return;
     } catch {
       // React may still be hydrating after the streamed planner first appears.
@@ -3572,12 +3571,10 @@ async function deleteTripThroughUi(browser) {
     );
     await openTripMenu(browser);
     await clickButtonText(browser, "Delete trip");
-    await waitFor(
+    await waitForClickableElement(
       browser,
-      `[...document.querySelectorAll('[role="alertdialog"] button')].some(
-        (button) => button.textContent.trim() === "Delete trip" && !button.disabled,
-      )`,
-      `enabled ${width}px trip delete confirmation`,
+      `document.querySelector('[role="alertdialog"]')`,
+      `settled ${width}px trip delete confirmation`,
     );
     await assertMobileDeleteConfirmation(browser, width, "Delete trip");
     if (width === 390) {
