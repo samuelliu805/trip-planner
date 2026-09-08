@@ -2185,7 +2185,21 @@ async function waitForClickableElement(browser, elementExpression, label, timeou
   );
 }
 
+async function waitForReactHydration(browser, elementExpression, label) {
+  await waitFor(
+    browser,
+    `(() => {
+      const element = (${elementExpression});
+      return Boolean(element) && Object.keys(element).some(
+        (key) => key.startsWith("__reactFiber$") || key.startsWith("__reactProps$"),
+      );
+    })()`,
+    label,
+  );
+}
+
 async function clickElement(browser, elementExpression, label) {
+  await waitForClickableElement(browser, elementExpression, label);
   const point = await evaluate(
     browser,
     `(async () => {
@@ -3573,7 +3587,8 @@ async function deleteTripThroughUi(browser) {
     await clickButtonText(browser, "Delete trip");
     await waitForClickableElement(
       browser,
-      `document.querySelector('[role="alertdialog"]')`,
+      `[...document.querySelectorAll('[role="alertdialog"] button')]
+        .find((button) => button.textContent.trim() === "Delete trip" && !button.disabled)`,
       `settled ${width}px trip delete confirmation`,
     );
     await assertMobileDeleteConfirmation(browser, width, "Delete trip");
@@ -3588,6 +3603,11 @@ async function deleteTripThroughUi(browser) {
   }
   await clickButtonText(browser, "Delete trip");
   await waitFor(browser, 'location.pathname === "/trips"', "trip deletion", 45_000);
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
 }
 
 async function cleanupFixture(tripId) {
@@ -4096,6 +4116,11 @@ async function run() {
         })}`,
       );
     }
+    await waitForReactHydration(
+      browser,
+      "document.querySelector('button[data-i18n-aria-label=\"Log out\"]')",
+      "hydrated trip list logout control",
+    );
     await clickElement(
       browser,
       "document.querySelector('button[data-i18n-aria-label=\"Log out\"]')",
