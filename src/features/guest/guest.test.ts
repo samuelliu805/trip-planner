@@ -132,6 +132,8 @@ test("guest intent cleanup and imported markers preserve a recoverable continuat
   assert.equal(memory.getItem(guestDraftStorageKey("global")), null);
   assert.equal(memory.getItem(guestIntentStorageKey("global")), null);
   assert.notEqual(memory.getItem(guestImportMarkerStorageKey("global")), null);
+  storage.clearAll();
+  assert.equal(memory.getItem(guestImportMarkerStorageKey("global")), null);
 });
 
 test("guest item and day mutations stay local and preserve importable identifiers", async () => {
@@ -251,14 +253,18 @@ test("guest import reuses provider identity when local drafts repeat a place", (
 test("landing and post-login flows route the browser-held draft without serializing it", () => {
   const landingRoute = readFileSync(new URL("../../app/page.tsx", import.meta.url), "utf8");
   const landing = readFileSync(new URL("../landing/landing-page.tsx", import.meta.url), "utf8");
+  const guestRoute = readFileSync(new URL("../../app/guest/page.tsx", import.meta.url), "utf8");
   const refresh = readFileSync(
     new URL("../auth/components/post-login-refresh.tsx", import.meta.url),
     "utf8",
   );
   assert.match(landingRoute, /<LandingPage/);
-  assert.match(landing, /href="\/guest"/);
-  assert.match(refresh, /\/guest\?claim=1/);
-  assert.match(refresh, /\/guest\?claim=prompt/);
+  assert.match(landingRoute, /getCurrentUser/);
+  assert.match(landing, /accountLabel \? "\/trips" : "\/guest"/);
+  assert.match(guestRoute, /if \(user\) redirect\("\/trips"\)/);
+  assert.match(refresh, /await claimGuestTrip\(draft\)/);
+  assert.match(refresh, /if \(!result\.data\)[\s\S]*clearAll\(\)/);
+  assert.doesNotMatch(refresh, /\/guest\?claim=/);
   assert.doesNotMatch(refresh, /JSON\.stringify/);
 });
 

@@ -354,6 +354,191 @@ async function verifyHardNewTabShare(browser, publicToken) {
   );
 }
 
+async function openTripMenu(browser) {
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "Global Trip menu",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('[role="menu"][data-state="open"]')]
+      .find((menu) => menu.getClientRects().length))`,
+    "Global Trip menu content",
+  );
+}
+
+async function closePlannerEditor(browser, label) {
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(browser, `!document.querySelector('[data-editor-kind]')`, `${label} close`);
+}
+
+async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
+  await openTripMenu(browser);
+  const menuText = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')]
+      .map((item) => item.textContent.trim())`,
+  );
+  assert.ok(menuText.includes("Invite"), "Invite is not a separate Trip menu item.");
+  assert.ok(menuText.includes("History"), "History is not available from the Trip menu.");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === 'Invite')`,
+    "Global Invite menu item",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[data-editor-kind="trip-people"]')?.innerText.includes(${JSON.stringify(options.email)})`,
+    "Global People account identity",
+  );
+  const peopleEditor = await evaluate(
+    browser,
+    `(() => {
+      const editor = document.querySelector('[data-editor-kind="trip-people"]');
+      return {
+        hasIdentifierInput: Boolean(editor?.querySelector('#trip-person-identifier')),
+        hasSharedEditorScroller: Boolean(editor?.querySelector('[data-planner-editor-scroll]')),
+        text: editor?.innerText ?? '',
+      };
+    })()`,
+  );
+  assert.equal(peopleEditor.hasIdentifierInput, true);
+  assert.equal(peopleEditor.hasSharedEditorScroller, true);
+  assert.equal(peopleEditor.text.includes("Traveler"), false);
+  for (const { height, width } of [
+    { height: 844, width: 390 },
+    { height: 932, width: 430 },
+  ]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 2, height, mobile: true, width },
+      browser.sessionId,
+    );
+    const mobilePeople = await evaluate(
+      browser,
+      `(() => {
+        const editor = document.querySelector('[data-editor-kind="trip-people"]');
+        const overlay = document.querySelector('[data-sheet-overlay]');
+        const frozen = document.querySelector('.matrix-grid-header');
+        const input = editor?.querySelector('#trip-person-identifier');
+        const rect = editor?.getBoundingClientRect();
+        return {
+          documentFits: document.documentElement.scrollWidth <= innerWidth,
+          editorZ: Number.parseInt(getComputedStyle(editor).zIndex, 10),
+          fits: Boolean(rect) && rect.left >= 0 && rect.right <= innerWidth &&
+            rect.top >= 0 && rect.bottom <= innerHeight,
+          frozenZ: frozen ? Number.parseInt(getComputedStyle(frozen).zIndex, 10) : 0,
+          inputHeight: input?.getBoundingClientRect().height ?? 0,
+          overlayZ: Number.parseInt(getComputedStyle(overlay).zIndex, 10),
+        };
+      })()`,
+    );
+    assert.equal(mobilePeople.documentFits, true, `Global People overflowed at ${width}px.`);
+    assert.equal(mobilePeople.fits, true, `Global People escaped the ${width}px viewport.`);
+    assert.ok(mobilePeople.inputHeight >= 44, `Global Invite input was below 44px at ${width}px.`);
+    assert.ok(mobilePeople.overlayZ > mobilePeople.frozenZ);
+    assert.ok(mobilePeople.editorZ > mobilePeople.overlayZ);
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+  await closePlannerEditor(browser, "Global People editor");
+
+  await openTripMenu(browser);
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === 'Trip settings')`,
+    "Global Trip settings",
+  );
+  await waitFor(browser, `Boolean(document.querySelector('#trip-title'))`, "Global Trip settings");
+  assert.equal(
+    await evaluate(
+      browser,
+      `Boolean(document.querySelector('[data-editor-kind="trip-settings"] #trip-person-identifier')) ||
+        document.querySelector('[data-editor-kind="trip-settings"]')?.innerText.includes('People with access')`,
+    ),
+    false,
+    "People controls are still embedded in Trip settings.",
+  );
+  await closePlannerEditor(browser, "Global Trip settings");
+
+  await openTripMenu(browser);
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === 'History')`,
+    "Global History menu item",
+  );
+  try {
+    await waitFor(
+      browser,
+      `location.pathname === ${JSON.stringify(`/trips/${options.tripId}/history`)} &&
+        document.querySelectorAll('[data-history-actor]').length > 0`,
+      "Global History account identities",
+    );
+  } catch (error) {
+    const diagnostic = await boundedPageDiagnostic(browser);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded History diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  const historyActors = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[data-history-actor]')].map((node) => node.textContent.trim())`,
+  );
+  assert.ok(historyActors.length > 0);
+  assert.ok(
+    historyActors.every((actor) => options.actorEmails.includes(actor)),
+    `History used a non-account actor label: ${JSON.stringify(historyActors)}.`,
+  );
+  const historyBody = await evaluate(browser, "document.body.innerText");
+  assert.equal(historyBody.includes("Traveler"), false);
+  assert.equal(historyBody.includes("Storage usage"), false);
+  assert.equal(historyBody.includes('{"'), false, "History still exposes raw JSON.");
+
+  await navigate(browser, baseUrl, `/trips/${options.tripId}`);
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]'))`,
+    "Global planner before logout",
+  );
+  await openTripMenu(browser);
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === 'Log out')`,
+    "Global planner Log out",
+  );
+  await waitFor(browser, `location.pathname === '/'`, "Global planner logout home", 45_000);
+  assert.equal(
+    await evaluate(
+      browser,
+      `[...document.querySelectorAll('a')].some((link) =>
+        link.getClientRects().length && link.textContent.trim() === 'Sign in')`,
+    ),
+    true,
+    "Logged-out home did not return to anonymous navigation.",
+  );
+  await navigate(browser, baseUrl, "/login");
+  await submitGlobalLogin(browser, baseUrl, options);
+  await navigate(browser, baseUrl, `/trips/${options.tripId}`);
+}
+
 async function verifyVariantNavigation(browser) {
   const trigger = `[...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
     .find((button) => button.getClientRects().length && !button.disabled)`;
@@ -1082,85 +1267,93 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
     `({
       active: localStorage.getItem(${JSON.stringify(activeKey)}),
       intent: localStorage.getItem(${JSON.stringify(intentKey)}),
-      marker: JSON.parse(localStorage.getItem(${JSON.stringify(markerKey)})),
+      marker: localStorage.getItem(${JSON.stringify(markerKey)}),
     })`,
   );
   assert.equal(imported.active, null);
   assert.equal(imported.intent, null);
-  assert.equal(imported.marker.draftId, initialDraft.draftId);
-  assert.equal(imported.marker.tripId, guestTripId);
-  assert.equal(imported.marker.intent.action, "share");
+  assert.equal(imported.marker, null);
   await waitFor(
     browser,
     `Boolean(document.querySelector('.public-share-settings-dialog'))`,
     "continued guest share action",
   );
 
+  const authenticatedGuestKeys = [
+    activeKey,
+    intentKey,
+    markerKey,
+    "trip-planner:guest-trip:cn:active",
+    "trip-planner:guest-trip:cn:intent",
+    "trip-planner:guest-trip:cn:imported",
+  ];
+  await evaluate(
+    browser,
+    `${JSON.stringify(authenticatedGuestKeys)}.forEach((key) => localStorage.setItem(key, 'stale')); true`,
+  );
   await navigate(browser, baseUrl, "/guest?claim=1");
   await waitFor(
     browser,
-    `location.pathname === ${JSON.stringify(`/trips/${guestTripId}`)} &&
-      Boolean(document.querySelector('.public-share-settings-dialog'))`,
-    "guest callback replay",
-    60_000,
+    `location.pathname === '/trips' &&
+      ${JSON.stringify(authenticatedGuestKeys)}.every((key) => localStorage.getItem(key) === null)`,
+    "authenticated guest redirect and storage cleanup",
   );
-  assert.equal(await evaluate(browser, `localStorage.getItem(${JSON.stringify(activeKey)})`), null);
 
-  await evaluate(browser, `localStorage.removeItem(${JSON.stringify(markerKey)})`);
-  await navigate(browser, baseUrl, "/guest");
+  await navigate(browser, baseUrl, "/");
   await waitFor(
     browser,
-    `document.querySelector('[data-guest-save-state]')?.dataset.guestSaveState === 'saved'`,
-    "authenticated local draft",
+    `[...document.querySelectorAll('a')].some((link) =>
+      link.getClientRects().length && link.textContent.trim() === ${JSON.stringify(options.email)} &&
+      new URL(link.href).pathname === '/account')`,
+    "authenticated landing account link",
   );
-  const failedDraftId = await evaluate(
+  const landingLinks = await evaluate(
     browser,
     `(() => {
-      const draft = JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)}));
-      draft.workspace.variant.id = ${JSON.stringify(initialDraft.workspace.variant.id)};
-      for (const day of draft.workspace.days) {
-        day.variant_id = draft.workspace.variant.id;
-        for (const item of day.items) item.variant_id = draft.workspace.variant.id;
-      }
-      draft.revision += 1;
-      draft.updatedAt = new Date().toISOString();
-      draft.trip.updated_at = draft.updatedAt;
-      localStorage.setItem(${JSON.stringify(activeKey)}, JSON.stringify(draft));
-      return draft.draftId;
+      const visible = [...document.querySelectorAll('a')].filter((link) => link.getClientRects().length);
+      return {
+        hasSignIn: visible.some((link) => link.textContent.trim() === 'Sign in'),
+        startPaths: visible.filter((link) => link.textContent.trim() === 'Start planning')
+          .map((link) => new URL(link.href).pathname),
+      };
     })()`,
   );
-  await navigate(browser, baseUrl, "/guest");
-  await waitFor(
+  assert.equal(landingLinks.hasSignIn, false);
+  assert.ok(landingLinks.startPaths.length > 0);
+  assert.deepEqual([...new Set(landingLinks.startPaths)], ["/trips"]);
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  const mobileLanding = await evaluate(
     browser,
-    `JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)})).draftId === ${JSON.stringify(failedDraftId)}`,
-    "guest import failure fixture",
+    `(() => {
+      const account = [...document.querySelectorAll('a')].find((link) =>
+        link.textContent.trim() === ${JSON.stringify(options.email)} &&
+        new URL(link.href).pathname === '/account');
+      return {
+        accountVisible: Boolean(account?.getClientRects().length),
+        documentFits: document.documentElement.scrollWidth <= innerWidth,
+      };
+    })()`,
+  );
+  assert.deepEqual(mobileLanding, { accountVisible: true, documentFits: true });
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
   );
   await clickElementWhenAvailable(
     browser,
-    `document.querySelector('button[aria-label="Save to account"]')`,
-    "authenticated guest Save to account",
+    `[...document.querySelectorAll('a')].find((link) =>
+      link.getClientRects().length && link.textContent.trim() === 'Start planning')`,
+    "authenticated Start planning",
   );
   await waitFor(
     browser,
-    `document.querySelector('[role="alertdialog"]')?.innerText.includes('Save this trip to your account')`,
-    "authenticated guest save account dialog",
-  );
-  await clickElementWhenAvailable(
-    browser,
-    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
-      button.textContent.trim() === 'Save to account')`,
-    "confirm authenticated guest import",
-  );
-  await waitFor(
-    browser,
-    `Boolean(document.querySelector('[data-guest-claim-error]')) &&
-      JSON.parse(localStorage.getItem(${JSON.stringify(activeKey)})).draftId === ${JSON.stringify(failedDraftId)}`,
-    "failed guest import retained local draft",
-  );
-  await evaluate(
-    browser,
-    `[${JSON.stringify(activeKey)}, ${JSON.stringify(intentKey)}, ${JSON.stringify(markerKey)}]
-      .forEach((key) => localStorage.removeItem(key))`,
+    `location.pathname === '/trips'`,
+    "authenticated Start planning destination",
   );
   return guestTripId;
 }
@@ -1306,6 +1499,12 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
+    await verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options);
+    await waitFor(
+      browser,
+      `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,
+      "reauthenticated Global trip",
+    );
     await verifyGlobalBookingSites(browser, baseUrl, options.tripId);
     try {
       await waitFor(

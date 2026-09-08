@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { GuestPlanner } from "@/features/guest/components/guest-planner";
 import { getRequestLocale } from "@/features/i18n/server";
@@ -20,9 +21,10 @@ export default async function GuestTripPage({
   searchParams: Promise<{ claim?: string }>;
 }) {
   const [{ claim }, user] = await Promise.all([searchParams, getAuthProvider().getCurrentUser()]);
+  if (user) redirect("/trips");
   return (
     <GuestPlanner
-      authenticated={Boolean(user)}
+      authenticated={false}
       claimMode={claim === "1" ? "claim" : claim === "prompt" ? "prompt" : undefined}
       region={getServerProviderConfig().appRegion}
     />

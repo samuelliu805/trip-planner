@@ -132,7 +132,13 @@ export function PlannerEditorForm({
               if (!pending && !cancelPending && !saveDisabled) void onSave(intent);
             }
           : onSubmitStart
-            ? () => onSubmitStart()
+            ? (event) => {
+                if (pending || cancelPending || saveDisabled) {
+                  event.preventDefault();
+                  return;
+                }
+                onSubmitStart();
+              }
             : undefined
       }
       ref={formRef}

@@ -1168,7 +1168,9 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
     planPage,
     comparePage,
     appBar,
+    appBarOverlays,
     barMenu,
+    menuAccountActions,
     planToolbar,
     contextBar,
     compareWorkspace,
@@ -1178,7 +1180,9 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
       "../../app/trips/[tripId]/page.tsx",
       "../../app/trips/[tripId]/compare/page.tsx",
       "../trips/components/trip-app-bar.tsx",
+      "../trips/components/trip-app-bar-overlays.tsx",
       "../trips/components/trip-app-bar-menu.tsx",
+      "../trips/components/trip-menu-account-actions.tsx",
       "../itinerary/components/planner-toolbar.tsx",
       "../itinerary/components/planner-context-bar.tsx",
       "./components/compare-workspace.tsx",
@@ -1205,13 +1209,13 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
   assert.doesNotMatch(`${planPage}\n${comparePage}`, /TripSectionNav/);
   assert.doesNotMatch(planToolbar, /PlannerEditingToolbar/);
   assert.doesNotMatch(compareWorkspace, /<h1|trip\.title/);
-  assert.match(barMenu, /\{accountEmail\}/);
-  assert.match(barMenu, /Log out/);
+  assert.match(menuAccountActions, /\{accountEmail\}/);
+  assert.match(menuAccountActions, /Log out/);
   assert.match(barMenu, /Trip settings/);
   assert.match(barMenu, /Share trip/);
   assert.match(barMenu, /Delete trip/);
   assert.match(barMenu, /extraItems && \(onShareTrip \|\| onTripSettings \|\| onDeleteTrip\)/);
-  assert.match(appBar, /<DeleteTripDialog/);
+  assert.match(appBarOverlays, /<DeleteTripDialog/);
   assert.match(appBar, /countActiveSharePages\(tripId\)/);
   assert.match(appBar, /OPEN_SHARE_SETTINGS_EVENT/);
   assert.match(appBar, /Saving/);

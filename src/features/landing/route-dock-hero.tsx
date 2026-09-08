@@ -73,7 +73,7 @@ function initialRect(kind: DockKind, width: number, height: number): FragmentTra
   };
 }
 
-export function RouteDockHero() {
+export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) {
   const trackRef = useRef<HTMLElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -209,7 +209,7 @@ export function RouteDockHero() {
           </p>
           <div className="hero-actions">
             <Button asChild size="lg">
-              <Link href="/guest">
+              <Link href={startHref}>
                 <T message="Start planning" />
               </Link>
             </Button>

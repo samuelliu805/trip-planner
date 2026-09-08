@@ -1,15 +1,7 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import {
-  History,
-  LogOut,
-  MoreHorizontal,
-  Settings2,
-  Share2,
-  Trash2,
-  UserRound,
-} from "lucide-react";
+import { History, MoreHorizontal, Settings2, Share2, Trash2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
@@ -22,8 +14,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PullUpPanel } from "@/components/ui/pull-up-panel";
-import { logout } from "@/features/auth/actions";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+
+import { TripMenuAccountActions } from "./trip-menu-account-actions";
 
 export type TripMobileQuickAction = {
   disabled?: boolean;
@@ -46,6 +39,7 @@ export function TripBarMenu({
   mobileMenuItems,
   mobileQuickActions = [],
   onDeleteTrip,
+  onInviteTrip,
   onShareTrip,
   onTripSettings,
 }: {
@@ -57,6 +51,7 @@ export function TripBarMenu({
   mobileMenuItems?: (runAction: RunMobileAction) => ReactNode;
   mobileQuickActions?: TripMobileQuickAction[];
   onDeleteTrip?: () => void;
+  onInviteTrip?: () => void;
   onShareTrip?: () => void;
   onTripSettings?: () => void;
 }) {
@@ -110,6 +105,11 @@ export function TripBarMenu({
                 <T message={" Trip settings "} />
               </DropdownMenuItem>
             ) : null}
+            {onInviteTrip ? (
+              <DropdownMenuItem onSelect={onInviteTrip}>
+                <UserPlus aria-hidden="true" className="size-4" /> <T message="Invite" />
+              </DropdownMenuItem>
+            ) : null}
             {historyHref ? (
               <DropdownMenuItem asChild>
                 <Link href={historyHref}>
@@ -133,29 +133,7 @@ export function TripBarMenu({
             <div className="px-1 py-1">
               <LanguageSwitcher className="w-full justify-start" expanded />
             </div>
-            {guest ? null : (
-              <>
-                <p
-                  className="truncate px-2 py-1.5 text-xs text-muted-foreground"
-                  title={accountEmail}
-                >
-                  {accountEmail}
-                </p>
-                <DropdownMenuItem asChild>
-                  <Link href="/account">
-                    <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
-                  </Link>
-                </DropdownMenuItem>
-                <form action={logout}>
-                  <input name="surface" type="hidden" value="planner_app_bar" />
-                  <DropdownMenuItem asChild>
-                    <button className="w-full" type="submit">
-                      <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
-                    </button>
-                  </DropdownMenuItem>
-                </form>
-              </>
-            )}
+            {guest ? null : <TripMenuAccountActions accountEmail={accountEmail} />}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -220,6 +198,15 @@ export function TripBarMenu({
                 <T message={" Trip settings "} />
               </Button>
             ) : null}
+            {onInviteTrip ? (
+              <Button
+                className="min-h-11 w-full justify-start px-3 font-normal"
+                onClick={() => runMobileAction(onInviteTrip)}
+                variant="ghost"
+              >
+                <UserPlus aria-hidden="true" className="size-4" /> <T message="Invite" />
+              </Button>
+            ) : null}
             {historyHref ? (
               <Button
                 asChild
@@ -243,33 +230,11 @@ export function TripBarMenu({
             ) : null}
             <LanguageSwitcher expanded />
             {guest ? null : (
-              <>
-                <p
-                  className="truncate px-3 pb-1 pt-2 text-xs text-muted-foreground"
-                  title={accountEmail}
-                >
-                  {accountEmail}
-                </p>
-                <Button
-                  asChild
-                  className="min-h-11 w-full justify-start px-3 font-normal"
-                  variant="ghost"
-                >
-                  <Link href="/account" onClick={() => setPanelOpen(false)}>
-                    <UserRound aria-hidden="true" className="size-4" /> <T message={" Account "} />
-                  </Link>
-                </Button>
-                <form action={logout}>
-                  <input name="surface" type="hidden" value="planner_app_bar" />
-                  <Button
-                    className="min-h-11 w-full justify-start px-3 font-normal"
-                    type="submit"
-                    variant="ghost"
-                  >
-                    <LogOut aria-hidden="true" className="size-4" /> <T message={" Log out "} />
-                  </Button>
-                </form>
-              </>
+              <TripMenuAccountActions
+                accountEmail={accountEmail}
+                mobile
+                onNavigate={() => setPanelOpen(false)}
+              />
             )}
           </div>
         </div>

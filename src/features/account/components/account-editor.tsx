@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { SheetTitle } from "@/components/ui/sheet";
 import { updateAccount } from "@/features/account/actions";
-import { logoutSession } from "@/features/auth/actions";
+import { logout } from "@/features/auth/actions";
 import type { Locale } from "@/features/i18n/config";
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
@@ -172,12 +172,11 @@ function AccountForm({
                 setLogoutError(undefined);
                 const formData = new FormData();
                 formData.set("surface", "account");
-                const result = await logoutSession(formData);
-                if (result.error) {
-                  setLogoutError(result.error);
-                  return;
+                try {
+                  await logout(formData);
+                } catch {
+                  setLogoutError("Sign-out could not be completed. Please try again.");
                 }
-                window.location.assign("/login");
               })
             }
             type="button"

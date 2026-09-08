@@ -7,9 +7,11 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/features/auth/actions";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
+import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
 import { getRequestLocale } from "@/features/i18n/server";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 import { getAuthProvider } from "@/platform/composition/server";
+import { appUserIdentityLabel } from "@/platform/contracts/auth";
 
 export const metadata: Metadata = {
   robots: { follow: false, index: false, noarchive: true },
@@ -22,6 +24,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
 
   return (
     <div className="trips-shell min-h-dvh bg-background">
+      <AuthenticatedGuestStorageCleanup />
       <AuthenticatedTelemetryIdentity appUserId={user.id} locale={locale} />
       <header className="trips-global-header sticky top-0 z-[80] border-b bg-card/95 backdrop-blur">
         <div className="flex h-14 w-full items-center justify-between px-4 sm:h-16 lg:px-5">
@@ -34,7 +37,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
               <Link href="/account">
                 <UserRound aria-hidden="true" className="size-4 shrink-0" />
                 <span className="hidden max-w-64 truncate sm:inline">
-                  {user.email ?? String(user.metadata.username ?? "Account")}
+                  {appUserIdentityLabel(user)}
                 </span>
                 <span className="sm:hidden">
                   <T message={"Account"} />

@@ -3,31 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { T } from "@/features/i18n/i18n-provider";
+import { Localized, T } from "@/features/i18n/i18n-provider";
+import { historyEventTitle, presentHistoryChanges } from "@/features/trips/history-presentation";
 import { tripIdSchema } from "@/features/trips/schema";
 import { getTripRepository } from "@/platform/composition/server";
-import type { Json } from "@/types/database";
-
-function changeLines(changes: Json) {
-  if (!changes || Array.isArray(changes) || typeof changes !== "object") return [];
-  const formatValue = (value: Json | undefined) => {
-    if (value === null || value === undefined || value === "") return "empty";
-    if (typeof value === "object") return JSON.stringify(value);
-    return String(value);
-  };
-  return Object.entries(changes).map(([field, value]) => {
-    const change = value && !Array.isArray(value) && typeof value === "object" ? value : {};
-    const from = formatValue("before" in change ? change.before : change.from);
-    const to = formatValue("after" in change ? change.after : change.to);
-    return `${field.replaceAll("_", " ")}: ${from} → ${to}`;
-  });
-}
-
-function approximateBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
 
 export default async function TripHistoryPage({
   params,
@@ -44,10 +23,9 @@ export default async function TripHistoryPage({
       ? { createdAt: query.before, id: query.beforeId! }
       : undefined;
   const repository = getTripRepository();
-  const [trip, history, storage] = await Promise.all([
+  const [trip, history] = await Promise.all([
     repository.getById(tripId),
     repository.listHistory(tripId, cursor),
-    repository.getStorageStats(tripId),
   ]);
   if (!trip) notFound();
 
@@ -69,82 +47,68 @@ export default async function TripHistoryPage({
         </div>
       </header>
       <div className="mx-auto max-w-4xl px-4 py-8">
-        {storage ? (
-          <section
-            aria-label="Storage usage"
-            className="mb-6 rounded-xl border bg-card p-4"
-            data-i18n-aria-label
-          >
-            <p className="text-sm font-semibold">
-              <T message={"Approximate collaboration storage"} />
-            </p>
-            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-              <div>
-                <dt className="text-muted-foreground">
-                  <T message={"History"} />
-                </dt>
-                <dd>
-                  {storage.history.rows} · {approximateBytes(storage.history.bytes)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">
-                  <T message={"Replay operations"} />
-                </dt>
-                <dd>
-                  {storage.operations.rows} · {approximateBytes(storage.operations.bytes)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground">
-                  <T message={"Creation receipts"} />
-                </dt>
-                <dd>
-                  {storage.receipts.rows} · {approximateBytes(storage.receipts.bytes)}
-                </dd>
-              </div>
-            </dl>
-            <p className="mt-3 text-xs text-muted-foreground">
-              <T
-                message={
-                  "History is durable. Replay operations and receipts expire after {days} days."
-                }
-                values={{ days: storage.replayWindowDays }}
-              />
-            </p>
-          </section>
-        ) : null}
         {history.entries.length ? (
           <ol className="space-y-3">
-            {history.entries.map((entry) => (
-              <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3" key={entry.id}>
-                <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <History aria-hidden="true" className="size-4" />
-                </span>
-                <article className="min-w-0 rounded-xl border bg-card p-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-bold">{entry.actorLabel}</p>
-                    <time
-                      className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-                      dateTime={entry.createdAt}
-                    >
-                      <Clock3 aria-hidden="true" className="size-3" />
-                      {new Date(entry.createdAt).toLocaleString()}
-                    </time>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold capitalize">
-                    {entry.eventType.replaceAll(".", " ")}
-                  </p>
-                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                    {changeLines(entry.changes).map((line) => (
-                      <li className="break-words" key={line}>
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                </article>
-              </li>
-            ))}
+            {history.entries.map((entry) => {
+              const details = presentHistoryChanges(entry.changes);
+              return (
+                <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3" key={entry.id}>
+                  <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <History aria-hidden="true" className="size-4" />
+                  </span>
+                  <article className="min-w-0 rounded-xl border bg-card p-4">
+                    <p className="font-bold">
+                      <Localized value={historyEventTitle(entry.eventType)} />
+                    </p>
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span className="min-w-0 break-all" data-history-actor="">
+                        {entry.actorLabel}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                      <time className="inline-flex items-center gap-1" dateTime={entry.createdAt}>
+                        <Clock3 aria-hidden="true" className="size-3" />
+                        {new Date(entry.createdAt).toLocaleString()}
+                      </time>
+                    </div>
+                    {details.length ? (
+                      <dl className="mt-3 space-y-2 border-t pt-3 text-sm">
+                        {details.map((detail) => (
+                          <div
+                            className="grid min-w-0 gap-0.5 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-3"
+                            key={`${detail.label}:${detail.before ?? ""}:${detail.after ?? ""}`}
+                          >
+                            <dt className="font-medium text-muted-foreground">
+                              <Localized value={detail.label} />
+                            </dt>
+                            <dd className="min-w-0 break-words">
+                              {detail.before ? (
+                                <span className="text-muted-foreground line-through">
+                                  <Localized value={detail.before} />
+                                </span>
+                              ) : null}
+                              {detail.before && detail.after ? (
+                                <span aria-hidden="true" className="px-1.5 text-muted-foreground">
+                                  →
+                                </span>
+                              ) : null}
+                              {detail.after ? (
+                                <span>
+                                  <Localized value={detail.after} />
+                                </span>
+                              ) : detail.before ? (
+                                <span className="pl-1.5 text-muted-foreground">
+                                  <T message="Removed" />
+                                </span>
+                              ) : null}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    ) : null}
+                  </article>
+                </li>
+              );
+            })}
           </ol>
         ) : (
           <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">

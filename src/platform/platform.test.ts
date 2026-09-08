@@ -42,7 +42,7 @@ import {
   cloudBaseSessionFromData,
   cloudBaseSessionFromVerifiedTokens,
 } from "./cloudbase/session-data.ts";
-import type { AppUserId, SignInInput } from "./contracts/auth.ts";
+import { appUserIdentityLabel, type AppUserId, type SignInInput } from "./contracts/auth.ts";
 import { PlatformOperationError } from "./contracts/errors.ts";
 import { supabasePasswordCredentials } from "./supabase/auth-input.ts";
 import {
@@ -309,6 +309,11 @@ test("CloudBase adapters expose Trip parity and use the approved PG/Auth SDK sur
   assert.match(auth, /phone: phoneForCloudBase\(input\.phone\)/);
   assert.match(auth, /resetPasswordForOld\(/);
   assert.match(auth, /getSession\(\)/);
+  assert.match(
+    auth,
+    /Remote revocation is best-effort; clearing the HttpOnly app session signs this browser out\./,
+  );
+  assert.match(auth, /finally \{\s*clearCloudBaseSession\(store\);\s*\}/);
   assert.match(sessionRuntime, /setSession\(/);
   assert.match(sessionRuntime, /getSession\(/);
   assert.match(sessionRuntime, /refreshSession\(/);
@@ -652,6 +657,22 @@ test("CloudBase session normalization supports the SDK 3.9 Node user ID accessor
       }),
     (error) => error instanceof PlatformOperationError && error.code === "authentication_required",
   );
+});
+
+test("account identity labels use provider identity without object coercion", () => {
+  const user = {
+    email: null,
+    id: "cloudbase-user-123",
+    metadata: { full_name: "trip-planner-cn-test-a" },
+    phone: null,
+  };
+  assert.equal(appUserIdentityLabel(user), "trip-planner-cn-test-a");
+  assert.equal(
+    appUserIdentityLabel({ ...user, email: "traveler@example.com" }),
+    "traveler@example.com",
+  );
+  assert.equal(appUserIdentityLabel({ ...user, phone: "+8619900000101" }), "+8619900000101");
+  assert.equal(appUserIdentityLabel({ ...user, metadata: { username: {} } }), "Account");
 });
 
 test("CloudBase verified JWT normalization rejects expiry and keeps provider-neutral identity", () => {

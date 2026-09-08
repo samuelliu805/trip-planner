@@ -106,8 +106,8 @@ export class CloudBaseAuthProvider implements AuthProvider, PasswordManagementPr
           await auth.signOut();
         });
       }
-    } catch (error) {
-      throw normalizeCloudBaseError(error, "Sign out failed.");
+    } catch {
+      // Remote revocation is best-effort; clearing the HttpOnly app session signs this browser out.
     } finally {
       clearCloudBaseSession(store);
     }

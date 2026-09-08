@@ -280,21 +280,19 @@ async function runAssertions(auth, db, config) {
     ) {
       dataOrThrow(publishUpdate, "A publish title update");
     }
-    aVariant = rows(
+    const aVariantBeforeShare = rows(
       await db
         .from("route_variants")
         .select("id,version")
         .eq("trip_id", aTrip)
         .eq("is_primary", true),
       "A primary variant",
-    )[0]?.id;
+    )[0];
+    aVariant = aVariantBeforeShare?.id;
     if (!aVariant) throw new Error("A primary variant was unavailable");
     const share = dataOrThrow(
       await db.rpc("create_share_page_v4", {
-        expected_variant_version: rows(
-          await db.from("route_variants").select("version").eq("id", aVariant),
-          "A share variant version",
-        )[0].version,
+        expected_variant_version: aVariantBeforeShare.version,
         target_operation_id: crypto.randomUUID(),
         target_variant_id: aVariant,
       }),
@@ -302,6 +300,14 @@ async function runAssertions(auth, db, config) {
     );
     publicToken = share?.publicToken;
     if (!publicToken) throw new Error("A public share token was unavailable");
+    if (share.variantVersion !== aVariantBeforeShare.version)
+      throw new Error("Publishing returned an artificial source Plan version");
+    const aVariantAfterShare = rows(
+      await db.from("route_variants").select("version").eq("id", aVariant),
+      "A source Plan version after publish",
+    )[0]?.version;
+    if (aVariantAfterShare !== aVariantBeforeShare.version)
+      throw new Error("Publishing changed the source Plan version");
     const privateTrip = rows(
       await db.from("trips").select("content_version").eq("id", aTrip),
       "A private content version",
@@ -530,15 +536,27 @@ async function runAssertions(auth, db, config) {
       "B collaborator Research Revert",
     );
     if (reverted?.status !== "reverted") throw new Error("B Research Revert did not succeed");
+    const collaboratorVariantBeforeShare = rows(
+      await db.from("route_variants").select("version").eq("id", aVariant),
+      "B share variant version",
+    )[0].version;
     const collaboratorShare = await db.rpc("create_share_page_v4", {
-      expected_variant_version: rows(
-        await db.from("route_variants").select("version").eq("id", aVariant),
-        "B share variant version",
-      )[0].version,
+      expected_variant_version: collaboratorVariantBeforeShare,
       target_operation_id: crypto.randomUUID(),
       target_variant_id: aVariant,
     });
-    dataOrThrow(collaboratorShare, "B collaborator Share Page create");
+    const collaboratorShareData = dataOrThrow(
+      collaboratorShare,
+      "B collaborator Share Page create",
+    );
+    if (collaboratorShareData.variantVersion !== collaboratorVariantBeforeShare)
+      throw new Error("Publishing returned an artificial source Plan version");
+    const collaboratorVariantAfterShare = rows(
+      await db.from("route_variants").select("version").eq("id", aVariant),
+      "B source Plan version after publish",
+    )[0].version;
+    if (collaboratorVariantAfterShare !== collaboratorVariantBeforeShare)
+      throw new Error("Publishing changed the source Plan version");
     dataOrThrow(await auth.signOut(), "B sign out");
 
     await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
