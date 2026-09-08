@@ -1,6 +1,11 @@
 begin;
 
 grant insert, update, delete on public.research_items to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant execute on function public.research_context_matches_trip(uuid,uuid,uuid,uuid,uuid) to authenticated;
+grant execute on function public.get_public_itinerary_v2(uuid) to authenticated;
+grant insert, update, delete on public.itinerary_items, public.day_route_plans,
+  public.day_route_calculations to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Copy, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import {
@@ -13,7 +14,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
+import { Button } from "@/components/ui/button";
 
 import { InsertRowIcon } from "@/features/itinerary/components/insert-row-icon";
 import { PlannerContextActions } from "@/features/itinerary/components/planner-context-bar";
@@ -24,12 +26,26 @@ import {
 import { PlannerStatus } from "@/features/itinerary/components/planner-layout-elements";
 import type { PlannerToolbarProps } from "@/features/itinerary/components/planner-toolbar-types";
 import type { PlannerDay } from "@/features/itinerary/types";
+import type { PlannerWorkspace } from "@/features/itinerary/types";
+import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { TripAppBar } from "@/features/trips/components/trip-app-bar";
 
 export function PlannerToolbar(props: PlannerToolbarProps) {
   const { t } = useI18n();
   const [dayToRemove, setDayToRemove] = useState<PlannerDay | null>(null);
   const activeDay = props.activeDay;
+  const queryClient = useQueryClient();
+
+  async function reloadRemoveDayScope() {
+    await props.onReloadLatest();
+    if (!dayToRemove) return;
+    const latest = queryClient.getQueryData<PlannerWorkspace>(
+      plannerQueryKey(props.trip.id, props.variantId),
+    );
+    if (latest?.days.some(({ id }) => id === dayToRemove.id)) return;
+    setDayToRemove(null);
+    props.setInteractionError("That day was already removed. The latest Plan is now visible.");
+  }
 
   return (
     <>
@@ -87,6 +103,7 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         shareControls={props.shareControls}
         title={props.trip.title}
         tripId={props.trip.id}
+        tripContentVersion={props.trip.content_version}
         tripVersion={props.trip.version}
         variantControls={props.variantControls}
         variantId={props.variantId}
@@ -96,8 +113,11 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         fillLabel={props.fillLabel}
         fillThroughDay={props.fillThroughDay}
         interactionError={props.interactionError}
+        interactionConflict={props.interactionConflict}
         isFillDragging={props.isFillDragging}
         onDismissError={() => props.setInteractionError(undefined)}
+        onReloadLatest={props.onReloadLatest}
+        reloadPending={props.reloadPending}
         workspaceError={props.workspaceError}
       />
       <AlertDialog
@@ -122,6 +142,17 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
               />
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {props.interactionConflict ? (
+            <Button
+              className="mx-5 min-h-11 sm:mx-6"
+              disabled={props.reloadPending}
+              onClick={() => void reloadRemoveDayScope()}
+              type="button"
+              variant="outline"
+            >
+              <Localized value={props.reloadPending ? "Loading…" : "Reload latest"} />
+            </Button>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel>
               <T message={"Keep day"} />

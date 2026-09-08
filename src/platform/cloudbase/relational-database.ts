@@ -12,7 +12,8 @@ import {
   cloudBasePlaceUpsertRecoveryKey,
   cloudBaseScalarMutationRecoveryKey,
   normalizeCloudBaseRpcResult,
-  recoverCloudBaseDeletedUuidResult,
+  recoverCloudBaseDeletedMutationResult,
+  recoverCloudBaseMutationResult,
   recoverCloudBaseOrderedVoidResult,
   recoverCloudBaseScalarUuidResult,
 } from "./rpc-result-normalization.mjs";
@@ -67,11 +68,16 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
           .select("id")
           .eq("variant_id", mutationKey.variantId)
           .eq("day_number", mutationKey.dayNumber);
-        return recoverCloudBaseScalarUuidResult(value, lookup);
+        return recoverCloudBaseMutationResult(value, lookup, mutationKey.resultKey);
       }
       if (mutationKey?.kind === "remove-day") {
         const lookup = await db.from("trip_days").select("id").eq("id", mutationKey.dayId);
-        return recoverCloudBaseDeletedUuidResult(value, lookup, mutationKey.dayId);
+        return recoverCloudBaseDeletedMutationResult(
+          value,
+          lookup,
+          mutationKey.dayId,
+          mutationKey.resultKey,
+        );
       }
       if (mutationKey?.kind === "create-variant") {
         const lookup = await db
@@ -80,7 +86,7 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
           .eq("trip_id", mutationKey.tripId)
           .eq("name", mutationKey.variantName)
           .eq("color", mutationKey.variantColor);
-        return recoverCloudBaseScalarUuidResult(value, lookup);
+        return recoverCloudBaseMutationResult(value, lookup, mutationKey.resultKey);
       }
       if (mutationKey?.kind === "update-variant") {
         const lookup = await db
@@ -90,7 +96,7 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
           .eq("trip_id", mutationKey.tripId)
           .eq("name", mutationKey.variantName)
           .eq("color", mutationKey.variantColor);
-        return recoverCloudBaseScalarUuidResult(value, lookup);
+        return recoverCloudBaseMutationResult(value, lookup, mutationKey.resultKey);
       }
       if (mutationKey?.kind === "primary-variant") {
         const lookup = await db
@@ -99,7 +105,7 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
           .eq("id", mutationKey.variantId)
           .eq("trip_id", mutationKey.tripId)
           .eq("is_primary", true);
-        return recoverCloudBaseScalarUuidResult(value, lookup);
+        return recoverCloudBaseMutationResult(value, lookup, mutationKey.resultKey);
       }
       if (mutationKey?.kind === "delete-variant") {
         const lookup = await db
@@ -107,7 +113,12 @@ export async function createCloudBaseRelationalDatabase(): Promise<RelationalDat
           .select("id")
           .eq("id", mutationKey.variantId)
           .eq("trip_id", mutationKey.tripId);
-        return recoverCloudBaseDeletedUuidResult(value, lookup, mutationKey.variantId);
+        return recoverCloudBaseDeletedMutationResult(
+          value,
+          lookup,
+          mutationKey.variantId,
+          mutationKey.resultKey,
+        );
       }
       const orderKey = cloudBaseOrderMutationRecoveryKey(name, parameters, recoverable);
       if (orderKey?.kind === "items") {

@@ -867,6 +867,7 @@ test("Phase 5C cached summaries reconcile to authoritative variant identity and 
       {
         ...variants[1],
         color: "#f97316",
+        content_version: 1,
         days_version: 1,
         is_primary: true,
         items_version: 1,
@@ -876,6 +877,7 @@ test("Phase 5C cached summaries reconcile to authoritative variant identity and 
       },
       {
         ...variants[0],
+        content_version: 1,
         days_version: 1,
         is_primary: false,
         items_version: 1,
@@ -898,6 +900,7 @@ test("Phase 5C cached summaries reconcile to authoritative variant identity and 
       [
         {
           ...variants[0],
+          content_version: 1,
           days_version: 1,
           items_version: 1,
           trip_id: tripId,

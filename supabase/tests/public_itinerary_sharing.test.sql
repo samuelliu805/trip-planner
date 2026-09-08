@@ -4,6 +4,21 @@ grant execute on function public.create_route_variant(uuid, uuid, text, text) to
 grant execute on function public.save_day_route_plan(uuid, uuid, uuid[], text[]) to authenticated;
 grant execute on function public.set_primary_route_variant(uuid, uuid) to authenticated;
 grant execute on function public.delete_route_variant(uuid, uuid) to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant execute on function public.create_public_itinerary_link(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,text,text) to authenticated;
+grant execute on function public.create_public_itinerary_link_v3(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer) to authenticated;
+grant execute on function public.list_public_itinerary_links(uuid) to authenticated;
+grant execute on function public.list_public_itinerary_links_v3(uuid) to authenticated;
+grant execute on function public.revoke_public_itinerary_link(uuid) to authenticated;
+grant execute on function public.rotate_public_itinerary_link(uuid) to authenticated;
+grant execute on function public.rotate_public_itinerary_link_v3(uuid) to authenticated;
+grant execute on function public.update_public_itinerary_link(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,text,text) to authenticated;
+grant execute on function public.update_public_itinerary_link_v3(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer) to authenticated;
+grant execute on function public.get_public_itinerary(uuid) to anon, authenticated;
+grant execute on function public.get_public_itinerary_v4(uuid) to anon, authenticated;
+grant insert, update, delete on public.places, public.itinerary_items,
+  public.itinerary_item_links, public.public_itinerary_links, public.trip_members,
+  public.trips to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

@@ -8,6 +8,7 @@ import type {
 } from "@/platform/contracts/trips";
 import { PlatformOperationError } from "@/platform/contracts/errors";
 import { normalizeTrip, normalizeTrips } from "@/platform/trips/normalization";
+import { normalizeTripStorageStats } from "@/platform/trips/storage-stats";
 
 import { createSupabaseServerClient } from "./server";
 
@@ -104,7 +105,7 @@ export class SupabaseTripRepository implements TripRepository {
 
   async update(id: string, input: UpdateTripInput) {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.rpc("update_trip_plan", {
+    const { data, error } = await supabase.rpc("update_trip_plan_v2", {
       target_trip_id: id,
       trip_currency: input.currency,
       trip_day_count: input.dayCount,
@@ -113,6 +114,7 @@ export class SupabaseTripRepository implements TripRepository {
       trip_timezone: input.timezone,
       trip_title: input.title,
       expected_version: input.expectedVersion,
+      expected_content_version: input.expectedContentVersion,
       target_operation_id: input.operationId,
     } as never);
     if (error || !data) throw repositoryError("The trip could not be updated.", error);
@@ -155,9 +157,15 @@ export class SupabaseTripRepository implements TripRepository {
     return Boolean(data);
   }
 
-  async remove(id: string, expectedVersion: number, operationId: string) {
+  async remove(
+    id: string,
+    expectedVersion: number,
+    expectedContentVersion: number,
+    operationId: string,
+  ) {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.rpc("delete_trip_v2", {
+    const { data, error } = await supabase.rpc("delete_trip_v3", {
+      expected_content_version: expectedContentVersion,
       expected_version: expectedVersion,
       target_operation_id: operationId,
       target_trip_id: id,
@@ -222,5 +230,14 @@ export class SupabaseTripRepository implements TripRepository {
       entries,
       nextCursor: rows.length > 50 && last ? { createdAt: last.created_at, id: last.id } : null,
     };
+  }
+
+  async getStorageStats(id: string) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc("trip_collaboration_storage_stats_v2", {
+      target_trip_id: id,
+    });
+    if (error) throw repositoryError("Trip storage usage could not be loaded.", error);
+    return normalizeTripStorageStats(data);
   }
 }

@@ -152,6 +152,11 @@ export function TripForm({
           <input name="operation_id" ref={operationRef} type="hidden" />
           <input name="expected_version" type="hidden" value={currentTrip.version} />
           <input
+            name="expected_content_version"
+            type="hidden"
+            value={currentTrip.content_version}
+          />
+          <input
             defaultValue={currentTrip.timezone}
             key={currentTrip.version}
             name="timezone"

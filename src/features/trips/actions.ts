@@ -30,6 +30,7 @@ import {
   getTripRepository,
 } from "@/platform/composition/server";
 import { getServerProviderConfig } from "@/platform/config/server";
+import { PlatformOperationError } from "@/platform/contracts/errors";
 
 function firstIssue(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Check the form and try again.";
@@ -170,6 +171,7 @@ export async function setTripStatus(input: {
       { actorType: "authenticated", route: "/trips", appUserId: user.id },
     );
     return {
+      conflict: error instanceof PlatformOperationError && error.code === "conflict",
       error:
         error instanceof Error ? error.message : "You do not have permission to update this trip.",
     };
@@ -201,6 +203,25 @@ export async function countActiveSharePages(tripId: string) {
   return data.length;
 }
 
+export async function loadTripStatusSnapshot(tripId: string) {
+  const parsed = tripIdSchema.safeParse(tripId);
+  if (!parsed.success || !(await authenticatedUser())) return null;
+  const trip = await getTripRepository().getById(parsed.data);
+  return trip ? { status: trip.status, version: trip.version } : null;
+}
+
+export async function loadTripDeleteSnapshot(tripId: string) {
+  const parsed = tripIdSchema.safeParse(tripId);
+  if (!parsed.success || !(await authenticatedUser())) return null;
+  const trip = await getTripRepository().getById(parsed.data);
+  if (!trip) return null;
+  return {
+    activeSharePageCount: await countActiveSharePages(parsed.data),
+    contentVersion: trip.content_version,
+    version: trip.version,
+  };
+}
+
 export async function deleteTrip(
   _state: TripActionState,
   formData: FormData,
@@ -208,6 +229,7 @@ export async function deleteTrip(
   const operationId = telemetryOperationId(formData.get("operation_id"));
   const surface = telemetrySurface(formData.get("surface")) ?? "trip_list";
   const parsed = deleteTripSchema.safeParse({
+    expectedContentVersion: formData.get("expected_content_version"),
     expectedVersion: formData.get("expected_version"),
     operationId,
     tripId: formData.get("trip_id"),
@@ -234,6 +256,7 @@ export async function deleteTrip(
     await getTripRepository().remove(
       parsed.data.tripId,
       parsed.data.expectedVersion,
+      parsed.data.expectedContentVersion,
       parsed.data.operationId,
     );
   } catch (error) {
@@ -250,6 +273,8 @@ export async function deleteTrip(
         appUserId: user.id,
       },
     );
+    if (error instanceof PlatformOperationError && error.code === "conflict")
+      return { conflict: true, error: error.message };
     redirect(`/trips/${parsed.data.tripId}?error=delete`);
   }
   await captureServerProductEvent(

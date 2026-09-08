@@ -1295,7 +1295,8 @@ test("Apply review offers large explicit target choices only when matching Plan 
 
 test("the same-row update path never creates a separate Option", async () => {
   const actions = await readFile(new URL("./actions.ts", import.meta.url), "utf8");
-  assert.match(actions, /save_research_item_v2/);
+  assert.match(actions, /save_research_item_v3/);
+  assert.match(actions, /requested_draft_session_id/);
   assert.doesNotMatch(actions, /research_options|create_research_option|sourceIdea/);
 });
 

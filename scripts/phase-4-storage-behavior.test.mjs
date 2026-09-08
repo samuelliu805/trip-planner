@@ -94,6 +94,11 @@ test("cleanup jobs never overlap RPC calls on a shared backend", async () => {
         if (active > 1) throw new Error("concurrent RPC rejected");
         await new Promise((resolve) => setTimeout(resolve, 5));
         active -= 1;
+        if (name === "cleanup_collaboration_replay_v1")
+          return {
+            data: { creationReceipts: 0, deletionReceipts: 0, operations: 0 },
+            error: null,
+          };
         if (name === "expired_share_image_cleanup_batch_v1") return { data: [], error: null };
         if (name === "finalize_expired_share_image_cleanup_v1") return { data: 0, error: null };
         if (name === "asset_cleanup_batch_v2") return { data: [], error: null };
@@ -109,6 +114,7 @@ test("cleanup jobs never overlap RPC calls on a shared backend", async () => {
   const result = await runCleanupJobs(backend, 100);
   assert.equal(maximumActive, 1);
   assert.deepEqual(calls, [
+    "cleanup_collaboration_replay_v1",
     "expired_share_image_cleanup_batch_v1",
     "finalize_expired_share_image_cleanup_v1",
     "asset_cleanup_batch_v2",
@@ -117,6 +123,10 @@ test("cleanup jobs never overlap RPC calls on a shared backend", async () => {
   assert.deepEqual(result, {
     assets: { deletedAssets: 0, deletedFiles: 0, error: null, untrackedFiles: 0 },
     backlog: false,
+    collaborationReplay: {
+      deleted: { creationReceipts: 0, deletionReceipts: 0, operations: 0 },
+      error: null,
+    },
     error: null,
     shareImages: { deletedFiles: 0, error: null, revokedImages: 0 },
   });

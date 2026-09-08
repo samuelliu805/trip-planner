@@ -1,8 +1,8 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { LoaderCircle, Trash2 } from "lucide-react";
-import { useActionState, useEffect, useRef } from "react";
+import { LoaderCircle, RotateCcw, Trash2 } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { deleteTrip } from "@/features/trips/actions";
+import { deleteTrip, loadTripDeleteSnapshot } from "@/features/trips/actions";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 function DeleteAction({
@@ -56,35 +56,62 @@ export function DeleteTripDialog({
   activeSharePageCount,
   onOpenChange,
   onPendingChange,
+  onUnavailable,
   open,
   renderTrigger = true,
   surface = "trip_list",
   title,
   tripId,
   version,
+  contentVersion,
 }: {
   activeSharePageCount: number | null;
   onOpenChange?: (open: boolean) => void;
   onPendingChange?: (pending: boolean) => void;
+  onUnavailable?: (message: string) => void;
   open?: boolean;
   renderTrigger?: boolean;
   surface?: "planner_app_bar" | "trip_list";
   title: string;
   tripId: string;
   version: number;
+  contentVersion: number;
 }) {
   const { t } = useI18n();
-  const checkingSharePages = activeSharePageCount === null;
-  const [, action, pending] = useActionState(deleteTrip, {});
+  const [state, action, pending] = useActionState(deleteTrip, {});
+  const [latestSnapshot, setLatestSnapshot] = useState<Awaited<
+    ReturnType<typeof loadTripDeleteSnapshot>
+  > | null>(null);
+  const [reloadPending, setReloadPending] = useState(false);
+  const latestVersion = latestSnapshot?.version ?? version;
+  const latestContentVersion = latestSnapshot?.contentVersion ?? contentVersion;
+  const latestSharePageCount = latestSnapshot?.activeSharePageCount ?? activeSharePageCount;
+  const checkingSharePages = latestSharePageCount === null;
   const operationRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => onPendingChange?.(pending), [onPendingChange, pending]);
   useEffect(() => () => onPendingChange?.(false), [onPendingChange]);
 
+  async function reloadLatest() {
+    setReloadPending(true);
+    try {
+      const snapshot = await loadTripDeleteSnapshot(tripId);
+      if (!snapshot) {
+        onOpenChange?.(false);
+        onUnavailable?.("This trip is no longer available. The delete dialog was closed safely.");
+        return;
+      }
+      setLatestSnapshot(snapshot);
+    } finally {
+      setReloadPending(false);
+    }
+  }
+
   return (
     <AlertDialog
       onOpenChange={(nextOpen) => {
         if (pending && !nextOpen) return;
+        if (nextOpen) setLatestSnapshot(null);
         onOpenChange?.(nextOpen);
       }}
       open={open}
@@ -121,11 +148,11 @@ export function DeleteTripDialog({
                 <LoaderCircle aria-hidden="true" className="size-4 shrink-0 animate-spin" />
                 <T message={" Checking published Share Pages… "} />
               </span>
-            ) : activeSharePageCount ? (
+            ) : latestSharePageCount ? (
               <span className="mt-3 block border-l-2 border-primary bg-primary/5 px-3 py-2 text-foreground">
                 {t(
                   "{count} published Share Page(s) and their permanent images will remain online as independent snapshots. They will no longer be updateable from this trip. Revoke them before deleting if they should stop working.",
-                  { count: activeSharePageCount },
+                  { count: latestSharePageCount },
                 )}
               </span>
             ) : null}
@@ -133,9 +160,27 @@ export function DeleteTripDialog({
         </AlertDialogHeader>
         <form action={action}>
           <input name="trip_id" type="hidden" value={tripId} />
-          <input name="expected_version" type="hidden" value={version} />
+          <input name="expected_version" type="hidden" value={latestVersion} />
+          <input name="expected_content_version" type="hidden" value={latestContentVersion} />
           <input name="surface" type="hidden" value={surface} />
           <input name="operation_id" ref={operationRef} type="hidden" />
+          {state.error ? (
+            <div className="px-5 pb-3 text-sm text-destructive sm:px-6" role="alert">
+              <Localized value={state.error} />
+              {state.conflict ? (
+                <Button
+                  className="mt-3 min-h-11 w-full sm:w-auto"
+                  disabled={reloadPending}
+                  onClick={() => void reloadLatest()}
+                  type="button"
+                  variant="outline"
+                >
+                  <RotateCcw aria-hidden="true" className="size-4" />
+                  <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending} type="button">
               <T message={"Cancel"} />

@@ -2,6 +2,20 @@ begin;
 
 grant execute on function public.set_item_asset_share_v2(uuid, uuid, text, boolean) to authenticated;
 grant execute on function public.detach_item_asset_v1(uuid, uuid, text) to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant execute on function public.create_share_page_v3(uuid,public.public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean) to authenticated;
+grant execute on function public.prepare_item_asset_v1(uuid,uuid,text,text,bigint,public.asset_media_kind,text) to authenticated;
+grant execute on function public.prepare_item_asset_v2(uuid,uuid,text,text,bigint,public.asset_media_kind,text) to authenticated;
+grant execute on function public.prepare_item_asset_v3(uuid,uuid,text,text,bigint,public.asset_media_kind,text,uuid) to authenticated;
+grant execute on function public.finalize_item_asset_v1(uuid,text,bigint,public.asset_media_kind,text,integer,integer,numeric,boolean) to authenticated;
+grant execute on function public.finalize_item_asset_v2(uuid,text,bigint,public.asset_media_kind,text,integer,integer,numeric,boolean) to authenticated;
+grant execute on function public.commit_item_asset_session_v1(uuid,uuid,uuid) to authenticated;
+grant execute on function public.discard_item_asset_session_v1(uuid,uuid,uuid) to authenticated;
+grant execute on function public.set_item_asset_share_v1(uuid,uuid,text,boolean) to authenticated;
+grant execute on function public.revoke_share_page_v1(uuid) to authenticated;
+grant execute on function public.get_public_share_page_v2(uuid) to authenticated;
+grant insert, update, delete on public.itinerary_items, public.asset_links,
+  public.public_itinerary_links, public.trips to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

@@ -32,6 +32,7 @@ export function ResearchPlanActions({
   item,
   onApplied,
   onReverted,
+  onReloadLatest,
   onSelected,
   plan,
   variantName,
@@ -40,6 +41,7 @@ export function ResearchPlanActions({
   item: ResearchItem;
   onApplied: (application: ResearchPlanApplication) => void;
   onReverted: (applicationId: string, result: RevertRpcResult) => void;
+  onReloadLatest: () => Promise<void>;
   onSelected: (selection: VariantResearchSelection) => void;
   plan: ResearchPlanSnapshot;
   variantName: string;
@@ -49,6 +51,8 @@ export function ResearchPlanActions({
   const [changesOpen, setChangesOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
+  const [conflict, setConflict] = useState(false);
+  const [reloadPending, setReloadPending] = useState(false);
   const [revertResult, setRevertResult] = useState<RevertRpcResult>();
   const impact = deriveOptionImpact(item, plan);
   const targetChoices =
@@ -98,6 +102,7 @@ export function ResearchPlanActions({
     );
     setPending(true);
     setError(undefined);
+    setConflict(false);
     const result = await applyResearchItem({
       category: item.category as "flight" | "rental" | "stay" | "train",
       expectedVersion: item.version,
@@ -115,8 +120,10 @@ export function ResearchPlanActions({
       variantId: plan.variantId,
     });
     setPending(false);
-    if (result.error || !result.data)
+    if (result.error || !result.data) {
+      setConflict(result.code === "conflict");
       return setError(result.error ?? "The option was not applied.");
+    }
     onSelected(result.data.selection);
     onApplied(result.data.application);
     setReviewOpen(false);
@@ -137,6 +144,7 @@ export function ResearchPlanActions({
     );
     setPending(true);
     setError(undefined);
+    setConflict(false);
     const result = await revertResearchApplication({
       applicationId: application.id,
       category: item.category as "flight" | "rental" | "stay" | "train",
@@ -145,13 +153,28 @@ export function ResearchPlanActions({
       tripId: item.trip_id,
     });
     setPending(false);
-    if (result.error || !result.data)
+    if (result.error || !result.data) {
+      setConflict(result.code === "conflict");
       return setError(result.error ?? "The change was not reverted.");
+    }
     setRevertResult(result.data);
+    setConflict(result.data.status === "conflict");
     onReverted(application.id, result.data);
     if (result.data.status === "reverted") {
       setChangesOpen(false);
       router.refresh();
+    }
+  }
+
+  async function reloadLatest() {
+    setReloadPending(true);
+    try {
+      await onReloadLatest();
+      setConflict(false);
+      setError(undefined);
+      setRevertResult(undefined);
+    } finally {
+      setReloadPending(false);
     }
   }
 
@@ -193,16 +216,30 @@ export function ResearchPlanActions({
           <Localized value={error} />
         </p>
       ) : null}
+      {conflict ? (
+        <Button
+          className="mt-2 min-h-11 w-full sm:w-auto"
+          disabled={reloadPending}
+          onClick={() => void reloadLatest()}
+          type="button"
+          variant="outline"
+        >
+          <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
+        </Button>
+      ) : null}
 
       <ResearchApplyReviewDialog
         error={error}
+        conflict={conflict}
         impact={impact}
         item={item}
         onApply={() => void apply()}
         onOpenChange={setReviewOpen}
+        onReloadLatest={reloadLatest}
         onTargetChange={setTargetItemId}
         open={reviewOpen}
         pending={pending}
+        reloadPending={reloadPending}
         targetChoices={targetChoices}
         targetItemId={targetItemId}
         variantName={variantName}
@@ -211,11 +248,14 @@ export function ResearchPlanActions({
         <ResearchApplicationDialog
           application={application}
           error={error}
+          conflict={conflict}
           item={item}
           onOpenChange={setChangesOpen}
+          onReloadLatest={reloadLatest}
           onRevert={() => void revert()}
           open={changesOpen}
           pending={pending}
+          reloadPending={reloadPending}
           result={revertResult}
           variantName={variantName}
         />

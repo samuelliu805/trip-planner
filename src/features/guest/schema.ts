@@ -67,6 +67,7 @@ const itemSchema = z
 
 const daySchema = z
   .object({
+    content_version: z.number().int().positive().optional().default(1),
     date: z.iso.date().nullable(),
     day_number: z.number().int().min(1).max(366),
     id: z.uuid(),
@@ -86,6 +87,7 @@ const workspaceSchema = z
     variant: z
       .object({
         color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        content_version: z.number().int().positive().optional().default(1),
         days_version: z.number().int().positive().optional().default(1),
         id: z.uuid(),
         is_primary: z.literal(true),
@@ -100,6 +102,7 @@ const workspaceSchema = z
 
 const tripSchema = z
   .object({
+    content_version: z.number().int().positive().optional().default(1),
     created_at: z.iso.datetime(),
     currency: z.string().regex(/^[A-Z]{3}$/),
     day_count: z.number().int().min(1).max(366),

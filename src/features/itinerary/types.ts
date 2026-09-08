@@ -15,12 +15,28 @@ export type ItineraryItem = AppRow<"itinerary_items"> & {
 export type PersistedPlaceSnapshot = PlaceSnapshot & { id: string };
 export type TripDay = Pick<
   AppRow<"trip_days">,
-  "date" | "day_number" | "id" | "items_version" | "notes" | "title" | "variant_id" | "version"
+  | "content_version"
+  | "date"
+  | "day_number"
+  | "id"
+  | "items_version"
+  | "notes"
+  | "title"
+  | "variant_id"
+  | "version"
 >;
 
 export type PlannerVariant = Pick<
   AppRow<"route_variants">,
-  "color" | "days_version" | "id" | "is_primary" | "items_version" | "name" | "trip_id" | "version"
+  | "color"
+  | "content_version"
+  | "days_version"
+  | "id"
+  | "is_primary"
+  | "items_version"
+  | "name"
+  | "trip_id"
+  | "version"
 >;
 
 export type PlannerDay = TripDay & { items: ItineraryItem[] };

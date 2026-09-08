@@ -183,6 +183,7 @@ test("guest item and day mutations stay local and preserve importable identifier
     expectedItemsVersion: 1,
     operationId: "00000000-0000-4000-8000-000000000176",
     sourceItemIds: [item.id],
+    sourceVersions: [item.version],
     targetDayId: current.workspace.days[1].id,
     tripId,
     variantId,

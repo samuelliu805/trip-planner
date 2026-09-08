@@ -45,7 +45,8 @@ export async function clearItineraryItems(
   if (!parsed.success) result = { error: firstIssue(parsed.error), code: "validation" };
   else {
     const database = await getRelationalDatabase();
-    const cleared = await database.rpc("clear_route_variant_items_v2", {
+    const cleared = await database.rpc("clear_route_variant_items_v3", {
+      expected_item_versions: parsed.data.itemVersions,
       expected_items_version: parsed.data.expectedItemsVersion,
       target_item_ids: parsed.data.itemIds,
       target_operation_id: parsed.data.operationId,
@@ -54,6 +55,7 @@ export async function clearItineraryItems(
     });
     if (cleared.error)
       result = {
+        code: cleared.error.code === "40001" ? "conflict" : "unexpected",
         error: mutationError(cleared.error?.message ?? "The selected cells could not be cleared."),
       };
     else {

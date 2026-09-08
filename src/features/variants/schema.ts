@@ -15,6 +15,10 @@ const operationIdSchema = z.uuid();
 
 export const createRouteVariantSchema = z.object({
   color: variantColorSchema,
+  expectedSourceContentVersion: z.number().int().positive(),
+  expectedSourceDaysVersion: z.number().int().positive(),
+  expectedSourceItemsVersion: z.number().int().positive(),
+  expectedSourceVersion: z.number().int().positive(),
   name: variantNameSchema,
   sourceVariantId: variantIdentitySchema,
   tripId: variantIdentitySchema,
@@ -39,7 +43,14 @@ export const routeVariantIdentitySchema = z.object({
   operationId: operationIdSchema,
 });
 
+export const deleteRouteVariantSchema = routeVariantIdentitySchema.extend({
+  expectedContentVersion: z.number().int().positive(),
+  expectedDaysVersion: z.number().int().positive(),
+  expectedItemsVersion: z.number().int().positive(),
+});
+
 export type CreateRouteVariantInput = z.input<typeof createRouteVariantSchema>;
 export type DuplicateRouteVariantInput = z.input<typeof duplicateRouteVariantSchema>;
 export type UpdateRouteVariantInput = z.input<typeof updateRouteVariantSchema>;
 export type RouteVariantIdentityInput = z.input<typeof routeVariantIdentitySchema>;
+export type DeleteRouteVariantInput = z.input<typeof deleteRouteVariantSchema>;

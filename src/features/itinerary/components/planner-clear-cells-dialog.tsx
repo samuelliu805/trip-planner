@@ -19,13 +19,19 @@ export function PlannerClearCellsDialog({
   itemCount,
   onCancel,
   onConfirm,
+  onReloadLatest,
   pending,
+  reloadPending,
+  conflict,
 }: {
   error?: string;
   itemCount: number;
   onCancel: () => void;
   onConfirm: () => void;
+  onReloadLatest: () => Promise<void>;
   pending: boolean;
+  reloadPending: boolean;
+  conflict: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -46,6 +52,17 @@ export function PlannerClearCellsDialog({
           <p className="text-sm text-destructive" role="alert">
             <Localized value={error} />
           </p>
+        ) : null}
+        {conflict ? (
+          <Button
+            className="mx-5 min-h-11 sm:mx-6"
+            disabled={reloadPending}
+            onClick={() => void onReloadLatest()}
+            type="button"
+            variant="outline"
+          >
+            <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
+          </Button>
         ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>

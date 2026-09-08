@@ -28,7 +28,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { countActiveSharePages, setTripStatus } from "@/features/trips/actions";
+import {
+  countActiveSharePages,
+  loadTripStatusSnapshot,
+  setTripStatus,
+} from "@/features/trips/actions";
 import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { TripSettingsEditor } from "@/features/trips/components/trip-settings-editor";
@@ -81,9 +85,17 @@ export function TripCard({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sharePageCount, setSharePageCount] = useState<number | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusConflict, setStatusConflict] = useState(false);
+  const [statusReloadPending, setStatusReloadPending] = useState(false);
+  const [statusSnapshot, setStatusSnapshot] = useState<{
+    status: string;
+    version: number;
+  }>();
+  const [unavailable, setUnavailable] = useState(false);
   const [statusPending, startStatusChange] = useTransition();
   const setTripListLoading = useTripListLoading();
-  const status = tripStatusOf(trip);
+  const status = tripStatusOf({ ...trip, status: statusSnapshot?.status ?? trip.status });
+  const statusVersion = statusSnapshot?.version ?? trip.version;
   const toggle = tripStatusToggle(status);
   const onDeletePendingChange = useCallback(
     (pending: boolean) =>
@@ -104,8 +116,9 @@ export function TripCard({
   function changeStatus() {
     startStatusChange(async () => {
       setStatusError(null);
+      setStatusConflict(false);
       const result = await setTripStatus({
-        expectedVersion: trip.version,
+        expectedVersion: statusVersion,
         operationId: newTelemetryOperationId(),
         status: toggle.next,
         surface: "trip_list",
@@ -113,10 +126,30 @@ export function TripCard({
       });
       if (result.error) {
         setStatusError(result.error);
+        setStatusConflict(Boolean(result.conflict));
         return;
       }
+      setStatusSnapshot({ status: toggle.next, version: statusVersion + 1 });
       router.refresh();
     });
+  }
+
+  async function reloadLatestStatus() {
+    setStatusReloadPending(true);
+    try {
+      const latest = await loadTripStatusSnapshot(trip.id);
+      if (!latest) {
+        setUnavailable(true);
+        setStatusConflict(false);
+        setStatusError("This trip is no longer available. Its actions have been disabled.");
+        return;
+      }
+      setStatusSnapshot(latest);
+      setStatusConflict(false);
+      setStatusError(null);
+    } finally {
+      setStatusReloadPending(false);
+    }
   }
 
   return (
@@ -155,6 +188,7 @@ export function TripCard({
               <Button
                 aria-label={t("Actions for {title}", { title: trip.title })}
                 className="relative z-10 -mr-2 -mt-2 size-11 shrink-0 px-0"
+                disabled={unavailable}
                 variant="ghost"
               >
                 <MoreVertical aria-hidden="true" className="size-5" />
@@ -226,6 +260,18 @@ export function TripCard({
           value={statusError}
         >
           {statusError ? <Localized value={statusError} /> : null}
+          {statusConflict ? (
+            <Button
+              className="ml-3 min-h-11"
+              disabled={statusReloadPending}
+              onClick={() => void reloadLatestStatus()}
+              type="button"
+              variant="outline"
+            >
+              <RotateCcw aria-hidden="true" className="size-4" />
+              <Localized value={statusReloadPending ? "Loading…" : "Reload latest"} />
+            </Button>
+          ) : null}
         </AutoDismissAlert>
       </Card>
 
@@ -242,8 +288,10 @@ export function TripCard({
       {trip.role === "owner" ? (
         <DeleteTripDialog
           activeSharePageCount={sharePageCount}
+          contentVersion={trip.content_version}
           onOpenChange={setDeleteOpen}
           onPendingChange={onDeletePendingChange}
+          onUnavailable={setStatusError}
           open={deleteOpen}
           renderTrigger={false}
           title={trip.title}

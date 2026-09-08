@@ -34,7 +34,8 @@ export async function POST(
   if (!user) return Response.json({ error: "Sign in to add attachments." }, { status: 401 });
   const database = await getRelationalDatabase();
 
-  const result = await database.rpc("prepare_item_asset_v3", {
+  const result = await database.rpc("prepare_item_asset_v4", {
+    expected_item_version: input.data.expectedVersion,
     requested_byte_size: input.data.byteSize,
     requested_filename: input.data.fileName,
     requested_media_kind: input.data.kind,

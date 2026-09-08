@@ -1,4 +1,6 @@
 export const tripsZhCN: Record<string, string> = {
+  "Approximate collaboration storage": "协作存储用量估算",
+  "Creation receipts": "创建回执",
   Collaborator: "协作者",
   "Collaborator removed.": "已移除协作者。",
   "Check the invitation and try again.": "请检查邀请信息后重试。",
@@ -12,6 +14,17 @@ export const tripsZhCN: Record<string, string> = {
   Owner: "所有者",
   People: "协作成员",
   "Reload latest": "重新加载最新版本",
+  "Reload this trip": "重新加载此行程",
+  "That day was already removed. The latest Plan is now visible.":
+    "该日期已被其他成员移除，现已显示最新方案。",
+  "That Plan was already deleted. The latest Plans are now visible.":
+    "该方案已被其他成员删除，现已显示最新方案列表。",
+  "This trip is no longer available. The delete dialog was closed safely.":
+    "该行程已不可用，删除确认框已安全关闭。",
+  "Replay operations": "重放操作",
+  "Storage usage": "存储用量",
+  "History is durable. Replay operations and receipts expire after {days} days.":
+    "修改记录会长期保留；重放操作与回执会在 {days} 天后过期。",
   "The complete item draft is required.": "需要完整的项目草稿。",
   "The saved itinerary item could not be read.": "无法读取已保存的行程项目。",
   "Latest saved item loaded (version {version}). Your draft is still here.":
@@ -39,6 +52,10 @@ export const tripsZhCN: Record<string, string> = {
     "重新加载只会替换当前行程设置，并保持编辑器打开。",
   "Reloading replaces only this item and keeps the editor open.":
     "重新加载只会替换当前项目，并保持编辑器打开。",
+  "This Research item is no longer available. Its open action was closed safely.":
+    "此 Research 项目已不存在，相关操作已安全关闭。",
+  "This trip is no longer available. Its actions have been disabled.":
+    "此行程已不存在或你已失去访问权限，相关操作已停用。",
   "Sign in to invite someone.": "请先登录再邀请成员。",
   "The collaborator could not be removed.": "无法移除协作者。",
   "Trip history": "行程修改记录",

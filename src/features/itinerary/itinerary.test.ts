@@ -279,6 +279,7 @@ test("planner initially selects the first Activity cell", () => {
 test("active variant resolution honors a valid query and safely falls back to primary", () => {
   const primary = {
     color: "#0f766e",
+    content_version: 1,
     days_version: 1,
     id: ids.variant,
     is_primary: true,
@@ -751,7 +752,12 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
-  assert.match(deleteDialog, /const \[, action, pending\] = useActionState\(deleteTrip, \{\}\)/);
+  assert.match(
+    deleteDialog,
+    /const \[state, action, pending\] = useActionState\(deleteTrip, \{\}\)/,
+  );
+  assert.match(deleteDialog, /state\.conflict[\s\S]*Reload latest/);
+  assert.match(deleteDialog, /loadTripDeleteSnapshot\(tripId\)/);
   assert.match(deleteDialog, /<form action=\{action\}>/);
   assert.doesNotMatch(deleteDialog, /AlertDialogAction/);
   assert.match(deleteDialog, /<Button[\s\S]*type="submit"[\s\S]*variant="destructive"/);
@@ -939,7 +945,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(data, /getPlannerVariants/);
   assert.match(
     data,
-    /select\("id, trip_id, name, color, is_primary, version, days_version, items_version"\)/,
+    /select\(\s*"id, trip_id, name, color, is_primary, version, days_version, items_version, content_version"/,
   );
   assert.match(data, /getPlannerWorkspace\(\s*tripId: string,\s*variantId: string/);
   assert.match(data, /\.eq\("id", variantId\)/);
@@ -974,7 +980,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(clearDialog, /Saved day routes[\s\S]*will need editing/);
   assert.match(toolbar, /Clear selected cells/);
   assert.match(toolbar, /Trip Planner \/|Back to Trips/);
-  assert.match(itineraryActions, /rpc\("clear_route_variant_items_v2"/);
+  assert.match(itineraryActions, /rpc\("clear_route_variant_items_v3"/);
   assert.match(
     variantUi,
     /wasActive[\s\S]*find\(\(\{ is_primary \}\) => is_primary\)[\s\S]*window\.location\.assign/,
@@ -2591,6 +2597,7 @@ test("edit and delete inputs validate", () => {
     clearItineraryItemsSchema.safeParse({
       expectedItemsVersion: 1,
       itemIds: [ids.item],
+      itemVersions: [1],
       operationId: "00000000-0000-4000-8000-000000000093",
       tripId: ids.trip,
       variantId: ids.variant,
@@ -2601,6 +2608,7 @@ test("edit and delete inputs validate", () => {
     clearItineraryItemsSchema.safeParse({
       expectedItemsVersion: 1,
       itemIds: [ids.item, ids.item],
+      itemVersions: [1, 1],
       operationId: "00000000-0000-4000-8000-000000000094",
       tripId: ids.trip,
       variantId: ids.variant,
@@ -2730,6 +2738,7 @@ test("day insertion and removal inputs stay scoped to a trip and variant", () =>
   assert.equal(
     removeTripDaySchema.safeParse({
       dayId: ids.day,
+      expectedContentVersion: 1,
       expectedDaysVersion: 1,
       expectedVersion: 1,
       operationId: "00000000-0000-4000-8000-000000000082",
@@ -2780,6 +2789,7 @@ test("copies get new IDs, destination ordering, and independent values", () => {
       expectedItemsVersion: 1,
       operationId: "00000000-0000-4000-8000-000000000083",
       sourceItemIds: [ids.item],
+      sourceVersions: [1],
       targetDayId: ids.targetDay,
       tripId: ids.trip,
       variantId: ids.variant,

@@ -11,6 +11,7 @@ export const clearItineraryItemsSchema = z
   .object({
     ...itemTelemetryFields,
     itemIds: z.array(z.uuid()).min(1).max(2000),
+    itemVersions: z.array(z.number().int().positive()).min(1).max(2000),
     expectedItemsVersion: z.number().int().positive(),
     tripId: z.uuid(),
     variantId: z.uuid(),
@@ -18,6 +19,10 @@ export const clearItineraryItemsSchema = z
   .refine(
     (value) => new Set(value.itemIds).size === value.itemIds.length,
     "Selected items must be unique.",
+  )
+  .refine(
+    (value) => value.itemIds.length === value.itemVersions.length,
+    "Every selected item must include its current version.",
   );
 
 export const insertTripDaySchema = z.object({
@@ -30,6 +35,7 @@ export const insertTripDaySchema = z.object({
 
 export const removeTripDaySchema = z.object({
   dayId: z.uuid(),
+  expectedContentVersion: z.number().int().positive(),
   expectedDaysVersion: z.number().int().positive(),
   expectedVersion: z.number().int().positive(),
   operationId: z.uuid(),
@@ -70,7 +76,9 @@ export const copyItineraryItemsSchema = z
     preservePlace: z.boolean().optional().default(true),
     expectedItemsVersion: z.number().int().positive(),
     replaceTargetItemIds: z.array(z.uuid()).max(2000).optional().default([]),
+    replaceTargetVersions: z.array(z.number().int().positive()).max(2000).optional().default([]),
     sourceItemIds: z.array(z.uuid()).max(2000),
+    sourceVersions: z.array(z.number().int().positive()).max(2000),
     targetDayId: z.uuid(),
     tripId: z.uuid(),
     variantId: z.uuid(),
@@ -82,6 +90,12 @@ export const copyItineraryItemsSchema = z
   .refine(
     (value) => value.sourceItemIds.length + value.replaceTargetItemIds.length > 0,
     "At least one copied or replaced item is required.",
+  )
+  .refine(
+    (value) =>
+      value.sourceItemIds.length === value.sourceVersions.length &&
+      value.replaceTargetItemIds.length === value.replaceTargetVersions.length,
+    "Every copied or replaced item must include its current version.",
   );
 
 export type ClearItineraryItemsInput = z.input<typeof clearItineraryItemsSchema>;

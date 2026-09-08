@@ -1,4 +1,10 @@
 export const attachmentsZhCN: Record<string, string> = {
+  "Attachment drafts are committed by saving the itinerary item.":
+    "附件草稿会在保存行程项目时一并提交。",
+  "Research attachments are committed by saving the idea.": "附件草稿会在保存灵感时一并提交。",
+  "Reload latest attachments": "重新加载最新附件",
+  "Reload the item and try again.": "请重新加载该项目后重试。",
+  "This item was deleted or your access was revoked.": "该项目已被删除，或你的访问权限已被撤销。",
   "Add files": "添加文件",
   "Asset cleanup is not supported by this backend": "当前后端不支持附件清理。",
   Attachments: "附件",

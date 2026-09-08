@@ -56,6 +56,14 @@ function cleanupCount(value) {
     : null;
 }
 
+function replayCleanup(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const fields = ["creationReceipts", "deletionReceipts", "operations"];
+  return fields.every((field) => Number.isInteger(value[field]) && value[field] >= 0)
+    ? Object.fromEntries(fields.map((field) => [field, value[field]]))
+    : null;
+}
+
 function transientNetworkFailure(error) {
   const code = typeof error?.code === "string" ? error.code : "";
   const message = typeof error?.message === "string" ? error.message : "";
@@ -184,7 +192,21 @@ export async function cleanupExpiredShareImages(backend, limit = 100) {
   return { deletedFiles: paths.length, error: null, revokedImages: finalizedCount };
 }
 
+export async function cleanupCollaborationReplay(backend, limit = 1000) {
+  const result = await rpcWithRetry(backend.database, "cleanup_collaboration_replay_v1", {
+    requested_limit: limit,
+  });
+  const deleted = replayCleanup(result.data);
+  return result.error || !deleted
+    ? {
+        deleted: { creationReceipts: 0, deletionReceipts: 0, operations: 0 },
+        error: "Collaboration replay cleanup unavailable",
+      }
+    : { deleted, error: null };
+}
+
 export async function runCleanupJobs(backend, limit = 100) {
+  const collaborationReplay = await cleanupCollaborationReplay(backend, Math.max(1000, limit));
   const shareImages = await cleanupExpiredShareImages(backend, limit);
   const assets = await drainAssetDeletionQueue(backend, limit);
   return {
@@ -193,7 +215,8 @@ export async function runCleanupJobs(backend, limit = 100) {
       shareImages.revokedImages >= limit ||
       assets.deletedAssets >= limit ||
       assets.untrackedFiles >= limit,
-    error: shareImages.error ?? assets.error,
+    collaborationReplay,
+    error: collaborationReplay.error ?? shareImages.error ?? assets.error,
     shareImages,
   };
 }

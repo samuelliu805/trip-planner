@@ -3,9 +3,13 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { RotateCcw } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import {
   detachAttachment,
+  loadLatestAttachments,
   reportAttachmentUploadFailure,
   setAttachmentShare,
 } from "@/features/attachments/actions";
@@ -49,6 +53,7 @@ export function SavedItemAttachmentsSection({
   const { t } = useI18n();
   const router = useRouter();
   const [attachments, setAttachments] = useState<OwnerAttachment[]>(item?.attachments ?? []);
+  const [itemVersion, setItemVersion] = useState(item.version);
   const [tasks, setTasks] = useState<UploadTask[]>([]);
   const [error, setError] = useState<string>();
   const [viewerId, setViewerId] = useState<string>();
@@ -101,6 +106,7 @@ export function SavedItemAttachmentsSection({
   async function runUpload(task: UploadTask) {
     try {
       const attachment = await uploadFileAttachment({
+        expectedVersion: itemVersion,
         file: task.file,
         itemId: item.id,
         onProgress: (progress) => updateTask(task.id, { progress }),
@@ -269,9 +275,39 @@ export function SavedItemAttachmentsSection({
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          <Localized value={error} />
-        </p>
+        <div className="space-y-2" role="alert">
+          <p className="text-sm text-destructive">
+            <Localized value={error} />
+          </p>
+          {error.includes("Reload") ? (
+            <Button
+              className="min-h-11"
+              onClick={() =>
+                startMutation(async () => {
+                  const latest = await loadLatestAttachments({
+                    entityId: item.id,
+                    target: "itinerary",
+                    tripId,
+                  });
+                  if ("error" in latest) {
+                    setError(latest.error);
+                    return;
+                  }
+                  setItemVersion(latest.version);
+                  setAttachments((current) => [
+                    ...latest.data,
+                    ...current.filter(({ draft }) => draft),
+                  ]);
+                  setError(undefined);
+                })
+              }
+              type="button"
+              variant="outline"
+            >
+              <RotateCcw className="size-4" /> <T message="Reload latest attachments" />
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       <AttachmentViewer

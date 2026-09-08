@@ -12,6 +12,7 @@ export const updateTripSchema = z
   .object({
     tripId: z.uuid(),
     expectedVersion: z.coerce.number().int().positive(),
+    expectedContentVersion: z.coerce.number().int().positive(),
     operationId: z.uuid(),
     title: z.string().trim().min(1, "Enter a trip title.").max(120),
     timezone: z.string().trim().min(1, "Enter an IANA timezone."),
@@ -47,6 +48,7 @@ export const setTripStatusSchema = z.object({
 });
 
 export const deleteTripSchema = z.object({
+  expectedContentVersion: z.coerce.number().int().positive(),
   expectedVersion: z.coerce.number().int().positive(),
   operationId: z.uuid(),
   tripId: z.uuid(),

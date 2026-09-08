@@ -5,9 +5,11 @@ import {
   signIn,
 } from "./lib/cloudbase-pg-live.mjs";
 
-const userA = "trip-planner-cn-test-a";
-const userB = "trip-planner-cn-test-b";
+const userA = "19900000101";
+const userB = "19900000102";
+const userC = "19900000103";
 const runLabel = `cloudbase-security-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const unregisteredPhone = `198${Date.now().toString().slice(-8)}`;
 
 function rows(result, label) {
   const data = dataOrThrow(result, label);
@@ -86,19 +88,21 @@ async function assertSignedOut(auth, label) {
 }
 
 async function createTrip(db, title) {
-  const rpc = await db.rpc("create_trip", {
+  const rpc = await db.rpc("create_trip_v3", {
     trip_title: title,
     trip_start_date: null,
     trip_end_date: null,
     trip_timezone: "UTC",
     trip_currency: "USD",
     trip_day_count: 1,
+    trip_locale: "en",
+    target_operation_id: crypto.randomUUID(),
   });
   if (
     rpc.error &&
     !/(?:SyntaxError:.*JSON|not valid JSON|JSON at position)/i.test(String(rpc.error.message ?? ""))
   ) {
-    dataOrThrow(rpc, "fixture create_trip");
+    dataOrThrow(rpc, "fixture create_trip_v3");
   }
   // SDK 3.9.0 currently tries to JSON.parse a scalar UUID response. The RPC commits first, so
   // resolve the fixture through the unique controlled title under the same RLS session.
@@ -141,21 +145,30 @@ async function deleteOwnedFixtures(auth, db, username, password, knownTripId) {
   try {
     await signIn(auth, username, password);
     const discovered = rows(
-      await db.from("trips").select("id").like("title", `${runLabel}%`),
+      await db.from("trips").select("id,version,content_version").like("title", `${runLabel}%`),
       `${username} cleanup lookup`,
-    ).map((trip) => trip.id);
-    const tripIds = [...new Set([knownTripId, ...discovered].filter(Boolean))];
+    );
+    const tripIds = [...new Set([knownTripId, ...discovered.map(({ id }) => id)].filter(Boolean))];
     const graph = await fixtureGraph(db, tripIds);
 
     for (const id of tripIds) {
       try {
-        const deleted = rows(
-          await db.from("trips").delete().eq("id", id).select("id"),
+        const trip =
+          discovered.find((candidate) => candidate.id === id) ??
+          rows(
+            await db.from("trips").select("id,version,content_version").eq("id", id),
+            `${username} cleanup version`,
+          )[0];
+        if (!trip) continue;
+        dataOrThrow(
+          await db.rpc("delete_trip_v3", {
+            expected_content_version: trip.content_version,
+            expected_version: trip.version,
+            target_operation_id: crypto.randomUUID(),
+            target_trip_id: id,
+          }),
           `${username} cleanup delete`,
         );
-        if (deleted.length !== 1 || deleted[0].id !== id) {
-          failures.push(`${username} cleanup delete returned no exact row for ${id}`);
-        }
       } catch (error) {
         failures.push(`${username} cleanup delete ${id}: ${failureMessage(error)}`);
       }
@@ -197,12 +210,18 @@ async function runAssertions(auth, db, config) {
   let aVariant = null;
   let bTrip = null;
   let publicToken = null;
+  let sharedTripSnapshot = null;
+  let invitedMemberId = null;
   let assertionFailure = null;
   try {
     const aId = await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
     await assertSessionLifecycle(auth, aId);
     aTrip = await createTrip(db, `${runLabel}-a`);
-    const updated = await db.rpc("update_trip_plan", {
+    const initialTrip = rows(
+      await db.from("trips").select("content_version").eq("id", aTrip),
+      "A trip content version",
+    )[0];
+    const updated = await db.rpc("update_trip_plan_v2", {
       target_trip_id: aTrip,
       trip_title: `${runLabel}-a-updated`,
       trip_start_date: null,
@@ -211,6 +230,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 1,
+      expected_content_version: initialTrip.content_version,
       target_operation_id: crypto.randomUUID(),
     });
     if (
@@ -219,7 +239,7 @@ async function runAssertions(auth, db, config) {
         String(updated.error.message ?? ""),
       )
     ) {
-      dataOrThrow(updated, "A own update_trip_plan");
+      dataOrThrow(updated, "A own update_trip_plan_v2");
     }
     const statusUpdate = await db.rpc("update_trip_status", {
       expected_version: 2,
@@ -236,7 +256,11 @@ async function runAssertions(auth, db, config) {
       dataOrThrow(statusUpdate, "A own status update");
     const intendedTitle = `${runLabel}-published`;
     const privateTitle = `${runLabel}-private-after-publish`;
-    const publishUpdate = await db.rpc("update_trip_plan", {
+    const publishTrip = rows(
+      await db.from("trips").select("content_version").eq("id", aTrip),
+      "A publish content version",
+    )[0];
+    const publishUpdate = await db.rpc("update_trip_plan_v2", {
       target_trip_id: aTrip,
       trip_title: intendedTitle,
       trip_start_date: null,
@@ -245,6 +269,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 3,
+      expected_content_version: publishTrip.content_version,
       target_operation_id: crypto.randomUUID(),
     });
     if (
@@ -256,17 +281,32 @@ async function runAssertions(auth, db, config) {
       dataOrThrow(publishUpdate, "A publish title update");
     }
     aVariant = rows(
-      await db.from("route_variants").select("id").eq("trip_id", aTrip).eq("is_primary", true),
+      await db
+        .from("route_variants")
+        .select("id,version")
+        .eq("trip_id", aTrip)
+        .eq("is_primary", true),
       "A primary variant",
     )[0]?.id;
     if (!aVariant) throw new Error("A primary variant was unavailable");
     const share = dataOrThrow(
-      await db.rpc("create_share_page_v3", { target_variant_id: aVariant }),
+      await db.rpc("create_share_page_v4", {
+        expected_variant_version: rows(
+          await db.from("route_variants").select("version").eq("id", aVariant),
+          "A share variant version",
+        )[0].version,
+        target_operation_id: crypto.randomUUID(),
+        target_variant_id: aVariant,
+      }),
       "A immutable public share",
     );
     publicToken = share?.publicToken;
     if (!publicToken) throw new Error("A public share token was unavailable");
-    const privateUpdate = await db.rpc("update_trip_plan", {
+    const privateTrip = rows(
+      await db.from("trips").select("content_version").eq("id", aTrip),
+      "A private content version",
+    )[0];
+    const privateUpdate = await db.rpc("update_trip_plan_v2", {
       target_trip_id: aTrip,
       trip_title: privateTitle,
       trip_start_date: null,
@@ -275,6 +315,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 4,
+      expected_content_version: privateTrip.content_version,
       target_operation_id: crypto.randomUUID(),
     });
     if (
@@ -285,35 +326,278 @@ async function runAssertions(auth, db, config) {
     ) {
       dataOrThrow(privateUpdate, "A private title update");
     }
+    if (
+      dataOrThrow(
+        await db.rpc("invite_trip_collaborator", {
+          target_identifier: userB,
+          target_operation_id: crypto.randomUUID(),
+          target_trip_id: aTrip,
+        }),
+        "A phone invitation for B",
+      ) !== true
+    )
+      throw new Error("Registered phone invitation did not create B membership");
+    const membersBeforeUnregistered = rows(
+      await db.from("trip_members").select("id,user_id").eq("trip_id", aTrip),
+      "members before unregistered invitation",
+    );
+    dataOrThrow(
+      await db.rpc("invite_trip_collaborator", {
+        target_identifier: unregisteredPhone,
+        target_operation_id: crypto.randomUUID(),
+        target_trip_id: aTrip,
+      }),
+      "A unregistered phone invitation",
+    );
+    const membersAfterUnregistered = rows(
+      await db.from("trip_members").select("id,user_id").eq("trip_id", aTrip),
+      "members after unregistered invitation",
+    );
+    if (membersAfterUnregistered.length !== membersBeforeUnregistered.length)
+      throw new Error("Unregistered phone invitation created a membership");
+    sharedTripSnapshot = rows(
+      await db.from("trips").select("version,content_version").eq("id", aTrip),
+      "A shared conflict snapshot",
+    )[0];
     dataOrThrow(await auth.signOut(), "A sign out");
     await assertSignedOut(auth, "A sign out");
 
     const bId = await signIn(auth, userB, config.CLOUDBASE_TEST_USER_B_PASSWORD);
     if (bId === aId) throw new Error("Controlled users A and B resolved to the same identity");
     bTrip = await createTrip(db, `${runLabel}-b`);
-    const crossPublish = await db.rpc("create_share_page_v3", { target_variant_id: aVariant });
-    if (!crossPublish.error) throw new Error("B published A's route variant");
+    const sharedTrip = rows(
+      await db.from("trips").select("id,version,content_version").eq("id", aTrip),
+      "B collaborator Trips visibility",
+    )[0];
+    if (!sharedTrip) throw new Error("B did not see A's shared Trip");
+    const bMembership = rows(
+      await db.from("trip_members").select("id,role").eq("trip_id", aTrip).eq("user_id", bId),
+      "B collaborator role",
+    )[0];
+    if (bMembership?.role !== "collaborator") throw new Error("B role was not collaborator");
+    dataOrThrow(
+      await db.rpc("update_trip_plan_v2", {
+        target_trip_id: aTrip,
+        trip_title: `${runLabel}-collaborator-edit`,
+        trip_start_date: null,
+        trip_end_date: null,
+        trip_day_count: 1,
+        trip_timezone: "UTC",
+        trip_currency: "USD",
+        expected_version: sharedTrip.version,
+        expected_content_version: sharedTrip.content_version,
+        target_operation_id: crypto.randomUUID(),
+      }),
+      "B collaborator trip edit",
+    );
+    if (
+      dataOrThrow(
+        await db.rpc("invite_trip_collaborator", {
+          target_identifier: userC,
+          target_operation_id: crypto.randomUUID(),
+          target_trip_id: aTrip,
+        }),
+        "B collaborator phone invitation for C",
+      ) !== true
+    )
+      throw new Error("B could not invite registered collaborator C");
+    invitedMemberId = rows(
+      await db.from("trip_members").select("id").eq("trip_id", aTrip).neq("user_id", bId),
+      "C membership lookup",
+    ).find(({ id }) => id !== bMembership.id)?.id;
+    if (!invitedMemberId) throw new Error("C membership was not created");
+    const forbiddenRemove = await db.rpc("remove_trip_collaborator", {
+      target_member_id: invitedMemberId,
+      target_operation_id: crypto.randomUUID(),
+      target_trip_id: aTrip,
+    });
+    if (!forbiddenRemove.error) throw new Error("B removed a collaborator");
+    const forbiddenDelete = await db.rpc("delete_trip_v3", {
+      expected_content_version: sharedTrip.content_version,
+      expected_version: sharedTrip.version,
+      target_operation_id: crypto.randomUUID(),
+      target_trip_id: aTrip,
+    });
+    if (!forbiddenDelete.error) throw new Error("B deleted the shared Trip");
+
+    const researchId = crypto.randomUUID();
+    const uploadSessionId = crypto.randomUUID();
+    const researchPayload = {
+      adultCount: 1,
+      category: "flight",
+      childCount: 0,
+      currency: "USD",
+      dayId: null,
+      destinationPlaceId: null,
+      destinationText: "NRT",
+      endDate: null,
+      endTime: null,
+      itemId: null,
+      journeyType: "one_way",
+      links: [],
+      locationPlaceId: null,
+      locationText: null,
+      note: "CloudBase collaborator",
+      originPlaceId: null,
+      originText: "SFO",
+      roomCount: null,
+      segments: [
+        {
+          carrier: "ANA",
+          departureDate: "2026-10-04",
+          destination: "NRT",
+          origin: "SFO",
+          serviceNumber: "NH 7",
+        },
+      ],
+      sourceUrl: null,
+      startDate: "2026-10-04",
+      startTime: null,
+      title: `${runLabel}-research`,
+      totalPriceAmount: 800,
+      tripId: aTrip,
+    };
+    dataOrThrow(
+      await db.rpc("save_research_item_v3", {
+        expected_version: null,
+        requested_draft_session_id: null,
+        requested_item: researchPayload,
+        target_operation_id: crypto.randomUUID(),
+        target_research_item_id: researchId,
+        target_trip_id: aTrip,
+      }),
+      "B collaborator Research create",
+    );
+    const prepared = dataOrThrow(
+      await db.rpc("prepare_research_asset_v2", {
+        expected_research_version: 1,
+        requested_byte_size: 128,
+        requested_draft_session_id: uploadSessionId,
+        requested_filename: "collaborator.pdf",
+        requested_media_kind: "pdf",
+        requested_mime_type: "application/pdf",
+        requested_sha256: "a".repeat(64),
+        target_research_item_id: researchId,
+        target_trip_id: aTrip,
+      }),
+      "B collaborator Research attachment prepare",
+    );
+    dataOrThrow(
+      await db.rpc("finalize_research_asset_v2", {
+        expected_research_version: 1,
+        target_asset_id: prepared.assetId,
+        target_research_item_id: researchId,
+        target_trip_id: aTrip,
+        thumbnail_ready: false,
+        verified_byte_size: 128,
+        verified_media_kind: "pdf",
+        verified_mime_type: "application/pdf",
+        verified_sha256: "a".repeat(64),
+      }),
+      "B collaborator Research attachment finalize",
+    );
+    dataOrThrow(
+      await db.rpc("save_research_item_v3", {
+        expected_version: 1,
+        requested_draft_session_id: uploadSessionId,
+        requested_item: researchPayload,
+        target_operation_id: crypto.randomUUID(),
+        target_research_item_id: researchId,
+        target_trip_id: aTrip,
+      }),
+      "B collaborator Research attachment commit",
+    );
+    const applied = dataOrThrow(
+      await db.rpc("apply_research_item_to_variant_v3", {
+        expected_research_version: 2,
+        schedule_choice: "automatic",
+        target_item_id: null,
+        target_operation_id: crypto.randomUUID(),
+        target_research_item_id: researchId,
+        target_trip_id: aTrip,
+        target_variant_id: aVariant,
+      }),
+      "B collaborator Research Apply",
+    );
+    if (applied?.status !== "applied") throw new Error("B Research Apply did not succeed");
+    const reverted = dataOrThrow(
+      await db.rpc("revert_research_plan_application_v2", {
+        expected_version: 1,
+        target_application_id: applied.applicationId,
+        target_operation_id: crypto.randomUUID(),
+        target_trip_id: aTrip,
+      }),
+      "B collaborator Research Revert",
+    );
+    if (reverted?.status !== "reverted") throw new Error("B Research Revert did not succeed");
+    const collaboratorShare = await db.rpc("create_share_page_v4", {
+      expected_variant_version: rows(
+        await db.from("route_variants").select("version").eq("id", aVariant),
+        "B share variant version",
+      )[0].version,
+      target_operation_id: crypto.randomUUID(),
+      target_variant_id: aVariant,
+    });
+    dataOrThrow(collaboratorShare, "B collaborator Share Page create");
     dataOrThrow(await auth.signOut(), "B sign out");
 
     await signIn(auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+    const staleUpdate = await db.rpc("update_trip_plan_v2", {
+      target_trip_id: aTrip,
+      trip_title: `${runLabel}-stale-owner-edit`,
+      trip_start_date: null,
+      trip_end_date: null,
+      trip_day_count: 1,
+      trip_timezone: "UTC",
+      trip_currency: "USD",
+      expected_version: sharedTripSnapshot.version,
+      expected_content_version: sharedTripSnapshot.content_version,
+      target_operation_id: crypto.randomUUID(),
+    });
+    if (!new Set(["40001", "DATABASE_40001"]).has(staleUpdate.error?.code))
+      throw new Error(
+        `A/B stale save did not return SQLSTATE 40001: ${JSON.stringify(staleUpdate.error)}`,
+      );
+    const latestSharedTrip = rows(
+      await db.from("trips").select("version,content_version").eq("id", aTrip),
+      "A local conflict reload",
+    )[0];
+    dataOrThrow(
+      await db.rpc("update_trip_plan_v2", {
+        target_trip_id: aTrip,
+        trip_title: `${runLabel}-owner-after-reload`,
+        trip_start_date: null,
+        trip_end_date: null,
+        trip_day_count: 1,
+        trip_timezone: "UTC",
+        trip_currency: "USD",
+        expected_version: latestSharedTrip.version,
+        expected_content_version: latestSharedTrip.content_version,
+        target_operation_id: crypto.randomUUID(),
+      }),
+      "A save after local reload",
+    );
+    dataOrThrow(
+      await db.rpc("remove_trip_collaborator", {
+        target_member_id: invitedMemberId,
+        target_operation_id: crypto.randomUUID(),
+        target_trip_id: aTrip,
+      }),
+      "A owner removes collaborator C",
+    );
     const own = rows(await db.from("trips").select("id,owner_id").eq("id", aTrip), "A own read");
     if (own.length !== 1 || own[0].owner_id !== aId) throw new Error("A own read mismatch");
     if (rows(await db.from("trips").select("id").eq("id", bTrip), "A cross read").length) {
       throw new Error("A read B's trip");
     }
-    const crossUpdate = rows(
-      await db
-        .from("trips")
-        .update({ title: `${runLabel}-forbidden` })
-        .eq("id", bTrip)
-        .select("id"),
-      "A cross update",
-    );
-    const crossDelete = rows(
-      await db.from("trips").delete().eq("id", bTrip).select("id"),
-      "A cross delete",
-    );
-    if (crossUpdate.length || crossDelete.length) throw new Error("A mutated B's trip directly");
+    const crossUpdate = await db
+      .from("trips")
+      .update({ title: `${runLabel}-forbidden` })
+      .eq("id", bTrip)
+      .select("id");
+    const crossDelete = await db.from("trips").delete().eq("id", bTrip).select("id");
+    if (!crossUpdate.error || !crossDelete.error)
+      throw new Error("Direct table DML did not fail closed");
 
     const forgedInsert = await db
       .from("trips")
@@ -338,7 +622,7 @@ async function runAssertions(auth, db, config) {
     if (!spoof.error && rows(spoof, "owner spoof")[0]?.owner_id !== aId) {
       throw new Error("A forged owner_id");
     }
-    const crossRpc = await db.rpc("update_trip_plan", {
+    const crossRpc = await db.rpc("update_trip_plan_v2", {
       target_trip_id: bTrip,
       trip_title: `${runLabel}-rpc-forbidden`,
       trip_start_date: null,
@@ -347,6 +631,7 @@ async function runAssertions(auth, db, config) {
       trip_timezone: "UTC",
       trip_currency: "USD",
       expected_version: 1,
+      expected_content_version: 1,
       target_operation_id: crypto.randomUUID(),
     });
     if (!crossRpc.error) throw new Error("A business RPC mutated B's trip");

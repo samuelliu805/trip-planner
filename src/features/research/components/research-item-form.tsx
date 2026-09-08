@@ -66,13 +66,13 @@ export function ResearchItemForm({
   });
   const {
     attachmentPending,
-    commit: commitAttachments,
     discard: discardAttachments,
     discardDialogOpen,
     discardPending,
     draftCount,
     error: attachmentError,
     requestCancel,
+    markHandled,
     setAttachmentPending,
     setDiscardDialogOpen,
     setDraftCount,
@@ -126,46 +126,33 @@ export function ResearchItemForm({
     if (!attachmentOnlySave && !researchDraftCanSave(form, category)) return;
     setMutationPending(true);
     setError(undefined);
-    let savedItem = item;
-    if (!attachmentOnlySave) {
-      const input = researchItemInputFromForm({ category, context, form, item, tripId });
-      const operationId = newTelemetryOperationId();
-      if (!item)
-        captureBrowserProductEvent(
-          "research_create_started",
-          { ideas_category: category, operation_id: operationId, surface: "research_editor" },
-          { actorType: "authenticated" },
-        );
-      const result = item
-        ? await updateResearchItem({
-            ...input,
-            expectedVersion: baseVersion ?? item.version,
-            id: item.id,
-            operationId,
-          })
-        : await createResearchItem({ ...input, operationId });
-      if (result.error || !result.data) {
-        setMutationPending(false);
-        setConflict(result.code === "conflict");
-        setError(result.error ?? "This idea could not be saved.");
-        return;
-      }
-      savedItem = result.data;
-    }
-    if (!savedItem) return setMutationPending(false);
-    try {
-      const saved = await commitAttachments(savedItem);
-      setMutationPending(false);
-      onSaved(saved);
-      onCancel();
-    } catch (attachmentError) {
-      setMutationPending(false);
-      setError(
-        attachmentError instanceof Error
-          ? attachmentError.message
-          : "The idea was saved, but its new files could not be committed.",
+    const input = researchItemInputFromForm({ category, context, form, item, tripId });
+    const operationId = newTelemetryOperationId();
+    if (!item)
+      captureBrowserProductEvent(
+        "research_create_started",
+        { ideas_category: category, operation_id: operationId, surface: "research_editor" },
+        { actorType: "authenticated" },
       );
+    const result = item
+      ? await updateResearchItem({
+          ...input,
+          draftSessionId: uploadSessionId,
+          expectedVersion: baseVersion ?? item.version,
+          id: item.id,
+          operationId,
+        })
+      : await createResearchItem({ ...input, draftSessionId: uploadSessionId, operationId });
+    if (result.error || !result.data) {
+      setMutationPending(false);
+      setConflict(result.code === "conflict");
+      setError(result.error ?? "This idea could not be saved.");
+      return;
     }
+    markHandled();
+    setMutationPending(false);
+    onSaved(result.data);
+    onCancel();
   }
 
   async function reloadLatest() {

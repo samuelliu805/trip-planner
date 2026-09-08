@@ -1,6 +1,6 @@
 "use client";
 
-import { useIsMutating } from "@tanstack/react-query";
+import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -15,7 +15,7 @@ import {
   selectionBounds,
   type GridCoordinate,
 } from "../grid-interactions";
-import { usePlannerWorkspace } from "../planner-query";
+import { plannerQueryKey, usePlannerWorkspace } from "../planner-query";
 import { projectWorkspaceDraft } from "../query-cache";
 import { normalizeTransportMode, type ItineraryItem, type PlannerWorkspace } from "../types";
 import { useDayRoute } from "../../routes/use-day-route";
@@ -66,6 +66,9 @@ export function usePlannerWorkspaceController({
   }>();
   const [mapExpanded, setMapExpanded] = useState(false);
   const [interactionError, setInteractionError] = useState<string>();
+  const [interactionConflict, setInteractionConflict] = useState(false);
+  const [reloadPending, setReloadPending] = useState(false);
+  const queryClient = useQueryClient();
   const [clearTargetItems, setClearTargetItems] = useState<
     PlannerWorkspace["days"][number]["items"]
   >([]);
@@ -125,7 +128,12 @@ export function usePlannerWorkspaceController({
     ({ id }) => id === arrangeActivitiesRequest?.dayId,
   );
 
-  const mutations = usePlannerMutations(trip.id, workspace.variant.id, setInteractionError);
+  const mutations = usePlannerMutations(
+    trip.id,
+    workspace.variant.id,
+    setInteractionError,
+    setInteractionConflict,
+  );
   const {
     clearItems,
     clearPending,
@@ -189,9 +197,55 @@ export function usePlannerWorkspaceController({
     selectionAnchor,
     selectionEnd,
     setInteractionError,
+    setInteractionConflict,
     tripId: trip.id,
     workspace,
   });
+
+  async function reloadLatestPlanner() {
+    setReloadPending(true);
+    try {
+      const queryKey = plannerQueryKey(trip.id, workspace.variant.id);
+      await queryClient.invalidateQueries({
+        queryKey,
+        refetchType: "active",
+      });
+      const latest = queryClient.getQueryData<PlannerWorkspace>(queryKey);
+      if (latest && clearTargetItems.length) {
+        const latestItems = new Map(
+          latest.days.flatMap((day) => day.items).map((item) => [item.id, item]),
+        );
+        const refreshedTargets = clearTargetItems.flatMap((item) => {
+          const refreshed = latestItems.get(item.id);
+          return refreshed ? [refreshed] : [];
+        });
+        setClearTargetItems(refreshedTargets);
+        if (!refreshedTargets.length) {
+          setInteractionError(
+            "Those itinerary items are no longer available. The confirmation was closed safely.",
+          );
+          setInteractionConflict(false);
+          return;
+        }
+      }
+      if (
+        latest &&
+        arrangeActivitiesRequest &&
+        !latest.days.some(({ id }) => id === arrangeActivitiesRequest.dayId)
+      ) {
+        setArrangeActivitiesRequest(undefined);
+        setInteractionError(
+          "This day is no longer available. The activity arranger was closed safely.",
+        );
+        setInteractionConflict(false);
+        return;
+      }
+      setInteractionConflict(false);
+      setInteractionError(undefined);
+    } finally {
+      setReloadPending(false);
+    }
+  }
 
   function changeMapModeAndSelection(
     mode: Parameters<typeof map.setMapMode>[0],
@@ -259,6 +313,7 @@ export function usePlannerWorkspaceController({
     fillSourceRight,
     gridTemplate,
     interactionError,
+    interactionConflict,
     interactions,
     isFillDragging,
     itemOrderPending,
@@ -266,6 +321,8 @@ export function usePlannerWorkspaceController({
     mapExpanded,
     mutating,
     projectedWorkspace,
+    reloadLatestPlanner,
+    reloadPending,
     removeDay,
     reorderItems,
     requestClearSelection,

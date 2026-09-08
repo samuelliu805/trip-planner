@@ -3,6 +3,8 @@ begin;
 grant insert, update, delete on public.research_items to authenticated;
 grant execute on function public.apply_research_item_to_variant_v2(uuid, uuid, uuid, uuid, text) to authenticated;
 grant execute on function public.remove_variant_day(uuid, uuid, uuid) to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant insert, update, delete on public.itinerary_items to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 select plan(16);

@@ -2,12 +2,6 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 
-import { persistPlaceSnapshot } from "@/features/itinerary/action-helpers";
-import { getRelationalDatabase } from "@/platform/composition/server";
-import type { Json } from "@/types/database";
-
-import { createResearchItemSchema } from "./schema";
-
 const researchDomainMessages: Record<string, string> = {
   APP_CONFLICT: "Someone else changed this record first. Reload its latest version.",
   AUTHENTICATION_REQUIRED: "Sign in again before changing this Plan.",
@@ -43,59 +37,6 @@ export function researchDomainError(message?: string) {
 
 export function firstIssue(error: { issues: Array<{ message: string }> }) {
   return error.issues[0]?.message ?? "Check the price candidate details.";
-}
-
-export function researchItemValues(
-  data: ReturnType<typeof createResearchItemSchema.parse>,
-  places: { destination: string | null; location: string | null; origin: string | null },
-) {
-  const hasPrice = data.totalPriceAmount !== null && data.totalPriceAmount !== undefined;
-  return {
-    adult_count: data.adultCount,
-    category: data.category,
-    child_count: data.childCount,
-    currency: hasPrice ? data.currency : null,
-    day_id: data.dayId,
-    destination_text: data.destinationText,
-    destination_place_id: places.destination,
-    end_date: data.endDate,
-    end_time: data.endTime,
-    itinerary_item_id: data.itemId,
-    journey_type: data.journeyType,
-    links: data.links as Json,
-    location_text: data.locationText,
-    location_place_id: places.location,
-    note: data.note,
-    observed_at: new Date().toISOString(),
-    origin_text: data.originText,
-    origin_place_id: places.origin,
-    room_count: data.roomCount,
-    segments: data.segments as Json,
-    source_url: data.sourceUrl,
-    start_date: data.startDate,
-    start_time: data.startTime,
-    title: data.title,
-    total_price_amount: hasPrice ? data.totalPriceAmount : null,
-    trip_id: data.tripId,
-  };
-}
-
-export async function persistResearchPlaces(
-  database: Awaited<ReturnType<typeof getRelationalDatabase>>,
-  data: ReturnType<typeof createResearchItemSchema.parse>,
-) {
-  const [destination, location, origin] = await Promise.all([
-    data.destinationPlaceSnapshot
-      ? persistPlaceSnapshot(database, data.tripId, data.destinationPlaceSnapshot)
-      : Promise.resolve(data.destinationPlaceId ?? null),
-    data.locationPlaceSnapshot
-      ? persistPlaceSnapshot(database, data.tripId, data.locationPlaceSnapshot)
-      : Promise.resolve(data.locationPlaceId ?? null),
-    data.originPlaceSnapshot
-      ? persistPlaceSnapshot(database, data.tripId, data.originPlaceSnapshot)
-      : Promise.resolve(data.originPlaceId ?? null),
-  ]);
-  return { destination, location, origin };
 }
 
 export function revalidateResearch(tripId: string) {

@@ -9,7 +9,7 @@ import {
 import type { OwnerAttachment } from "@/features/attachments/schema";
 
 type AttachmentEditSessionOptions = {
-  item?: { id: string };
+  item?: { id: string; version: number };
   itemMutationPending: boolean;
   onCancel: () => void;
   targetKind?: "item" | "research";
@@ -87,11 +87,12 @@ export function useAttachmentEditSession({
     () => () => {
       if (!itemId || !shouldDiscardSession.current) return;
       abortControllerRef.current.abort();
-      void discardAttachmentUploadSession({ ...target, tripId, uploadSessionId }, true).catch(
-        () => undefined,
-      );
+      void discardAttachmentUploadSession(
+        { ...target, expectedVersion: item.version, tripId, uploadSessionId },
+        true,
+      ).catch(() => undefined);
     },
-    [itemId, target, tripId, uploadSessionId],
+    [item?.version, itemId, target, tripId, uploadSessionId],
   );
 
   const commit = useCallback(
@@ -126,6 +127,7 @@ export function useAttachmentEditSession({
     try {
       await discardAttachmentUploadSession({
         ...target,
+        expectedVersion: item.version,
         tripId,
         uploadSessionId,
       });
@@ -145,7 +147,7 @@ export function useAttachmentEditSession({
     } finally {
       setDiscardPending(false);
     }
-  }, [abortController, itemId, onCancel, target, tripId, uploadSessionId]);
+  }, [abortController, item, itemId, onCancel, target, tripId, uploadSessionId]);
 
   return {
     attachmentPending,

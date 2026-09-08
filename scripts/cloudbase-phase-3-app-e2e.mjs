@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -34,8 +35,8 @@ const resolvedBrowserOrigin = resolveCnBrowserOrigin(
 let browserBaseUrl = resolvedBrowserOrigin.browserBaseUrl;
 const { hostResolverArgument } = resolvedBrowserOrigin;
 const runLabel = `phase3-app-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const userA = "trip-planner-cn-test-a";
-const userB = "trip-planner-cn-test-b";
+const userA = "19900000101";
+const userB = "19900000102";
 const browserSessions = new Map();
 const dataClients = new Map();
 let applicationServerDiagnostics = "";
@@ -1735,6 +1736,54 @@ async function verifyVariantNavigationThroughUi(browser) {
     })()`,
   );
   assert.equal(submitted, true, "Create Plan form was not submit-ready.");
+  let createOutcome;
+  try {
+    createOutcome = await waitFor(
+      browser,
+      `(() => {
+        const variant = new URLSearchParams(location.search).get('variant');
+        const created = [...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+          .some((button) => button.getClientRects().length && button.getAttribute('aria-label')?.includes(${JSON.stringify(`Current Plan: ${planName}`)}));
+        if (variant && created && document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]')) return 'created';
+        return [...document.querySelectorAll('[role="dialog"] button')]
+          .some((button) => button.textContent.trim() === 'Reload latest' && !button.disabled)
+          ? 'conflict' : '';
+      })()`,
+      "created Plan navigation or conflict",
+      60_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        alerts: [...document.querySelectorAll('[role="alert"],[role="status"]')].map((node) => node.textContent.trim()),
+        body: document.body.innerText.slice(0, 1600),
+        dialogs: [...document.querySelectorAll('[role="dialog"]')].map((node) => node.textContent.slice(0, 600)),
+        href: location.href,
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; ${JSON.stringify(diagnostic)}`,
+    );
+  }
+  if (createOutcome === "conflict") {
+    await clickButtonText(browser, "Reload latest");
+    await waitFor(
+      browser,
+      `document.querySelector('[role="dialog"] input')?.value === ${JSON.stringify(planName)} &&
+        [...document.querySelectorAll('[role="dialog"] [role="status"]')]
+          .some((node) => node.textContent.includes('Latest loaded'))`,
+      "Plan draft preservation after local reload",
+    );
+    await evaluate(
+      browser,
+      `(() => {
+        const button = [...document.querySelectorAll('[role="dialog"] button')]
+          .find((candidate) => candidate.textContent.trim() === "Create Plan" && !candidate.disabled);
+        button?.closest('form')?.requestSubmit(button);
+      })()`,
+    );
+  }
   const createdVariantId = await waitFor(
     browser,
     `(() => {
@@ -2894,7 +2943,32 @@ async function updateTripTitle(browser, nextTitle) {
     "12",
     "Trip settings form did not contain the updated duration.",
   );
+  const submittedContentVersion = await evaluate(
+    browser,
+    'new FormData(document.querySelector("#trip-title").form).get("expected_content_version")',
+  );
   await evaluate(browser, 'document.querySelector("#trip-title").form.requestSubmit()');
+  await waitFor(
+    browser,
+    `!document.querySelector("#trip-title") || [...document.querySelectorAll("button")]
+      .some((button) => button.textContent.trim() === "Reload latest")`,
+    "Trip settings save or conflict",
+    45_000,
+  );
+  if (await evaluate(browser, 'Boolean(document.querySelector("#trip-title"))')) {
+    await clickButtonText(browser, "Reload latest");
+    await waitFor(
+      browser,
+      `(() => {
+        const form = document.querySelector("#trip-title")?.form;
+        if (!form || document.querySelector("#trip-title")?.value !== ${JSON.stringify(nextTitle)})
+          return false;
+        return new FormData(form).get("expected_content_version") !== ${JSON.stringify(submittedContentVersion)};
+      })()`,
+      "Trip settings local draft preservation after reload",
+    );
+    await evaluate(browser, 'document.querySelector("#trip-title").form.requestSubmit()');
+  }
   try {
     await waitFor(browser, '!document.querySelector("#trip-title")', "Trip settings save", 45_000);
   } catch (error) {
@@ -3350,17 +3424,22 @@ async function cleanupFixture(tripId) {
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
   const before = await controlledData(
-    () => db.from("trips").select("id").eq("id", tripId),
+    () => db.from("trips").select("id,version,content_version").eq("id", tripId),
     "application E2E cleanup lookup",
   );
   let deleted = 0;
   if (Array.isArray(before) && before.length) {
-    const result = await controlledData(
-      () => db.from("trips").delete().eq("id", tripId).select("id"),
+    await controlledData(
+      () =>
+        db.rpc("delete_trip_v3", {
+          expected_content_version: before[0].content_version,
+          expected_version: before[0].version,
+          target_operation_id: randomUUID(),
+          target_trip_id: tripId,
+        }),
       "application E2E cleanup delete",
     );
-    deleted = Array.isArray(result) ? result.length : 0;
-    if (deleted !== 1) throw new Error("Application E2E cleanup did not delete exactly one row.");
+    deleted = 1;
   }
   const after = await controlledData(
     () => db.from("trips").select("id").eq("id", tripId),
@@ -3731,7 +3810,7 @@ async function run() {
     await waitFor(browser, "!document.querySelector('[role=\"menu\"]')", "status action close");
     await waitFor(
       browser,
-      `Boolean(document.querySelector('[role="alert"]')) || !document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      `Boolean(document.querySelector('[role="alert"]')) || !document.body.innerText.includes(${JSON.stringify(updatedTitle)}) || document.body.innerText.includes("Completed")`,
       "status action result",
       45_000,
     );

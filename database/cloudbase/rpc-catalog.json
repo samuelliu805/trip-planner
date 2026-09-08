@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 185,
+  "publicFunctionCount": 201,
   "catalog": [
     {
       "schema": "public",
@@ -157,8 +157,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -268,6 +268,16 @@
     },
     {
       "schema": "public",
+      "signature": "cleanup_collaboration_replay_v1(integer)",
+      "arguments": [{ "name": "requested_limit", "type": "integer" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
       "signature": "clear_day_route_plan_v2(uuid,uuid,uuid,bigint,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -292,8 +302,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -322,6 +332,23 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "clear_route_variant_items_v3(uuid,uuid,uuid[],bigint[],bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_item_ids", "type": "uuid[]" },
+        { "name": "expected_item_versions", "type": "bigint[]" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
     },
@@ -336,8 +363,8 @@
       "returns": "integer",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -350,8 +377,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "phase_4",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -364,8 +391,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "phase_4",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -388,6 +415,27 @@
         { "name": "target_variant_id", "type": "uuid" },
         { "name": "source_item_ids", "type": "uuid[]" },
         { "name": "replace_target_item_ids", "type": "uuid[]" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "preserve_place", "type": "boolean" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "copy_itinerary_items_v3(uuid,uuid,uuid[],bigint[],uuid[],bigint[],uuid,boolean,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "source_item_ids", "type": "uuid[]" },
+        { "name": "expected_source_versions", "type": "bigint[]" },
+        { "name": "replace_target_item_ids", "type": "uuid[]" },
+        { "name": "expected_replace_versions", "type": "bigint[]" },
         { "name": "target_day_id", "type": "uuid" },
         { "name": "preserve_place", "type": "boolean" },
         { "name": "expected_items_version", "type": "bigint" },
@@ -554,6 +602,27 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_route_variant_v3(uuid,uuid,text,text,uuid,boolean,bigint,bigint,bigint,bigint)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "source_variant_id", "type": "uuid" },
+        { "name": "variant_name", "type": "text" },
+        { "name": "variant_color", "type": "text" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "duplicate_content", "type": "boolean" },
+        { "name": "expected_source_version", "type": "bigint" },
+        { "name": "expected_source_days_version", "type": "bigint" },
+        { "name": "expected_source_items_version", "type": "bigint" },
+        { "name": "expected_source_content_version", "type": "bigint" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
     },
@@ -569,8 +638,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -596,7 +665,7 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "internal_helper",
+      "category": "obsolete_legacy",
       "authorization": null
     },
     {
@@ -625,7 +694,7 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "internal_helper",
+      "category": "obsolete_legacy",
       "authorization": null
     },
     {
@@ -655,8 +724,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -705,8 +774,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "claim_bound_create"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -741,8 +810,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "claim_bound_create"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -755,7 +824,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -801,6 +870,24 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "delete_route_variant_v3(uuid,uuid,bigint,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "expected_items_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
     },
@@ -814,8 +901,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -827,8 +914,8 @@
       "returns": "boolean",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -836,6 +923,21 @@
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
         { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "boolean",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "delete_trip_v3(uuid,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
         { "name": "target_operation_id", "type": "uuid" }
       ],
       "returns": "boolean",
@@ -855,8 +957,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "phase_4",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -885,8 +987,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "phase_4",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -896,6 +998,23 @@
         { "name": "target_research_item_id", "type": "uuid" },
         { "name": "requested_public_ref", "type": "text" },
         { "name": "expected_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "detach_research_asset_v3(uuid,uuid,text,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_public_ref", "type": "text" },
+        { "name": "expected_research_version", "type": "bigint" },
+        { "name": "expected_link_version", "type": "bigint" },
         { "name": "target_operation_id", "type": "uuid" }
       ],
       "returns": "jsonb",
@@ -915,8 +1034,23 @@
       "returns": "integer",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "discard_item_asset_session_v2(uuid,uuid,uuid,bigint)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" },
+        { "name": "expected_item_version", "type": "bigint" }
+      ],
+      "returns": "integer",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -929,8 +1063,23 @@
       "returns": "integer",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "discard_research_asset_session_v2(uuid,uuid,uuid,bigint)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" },
+        { "name": "expected_research_version", "type": "bigint" }
+      ],
+      "returns": "integer",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -944,8 +1093,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -1044,7 +1193,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1123,8 +1272,31 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "finalize_research_asset_v2(uuid,uuid,uuid,bigint,text,bigint,asset_media_kind,text,integer,integer,numeric,boolean)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "target_asset_id", "type": "uuid" },
+        { "name": "expected_research_version", "type": "bigint" },
+        { "name": "verified_sha256", "type": "text" },
+        { "name": "verified_byte_size", "type": "bigint" },
+        { "name": "verified_media_kind", "type": "asset_media_kind" },
+        { "name": "verified_mime_type", "type": "text" },
+        { "name": "verified_width", "type": "integer" },
+        { "name": "verified_height", "type": "integer" },
+        { "name": "verified_duration_seconds", "type": "numeric" },
+        { "name": "thumbnail_ready", "type": "boolean" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1137,7 +1309,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1273,8 +1445,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -1416,7 +1588,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1426,7 +1598,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1446,7 +1618,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1456,7 +1628,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1476,7 +1648,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1486,7 +1658,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1540,8 +1712,28 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_item_asset_v4(uuid,uuid,text,text,bigint,asset_media_kind,text,uuid,bigint)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_item_id", "type": "uuid" },
+        { "name": "requested_filename", "type": "text" },
+        { "name": "requested_sha256", "type": "text" },
+        { "name": "requested_byte_size", "type": "bigint" },
+        { "name": "requested_media_kind", "type": "asset_media_kind" },
+        { "name": "requested_mime_type", "type": "text" },
+        { "name": "requested_draft_session_id", "type": "uuid" },
+        { "name": "expected_item_version", "type": "bigint" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1559,8 +1751,28 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "phase_4",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "prepare_research_asset_v2(uuid,uuid,text,text,bigint,asset_media_kind,text,uuid,bigint)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_filename", "type": "text" },
+        { "name": "requested_sha256", "type": "text" },
+        { "name": "requested_byte_size", "type": "bigint" },
+        { "name": "requested_media_kind", "type": "asset_media_kind" },
+        { "name": "requested_mime_type", "type": "text" },
+        { "name": "requested_draft_session_id", "type": "uuid" },
+        { "name": "expected_research_version", "type": "bigint" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1594,7 +1806,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -1707,6 +1919,24 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "remove_variant_day_v3(uuid,uuid,uuid,bigint,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_day_id", "type": "uuid" },
+        { "name": "expected_day_version", "type": "bigint" },
+        { "name": "expected_day_content_version", "type": "bigint" },
+        { "name": "expected_days_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
     },
@@ -1721,8 +1951,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -1766,8 +1996,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -1796,8 +2026,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2014,8 +2244,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2035,7 +2265,7 @@
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -2044,8 +2274,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2126,8 +2356,8 @@
       "returns": "void",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2159,8 +2389,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2180,8 +2410,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "member_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2214,6 +2444,23 @@
         { "name": "expected_version", "type": "bigint" },
         { "name": "requested_item", "type": "jsonb" },
         { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "save_research_item_v3(uuid,uuid,bigint,jsonb,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "requested_item", "type": "jsonb" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "requested_draft_session_id", "type": "uuid" }
       ],
       "returns": "jsonb",
       "securityDefiner": true,
@@ -2289,8 +2536,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "phase_4",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2334,8 +2581,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2369,13 +2616,23 @@
     },
     {
       "schema": "public",
-      "signature": "trip_history_storage_stats(uuid)",
+      "signature": "trip_collaboration_storage_stats_v2(uuid)",
       "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "trip_history_storage_stats(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2490,8 +2747,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2534,7 +2791,7 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "internal_helper",
+      "category": "obsolete_legacy",
       "authorization": null
     },
     {
@@ -2563,7 +2820,7 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "internal_helper",
+      "category": "obsolete_legacy",
       "authorization": null
     },
     {
@@ -2593,8 +2850,8 @@
       "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2630,6 +2887,27 @@
     },
     {
       "schema": "public",
+      "signature": "update_trip_plan_v2(uuid,text,date,date,integer,text,text,bigint,bigint,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "trip_title", "type": "text" },
+        { "name": "trip_start_date", "type": "date" },
+        { "name": "trip_end_date", "type": "date" },
+        { "name": "trip_day_count", "type": "integer" },
+        { "name": "trip_timezone", "type": "text" },
+        { "name": "trip_currency", "type": "text" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "expected_content_version", "type": "bigint" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "update_trip_plan(uuid,text,date,date,integer,text,text,bigint,uuid)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -2645,8 +2923,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "member_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2663,8 +2941,8 @@
       "returns": "uuid",
       "securityDefiner": true,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2699,8 +2977,8 @@
       "returns": "uuid",
       "securityDefiner": false,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "obsolete_legacy",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2740,8 +3018,8 @@
       "returns": "uuid",
       "securityDefiner": false,
       "safeSearchPath": true,
-      "category": "external_authenticated",
-      "authorization": "owner_guard"
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -2762,15 +3040,23 @@
     "asset_link_member_json(uuid)",
     "audit_itinerary_item()",
     "begin_trip_operation(uuid,uuid,text,text,uuid,jsonb)",
+    "bump_content_from_asset_link()",
+    "bump_content_from_day()",
+    "bump_content_from_item_link()",
+    "bump_day_content_from_route_child()",
+    "bump_trip_content_version()",
+    "bump_variant_day_content_version()",
     "collaboration_identifier_user_id(text)",
     "collaboration_user_id()",
     "complete_trip_operation(uuid,uuid,jsonb)",
+    "complete_wrapped_operation(uuid,uuid,uuid,text,text,uuid,text,jsonb)",
     "day_route_plan_structure_is_canonical(uuid)",
     "guard_trip_owner_identity()",
     "guard_trip_owner_membership()",
     "insert_collaboration_member(uuid,text,text)",
     "is_trip_member(uuid)",
     "operation_fingerprint(text,text,uuid,jsonb)",
+    "raise_app_conflict(text,text)",
     "safe_jsonb_diff(jsonb,jsonb,text)",
     "share_settings_json(public_itinerary_links)",
     "trip_actor_label()",

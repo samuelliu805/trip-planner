@@ -33,6 +33,9 @@ export function ArrangeActivitiesSheet({
   onOpenChange,
   open,
   pending,
+  conflict,
+  onReloadLatest,
+  reloadPending,
 }: {
   day?: PlannerDay;
   initialMovingItemId?: string;
@@ -41,6 +44,9 @@ export function ArrangeActivitiesSheet({
   onOpenChange: (open: boolean) => void;
   open: boolean;
   pending: boolean;
+  conflict: boolean;
+  onReloadLatest: () => Promise<void>;
+  reloadPending: boolean;
 }) {
   const { t } = useI18n();
   const [movingItemId, setMovingItemId] = useState<string | undefined>(initialMovingItemId);
@@ -143,6 +149,18 @@ export function ArrangeActivitiesSheet({
             />
           </SheetDescription>
         </SheetHeader>
+
+        {conflict ? (
+          <Button
+            className="mx-4 min-h-11"
+            disabled={reloadPending}
+            onClick={() => void onReloadLatest()}
+            type="button"
+            variant="outline"
+          >
+            <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
+          </Button>
+        ) : null}
 
         {movingItem ? (
           <div className="sticky top-0 z-20 border-y bg-background/95 px-4 py-3 backdrop-blur">

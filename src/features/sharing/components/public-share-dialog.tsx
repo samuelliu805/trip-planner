@@ -74,6 +74,7 @@ export function PublicShareDialog({
   );
   const variant = variants.find(({ id }) => id === variantId) ?? variants[0];
   const activeLink = links.find((link) => link.id === selectedPageId);
+  const selectedPageWasRevoked = selectedPageId !== "new" && !activeLink;
   const suggestedTitle = `${trip.title} · ${variant?.name ?? "Route"}`;
   const suggestedDescription = publicItineraryDescription(locale, trip.day_count);
   const activeSiteUrl = open && typeof window !== "undefined" ? window.location.origin : siteUrl;
@@ -132,6 +133,12 @@ export function PublicShareDialog({
   function save() {
     setError(undefined);
     setNotice(undefined);
+    if (selectedPageWasRevoked) {
+      setError(
+        "This Share Page was revoked by another trip member. Choose another page or explicitly create a new one.",
+      );
+      return;
+    }
     startTransition(async () => {
       const operationId = newTelemetryOperationId();
       if (!activeLink)
@@ -210,6 +217,12 @@ export function PublicShareDialog({
       }));
       setError(undefined);
       setConflict(false);
+      if (!latest.data.some(({ id }) => id === selectedPageId) && selectedPageId !== "new") {
+        setError(
+          "This Share Page was revoked by another trip member. Your settings draft is preserved; choose another page or explicitly create a new one.",
+        );
+        return;
+      }
       setNotice("Latest Share Page loaded. Your local settings draft is still here.");
     });
   }
@@ -353,7 +366,12 @@ export function PublicShareDialog({
               </a>
             </Button>
           ) : (
-            <Button aria-busy={pending} disabled={pending} onClick={save} type="button">
+            <Button
+              aria-busy={pending}
+              disabled={pending || selectedPageWasRevoked}
+              onClick={save}
+              type="button"
+            >
               {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
               <Localized
                 value={

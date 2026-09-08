@@ -83,8 +83,9 @@ export async function createResearchItem(
   const parsed = createResearchItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data: saved, error } = await database.rpc("save_research_item_v2", {
+  const { data: saved, error } = await database.rpc("save_research_item_v3", {
     expected_version: null as unknown as number,
+    requested_draft_session_id: parsed.data.draftSessionId ?? parsed.data.operationId,
     requested_item: JSON.parse(JSON.stringify(parsed.data)) as Json,
     target_operation_id: parsed.data.operationId,
     target_research_item_id: parsed.data.operationId,
@@ -126,8 +127,9 @@ export async function updateResearchItem(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const { id, expectedVersion, ...values } = parsed.data;
   const database = await getRelationalDatabase();
-  const { data: saved, error } = await database.rpc("save_research_item_v2", {
+  const { data: saved, error } = await database.rpc("save_research_item_v3", {
     expected_version: expectedVersion,
+    requested_draft_session_id: parsed.data.draftSessionId ?? parsed.data.operationId,
     requested_item: JSON.parse(JSON.stringify(values)) as Json,
     target_operation_id: parsed.data.operationId,
     target_research_item_id: id,

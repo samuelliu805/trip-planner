@@ -2,6 +2,8 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
+import { Button } from "@/components/ui/button";
+import { RotateCcw } from "lucide-react";
 import { PlannerMapShell } from "@/features/itinerary/components/planner-map-shell";
 import type {
   PlannerMapMode,
@@ -22,16 +24,22 @@ export function PlannerStatus({
   fillLabel,
   fillThroughDay,
   interactionError,
+  interactionConflict,
   isFillDragging,
   onDismissError,
+  onReloadLatest,
+  reloadPending,
   workspaceError,
 }: {
   deleteError: boolean;
   fillLabel: string;
   fillThroughDay?: number;
   interactionError?: string;
+  interactionConflict: boolean;
   isFillDragging: boolean;
   onDismissError: () => void;
+  onReloadLatest: () => Promise<void>;
+  reloadPending: boolean;
   workspaceError: boolean;
 }) {
   const { t } = useI18n();
@@ -45,6 +53,18 @@ export function PlannerStatus({
         value={interactionError}
       >
         {interactionError ? <Localized value={interactionError} /> : null}
+        {interactionConflict ? (
+          <Button
+            className="ml-3 min-h-11"
+            disabled={reloadPending}
+            onClick={() => void onReloadLatest()}
+            type="button"
+            variant="outline"
+          >
+            <RotateCcw aria-hidden="true" className="size-4" />
+            <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
+          </Button>
+        ) : null}
       </AutoDismissAlert>
       <AutoDismissAlert
         className="rounded-none border-x-0 border-t-0 text-xs shadow-none"

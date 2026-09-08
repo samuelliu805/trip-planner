@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   });
 
   try {
-    const { assets, backlog, error, shareImages } = await runCleanupJobs(
+    const { assets, backlog, collaborationReplay, error, shareImages } = await runCleanupJobs(
       getAdminCleanupBackend(),
       100,
     );
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
         provider: errorCode === "storage_unavailable" ? "storage" : "supabase",
       });
       scheduleCleanupTelemetry({ backlog, outcome: "failed", properties, started });
-      return Response.json({ assets, error, shareImages }, { status: 500 });
+      return Response.json({ assets, collaborationReplay, error, shareImages }, { status: 500 });
     }
     logger.info({
       ...properties,
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
       });
     }
     scheduleCleanupTelemetry({ backlog, outcome: "succeeded", properties, started });
-    return Response.json({ assets, shareImages });
+    return Response.json({ assets, collaborationReplay, shareImages });
   } catch (error) {
     const properties: CleanupProperties = {
       ...started,

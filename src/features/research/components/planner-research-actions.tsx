@@ -81,6 +81,7 @@ export function PlannerResearchActions({
         item: sourceItem,
         tripId,
       }),
+      draftSessionId: operationId,
       operationId,
     });
     setPending(false);
@@ -110,6 +111,7 @@ export function PlannerResearchActions({
       title: isUrl ? null : value,
       totalPriceAmount: hasPrice ? Number(price) : null,
       tripId,
+      draftSessionId: operationId,
       operationId,
     });
     setPending(false);

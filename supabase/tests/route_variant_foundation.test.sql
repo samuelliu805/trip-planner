@@ -7,6 +7,9 @@ grant execute on function public.duplicate_route_variant(uuid, uuid, text, text)
 grant execute on function public.set_primary_route_variant(uuid, uuid) to authenticated;
 grant execute on function public.delete_route_variant(uuid, uuid) to authenticated;
 grant execute on function public.clear_route_variant_items(uuid, uuid, uuid[]) to authenticated;
+grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
+grant insert, update, delete on public.places, public.itinerary_items,
+  public.itinerary_item_links to authenticated;
 
 create extension if not exists pgtap with schema extensions;
 

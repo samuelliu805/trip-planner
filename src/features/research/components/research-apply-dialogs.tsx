@@ -32,26 +32,32 @@ function optionContext(item: ResearchItem) {
 }
 
 export function ResearchApplyReviewDialog({
+  conflict,
   error,
   impact,
   item,
   onApply,
   onOpenChange,
+  onReloadLatest,
   onTargetChange,
   open,
   pending,
+  reloadPending,
   targetChoices,
   targetItemId,
   variantName,
 }: {
+  conflict: boolean;
   error?: string;
   impact: OptionImpact;
   item: ResearchItem;
   onApply: () => void;
   onOpenChange: (open: boolean) => void;
+  onReloadLatest: () => Promise<void>;
   onTargetChange: (id: string) => void;
   open: boolean;
   pending: boolean;
+  reloadPending: boolean;
   targetChoices: Array<{ date: string | null; dayNumber: number; id: string; title: string }>;
   targetItemId?: string;
   variantName: string;
@@ -168,6 +174,17 @@ export function ResearchApplyReviewDialog({
               <Localized value={error} />
             </p>
           ) : null}
+          {conflict ? (
+            <Button
+              className="min-h-11"
+              disabled={reloadPending}
+              onClick={() => void onReloadLatest()}
+              type="button"
+              variant="outline"
+            >
+              <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
+            </Button>
+          ) : null}
         </div>
         <DialogFooter>
           <Button
@@ -195,22 +212,28 @@ export function ResearchApplyReviewDialog({
 
 export function ResearchApplicationDialog({
   application,
+  conflict,
   error,
   item,
   onOpenChange,
+  onReloadLatest,
   onRevert,
   open,
   pending,
+  reloadPending,
   result,
   variantName,
 }: {
   application: ResearchPlanApplication;
+  conflict: boolean;
   error?: string;
   item: ResearchItem;
   onOpenChange: (open: boolean) => void;
+  onReloadLatest: () => Promise<void>;
   onRevert: () => void;
   open: boolean;
   pending: boolean;
+  reloadPending: boolean;
   result?: RevertRpcResult;
   variantName: string;
 }) {
@@ -269,6 +292,17 @@ export function ResearchApplicationDialog({
             <p className="text-sm text-destructive" role="alert">
               <Localized value={error} />
             </p>
+          ) : null}
+          {conflict ? (
+            <Button
+              className="min-h-11"
+              disabled={reloadPending}
+              onClick={() => void onReloadLatest()}
+              type="button"
+              variant="outline"
+            >
+              <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
+            </Button>
           ) : null}
         </div>
         <DialogFooter>

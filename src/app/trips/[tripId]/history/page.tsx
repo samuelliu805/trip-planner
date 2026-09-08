@@ -23,6 +23,12 @@ function changeLines(changes: Json) {
   });
 }
 
+function approximateBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export default async function TripHistoryPage({
   params,
   searchParams,
@@ -38,9 +44,10 @@ export default async function TripHistoryPage({
       ? { createdAt: query.before, id: query.beforeId! }
       : undefined;
   const repository = getTripRepository();
-  const [trip, history] = await Promise.all([
+  const [trip, history, storage] = await Promise.all([
     repository.getById(tripId),
     repository.listHistory(tripId, cursor),
+    repository.getStorageStats(tripId),
   ]);
   if (!trip) notFound();
 
@@ -62,6 +69,51 @@ export default async function TripHistoryPage({
         </div>
       </header>
       <div className="mx-auto max-w-4xl px-4 py-8">
+        {storage ? (
+          <section
+            aria-label="Storage usage"
+            className="mb-6 rounded-xl border bg-card p-4"
+            data-i18n-aria-label
+          >
+            <p className="text-sm font-semibold">
+              <T message={"Approximate collaboration storage"} />
+            </p>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-muted-foreground">
+                  <T message={"History"} />
+                </dt>
+                <dd>
+                  {storage.history.rows} · {approximateBytes(storage.history.bytes)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">
+                  <T message={"Replay operations"} />
+                </dt>
+                <dd>
+                  {storage.operations.rows} · {approximateBytes(storage.operations.bytes)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">
+                  <T message={"Creation receipts"} />
+                </dt>
+                <dd>
+                  {storage.receipts.rows} · {approximateBytes(storage.receipts.bytes)}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-xs text-muted-foreground">
+              <T
+                message={
+                  "History is durable. Replay operations and receipts expire after {days} days."
+                }
+                values={{ days: storage.replayWindowDays }}
+              />
+            </p>
+          </section>
+        ) : null}
         {history.entries.length ? (
           <ol className="space-y-3">
             {history.entries.map((entry) => (

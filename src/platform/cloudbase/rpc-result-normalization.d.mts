@@ -27,22 +27,41 @@ type CloudBaseItemSaveRecoveryKey = Readonly<{
 }>;
 
 type CloudBaseScalarMutationRecoveryKey =
-  | Readonly<{ dayNumber: number; kind: "insert-day"; tripId: string; variantId: string }>
-  | Readonly<{ dayId: string; kind: "remove-day"; tripId: string; variantId: string }>
+  | Readonly<{
+      dayNumber: number;
+      kind: "insert-day";
+      resultKey: "dayId" | null;
+      tripId: string;
+      variantId: string;
+    }>
+  | Readonly<{
+      dayId: string;
+      kind: "remove-day";
+      resultKey: "dayId" | null;
+      tripId: string;
+      variantId: string;
+    }>
   | Readonly<{
       kind: "create-variant";
+      resultKey: "variantId" | null;
       tripId: string;
       variantColor: string;
       variantName: string;
     }>
   | Readonly<{
       kind: "update-variant";
+      resultKey: "variantId" | null;
       tripId: string;
       variantColor: string;
       variantId: string;
       variantName: string;
     }>
-  | Readonly<{ kind: "primary-variant" | "delete-variant"; tripId: string; variantId: string }>;
+  | Readonly<{
+      kind: "primary-variant" | "delete-variant";
+      resultKey: "variantId" | null;
+      tripId: string;
+      variantId: string;
+    }>;
 
 type CloudBaseOrderMutationRecoveryKey =
   | Readonly<{ dayId: string; kind: "items"; orderedIds: string[] }>
@@ -87,6 +106,19 @@ export function recoverCloudBaseDeletedUuidResult(
   original: CloudBaseRpcResult,
   lookup: CloudBaseRpcResult,
   expectedId: string,
+): CloudBaseRpcResult;
+
+export function recoverCloudBaseMutationResult(
+  original: CloudBaseRpcResult,
+  lookup: CloudBaseRpcResult,
+  resultKey: string | null,
+): CloudBaseRpcResult;
+
+export function recoverCloudBaseDeletedMutationResult(
+  original: CloudBaseRpcResult,
+  lookup: CloudBaseRpcResult,
+  expectedId: string,
+  resultKey: string | null,
 ): CloudBaseRpcResult;
 
 export function recoverCloudBaseOrderedVoidResult(

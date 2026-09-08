@@ -28,6 +28,7 @@ export function createGuestTripDraft(
     revision: 0,
     schemaVersion: 1,
     trip: {
+      content_version: 1,
       created_at: createdAt,
       currency: defaultTripCurrencyForRegion(region),
       day_count: defaultTripDayCount,
@@ -46,6 +47,7 @@ export function createGuestTripDraft(
     workspace: {
       days: [
         {
+          content_version: 1,
           date: null,
           day_number: 1,
           id: createId(),
@@ -60,6 +62,7 @@ export function createGuestTripDraft(
       routePlans: [],
       variant: {
         color: "#167A5A",
+        content_version: 1,
         days_version: 1,
         id: variantId,
         is_primary: true,
@@ -82,6 +85,7 @@ export function guestDaysForCount(
     const existing = current[index];
     return (
       existing ?? {
+        content_version: 1,
         date: null,
         day_number: index + 1,
         id: createId(),

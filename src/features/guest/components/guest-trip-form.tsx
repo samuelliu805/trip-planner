@@ -66,6 +66,7 @@ export function GuestTripForm({
       currency,
       dayCount,
       endDate,
+      expectedContentVersion: trip.content_version,
       expectedVersion: trip.version,
       operationId: crypto.randomUUID(),
       startDate,
