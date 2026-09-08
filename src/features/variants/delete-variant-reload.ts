@@ -38,3 +38,15 @@ export function resolveDeleteVariantReload(
         refreshedVariant: undefined,
       };
 }
+
+export function resolveManageVariantReload(
+  variants: PlannerVariant[] | undefined,
+  deleteVariantId?: string,
+) {
+  return deleteVariantId
+    ? resolveDeleteVariantReload(variants, deleteVariantId)
+    : {
+        notice: "Latest Plans loaded. You can retry setting the primary Plan." as const,
+        refreshedVariant: undefined,
+      };
+}

@@ -19,6 +19,7 @@ import { deleteTrip, loadTripDeleteSnapshot } from "@/features/trips/actions";
 import {
   completedTripDeleteReload,
   effectiveTripDeleteSnapshot,
+  openedTripDeleteSession,
   startedTripDeleteSubmission,
   type TripDeleteReloadState,
 } from "@/features/trips/delete-trip-reload";
@@ -121,9 +122,7 @@ export function DeleteTripDialog({
     <AlertDialog
       onOpenChange={(nextOpen) => {
         if (pending && !nextOpen) return;
-        if (nextOpen) {
-          setReloadState({ latestSnapshot: null, reloadSucceeded: false });
-        }
+        setReloadState(openedTripDeleteSession(state));
         onOpenChange?.(nextOpen);
       }}
       open={open}
