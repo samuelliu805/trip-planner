@@ -2167,6 +2167,11 @@ async function waitForClickableElement(browser, elementExpression, label) {
     `(() => {
       const element = (${elementExpression});
       if (!element || !element.getClientRects().length || element.disabled) return false;
+      for (let node = element; node; node = node.parentElement) {
+        if (node.getAnimations().some((animation) => ["pending", "running"].includes(animation.playState))) {
+          return false;
+        }
+      }
       element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
       const rect = element.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
