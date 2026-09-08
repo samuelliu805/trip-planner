@@ -1841,6 +1841,140 @@ async function verifyVariantNavigationThroughUi(browser) {
     await evaluate(browser, 'Boolean(document.querySelector("[data-nextjs-dialog]"))'),
     false,
   );
+  return { createdVariantId, planName, priorVariantId };
+}
+
+async function openVariantDeleteConfirmation(browser, planName) {
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button[aria-label^="Open Plans for"]')]
+      .find((button) => button.getClientRects().length && !button.disabled)`,
+    "Plans menu for delete",
+  );
+  await clickButtonText(browser, "Manage Plans");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector(${JSON.stringify(`button[aria-label="Delete ${planName}"]`)}))`,
+    "Manage Plans delete action",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector(${JSON.stringify(`button[aria-label="Delete ${planName}"]`)})`,
+    `Delete ${planName}`,
+  );
+  await waitFor(
+    browser,
+    "Boolean(document.querySelector('[role=\"alertdialog\"]'))",
+    "Plan delete confirmation",
+  );
+}
+
+async function assertMobileDeleteConfirmation(browser, width, actionText) {
+  const evidence = await evaluate(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('[role="alertdialog"]');
+      const overlay = dialog?.previousElementSibling;
+      const rect = dialog?.getBoundingClientRect();
+      const actions = [...(dialog?.querySelectorAll('button') ?? [])]
+        .filter((button) => ["Cancel", ${JSON.stringify(actionText)}].includes(button.textContent.trim()))
+        .map((button) => button.getBoundingClientRect().height);
+      return {
+        actions,
+        dialogZ: Number.parseInt(getComputedStyle(dialog).zIndex, 10),
+        documentFits: document.documentElement.scrollWidth <= innerWidth,
+        fits: Boolean(rect) && rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight,
+        overlayZ: Number.parseInt(getComputedStyle(overlay).zIndex, 10),
+      };
+    })()`,
+  );
+  assert.equal(evidence.fits, true, `${actionText} confirmation escaped ${width}px viewport.`);
+  assert.equal(evidence.documentFits, true, `${actionText} confirmation overflowed at ${width}px.`);
+  assert.equal(evidence.actions.length, 2, `${actionText} confirmation actions were missing.`);
+  assert.ok(
+    evidence.actions.every((height) => height >= 44),
+    `${actionText} action was below 44px.`,
+  );
+  assert.ok(evidence.dialogZ > evidence.overlayZ, `${actionText} dialog was below its overlay.`);
+}
+
+async function verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant) {
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: width === 390 ? 844 : 932, mobile: true, width },
+      browser.sessionId,
+    );
+    await openVariantDeleteConfirmation(browser, createdVariant.planName);
+    await assertMobileDeleteConfirmation(browser, width, "Delete Plan");
+    if (width === 390) {
+      await clickButtonText(browser, "Cancel");
+      await waitFor(
+        browser,
+        "!document.querySelector('[role=\"alertdialog\"]')",
+        "390px Plan delete confirmation close",
+      );
+    }
+  }
+
+  const before = await controlledData(
+    () =>
+      db
+        .from("route_variants")
+        .select("id,name,color,version,content_version,days_version,items_version")
+        .eq("id", createdVariant.createdVariantId),
+    "Plan delete conflict V1 lookup",
+  );
+  assert.equal(before.length, 1, "The conflict Plan was unavailable before its V2 update.");
+  const v2Name = `${createdVariant.planName}-v2`;
+  await controlledData(
+    () =>
+      db.rpc("update_route_variant_v2", {
+        expected_version: before[0].version,
+        target_operation_id: randomUUID(),
+        target_trip_id: tripId,
+        target_variant_id: createdVariant.createdVariantId,
+        variant_color: before[0].color,
+        variant_name: v2Name,
+      }),
+    "Plan delete conflict V2 update",
+  );
+
+  await clickButtonText(browser, "Delete Plan");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')]
+      .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
+    "Plan delete structured conflict",
+    45_000,
+  );
+  await clickButtonText(browser, "Reload latest");
+  await waitFor(
+    browser,
+    `document.querySelector('[role="alertdialog"]')?.textContent.includes("Latest Plan loaded. You can retry deletion.") &&
+      !document.querySelector('[role="alertdialog"] [role="alert"]')`,
+    "Plan delete V2 reload",
+  );
+  assert.equal(
+    await evaluate(browser, "Boolean(document.querySelector('[role=\"alertdialog\"]'))"),
+    true,
+    "Plan delete confirmation closed after reload.",
+  );
+  await clickButtonText(browser, "Delete Plan");
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(createdVariant.priorVariantId)}`,
+    "Plan delete retry success",
+    45_000,
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
 }
 
 async function clearCookies(browser) {
@@ -3406,15 +3540,31 @@ async function forgeForm(browser, path, entries, replacements = {}) {
 }
 
 async function deleteTripThroughUi(browser) {
-  await openTripMenu(browser);
-  await clickButtonText(browser, "Delete trip");
-  await waitFor(
-    browser,
-    `[...document.querySelectorAll('button,[role="menuitem"]')].some(
-      (button) => button.textContent.trim() === "Delete trip" && !button.disabled,
-    )`,
-    "enabled delete confirmation",
-  );
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: width === 390 ? 844 : 932, mobile: true, width },
+      browser.sessionId,
+    );
+    await openTripMenu(browser);
+    await clickButtonText(browser, "Delete trip");
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[role="alertdialog"] button')].some(
+        (button) => button.textContent.trim() === "Delete trip" && !button.disabled,
+      )`,
+      `enabled ${width}px trip delete confirmation`,
+    );
+    await assertMobileDeleteConfirmation(browser, width, "Delete trip");
+    if (width === 390) {
+      await clickButtonText(browser, "Cancel");
+      await waitFor(
+        browser,
+        "!document.querySelector('[role=\"alertdialog\"]')",
+        "390px trip delete confirmation close",
+      );
+    }
+  }
   await clickButtonText(browser, "Delete trip");
   await waitFor(browser, 'location.pathname === "/trips"', "trip deletion", 45_000);
 }
@@ -3697,7 +3847,8 @@ async function run() {
     await verifyFeedbackCountdown(browser);
     await saveWalkingTransportThroughUi(browser);
     await verifyMobileTransportEditorScroll(browser);
-    await verifyVariantNavigationThroughUi(browser);
+    const createdVariant = await verifyVariantNavigationThroughUi(browser);
+    await verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant);
     await navigate(browser, `/trips/${tripId}`);
     await navigate(browser, `/trips/${tripId}`);
     await waitFor(
