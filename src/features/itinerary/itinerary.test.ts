@@ -752,7 +752,12 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(deleteDialog, /Checking published Share Pages/);
   assert.match(deleteDialog, /pending \? "Deleting…"/);
   assert.match(deleteDialog, /onPendingChange\?\.\(pending\)/);
-  assert.match(deleteDialog, /const \[, action, pending\] = useActionState\(deleteTrip, \{\}\)/);
+  assert.match(
+    deleteDialog,
+    /const \[state, action, pending\] = useActionState\(deleteTrip, \{\}\)/,
+  );
+  assert.match(deleteDialog, /state\.conflict[\s\S]*Reload latest/);
+  assert.match(deleteDialog, /loadTripDeleteSnapshot\(tripId\)/);
   assert.match(deleteDialog, /<form action=\{action\}>/);
   assert.doesNotMatch(deleteDialog, /AlertDialogAction/);
   assert.match(deleteDialog, /<Button[\s\S]*type="submit"[\s\S]*variant="destructive"/);

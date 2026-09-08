@@ -97,7 +97,7 @@ async function run() {
   }
   await proveDenied(db, anonymousDenied, "anonymous");
 
-  await signIn(auth, "trip-planner-cn-test-a", config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  await signIn(auth, "19900000101", config.CLOUDBASE_TEST_USER_A_PASSWORD);
   await proveDenied(db, authenticatedDenied, "authenticated");
   await proveReachable(db, policyHelpers, "authenticated");
 

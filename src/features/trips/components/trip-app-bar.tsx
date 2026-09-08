@@ -7,6 +7,7 @@ import { useState, type ReactNode } from "react";
 
 import { AppBottomNavigation } from "@/components/navigation/app-bottom-navigation";
 import { Button } from "@/components/ui/button";
+import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ResearchCategory } from "@/features/research/types";
 import { countActiveSharePages } from "@/features/trips/actions";
@@ -121,6 +122,7 @@ export function TripAppBar({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [sharePageCount, setSharePageCount] = useState<number | null>(null);
+  const [deleteNotice, setDeleteNotice] = useState<string>();
 
   function requestTripDelete() {
     setSharePageCount(null);
@@ -261,12 +263,22 @@ export function TripAppBar({
           <div className="contents">{shareControls}</div>
         </div>
       </header>
+      <AutoDismissAlert
+        className="rounded-none border-x-0 border-t-0 text-xs shadow-none"
+        onDismiss={() => setDeleteNotice(undefined)}
+        role="alert"
+        tone="destructive"
+        value={deleteNotice}
+      >
+        {deleteNotice ? <Localized value={deleteNotice} /> : null}
+      </AutoDismissAlert>
       {guestExperience || !canDelete ? null : (
         <DeleteTripDialog
           activeSharePageCount={sharePageCount}
           contentVersion={tripContentVersion}
           onOpenChange={setDeleteOpen}
           onPendingChange={setDeletePending}
+          onUnavailable={setDeleteNotice}
           open={deleteOpen}
           renderTrigger={false}
           surface="planner_app_bar"

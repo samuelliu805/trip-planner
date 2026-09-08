@@ -1297,7 +1297,7 @@ export async function runGlobalBrowserSmoke(options) {
     try {
       await waitFor(
         browser,
-        `document.body.innerText.includes(${JSON.stringify(options.privateTitle)})`,
+        `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,
         "authenticated trip",
       );
     } catch (error) {

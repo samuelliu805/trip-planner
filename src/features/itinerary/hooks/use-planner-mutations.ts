@@ -17,11 +17,13 @@ import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/iti
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
+import { isItineraryConflict } from "@/features/itinerary/query-cache";
 
 export function usePlannerMutations(
   tripId: string,
   variantId: string,
   setInteractionError: Dispatch<SetStateAction<string | undefined>>,
+  setInteractionConflict: Dispatch<SetStateAction<boolean>>,
 ) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -33,6 +35,7 @@ export function usePlannerMutations(
   const reorderMutation = useReorderItineraryItems(tripId, variantId);
 
   async function insertDay(beforeDayNumber: number) {
+    setInteractionConflict(false);
     try {
       const workspace = queryClient.getQueryData<PlannerWorkspace>(
         plannerQueryKey(tripId, variantId),
@@ -49,6 +52,7 @@ export function usePlannerMutations(
       setInteractionError(undefined);
       if (!persistence) router.refresh();
     } catch (error) {
+      setInteractionConflict(isItineraryConflict(error));
       setInteractionError(
         error instanceof Error ? error.message : "The day could not be inserted.",
       );
@@ -56,6 +60,7 @@ export function usePlannerMutations(
   }
 
   async function removeDay(dayId: string) {
+    setInteractionConflict(false);
     try {
       const workspace = queryClient.getQueryData<PlannerWorkspace>(
         plannerQueryKey(tripId, variantId),
@@ -75,11 +80,13 @@ export function usePlannerMutations(
       setInteractionError(undefined);
       if (!persistence) router.refresh();
     } catch (error) {
+      setInteractionConflict(isItineraryConflict(error));
       setInteractionError(error instanceof Error ? error.message : "The day could not be removed.");
     }
   }
 
   async function reorderItems(day: PlannerDay, orderedItemIds: string[]) {
+    setInteractionConflict(false);
     try {
       await reorderMutation.mutateAsync({
         dayId: day.id,
@@ -91,13 +98,19 @@ export function usePlannerMutations(
       });
       setInteractionError(undefined);
       return true;
-    } catch {
-      setInteractionError("The item order could not be saved. The previous order was restored.");
+    } catch (error) {
+      setInteractionConflict(isItineraryConflict(error));
+      setInteractionError(
+        isItineraryConflict(error)
+          ? error.message
+          : "The item order could not be saved. The previous order was restored.",
+      );
       return false;
     }
   }
 
   async function deleteItem(item: ItineraryItem) {
+    setInteractionConflict(false);
     try {
       const workspace = queryClient.getQueryData<PlannerWorkspace>(
         plannerQueryKey(tripId, variantId),
@@ -115,12 +128,18 @@ export function usePlannerMutations(
         operationId: newTelemetryOperationId(),
       });
       setInteractionError(undefined);
-    } catch {
-      setInteractionError(`“${item.title}” could not be deleted. Please try again.`);
+    } catch (error) {
+      setInteractionConflict(isItineraryConflict(error));
+      setInteractionError(
+        isItineraryConflict(error)
+          ? error.message
+          : `“${item.title}” could not be deleted. Please try again.`,
+      );
     }
   }
 
   async function clearItems(items: ItineraryItem[]) {
+    setInteractionConflict(false);
     try {
       const workspace = queryClient.getQueryData<PlannerWorkspace>(
         plannerQueryKey(tripId, variantId),
@@ -138,6 +157,7 @@ export function usePlannerMutations(
       setInteractionError(undefined);
       return true;
     } catch (error) {
+      setInteractionConflict(isItineraryConflict(error));
       setInteractionError(
         error instanceof Error ? error.message : "The selected cells could not be cleared.",
       );

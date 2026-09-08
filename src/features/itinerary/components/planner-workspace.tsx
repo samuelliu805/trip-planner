@@ -108,10 +108,12 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         guestExperience={props.guestExperience}
         insertDay={c.insertDay}
         interactionError={c.interactionError}
+        interactionConflict={c.interactionConflict}
         isFillDragging={c.isFillDragging}
         mutating={c.mutating}
         onArrangeActivities={(day) => c.setArrangeActivitiesRequest({ dayId: day.id })}
         onMapExpand={mapSheet.open}
+        onReloadLatest={c.reloadLatestPlanner}
         pasteAvailableClipboard={c.clipboard.pasteAvailableClipboard}
         planCostLines={planCostLines}
         planCostSummary={costSummary}
@@ -119,6 +121,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         removeDay={c.removeDay}
         requestClearSelection={c.requestClearSelection}
         requestPending={c.clipboard.requestPending}
+        reloadPending={c.reloadPending}
         researchContext={researchContext}
         researchItems={props.initialResearchItems}
         researchSelections={props.initialResearchSelections}
@@ -282,13 +285,17 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         workspace={c.workspace}
       />
       <PlannerClearCellsDialog
+        conflict={c.interactionConflict}
         error={c.interactionError}
         itemCount={c.clearTargetItems.length}
         onCancel={() => c.setClearTargetItems([])}
         onConfirm={() => void c.confirmClearSelection()}
+        onReloadLatest={c.reloadLatestPlanner}
         pending={c.clearPending}
+        reloadPending={c.reloadPending}
       />
       <ArrangeActivitiesSheet
+        conflict={c.interactionConflict}
         day={c.arrangeActivitiesDay}
         initialMovingItemId={c.arrangeActivitiesRequest?.initialMovingItemId}
         key={`${c.arrangeActivitiesRequest?.dayId ?? "closed"}:${c.arrangeActivitiesRequest?.initialMovingItemId ?? "manual"}`}
@@ -298,7 +305,9 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
           if (!open) c.setArrangeActivitiesRequest(undefined);
         }}
         open={Boolean(c.arrangeActivitiesRequest)}
+        onReloadLatest={c.reloadLatestPlanner}
         pending={c.itemOrderPending}
+        reloadPending={c.reloadPending}
       />
     </PlannerWorkspaceEventBoundary>
   );

@@ -17,7 +17,7 @@ if (apiKey.trim() !== apiKey || /[\r\n{}]/.test(apiKey)) {
 }
 // The management-plane SQL command regularly needs longer than application data requests.
 const timeoutMilliseconds = 60_000;
-const users = ["trip-planner-cn-test-a", "trip-planner-cn-test-b"];
+const users = ["19900000101", "19900000102"];
 
 async function run() {
   const config = loadLiveConfig();

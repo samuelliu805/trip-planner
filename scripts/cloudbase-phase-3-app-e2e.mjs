@@ -35,8 +35,8 @@ const resolvedBrowserOrigin = resolveCnBrowserOrigin(
 let browserBaseUrl = resolvedBrowserOrigin.browserBaseUrl;
 const { hostResolverArgument } = resolvedBrowserOrigin;
 const runLabel = `phase3-app-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const userA = "trip-planner-cn-test-a";
-const userB = "trip-planner-cn-test-b";
+const userA = "19900000101";
+const userB = "19900000102";
 const browserSessions = new Map();
 const dataClients = new Map();
 let applicationServerDiagnostics = "";
@@ -3810,7 +3810,7 @@ async function run() {
     await waitFor(browser, "!document.querySelector('[role=\"menu\"]')", "status action close");
     await waitFor(
       browser,
-      `Boolean(document.querySelector('[role="alert"]')) || !document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      `Boolean(document.querySelector('[role="alert"]')) || !document.body.innerText.includes(${JSON.stringify(updatedTitle)}) || document.body.innerText.includes("Completed")`,
       "status action result",
       45_000,
     );

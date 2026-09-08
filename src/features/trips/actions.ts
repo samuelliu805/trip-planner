@@ -203,6 +203,25 @@ export async function countActiveSharePages(tripId: string) {
   return data.length;
 }
 
+export async function loadTripStatusSnapshot(tripId: string) {
+  const parsed = tripIdSchema.safeParse(tripId);
+  if (!parsed.success || !(await authenticatedUser())) return null;
+  const trip = await getTripRepository().getById(parsed.data);
+  return trip ? { status: trip.status, version: trip.version } : null;
+}
+
+export async function loadTripDeleteSnapshot(tripId: string) {
+  const parsed = tripIdSchema.safeParse(tripId);
+  if (!parsed.success || !(await authenticatedUser())) return null;
+  const trip = await getTripRepository().getById(parsed.data);
+  if (!trip) return null;
+  return {
+    activeSharePageCount: await countActiveSharePages(parsed.data),
+    contentVersion: trip.content_version,
+    version: trip.version,
+  };
+}
+
 export async function deleteTrip(
   _state: TripActionState,
   formData: FormData,
@@ -254,6 +273,8 @@ export async function deleteTrip(
         appUserId: user.id,
       },
     );
+    if (error instanceof PlatformOperationError && error.code === "conflict")
+      return { conflict: true, error: error.message };
     redirect(`/trips/${parsed.data.tripId}?error=delete`);
   }
   await captureServerProductEvent(

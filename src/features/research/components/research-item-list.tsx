@@ -17,6 +17,7 @@ export function ResearchItemList({
   onApplied,
   onDeleted,
   onReverted,
+  onReloadLatest,
   onSaved,
   onSelected,
   applicationsByItem,
@@ -31,6 +32,7 @@ export function ResearchItemList({
   onApplied: (application: ResearchPlanApplication) => void;
   onDeleted: (id: string) => void;
   onReverted: (applicationId: string, result: RevertRpcResult) => void;
+  onReloadLatest: (itemId: string) => Promise<void>;
   onSaved: (item: ResearchItem) => void;
   onSelected: (selection: VariantResearchSelection) => void;
   plan: ResearchPlanSnapshot;
@@ -78,6 +80,7 @@ export function ResearchItemList({
               onApplied={onApplied}
               onDeleted={onDeleted}
               onReverted={onReverted}
+              onReloadLatest={onReloadLatest}
               onSaved={onSaved}
               onSelected={onSelected}
               plan={plan}
@@ -110,6 +113,7 @@ export function ResearchItemList({
               onApplied={onApplied}
               onDeleted={onDeleted}
               onReverted={onReverted}
+              onReloadLatest={onReloadLatest}
               onSaved={onSaved}
               onSelected={onSelected}
               plan={plan}

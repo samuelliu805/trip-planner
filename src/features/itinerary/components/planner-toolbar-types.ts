@@ -30,6 +30,7 @@ export type PlannerToolbarProps = {
   };
   insertDay: (position: number) => Promise<void>;
   interactionError?: string;
+  interactionConflict: boolean;
   isFillDragging: boolean;
   mutating: boolean;
   planCostLines: ConvertedPlanCostLine[];
@@ -37,10 +38,12 @@ export type PlannerToolbarProps = {
   planDays: PlannerDay[];
   onArrangeActivities: (day: PlannerDay) => void;
   onMapExpand: () => void;
+  onReloadLatest: () => Promise<void>;
   pasteAvailableClipboard: () => Promise<void>;
   removeDay: (dayId: string) => Promise<void>;
   requestClearSelection: () => void;
   requestPending: boolean;
+  reloadPending: boolean;
   researchContext?: PlanResearchContext & { label: string };
   researchItems: PlanResearchItem[];
   researchSelections: VariantResearchSelection[];

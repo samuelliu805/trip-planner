@@ -23,8 +23,8 @@ import { normalizeCloudBaseRpcResult } from "../src/platform/cloudbase/rpc-resul
 const require = createRequire(import.meta.url);
 const cloudbase = require("@cloudbase/js-sdk");
 const nodeAdapter = require("@cloudbase/adapter-node");
-const userA = "trip-planner-cn-test-a";
-const userB = "trip-planner-cn-test-b";
+const userA = "19900000101";
+const userB = "19900000102";
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0xff, 0xd9]);
 const hardTimeoutMilliseconds = 15_000;
 const execFileAsync = promisify(execFile);

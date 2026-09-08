@@ -14,6 +14,7 @@ import {
 } from "@/features/itinerary/grid-interactions";
 import { useCopyItineraryItems } from "@/features/itinerary/day-mutations";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
+import { isItineraryConflict } from "@/features/itinerary/query-cache";
 import type { ItineraryItemType, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
@@ -21,12 +22,14 @@ export function usePlannerClipboard({
   selectionAnchor,
   selectionEnd,
   setInteractionError,
+  setInteractionConflict,
   tripId,
   workspace,
 }: {
   selectionAnchor: GridCoordinate;
   selectionEnd: GridCoordinate;
   setInteractionError: Dispatch<SetStateAction<string | undefined>>;
+  setInteractionConflict: Dispatch<SetStateAction<boolean>>;
   tripId: string;
   workspace: PlannerWorkspace;
 }) {
@@ -127,6 +130,7 @@ export function usePlannerClipboard({
         group.replaceTargetItemIds.push(...replacedItems.map(({ id }) => id));
         grouped.set(targetDay.id, group);
       }
+      setInteractionConflict(false);
       try {
         const replacedIds = new Set(
           replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
@@ -171,11 +175,9 @@ export function usePlannerClipboard({
         setInteractionError(undefined);
       } catch (error) {
         queryClient.setQueryData(plannerQueryKey(tripId, variantId), previous);
-        void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+        setInteractionConflict(isItineraryConflict(error));
         setInteractionError(
-          error instanceof Error
-            ? `${error.message} Refreshing the planner to confirm saved values.`
-            : "The destination cells could not be replaced.",
+          error instanceof Error ? error.message : "The destination cells could not be replaced.",
         );
       }
     });

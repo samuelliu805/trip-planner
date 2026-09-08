@@ -10,6 +10,7 @@ import { ResearchItemDialog } from "./research-item-dialog";
 import { ResearchItemList } from "./research-item-list";
 import { ResearchSortMenu } from "./research-sort-menu";
 import { TripMobileTabBar } from "@/features/trips/components/trip-app-bar";
+import { Localized } from "@/features/i18n/i18n-provider";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
@@ -54,6 +55,7 @@ export function CompareWorkspace({
   variantName: string;
 }) {
   const [sort, setSort] = useState<ResearchSort>("price");
+  const [reloadNotice, setReloadNotice] = useState<string>();
   const queryClient = useQueryClient();
   const initialData = useMemo<ResearchWorkspaceSnapshot>(
     () => ({
@@ -249,6 +251,23 @@ export function CompareWorkspace({
                 queryKey: plannerQueryKey(tripId, currentPlan.variantId),
               });
             }}
+            onReloadLatest={async (itemId) => {
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey, refetchType: "active" }),
+                queryClient.invalidateQueries({
+                  queryKey: plannerQueryKey(tripId, currentPlan.variantId),
+                  refetchType: "active",
+                }),
+              ]);
+              const latest = queryClient.getQueryData<ResearchWorkspaceSnapshot>(queryKey);
+              if (!latest?.items.some(({ id }) => id === itemId)) {
+                setReloadNotice(
+                  "This Research item is no longer available. Its open action was closed safely.",
+                );
+                return;
+              }
+              setReloadNotice(undefined);
+            }}
             onSaved={saveItem}
             onSelected={(selection) =>
               queryClient.setQueryData<ResearchWorkspaceSnapshot>(
@@ -272,6 +291,14 @@ export function CompareWorkspace({
             sort={sort}
             variantName={variantName}
           />
+          {reloadNotice ? (
+            <p
+              className="rounded-md border border-destructive/40 p-3 text-sm text-destructive"
+              role="alert"
+            >
+              <Localized value={reloadNotice} />
+            </p>
+          ) : null}
         </div>
       </div>
       <TripMobileTabBar

@@ -3056,6 +3056,7 @@
     "insert_collaboration_member(uuid,text,text)",
     "is_trip_member(uuid)",
     "operation_fingerprint(text,text,uuid,jsonb)",
+    "raise_app_conflict(text,text)",
     "safe_jsonb_diff(jsonb,jsonb,text)",
     "share_settings_json(public_itinerary_links)",
     "trip_actor_label()",

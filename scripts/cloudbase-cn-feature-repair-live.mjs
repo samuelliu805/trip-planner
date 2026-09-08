@@ -8,7 +8,7 @@ import {
   signIn,
 } from "./lib/cloudbase-pg-live.mjs";
 
-const user = "trip-planner-cn-test-a";
+const user = "19900000101";
 
 function rows(result, label) {
   const data = dataOrThrow(result, label);
