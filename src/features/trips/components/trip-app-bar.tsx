@@ -7,14 +7,14 @@ import { useState, type ReactNode } from "react";
 
 import { AppBottomNavigation } from "@/components/navigation/app-bottom-navigation";
 import { Button } from "@/components/ui/button";
-import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ResearchCategory } from "@/features/research/types";
 import { countActiveSharePages } from "@/features/trips/actions";
-import { DeleteTripDialog } from "@/features/trips/components/delete-trip-dialog";
 import { tripSectionHref, type TripSection } from "@/features/research/urls";
 
 import { TripBarMenu, type TripMobileQuickAction } from "./trip-app-bar-menu";
+import { TripAppBarOverlays } from "./trip-app-bar-overlays";
+import type { TripRole } from "@/platform/contracts/trips";
 
 const sections: Array<{ id: TripSection; label: string }> = [
   { id: "plan", label: "Plan" },
@@ -90,6 +90,7 @@ export type TripAppBarProps = {
   title: string;
   tripId: string;
   tripContentVersion?: number;
+  tripRole?: TripRole;
   tripVersion?: number;
   variantControls: ReactNode;
   variantId: string;
@@ -115,11 +116,13 @@ export function TripAppBar({
   title,
   tripId,
   tripContentVersion = 1,
+  tripRole = "owner",
   tripVersion = 1,
   variantControls,
   variantId,
 }: TripAppBarProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
   const [sharePageCount, setSharePageCount] = useState<number | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string>();
@@ -250,6 +253,7 @@ export function TripAppBar({
               guest={Boolean(guestExperience)}
               historyHref={guestExperience ? undefined : `/trips/${tripId}/history`}
               onDeleteTrip={guestExperience || !canDelete ? undefined : requestTripDelete}
+              onInviteTrip={guestExperience ? undefined : () => setPeopleOpen(true)}
               onShareTrip={
                 guestExperience
                   ? guestExperience.onShare
@@ -263,43 +267,24 @@ export function TripAppBar({
           <div className="contents">{shareControls}</div>
         </div>
       </header>
-      <AutoDismissAlert
-        className="rounded-none border-x-0 border-t-0 text-xs shadow-none"
-        onDismiss={() => setDeleteNotice(undefined)}
-        role="alert"
-        tone="destructive"
-        value={deleteNotice}
-      >
-        {deleteNotice ? <Localized value={deleteNotice} /> : null}
-      </AutoDismissAlert>
-      {guestExperience || !canDelete ? null : (
-        <DeleteTripDialog
-          activeSharePageCount={sharePageCount}
-          contentVersion={tripContentVersion}
-          onOpenChange={setDeleteOpen}
-          onPendingChange={setDeletePending}
-          onUnavailable={setDeleteNotice}
-          open={deleteOpen}
-          renderTrigger={false}
-          surface="planner_app_bar"
-          title={title}
-          tripId={tripId}
-          version={tripVersion}
-        />
-      )}
-      {deletePending ? (
-        <div
-          aria-live="assertive"
-          className="fixed inset-0 z-[125] flex items-center justify-center bg-background/70 backdrop-blur-[1px]"
-          role="status"
-        >
-          <div className="flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-semibold shadow-lg">
-            <LoaderCircle aria-hidden="true" className="size-4 animate-spin text-destructive" />
-            <T message={" Deleting “"} />
-            {title}”…
-          </div>
-        </div>
-      ) : null}
+      <TripAppBarOverlays
+        canDelete={canDelete}
+        deleteNotice={deleteNotice}
+        deleteOpen={deleteOpen}
+        deletePending={deletePending}
+        guest={Boolean(guestExperience)}
+        onDeleteNoticeChange={setDeleteNotice}
+        onDeleteOpenChange={setDeleteOpen}
+        onDeletePendingChange={setDeletePending}
+        onPeopleOpenChange={setPeopleOpen}
+        peopleOpen={peopleOpen}
+        sharePageCount={sharePageCount}
+        title={title}
+        tripContentVersion={tripContentVersion}
+        tripId={tripId}
+        tripRole={tripRole}
+        tripVersion={tripVersion}
+      />
     </>
   );
 }

@@ -104,6 +104,7 @@ export function PlannerToolbar(props: PlannerToolbarProps) {
         title={props.trip.title}
         tripId={props.trip.id}
         tripContentVersion={props.trip.content_version}
+        tripRole={props.trip.role}
         tripVersion={props.trip.version}
         variantControls={props.variantControls}
         variantId={props.variantId}

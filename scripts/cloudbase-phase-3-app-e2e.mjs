@@ -2176,6 +2176,25 @@ async function cookieMetadata(browser) {
   }));
 }
 
+function browserSessionIdentityLabel(username) {
+  const session = browserSessions.get(username);
+  const payload = session?.access_token?.split(".")[1];
+  if (!payload) throw new Error(`${username} browser session identity is unavailable.`);
+  const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  const metadata = claims.user_metadata ?? {};
+  for (const value of [
+    claims.email,
+    claims.phone,
+    claims.phone_number,
+    metadata.username,
+    metadata.full_name,
+    metadata.name,
+  ]) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  throw new Error(`${username} browser session has no approachable account identity.`);
+}
+
 async function login(browser, username, password) {
   await setCookie(browser, "trip-planner-locale", "en");
   let session = browserSessions.get(username);
@@ -2409,7 +2428,7 @@ async function clickElement(browser, elementExpression, label) {
 }
 
 async function pressElement(browser, elementExpression, label) {
-  const focused = await evaluate(
+  await waitFor(
     browser,
     `(() => {
       const element = (${elementExpression});
@@ -2417,8 +2436,8 @@ async function pressElement(browser, elementExpression, label) {
       element.focus();
       return document.activeElement === element;
     })()`,
+    `${label} keyboard focus`,
   );
-  assert.equal(focused, true, `${label} was not available.`);
   await browser.cdp.send(
     "Input.dispatchKeyEvent",
     { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
@@ -3242,6 +3261,210 @@ async function openTripMenu(browser) {
   );
 }
 
+async function closePlannerEditor(browser, label) {
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(browser, `!document.querySelector('[data-editor-kind]')`, `${label} close`);
+}
+
+async function verifyAuthenticatedLandingGuestBoundary(browser) {
+  const identityLabel = browserSessionIdentityLabel(userA);
+  const guestKeys = [
+    "trip-planner:guest-trip:global:active",
+    "trip-planner:guest-trip:global:intent",
+    "trip-planner:guest-trip:global:imported",
+    "trip-planner:guest-trip:cn:active",
+    "trip-planner:guest-trip:cn:intent",
+    "trip-planner:guest-trip:cn:imported",
+  ];
+  await evaluate(
+    browser,
+    `${JSON.stringify(guestKeys)}.forEach((key) => localStorage.setItem(key, 'stale')); true`,
+  );
+  await navigate(browser, "/guest?claim=1");
+  await waitFor(
+    browser,
+    `location.pathname === '/trips' &&
+      ${JSON.stringify(guestKeys)}.every((key) => localStorage.getItem(key) === null)`,
+    "CN authenticated guest redirect and storage cleanup",
+  );
+  await navigate(browser, "/");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('a')].some((link) =>
+      link.getClientRects().length && new URL(link.href).pathname === '/account' &&
+      link.textContent.includes(${JSON.stringify(identityLabel)}))`,
+    "CN authenticated landing account link",
+  );
+  const landingLinks = await evaluate(
+    browser,
+    `(() => {
+      const visible = [...document.querySelectorAll('a')].filter((link) => link.getClientRects().length);
+      return {
+        hasSignIn: visible.some((link) => link.textContent.trim() === 'Sign in'),
+        startPaths: visible.filter((link) => link.textContent.trim() === 'Start planning')
+          .map((link) => new URL(link.href).pathname),
+      };
+    })()`,
+  );
+  assert.equal(landingLinks.hasSignIn, false);
+  assert.ok(landingLinks.startPaths.length > 0);
+  assert.deepEqual([...new Set(landingLinks.startPaths)], ["/trips"]);
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  const mobileLanding = await evaluate(
+    browser,
+    `(() => {
+      const account = [...document.querySelectorAll('a')].find((link) =>
+        new URL(link.href).pathname === '/account' && link.textContent.includes(${JSON.stringify(identityLabel)}));
+      return {
+        accountVisible: Boolean(account?.getClientRects().length),
+        documentFits: document.documentElement.scrollWidth <= innerWidth,
+      };
+    })()`,
+  );
+  assert.deepEqual(mobileLanding, { accountVisible: true, documentFits: true });
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('a')].find((link) =>
+      link.getClientRects().length && link.textContent.trim() === 'Start planning')`,
+    "CN authenticated Start planning",
+  );
+  await waitFor(browser, `location.pathname === '/trips'`, "CN Start planning destination");
+}
+
+async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
+  await openTripMenu(browser);
+  const menuText = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent.trim())`,
+  );
+  assert.ok(menuText.includes("Invite"), "Invite is not a separate CN Trip menu item.");
+  assert.ok(menuText.includes("History"), "History is not available from the CN Trip menu.");
+  await clickButtonText(browser, "Invite");
+  await waitFor(
+    browser,
+    `document.querySelector('[data-editor-kind="trip-people"]')?.innerText.includes(${JSON.stringify(userA)})`,
+    "CN People account identity",
+  );
+  const peopleEditor = await evaluate(
+    browser,
+    `(() => {
+      const editor = document.querySelector('[data-editor-kind="trip-people"]');
+      return {
+        hasIdentifierInput: Boolean(editor?.querySelector('#trip-person-identifier')),
+        hasSharedEditorScroller: Boolean(editor?.querySelector('[data-planner-editor-scroll]')),
+        text: editor?.innerText ?? '',
+      };
+    })()`,
+  );
+  assert.equal(peopleEditor.hasIdentifierInput, true);
+  assert.equal(peopleEditor.hasSharedEditorScroller, true);
+  assert.equal(peopleEditor.text.includes("Traveler"), false);
+  for (const { height, width } of [
+    { height: 844, width: 390 },
+    { height: 932, width: 430 },
+  ]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 2, height, mobile: true, width },
+      browser.sessionId,
+    );
+    const mobilePeople = await evaluate(
+      browser,
+      `(() => {
+        const editor = document.querySelector('[data-editor-kind="trip-people"]');
+        const overlay = document.querySelector('[data-sheet-overlay]');
+        const frozen = document.querySelector('.matrix-grid-header');
+        const input = editor?.querySelector('#trip-person-identifier');
+        const rect = editor?.getBoundingClientRect();
+        return {
+          documentFits: document.documentElement.scrollWidth <= innerWidth,
+          editorZ: Number.parseInt(getComputedStyle(editor).zIndex, 10),
+          fits: Boolean(rect) && rect.left >= 0 && rect.right <= innerWidth &&
+            rect.top >= 0 && rect.bottom <= innerHeight,
+          frozenZ: frozen ? Number.parseInt(getComputedStyle(frozen).zIndex, 10) : 0,
+          inputHeight: input?.getBoundingClientRect().height ?? 0,
+          overlayZ: Number.parseInt(getComputedStyle(overlay).zIndex, 10),
+        };
+      })()`,
+    );
+    assert.equal(mobilePeople.documentFits, true, `CN People overflowed at ${width}px.`);
+    assert.equal(mobilePeople.fits, true, `CN People escaped the ${width}px viewport.`);
+    assert.ok(mobilePeople.inputHeight >= 44, `CN Invite input was below 44px at ${width}px.`);
+    assert.ok(mobilePeople.overlayZ > mobilePeople.frozenZ);
+    assert.ok(mobilePeople.editorZ > mobilePeople.overlayZ);
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+  await closePlannerEditor(browser, "CN People editor");
+
+  await openTripMenu(browser);
+  await clickButtonText(browser, "Trip settings");
+  await waitFor(browser, `Boolean(document.querySelector('#trip-title'))`, "CN Trip settings");
+  assert.equal(
+    await evaluate(
+      browser,
+      `Boolean(document.querySelector('[data-editor-kind="trip-settings"] #trip-person-identifier')) ||
+        document.querySelector('[data-editor-kind="trip-settings"]')?.innerText.includes('People with access')`,
+    ),
+    false,
+    "People controls are still embedded in CN Trip settings.",
+  );
+  await closePlannerEditor(browser, "CN Trip settings");
+
+  await openTripMenu(browser);
+  await clickButtonText(browser, "History");
+  await waitFor(
+    browser,
+    `location.pathname === ${JSON.stringify(`/trips/${tripId}/history`)} &&
+      document.body.innerText.includes(${JSON.stringify(userA)})`,
+    "CN History account identity",
+  );
+  const historyBody = await evaluate(browser, "document.body.innerText");
+  assert.equal(historyBody.includes("Traveler"), false);
+  assert.equal(historyBody.includes("Storage usage"), false);
+  assert.equal(historyBody.includes('{"'), false, "CN History still exposes raw JSON.");
+
+  await navigate(browser, `/trips/${tripId}`);
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-i18n-aria-label="Editable trip planning matrix"]'))`,
+    "CN planner before logout",
+  );
+  await openTripMenu(browser);
+  await clickButtonText(browser, "Log out");
+  await waitFor(browser, `location.pathname === '/'`, "CN planner logout home", 45_000);
+  assert.equal(
+    (await cookieNames(browser)).some((name) => name.startsWith("tp-cn-")),
+    false,
+    "CN planner logout retained an application session cookie.",
+  );
+  await navigate(browser, "/trips");
+  assert.equal(await evaluate(browser, "location.pathname"), "/login");
+  await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
+  await navigate(browser, `/trips/${tripId}`);
+}
+
 async function updateTripTitle(browser, nextTitle) {
   await openTripMenu(browser);
   await waitFor(
@@ -3250,7 +3473,11 @@ async function updateTripTitle(browser, nextTitle) {
     "Trip settings menu item",
   );
   await clickButtonText(browser, "Trip settings");
-  await waitFor(browser, 'Boolean(document.querySelector("#trip-title"))', "Trip settings editor");
+  await waitFor(
+    browser,
+    'Boolean(document.querySelector("#trip-title")) && !document.querySelector("#trip-title").matches(":disabled")',
+    "fresh Trip settings editor",
+  );
   await evaluate(
     browser,
     `(() => {
@@ -3295,18 +3522,16 @@ async function updateTripTitle(browser, nextTitle) {
     45_000,
   );
   if (await evaluate(browser, 'Boolean(document.querySelector("#trip-title"))')) {
-    await clickButtonText(browser, "Reload latest");
-    await waitFor(
+    const conflict = await evaluate(
       browser,
-      `(() => {
-        const form = document.querySelector("#trip-title")?.form;
-        if (!form || document.querySelector("#trip-title")?.value !== ${JSON.stringify(nextTitle)})
-          return false;
-        return new FormData(form).get("expected_content_version") !== ${JSON.stringify(submittedContentVersion)};
-      })()`,
-      "Trip settings local draft preservation after reload",
+      `({
+        alerts: [...document.querySelectorAll('[role="alert"]')].map((node) => node.textContent.trim()),
+        expectedContentVersion: new FormData(document.querySelector('#trip-title').form)
+          .get('expected_content_version'),
+        submittedContentVersion: ${JSON.stringify(submittedContentVersion)},
+      })`,
     );
-    await evaluate(browser, 'document.querySelector("#trip-title").form.requestSubmit()');
+    throw new Error(`Trip settings unexpectedly conflicted: ${JSON.stringify(conflict)}`);
   }
   try {
     await waitFor(browser, '!document.querySelector("#trip-title")', "Trip settings save", 45_000);
@@ -3672,7 +3897,11 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
 async function captureMutationForms(browser) {
   await openTripMenu(browser);
   await clickButtonText(browser, "Trip settings");
-  await waitFor(browser, 'Boolean(document.querySelector("#trip-title"))', "Trip settings editor");
+  await waitFor(
+    browser,
+    'Boolean(document.querySelector("#trip-title")) && !document.querySelector("#trip-title").matches(":disabled")',
+    "fresh Trip settings editor",
+  );
   const updateEntries = await evaluate(
     browser,
     `(() => [...new FormData(document.querySelector("#trip-title").form).entries()].map(
@@ -3683,7 +3912,7 @@ async function captureMutationForms(browser) {
     browser,
     `(() => {
       const button = [...document.querySelectorAll('[role="dialog"] button')]
-        .find((candidate) => candidate.textContent.trim() === "Cancel" && !candidate.disabled);
+        .find((candidate) => candidate.textContent.trim() === "Cancel" && !candidate.matches(":disabled"));
       if (!button) return false;
       button.click();
       return true;
@@ -4065,6 +4294,7 @@ async function run() {
     await login(browser, userB, process.env.CLOUDBASE_TEST_USER_B_PASSWORD);
     await clearCookies(browser);
     await login(browser, userA, process.env.CLOUDBASE_TEST_USER_A_PASSWORD);
+    await verifyAuthenticatedLandingGuestBoundary(browser);
     guestFixture = createGuestTripFixture("cn", `${runLabel} guest`);
     guestTripId = await verifyCloudBaseGuestImport(guestFixture);
     let names = await cookieNames(browser);
@@ -4156,8 +4386,14 @@ async function run() {
     await assertRealAmapBrowserAdapter(browser);
     await verifyNewTripMobileGuidanceAndCityRoute(browser, tripId);
 
-    const updatedTitle = `${runLabel}-owned-by-a`;
+    let updatedTitle = `${runLabel}-owned-by-a`;
     await updateTripTitle(browser, updatedTitle);
+    await verifyPeopleHistoryAndPlannerLogout(browser, tripId);
+    await waitFor(
+      browser,
+      `document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      "reauthenticated CN trip",
+    );
     await verifyTripSectionNavigation(browser, tripId);
     await addAmapActivityThroughUi(browser, "上海外滩", 1);
     await addAmapActivityThroughUi(browser, "上海人民广场", 2);
@@ -4245,6 +4481,9 @@ async function run() {
     await assertRealAmapBrowserAdapter(browser);
     await verifyDeletedActivityLeavesMapAndRoute(browser, tripId);
     const publicToken = await publishThroughUi(browser, tripId);
+    const publishedTitle = updatedTitle;
+    updatedTitle = `${runLabel}-saved-right-after-share`;
+    await updateTripTitle(browser, updatedTitle);
     await verifyTabletFrozenLayers(browser);
     const forms = await captureMutationForms(browser);
 
@@ -4333,7 +4572,8 @@ async function run() {
     await navigate(browser, `/share/${publicToken}?view=timeline`);
     await waitFor(
       browser,
-      `document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      `document.body.innerText.includes(${JSON.stringify(publishedTitle)}) &&
+        !document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
       "CN anonymous public share",
     );
     assert.equal(await evaluate(browser, 'location.pathname.startsWith("/share/")'), true);
@@ -4345,7 +4585,8 @@ async function run() {
     await navigate(browser, `/share/${publicToken}?view=timeline`);
     await waitFor(
       browser,
-      `document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
+      `document.body.innerText.includes(${JSON.stringify(publishedTitle)}) &&
+        !document.body.innerText.includes(${JSON.stringify(updatedTitle)})`,
       "CN anonymous public timeline after tablet checks",
     );
     if (requireAmapSmoke) {
@@ -4405,7 +4646,7 @@ async function run() {
       "document.querySelector('button[data-i18n-aria-label=\"Log out\"]')",
       "Log out",
     );
-    await waitFor(browser, 'location.pathname === "/login"', "logout");
+    await waitFor(browser, 'location.pathname === "/"', "logout");
     names = await cookieNames(browser);
     assert(!names.some((name) => name.startsWith("tp-cn-")));
     await navigate(browser, "/trips");

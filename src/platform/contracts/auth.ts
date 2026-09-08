@@ -7,6 +7,19 @@ export type AppUser = Readonly<{
   phone: string | null;
 }>;
 
+export function appUserIdentityLabel(user: AppUser, fallback = "Account") {
+  for (const value of [
+    user.email,
+    user.phone,
+    user.metadata.username,
+    user.metadata.full_name,
+    user.metadata.name,
+  ]) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return fallback;
+}
+
 export type SignInInput =
   | Readonly<{
       email: string;

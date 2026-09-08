@@ -6,6 +6,7 @@ import { AuthForm } from "@/features/auth/components/auth-form";
 import { AuthUnavailable } from "@/features/auth/components/auth-unavailable";
 import { PhoneAuthForm } from "@/features/auth/components/phone-auth-form";
 import { phoneOtpAuth } from "@/features/auth/phone-actions";
+import { postLoginRefreshPath } from "@/features/auth/post-login";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
@@ -21,7 +22,7 @@ type SignupPageProps = {
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const [{ guest }, user] = await Promise.all([searchParams, getAuthProvider().getCurrentUser()]);
-  if (user) redirect(guest === "1" ? "/guest?claim=1" : "/trips");
+  if (user) redirect(guest === "1" ? postLoginRefreshPath : "/trips");
   const capabilities = getBackendCapabilities();
 
   if (capabilities.publicAuthMethods.includes("phone_otp"))

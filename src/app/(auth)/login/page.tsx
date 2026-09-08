@@ -5,6 +5,7 @@ import { continueWithGoogle, login } from "@/features/auth/actions";
 import { AuthForm } from "@/features/auth/components/auth-form";
 import { AuthUnavailable } from "@/features/auth/components/auth-unavailable";
 import { PhoneAuthForm } from "@/features/auth/components/phone-auth-form";
+import { postLoginRefreshPath } from "@/features/auth/post-login";
 import { phoneOtpAuth } from "@/features/auth/phone-actions";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
@@ -24,7 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     searchParams,
     getAuthProvider().getCurrentUser(),
   ]);
-  if (user) redirect(guest === "1" ? "/guest?claim=1" : "/trips");
+  if (user) redirect(guest === "1" ? postLoginRefreshPath : "/trips");
   const capabilities = getBackendCapabilities();
 
   const errorMessage =

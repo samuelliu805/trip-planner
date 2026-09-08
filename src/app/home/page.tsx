@@ -5,11 +5,13 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { logout } from "@/features/auth/actions";
+import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 import { getAuthProvider } from "@/platform/composition/server";
+import { appUserIdentityLabel } from "@/platform/contracts/auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -43,6 +45,7 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      {user ? <AuthenticatedGuestStorageCleanup /> : null}
       {user ? <AuthenticatedTelemetryIdentity locale={locale} appUserId={user.id} /> : null}
       <nav
         className="border-b bg-background/95"
@@ -60,7 +63,7 @@ export default async function HomePage() {
                 <Link href="/account">
                   <UserRound aria-hidden="true" className="size-4 shrink-0" />
                   <span className="hidden max-w-40 truncate sm:inline">
-                    {user.email ?? String(user.metadata.username ?? "Account")}
+                    {appUserIdentityLabel(user)}
                   </span>
                   <span className="sm:hidden">
                     <T message={"Account"} />

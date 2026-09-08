@@ -9,7 +9,10 @@ import {
 } from "@/features/landing/seo";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
+import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
 import { getSiteUrl } from "@/features/sharing/site-url";
+import { getAuthProvider } from "@/platform/composition/server";
+import { appUserIdentityLabel } from "@/platform/contracts/auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -50,8 +53,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const locale = await getRequestLocale();
+  const [locale, user] = await Promise.all([
+    getRequestLocale(),
+    getAuthProvider().getCurrentUser(),
+  ]);
   const structuredData = getLandingStructuredData(locale, getSiteUrl());
+  const accountLabel = user ? appUserIdentityLabel(user) : undefined;
 
   return (
     <>
@@ -60,7 +67,8 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: serializeStructuredData(structuredData) }}
         type="application/ld+json"
       />
-      <LandingPage year={new Date().getFullYear()} />
+      {user ? <AuthenticatedGuestStorageCleanup /> : null}
+      <LandingPage accountLabel={accountLabel} year={new Date().getFullYear()} />
     </>
   );
 }

@@ -131,6 +131,16 @@ export class GuestDraftStorage {
     }
   }
 
+  clearAll() {
+    try {
+      this.storage.removeItem(guestDraftStorageKey(this.region));
+      this.storage.removeItem(guestIntentStorageKey(this.region));
+      this.storage.removeItem(guestImportMarkerStorageKey(this.region));
+    } catch (error) {
+      throw mappedStorageError(error, "This browser could not clear the local draft.");
+    }
+  }
+
   readIntent(): GuestIntent | null {
     try {
       const raw = this.storage.getItem(guestIntentStorageKey(this.region));

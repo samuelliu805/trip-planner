@@ -12,6 +12,7 @@ import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
 import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
+import { appUserIdentityLabel } from "@/platform/contracts/auth";
 
 import { CompareWorkspace } from "./components/compare-workspace";
 import { TripDetailRoute } from "./components/trip-detail-route";
@@ -76,7 +77,7 @@ export async function ResearchCompareRoute({
     <TripDetailRoute
       appBar={
         <TripSettingsAppBar
-          accountEmail={user.email ?? String(user.metadata.username ?? "Account")}
+          accountEmail={appUserIdentityLabel(user)}
           active="compare"
           researchCategory={category}
           shareControls={
@@ -93,6 +94,9 @@ export async function ResearchCompareRoute({
           }
           title={trip.title}
           tripId={trip.id}
+          tripContentVersion={trip.content_version}
+          tripRole={trip.role}
+          tripVersion={trip.version}
           variantControls={
             <RouteVariantControls
               activeSection="compare"

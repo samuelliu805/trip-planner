@@ -121,6 +121,14 @@
   .plandock-nav .nav-sign-in {
     display: none;
   }
+  .plandock-nav .nav-sign-in.nav-account {
+    display: inline-flex;
+    max-width: min(8rem, 36vw);
+    padding-inline: 0.5rem;
+  }
+  .plandock-nav[data-authenticated="true"] .nav-start {
+    display: none;
+  }
   .plandock-nav .nav-start {
     padding-inline: 0.75rem;
   }

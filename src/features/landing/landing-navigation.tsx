@@ -6,11 +6,13 @@ import { T } from "@/features/i18n/i18n-provider";
 
 import { tripPlannerBrandName } from "./brand";
 
-export function LandingNavigation() {
+export function LandingNavigation({ accountLabel }: { accountLabel?: string }) {
+  const startHref = accountLabel ? "/trips" : "/guest";
   return (
     <nav
       className="plandock-nav"
       aria-label="Primary navigation"
+      data-authenticated={accountLabel ? "true" : undefined}
       data-i18n-aria-label="Primary navigation"
     >
       <Link className="plandock-wordmark" href="/" aria-label="Trip Planner home">
@@ -26,13 +28,17 @@ export function LandingNavigation() {
       </div>
       <div className="plandock-nav-actions">
         <LanguageSwitcher />
-        <Button asChild className="nav-sign-in" variant="ghost">
-          <Link href="/login">
-            <T message="Sign in" />
+        <Button
+          asChild
+          className={`nav-sign-in min-w-0 ${accountLabel ? "nav-account" : ""}`}
+          variant="ghost"
+        >
+          <Link className="max-w-48 truncate" href={accountLabel ? "/account" : "/login"}>
+            {accountLabel ?? <T message="Sign in" />}
           </Link>
         </Button>
         <Button asChild className="nav-start">
-          <Link href="/guest">
+          <Link href={startHref}>
             <T message="Start planning" />
           </Link>
         </Button>

@@ -117,6 +117,7 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
     workflow,
     /verify-cloudbase-migration-plan\.mjs[\s\\]*\n[\s\S]{0,100}20260902075444/,
   );
+  assert.match(workflow, /20260908100000 20260908101000/);
   assert.doesNotMatch(workflow, /tcb fn invoke|CLOUDBASE_CAM_SECRET_/);
   assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 1);
   assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);
@@ -173,6 +174,7 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
     cnDeploy,
     /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment[\s\\]*\n[\s\S]*20260903180000 20260903193000 20260905010000 20260905020000 20260905030000/,
   );
+  assert.match(cnDeploy, /20260908100000 20260908101000/);
   assert.match(cnDeploy, /deploy-cloudbase-run-with-evidence\.mjs/);
   assert.doesNotMatch(cnDeploy, /sleep 10|deploy_cloudbase_run/);
   assert.match(cloudBaseRunSubmitter, /DescribeCloudBaseBuildService/);
@@ -266,6 +268,13 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   assert.match(smoke, /loadPersistedShareCount\(tripId\)/);
   assert.match(smoke, /Close published share dialog/);
   assert.match(smoke, /share dialog close/);
+  assert.match(smoke, /Trip settings unexpectedly conflicted/);
+  assert.match(smoke, /saved-right-after-share/);
+  assert.match(smoke, /CN authenticated guest redirect and storage cleanup/);
+  assert.match(smoke, /CN authenticated landing account link/);
+  assert.match(smoke, /CN People account identity/);
+  assert.match(smoke, /CN History account identity/);
+  assert.match(smoke, /CN planner logout home/);
   assert.match(smoke, /share\/\$\{publicToken\}\?view=timeline/);
   assert.match(smoke, /"B trip access denial"/);
   assert.match(smoke, /deniedTripBody\.includes\(updatedTitle\), false/);
@@ -303,4 +312,11 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(globalBrowserSmoke, /async function submitGlobalLogin/);
   assert.match(globalBrowserSmoke, /form\.requestSubmit\(\)/);
   assert.match(globalBrowserSmoke, /bounded login diagnostic/);
+  assert.match(globalBrowserSmoke, /authenticated guest redirect and storage cleanup/);
+  assert.match(globalBrowserSmoke, /authenticated landing account link/);
+  assert.match(globalBrowserSmoke, /Global People account identity/);
+  assert.match(globalBrowserSmoke, /Global History account identities/);
+  assert.match(globalBrowserSmoke, /options\.actorEmails\.includes\(actor\)/);
+  assert.match(globalBrowserSmoke, /Global planner logout home/);
+  assert.match(globalSmoke, /Publishing changed the source Plan version/);
 });

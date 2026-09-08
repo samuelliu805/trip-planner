@@ -13,6 +13,7 @@ import { resolveActiveVariant } from "@/features/variants/active";
 import { getPlanResearchItems, getResearchPlanState } from "@/features/research/data";
 import { getExchangeRateTable } from "@/features/research/exchange-rates.server";
 import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
+import { appUserIdentityLabel } from "@/platform/contracts/auth";
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
@@ -72,7 +73,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <PlannerMapProvider>
           <PlannerWorkspace
-            accountEmail={user?.email ?? String(user?.metadata.username ?? "Account")}
+            accountEmail={user ? appUserIdentityLabel(user) : "Account"}
             exchangeRates={exchangeRates}
             initialResearchItems={researchItemsResult.data}
             initialResearchSelections={planState.selections}

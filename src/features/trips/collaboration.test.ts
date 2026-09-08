@@ -60,7 +60,7 @@ test("conflicts offer entity-local reload and roles/history remain discoverable"
     source("src/features/trips/components/trip-app-bar-menu.tsx"),
   ]);
   assert.match(tripForm, /Reload latest/);
-  assert.match(tripForm, /api\/trips\/\$\{trip\.id\}\/settings/);
+  assert.match(tripForm, /api\/trips\/\$\{tripId\}\/settings/);
   assert.match(itemForm, /api\/itinerary-items\/\$\{item\.id\}/);
   assert.match(itemForm, /keeps the editor open/);
   assert.match(card, /trip\.role === "owner" \? "Owner" : "Collaborator"/);
@@ -135,4 +135,46 @@ test("the conflict boundary prevents deterministic PostgREST retries without wid
     /REVOKE EXECUTE ON FUNCTION app_private\.raise_app_conflict\(text,text\)[\s\S]*PUBLIC, anon, authenticated/,
   );
   assert.doesNotMatch(migration, /GRANT EXECUTE/);
+});
+
+test("collaboration labels use provider account identities in history and the People editor", async () => {
+  const [shared, globalOverlay, cnOverlay, peopleEditor, tripForm, menu] = await Promise.all([
+    source("database/shared/migrations/20260908100000_account_identity_in_collaboration.sql"),
+    source(
+      "database/supabase/overlays/migrations/20260908100000_account_identity_in_collaboration.sql",
+    ),
+    source(
+      "database/cloudbase/overlays/migrations/20260908100000_account_identity_in_collaboration.sql",
+    ),
+    source("src/features/trips/components/trip-people-editor.tsx"),
+    source("src/features/trips/components/trip-form.tsx"),
+    source("src/features/trips/components/trip-app-bar-menu.tsx"),
+  ]);
+  assert.match(shared, /collaboration_user_label\(member\.user_id::text\)/);
+  assert.match(shared, /collaboration_user_label\(app_private\.collaboration_user_id\(\)\)/);
+  assert.match(globalOverlay, /account\.email/);
+  assert.match(cnOverlay, /account\.username/);
+  assert.match(globalOverlay + cnOverlay, /UPDATE public\.trip_history history/);
+  assert.match(peopleEditor, /PlannerEditorScreen/);
+  assert.match(menu, /onInviteTrip[\s\S]*<T message="Invite"/);
+  assert.doesNotMatch(tripForm, /TripPeople/);
+});
+
+test("publishing keeps the source Plan version stable and refreshes aggregate trip versions", async () => {
+  const [migration, dialog, form, editorScreen] = await Promise.all([
+    source("database/shared/migrations/20260908101000_share_page_source_version_stability.sql"),
+    source("src/features/sharing/components/public-share-dialog.tsx"),
+    source("src/features/trips/components/trip-form.tsx"),
+    source("src/features/itinerary/components/planner-editor-screen.tsx"),
+  ]);
+  assert.match(migration, /'variantVersion', variant_version/);
+  assert.doesNotMatch(migration, /UPDATE public\.route_variants SET version/);
+  assert.match(dialog, /router\.refresh\(\)/);
+  assert.match(editorScreen, /\{open \? children : null\}/);
+  assert.match(form, /useState\(true\)[\s\S]*loadLatestTripSettings\(trip\.id\)/);
+  assert.match(form, /pending=\{pending \|\| refreshing\}/);
+  assert.match(
+    form,
+    /trip\.version === currentTrip\.version[\s\S]*Math\.max\(trip\.content_version, currentTrip\.content_version\)/,
+  );
 });

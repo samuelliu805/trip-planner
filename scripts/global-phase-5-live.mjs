@@ -274,6 +274,19 @@ async function run() {
       "A publish immutable share",
     );
     assert.ok(share?.publicToken);
+    assert.equal(
+      share.variantVersion,
+      variant.version,
+      "Publishing returned an artificial source Plan version.",
+    );
+    assert.equal(
+      rows(
+        await userA.client.from("route_variants").select("version").eq("id", variant.id),
+        "A source Plan version after publish",
+      )[0].version,
+      variant.version,
+      "Publishing changed the source Plan version.",
+    );
     await updateTrip(userA.client, aTrip, privateTitle, 3);
     assert.equal(
       ok(
@@ -523,18 +536,28 @@ async function run() {
       "B collaborator Research Revert",
     );
     assert.equal(reverted.status, "reverted");
+    const collaboratorVariantBeforeShare = rows(
+      await userB.client.from("route_variants").select("version").eq("id", variant.id),
+      "B share variant version",
+    )[0].version;
     const collaboratorShare = ok(
       await userB.client.rpc("create_share_page_v4", {
-        expected_variant_version: rows(
-          await userB.client.from("route_variants").select("version").eq("id", variant.id),
-          "B share variant version",
-        )[0].version,
+        expected_variant_version: collaboratorVariantBeforeShare,
         target_operation_id: randomUUID(),
         target_variant_id: variant.id,
       }),
       "B collaborator Share Page create",
     );
     assert.ok(collaboratorShare.publicToken);
+    assert.equal(collaboratorShare.variantVersion, collaboratorVariantBeforeShare);
+    assert.equal(
+      rows(
+        await userB.client.from("route_variants").select("version").eq("id", variant.id),
+        "B source Plan version after publish",
+      )[0].version,
+      collaboratorVariantBeforeShare,
+      "Collaborator publishing changed the source Plan version.",
+    );
     ok(await userB.client.auth.signOut(), "B logout");
 
     ok(
@@ -617,6 +640,7 @@ async function run() {
     assertPublicProjection(projection, intendedTitle, privateTitle, userA.id);
     if (process.env.PHASE5_REQUIRE_BROWSER_SMOKE === "1") {
       const guestTripId = await runGlobalBrowserSmoke({
+        actorEmails: [userA.email, userB.email],
         authenticatedTitle: collaboratorTitle,
         email: userA.email,
         intendedTitle: collaboratorTitle,

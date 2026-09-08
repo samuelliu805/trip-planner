@@ -1,4 +1,5 @@
 export const guestZhCN: Record<string, string> = {
+  "Continue to trips": "前往我的行程",
   "A different local draft already exists in this deployment region.":
     "当前部署区域中已存在另一个本地草稿。",
   "A newer version of this draft was saved in another tab.":

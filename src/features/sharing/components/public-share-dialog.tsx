@@ -2,6 +2,7 @@
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { ExternalLink, LoaderCircle, RotateCcw, Share2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type MouseEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export function PublicShareDialog({
   variants: PlannerVariant[];
 }) {
   const { locale } = useI18n();
+  const router = useRouter();
   const [open, setOpen] = useState(initialOpen);
   const [links, setLinks] = useState(initialLinks);
   const [variantId, setVariantId] = useState(activeVariantId);
@@ -172,6 +174,7 @@ export function PublicShareDialog({
       setSelectedPageId(savedLink.id);
       setSettings(settingsFromLink(savedLink));
       setNotice(activeLink ? "Shareable page updated." : "Shareable page created.");
+      router.refresh();
     });
   }
 
@@ -196,6 +199,7 @@ export function PublicShareDialog({
       setSelectedPageId("new");
       setSettings(defaultShareSettings);
       setNotice("Public access revoked. Other shareable pages and permanent images are unchanged.");
+      router.refresh();
     });
   }
 

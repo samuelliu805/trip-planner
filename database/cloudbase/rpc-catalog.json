@@ -3048,6 +3048,7 @@
     "bump_variant_day_content_version()",
     "collaboration_identifier_user_id(text)",
     "collaboration_user_id()",
+    "collaboration_user_label(text)",
     "complete_trip_operation(uuid,uuid,jsonb)",
     "complete_wrapped_operation(uuid,uuid,uuid,text,text,uuid,text,jsonb)",
     "day_route_plan_structure_is_canonical(uuid)",

@@ -287,5 +287,5 @@ export async function logoutSession(formData?: FormData): Promise<AuthActionStat
 export async function logout(formData?: FormData) {
   const result = await logoutSession(formData);
   if (result.error) throw new Error(result.error);
-  redirect("/login");
+  redirect("/");
 }

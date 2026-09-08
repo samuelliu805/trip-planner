@@ -623,8 +623,8 @@ test("browser locale wins without rewriting the saved account preference", async
     accountPage,
     /parseLocale\(profile\?\.preferredLocale\) \?\? defaultLocaleForRegion\(appRegion\)/,
   );
-  assert.match(accountEditor, /await logoutSession\(formData\)/);
-  assert.match(accountEditor, /window\.location\.assign\("\/login"\)/);
+  assert.match(accountEditor, /await logout\(formData\)/);
+  assert.doesNotMatch(accountEditor, /logoutSession|window\.location\.replace/);
   assert.match(rootLayout, /persistInitialLocale=\{localeState\.source === "profile"\}/);
   assert.match(i18nProvider, /document\.readyState === "complete"/);
   assert.match(i18nProvider, /window\.addEventListener\("load", scheduleInitialSync/);
@@ -691,6 +691,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     editorHeader,
     filter,
     form,
+    formFields,
     itemDialog,
     itemForm,
     primaryFields,
@@ -709,6 +710,7 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     readFile(new URL("./components/planner-editor-header.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-status-filter.tsx", import.meta.url), "utf8"),
     readFile(new URL("../trips/components/trip-form.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../trips/components/trip-form-fields.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-editor-dialog.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-form.tsx", import.meta.url), "utf8"),
     readFile(new URL("./components/planner-item-place-fields.tsx", import.meta.url), "utf8"),
@@ -721,13 +723,15 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
     "utf8",
   );
   const editorStyles = await readAppStyles();
-  const [itemSaveFeedback, itemSaveFlow, tripActions, tripAppBar, tripBarMenu] = await Promise.all([
-    readFile(new URL("./components/planner-item-save-feedback.tsx", import.meta.url), "utf8"),
-    readFile(new URL("./components/use-planner-item-save-flow.ts", import.meta.url), "utf8"),
-    readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
-    readFile(new URL("../trips/components/trip-app-bar.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../trips/components/trip-app-bar-menu.tsx", import.meta.url), "utf8"),
-  ]);
+  const [itemSaveFeedback, itemSaveFlow, tripActions, tripAppBar, tripAppBarOverlays, tripBarMenu] =
+    await Promise.all([
+      readFile(new URL("./components/planner-item-save-feedback.tsx", import.meta.url), "utf8"),
+      readFile(new URL("./components/use-planner-item-save-flow.ts", import.meta.url), "utf8"),
+      readFile(new URL("../trips/actions.ts", import.meta.url), "utf8"),
+      readFile(new URL("../trips/components/trip-app-bar.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../trips/components/trip-app-bar-overlays.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../trips/components/trip-app-bar-menu.tsx", import.meta.url), "utf8"),
+    ]);
 
   assert.match(filter, /useTransition\(\)/);
   assert.match(filter, /aria-busy=\{loading\}/);
@@ -740,9 +744,9 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(card, /countActiveSharePages\(trip\.id\)/);
   assert.match(card, /useTripListLoading\(\)/);
   assert.match(card, /Deleting/);
-  assert.match(tripAppBar, /<DeleteTripDialog/);
+  assert.match(tripAppBarOverlays, /<DeleteTripDialog/);
   assert.match(tripAppBar, /countActiveSharePages\(tripId\)/);
-  assert.match(tripAppBar, /Deleting/);
+  assert.match(tripAppBarOverlays, /Deleting/);
   assert.match(tripAppBar, /guestExperience[\s\S]*sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
   assert.match(tripAppBar, /sm:grid-cols-\[minmax\(0,1fr\)_auto_minmax\(0,1fr\)\]/);
   assert.match(tripBarMenu, /onDeleteTrip/);
@@ -807,13 +811,17 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   assert.match(editorForm, /saveDisabled/);
   assert.match(
     editorForm,
+    /if \(pending \|\| cancelPending \|\| saveDisabled\)[\s\S]*event\.preventDefault\(\)/,
+  );
+  assert.match(
+    editorForm,
     /<fieldset[\s\S]*aria-busy=\{pending \|\| cancelPending\}[\s\S]*disabled=\{pending \|\| cancelPending\}[\s\S]*planner-item-form-fields planner-item-step-fields/,
   );
   assert.match(editorHeader, /navigation\?: ReactNode/);
   assert.match(editor, /onOpenAutoFocus[\s\S]*initialFocusSelector[\s\S]*preventScroll: true/);
   assert.match(editorFields, /export function PlannerEditorTextField/);
   assert.match(primaryFields, /<PlannerEditorTextField/);
-  assert.match(form, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
+  assert.match(formFields, /<PlannerEditorTextField[\s\S]*label="Trip name"/);
   assert.match(form, /compactActions/);
   assert.doesNotMatch(form, /\bfooter\b/);
   assert.match(suggestionList, /overflow-y-auto/);
@@ -854,10 +862,10 @@ test("trip cards expose loading filters, deletion, and the shared settings edito
   );
   assert.match(actions, /pending \|\| cancelPending \|\| saveDisabled/);
   assert.match(form, /useActionState\(updateTrip, \{\}\)/);
-  assert.match(form, /label="Trip name"/);
-  assert.match(form, /label="Duration \(days\)"/);
-  assert.equal(form.match(/planner-native-datetime-input/g)?.length, 2);
-  assert.match(form, /label="Currency"/);
+  assert.match(formFields, /label="Trip name"/);
+  assert.match(formFields, /label="Duration \(days\)"/);
+  assert.equal(formFields.match(/planner-native-datetime-input/g)?.length, 2);
+  assert.match(formFields, /label="Currency"/);
   assert.doesNotMatch(form, /Timezone|Previous|Next|planner-item-step/);
 });
 

@@ -15,11 +15,12 @@ import "./landing-features.css";
 import "./landing-options-documents.css";
 import "./landing-conversion.css";
 
-export function LandingPage({ year }: { year: number }) {
+export function LandingPage({ accountLabel, year }: { accountLabel?: string; year: number }) {
+  const startHref = accountLabel ? "/trips" : "/guest";
   return (
     <main className="plandock-page">
-      <LandingNavigation />
-      <RouteDockHero />
+      <LandingNavigation accountLabel={accountLabel} />
+      <RouteDockHero startHref={startHref} />
       <FeatureSections />
       <section className="landing-final-cta">
         <p className="landing-eyebrow">
@@ -32,7 +33,7 @@ export function LandingPage({ year }: { year: number }) {
           <T message="Start locally. Create an account when you are ready to keep planning across devices." />
         </p>
         <Button asChild size="lg">
-          <Link href="/guest">
+          <Link href={startHref}>
             <T message="Start planning" />
           </Link>
         </Button>

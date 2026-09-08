@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AccountEditor } from "@/features/account/components/account-editor";
+import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
 import { inferredHomeCity } from "@/features/account/profile-defaults";
 import { defaultLocaleForRegion, parseLocale } from "@/features/i18n/config";
 import { getRequestLocale } from "@/features/i18n/server";
@@ -35,6 +36,7 @@ export default async function AccountPage() {
 
   return (
     <main className="min-h-dvh bg-muted">
+      <AuthenticatedGuestStorageCleanup />
       <AuthenticatedTelemetryIdentity locale={requestLocale} appUserId={user.id} />
       <PlannerMapProvider>
         <AccountEditor
