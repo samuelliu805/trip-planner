@@ -119,8 +119,7 @@ function presentedValue(value: Json | undefined): string | undefined {
   if (Array.isArray(value)) {
     const orderEntries = value.map(presentedOrderEntry);
     if (orderEntries.length && orderEntries.every(Boolean)) {
-      const visible = orderEntries.slice(0, 6) as string[];
-      return `${visible.join(" · ")}${orderEntries.length > visible.length ? ` · +${orderEntries.length - visible.length} more` : ""}`;
+      return (orderEntries as string[]).join(" → ");
     }
     const simple = value.filter(
       (entry): entry is string | number => typeof entry === "string" || typeof entry === "number",
@@ -129,7 +128,7 @@ function presentedValue(value: Json | undefined): string | undefined {
       simple.length === value.length &&
       simple.every((entry) => typeof entry === "string" && uuidValue.test(entry))
     )
-      return `${value.length} itinerary ${value.length === 1 ? "item" : "items"}`;
+      return value.map(() => "Unavailable item (Item)").join(" → ");
     if (simple.length === value.length && value.length <= 4) return simple.join(", ");
     return `${value.length} ${value.length === 1 ? "item" : "items"}`;
   }

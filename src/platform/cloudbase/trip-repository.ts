@@ -4,6 +4,7 @@ import { PlatformOperationError } from "@/platform/contracts/errors";
 import type {
   CreateTripInput,
   Trip,
+  TripHistoryQuery,
   TripRepository,
   TripStatus,
   UpdateTripInput,
@@ -256,26 +257,30 @@ export class CloudBaseTripRepository implements TripRepository {
     );
   }
 
-  async listHistory(id: string, cursor?: { createdAt: string; id: string }) {
+  async listHistory(id: string, query: TripHistoryQuery) {
     const { db } = await createCloudBaseUserContext();
     const data = await rows(
-      db.rpc("list_trip_history", {
+      db.rpc("list_trip_history_v2", {
         target_trip_id: id,
-        before_created_at: cursor?.createdAt ?? null,
-        before_id: cursor?.id ?? null,
-        requested_limit: 51,
+        before_created_at: query.cursor?.createdAt ?? null,
+        before_id: query.cursor?.id ?? null,
+        requested_limit: Math.min(query.pageSize + 1, 51),
+        target_category: query.category,
+        target_filter_field: query.filterField,
+        target_filter_value: query.filterValue ?? null,
       }),
       "Trip history could not be loaded.",
     );
     if (!Array.isArray(data))
       throw new PlatformOperationError("unexpected", "Trip history returned invalid data.");
-    const visible = data.slice(0, 50);
+    const visible = data.slice(0, query.pageSize);
     const entries = visible.map((value) => {
       const row = value as Record<string, unknown>;
       return {
         actorLabel: String(row.actor_label_snapshot),
         changes: row.changes as import("@/types/database").Json,
         createdAt: String(row.created_at),
+        entityType: String(row.entity_type),
         eventType: String(row.event_type),
         id: String(row.id),
       };
@@ -283,7 +288,8 @@ export class CloudBaseTripRepository implements TripRepository {
     const last = entries.at(-1);
     return {
       entries,
-      nextCursor: data.length > 50 && last ? { createdAt: last.createdAt, id: last.id } : null,
+      nextCursor:
+        data.length > query.pageSize && last ? { createdAt: last.createdAt, id: last.id } : null,
     };
   }
 

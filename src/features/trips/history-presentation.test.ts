@@ -3,9 +3,9 @@ import test from "node:test";
 
 import { historyEventTitle, presentHistoryChanges } from "./history-presentation.ts";
 import {
+  historyDetailFilter,
   historyEntryMatchesFilter,
   historyPageHref,
-  loadFilteredHistoryPage,
   parseHistoryCursor,
   parseHistoryTrail,
 } from "./history-pagination.ts";
@@ -16,6 +16,7 @@ function historyEntry(index: number, eventType: string): TripHistoryEntry {
     actorLabel: "traveler@example.com",
     changes: {},
     createdAt: new Date(Date.UTC(2026, 8, 8, 12, 0, 60 - index)).toISOString(),
+    entityType: "itinerary_item",
     eventType,
     id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
   };
@@ -70,8 +71,8 @@ test("order changes show item names and types instead of database IDs", () => {
     }),
     [
       {
-        after: "Breakfast (Meal) · Museum (Activity)",
-        before: "Museum (Activity) · Breakfast (Meal)",
+        after: "Breakfast (Meal) → Museum (Activity)",
+        before: "Museum (Activity) → Breakfast (Meal)",
         label: "Order",
       },
     ],
@@ -82,41 +83,46 @@ test("order changes show item names and types instead of database IDs", () => {
       before: ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"],
     },
   });
-  assert.equal(legacy[0].before, "2 itinerary items");
-  assert.equal(legacy[0].after, "1 itinerary item");
+  assert.equal(legacy[0].before, "Unavailable item (Item) → Unavailable item (Item)");
+  assert.equal(legacy[0].after, "Unavailable item (Item)");
   assert.doesNotMatch(JSON.stringify(legacy), /00000000/);
+
+  const longOrder = Array.from({ length: 8 }, (_, index) => ({
+    name: `Stop ${index + 1}`,
+    type: "activity",
+  }));
+  assert.equal(
+    presentHistoryChanges({ order: { after: longOrder, before: [] } })[0].after,
+    longOrder.map((item) => `${item.name} (Activity)`).join(" → "),
+  );
 });
 
-test("history filtering fills a page across repository cursors", async () => {
-  const firstCursor = historyEntry(2, "member.added");
-  const itineraryEntries = [
-    historyEntry(3, "itinerary_item.created"),
-    historyEntry(4, "itinerary_item.updated"),
-    historyEntry(5, "itinerary_item.deleted"),
-  ];
-  let calls = 0;
-  const page = await loadFilteredHistoryPage(
-    async () => {
-      calls += 1;
-      return calls === 1
-        ? {
-            entries: [historyEntry(1, "member.added"), firstCursor],
-            nextCursor: { createdAt: firstCursor.createdAt, id: firstCursor.id },
-          }
-        : { entries: itineraryEntries, nextCursor: null };
-    },
-    undefined,
-    "itinerary",
-    2,
+test("history filters support exact actor, event, entity, and changed-field values", () => {
+  const entry = { ...historyEntry(1, "itinerary_item.updated"), changes: { title: {} } };
+  assert.equal(historyEntryMatchesFilter(entry, "itinerary"), true);
+  assert.equal(historyEntryMatchesFilter(entry, "sharing"), false);
+  assert.equal(
+    historyEntryMatchesFilter(entry, "all", { field: "email", value: "TRAVELER@example.com" }),
+    true,
   );
-  assert.equal(calls, 2);
-  assert.deepEqual(page.entries, itineraryEntries.slice(0, 2));
-  assert.deepEqual(page.nextCursor, {
-    createdAt: itineraryEntries[1].createdAt,
-    id: itineraryEntries[1].id,
+  assert.equal(
+    historyEntryMatchesFilter(entry, "all", { field: "event", value: entry.eventType }),
+    true,
+  );
+  assert.equal(
+    historyEntryMatchesFilter(entry, "all", { field: "entity", value: entry.entityType }),
+    true,
+  );
+  assert.equal(
+    historyEntryMatchesFilter(entry, "all", { field: "changed_field", value: "TITLE" }),
+    true,
+  );
+  assert.equal(historyEntryMatchesFilter(entry, "all", { field: "email", value: "" }), false);
+  assert.deepEqual(historyDetailFilter("email", " traveler@example.com "), {
+    field: "email",
+    value: "traveler@example.com",
   });
-  assert.equal(historyEntryMatchesFilter(historyEntry(6, "member.removed"), "people"), true);
-  assert.equal(historyEntryMatchesFilter(historyEntry(7, "member.removed"), "sharing"), false);
+  assert.deepEqual(historyDetailFilter("unknown", "value"), { field: "all", value: "value" });
 });
 
 test("history cursor trails round-trip through pagination URLs", () => {
@@ -127,8 +133,16 @@ test("history cursor trails round-trip through pagination URLs", () => {
   assert.ok(cursor);
   const trail = parseHistoryTrail(JSON.stringify([cursor]));
   assert.deepEqual(trail, [cursor]);
-  const href = historyPageHref({ cursor, filter: "people", trail, tripId: cursor.id });
+  const href = historyPageHref({
+    cursor,
+    detail: { field: "email", value: "traveler@example.com" },
+    filter: "people",
+    trail,
+    tripId: cursor.id,
+  });
   assert.match(href, /^\/trips\/00000000-0000-4000-8000-000000000001\/history\?/);
   assert.match(decodeURIComponent(href), /filter=people/);
+  assert.match(decodeURIComponent(href), /field=email/);
+  assert.match(decodeURIComponent(href), /value=traveler@example.com/);
   assert.match(decodeURIComponent(href), /trail=/);
 });

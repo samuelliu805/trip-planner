@@ -56,12 +56,20 @@ export type TripHistoryEntry = Readonly<{
   actorLabel: string;
   changes: Json;
   createdAt: string;
+  entityType: string;
   eventType: string;
   id: string;
 }>;
 export type TripHistoryPage = Readonly<{
   entries: TripHistoryEntry[];
   nextCursor: Readonly<{ createdAt: string; id: string }> | null;
+}>;
+export type TripHistoryQuery = Readonly<{
+  category: "all" | "plans" | "itinerary" | "people" | "sharing" | "ideas";
+  cursor?: Readonly<{ createdAt: string; id: string }>;
+  filterField: "all" | "email" | "event" | "entity" | "changed_field";
+  filterValue?: string;
+  pageSize: number;
 }>;
 export type TripStorageStats = Readonly<{
   history: { bytes: number; newestAt: string | null; oldestAt: string | null; rows: number };
@@ -109,6 +117,6 @@ export interface TripRepository {
   listMembers(id: string): Promise<TripMember[]>;
   inviteCollaborator(id: string, identifier: string, operationId: string): Promise<void>;
   removeCollaborator(id: string, memberId: string, operationId: string): Promise<void>;
-  listHistory(id: string, cursor?: { createdAt: string; id: string }): Promise<TripHistoryPage>;
+  listHistory(id: string, query: TripHistoryQuery): Promise<TripHistoryPage>;
   getStorageStats(id: string): Promise<TripStorageStats | null>;
 }

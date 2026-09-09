@@ -515,18 +515,54 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       browser,
       `(() => {
         const filter = document.querySelector('#history-filter');
+        const detail = document.querySelector('#history-detail-field');
+        const value = document.querySelector('#history-filter-value');
         return {
+          detailHeight: detail?.getBoundingClientRect().height ?? 0,
+          detailOptions: [...(detail?.options ?? [])].map((option) => option.value),
           filterHeight: filter?.getBoundingClientRect().height ?? 0,
           filterValue: filter?.value,
           options: [...(filter?.options ?? [])].map((option) => option.value),
+          pagination: Boolean(document.querySelector('[data-history-pagination]')),
+          valueHeight: value?.getBoundingClientRect().height ?? 0,
         };
       })()`,
     ),
     {
+      detailHeight: 44,
+      detailOptions: ["all", "email", "event", "entity", "changed_field"],
       filterHeight: 44,
       filterValue: "all",
       options: ["all", "plans", "itinerary", "people", "sharing", "ideas"],
+      pagination: true,
+      valueHeight: 44,
     },
+  );
+  await evaluate(
+    browser,
+    `(() => {
+      const field = document.querySelector('#history-detail-field');
+      const value = document.querySelector('#history-filter-value');
+      field.value = 'email';
+      value.value = ${JSON.stringify(options.actorEmails[0])};
+      field.form.requestSubmit();
+    })()`,
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('field') === 'email'`,
+    "Global History email filter",
+  );
+  assert.ok(
+    await evaluate(
+      browser,
+      `(() => {
+        const actors = [...document.querySelectorAll('[data-history-actor]')];
+        return actors.length > 0 && actors.every((node) =>
+          node.textContent.trim() === ${JSON.stringify(options.actorEmails[0])});
+      })()`,
+    ),
+    "Global History email filter returned a different actor.",
   );
 
   await navigate(browser, baseUrl, `/trips/${options.tripId}`);

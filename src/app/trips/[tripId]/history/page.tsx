@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Localized, T } from "@/features/i18n/i18n-provider";
 import { historyEventTitle, presentHistoryChanges } from "@/features/trips/history-presentation";
 import {
+  HISTORY_PAGE_SIZE,
+  historyDetailFilter,
+  historyDetailFilterOptions,
   historyFilter,
   historyFilterOptions,
   historyPageHref,
-  loadFilteredHistoryPage,
   parseHistoryCursor,
   parseHistoryTrail,
 } from "@/features/trips/history-pagination";
@@ -21,33 +23,44 @@ export default async function TripHistoryPage({
   searchParams,
 }: {
   params: Promise<{ tripId: string }>;
-  searchParams: Promise<{ before?: string; beforeId?: string; filter?: string; trail?: string }>;
+  searchParams: Promise<{
+    before?: string;
+    beforeId?: string;
+    field?: string;
+    filter?: string;
+    trail?: string;
+    value?: string;
+  }>;
 }) {
   const { tripId } = await params;
   if (!tripIdSchema.safeParse(tripId).success) notFound();
   const query = await searchParams;
   const cursor = parseHistoryCursor(query.before, query.beforeId);
   const filter = historyFilter(query.filter);
+  const detail = historyDetailFilter(query.field, query.value);
   const trail = parseHistoryTrail(query.trail);
   const repository = getTripRepository();
   const [trip, history] = await Promise.all([
     repository.getById(tripId),
-    loadFilteredHistoryPage(
-      (pageCursor) => repository.listHistory(tripId, pageCursor),
+    repository.listHistory(tripId, {
+      category: filter,
       cursor,
-      filter,
-    ),
+      filterField: detail.field,
+      filterValue: detail.value || undefined,
+      pageSize: HISTORY_PAGE_SIZE,
+    }),
   ]);
   if (!trip) notFound();
   const pageNumber = cursor ? trail.length + 2 : 1;
   const previousTrail = trail.slice(0, -1);
   const previousCursor = trail.at(-1);
   const previousHref = cursor
-    ? historyPageHref({ cursor: previousCursor, filter, trail: previousTrail, tripId })
+    ? historyPageHref({ cursor: previousCursor, detail, filter, trail: previousTrail, tripId })
     : undefined;
   const nextHref = history.nextCursor
     ? historyPageHref({
         cursor: history.nextCursor,
+        detail,
         filter,
         trail: cursor ? [...trail, cursor] : trail,
         tripId,
@@ -73,7 +86,7 @@ export default async function TripHistoryPage({
       </header>
       <div className="mx-auto max-w-4xl px-4 py-8">
         <form className="mb-6 flex min-w-0 flex-wrap items-end gap-2 rounded-xl border bg-card p-3">
-          <label className="min-w-0 flex-1" htmlFor="history-filter">
+          <label className="min-w-[10rem] flex-1" htmlFor="history-filter">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <Filter aria-hidden="true" className="size-3.5" />
               <T message="Filter history" />
@@ -91,9 +104,53 @@ export default async function TripHistoryPage({
               ))}
             </select>
           </label>
+          <label className="min-w-[10rem] flex-1" htmlFor="history-detail-field">
+            <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+              <T message="Filter by field" />
+            </span>
+            <select
+              className="h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              defaultValue={detail.field}
+              id="history-detail-field"
+              name="field"
+            >
+              {historyDetailFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  <Localized value={option.label} />
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="min-w-[12rem] flex-[2]" htmlFor="history-filter-value">
+            <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+              <T message="Exact value" />
+            </span>
+            <span className="flex h-11 min-w-0 items-center rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
+              <span aria-hidden="true" className="px-3 text-muted-foreground">
+                =
+              </span>
+              <input
+                className="h-full min-w-0 flex-1 bg-transparent pr-3 text-sm outline-none"
+                data-i18n-placeholder="Email or name"
+                defaultValue={detail.value}
+                id="history-filter-value"
+                maxLength={160}
+                name="value"
+                placeholder="Email or name"
+                type="text"
+              />
+            </span>
+          </label>
           <Button className="min-h-11" type="submit" variant="outline">
             <T message="Apply filter" />
           </Button>
+          {filter !== "all" || detail.field !== "all" || detail.value ? (
+            <Button asChild className="min-h-11" variant="ghost">
+              <Link href={`/trips/${tripId}/history`}>
+                <T message="Clear filters" />
+              </Link>
+            </Button>
+          ) : null}
         </form>
         {history.entries.length ? (
           <ol className="space-y-3">
@@ -161,41 +218,59 @@ export default async function TripHistoryPage({
         ) : (
           <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             <T
-              message={filter === "all" ? "No saved changes yet." : "No changes match this filter."}
+              message={
+                filter === "all" && detail.field === "all" && !detail.value
+                  ? "No saved changes yet."
+                  : "No changes match this filter."
+              }
             />
           </div>
         )}
-        {previousHref || nextHref ? (
-          <nav
-            aria-label="History pages"
-            className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-2"
-            data-i18n-aria-label="History pages"
-          >
-            <span className="justify-self-start">
-              {previousHref ? (
-                <Button asChild variant="outline">
-                  <Link href={previousHref}>
-                    <ChevronLeft aria-hidden="true" className="size-4" />
-                    <T message="Newer changes" />
-                  </Link>
-                </Button>
-              ) : null}
-            </span>
-            <span className="text-xs font-semibold text-muted-foreground">
+        <nav
+          aria-label="History pages"
+          className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-2"
+          data-history-pagination=""
+          data-i18n-aria-label="History pages"
+        >
+          <span className="justify-self-start">
+            {previousHref ? (
+              <Button asChild className="min-h-11" variant="outline">
+                <Link href={previousHref}>
+                  <ChevronLeft aria-hidden="true" className="size-4" />
+                  <T message="Newer changes" />
+                </Link>
+              </Button>
+            ) : (
+              <Button className="min-h-11" disabled variant="outline">
+                <ChevronLeft aria-hidden="true" className="size-4" />
+                <T message="Newer changes" />
+              </Button>
+            )}
+          </span>
+          <span className="text-center text-xs font-semibold text-muted-foreground">
+            <span className="block">
               <T message="Page {page}" values={{ page: pageNumber }} />
             </span>
-            <span className="justify-self-end">
-              {nextHref ? (
-                <Button asChild variant="outline">
-                  <Link href={nextHref}>
-                    <T message={"Older changes"} />
-                    <ChevronRight aria-hidden="true" className="size-4" />
-                  </Link>
-                </Button>
-              ) : null}
+            <span className="block font-normal">
+              <T message="{count} changes per page" values={{ count: HISTORY_PAGE_SIZE }} />
             </span>
-          </nav>
-        ) : null}
+          </span>
+          <span className="justify-self-end">
+            {nextHref ? (
+              <Button asChild className="min-h-11" variant="outline">
+                <Link href={nextHref}>
+                  <T message="Older changes" />
+                  <ChevronRight aria-hidden="true" className="size-4" />
+                </Link>
+              </Button>
+            ) : (
+              <Button className="min-h-11" disabled variant="outline">
+                <T message="Older changes" />
+                <ChevronRight aria-hidden="true" className="size-4" />
+              </Button>
+            )}
+          </span>
+        </nav>
       </div>
     </main>
   );

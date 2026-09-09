@@ -2,6 +2,7 @@ import "server-only";
 
 import type {
   CreateTripInput,
+  TripHistoryQuery,
   TripRepository,
   TripStatus,
   UpdateTripInput,
@@ -207,28 +208,33 @@ export class SupabaseTripRepository implements TripRepository {
     if (error) throw repositoryError("The collaborator could not be removed.", error);
   }
 
-  async listHistory(id: string, cursor?: { createdAt: string; id: string }) {
+  async listHistory(id: string, query: TripHistoryQuery) {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.rpc("list_trip_history", {
+    const { data, error } = await supabase.rpc("list_trip_history_v2", {
       target_trip_id: id,
-      before_created_at: cursor?.createdAt,
-      before_id: cursor?.id,
-      requested_limit: 51,
+      before_created_at: query.cursor?.createdAt,
+      before_id: query.cursor?.id,
+      requested_limit: Math.min(query.pageSize + 1, 51),
+      target_category: query.category,
+      target_filter_field: query.filterField,
+      target_filter_value: query.filterValue,
     });
     if (error) throw repositoryError("Trip history could not be loaded.", error);
     const rows = data ?? [];
-    const visible = rows.slice(0, 50);
+    const visible = rows.slice(0, query.pageSize);
     const entries = visible.map((row) => ({
       actorLabel: row.actor_label_snapshot,
       changes: row.changes,
       createdAt: row.created_at,
+      entityType: row.entity_type,
       eventType: row.event_type,
       id: row.id,
     }));
     const last = visible.at(-1);
     return {
       entries,
-      nextCursor: rows.length > 50 && last ? { createdAt: last.created_at, id: last.id } : null,
+      nextCursor:
+        rows.length > query.pageSize && last ? { createdAt: last.created_at, id: last.id } : null,
     };
   }
 
