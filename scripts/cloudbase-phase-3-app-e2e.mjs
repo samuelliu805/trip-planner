@@ -3514,42 +3514,46 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
       browser,
       `(() => {
         const filter = document.querySelector('#history-filter');
-        const detail = document.querySelector('#history-detail-field');
-        const value = document.querySelector('#history-filter-value');
+        const options = [...(filter?.options ?? [])].map((option) => option.value);
         return {
-          detailHeight: detail?.getBoundingClientRect().height ?? 0,
-          detailOptions: [...(detail?.options ?? [])].map((option) => option.value),
           filterHeight: filter?.getBoundingClientRect().height ?? 0,
           filterValue: filter?.value,
-          options: [...(filter?.options ?? [])].map((option) => option.value),
+          hasActorOption: options.some((value) => value.startsWith('email:')),
+          hasManualDetailControls: Boolean(
+            document.querySelector('#history-detail-field, #history-filter-value')),
+          hasStaticCategories: ['all', 'plans', 'itinerary', 'people', 'sharing', 'ideas']
+            .every((value) => options.includes(value)),
           pagination: Boolean(document.querySelector('[data-history-pagination]')),
-          valueTargetHeight: value?.parentElement?.getBoundingClientRect().height ?? 0,
+          paginationText: document.querySelector('[data-history-pagination]')?.innerText.trim(),
+          showsPerPageCopy: document.body.innerText.includes('per page'),
         };
       })()`,
     ),
     {
-      detailHeight: 44,
-      detailOptions: ["all", "email", "event", "entity", "changed_field"],
       filterHeight: 44,
       filterValue: "all",
-      options: ["all", "plans", "itinerary", "people", "sharing", "ideas"],
+      hasActorOption: true,
+      hasManualDetailControls: false,
+      hasStaticCategories: true,
       pagination: true,
-      valueTargetHeight: 44,
+      paginationText: "Older\nPage 1\nNewer",
+      showsPerPageCopy: false,
     },
   );
   await evaluate(
     browser,
     `(() => {
-      const field = document.querySelector('#history-detail-field');
-      const value = document.querySelector('#history-filter-value');
-      field.value = 'email';
-      value.value = ${JSON.stringify(userA)};
-      field.form.requestSubmit();
+      const filter = document.querySelector('#history-filter');
+      filter.value = [...filter.options].find((option) =>
+        option.value.startsWith('email:') &&
+        decodeURIComponent(option.value.slice('email:'.length)) === ${JSON.stringify(userA)}
+      ).value;
+      filter.form.requestSubmit();
     })()`,
   );
   await waitFor(
     browser,
-    `new URLSearchParams(location.search).get('field') === 'email' && (() => {
+    `new URLSearchParams(location.search).get('filter')?.startsWith('email:') && (() => {
         const actors = [...document.querySelectorAll('[data-history-actor]')];
         return actors.length > 0 && actors.every((node) =>
           node.textContent.trim() === ${JSON.stringify(userA)});

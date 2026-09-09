@@ -1,22 +1,45 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Clock3, Filter, History } from "lucide-react";
+import { ArrowLeft, Clock3, Filter, History } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import { historyEventTitle, presentHistoryChanges } from "@/features/trips/history-presentation";
+import { HistoryChangeValues } from "@/features/trips/components/history-change-values";
+import {
+  historyEntityLabel,
+  historyEventTitle,
+  historyFieldLabel,
+  presentHistoryChanges,
+} from "@/features/trips/history-presentation";
 import {
   HISTORY_PAGE_SIZE,
-  historyDetailFilter,
-  historyDetailFilterOptions,
-  historyFilter,
+  historyFilterOptionValue,
   historyFilterOptions,
+  historyFilterSelection,
   historyPageHref,
   parseHistoryCursor,
   parseHistoryTrail,
 } from "@/features/trips/history-pagination";
 import { tripIdSchema } from "@/features/trips/schema";
 import { getTripRepository } from "@/platform/composition/server";
+import type { TripHistoryFilterField } from "@/platform/contracts/trips";
+
+const detailFilterGroups: ReadonlyArray<{
+  field: TripHistoryFilterField;
+  label: string;
+}> = [
+  { field: "email", label: "People" },
+  { field: "event", label: "Actions" },
+  { field: "entity", label: "Records" },
+  { field: "changed_field", label: "Fields" },
+];
+
+function detailFilterLabel(field: TripHistoryFilterField, value: string) {
+  if (field === "event") return historyEventTitle(value);
+  if (field === "entity") return historyEntityLabel(value);
+  if (field === "changed_field") return historyFieldLabel(value);
+  return value;
+}
 
 export default async function TripHistoryPage({
   params,
@@ -36,32 +59,31 @@ export default async function TripHistoryPage({
   if (!tripIdSchema.safeParse(tripId).success) notFound();
   const query = await searchParams;
   const cursor = parseHistoryCursor(query.before, query.beforeId);
-  const filter = historyFilter(query.filter);
-  const detail = historyDetailFilter(query.field, query.value);
+  const selection = historyFilterSelection(query.filter, query.field, query.value);
   const trail = parseHistoryTrail(query.trail);
   const repository = getTripRepository();
-  const [trip, history] = await Promise.all([
+  const [trip, history, filterOptions] = await Promise.all([
     repository.getById(tripId),
     repository.listHistory(tripId, {
-      category: filter,
+      category: selection.category,
       cursor,
-      filterField: detail.field,
-      filterValue: detail.value || undefined,
+      filterField: selection.detail.field,
+      filterValue: selection.detail.value || undefined,
       pageSize: HISTORY_PAGE_SIZE,
     }),
+    repository.listHistoryFilterOptions(tripId),
   ]);
   if (!trip) notFound();
   const pageNumber = cursor ? trail.length + 2 : 1;
   const previousTrail = trail.slice(0, -1);
   const previousCursor = trail.at(-1);
   const previousHref = cursor
-    ? historyPageHref({ cursor: previousCursor, detail, filter, trail: previousTrail, tripId })
+    ? historyPageHref({ cursor: previousCursor, selection, trail: previousTrail, tripId })
     : undefined;
   const nextHref = history.nextCursor
     ? historyPageHref({
         cursor: history.nextCursor,
-        detail,
-        filter,
+        selection,
         trail: cursor ? [...trail, cursor] : trail,
         tripId,
       })
@@ -86,65 +108,48 @@ export default async function TripHistoryPage({
       </header>
       <div className="mx-auto max-w-4xl px-4 py-8">
         <form className="mb-6 flex min-w-0 flex-wrap items-end gap-2 rounded-xl border bg-card p-3">
-          <label className="min-w-[10rem] flex-1" htmlFor="history-filter">
+          <label className="min-w-[14rem] flex-1" htmlFor="history-filter">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <Filter aria-hidden="true" className="size-3.5" />
               <T message="Filter history" />
             </span>
             <select
               className="h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-              defaultValue={filter}
+              defaultValue={selection.value}
               id="history-filter"
               name="filter"
             >
+              <option disabled value="group:categories">
+                — <Localized value="Categories" /> —
+              </option>
               {historyFilterOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   <Localized value={option.label} />
                 </option>
               ))}
+              {detailFilterGroups.map((group) => {
+                const options = filterOptions.filter((option) => option.field === group.field);
+                if (!options.length) return null;
+                return [
+                  <option disabled key={`group:${group.field}`} value={`group:${group.field}`}>
+                    — <Localized value={group.label} /> —
+                  </option>,
+                  ...options.map((option) => (
+                    <option
+                      key={`${option.field}:${option.value}`}
+                      value={historyFilterOptionValue(option.field, option.value)}
+                    >
+                      <Localized value={detailFilterLabel(option.field, option.value)} />
+                    </option>
+                  )),
+                ];
+              })}
             </select>
-          </label>
-          <label className="min-w-[10rem] flex-1" htmlFor="history-detail-field">
-            <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-              <T message="Filter by field" />
-            </span>
-            <select
-              className="h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-              defaultValue={detail.field}
-              id="history-detail-field"
-              name="field"
-            >
-              {historyDetailFilterOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  <Localized value={option.label} />
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="min-w-[12rem] flex-[2]" htmlFor="history-filter-value">
-            <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-              <T message="Exact value" />
-            </span>
-            <span className="flex h-11 min-w-0 items-center rounded-md border border-input bg-background focus-within:ring-2 focus-within:ring-ring">
-              <span aria-hidden="true" className="px-3 text-muted-foreground">
-                =
-              </span>
-              <input
-                className="h-full min-w-0 flex-1 bg-transparent pr-3 text-sm outline-none"
-                data-i18n-placeholder="Email or name"
-                defaultValue={detail.value}
-                id="history-filter-value"
-                maxLength={160}
-                name="value"
-                placeholder="Email or name"
-                type="text"
-              />
-            </span>
           </label>
           <Button className="min-h-11" type="submit" variant="outline">
             <T message="Apply filter" />
           </Button>
-          {filter !== "all" || detail.field !== "all" || detail.value ? (
+          {selection.value !== "all" ? (
             <Button asChild className="min-h-11" variant="ghost">
               <Link href={`/trips/${tripId}/history`}>
                 <T message="Clear filters" />
@@ -157,7 +162,10 @@ export default async function TripHistoryPage({
             {history.entries.map((entry) => {
               const details = presentHistoryChanges(entry.changes);
               return (
-                <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3" key={entry.id}>
+                <li
+                  className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 [contain-intrinsic-size:auto_12rem] [content-visibility:auto]"
+                  key={entry.id}
+                >
                   <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <History aria-hidden="true" className="size-4" />
                   </span>
@@ -177,34 +185,16 @@ export default async function TripHistoryPage({
                     </div>
                     {details.length ? (
                       <dl className="mt-3 space-y-2 border-t pt-3 text-sm">
-                        {details.map((detail) => (
+                        {details.map((detail, detailIndex) => (
                           <div
                             className="grid min-w-0 gap-0.5 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-3"
-                            key={`${detail.label}:${detail.before ?? ""}:${detail.after ?? ""}`}
+                            key={`${detail.label}:${detailIndex}`}
                           >
                             <dt className="font-medium text-muted-foreground">
                               <Localized value={detail.label} />
                             </dt>
                             <dd className="min-w-0 break-words">
-                              {detail.before ? (
-                                <span className="text-muted-foreground line-through">
-                                  <Localized value={detail.before} />
-                                </span>
-                              ) : null}
-                              {detail.before && detail.after ? (
-                                <span aria-hidden="true" className="px-1.5 text-muted-foreground">
-                                  →
-                                </span>
-                              ) : null}
-                              {detail.after ? (
-                                <span>
-                                  <Localized value={detail.after} />
-                                </span>
-                              ) : detail.before ? (
-                                <span className="pl-1.5 text-muted-foreground">
-                                  <T message="Removed" />
-                                </span>
-                              ) : null}
+                              <HistoryChangeValues detail={detail} />
                             </dd>
                           </div>
                         ))}
@@ -219,7 +209,7 @@ export default async function TripHistoryPage({
           <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             <T
               message={
-                filter === "all" && detail.field === "all" && !detail.value
+                selection.value === "all"
                   ? "No saved changes yet."
                   : "No changes match this filter."
               }
@@ -233,40 +223,31 @@ export default async function TripHistoryPage({
           data-i18n-aria-label="History pages"
         >
           <span className="justify-self-start">
-            {previousHref ? (
+            {nextHref ? (
               <Button asChild className="min-h-11" variant="outline">
-                <Link href={previousHref}>
-                  <ChevronLeft aria-hidden="true" className="size-4" />
-                  <T message="Newer changes" />
+                <Link href={nextHref}>
+                  <T message="Older" />
                 </Link>
               </Button>
             ) : (
               <Button className="min-h-11" disabled variant="outline">
-                <ChevronLeft aria-hidden="true" className="size-4" />
-                <T message="Newer changes" />
+                <T message="Older" />
               </Button>
             )}
           </span>
           <span className="text-center text-xs font-semibold text-muted-foreground">
-            <span className="block">
-              <T message="Page {page}" values={{ page: pageNumber }} />
-            </span>
-            <span className="block font-normal">
-              <T message="{count} changes per page" values={{ count: HISTORY_PAGE_SIZE }} />
-            </span>
+            <T message="Page {page}" values={{ page: pageNumber }} />
           </span>
           <span className="justify-self-end">
-            {nextHref ? (
+            {previousHref ? (
               <Button asChild className="min-h-11" variant="outline">
-                <Link href={nextHref}>
-                  <T message="Older changes" />
-                  <ChevronRight aria-hidden="true" className="size-4" />
+                <Link href={previousHref}>
+                  <T message="Newer" />
                 </Link>
               </Button>
             ) : (
               <Button className="min-h-11" disabled variant="outline">
-                <T message="Older changes" />
-                <ChevronRight aria-hidden="true" className="size-4" />
+                <T message="Newer" />
               </Button>
             )}
           </span>

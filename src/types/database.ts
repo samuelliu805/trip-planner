@@ -2733,6 +2733,13 @@ export type Database = {
       };
       list_share_pages_v1: { Args: { target_trip_id: string }; Returns: Json };
       list_share_pages_v2: { Args: { target_trip_id: string }; Returns: Json };
+      list_trip_history_filter_options_v1: {
+        Args: { target_trip_id: string };
+        Returns: {
+          filter_field: string;
+          filter_value: string;
+        }[];
+      };
       list_trip_history: {
         Args: {
           before_created_at?: string;

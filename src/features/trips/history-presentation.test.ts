@@ -5,6 +5,8 @@ import { historyEventTitle, presentHistoryChanges } from "./history-presentation
 import {
   historyDetailFilter,
   historyEntryMatchesFilter,
+  historyFilterOptionValue,
+  historyFilterSelection,
   historyPageHref,
   parseHistoryCursor,
   parseHistoryTrail,
@@ -37,8 +39,16 @@ test("history details hide implementation fields and never serialize JSON", () =
     version: { after: 2, before: 1 },
   });
   assert.deepEqual(details, [
-    { after: "Autumn in Kyoto", before: "Kyoto", label: "Name" },
-    { after: "On", before: "Off", label: "Notes" },
+    {
+      after: { kind: "text", text: "Autumn in Kyoto" },
+      before: { kind: "text", text: "Kyoto" },
+      label: "Name",
+    },
+    {
+      after: { kind: "text", text: "On" },
+      before: { kind: "text", text: "Off" },
+      label: "Notes",
+    },
   ]);
   assert.doesNotMatch(JSON.stringify(details), /private implementation payload/);
 });
@@ -71,8 +81,20 @@ test("order changes show item names and types instead of database IDs", () => {
     }),
     [
       {
-        after: "Breakfast (Meal) → Museum (Activity)",
-        before: "Museum (Activity) → Breakfast (Meal)",
+        after: {
+          items: [
+            { name: "Breakfast", type: "meal", typeLabel: "Meal" },
+            { name: "Museum", type: "activity", typeLabel: "Activity" },
+          ],
+          kind: "order",
+        },
+        before: {
+          items: [
+            { name: "Museum", type: "activity", typeLabel: "Activity" },
+            { name: "Breakfast", type: "meal", typeLabel: "Meal" },
+          ],
+          kind: "order",
+        },
         label: "Order",
       },
     ],
@@ -83,17 +105,67 @@ test("order changes show item names and types instead of database IDs", () => {
       before: ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"],
     },
   });
-  assert.equal(legacy[0].before, "Unavailable item (Item) → Unavailable item (Item)");
-  assert.equal(legacy[0].after, "Unavailable item (Item)");
+  assert.equal(legacy[0].before?.kind, "order");
+  assert.deepEqual(legacy[0].before, {
+    items: [
+      { name: "Unavailable item", type: "item", typeLabel: "Item" },
+      { name: "Unavailable item", type: "item", typeLabel: "Item" },
+    ],
+    kind: "order",
+  });
+  assert.deepEqual(legacy[0].after, {
+    items: [{ name: "Unavailable item", type: "item", typeLabel: "Item" }],
+    kind: "order",
+  });
   assert.doesNotMatch(JSON.stringify(legacy), /00000000/);
 
   const longOrder = Array.from({ length: 8 }, (_, index) => ({
     name: `Stop ${index + 1}`,
     type: "activity",
   }));
-  assert.equal(
-    presentHistoryChanges({ order: { after: longOrder, before: [] } })[0].after,
-    longOrder.map((item) => `${item.name} (Activity)`).join(" → "),
+  assert.deepEqual(presentHistoryChanges({ order: { after: longOrder, before: [] } })[0].after, {
+    items: longOrder.map((item) => ({ ...item, typeLabel: "Activity" })),
+    kind: "order",
+  });
+
+  assert.deepEqual(
+    presentHistoryChanges({
+      order: {
+        after: [
+          { name: "Museum", type: "activity" },
+          { name: "Subway", type: "transport" },
+          { name: "Dinner", type: "meal" },
+        ],
+      },
+    })[0].after,
+    {
+      items: [
+        { name: "Museum", type: "activity", typeLabel: "Activity" },
+        { name: "Dinner", type: "meal", typeLabel: "Meal" },
+      ],
+      kind: "order",
+    },
+  );
+});
+
+test("history presents item and scheduling types as readable labels", () => {
+  assert.deepEqual(
+    presentHistoryChanges({
+      schedule_kind: { after: "all_day", before: "none" },
+      type: { after: "meal", before: "activity" },
+    }),
+    [
+      {
+        after: { kind: "text", text: "All day" },
+        before: { kind: "text", text: "No date / time" },
+        label: "Date / Time",
+      },
+      {
+        after: { kind: "item_type", label: "Meal", type: "meal" },
+        before: { kind: "item_type", label: "Activity", type: "activity" },
+        label: "Type",
+      },
+    ],
   );
 });
 
@@ -135,14 +207,31 @@ test("history cursor trails round-trip through pagination URLs", () => {
   assert.deepEqual(trail, [cursor]);
   const href = historyPageHref({
     cursor,
-    detail: { field: "email", value: "traveler@example.com" },
-    filter: "people",
+    selection: historyFilterSelection(historyFilterOptionValue("email", "traveler@example.com")),
     trail,
     tripId: cursor.id,
   });
   assert.match(href, /^\/trips\/00000000-0000-4000-8000-000000000001\/history\?/);
-  assert.match(decodeURIComponent(href), /filter=people/);
-  assert.match(decodeURIComponent(href), /field=email/);
-  assert.match(decodeURIComponent(href), /value=traveler@example.com/);
+  assert.match(decodeURIComponent(href), /filter=email:traveler%40example.com/);
+  assert.doesNotMatch(decodeURIComponent(href), /field=/);
+  assert.doesNotMatch(decodeURIComponent(href), /value=/);
   assert.match(decodeURIComponent(href), /trail=/);
+});
+
+test("one filter value selects categories or exact server-provided options", () => {
+  assert.deepEqual(historyFilterSelection("itinerary"), {
+    category: "itinerary",
+    detail: { field: "all", value: "" },
+    value: "itinerary",
+  });
+  assert.deepEqual(historyFilterSelection("email:traveler%40example.com"), {
+    category: "all",
+    detail: { field: "email", value: "traveler@example.com" },
+    value: "email:traveler%40example.com",
+  });
+  assert.deepEqual(historyFilterSelection("email:%E0%A4%A"), {
+    category: "all",
+    detail: { field: "all", value: "" },
+    value: "all",
+  });
 });
