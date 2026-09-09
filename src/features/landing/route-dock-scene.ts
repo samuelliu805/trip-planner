@@ -54,6 +54,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
   );
   const routeNodes = nodeStops.map((stop, index) => {
     const node = new THREE.Mesh(nodeGeometry, nodeMaterials[index]);
+    node.name = `route-node-${index}`;
     node.position.copy(routeCurve.getPointAt(stop));
     node.visible = false;
     routeField.add(node);
@@ -72,6 +73,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
     transparent: true,
   });
   const traveler = new THREE.Group();
+  traveler.name = "route-traveler";
   traveler.add(
     new THREE.Mesh(haloGeometry, haloMaterial),
     new THREE.Mesh(travelerGeometry, travelerMaterial),
@@ -89,6 +91,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
     transparent: true,
   });
   const arrivalRing = new THREE.Mesh(arrivalGeometry, arrivalMaterial);
+  arrivalRing.name = "route-arrival-ring";
   arrivalRing.position.copy(routeCurve.getPointAt(1));
   routeField.add(arrivalRing);
 
@@ -122,16 +125,17 @@ export function createRouteDockScene(THREE: ThreeModule) {
     const routeVisibility = 1 - clamp((nextProgress - 0.59) / 0.16);
     const elapsed = time / 1_000;
     const aspect = camera.aspect;
+    let routeScaleX = 1;
     if (aspect < 0.65) {
       routeField.position.set(-0.8, -1.05, 0);
-      routeField.scale.set(0.38, 1, 1);
+      routeScaleX = 0.38;
     } else if (aspect < 1) {
       routeField.position.set(-0.4, -0.3, 0);
-      routeField.scale.set(0.5, 1, 1);
+      routeScaleX = 0.5;
     } else {
       routeField.position.set(0, 0, 0);
-      routeField.scale.set(1, 1, 1);
     }
+    routeField.scale.set(routeScaleX, 1, 1);
     routeGeometry.setDrawRange(0, Math.round(routePoints.length * routeProgress));
     routeMaterial.opacity = 0.9 * routeVisibility;
     routeGlowMaterial.opacity = 0.24 * routeVisibility;
@@ -145,15 +149,17 @@ export function createRouteDockScene(THREE: ThreeModule) {
       const revealed = routeProgress >= nodeStops[index] - 0.025;
       const pulse = 1 + Math.sin(elapsed * 2.4 + index * 0.9) * 0.16;
       node.visible = revealed;
-      node.scale.setScalar(pulse);
+      node.scale.set(pulse / routeScaleX, pulse, pulse);
       nodeMaterials[index].opacity = revealed ? (0.52 + (pulse - 1) * 0.9) * routeVisibility : 0;
     });
     traveler.visible = routeProgress > 0.015 && routeProgress < 0.995;
     traveler.position.copy(routeCurve.getPointAt(routeProgress));
-    traveler.rotation.z = elapsed * 0.8;
+    traveler.rotation.z = routeScaleX === 1 ? elapsed * 0.8 : 0;
+    traveler.scale.set(1 / routeScaleX, 1, 1);
     haloMaterial.opacity = 0.42 + Math.sin(elapsed * 3.2) * 0.18;
     const arrival = clamp((nextProgress - 0.67) / 0.08);
-    arrivalRing.scale.setScalar(1 + arrival * 4.5);
+    const arrivalScale = 1 + arrival * 4.5;
+    arrivalRing.scale.set(arrivalScale / routeScaleX, arrivalScale, arrivalScale);
     arrivalMaterial.opacity = Math.sin(arrival * Math.PI) * 0.7;
     camera.position.x = (nextProgress < 0.75 ? nextProgress * 0.35 : 0.26) + pointer.x * 0.2;
     camera.position.y = pointer.y * -0.13;
