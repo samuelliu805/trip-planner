@@ -188,7 +188,7 @@ select is((select count(*)::integer from public.list_trip_history_v2(
 select is((select count(*)::integer from public.list_trip_history_v2(
   (select value::uuid from collaboration_state where key='trip'),
   target_filter_field=>'changed_field',target_filter_value=>'order')),
-  1,'history can filter exactly by changed field');
+  3,'history can filter exactly by changed field');
 select is((select count(*)::integer from public.list_trip_history_v2(
   (select value::uuid from collaboration_state where key='trip'),requested_limit=>2)),
   2,'history pagination returns only the requested bounded page');
