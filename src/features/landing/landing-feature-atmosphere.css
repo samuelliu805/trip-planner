@@ -1,0 +1,134 @@
+.landing-feature-story {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+}
+
+.feature-matrix-stage {
+  position: relative;
+  min-width: 0;
+  padding-top: 2.1rem;
+}
+
+.feature-matrix-photo {
+  position: absolute;
+  top: -1.7rem;
+  right: -1.5rem;
+  z-index: 2;
+  width: clamp(7rem, 13vw, 10rem);
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 0.38rem solid #fffefa;
+  border-bottom-width: 1.35rem;
+  box-shadow: 0 14px 32px rgb(19 34 56 / 18%);
+  transform: rotate(4deg);
+}
+
+.feature-matrix-photo img,
+.options-demo-photo img,
+.route-map-photo {
+  object-fit: cover;
+}
+
+.feature-matrix-photo span {
+  position: absolute;
+  right: 0.25rem;
+  bottom: -1.05rem;
+  color: #53616d;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+}
+
+.route-map-photo {
+  filter: saturate(0.52) contrast(0.92) brightness(0.94);
+  opacity: 0.62;
+  transform: scale(1.05);
+}
+
+.route-map::after {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background: linear-gradient(125deg, rgb(223 231 225 / 72%), rgb(223 231 225 / 20%));
+  content: "";
+}
+
+.route-map :is(.route-river, .route-street, svg, .map-caption) {
+  z-index: 1;
+}
+
+.route-map .map-caption {
+  padding: 0.4rem 0.55rem;
+  background: rgb(250 249 244 / 76%);
+  backdrop-filter: blur(6px);
+}
+
+.options-demo-photo {
+  position: relative;
+  height: clamp(7rem, 15vw, 10rem);
+  overflow: hidden;
+  border-bottom: 1px solid #e4e1d9;
+}
+
+.options-demo-photo img {
+  filter: saturate(0.64) contrast(0.96);
+}
+
+.options-demo-photo span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 45%, rgb(255 254 250 / 86%));
+}
+
+.documents-demo::before {
+  position: absolute;
+  top: -3rem;
+  right: -4rem;
+  width: 14rem;
+  height: 14rem;
+  border: 1px solid rgb(145 205 185 / 22%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2.5rem rgb(120 213 200 / 4%),
+    0 0 0 5rem rgb(120 213 200 / 3%);
+  content: "";
+}
+
+.documents-demo > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .feature-matrix-photo {
+    animation: landing-photo-float 7s ease-in-out infinite alternate;
+  }
+
+  .route-map-photo {
+    animation: landing-photo-breathe 12s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes landing-photo-float {
+  to {
+    translate: 0 -0.45rem;
+    rotate: -1deg;
+  }
+}
+
+@keyframes landing-photo-breathe {
+  to {
+    transform: scale(1.1);
+  }
+}
+
+@media (max-width: 760px) {
+  .feature-matrix-photo {
+    right: 0.75rem;
+  }
+
+  .route-map::after {
+    background: linear-gradient(145deg, rgb(223 231 225 / 70%), rgb(223 231 225 / 18%));
+  }
+}

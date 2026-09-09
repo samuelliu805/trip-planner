@@ -73,7 +73,7 @@
 }
 
 .route-dock-track {
-  height: 360svh;
+  height: 390svh;
   position: relative;
 }
 .route-dock-viewport {
@@ -116,12 +116,9 @@
 
 .hero-copy {
   left: clamp(1.25rem, 5vw, 5.5rem);
-  max-width: min(39rem, 42vw);
+  max-width: min(36rem, 38vw);
   position: absolute;
   top: clamp(7.5rem, 19vh, 12rem);
-  transition:
-    opacity 360ms ease,
-    transform 500ms ease;
   z-index: 30;
 }
 .landing-eyebrow {
@@ -134,7 +131,7 @@
   color: #99cec0;
 }
 .hero-copy h1 {
-  font-size: clamp(3.35rem, 6.6vw, 6.9rem);
+  font-size: clamp(3.35rem, 5.8vw, 6.2rem);
   font-weight: 700;
   letter-spacing: -0.07em;
   line-height: 0.91;
@@ -183,17 +180,4 @@ html[lang="zh-CN"] .hero-copy h1 {
   color: rgba(247, 244, 236, 0.55);
   font-size: 0.8rem;
   margin-top: 1.15rem;
-}
-.route-dock-track[data-dock-state="routing"] .hero-copy {
-  opacity: 0.78;
-  transform: translateY(-10px);
-}
-.route-dock-track[data-dock-state="docking"] .hero-copy {
-  opacity: 0.12;
-  transform: translateY(-24px);
-}
-.route-dock-track[data-dock-state="assembled"] .hero-copy {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-32px);
 }

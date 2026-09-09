@@ -13,6 +13,8 @@ import "./landing-workspace.css";
 import "./landing-hero-responsive.css";
 import "./landing-features.css";
 import "./landing-options-documents.css";
+import "./landing-feature-atmosphere.css";
+import "./landing-feature-chapters.css";
 import "./landing-conversion.css";
 
 export function LandingPage({ accountLabel, year }: { accountLabel?: string; year: number }) {

@@ -98,19 +98,25 @@
   opacity: 0;
 }
 
+@media (max-width: 1100px) and (min-width: 700px) {
+  .workspace-stage {
+    width: 52vw;
+  }
+}
+
 @media (max-width: 900px) {
   .plandock-nav-links {
     display: none;
   }
   .hero-copy {
-    max-width: 48vw;
+    max-width: 40vw;
   }
   html[lang="zh-CN"] .hero-copy {
-    max-width: 55vw;
+    max-width: 46vw;
   }
   .workspace-stage {
     right: 1rem;
-    width: 62vw;
+    width: 52vw;
   }
 }
 
@@ -172,9 +178,6 @@
     right: 10px;
     top: 45vh;
     width: auto;
-  }
-  .route-dock-track[data-dock-state="assembled"] .workspace-stage {
-    top: 16vh;
   }
   .plandock-workspace {
     border-radius: 12px;
@@ -277,14 +280,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-copy,
   .completion-label,
   .plandock-target-content,
   .workspace-stage {
     transition: none;
-  }
-  .hero-copy {
-    opacity: 0;
-    pointer-events: none;
   }
 }
