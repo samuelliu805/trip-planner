@@ -64,10 +64,15 @@ export type TripHistoryPage = Readonly<{
   entries: TripHistoryEntry[];
   nextCursor: Readonly<{ createdAt: string; id: string }> | null;
 }>;
+export type TripHistoryFilterField = "email" | "event" | "entity" | "changed_field";
+export type TripHistoryFilterOption = Readonly<{
+  field: TripHistoryFilterField;
+  value: string;
+}>;
 export type TripHistoryQuery = Readonly<{
   category: "all" | "plans" | "itinerary" | "people" | "sharing" | "ideas";
   cursor?: Readonly<{ createdAt: string; id: string }>;
-  filterField: "all" | "email" | "event" | "entity" | "changed_field";
+  filterField: "all" | TripHistoryFilterField;
   filterValue?: string;
   pageSize: number;
 }>;
@@ -118,5 +123,6 @@ export interface TripRepository {
   inviteCollaborator(id: string, identifier: string, operationId: string): Promise<void>;
   removeCollaborator(id: string, memberId: string, operationId: string): Promise<void>;
   listHistory(id: string, query: TripHistoryQuery): Promise<TripHistoryPage>;
+  listHistoryFilterOptions(id: string): Promise<TripHistoryFilterOption[]>;
   getStorageStats(id: string): Promise<TripStorageStats | null>;
 }

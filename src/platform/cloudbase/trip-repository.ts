@@ -293,6 +293,30 @@ export class CloudBaseTripRepository implements TripRepository {
     };
   }
 
+  async listHistoryFilterOptions(id: string) {
+    const { db } = await createCloudBaseUserContext();
+    const data = await rows(
+      db.rpc("list_trip_history_filter_options_v1", { target_trip_id: id }),
+      "History filters could not be loaded.",
+    );
+    if (!Array.isArray(data))
+      throw new PlatformOperationError("unexpected", "History filters returned invalid data.");
+    const fields = new Set(["email", "event", "entity", "changed_field"]);
+    return data.flatMap((value) => {
+      const row = value as Record<string, unknown>;
+      const field = String(row.filter_field);
+      const filterValue = String(row.filter_value ?? "").trim();
+      return fields.has(field) && filterValue
+        ? [
+            {
+              field: field as import("@/platform/contracts/trips").TripHistoryFilterField,
+              value: filterValue,
+            },
+          ]
+        : [];
+    });
+  }
+
   async getStorageStats(id: string) {
     const { db } = await createCloudBaseUserContext();
     const data = cloudBaseData(

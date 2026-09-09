@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 202,
+  "publicFunctionCount": 203,
   "catalog": [
     {
       "schema": "public",
@@ -1547,6 +1547,16 @@
       "signature": "list_share_pages_v2(uuid)",
       "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
       "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "list_trip_history_filter_options_v1(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "table(filter_field text, filter_value text)",
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",

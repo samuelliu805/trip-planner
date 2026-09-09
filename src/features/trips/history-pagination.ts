@@ -1,6 +1,6 @@
-import type { TripHistoryEntry } from "@/platform/contracts/trips";
+import type { TripHistoryEntry, TripHistoryFilterField } from "@/platform/contracts/trips";
 
-export const HISTORY_PAGE_SIZE = 10;
+export const HISTORY_PAGE_SIZE = 50;
 
 export const historyFilterOptions = [
   { label: "All changes", value: "all" },
@@ -13,15 +13,13 @@ export const historyFilterOptions = [
 
 export type HistoryFilter = (typeof historyFilterOptions)[number]["value"];
 export type HistoryCursor = Readonly<{ createdAt: string; id: string }>;
-export const historyDetailFilterOptions = [
-  { label: "Any field", value: "all" },
-  { label: "Actor email or name", value: "email" },
-  { label: "Event type", value: "event" },
-  { label: "Entity type", value: "entity" },
-  { label: "Changed field", value: "changed_field" },
-] as const;
-export type HistoryDetailFilterField = (typeof historyDetailFilterOptions)[number]["value"];
+export type HistoryDetailFilterField = "all" | TripHistoryFilterField;
 export type HistoryDetailFilter = Readonly<{ field: HistoryDetailFilterField; value: string }>;
+export type HistoryFilterSelection = Readonly<{
+  category: HistoryFilter;
+  detail: HistoryDetailFilter;
+  value: string;
+}>;
 
 const filterPrefixes: Record<Exclude<HistoryFilter, "all">, string[]> = {
   ideas: ["research.", "research_"],
@@ -39,10 +37,49 @@ export function historyFilter(value?: string): HistoryFilter {
 }
 
 export function historyDetailFilter(field?: string, value?: string): HistoryDetailFilter {
-  const validField = historyDetailFilterOptions.some((option) => option.value === field)
+  const validField = ["all", "email", "event", "entity", "changed_field"].includes(field ?? "")
     ? (field as HistoryDetailFilterField)
     : "all";
   return { field: validField, value: (value ?? "").trim().slice(0, 160) };
+}
+
+export function historyFilterOptionValue(field: TripHistoryFilterField, value: string) {
+  return `${field}:${encodeURIComponent(value.trim().slice(0, 160))}`;
+}
+
+export function historyFilterSelection(
+  value?: string,
+  legacyField?: string,
+  legacyValue?: string,
+): HistoryFilterSelection {
+  if (legacyField || legacyValue) {
+    const category = historyFilter(value);
+    const detail = historyDetailFilter(legacyField, legacyValue);
+    return {
+      category: detail.field === "all" || !detail.value ? category : "all",
+      detail,
+      value:
+        detail.field === "all" || !detail.value
+          ? category
+          : historyFilterOptionValue(detail.field, detail.value),
+    };
+  }
+  const category = historyFilter(value);
+  if (category !== "all" || value === "all" || !value)
+    return { category, detail: { field: "all", value: "" }, value: category };
+  const separator = value.indexOf(":");
+  if (separator < 1) return { category, detail: { field: "all", value: "" }, value: category };
+  const field = value.slice(0, separator);
+  let decoded = "";
+  try {
+    decoded = decodeURIComponent(value.slice(separator + 1));
+  } catch {
+    return { category, detail: { field: "all", value: "" }, value: category };
+  }
+  const detail = historyDetailFilter(field, decoded);
+  if (detail.field === "all" || !detail.value)
+    return { category, detail: { field: "all", value: "" }, value: category };
+  return { category: "all", detail, value: historyFilterOptionValue(detail.field, detail.value) };
 }
 
 export function historyEntryMatchesFilter(
@@ -93,21 +130,17 @@ export function parseHistoryTrail(value?: string): HistoryCursor[] {
 
 export function historyPageHref({
   cursor,
-  detail,
-  filter,
+  selection,
   trail,
   tripId,
 }: {
   cursor?: HistoryCursor;
-  detail: HistoryDetailFilter;
-  filter: HistoryFilter;
+  selection: HistoryFilterSelection;
   trail: HistoryCursor[];
   tripId: string;
 }) {
   const params = new URLSearchParams();
-  if (filter !== "all") params.set("filter", filter);
-  if (detail.field !== "all") params.set("field", detail.field);
-  if (detail.value) params.set("value", detail.value);
+  if (selection.value !== "all") params.set("filter", selection.value);
   if (cursor) {
     params.set("before", cursor.createdAt);
     params.set("beforeId", cursor.id);

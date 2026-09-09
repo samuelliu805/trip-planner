@@ -177,6 +177,20 @@ test("itinerary reorder history stores readable item names and types", async () 
   assert.doesNotMatch(migration, /'before',previous_order,'after',ordered_item_ids/);
 });
 
+test("history filter options are bounded and Transport is excluded from order snapshots", async () => {
+  const migration = await source(
+    "database/shared/migrations/20260909034815_history_filters_and_activity_order.sql",
+  );
+  assert.match(
+    migration,
+    /lower\(coalesce\(normalized\.item ->> 'type', 'item'\)\) <> 'transport'/,
+  );
+  assert.match(migration, /CREATE FUNCTION public\.list_trip_history_filter_options_v1/);
+  assert.match(migration, /public\.can_edit_trip\(target_trip_id\)/);
+  assert.match(migration, /LIMIT 100/g);
+  assert.match(migration, /REVOKE EXECUTE[\s\S]*FROM PUBLIC, anon/);
+});
+
 test("publishing keeps the source Plan version stable and refreshes aggregate trip versions", async () => {
   const [migration, dialog, form, editorScreen] = await Promise.all([
     source("database/shared/migrations/20260908101000_share_page_source_version_stability.sql"),

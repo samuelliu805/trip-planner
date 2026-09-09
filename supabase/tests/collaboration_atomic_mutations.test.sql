@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(33);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
   raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -177,6 +177,27 @@ select ok((select changes #> '{order,after,0}' = '{"name":"Cafe","type":"meal"}'
   and changes #> '{order,after,1}' = '{"name":"Museum updated","type":"activity"}'::jsonb
   from public.trip_history where operation_id='75000000-0000-4000-8000-000000000025'),
   'order history stores every item name and type in arrow-ready order');
+select lives_ok(format($sql$select public.save_itinerary_item_v3(
+  %L,%L,%L,%L,
+  '{"type":"transport","title":"Subway","details":{},"placeId":null,"placeSnapshot":null,
+    "bookingUrl":null,"startTime":null,"endTime":null,"scheduleKind":"none",
+    "priceAmount":null,"priceCurrency":null}'::jsonb,
+  '[]'::jsonb,array[%L::uuid,%L::uuid,%L::uuid],null,4,%L,null)$sql$,
+  (select value from collaboration_state where key='trip'),
+  (select value from collaboration_state where key='variant'),
+  (select value from collaboration_state where key='day'),
+  '75000000-0000-4000-8000-000000000026','75000000-0000-4000-8000-000000000024',
+  '75000000-0000-4000-8000-000000000020','75000000-0000-4000-8000-000000000026',
+  '75000000-0000-4000-8000-000000000026'),
+  'owner can add Transport without adding it to readable activity order');
+select ok((select jsonb_array_length(changes #> '{order,after}')=2
+    and not jsonb_path_exists(changes #> '{order,after}', '$[*] ? (@.type == "transport")')
+  from public.trip_history where operation_id='75000000-0000-4000-8000-000000000026'),
+  'Transport is excluded from itinerary order history');
+select ok(exists(select 1 from public.list_trip_history_filter_options_v1(
+  (select value::uuid from collaboration_state where key='trip'))
+  where filter_field='email' and filter_value='collaborator-75@example.invalid'),
+  'history exposes exact actor values as selectable filter options');
 select is((select count(*)::integer from public.list_trip_history_v2(
   (select value::uuid from collaboration_state where key='trip'),
   target_filter_field=>'email',target_filter_value=>'collaborator-75@example.invalid')),
@@ -188,7 +209,7 @@ select is((select count(*)::integer from public.list_trip_history_v2(
 select is((select count(*)::integer from public.list_trip_history_v2(
   (select value::uuid from collaboration_state where key='trip'),
   target_filter_field=>'changed_field',target_filter_value=>'order')),
-  3,'history can filter exactly by changed field');
+  4,'history can filter exactly by changed field');
 select is((select count(*)::integer from public.list_trip_history_v2(
   (select value::uuid from collaboration_state where key='trip'),requested_limit=>2)),
   2,'history pagination returns only the requested bounded page');
@@ -201,6 +222,9 @@ select is((select count(*)::integer from public.trips where
 select is((select count(*)::integer from public.list_trip_history_v2(
   (select value::uuid from collaboration_state where key='trip'))),0,
   'an unrelated registered user cannot read history');
+select is((select count(*)::integer from public.list_trip_history_filter_options_v1(
+  (select value::uuid from collaboration_state where key='trip'))),0,
+  'an unrelated registered user cannot read history filter options');
 select throws_ok(format('select public.delete_trip_v3(%L,1,1,%L)',
   (select value from collaboration_state where key='trip'),
   '75000000-0000-4000-8000-000000000030'), '42501','TRIP_OWNER_REQUIRED',

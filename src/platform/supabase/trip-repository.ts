@@ -2,6 +2,7 @@ import "server-only";
 
 import type {
   CreateTripInput,
+  TripHistoryFilterField,
   TripHistoryQuery,
   TripRepository,
   TripStatus,
@@ -12,6 +13,17 @@ import { normalizeTrip, normalizeTrips } from "@/platform/trips/normalization";
 import { normalizeTripStorageStats } from "@/platform/trips/storage-stats";
 
 import { createSupabaseServerClient } from "./server";
+
+const historyFilterFields = new Set<TripHistoryFilterField>([
+  "email",
+  "event",
+  "entity",
+  "changed_field",
+]);
+
+function isHistoryFilterField(value: string): value is TripHistoryFilterField {
+  return historyFilterFields.has(value as TripHistoryFilterField);
+}
 
 function repositoryError(message: string, cause?: { code?: string; message?: string } | null) {
   const code = cause?.code;
@@ -236,6 +248,20 @@ export class SupabaseTripRepository implements TripRepository {
       nextCursor:
         rows.length > query.pageSize && last ? { createdAt: last.created_at, id: last.id } : null,
     };
+  }
+
+  async listHistoryFilterOptions(id: string) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.rpc("list_trip_history_filter_options_v1", {
+      target_trip_id: id,
+    });
+    if (error) throw repositoryError("History filters could not be loaded.", error);
+    return (data ?? []).flatMap((row) => {
+      const value = row.filter_value.trim();
+      return isHistoryFilterField(row.filter_field) && value
+        ? [{ field: row.filter_field, value }]
+        : [];
+    });
   }
 
   async getStorageStats(id: string) {

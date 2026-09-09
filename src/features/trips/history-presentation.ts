@@ -1,8 +1,17 @@
 import type { Json } from "@/types/database";
 
+export type PresentedHistoryOrderItem = Readonly<{
+  name: string;
+  type: string;
+  typeLabel: string;
+}>;
+export type PresentedHistoryValue =
+  | Readonly<{ kind: "item_type"; label: string; type: string }>
+  | Readonly<{ items: PresentedHistoryOrderItem[]; kind: "order" }>
+  | Readonly<{ kind: "text"; text: string }>;
 export type PresentedHistoryChange = Readonly<{
-  after?: string;
-  before?: string;
+  after?: PresentedHistoryValue;
+  before?: PresentedHistoryValue;
   label: string;
 }>;
 
@@ -63,7 +72,7 @@ const fieldLabels: Record<string, string> = {
   price_amount: "Price",
   price_currency: "Price currency",
   role: "Role",
-  schedule_kind: "Schedule",
+  schedule_kind: "Date / Time",
   shareDescription: "Page description",
   shareTitle: "Page title",
   showAddresses: "Addresses",
@@ -95,6 +104,16 @@ const itemTypeLabels: Record<string, string> = {
   note: "Note",
   train: "Train",
   transport: "Transport",
+  item: "Item",
+};
+const scheduleKindLabels: Record<string, string> = {
+  all_day: "All day",
+  approximate: "Approximate time",
+  exact: "Start time",
+  none: "No date / time",
+  period: "Part of day",
+  range: "Time range",
+  untimed: "No date / time",
 };
 
 function words(value: string) {
@@ -104,33 +123,56 @@ function words(value: string) {
     .replace(/^./, (letter) => letter.toUpperCase());
 }
 
-function presentedOrderEntry(value: Json) {
+export function historyItemTypeLabel(type: string) {
+  return itemTypeLabels[type.toLocaleLowerCase()] ?? words(type);
+}
+
+export function historyFieldLabel(field: string) {
+  const leaf = field.split(".").at(-1) ?? field;
+  return fieldLabels[field] ?? fieldLabels[leaf] ?? words(leaf);
+}
+
+export function historyEntityLabel(entity: string) {
+  return words(entity.replaceAll(".", " "));
+}
+
+function presentedOrderEntry(value: Json): PresentedHistoryOrderItem | undefined {
   if (!value || Array.isArray(value) || typeof value !== "object") return undefined;
   const name = typeof value.name === "string" ? value.name : value.title;
   const type = typeof value.type === "string" ? value.type : undefined;
-  if (typeof name !== "string") return undefined;
-  return type ? `${name} (${itemTypeLabels[type] ?? words(type)})` : name;
+  if (typeof name !== "string" || type?.toLocaleLowerCase() === "transport") return undefined;
+  const normalizedType = type?.toLocaleLowerCase() ?? "item";
+  return { name, type: normalizedType, typeLabel: historyItemTypeLabel(normalizedType) };
 }
 
-function presentedValue(value: Json | undefined): string | undefined {
+function presentedValue(value: Json | undefined, field: string): PresentedHistoryValue | undefined {
   if (value === null || value === undefined || value === "") return undefined;
-  if (typeof value === "boolean") return value ? "On" : "Off";
-  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (typeof value === "boolean") return { kind: "text", text: value ? "On" : "Off" };
+  if (typeof value === "string" || typeof value === "number") {
+    const text = String(value);
+    if (field === "type")
+      return { kind: "item_type", label: historyItemTypeLabel(text), type: text.toLowerCase() };
+    if (field === "schedule_kind")
+      return { kind: "text", text: scheduleKindLabels[text] ?? words(text) };
+    return { kind: "text", text };
+  }
   if (Array.isArray(value)) {
-    const orderEntries = value.map(presentedOrderEntry);
-    if (orderEntries.length && orderEntries.every(Boolean)) {
-      return (orderEntries as string[]).join(" → ");
+    if (field === "order") {
+      const orderEntries = value.flatMap((entry) => {
+        const presented = presentedOrderEntry(entry);
+        if (presented) return [presented];
+        if (typeof entry === "string" && uuidValue.test(entry))
+          return [{ name: "Unavailable item", type: "item", typeLabel: "Item" }];
+        return [];
+      });
+      return orderEntries.length ? { items: orderEntries, kind: "order" } : undefined;
     }
     const simple = value.filter(
       (entry): entry is string | number => typeof entry === "string" || typeof entry === "number",
     );
-    if (
-      simple.length === value.length &&
-      simple.every((entry) => typeof entry === "string" && uuidValue.test(entry))
-    )
-      return value.map(() => "Unavailable item (Item)").join(" → ");
-    if (simple.length === value.length && value.length <= 4) return simple.join(", ");
-    return `${value.length} ${value.length === 1 ? "item" : "items"}`;
+    if (simple.length === value.length && value.length <= 4)
+      return { kind: "text", text: simple.join(", ") };
+    return { kind: "text", text: `${value.length} ${value.length === 1 ? "item" : "items"}` };
   }
   return undefined;
 }
@@ -153,14 +195,14 @@ export function presentHistoryChanges(changes: Json, limit = 4): PresentedHistor
     if (technicalField.test(field) && !fieldLabels[field]) continue;
     const changed = transition(value);
     if (!changed) continue;
-    const before = presentedValue(changed.before);
-    const after = presentedValue(changed.after);
-    if (!before && !after) continue;
     const leaf = field.split(".").at(-1) ?? field;
+    const before = presentedValue(changed.before, leaf);
+    const after = presentedValue(changed.after, leaf);
+    if (!before && !after) continue;
     result.push({
       ...(after ? { after } : {}),
       ...(before ? { before } : {}),
-      label: fieldLabels[field] ?? fieldLabels[leaf] ?? words(leaf),
+      label: historyFieldLabel(field),
     });
     if (result.length === limit) break;
   }
