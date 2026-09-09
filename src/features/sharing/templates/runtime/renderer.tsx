@@ -11,7 +11,6 @@ import type {
   PublicTemplateRegionNodeV1,
 } from "../schema";
 import { usePublicTemplateController } from "./controller";
-import { PublicTemplateDecorations } from "./decorations";
 
 function TemplateRegion({
   children,
@@ -91,7 +90,6 @@ export function PublicTemplateRenderer({ template }: { template: CompiledPublicT
       data-public-template-version={template.version}
     >
       <style data-public-template-styles={template.key}>{template.scopedCss}</style>
-      <PublicTemplateDecorations templateId={template.id} />
       {template.layout.children.map((node, index) => (
         <TemplateNode key={`${node.type}:${node.name}:${index}`} node={node} />
       ))}

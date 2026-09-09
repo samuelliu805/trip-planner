@@ -249,7 +249,7 @@ export function FeatureSections() {
           <T message="Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves." />
         </p>
       </section>
-      <section className="feature-section matrix-section">
+      <section className="feature-section matrix-section" data-feature-index="01">
         <SectionHeading
           eyebrow="01 · PLAN THE WHOLE TRIP"
           title="See every day at once."
@@ -257,7 +257,7 @@ export function FeatureSections() {
         />
         <MatrixDemo />
       </section>
-      <section className="feature-section route-section">
+      <section className="feature-section route-section" data-feature-index="02">
         <SectionHeading
           eyebrow="02 · UNDERSTAND THE ROUTE"
           title="Make movement part of the plan."
@@ -265,7 +265,7 @@ export function FeatureSections() {
         />
         <RouteDemo />
       </section>
-      <section className="feature-section options-section">
+      <section className="feature-section options-section" data-feature-index="03">
         <OptionsDemo />
         <SectionHeading
           eyebrow="03 · COMPARE BEFORE DECIDING"
@@ -273,7 +273,7 @@ export function FeatureSections() {
           body="Save route and trip options side by side. Compare their known details without invented scores or automatic winners."
         />
       </section>
-      <section className="feature-section documents-section">
+      <section className="feature-section documents-section" data-feature-index="04">
         <SectionHeading
           eyebrow="04 · KEEP THE SOURCE MATERIAL"
           title="Tickets stay with the item."

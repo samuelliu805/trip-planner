@@ -12,6 +12,8 @@ test("route scene follows scroll progress and pointer parallax without a rendere
   assert.ok(routeScene.camera.position.x > initialX);
   assert.ok(routeScene.camera.position.y > 0);
   assert.ok(routeScene.camera.position.z < 8);
+  assert.equal(routeScene.scene.getObjectByName("route-traveler-trail")?.children.length, 9);
+  assert.equal(routeScene.scene.getObjectByName("route-waypoint-signals")?.children.length, 3);
 
   assert.doesNotThrow(() => routeScene.render(0.8, 1_250, { x: 0, y: 0 }));
   routeScene.dispose();

@@ -15,7 +15,6 @@
 @import "./public-sharing-content-safety.css";
 @import "./public-sharing-table-resources.css";
 @import "./public-sharing-i18n.css";
-@import "./public-sharing-template-decorations.css";
 
 html:has(.public-itinerary-shell),
 body:has(.public-itinerary-shell) {

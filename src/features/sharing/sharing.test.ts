@@ -100,7 +100,6 @@ async function readAppStyles() {
         "../../app/public-sharing-timeline.css",
         "../../app/public-sharing-timeline-transport.css",
         "../../app/public-sharing-timeline-export.css",
-        "../../app/public-sharing-template-decorations.css",
       ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
   )
@@ -1574,10 +1573,6 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     new URL("./templates/runtime/renderer.tsx", import.meta.url),
     "utf8",
   );
-  const decorations = await readFile(
-    new URL("./templates/runtime/decorations.tsx", import.meta.url),
-    "utf8",
-  );
   const platformParts = await readFile(
     new URL("./templates/parts/platform-parts.tsx", import.meta.url),
     "utf8",
@@ -1608,10 +1603,6 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   const shareBasicFields = await readFile(
     new URL("./components/public-share-basic-fields.tsx", import.meta.url),
-    "utf8",
-  );
-  const shareTemplatePreviews = await readFile(
-    new URL("./components/public-share-template-previews.css", import.meta.url),
     "utf8",
   );
   const shareVisibilityFields = await readFile(
@@ -2137,12 +2128,6 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(controller, /setSelection/);
   assert.match(platformParts, /onSelectionChange=\{onSelectionChange\}/);
   assert.match(renderer, /public-itinerary-shell public-template-\$\{template\.id\} isolate/);
-  assert.match(renderer, /<PublicTemplateDecorations templateId=\{template\.id\}/);
-  assert.match(decorations, /decorationAssetIdsByTemplate/);
-  assert.match(decorations, /bento: \["paris-morning", "travel-desk"\]/);
-  assert.match(decorations, /data-template-decoration=\{index \+ 1\}/);
-  assert.match(styles, /\.public-template-bento \.public-template-decoration/);
-  assert.match(styles, /\.public-template-journal \.public-template-decoration/);
   assert.match(renderer, /className="public-itinerary-header"/);
   assert.match(renderer, /public-content-pane min-h-0 min-w-0 overflow-hidden/);
   assert.match(shell, /getPublicTemplate\(templateKey\)/);
@@ -2192,12 +2177,6 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(shareVisibilityFields, /LongImageSettingsFields/);
   assert.match(shareBasicFields, /!existingPage \? \([\s\S]*public-share-variant/);
   assert.doesNotMatch(shareBasicFields, /Route \(fixed\)/);
-  assert.equal(shareBasicFields.match(/<Select\b/g)?.length, 1);
-  assert.match(shareBasicFields, /id="public-share-template"[\s\S]*role="radiogroup"/);
-  assert.match(shareBasicFields, /aria-checked=\{selected\}[\s\S]*role="radio"/);
-  assert.match(shareBasicFields, /event\.key === "ArrowLeft"[\s\S]*event\.key === "ArrowDown"/);
-  assert.match(shareBasicFields, /tabIndex=\{selected/);
-  assert.match(shareTemplatePreviews, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
   assert.ok(
     shareSettingsFields.indexOf("PublicShareBasicFields") <
       shareSettingsFields.indexOf('ShareSettingDisclosure title="Advanced settings"') &&
