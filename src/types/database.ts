@@ -2760,6 +2760,36 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      list_trip_history_v2: {
+        Args: {
+          before_created_at?: string;
+          before_id?: string;
+          requested_limit?: number;
+          target_category?: string;
+          target_filter_field?: string;
+          target_filter_value?: string;
+          target_trip_id: string;
+        };
+        Returns: {
+          actor_label_snapshot: string;
+          actor_user_id: string;
+          changes: Json;
+          created_at: string;
+          entity_id: string | null;
+          entity_type: string;
+          event_type: string;
+          id: string;
+          operation_id: string;
+          operation_kind: string;
+          trip_id: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "trip_history";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       list_trip_members: {
         Args: { target_trip_id: string };
         Returns: {

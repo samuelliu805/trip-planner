@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 201,
+  "publicFunctionCount": 202,
   "catalog": [
     {
       "schema": "public",
@@ -1554,6 +1554,24 @@
     },
     {
       "schema": "public",
+      "signature": "list_trip_history_v2(uuid,timestamptz,uuid,integer,text,text,text)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "before_created_at", "type": "timestamptz" },
+        { "name": "before_id", "type": "uuid" },
+        { "name": "requested_limit", "type": "integer" },
+        { "name": "target_category", "type": "text" },
+        { "name": "target_filter_field", "type": "text" },
+        { "name": "target_filter_value", "type": "text" }
+      ],
+      "returns": "setof trip_history",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "list_trip_history(uuid,timestamptz,uuid,integer)",
       "arguments": [
         { "name": "target_trip_id", "type": "uuid" },
@@ -3054,8 +3072,12 @@
     "day_route_plan_structure_is_canonical(uuid)",
     "guard_trip_owner_identity()",
     "guard_trip_owner_membership()",
+    "history_order_item_snapshot(uuid,text)",
+    "history_order_snapshot_list(uuid,jsonb)",
+    "history_readable_order_changes(uuid,jsonb)",
     "insert_collaboration_member(uuid,text,text)",
     "is_trip_member(uuid)",
+    "normalize_trip_history_order()",
     "operation_fingerprint(text,text,uuid,jsonb)",
     "raise_app_conflict(text,text)",
     "safe_jsonb_diff(jsonb,jsonb,text)",

@@ -1,4 +1,6 @@
-import type { TripHistoryEntry, TripHistoryPage } from "@/platform/contracts/trips";
+import type { TripHistoryEntry } from "@/platform/contracts/trips";
+
+export const HISTORY_PAGE_SIZE = 10;
 
 export const historyFilterOptions = [
   { label: "All changes", value: "all" },
@@ -11,6 +13,15 @@ export const historyFilterOptions = [
 
 export type HistoryFilter = (typeof historyFilterOptions)[number]["value"];
 export type HistoryCursor = Readonly<{ createdAt: string; id: string }>;
+export const historyDetailFilterOptions = [
+  { label: "Any field", value: "all" },
+  { label: "Actor email or name", value: "email" },
+  { label: "Event type", value: "event" },
+  { label: "Entity type", value: "entity" },
+  { label: "Changed field", value: "changed_field" },
+] as const;
+export type HistoryDetailFilterField = (typeof historyDetailFilterOptions)[number]["value"];
+export type HistoryDetailFilter = Readonly<{ field: HistoryDetailFilterField; value: string }>;
 
 const filterPrefixes: Record<Exclude<HistoryFilter, "all">, string[]> = {
   ideas: ["research.", "research_"],
@@ -27,42 +38,35 @@ export function historyFilter(value?: string): HistoryFilter {
     : "all";
 }
 
-export function historyEntryMatchesFilter(entry: TripHistoryEntry, filter: HistoryFilter) {
-  return (
-    filter === "all" || filterPrefixes[filter].some((prefix) => entry.eventType.startsWith(prefix))
-  );
+export function historyDetailFilter(field?: string, value?: string): HistoryDetailFilter {
+  const validField = historyDetailFilterOptions.some((option) => option.value === field)
+    ? (field as HistoryDetailFilterField)
+    : "all";
+  return { field: validField, value: (value ?? "").trim().slice(0, 160) };
 }
 
-export async function loadFilteredHistoryPage(
-  loadPage: (cursor?: HistoryCursor) => Promise<TripHistoryPage>,
-  cursor: HistoryCursor | undefined,
+export function historyEntryMatchesFilter(
+  entry: TripHistoryEntry,
   filter: HistoryFilter,
-  pageSize = 20,
-): Promise<TripHistoryPage> {
-  const matches: TripHistoryEntry[] = [];
-  const visited = new Set<string>();
-  let scanCursor = cursor;
-
-  while (matches.length <= pageSize) {
-    const page = await loadPage(scanCursor);
-    for (const entry of page.entries) {
-      if (historyEntryMatchesFilter(entry, filter)) matches.push(entry);
-      if (matches.length > pageSize) break;
-    }
-    if (matches.length > pageSize || !page.nextCursor) break;
-    const key = `${page.nextCursor.createdAt}:${page.nextCursor.id}`;
-    if (visited.has(key)) throw new Error("Trip history pagination did not advance.");
-    visited.add(key);
-    scanCursor = page.nextCursor;
-  }
-
-  const entries = matches.slice(0, pageSize);
-  const last = entries.at(-1);
-  return {
-    entries,
-    nextCursor:
-      matches.length > pageSize && last ? { createdAt: last.createdAt, id: last.id } : null,
-  };
+  detail: HistoryDetailFilter = { field: "all", value: "" },
+) {
+  if (
+    filter !== "all" &&
+    !filterPrefixes[filter].some((prefix) => entry.eventType.startsWith(prefix))
+  )
+    return false;
+  if (detail.field === "all") return detail.value === "";
+  if (!detail.value) return false;
+  const expected = detail.value.toLocaleLowerCase();
+  if (detail.field === "email") return entry.actorLabel.toLocaleLowerCase() === expected;
+  if (detail.field === "event") return entry.eventType.toLocaleLowerCase() === expected;
+  if (detail.field === "entity") return entry.entityType.toLocaleLowerCase() === expected;
+  return Boolean(
+    entry.changes &&
+    !Array.isArray(entry.changes) &&
+    typeof entry.changes === "object" &&
+    Object.keys(entry.changes).some((field) => field.toLocaleLowerCase() === expected),
+  );
 }
 
 export function parseHistoryCursor(createdAt?: string, id?: string): HistoryCursor | undefined {
@@ -89,17 +93,21 @@ export function parseHistoryTrail(value?: string): HistoryCursor[] {
 
 export function historyPageHref({
   cursor,
+  detail,
   filter,
   trail,
   tripId,
 }: {
   cursor?: HistoryCursor;
+  detail: HistoryDetailFilter;
   filter: HistoryFilter;
   trail: HistoryCursor[];
   tripId: string;
 }) {
   const params = new URLSearchParams();
   if (filter !== "all") params.set("filter", filter);
+  if (detail.field !== "all") params.set("field", detail.field);
+  if (detail.value) params.set("value", detail.value);
   if (cursor) {
     params.set("before", cursor.createdAt);
     params.set("beforeId", cursor.id);

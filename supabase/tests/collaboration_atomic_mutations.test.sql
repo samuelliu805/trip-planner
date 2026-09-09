@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(29);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,
   raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -150,11 +150,57 @@ select throws_ok(format($sql$select public.save_itinerary_item_v3(
   '75000000-0000-4000-8000-000000000023'), '22023','OPERATION_ID_REUSED',
   'same operation id with a different payload is rejected');
 
+select lives_ok(format($sql$select public.save_itinerary_item_v3(
+  %L,%L,%L,%L,
+  '{"type":"meal","title":"Cafe","details":{},"placeId":null,"placeSnapshot":null,
+    "bookingUrl":null,"startTime":null,"endTime":null,"scheduleKind":"none",
+    "priceAmount":null,"priceCurrency":null}'::jsonb,
+  '[]'::jsonb,array[%L::uuid,%L::uuid],null,2,%L,null)$sql$,
+  (select value from collaboration_state where key='trip'),
+  (select value from collaboration_state where key='variant'),
+  (select value from collaboration_state where key='day'),
+  '75000000-0000-4000-8000-000000000024','75000000-0000-4000-8000-000000000020',
+  '75000000-0000-4000-8000-000000000024','75000000-0000-4000-8000-000000000024'),
+  'owner can add a second item for readable order history');
+select ok((select changes #> '{order,after,0}' =
+    '{"name":"Museum updated","type":"activity"}'::jsonb
+  and changes #> '{order,after,1}' = '{"name":"Cafe","type":"meal"}'::jsonb
+  from public.trip_history where operation_id='75000000-0000-4000-8000-000000000024'),
+  'generic item saves normalize legacy order IDs to readable snapshots');
+select lives_ok(format($sql$select public.reorder_itinerary_items_v2(
+  %L,%L,array[%L::uuid,%L::uuid],3,%L)$sql$,
+  (select value from collaboration_state where key='trip'),
+  (select value from collaboration_state where key='day'),
+  '75000000-0000-4000-8000-000000000024','75000000-0000-4000-8000-000000000020',
+  '75000000-0000-4000-8000-000000000025'), 'owner can reorder itinerary items');
+select ok((select changes #> '{order,after,0}' = '{"name":"Cafe","type":"meal"}'::jsonb
+  and changes #> '{order,after,1}' = '{"name":"Museum updated","type":"activity"}'::jsonb
+  from public.trip_history where operation_id='75000000-0000-4000-8000-000000000025'),
+  'order history stores every item name and type in arrow-ready order');
+select is((select count(*)::integer from public.list_trip_history_v2(
+  (select value::uuid from collaboration_state where key='trip'),
+  target_filter_field=>'email',target_filter_value=>'collaborator-75@example.invalid')),
+  1,'history can filter exactly by actor email');
+select is((select count(*)::integer from public.list_trip_history_v2(
+  (select value::uuid from collaboration_state where key='trip'),
+  target_filter_field=>'event',target_filter_value=>'itinerary_items.reordered')),
+  1,'history can filter exactly by event type');
+select is((select count(*)::integer from public.list_trip_history_v2(
+  (select value::uuid from collaboration_state where key='trip'),
+  target_filter_field=>'changed_field',target_filter_value=>'order')),
+  3,'history can filter exactly by changed field');
+select is((select count(*)::integer from public.list_trip_history_v2(
+  (select value::uuid from collaboration_state where key='trip'),requested_limit=>2)),
+  2,'history pagination returns only the requested bounded page');
+
 select set_config('request.jwt.claims',
   '{"sub":"75000000-0000-4000-8000-000000000003","role":"authenticated"}', true);
 select is((select count(*)::integer from public.trips where
   id=(select value::uuid from collaboration_state where key='trip')),0,
   'an unrelated registered user cannot read the trip');
+select is((select count(*)::integer from public.list_trip_history_v2(
+  (select value::uuid from collaboration_state where key='trip'))),0,
+  'an unrelated registered user cannot read history');
 select throws_ok(format('select public.delete_trip_v3(%L,1,1,%L)',
   (select value from collaboration_state where key='trip'),
   '75000000-0000-4000-8000-000000000030'), '42501','TRIP_OWNER_REQUIRED',

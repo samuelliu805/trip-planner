@@ -3514,18 +3514,47 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
       browser,
       `(() => {
         const filter = document.querySelector('#history-filter');
+        const detail = document.querySelector('#history-detail-field');
+        const value = document.querySelector('#history-filter-value');
         return {
+          detailHeight: detail?.getBoundingClientRect().height ?? 0,
+          detailOptions: [...(detail?.options ?? [])].map((option) => option.value),
           filterHeight: filter?.getBoundingClientRect().height ?? 0,
           filterValue: filter?.value,
           options: [...(filter?.options ?? [])].map((option) => option.value),
+          pagination: Boolean(document.querySelector('[data-history-pagination]')),
+          valueTargetHeight: value?.parentElement?.getBoundingClientRect().height ?? 0,
         };
       })()`,
     ),
     {
+      detailHeight: 44,
+      detailOptions: ["all", "email", "event", "entity", "changed_field"],
       filterHeight: 44,
       filterValue: "all",
       options: ["all", "plans", "itinerary", "people", "sharing", "ideas"],
+      pagination: true,
+      valueTargetHeight: 44,
     },
+  );
+  await evaluate(
+    browser,
+    `(() => {
+      const field = document.querySelector('#history-detail-field');
+      const value = document.querySelector('#history-filter-value');
+      field.value = 'email';
+      value.value = ${JSON.stringify(userA)};
+      field.form.requestSubmit();
+    })()`,
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('field') === 'email' && (() => {
+        const actors = [...document.querySelectorAll('[data-history-actor]')];
+        return actors.length > 0 && actors.every((node) =>
+          node.textContent.trim() === ${JSON.stringify(userA)});
+      })()`,
+    "CN History exact email results",
   );
 
   await navigate(browser, `/trips/${tripId}`);

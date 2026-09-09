@@ -44,6 +44,7 @@
     ["is_trip_owner(uuid)", "claim_bound_owner_check"],
     ["list_share_pages_v2(uuid)", "member_guard"],
     ["list_trip_history(uuid,timestamptz,uuid,integer)", "member_guard"],
+    ["list_trip_history_v2(uuid,timestamptz,uuid,integer,text,text,text)", "member_guard"],
     ["list_trip_members(uuid)", "member_guard"],
     ["owner_asset_access_v1(uuid,text)", "member_guard"],
     ["owner_share_image_export_paths_v1(uuid)", "member_guard"],
