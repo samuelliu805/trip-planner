@@ -502,6 +502,7 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
     `[...document.querySelectorAll('[data-history-actor]')].map((node) => node.textContent.trim())`,
   );
   assert.ok(historyActors.length > 0);
+  const targetHistoryActor = historyActors[0];
   assert.ok(
     historyActors.every((actor) => options.actorEmails.includes(actor)),
     `History used a non-account actor label: ${JSON.stringify(historyActors)}.`,
@@ -544,25 +545,18 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       const field = document.querySelector('#history-detail-field');
       const value = document.querySelector('#history-filter-value');
       field.value = 'email';
-      value.value = ${JSON.stringify(options.actorEmails[0])};
+      value.value = ${JSON.stringify(targetHistoryActor)};
       field.form.requestSubmit();
     })()`,
   );
   await waitFor(
     browser,
-    `new URLSearchParams(location.search).get('field') === 'email'`,
-    "Global History email filter",
-  );
-  assert.ok(
-    await evaluate(
-      browser,
-      `(() => {
+    `new URLSearchParams(location.search).get('field') === 'email' && (() => {
         const actors = [...document.querySelectorAll('[data-history-actor]')];
         return actors.length > 0 && actors.every((node) =>
-          node.textContent.trim() === ${JSON.stringify(options.actorEmails[0])});
+          node.textContent.trim() === ${JSON.stringify(targetHistoryActor)});
       })()`,
-    ),
-    "Global History email filter returned a different actor.",
+    "Global History exact email results",
   );
 
   await navigate(browser, baseUrl, `/trips/${options.tripId}`);

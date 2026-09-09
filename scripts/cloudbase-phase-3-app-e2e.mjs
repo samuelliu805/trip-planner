@@ -3549,19 +3549,12 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
   );
   await waitFor(
     browser,
-    `new URLSearchParams(location.search).get('field') === 'email'`,
-    "CN History email filter",
-  );
-  assert.ok(
-    await evaluate(
-      browser,
-      `(() => {
+    `new URLSearchParams(location.search).get('field') === 'email' && (() => {
         const actors = [...document.querySelectorAll('[data-history-actor]')];
         return actors.length > 0 && actors.every((node) =>
           node.textContent.trim() === ${JSON.stringify(userA)});
       })()`,
-    ),
-    "CN History email filter returned a different actor.",
+    "CN History exact email results",
   );
 
   await navigate(browser, `/trips/${tripId}`);
