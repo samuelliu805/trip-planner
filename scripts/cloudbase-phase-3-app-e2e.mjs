@@ -3523,7 +3523,7 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
           filterValue: filter?.value,
           options: [...(filter?.options ?? [])].map((option) => option.value),
           pagination: Boolean(document.querySelector('[data-history-pagination]')),
-          valueHeight: value?.getBoundingClientRect().height ?? 0,
+          valueTargetHeight: value?.parentElement?.getBoundingClientRect().height ?? 0,
         };
       })()`,
     ),
@@ -3534,7 +3534,7 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
       filterValue: "all",
       options: ["all", "plans", "itinerary", "people", "sharing", "ideas"],
       pagination: true,
-      valueHeight: 44,
+      valueTargetHeight: 44,
     },
   );
   await evaluate(
