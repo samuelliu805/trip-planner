@@ -1,8 +1,18 @@
 import Image from "next/image";
 
-import { resolvePublicTemplateAsset } from "./assets";
+import { resolvePublicTemplateAsset, type PublicTemplateAssetId } from "./assets";
 
-export function PublicTemplateDecorations({ assetIds }: { assetIds: string[] }) {
+const decorationAssetIdsByTemplate = {
+  bento: ["paris-morning", "travel-desk"],
+  ethereal: ["paris-morning", "seine-route"],
+  journal: ["paris-morning", "travel-desk"],
+  neon: ["paris-morning", "seine-route"],
+  traverse: ["seine-route", "travel-desk"],
+} as const satisfies Record<string, readonly PublicTemplateAssetId[]>;
+
+export function PublicTemplateDecorations({ templateId }: { templateId: string }) {
+  const assetIds =
+    decorationAssetIdsByTemplate[templateId as keyof typeof decorationAssetIdsByTemplate] ?? [];
   const assets = assetIds.flatMap((assetId) => {
     const asset = resolvePublicTemplateAsset(assetId);
     return asset ? [{ assetId, ...asset }] : [];

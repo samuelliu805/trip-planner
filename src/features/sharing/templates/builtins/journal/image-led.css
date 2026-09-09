@@ -1,4 +1,4 @@
-.public-template-journal[data-public-template-key="journal@2"] .public-media-gallery {
+.public-template-journal .public-media-gallery {
   position: relative;
   overflow: visible;
   margin: 1rem 0 0.65rem;
@@ -10,7 +10,7 @@
   transform: rotate(-0.45deg);
 }
 
-.public-template-journal[data-public-template-key="journal@2"] .public-media-gallery::before {
+.public-template-journal .public-media-gallery::before {
   position: absolute;
   top: -0.7rem;
   left: 50%;
@@ -22,12 +22,12 @@
   transform: translateX(-50%) rotate(1.5deg);
 }
 
-.public-template-journal[data-public-template-key="journal@2"] .public-media-entry {
+.public-template-journal .public-media-entry {
   min-height: 10.5rem;
   overflow: hidden;
   border-radius: 0.1rem;
 }
 
-.public-template-journal[data-public-template-key="journal@2"] .media-thumb-v4 img {
+.public-template-journal .media-thumb-v4 img {
   filter: saturate(0.76) sepia(0.08) contrast(0.97) brightness(1.03);
 }

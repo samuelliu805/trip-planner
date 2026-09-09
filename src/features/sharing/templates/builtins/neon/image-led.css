@@ -1,4 +1,4 @@
-.public-template-neon[data-public-template-key="neon@2"] .public-media-gallery {
+.public-template-neon .public-media-gallery {
   position: relative;
   overflow: hidden;
   border: 1px solid transparent;
@@ -12,7 +12,7 @@
     0 0 30px rgb(66 221 255 / 10%);
 }
 
-.public-template-neon[data-public-template-key="neon@2"] .public-media-gallery::after {
+.public-template-neon .public-media-gallery::after {
   position: absolute;
   inset: 0.2rem;
   border-radius: 0.58rem;
@@ -21,12 +21,12 @@
   pointer-events: none;
 }
 
-.public-template-neon[data-public-template-key="neon@2"] .public-media-entry {
+.public-template-neon .public-media-entry {
   min-height: 10rem;
   overflow: hidden;
   border-radius: 0.58rem;
 }
 
-.public-template-neon[data-public-template-key="neon@2"] .media-thumb-v4 img {
+.public-template-neon .media-thumb-v4 img {
   filter: saturate(0.88) contrast(1.12) brightness(0.78);
 }

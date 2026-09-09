@@ -1,4 +1,4 @@
-.public-template-bento[data-public-template-key="bento@3"] .public-media-gallery {
+.public-template-bento .public-media-gallery {
   position: relative;
   overflow: hidden;
   border: 1px solid #3b5947;
@@ -8,7 +8,7 @@
   box-shadow: 0 18px 42px rgb(0 0 0 / 28%);
 }
 
-.public-template-bento[data-public-template-key="bento@3"] .public-media-gallery::after {
+.public-template-bento .public-media-gallery::after {
   position: absolute;
   inset: 0.3rem;
   border: 1px solid rgb(134 255 173 / 18%);
@@ -18,16 +18,16 @@
   pointer-events: none;
 }
 
-.public-template-bento[data-public-template-key="bento@3"] .public-media-entry {
+.public-template-bento .public-media-entry {
   min-height: 10rem;
   border-radius: 0.72rem;
 }
 
-.public-template-bento[data-public-template-key="bento@3"] .media-thumb-v4 img {
+.public-template-bento .media-thumb-v4 img {
   filter: saturate(0.78) contrast(1.08) brightness(0.86);
 }
 
-.public-template-bento[data-public-template-key="bento@3"] .overview-item-card-v4.has-media {
+.public-template-bento .overview-item-card-v4.has-media {
   border-color: #355241;
   background: linear-gradient(135deg, rgb(88 245 139 / 5%), transparent 42%), #0b1710;
 }

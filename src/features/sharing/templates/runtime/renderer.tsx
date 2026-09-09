@@ -91,7 +91,7 @@ export function PublicTemplateRenderer({ template }: { template: CompiledPublicT
       data-public-template-version={template.version}
     >
       <style data-public-template-styles={template.key}>{template.scopedCss}</style>
-      <PublicTemplateDecorations assetIds={template.assetIds} />
+      <PublicTemplateDecorations templateId={template.id} />
       {template.layout.children.map((node, index) => (
         <TemplateNode key={`${node.type}:${node.name}:${index}`} node={node} />
       ))}

@@ -324,7 +324,7 @@ test("public views keep the canonical three, prefer Timeline for new links, and 
   assert.deepEqual(canonicalPublicViews, ["overview", "table", "timeline"]);
   assert.equal(defaultShareSettings.defaultView, "timeline");
   assert.equal(defaultShareSettings.templateId, "neon");
-  assert.equal(defaultShareSettings.templateVersion, 2);
+  assert.equal(defaultShareSettings.templateVersion, 1);
   for (const setting of [
     "allowRouteExplore",
     "showAddresses",
@@ -1923,7 +1923,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     styles,
-    /:is\([^)]*data-public-template-key="ethereal@2"\]\)[\s\S]*\.overview-transport-list-v4:has\(> :nth-child\(3\)\) \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
+    /\.public-template-ethereal\[data-public-template-key="ethereal@1"\][\s\S]*\.overview-transport-list-v4:has\(> :nth-child\(3\)\) \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/,
   );
   assert.match(
     styles,
@@ -2137,11 +2137,12 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(controller, /setSelection/);
   assert.match(platformParts, /onSelectionChange=\{onSelectionChange\}/);
   assert.match(renderer, /public-itinerary-shell public-template-\$\{template\.id\} isolate/);
-  assert.match(renderer, /<PublicTemplateDecorations assetIds=\{template\.assetIds\}/);
-  assert.match(decorations, /resolvePublicTemplateAsset/);
+  assert.match(renderer, /<PublicTemplateDecorations templateId=\{template\.id\}/);
+  assert.match(decorations, /decorationAssetIdsByTemplate/);
+  assert.match(decorations, /bento: \["paris-morning", "travel-desk"\]/);
   assert.match(decorations, /data-template-decoration=\{index \+ 1\}/);
-  assert.match(styles, /data-public-template-key="bento@3"/);
-  assert.match(styles, /data-public-template-key="journal@2"/);
+  assert.match(styles, /\.public-template-bento \.public-template-decoration/);
+  assert.match(styles, /\.public-template-journal \.public-template-decoration/);
   assert.match(renderer, /className="public-itinerary-header"/);
   assert.match(renderer, /public-content-pane min-h-0 min-w-0 overflow-hidden/);
   assert.match(shell, /getPublicTemplate\(templateKey\)/);
@@ -2355,7 +2356,6 @@ test("public template route, hydration, persistence, and rollback contracts stay
     imageRangeMigration,
     neonMigration,
     defaultTemplateMigration,
-    decoratedTemplateMigration,
     databaseTypes,
   ] = await Promise.all(
     [
@@ -2375,7 +2375,6 @@ test("public template route, hydration, persistence, and rollback contracts stay
       "../../../supabase/migrations/20260815160556_long_image_date_range_scope.sql",
       "../../../supabase/migrations/20260823184500_add_neon_public_template.sql",
       "../../../supabase/migrations/20260826060350_default_public_template_neon.sql",
-      "../../../supabase/migrations/20260909012000_publish_image_led_public_templates.sql",
       "../../types/database.ts",
     ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
   );
@@ -2478,12 +2477,6 @@ test("public template route, hydration, persistence, and rollback contracts stay
     /create or replace function public\.create_share_page_v3[\s\S]*requested_template_id text default 'neon'/,
   );
   assert.match(defaultTemplateMigration, /security definer[\s\S]*set search_path = ''/);
-  assert.match(decoratedTemplateMigration, /requested_template_version IN \(1,2,3\)/);
-  assert.match(
-    decoratedTemplateMigration,
-    /requested_template_id IN \('ethereal','journal','neon','traverse'\)[\s\S]*requested_template_version IN \(1,2\)/,
-  );
-  assert.doesNotMatch(decoratedTemplateMigration, /update public\.public_itinerary_links/);
   assert.match(imageRangeMigration, /create function public\.prepare_share_image_version_v2/);
   assert.match(imageRangeMigration, /security definer[\s\S]*set search_path = ''/);
 });
@@ -2636,22 +2629,22 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   );
   assert.match(
     styles,
-    /:is\([^)]*data-public-template-key="bento@3"\]\) \.overview-transport-item-v4 \{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, 1fr\)/,
+    /\.public-template-bento\[data-public-template-key="bento@2"\] \.overview-transport-item-v4 \{[^}]*display: grid;[^}]*grid-template-columns: minmax\(0, 1fr\)/,
   );
   assert.match(
     styles,
-    /:is\([^)]*data-public-template-key="bento@3"\]\) \.overview-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*white-space: nowrap/,
+    /\.public-template-bento\[data-public-template-key="bento@2"\] \.overview-transport-title-v4 \{[^}]*overflow-wrap: normal;[^}]*white-space: nowrap/,
   );
   assert.match(
     styles,
-    /:is\([^)]*data-public-template-key="bento@3"\]\) \.timeline-transport-title-v4 \{[^}]*flex: 0 0 auto;[^}]*overflow-wrap: normal;[^}]*white-space: nowrap/,
+    /\.public-template-bento\[data-public-template-key="bento@2"\] \.timeline-transport-title-v4 \{[^}]*flex: 0 0 auto;[^}]*overflow-wrap: normal;[^}]*white-space: nowrap/,
   );
   assert.match(
     styles,
-    /:is\([^)]*data-public-template-key="bento@3"\]\) \.timeline-transport-copy-v4 \{[^}]*gap: 0\.5rem/,
+    /\.public-template-bento\[data-public-template-key="bento@2"\] \.timeline-transport-copy-v4 \{[^}]*gap: 0\.5rem/,
   );
   assert.match(
     styles,
-    /:is\([^)]*data-public-template-key="bento@3"\]\) \.timeline-transport-meta-v4 \{[^}]*flex: 1 1 auto;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
+    /\.public-template-bento\[data-public-template-key="bento@2"\] \.timeline-transport-meta-v4 \{[^}]*flex: 1 1 auto;[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/,
   );
 });

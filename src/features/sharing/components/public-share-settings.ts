@@ -24,7 +24,7 @@ export const defaultShareSettings: ShareSettings = {
   showQuickActionLinks: true,
   showTimes: true,
   templateId: "neon",
-  templateVersion: 2,
+  templateVersion: 1,
 };
 
 export const publicViewLabels: Record<PublicView, string> = {

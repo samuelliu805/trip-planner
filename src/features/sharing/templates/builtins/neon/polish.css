@@ -70,7 +70,7 @@
     inset 0 0 30px rgb(109 73 210 / 4%);
 }
 
-.public-template-neon:is([data-public-template-key="neon@1"], [data-public-template-key="neon@2"]) .overview-transport-list-v4 {
+.public-template-neon[data-public-template-key="neon@1"] .overview-transport-list-v4 {
   border: 1px solid transparent;
   background:
     linear-gradient(135deg, rgb(8 18 38 / 97%), rgb(12 17 36 / 95%)) padding-box,
