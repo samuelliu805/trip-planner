@@ -116,52 +116,6 @@ export function createRouteDockScene(THREE: ThreeModule) {
   traveler.visible = false;
   routeField.add(traveler);
 
-  const trailGeometry = new THREE.CircleGeometry(0.035, 16);
-  const trailMaterials = Array.from(
-    { length: 9 },
-    (_, index) =>
-      new THREE.MeshBasicMaterial({
-        blending: THREE.AdditiveBlending,
-        color: index % 2 ? 0x78d5c8 : 0xdf8068,
-        depthWrite: false,
-        opacity: 0,
-        transparent: true,
-      }),
-  );
-  const travelerTrail = new THREE.Group();
-  travelerTrail.name = "route-traveler-trail";
-  const trailDots = trailMaterials.map((material) => {
-    const dot = new THREE.Mesh(trailGeometry, material);
-    dot.visible = false;
-    travelerTrail.add(dot);
-    return dot;
-  });
-  routeField.add(travelerTrail);
-
-  const signalStops = [0.24, 0.5, 0.75];
-  const signalGeometry = new THREE.RingGeometry(0.18, 0.195, 40);
-  const signalMaterials = signalStops.map(
-    () =>
-      new THREE.MeshBasicMaterial({
-        blending: THREE.AdditiveBlending,
-        color: 0xc7a45a,
-        depthWrite: false,
-        opacity: 0,
-        side: THREE.DoubleSide,
-        transparent: true,
-      }),
-  );
-  const waypointSignals = new THREE.Group();
-  waypointSignals.name = "route-waypoint-signals";
-  const signalRings = signalStops.map((stop, index) => {
-    const ring = new THREE.Mesh(signalGeometry, signalMaterials[index]);
-    ring.position.copy(routeCurve.getPointAt(stop));
-    ring.visible = false;
-    waypointSignals.add(ring);
-    return ring;
-  });
-  routeField.add(waypointSignals);
-
   const arrivalGeometry = new THREE.RingGeometry(0.12, 0.14, 40);
   const arrivalMaterial = new THREE.MeshBasicMaterial({
     blending: THREE.AdditiveBlending,
@@ -222,21 +176,6 @@ export function createRouteDockScene(THREE: ThreeModule) {
     traveler.position.copy(routeCurve.getPointAt(routeProgress));
     traveler.rotation.z = elapsed * 0.8;
     haloMaterial.opacity = 0.42 + Math.sin(elapsed * 3.2) * 0.18;
-    trailDots.forEach((dot, index) => {
-      const trailProgress = routeProgress - (index + 1) * 0.015;
-      dot.visible = traveler.visible && trailProgress > 0;
-      if (!dot.visible) return;
-      dot.position.copy(routeCurve.getPointAt(trailProgress));
-      dot.scale.setScalar(1 - index * 0.065);
-      trailMaterials[index].opacity = (1 - index / trailDots.length) * 0.36;
-    });
-    signalRings.forEach((ring, index) => {
-      const revealed = routeProgress >= signalStops[index] - 0.02;
-      const signalPhase = (elapsed * 0.28 + index * 0.24) % 1;
-      ring.visible = revealed;
-      ring.scale.setScalar(1 + signalPhase * 3.2);
-      signalMaterials[index].opacity = revealed ? (1 - signalPhase) * 0.38 : 0;
-    });
     const arrival = clamp((nextProgress - 0.72) / 0.12);
     arrivalRing.scale.setScalar(1 + arrival * 4.5);
     arrivalMaterial.opacity = Math.sin(arrival * Math.PI) * 0.7;
@@ -261,10 +200,6 @@ export function createRouteDockScene(THREE: ThreeModule) {
     travelerMaterial.dispose();
     haloGeometry.dispose();
     haloMaterial.dispose();
-    trailGeometry.dispose();
-    trailMaterials.forEach((material) => material.dispose());
-    signalGeometry.dispose();
-    signalMaterials.forEach((material) => material.dispose());
     arrivalGeometry.dispose();
     arrivalMaterial.dispose();
     particleGeometry.dispose();
