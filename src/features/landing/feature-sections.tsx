@@ -34,7 +34,9 @@ function MatrixDemo() {
     <div className="feature-matrix-stage">
       <figure aria-hidden="true" className="feature-matrix-photo">
         <Image alt="" fill sizes="160px" src="/landing/travel-desk.webp" />
-        <span>PAR · 07:40</span>
+        <span>
+          <T message="PAR · 07:40" />
+        </span>
       </figure>
       <div
         className="feature-matrix"

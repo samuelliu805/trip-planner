@@ -36,6 +36,7 @@ export const landingZhCN: Record<string, string> = {
   "Metro to hotel": "乘地铁前往酒店",
   "Walk + Metro": "步行 + 地铁",
   "Manual order stays yours": "先后顺序由你来定",
+  "PAR · 07:40": "巴黎 · 07:40",
   "02 · UNDERSTAND THE ROUTE": "02 · 路线不再和日程分家",
   "Make movement part of the plan.": "去哪儿、怎么走，一起看。",
   "Connect places to itinerary items, inspect the day’s sequence and keep the route beside the schedule.":
