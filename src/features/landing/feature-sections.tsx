@@ -4,7 +4,6 @@ import Image from "next/image";
 import { T } from "@/features/i18n/i18n-provider";
 
 import { parisLandingFixture } from "./paris-fixture";
-import { FeatureRouteAtmosphere } from "./feature-route-atmosphere";
 
 function SectionHeading({
   eyebrow,
@@ -237,7 +236,6 @@ function DocumentsDemo() {
 export function FeatureSections() {
   return (
     <div className="landing-feature-story" id="features">
-      <FeatureRouteAtmosphere />
       <section className="landing-intro" id="how-it-works">
         <p className="landing-eyebrow">
           <T message="FROM LOOSE PIECES TO A WORKING ROUTE" />

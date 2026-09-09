@@ -3,7 +3,7 @@
   right: clamp(1rem, 4vw, 4rem);
   top: 13vh;
   transition: top 500ms ease;
-  width: min(58vw, 790px);
+  width: min(52vw, 750px);
   z-index: 10;
 }
 .plandock-workspace {

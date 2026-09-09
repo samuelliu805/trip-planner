@@ -10,11 +10,11 @@ export function createRouteDockScene(THREE: ThreeModule) {
   scene.add(routeField);
 
   const routeCurve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-5.6, 1.9, -0.8),
-    new THREE.Vector3(-3.2, -1.1, 0.2),
-    new THREE.Vector3(-0.9, 1.2, -0.1),
-    new THREE.Vector3(1.5, -0.5, 0.35),
-    new THREE.Vector3(4.8, 1.1, -0.55),
+    new THREE.Vector3(0.2, 1.9, -0.8),
+    new THREE.Vector3(1.5, 1.05, 0.1),
+    new THREE.Vector3(2.8, 0.3, -0.05),
+    new THREE.Vector3(4, -0.45, 0.25),
+    new THREE.Vector3(5.4, -1.35, -0.55),
   ]);
   const routePoints = routeCurve.getPoints(180);
   const routeGeometry = new THREE.BufferGeometry().setFromPoints(routePoints);
@@ -37,44 +37,6 @@ export function createRouteDockScene(THREE: ThreeModule) {
     new THREE.Line(routeGeometry, routeGlowMaterial),
     new THREE.Line(routeGeometry, routeMaterial),
   );
-
-  const branchMaterial = new THREE.LineBasicMaterial({
-    color: 0x5a9297,
-    opacity: 0.14,
-    transparent: true,
-  });
-  const branchGeometries = [
-    [
-      new THREE.Vector3(-5.8, -2.4, -1.5),
-      new THREE.Vector3(-2.6, -0.4, -1.2),
-      new THREE.Vector3(0.8, -2.1, -1.4),
-      new THREE.Vector3(5.7, -0.9, -1.5),
-    ],
-    [
-      new THREE.Vector3(-5.8, 2.8, -1.8),
-      new THREE.Vector3(-2.1, 1.4, -1.4),
-      new THREE.Vector3(1.3, 2.5, -1.6),
-      new THREE.Vector3(5.6, 1.9, -1.8),
-    ],
-  ].map((points) =>
-    new THREE.BufferGeometry().setFromPoints(new THREE.CatmullRomCurve3(points).getPoints(90)),
-  );
-  for (const geometry of branchGeometries) routeField.add(new THREE.Line(geometry, branchMaterial));
-
-  const railMaterial = new THREE.LineBasicMaterial({
-    color: 0x42737d,
-    opacity: 0.16,
-    transparent: true,
-  });
-  const railGeometries: import("three").BufferGeometry[] = [];
-  for (const y of [-2.1, 2.1]) {
-    const geometry = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-6, y, -1.6),
-      new THREE.Vector3(6, y, -1.6),
-    ]);
-    railGeometries.push(geometry);
-    routeField.add(new THREE.Line(geometry, railMaterial));
-  }
 
   const nodeStops = [0, 0.24, 0.5, 0.75, 1];
   const nodeGeometry = new THREE.RingGeometry(0.055, 0.095, 24);
@@ -156,13 +118,15 @@ export function createRouteDockScene(THREE: ThreeModule) {
 
   function render(nextProgress: number, time: number, targetPointer: PointerPosition) {
     const routeProgress = clamp((nextProgress - 0.12) / 0.46);
+    const routeVisibility = 1 - clamp((nextProgress - 0.62) / 0.18);
     const elapsed = time / 1_000;
     routeGeometry.setDrawRange(0, Math.round(routePoints.length * routeProgress));
+    routeMaterial.opacity = 0.9 * routeVisibility;
+    routeGlowMaterial.opacity = 0.24 * routeVisibility;
     pointer.x += (targetPointer.x - pointer.x) * 0.045;
     pointer.y += (targetPointer.y - pointer.y) * 0.045;
     routeField.rotation.x = pointer.y * -0.025;
     routeField.rotation.y = pointer.x * 0.035;
-    branchMaterial.opacity = 0.11 + Math.sin(elapsed * 0.65) * 0.025;
     particles.rotation.z = nextProgress * 0.04 + elapsed * 0.006;
     particles.position.y = Math.sin(elapsed * 0.34) * 0.055;
     routeNodes.forEach((node, index) => {
@@ -170,7 +134,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
       const pulse = 1 + Math.sin(elapsed * 2.4 + index * 0.9) * 0.16;
       node.visible = revealed;
       node.scale.setScalar(pulse);
-      nodeMaterials[index].opacity = revealed ? 0.52 + (pulse - 1) * 0.9 : 0;
+      nodeMaterials[index].opacity = revealed ? (0.52 + (pulse - 1) * 0.9) * routeVisibility : 0;
     });
     traveler.visible = routeProgress > 0.015 && routeProgress < 0.995;
     traveler.position.copy(routeCurve.getPointAt(routeProgress));
@@ -190,10 +154,6 @@ export function createRouteDockScene(THREE: ThreeModule) {
     routeGeometry.dispose();
     routeMaterial.dispose();
     routeGlowMaterial.dispose();
-    branchGeometries.forEach((geometry) => geometry.dispose());
-    branchMaterial.dispose();
-    railGeometries.forEach((geometry) => geometry.dispose());
-    railMaterial.dispose();
     nodeGeometry.dispose();
     nodeMaterials.forEach((material) => material.dispose());
     travelerGeometry.dispose();
