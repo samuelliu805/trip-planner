@@ -1,0 +1,33 @@
+.public-template-journal[data-public-template-key="journal@2"] .public-media-gallery {
+  position: relative;
+  overflow: visible;
+  margin: 1rem 0 0.65rem;
+  border: 0;
+  border-radius: 0.15rem;
+  background: #fffdf7;
+  padding: 0.45rem 0.45rem 1.45rem;
+  box-shadow: 0 13px 28px rgb(91 73 48 / 14%);
+  transform: rotate(-0.45deg);
+}
+
+.public-template-journal[data-public-template-key="journal@2"] .public-media-gallery::before {
+  position: absolute;
+  top: -0.7rem;
+  left: 50%;
+  z-index: 2;
+  width: 4.5rem;
+  height: 1.25rem;
+  background: rgb(226 206 162 / 72%);
+  content: "";
+  transform: translateX(-50%) rotate(1.5deg);
+}
+
+.public-template-journal[data-public-template-key="journal@2"] .public-media-entry {
+  min-height: 10.5rem;
+  overflow: hidden;
+  border-radius: 0.1rem;
+}
+
+.public-template-journal[data-public-template-key="journal@2"] .media-thumb-v4 img {
+  filter: saturate(0.76) sepia(0.08) contrast(0.97) brightness(1.03);
+}

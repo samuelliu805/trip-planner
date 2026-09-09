@@ -165,7 +165,7 @@
 }
 
 @media (min-width: 900px) {
-  .public-template-ethereal[data-public-template-key="ethereal@1"]
+  .public-template-ethereal:is([data-public-template-key="ethereal@1"], [data-public-template-key="ethereal@2"])
     .overview-transport-list-v4:has(> :nth-child(3)) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

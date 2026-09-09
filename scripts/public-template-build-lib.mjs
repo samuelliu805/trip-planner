@@ -5,11 +5,16 @@ import { format, resolveConfig } from "prettier";
 
 import { bentoPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/bento/source.ts";
 import { bentoPublicTemplateSourceV2 } from "../src/features/sharing/templates/builtins/bento/v2.ts";
+import { bentoPublicTemplateSourceV3 } from "../src/features/sharing/templates/builtins/bento/v3.ts";
 import { etherealPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/ethereal/source.ts";
+import { etherealPublicTemplateSourceV2 } from "../src/features/sharing/templates/builtins/ethereal/v2.ts";
 import { journalPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/journal/source.ts";
+import { journalPublicTemplateSourceV2 } from "../src/features/sharing/templates/builtins/journal/v2.ts";
 import { neonPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/neon/source.ts";
+import { neonPublicTemplateSourceV2 } from "../src/features/sharing/templates/builtins/neon/v2.ts";
 import { standardPublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/standard/source.ts";
 import { traversePublicTemplateSourceV1 } from "../src/features/sharing/templates/builtins/traverse/source.ts";
+import { traversePublicTemplateSourceV2 } from "../src/features/sharing/templates/builtins/traverse/v2.ts";
 import {
   compilePublicTemplate,
   stablePublicTemplateJson,
@@ -23,10 +28,15 @@ const publicTemplateSources = [
   standardPublicTemplateSourceV1,
   bentoPublicTemplateSourceV1,
   bentoPublicTemplateSourceV2,
+  bentoPublicTemplateSourceV3,
   etherealPublicTemplateSourceV1,
+  etherealPublicTemplateSourceV2,
   journalPublicTemplateSourceV1,
+  journalPublicTemplateSourceV2,
   neonPublicTemplateSourceV1,
+  neonPublicTemplateSourceV2,
   traversePublicTemplateSourceV1,
+  traversePublicTemplateSourceV2,
 ];
 
 function generatedName(template) {

@@ -1,4 +1,8 @@
-const publicTemplateAssets = {} as const;
+const publicTemplateAssets = {
+  "paris-morning": { src: "/landing/paris-morning.webp" },
+  "seine-route": { src: "/landing/seine-route.webp" },
+  "travel-desk": { src: "/landing/travel-desk.webp" },
+} as const;
 
 export type PublicTemplateAssetId = keyof typeof publicTemplateAssets;
 

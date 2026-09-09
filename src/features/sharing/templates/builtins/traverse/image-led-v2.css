@@ -1,0 +1,36 @@
+.public-template-traverse[data-public-template-key="traverse@2"] .public-media-gallery {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--traverse-ocean);
+  border-radius: 0;
+  background: var(--traverse-ocean);
+  padding: 0.25rem;
+  box-shadow: 0.4rem 0.4rem 0 rgb(18 49 61 / 13%);
+}
+
+.public-template-traverse[data-public-template-key="traverse@2"] .public-media-gallery::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  width: 2.4rem;
+  height: 2.4rem;
+  background: var(--traverse-orange);
+  clip-path: polygon(38% 0, 100% 0, 100% 62%);
+  content: "";
+  pointer-events: none;
+}
+
+.public-template-traverse[data-public-template-key="traverse@2"] .public-media-entry {
+  min-height: 10rem;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.public-template-traverse[data-public-template-key="traverse@2"] .media-thumb-v4 img {
+  filter: saturate(0.72) contrast(1.08);
+}
+
+.public-template-traverse[data-public-template-key="traverse@2"] .overview-item-card-v4.has-media {
+  border-left: 0.35rem solid var(--traverse-orange);
+}

@@ -1,0 +1,27 @@
+.public-template-ethereal[data-public-template-key="ethereal@2"] .public-media-gallery {
+  position: relative;
+  overflow: visible;
+  border: 1px solid rgb(82 82 75 / 16%);
+  border-radius: 0;
+  background: #fffefa;
+  padding: 0.35rem;
+  box-shadow: 0 14px 40px rgb(62 61 56 / 10%);
+}
+
+.public-template-ethereal[data-public-template-key="ethereal@2"] .public-media-entry {
+  min-height: 11.5rem;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.public-template-ethereal[data-public-template-key="ethereal@2"] .media-thumb-v4 img {
+  filter: saturate(0.72) contrast(0.96) brightness(1.04);
+}
+
+.public-template-ethereal[data-public-template-key="ethereal@2"] .public-media-attribution {
+  margin-top: 0.45rem;
+  color: #8a887f;
+  font-family: var(--ethereal-serif);
+  font-size: 0.5625rem;
+  font-style: italic;
+}

@@ -1,10 +1,15 @@
 import { bentoPublicTemplateV1 } from "./generated/bento-v1.ts";
 import { bentoPublicTemplateV2 } from "./generated/bento-v2.ts";
+import { bentoPublicTemplateV3 } from "./generated/bento-v3.ts";
 import { etherealPublicTemplateV1 } from "./generated/ethereal-v1.ts";
+import { etherealPublicTemplateV2 } from "./generated/ethereal-v2.ts";
 import { journalPublicTemplateV1 } from "./generated/journal-v1.ts";
+import { journalPublicTemplateV2 } from "./generated/journal-v2.ts";
 import { neonPublicTemplateV1 } from "./generated/neon-v1.ts";
+import { neonPublicTemplateV2 } from "./generated/neon-v2.ts";
 import { standardPublicTemplateV1 } from "./generated/standard-v1.ts";
 import { traversePublicTemplateV1 } from "./generated/traverse-v1.ts";
+import { traversePublicTemplateV2 } from "./generated/traverse-v2.ts";
 import { resolvePublicTemplateAsset } from "./runtime/assets.ts";
 import {
   compiledPublicTemplateSchemaV1,
@@ -12,7 +17,7 @@ import {
   type CompiledPublicTemplateV1,
 } from "./schema.ts";
 
-export const DEFAULT_PUBLIC_TEMPLATE_KEY = "neon@1" as const;
+export const DEFAULT_PUBLIC_TEMPLATE_KEY = "neon@2" as const;
 export const LEGACY_PUBLIC_TEMPLATE_KEY = "standard@1" as const;
 
 export type PublicTemplateRegistryEntry = {
@@ -32,26 +37,50 @@ export const publicTemplateRegistry = {
   "bento@2": {
     enabled: true,
     label: "Midnight",
-    selectable: true,
+    selectable: false,
     template: bentoPublicTemplateV2,
+  },
+  "bento@3": {
+    enabled: true,
+    label: "Midnight",
+    selectable: true,
+    template: bentoPublicTemplateV3,
   },
   "ethereal@1": {
     enabled: true,
     label: "Ethereal",
-    selectable: true,
+    selectable: false,
     template: etherealPublicTemplateV1,
+  },
+  "ethereal@2": {
+    enabled: true,
+    label: "Ethereal",
+    selectable: true,
+    template: etherealPublicTemplateV2,
   },
   "journal@1": {
     enabled: true,
     label: "Journal",
-    selectable: true,
+    selectable: false,
     template: journalPublicTemplateV1,
+  },
+  "journal@2": {
+    enabled: true,
+    label: "Journal",
+    selectable: true,
+    template: journalPublicTemplateV2,
   },
   "neon@1": {
     enabled: true,
     label: "Neon",
-    selectable: true,
+    selectable: false,
     template: neonPublicTemplateV1,
+  },
+  "neon@2": {
+    enabled: true,
+    label: "Neon",
+    selectable: true,
+    template: neonPublicTemplateV2,
   },
   "standard@1": {
     enabled: true,
@@ -62,8 +91,14 @@ export const publicTemplateRegistry = {
   "traverse@1": {
     enabled: true,
     label: "Traverse",
-    selectable: true,
+    selectable: false,
     template: traversePublicTemplateV1,
+  },
+  "traverse@2": {
+    enabled: true,
+    label: "Traverse",
+    selectable: true,
+    template: traversePublicTemplateV2,
   },
 } as const satisfies Record<string, PublicTemplateRegistryEntry>;
 

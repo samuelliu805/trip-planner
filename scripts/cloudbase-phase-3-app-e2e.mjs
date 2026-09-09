@@ -3122,42 +3122,17 @@ async function publishThroughUi(browser, tripId) {
     )`,
     "share publish control",
   );
-  const journalOption = `[...document.querySelectorAll('[role="option"]')].find((option) =>
+  const journalOption = `[...document.querySelectorAll('#public-share-template [role="radio"]')].find((option) =>
     ["Journal", "手记"].includes(option.textContent.trim()) && option.getClientRects().length
   )`;
-  let journalSelected = false;
-  for (let attempt = 0; attempt < 3 && !journalSelected; attempt += 1) {
-    await clickElement(browser, `document.querySelector("#public-share-template")`, "share style");
-    try {
-      await waitFor(browser, `Boolean(${journalOption})`, "Journal share style", 10_000);
-      await clickElement(browser, journalOption, "Journal share style");
-      await waitFor(
-        browser,
-        `["Journal", "手记"].includes(document.querySelector("#public-share-template")?.textContent.trim())`,
-        "selected Journal share style",
-        10_000,
-      );
-      journalSelected = true;
-    } catch {
-      const selectIsOpen = await evaluate(
-        browser,
-        `document.querySelector("#public-share-template")?.getAttribute("aria-expanded") === "true"`,
-      );
-      if (selectIsOpen) {
-        await browser.cdp.send(
-          "Input.dispatchKeyEvent",
-          { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
-          browser.sessionId,
-        );
-        await browser.cdp.send(
-          "Input.dispatchKeyEvent",
-          { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
-          browser.sessionId,
-        );
-      }
-    }
-  }
-  assert.equal(journalSelected, true, "Journal share style could not be selected.");
+  await waitFor(browser, `Boolean(${journalOption})`, "Journal share style", 10_000);
+  await clickElement(browser, journalOption, "Journal share style");
+  await waitFor(
+    browser,
+    `${journalOption}?.getAttribute("aria-checked") === "true"`,
+    "selected Journal share style",
+    10_000,
+  );
   const activated = await evaluate(
     browser,
     `(() => {

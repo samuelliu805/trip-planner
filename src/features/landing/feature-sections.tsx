@@ -1,8 +1,10 @@
 import { Check, FileText, Link2, Paperclip, TrainFront } from "lucide-react";
+import Image from "next/image";
 
 import { T } from "@/features/i18n/i18n-provider";
 
 import { parisLandingFixture } from "./paris-fixture";
+import { FeatureRouteAtmosphere } from "./feature-route-atmosphere";
 
 function SectionHeading({
   eyebrow,
@@ -30,66 +32,72 @@ function SectionHeading({
 
 function MatrixDemo() {
   return (
-    <div
-      className="feature-matrix"
-      aria-label="Itinerary matrix preview"
-      data-i18n-aria-label="Itinerary matrix preview"
-    >
-      <div className="feature-matrix-row is-header">
-        <span>
-          <T message="Date" />
-        </span>
-        <span>
-          <T message="Stay" />
-        </span>
-        <span>
-          <T message="Transport" />
-        </span>
-        <span>
-          <T message="Activities" />
-        </span>
-        <span>
-          <T message="Meals / notes" />
-        </span>
-      </div>
-      {parisLandingFixture.days.map((day, index) => (
-        <div className="feature-matrix-row" key={day.day}>
+    <div className="feature-matrix-stage">
+      <figure aria-hidden="true" className="feature-matrix-photo">
+        <Image alt="" fill sizes="160px" src="/landing/travel-desk.webp" />
+        <span>PAR · 07:40</span>
+      </figure>
+      <div
+        className="feature-matrix"
+        aria-label="Itinerary matrix preview"
+        data-i18n-aria-label="Itinerary matrix preview"
+      >
+        <div className="feature-matrix-row is-header">
           <span>
-            <b>
-              <T message={day.day} />
-            </b>
-            <small>
-              <T message={day.date} />
-            </small>
+            <T message="Date" />
           </span>
           <span>
-            <T message={day.stay} />
+            <T message="Stay" />
           </span>
           <span>
-            {index === 0 ? (
-              <>
-                <TrainFront aria-hidden="true" />
-                <T message="Metro to hotel" />
-              </>
-            ) : (
-              <T message="Walk + Metro" />
-            )}
+            <T message="Transport" />
           </span>
           <span>
-            <T message={day.activity} />
+            <T message="Activities" />
           </span>
           <span>
-            <T message={day.meal} />
+            <T message="Meals / notes" />
           </span>
         </div>
-      ))}
-      <div className="manual-order">
-        <span>01</span>
-        <i />
-        <span>02</span>
-        <i />
-        <span>03</span>
-        <T message="Manual order stays yours" />
+        {parisLandingFixture.days.map((day, index) => (
+          <div className="feature-matrix-row" key={day.day}>
+            <span>
+              <b>
+                <T message={day.day} />
+              </b>
+              <small>
+                <T message={day.date} />
+              </small>
+            </span>
+            <span>
+              <T message={day.stay} />
+            </span>
+            <span>
+              {index === 0 ? (
+                <>
+                  <TrainFront aria-hidden="true" />
+                  <T message="Metro to hotel" />
+                </>
+              ) : (
+                <T message="Walk + Metro" />
+              )}
+            </span>
+            <span>
+              <T message={day.activity} />
+            </span>
+            <span>
+              <T message={day.meal} />
+            </span>
+          </div>
+        ))}
+        <div className="manual-order">
+          <span>01</span>
+          <i />
+          <span>02</span>
+          <i />
+          <span>03</span>
+          <T message="Manual order stays yours" />
+        </div>
       </div>
     </div>
   );
@@ -99,6 +107,13 @@ function RouteDemo() {
   return (
     <div className="route-demo">
       <div className="route-map" aria-hidden="true">
+        <Image
+          alt=""
+          className="route-map-photo"
+          fill
+          sizes="(max-width: 760px) 100vw, 42vw"
+          src="/landing/seine-route.webp"
+        />
         <i className="route-river" />
         <i className="route-street street-one" />
         <i className="route-street street-two" />
@@ -148,6 +163,15 @@ function OptionsDemo() {
           <T message="Transfer to Rive Gauche" />
         </small>
       </div>
+      <figure aria-hidden="true" className="options-demo-photo">
+        <Image
+          alt=""
+          fill
+          sizes="(max-width: 760px) 100vw, 42vw"
+          src="/landing/paris-morning.webp"
+        />
+        <span />
+      </figure>
       {parisLandingFixture.options.map((option, index) => (
         <article key={option.label}>
           <span className="option-radio" aria-hidden="true">
@@ -212,7 +236,8 @@ function DocumentsDemo() {
 
 export function FeatureSections() {
   return (
-    <div id="features">
+    <div className="landing-feature-story" id="features">
+      <FeatureRouteAtmosphere />
       <section className="landing-intro" id="how-it-works">
         <p className="landing-eyebrow">
           <T message="FROM LOOSE PIECES TO A WORKING ROUTE" />
