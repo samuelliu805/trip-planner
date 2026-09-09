@@ -24,9 +24,9 @@ export function scrollProgress(
 }
 
 export function dockState(progress: number): DockState {
-  if (progress < 0.15) return "scattered";
-  if (progress < 0.55) return "routing";
-  if (progress < 0.8) return "docking";
+  if (progress < 0.14) return "scattered";
+  if (progress < 0.5) return "routing";
+  if (progress < 0.75) return "docking";
   return "assembled";
 }
 
@@ -60,8 +60,10 @@ export function fragmentTransform(
   start: FragmentTransform,
   target: DockRect,
 ): FragmentTransform {
-  const routeT = easeInOutCubic((progress - 0.15) / 0.4);
-  const dockT = easeInOutCubic((progress - 0.55) / 0.23);
+  const routeT = easeInOutCubic((progress - 0.14) / 0.36);
+  const dockT = easeInOutCubic((progress - 0.5) / 0.22);
+  const snapT = clamp((progress - 0.64) / 0.08);
+  const snapScale = Math.sin(snapT * Math.PI) * 0.025;
   const offset = routeOffsets[kind];
   const approach = {
     x: target.x + offset.x,
@@ -75,13 +77,13 @@ export function fragmentTransform(
     width: mix(start.width, approach.width, routeT),
     height: mix(start.height, approach.height, routeT),
   };
-  const crossfade = clamp((progress - 0.78) / 0.02);
+  const crossfade = clamp((progress - 0.72) / 0.03);
   return {
     x: mix(routed.x, target.x, dockT),
     y: mix(routed.y, target.y, dockT),
     width: mix(routed.width, target.width, dockT),
     height: mix(routed.height, target.height, dockT),
-    scale: mix(mix(start.scale, 0.98, routeT), 1, dockT),
+    scale: mix(mix(start.scale, 0.98, routeT), 1, dockT) + snapScale,
     rotation: mix(mix(start.rotation, offset.rotation, routeT), 0, dockT),
     borderRadius: mix(mix(start.borderRadius, 13, routeT), 8, dockT),
     opacity: 1 - crossfade,
@@ -89,5 +91,5 @@ export function fragmentTransform(
 }
 
 export function targetContentOpacity(progress: number) {
-  return clamp((progress - 0.78) / 0.02);
+  return clamp((progress - 0.72) / 0.03);
 }

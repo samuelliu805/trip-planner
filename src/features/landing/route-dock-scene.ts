@@ -7,6 +7,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
   camera.position.set(0, 0, 8);
   const routeField = new THREE.Group();
+  routeField.name = "route-field";
   scene.add(routeField);
 
   const routeCurve = new THREE.CatmullRomCurve3([
@@ -118,8 +119,19 @@ export function createRouteDockScene(THREE: ThreeModule) {
 
   function render(nextProgress: number, time: number, targetPointer: PointerPosition) {
     const routeProgress = clamp((nextProgress - 0.12) / 0.46);
-    const routeVisibility = 1 - clamp((nextProgress - 0.62) / 0.18);
+    const routeVisibility = 1 - clamp((nextProgress - 0.59) / 0.16);
     const elapsed = time / 1_000;
+    const aspect = camera.aspect;
+    if (aspect < 0.65) {
+      routeField.position.set(-0.8, -1.05, 0);
+      routeField.scale.set(0.38, 1, 1);
+    } else if (aspect < 1) {
+      routeField.position.set(-0.4, -0.3, 0);
+      routeField.scale.set(0.5, 1, 1);
+    } else {
+      routeField.position.set(0, 0, 0);
+      routeField.scale.set(1, 1, 1);
+    }
     routeGeometry.setDrawRange(0, Math.round(routePoints.length * routeProgress));
     routeMaterial.opacity = 0.9 * routeVisibility;
     routeGlowMaterial.opacity = 0.24 * routeVisibility;
@@ -140,14 +152,14 @@ export function createRouteDockScene(THREE: ThreeModule) {
     traveler.position.copy(routeCurve.getPointAt(routeProgress));
     traveler.rotation.z = elapsed * 0.8;
     haloMaterial.opacity = 0.42 + Math.sin(elapsed * 3.2) * 0.18;
-    const arrival = clamp((nextProgress - 0.72) / 0.12);
+    const arrival = clamp((nextProgress - 0.67) / 0.08);
     arrivalRing.scale.setScalar(1 + arrival * 4.5);
     arrivalMaterial.opacity = Math.sin(arrival * Math.PI) * 0.7;
-    camera.position.x = (nextProgress < 0.8 ? nextProgress * 0.35 : 0.28) + pointer.x * 0.2;
+    camera.position.x = (nextProgress < 0.75 ? nextProgress * 0.35 : 0.26) + pointer.x * 0.2;
     camera.position.y = pointer.y * -0.13;
-    camera.position.z = 8 - Math.min(nextProgress, 0.8) * 0.45;
+    camera.position.z = 8 - Math.min(nextProgress, 0.75) * 0.45;
     camera.lookAt(0, 0, 0);
-    completionLight.intensity = Math.max(0, 1 - Math.abs(nextProgress - 0.79) * 14) * 1.6;
+    completionLight.intensity = Math.max(0, 1 - Math.abs(nextProgress - 0.735) * 16) * 1.6;
   }
 
   function dispose() {
