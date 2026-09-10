@@ -320,8 +320,39 @@ try {
     if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
   }
 
+  await evaluate(
+    browser,
+    `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const tail = document.querySelector('.route-dock-mobile-tail'); scrollTo(0, track.offsetHeight - innerHeight + tail.offsetHeight / 2); window.dispatchEvent(new Event('scroll')); return true; })()`,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  const canvasTailCoverage = await evaluate(
+    browser,
+    `(() => { const canvas = document.querySelector('.route-dock-canvas').getBoundingClientRect(); const canvasTrack = document.querySelector('.route-dock-canvas-track').getBoundingClientRect(); const hero = document.querySelector('.route-dock-hero').getBoundingClientRect(); return { canvasBottom: canvas.bottom, canvasTop: canvas.top, canvasTrackBottom: canvasTrack.bottom, heroBottom: hero.bottom, nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, viewport: innerHeight }; })()`,
+  );
+  assert.ok(canvasTailCoverage.canvasTop <= 1);
+  assert.ok(canvasTailCoverage.canvasBottom >= canvasTailCoverage.viewport - 1);
+  assert.ok(Math.abs(canvasTailCoverage.canvasTrackBottom - canvasTailCoverage.heroBottom) <= 1);
+  assert.ok(canvasTailCoverage.nextTop > canvasTailCoverage.viewport);
+
   await viewport(browser, 390, 844, true);
   await navigate(browser, app.baseUrl);
+  await setProgress(browser, 0.25);
+  const scrollBeforePageshow = await evaluate(browser, `window.scrollY`);
+  await evaluate(
+    browser,
+    `window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); true`,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  assert.equal(await evaluate(browser, `window.scrollY`), scrollBeforePageshow);
+  assert.equal(
+    await evaluate(
+      browser,
+      `document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState`,
+    ),
+    "routing",
+  );
+  await navigate(browser, app.baseUrl);
+
   await evaluate(
     browser,
     `(() => { const account = document.querySelector('.nav-sign-in'); account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
@@ -349,7 +380,7 @@ try {
 
   const revealBefore = await evaluate(
     browser,
-    `(() => { const section = document.querySelector('.landing-reveal-section[data-reveal-state="pending"]'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .9); window.dispatchEvent(new Event('scroll')); return true; })()`,
+    `(() => { const section = document.querySelector('.landing-reveal-section[data-reveal-state="pending"]'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .88); window.dispatchEvent(new Event('scroll')); return true; })()`,
   );
   assert.equal(revealBefore, true);
   await new Promise((resolve) => setTimeout(resolve, 120));
@@ -362,7 +393,7 @@ try {
   );
   await evaluate(
     browser,
-    `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .8); window.dispatchEvent(new Event('scroll')); return true; })()`,
+    `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .84); window.dispatchEvent(new Event('scroll')); return true; })()`,
   );
   await waitFor(
     browser,
@@ -374,7 +405,8 @@ try {
     `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild.getBoundingClientRect(); return { targetTop: target.top, viewport: innerHeight }; })()`,
   );
   assert.ok(revealTriggered.targetTop >= 0);
-  assert.ok(revealTriggered.targetTop <= revealTriggered.viewport * 0.82);
+  assert.ok(revealTriggered.targetTop >= revealTriggered.viewport * 0.78);
+  assert.ok(revealTriggered.targetTop <= revealTriggered.viewport * 0.86);
 
   await evaluate(
     browser,

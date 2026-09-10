@@ -21,7 +21,7 @@ export function LandingRevealSection({
         section.dataset.revealState = "visible";
         observer.disconnect();
       },
-      { rootMargin: "0px 0px -18%", threshold: 0.15 },
+      { rootMargin: "0px 0px -14%", threshold: 0.12 },
     );
     observer.observe(revealTarget);
     return () => observer.disconnect();

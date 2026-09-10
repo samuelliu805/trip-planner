@@ -99,16 +99,26 @@
 
 .route-dock-hero {
   background: var(--dock-navy);
+  position: relative;
+}
+.route-dock-canvas-track {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
 }
 .route-dock-track {
   height: 390svh;
   position: relative;
+  z-index: 1;
 }
 .route-dock-mobile-tail {
   display: none;
+  position: relative;
+  z-index: 1;
 }
 .route-dock-viewport {
-  background: var(--dock-navy);
+  background: transparent;
   color: var(--dock-paper);
   height: 100svh;
   overflow: hidden;
@@ -129,9 +139,9 @@
   z-index: 1;
 }
 .route-dock-canvas {
-  inset: 0;
-  position: absolute;
-  z-index: 0;
+  height: 100svh;
+  position: sticky;
+  top: 0;
 }
 .route-dock-canvas canvas {
   display: block;

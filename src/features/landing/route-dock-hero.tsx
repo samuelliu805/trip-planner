@@ -180,6 +180,18 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
 
   return (
     <section className="route-dock-hero">
+      <div className="route-dock-canvas-track">
+        <div
+          className="route-dock-canvas"
+          data-webgl-state={webglFailed ? "fallback" : webglReady ? "ready" : "loading"}
+        >
+          <RouteDockCanvas
+            onFailure={handleWebglFailure}
+            onReady={handleWebglReady}
+            progress={effectiveProgress}
+          />
+        </div>
+      </div>
       <div
         className="route-dock-track"
         data-dock-ready={motionReady ? "true" : "false"}
@@ -188,16 +200,6 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
         ref={trackRef}
       >
         <div className="route-dock-viewport" ref={viewportRef}>
-          <div
-            className="route-dock-canvas"
-            data-webgl-state={webglFailed ? "fallback" : webglReady ? "ready" : "loading"}
-          >
-            <RouteDockCanvas
-              onFailure={handleWebglFailure}
-              onReady={handleWebglReady}
-              progress={effectiveProgress}
-            />
-          </div>
           <div className="hero-copy" ref={copyRef}>
             <p className="landing-eyebrow">
               <T message="THE CALM WAY TO PLAN A TRIP" />
