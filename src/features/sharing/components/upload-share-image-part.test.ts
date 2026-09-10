@@ -65,6 +65,8 @@ test("share image upload falls back to the authenticated same-origin route", asy
 
 test("share image upload preserves the direct provider error when fallback also fails", async () => {
   const directFailure = new Error("direct route unavailable");
+  const delays: number[] = [];
+  let fallbackCalls = 0;
   await assert.rejects(
     uploadShareImagePart(
       {
@@ -73,8 +75,39 @@ test("share image upload preserves the direct provider error when fallback also 
         },
       },
       input,
-      (async () => new Response(null, { status: 502 })) as typeof fetch,
+      (async () => {
+        fallbackCalls += 1;
+        return new Response(null, { status: 502 });
+      }) as typeof fetch,
+      async (milliseconds) => {
+        delays.push(milliseconds);
+      },
     ),
     (error) => error === directFailure,
   );
+  assert.equal(fallbackCalls, 3);
+  assert.deepEqual(delays, [500, 1_000]);
+});
+
+test("share image upload retries a transient fallback failure", async () => {
+  const delays: number[] = [];
+  let fallbackCalls = 0;
+  await uploadShareImagePart(
+    {
+      async uploadToSignedUrl() {
+        throw new Error("direct route unavailable");
+      },
+    },
+    input,
+    (async () => {
+      fallbackCalls += 1;
+      return new Response(null, { status: fallbackCalls === 1 ? 502 : 204 });
+    }) as typeof fetch,
+    async (milliseconds) => {
+      delays.push(milliseconds);
+    },
+  );
+
+  assert.equal(fallbackCalls, 2);
+  assert.deepEqual(delays, [500]);
 });
