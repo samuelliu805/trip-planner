@@ -2,29 +2,41 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { tripPlannerBrandName } from "./brand";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
+import { LandingRevealSection } from "./landing-reveal-section";
 import { RouteDockHero } from "./route-dock-hero";
 
 import "./landing-hero-shell.css";
 import "./landing-workspace.css";
 import "./landing-hero-responsive.css";
+import "./landing-hero-mobile.css";
 import "./landing-features.css";
 import "./landing-options-documents.css";
 import "./landing-feature-atmosphere.css";
 import "./landing-feature-chapters.css";
+import "./landing-section-reveal.css";
 import "./landing-conversion.css";
 
-export function LandingPage({ accountLabel, year }: { accountLabel?: string; year: number }) {
+export function LandingPage({
+  accountLabel,
+  appRegion,
+  year,
+}: {
+  accountLabel?: string;
+  appRegion: AppRegion;
+  year: number;
+}) {
   const startHref = accountLabel ? "/trips" : "/guest";
   return (
     <main className="plandock-page">
-      <LandingNavigation accountLabel={accountLabel} />
+      <LandingNavigation accountLabel={accountLabel} appRegion={appRegion} />
       <RouteDockHero startHref={startHref} />
       <FeatureSections />
-      <section className="landing-final-cta">
+      <LandingRevealSection className="landing-final-cta">
         <p className="landing-eyebrow">
           <T message="YOUR TRIP, READY TO USE" />
         </p>
@@ -39,7 +51,7 @@ export function LandingPage({ accountLabel, year }: { accountLabel?: string; yea
             <T message="Start planning" />
           </Link>
         </Button>
-      </section>
+      </LandingRevealSection>
       <footer className="plandock-footer">
         <Link className="plandock-wordmark" href="/">
           {tripPlannerBrandName}

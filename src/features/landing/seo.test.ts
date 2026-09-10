@@ -32,11 +32,7 @@ test("landing structured data localizes Chinese search copy and escapes markup",
 });
 
 test("mobile landing navigation keeps the sign-in action visible", async () => {
-  const responsive = await readFile(
-    new URL("./landing-hero-responsive.css", import.meta.url),
-    "utf8",
-  );
-  const mobile = responsive.match(/@media \(max-width: 699px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  const mobile = await readFile(new URL("./landing-hero-mobile.css", import.meta.url), "utf8");
   assert.match(mobile, /\.nav-sign-in \{[\s\S]*display: inline-flex/);
   assert.doesNotMatch(mobile, /\.plandock-nav \.nav-sign-in \{\s*display: none/);
 });

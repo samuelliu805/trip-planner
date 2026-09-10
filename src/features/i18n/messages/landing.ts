@@ -23,6 +23,8 @@ export const landingZhCN: Record<string, string> = {
   Features: "能做什么",
   "How it works": "怎么使用",
   "Sign in": "登录",
+  "Go to China site": "前往中国版",
+  "Go to Global site": "前往国际版",
   "FROM LOOSE PIECES TO A WORKING ROUTE": "从零散信息，到一份能执行的行程",
   "Plan with the shape of the trip in view.": "先看全程，再排好每一天。",
   "Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves.":

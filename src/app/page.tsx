@@ -12,6 +12,7 @@ import { translateMessage } from "@/features/i18n/translate";
 import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
 import { getSiteUrl } from "@/features/sharing/site-url";
 import { getAuthProvider } from "@/platform/composition/server";
+import { getServerProviderConfig } from "@/platform/config/server";
 import { appUserIdentityLabel } from "@/platform/contracts/auth";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -53,6 +54,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
+  const appRegion = getServerProviderConfig().appRegion;
   const [locale, user] = await Promise.all([
     getRequestLocale(),
     getAuthProvider().getCurrentUser(),
@@ -68,7 +70,11 @@ export default async function Home() {
         type="application/ld+json"
       />
       {user ? <AuthenticatedGuestStorageCleanup /> : null}
-      <LandingPage accountLabel={accountLabel} year={new Date().getFullYear()} />
+      <LandingPage
+        accountLabel={accountLabel}
+        appRegion={appRegion}
+        year={new Date().getFullYear()}
+      />
     </>
   );
 }

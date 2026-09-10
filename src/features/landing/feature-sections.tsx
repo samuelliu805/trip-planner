@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { T } from "@/features/i18n/i18n-provider";
 
+import { LandingRevealSection } from "./landing-reveal-section";
 import { parisLandingFixture } from "./paris-fixture";
 
 function SectionHeading({
@@ -238,7 +239,7 @@ function DocumentsDemo() {
 export function FeatureSections() {
   return (
     <div className="landing-feature-story" id="features">
-      <section className="landing-intro" id="how-it-works">
+      <LandingRevealSection className="landing-intro" id="how-it-works">
         <p className="landing-eyebrow">
           <T message="FROM LOOSE PIECES TO A WORKING ROUTE" />
         </p>
@@ -248,39 +249,39 @@ export function FeatureSections() {
         <p>
           <T message="Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves." />
         </p>
-      </section>
-      <section className="feature-section matrix-section">
+      </LandingRevealSection>
+      <LandingRevealSection className="feature-section matrix-section">
         <SectionHeading
           eyebrow="01 · PLAN THE WHOLE TRIP"
           title="See every day at once."
           body="Use a structured Matrix or Timeline for accommodation, transport, activities, meals and notes. Reorder the day when the plan changes."
         />
         <MatrixDemo />
-      </section>
-      <section className="feature-section route-section">
+      </LandingRevealSection>
+      <LandingRevealSection className="feature-section route-section">
         <SectionHeading
           eyebrow="02 · UNDERSTAND THE ROUTE"
           title="Make movement part of the plan."
           body="Connect places to itinerary items, inspect the day’s sequence and keep the route beside the schedule."
         />
         <RouteDemo />
-      </section>
-      <section className="feature-section options-section">
+      </LandingRevealSection>
+      <LandingRevealSection className="feature-section options-section">
         <OptionsDemo />
         <SectionHeading
           eyebrow="03 · COMPARE BEFORE DECIDING"
           title="Keep alternatives visible."
           body="Save route and trip options side by side. Compare their known details without invented scores or automatic winners."
         />
-      </section>
-      <section className="feature-section documents-section">
+      </LandingRevealSection>
+      <LandingRevealSection className="feature-section documents-section">
         <SectionHeading
           eyebrow="04 · KEEP THE SOURCE MATERIAL"
           title="Tickets stay with the item."
           body="Keep useful links, notes, bookings and supported files connected to the part of the trip they belong to."
         />
         <DocumentsDemo />
-      </section>
+      </LandingRevealSection>
     </div>
   );
 }
