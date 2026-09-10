@@ -9,14 +9,18 @@ export function useLandingScrollReset() {
   useLayoutEffect(() => {
     if (!shouldResetLandingScroll(window.innerWidth, window.location.hash)) return;
     const previousRestoration = window.history.scrollRestoration;
-    const reset = () => window.scrollTo(0, 0);
+    let hasReset = false;
+    const resetOnce = () => {
+      if (hasReset) return;
+      hasReset = true;
+      window.scrollTo(0, 0);
+    };
     window.history.scrollRestoration = "manual";
-    reset();
-    const frame = window.requestAnimationFrame(reset);
-    window.addEventListener("pageshow", reset);
+    const frame = window.requestAnimationFrame(resetOnce);
+    window.addEventListener("pageshow", resetOnce);
     return () => {
       window.cancelAnimationFrame(frame);
-      window.removeEventListener("pageshow", reset);
+      window.removeEventListener("pageshow", resetOnce);
       window.history.scrollRestoration = previousRestoration;
     };
   }, []);
@@ -37,6 +41,7 @@ export function useRouteDockMeasurements({
   const [viewportSize, setViewportSize] = useState({
     copyBottom: 0,
     height: 900,
+    visibleHeight: 900,
     width: 1440,
     workspaceHeight: 410,
   });
@@ -65,6 +70,7 @@ export function useRouteDockMeasurements({
       setViewportSize({
         copyBottom: copyRect.bottom - layerRect.top,
         height: layerRect.height,
+        visibleHeight: window.visualViewport?.height ?? window.innerHeight,
         width: layerRect.width,
         workspaceHeight: workspace.offsetHeight,
       });

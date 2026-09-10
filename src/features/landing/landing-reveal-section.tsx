@@ -12,7 +12,8 @@ export function LandingRevealSection({
   useEffect(() => {
     const section = sectionRef.current;
     if (!section || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (section.getBoundingClientRect().top <= window.innerHeight * 0.86) return;
+    const revealTarget = section.firstElementChild ?? section;
+    if (revealTarget.getBoundingClientRect().top <= window.innerHeight) return;
     section.dataset.revealState = "pending";
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -20,9 +21,9 @@ export function LandingRevealSection({
         section.dataset.revealState = "visible";
         observer.disconnect();
       },
-      { rootMargin: "0px 0px -10%", threshold: 0.12 },
+      { threshold: 0.01 },
     );
-    observer.observe(section);
+    observer.observe(revealTarget);
     return () => observer.disconnect();
   }, []);
 

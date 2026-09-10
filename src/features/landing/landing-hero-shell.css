@@ -71,26 +71,53 @@
 .plandock-nav .nav-sign-in {
   min-height: 44px;
 }
-.plandock-nav .nav-region-switch {
-  gap: 0.4rem;
-  min-height: 44px;
+.plandock-nav .nav-sign-in.nav-account {
+  justify-content: flex-start;
+  max-width: 12rem;
+  min-width: 0;
+  overflow: hidden;
 }
-.plandock-nav .nav-region-switch svg {
-  height: 1rem;
-  width: 1rem;
+.nav-account-label {
+  direction: ltr;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.nav-region-switch-short {
-  display: none;
+.footer-region-switch {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+.footer-region-switch svg {
+  height: 14px;
+  width: 14px;
 }
 
-.route-dock-track {
-  height: 390svh;
+.route-dock-hero {
+  --route-dock-stage-height: 100svh;
+  --route-dock-track-height: 390svh;
+  background: var(--dock-navy);
   position: relative;
 }
+.route-dock-canvas-track {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+.route-dock-track {
+  height: var(--route-dock-track-height);
+  position: relative;
+  z-index: 1;
+}
 .route-dock-viewport {
-  background: var(--dock-navy);
+  background: transparent;
   color: var(--dock-paper);
-  height: 100svh;
+  height: var(--route-dock-stage-height);
   overflow: hidden;
   position: sticky;
   top: 0;
@@ -109,9 +136,9 @@
   z-index: 1;
 }
 .route-dock-canvas {
-  inset: 0;
-  position: absolute;
-  z-index: 0;
+  height: var(--route-dock-stage-height);
+  position: sticky;
+  top: 0;
 }
 .route-dock-canvas canvas {
   display: block;

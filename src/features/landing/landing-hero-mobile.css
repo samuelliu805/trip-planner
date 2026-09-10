@@ -1,4 +1,9 @@
 @media (max-width: 699px) {
+  .route-dock-hero {
+    --route-dock-mobile-extension: clamp(6rem, 14svh, 8rem);
+    --route-dock-stage-height: calc(100svh + var(--route-dock-mobile-extension));
+    --route-dock-track-height: calc(390svh + var(--route-dock-mobile-extension));
+  }
   .plandock-nav {
     padding-inline: 1rem;
   }
@@ -8,23 +13,14 @@
   }
   .plandock-nav .nav-sign-in.nav-account {
     display: inline-flex;
-    max-width: min(5.5rem, 22vw);
+    justify-content: flex-start;
+    max-width: min(8.5rem, 34vw);
+    overflow: hidden;
     padding-inline: 0.5rem;
+    text-align: left;
   }
   .plandock-nav .nav-start {
     display: none;
-  }
-  .plandock-nav .nav-region-switch {
-    min-width: 44px;
-    padding-inline: 0.5rem;
-  }
-  .nav-region-switch-label {
-    display: none;
-  }
-  .nav-region-switch-short {
-    display: inline;
-    font-size: 0.72rem;
-    font-weight: 800;
   }
   .hero-copy {
     left: 1.15rem;
@@ -63,7 +59,7 @@
   .workspace-stage {
     left: 50%;
     right: auto;
-    top: max(50svh, 23.5rem);
+    top: max(48svh, 22.5rem);
     transform: translateX(-50%) scale(var(--mobile-workspace-rest-scale, 0.985));
     transform-origin: top center;
     width: auto;

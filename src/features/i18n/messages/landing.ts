@@ -23,8 +23,8 @@ export const landingZhCN: Record<string, string> = {
   Features: "能做什么",
   "How it works": "怎么使用",
   "Sign in": "登录",
-  "Go to China site": "前往中国版",
-  "Go to Global site": "前往国际版",
+  "Go to China site": "前往中国站",
+  "Go to Global site": "前往全球站",
   "FROM LOOSE PIECES TO A WORKING ROUTE": "从零散信息，到一份能执行的行程",
   "Plan with the shape of the trip in view.": "先看全程，再排好每一天。",
   "Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves.":
@@ -86,6 +86,7 @@ export const landingZhCN: Record<string, string> = {
   Privacy: "隐私",
   Terms: "条款",
   Support: "支持",
+  "Footer navigation": "页脚导航",
   "Legal and support": "法律信息与支持",
   "Build the route, compare options, keep travel documents close, and share one usable trip plan.":
     "把每天的行程、路线备选、住宿、预订和票据放在一起，随时调整并分享一份路上真正用得上的旅行计划。",
