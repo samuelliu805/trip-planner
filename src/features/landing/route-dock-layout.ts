@@ -41,6 +41,7 @@ export function useRouteDockMeasurements({
   const [viewportSize, setViewportSize] = useState({
     copyBottom: 0,
     height: 900,
+    visibleHeight: 900,
     width: 1440,
     workspaceHeight: 410,
   });
@@ -69,6 +70,7 @@ export function useRouteDockMeasurements({
       setViewportSize({
         copyBottom: copyRect.bottom - layerRect.top,
         height: layerRect.height,
+        visibleHeight: window.visualViewport?.height ?? window.innerHeight,
         width: layerRect.width,
         workspaceHeight: workspace.offsetHeight,
       });

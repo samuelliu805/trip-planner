@@ -150,7 +150,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     viewportSize.width < 700
       ? mobileWorkspaceLayout(
           viewportSize.width,
-          viewportSize.height,
+          viewportSize.visibleHeight,
           viewportSize.copyBottom,
           viewportSize.workspaceHeight,
         )

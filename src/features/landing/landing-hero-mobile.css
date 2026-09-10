@@ -1,6 +1,6 @@
 @media (max-width: 699px) {
   .route-dock-hero {
-    --route-dock-mobile-extension: clamp(9rem, 20svh, 11rem);
+    --route-dock-mobile-extension: clamp(6rem, 14svh, 8rem);
     --route-dock-stage-height: calc(100svh + var(--route-dock-mobile-extension));
     --route-dock-track-height: calc(390svh + var(--route-dock-mobile-extension));
   }
@@ -59,7 +59,7 @@
   .workspace-stage {
     left: 50%;
     right: auto;
-    top: max(50svh, 23.5rem);
+    top: max(48svh, 22.5rem);
     transform: translateX(-50%) scale(var(--mobile-workspace-rest-scale, 0.985));
     transform-origin: top center;
     width: auto;

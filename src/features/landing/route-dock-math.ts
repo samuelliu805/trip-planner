@@ -41,8 +41,8 @@ export function mobileWorkspaceLayout(
 ): MobileWorkspaceLayout {
   const sideGutter = 10;
   const bottomGutter = 24;
-  const copyGap = 32;
-  const top = Math.max(viewportHeight * 0.5, copyBottom + copyGap);
+  const copyGap = 24;
+  const top = Math.max(viewportHeight * 0.48, copyBottom + copyGap);
   const availableHeight = Math.max(1, viewportHeight - top - bottomGutter);
   const scale = clamp(availableHeight / Math.max(1, workspaceHeight), 0.32, 1);
   return {

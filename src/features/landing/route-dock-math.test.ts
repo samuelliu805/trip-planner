@@ -43,15 +43,16 @@ test("regional landing links always point to the other deployment", () => {
 
 test("mobile workspace preserves its side and bottom gutters", () => {
   const short = mobileWorkspaceLayout(375, 667, 331, 410);
-  assert.equal(short.top, 363);
-  assert.ok(Math.abs(short.scale - 280 / 410) < 1e-9);
+  assert.equal(short.top, 355);
+  assert.ok(Math.abs(short.scale - 288 / 410) < 1e-9);
   assert.ok(Math.abs(short.width * short.scale - 355) < 1e-9);
   assert.ok(Math.abs(short.top + 410 * short.scale - 643) < 1e-9);
 
   const tall = mobileWorkspaceLayout(375, 932, 365, 410);
-  assert.equal(tall.top, 466);
+  assert.ok(Math.abs(tall.top - 447.36) < 1e-9);
   assert.equal(tall.scale, 1);
   assert.equal(tall.width, 355);
+  assert.ok(tall.top + 410 <= 932 - 24);
 });
 
 test("dock states follow the specified transition boundaries", () => {

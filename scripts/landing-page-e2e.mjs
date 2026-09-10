@@ -296,7 +296,29 @@ try {
     [390, 844],
   ]) {
     await viewport(browser, width, height, width < 700);
+    await navigate(browser, app.baseUrl);
+    if (width < 700) {
+      await waitFor(
+        browser,
+        `document.querySelector('.workspace-stage').style.getPropertyValue('--mobile-workspace-scale').length > 0`,
+        `${width}px mobile workspace measurement`,
+      );
+    }
     await setProgress(browser, 0.9);
+    const animationEndpoint = await evaluate(
+      browser,
+      `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, viewport: innerHeight }; })()`,
+    );
+    if (width < 700) {
+      assert.ok(
+        animationEndpoint.productTop - animationEndpoint.copyBottom >= 23,
+        `The ${width}px assembled workspace overlapped the hero copy.`,
+      );
+      assert.ok(
+        animationEndpoint.productBottom <= animationEndpoint.viewport - 12,
+        `The ${width}px assembled workspace was cut off at the animation endpoint.`,
+      );
+    }
     await evaluate(
       browser,
       `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); scrollTo(0, track.offsetHeight - innerHeight); window.dispatchEvent(new Event('scroll')); return true; })()`,
@@ -315,8 +337,9 @@ try {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
       assert.ok(
-        responsive.stageHeight - responsive.viewport >= 144,
-        `The ${width}px hero stage extension was too short.`,
+        responsive.stageHeight - responsive.viewport >= 95 &&
+          responsive.stageHeight - responsive.viewport <= 129,
+        `The ${width}px hero stage extension fell outside its responsive bounds.`,
       );
       assert.ok(
         Math.abs(responsive.heroHeight - responsive.trackHeight) <= 1,
@@ -345,7 +368,7 @@ try {
   assert.ok(canvasTailCoverage.canvasTop <= 1);
   assert.ok(canvasTailCoverage.canvasBottom >= canvasTailCoverage.viewport - 1);
   assert.ok(Math.abs(canvasTailCoverage.canvasTrackBottom - canvasTailCoverage.heroBottom) <= 1);
-  assert.ok(canvasTailCoverage.nextTop > canvasTailCoverage.viewport);
+  assert.ok(canvasTailCoverage.nextTop >= canvasTailCoverage.viewport - 1);
 
   await viewport(browser, 390, 844, true);
   await navigate(browser, app.baseUrl);
