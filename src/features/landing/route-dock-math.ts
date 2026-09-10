@@ -9,6 +9,12 @@ export type FragmentTransform = DockRect & {
   scale: number;
 };
 
+export type MobileWorkspaceLayout = {
+  scale: number;
+  top: number;
+  width: number;
+};
+
 export function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
 }
@@ -21,6 +27,29 @@ export function scrollProgress(
 ) {
   const range = Math.max(1, heroHeight - viewport);
   return clamp((scrollY - heroTop) / range);
+}
+
+export function shouldResetLandingScroll(viewportWidth: number, hash: string) {
+  return viewportWidth < 700 && hash.length === 0;
+}
+
+export function mobileWorkspaceLayout(
+  viewportWidth: number,
+  viewportHeight: number,
+  copyBottom: number,
+  workspaceHeight: number,
+): MobileWorkspaceLayout {
+  const sideGutter = 10;
+  const bottomGutter = 24;
+  const copyGap = 32;
+  const top = Math.max(viewportHeight * 0.5, copyBottom + copyGap);
+  const availableHeight = Math.max(1, viewportHeight - top - bottomGutter);
+  const scale = clamp(availableHeight / Math.max(1, workspaceHeight), 0.32, 1);
+  return {
+    scale,
+    top,
+    width: Math.max(1, viewportWidth - sideGutter * 2) / scale,
+  };
 }
 
 export function dockState(progress: number): DockState {

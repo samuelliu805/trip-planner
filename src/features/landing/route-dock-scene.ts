@@ -127,7 +127,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
     const aspect = camera.aspect;
     let routeScaleX = 1;
     if (aspect < 0.65) {
-      routeField.position.set(-0.8, -1.55, 0);
+      routeField.position.set(-0.8, -2.2, 0);
       routeScaleX = 0.38;
     } else if (aspect < 1) {
       routeField.position.set(-0.4, -0.3, 0);
@@ -146,7 +146,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
     particles.rotation.z = nextProgress * 0.04 + elapsed * 0.006;
     particles.position.y = Math.sin(elapsed * 0.34) * 0.055;
     routeNodes.forEach((node, index) => {
-      const revealed = routeProgress >= nodeStops[index] - 0.025;
+      const revealed = nextProgress > 0.12 && routeProgress >= nodeStops[index] - 0.025;
       const pulse = 1 + Math.sin(elapsed * 2.4 + index * 0.9) * 0.16;
       node.visible = revealed;
       node.scale.set(pulse / routeScaleX, pulse, pulse);

@@ -25,10 +25,12 @@ test("route scene follows scroll progress and pointer parallax without a rendere
 
   const routeField = routeScene.scene.getObjectByName("route-field");
   assert.ok(routeField);
+  routeScene.render(0, 1_050, { x: 0, y: 0 });
+  assert.equal(routeScene.scene.getObjectByName("route-node-0")!.visible, false);
   routeScene.camera.aspect = 0.46;
   routeScene.render(0.5, 1_100, { x: 0, y: 0 });
   assert.deepEqual(routeField.scale.toArray(), [0.38, 1, 1]);
-  assert.deepEqual(routeField.position.toArray(), [-0.8, -1.55, 0]);
+  assert.deepEqual(routeField.position.toArray(), [-0.8, -2.2, 0]);
   assertCircularWorldScale(
     routeScene.scene.getObjectByName("route-node-2")!,
     routeField,

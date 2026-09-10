@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDown } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
@@ -15,12 +15,13 @@ import {
   dockState,
   effectiveDockProgress,
   fragmentTransform,
+  mobileWorkspaceLayout,
   scrollProgress,
   targetContentOpacity,
-  type DockRect,
   type FragmentTransform,
 } from "./route-dock-math";
 import { RouteDockCanvas } from "./route-dock-canvas";
+import { useLandingScrollReset, useRouteDockMeasurements } from "./route-dock-layout";
 
 const starts: Record<DockKind, FragmentTransform> = {
   route: {
@@ -56,6 +57,11 @@ const starts: Record<DockKind, FragmentTransform> = {
   },
 };
 
+type WorkspaceStyle = CSSProperties & {
+  "--mobile-workspace-rest-scale"?: number;
+  "--mobile-workspace-scale"?: number;
+};
+
 function initialRect(kind: DockKind, width: number, height: number): FragmentTransform {
   const mobile = width < 700;
   const index = dockKinds.indexOf(kind);
@@ -77,15 +83,23 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
   const trackRef = useRef<HTMLElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [webglFailed, setWebglFailed] = useState(false);
   const [webglReady, setWebglReady] = useState(false);
   const [motionReady, setMotionReady] = useState(false);
-  const [targets, setTargets] = useState<Partial<Record<DockKind, DockRect>>>({});
-  const [viewportSize, setViewportSize] = useState({ height: 900, width: 1440 });
+  const { targets, viewportSize } = useRouteDockMeasurements({
+    copyRef,
+    layerRef,
+    viewportRef,
+    workspaceRef,
+  });
   const handleWebglFailure = useCallback(() => setWebglFailed(true), []);
   const handleWebglReady = useCallback(() => setWebglReady(true), []);
+
+  useLandingScrollReset();
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -126,43 +140,29 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     };
   }, [reducedMotion]);
 
-  useEffect(() => {
-    const layer = layerRef.current;
-    const viewport = viewportRef.current;
-    if (!layer || !viewport) return;
-    const measure = () => {
-      const layerRect = layer.getBoundingClientRect();
-      const measured: Partial<Record<DockKind, DockRect>> = {};
-      for (const kind of dockKinds) {
-        const target = viewport.querySelector<HTMLElement>(`[data-dock-target="${kind}"]`);
-        if (!target) continue;
-        const rect = target.getBoundingClientRect();
-        measured[kind] = {
-          x: rect.left - layerRect.left,
-          y: rect.top - layerRect.top,
-          width: rect.width,
-          height: rect.height,
-        };
-      }
-      setViewportSize({ height: layerRect.height, width: layerRect.width });
-      setTargets(measured);
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(viewport);
-    observer.observe(layer);
-    measure();
-    window.visualViewport?.addEventListener("resize", measure);
-    return () => {
-      observer.disconnect();
-      window.visualViewport?.removeEventListener("resize", measure);
-    };
-  }, []);
-
   const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
   const state = dockState(effectiveProgress);
   const destinationOpacity = targetContentOpacity(effectiveProgress);
   const workspaceOpacity =
     reducedMotion || webglFailed ? 1 : clamp((effectiveProgress - 0.32) / 0.23);
+  const mobileWorkspace =
+    viewportSize.width < 700
+      ? mobileWorkspaceLayout(
+          viewportSize.width,
+          viewportSize.height,
+          viewportSize.copyBottom,
+          viewportSize.workspaceHeight,
+        )
+      : null;
+  const workspaceStyle: WorkspaceStyle = mobileWorkspace
+    ? {
+        "--mobile-workspace-rest-scale": mobileWorkspace.scale * 0.985,
+        "--mobile-workspace-scale": mobileWorkspace.scale,
+        opacity: workspaceOpacity,
+        top: mobileWorkspace.top,
+        width: mobileWorkspace.width,
+      }
+    : { opacity: workspaceOpacity };
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
     for (const kind of dockKinds) {
@@ -197,7 +197,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
             progress={effectiveProgress}
           />
         </div>
-        <div className="hero-copy">
+        <div className="hero-copy" ref={copyRef}>
           <p className="landing-eyebrow">
             <T message="THE CALM WAY TO PLAN A TRIP" />
           </p>
@@ -223,7 +223,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
             <T message="Timeline, table, map, options and travel documents—finally connected." />
           </p>
         </div>
-        <div className="workspace-stage" style={{ opacity: workspaceOpacity }}>
+        <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
           <AssembledWorkspace targetOpacity={destinationOpacity} />
         </div>
         <div className="fragment-layer" ref={layerRef}>

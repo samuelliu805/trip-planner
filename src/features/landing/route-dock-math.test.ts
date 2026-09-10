@@ -5,16 +5,49 @@ import {
   dockState,
   effectiveDockProgress,
   fragmentTransform,
+  mobileWorkspaceLayout,
   scrollProgress,
+  shouldResetLandingScroll,
   targetContentOpacity,
   type FragmentTransform,
 } from "./route-dock-math.ts";
+import { alternateLandingSite } from "./regional-landing-sites.ts";
 
 test("scroll progress uses the actual scrollable hero range", () => {
   assert.equal(scrollProgress(200, 200, 3900, 1000), 0);
   assert.equal(scrollProgress(1650, 200, 3900, 1000), 0.5);
   assert.equal(scrollProgress(3100, 200, 3900, 1000), 1);
   assert.equal(scrollProgress(5000, 200, 3900, 1000), 1);
+});
+
+test("mobile landing entry resets only the unanchored mobile page", () => {
+  assert.equal(shouldResetLandingScroll(699, ""), true);
+  assert.equal(shouldResetLandingScroll(700, ""), false);
+  assert.equal(shouldResetLandingScroll(390, "#how-it-works"), false);
+});
+
+test("regional landing links always point to the other deployment", () => {
+  assert.deepEqual(alternateLandingSite("global"), {
+    href: "https://trip-planner-cn-306129-11-1253819205.sh.run.tcloudbase.com/",
+    message: "Go to China site",
+  });
+  assert.deepEqual(alternateLandingSite("cn"), {
+    href: "https://trip-planner-ivory-one.vercel.app/",
+    message: "Go to Global site",
+  });
+});
+
+test("mobile workspace preserves its side and bottom gutters", () => {
+  const short = mobileWorkspaceLayout(375, 667, 331, 410);
+  assert.equal(short.top, 363);
+  assert.ok(Math.abs(short.scale - 280 / 410) < 1e-9);
+  assert.ok(Math.abs(short.width * short.scale - 355) < 1e-9);
+  assert.ok(Math.abs(short.top + 410 * short.scale - 643) < 1e-9);
+
+  const tall = mobileWorkspaceLayout(375, 932, 365, 410);
+  assert.equal(tall.top, 466);
+  assert.equal(tall.scale, 1);
+  assert.equal(tall.width, 355);
 });
 
 test("dock states follow the specified transition boundaries", () => {

@@ -71,6 +71,17 @@
 .plandock-nav .nav-sign-in {
   min-height: 44px;
 }
+.plandock-nav .nav-region-switch {
+  gap: 0.4rem;
+  min-height: 44px;
+}
+.plandock-nav .nav-region-switch svg {
+  height: 1rem;
+  width: 1rem;
+}
+.nav-region-switch-short {
+  display: none;
+}
 
 .route-dock-track {
   height: 390svh;
