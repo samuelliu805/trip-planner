@@ -98,6 +98,8 @@
 }
 
 .route-dock-hero {
+  --route-dock-stage-height: 100svh;
+  --route-dock-track-height: 390svh;
   background: var(--dock-navy);
   position: relative;
 }
@@ -108,19 +110,14 @@
   z-index: 0;
 }
 .route-dock-track {
-  height: 390svh;
-  position: relative;
-  z-index: 1;
-}
-.route-dock-mobile-tail {
-  display: none;
+  height: var(--route-dock-track-height);
   position: relative;
   z-index: 1;
 }
 .route-dock-viewport {
   background: transparent;
   color: var(--dock-paper);
-  height: 100svh;
+  height: var(--route-dock-stage-height);
   overflow: hidden;
   position: sticky;
   top: 0;
@@ -139,7 +136,7 @@
   z-index: 1;
 }
 .route-dock-canvas {
-  height: 100svh;
+  height: var(--route-dock-stage-height);
   position: sticky;
   top: 0;
 }

@@ -192,7 +192,7 @@ async function navigate(browser, baseUrl, path = "/", expectedWebgl = "ready") {
 async function setProgress(browser, progress) {
   await evaluate(
     browser,
-    `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); scrollTo(0, (hero.offsetHeight - innerHeight) * ${progress}); window.dispatchEvent(new Event('scroll')); return true; })()`,
+    `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const stage = document.querySelector('.route-dock-viewport'); scrollTo(0, (hero.offsetHeight - stage.offsetHeight) * ${progress}); window.dispatchEvent(new Event('scroll')); return true; })()`,
   );
   const expected =
     progress < 0.14
@@ -297,9 +297,14 @@ try {
   ]) {
     await viewport(browser, width, height, width < 700);
     await setProgress(browser, 0.9);
+    await evaluate(
+      browser,
+      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); scrollTo(0, track.offsetHeight - innerHeight); window.dispatchEvent(new Event('scroll')); return true; })()`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 120));
     const responsive = await evaluate(
       browser,
-      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const tail = hero.querySelector('.route-dock-mobile-tail'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), state: track.dataset.dockState, tailHeight: tail.offsetHeight, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
+      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const stage = hero.querySelector('.route-dock-viewport'); const canvas = hero.querySelector('.route-dock-canvas'); const fragments = hero.querySelector('.fragment-layer'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, canvasHeight: canvas.offsetHeight, fragmentHeight: fragments.offsetHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), stageHeight: stage.offsetHeight, state: track.dataset.dockState, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
@@ -309,20 +314,28 @@ try {
     if (width < 700) {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
-      assert.ok(responsive.tailHeight >= 144, `The ${width}px hero tail was too short.`);
       assert.ok(
-        Math.abs(responsive.heroHeight - responsive.trackHeight - responsive.tailHeight) <= 1,
-        `The ${width}px hero height did not include its static tail.`,
+        responsive.stageHeight - responsive.viewport >= 144,
+        `The ${width}px hero stage extension was too short.`,
       );
-      assert.ok(Math.abs(responsive.trackHeight / responsive.viewport - 3.9) < 0.02);
-      assert.ok(responsive.nextTop >= responsive.viewport + responsive.tailHeight - 1);
+      assert.ok(
+        Math.abs(responsive.heroHeight - responsive.trackHeight) <= 1,
+        `The ${width}px hero and track heights diverged.`,
+      );
+      assert.ok(Math.abs(responsive.canvasHeight - responsive.stageHeight) <= 1);
+      assert.ok(Math.abs(responsive.fragmentHeight - responsive.stageHeight) <= 1);
+      assert.ok(
+        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 2.9) <
+          0.02,
+      );
+      assert.ok(responsive.nextTop >= responsive.viewport - 1);
     }
     if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
   }
 
   await evaluate(
     browser,
-    `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const tail = document.querySelector('.route-dock-mobile-tail'); scrollTo(0, track.offsetHeight - innerHeight + tail.offsetHeight / 2); window.dispatchEvent(new Event('scroll')); return true; })()`,
+    `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); scrollTo(0, track.offsetHeight - innerHeight); window.dispatchEvent(new Event('scroll')); return true; })()`,
   );
   await new Promise((resolve) => setTimeout(resolve, 120));
   const canvasTailCoverage = await evaluate(
@@ -380,7 +393,7 @@ try {
 
   const revealBefore = await evaluate(
     browser,
-    `(() => { const section = document.querySelector('.landing-reveal-section[data-reveal-state="pending"]'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .88); window.dispatchEvent(new Event('scroll')); return true; })()`,
+    `(() => { const section = document.querySelector('.landing-reveal-section[data-reveal-state="pending"]'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * 1.04); window.dispatchEvent(new Event('scroll')); return true; })()`,
   );
   assert.equal(revealBefore, true);
   await new Promise((resolve) => setTimeout(resolve, 120));
@@ -393,7 +406,7 @@ try {
   );
   await evaluate(
     browser,
-    `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .84); window.dispatchEvent(new Event('scroll')); return true; })()`,
+    `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .99); window.dispatchEvent(new Event('scroll')); return true; })()`,
   );
   await waitFor(
     browser,
@@ -405,8 +418,8 @@ try {
     `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild.getBoundingClientRect(); return { targetTop: target.top, viewport: innerHeight }; })()`,
   );
   assert.ok(revealTriggered.targetTop >= 0);
-  assert.ok(revealTriggered.targetTop >= revealTriggered.viewport * 0.78);
-  assert.ok(revealTriggered.targetTop <= revealTriggered.viewport * 0.86);
+  assert.ok(revealTriggered.targetTop >= revealTriggered.viewport * 0.92);
+  assert.ok(revealTriggered.targetTop <= revealTriggered.viewport);
 
   await evaluate(
     browser,

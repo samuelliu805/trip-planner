@@ -119,12 +119,13 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     const update = () => {
       frame = 0;
       const track = trackRef.current;
-      if (!track) return;
+      const viewport = viewportRef.current;
+      if (!track || !viewport) return;
       const heroTop = track.getBoundingClientRect().top + window.scrollY;
       setProgress(
         reducedMotion
           ? 1
-          : scrollProgress(window.scrollY, heroTop, track.offsetHeight, window.innerHeight),
+          : scrollProgress(window.scrollY, heroTop, track.offsetHeight, viewport.offsetHeight),
       );
     };
     const schedule = () => {
@@ -266,7 +267,6 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
           </div>
         </div>
       </div>
-      <div aria-hidden="true" className="route-dock-mobile-tail" />
     </section>
   );
 }

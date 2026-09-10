@@ -1,7 +1,8 @@
 @media (max-width: 699px) {
-  .route-dock-mobile-tail {
-    display: block;
-    height: clamp(9rem, 20svh, 11rem);
+  .route-dock-hero {
+    --route-dock-mobile-extension: clamp(9rem, 20svh, 11rem);
+    --route-dock-stage-height: calc(100svh + var(--route-dock-mobile-extension));
+    --route-dock-track-height: calc(390svh + var(--route-dock-mobile-extension));
   }
   .plandock-nav {
     padding-inline: 1rem;
