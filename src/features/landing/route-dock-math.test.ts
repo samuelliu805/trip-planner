@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   dockState,
+  dockAnimationHeight,
   effectiveDockProgress,
   fragmentTransform,
   mobileWorkspaceLayout,
@@ -18,6 +19,12 @@ test("scroll progress uses the actual scrollable hero range", () => {
   assert.equal(scrollProgress(1650, 200, 3900, 1000), 0.5);
   assert.equal(scrollProgress(3100, 200, 3900, 1000), 1);
   assert.equal(scrollProgress(5000, 200, 3900, 1000), 1);
+});
+
+test("mobile extends the hero tail without slowing the docking animation", () => {
+  assert.equal(dockAnimationHeight(390, 5_200), 3_900);
+  assert.equal(dockAnimationHeight(699, 5_200), 3_900);
+  assert.equal(dockAnimationHeight(700, 5_200), 5_200);
 });
 
 test("mobile landing entry resets only the unanchored mobile page", () => {

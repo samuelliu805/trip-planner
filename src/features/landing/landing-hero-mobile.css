@@ -1,4 +1,7 @@
 @media (max-width: 699px) {
+  .route-dock-track {
+    height: 520svh;
+  }
   .plandock-nav {
     padding-inline: 1rem;
   }

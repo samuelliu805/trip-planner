@@ -12,6 +12,7 @@ import { DockContent } from "./dock-content";
 import { dockKinds, type DockKind } from "./paris-fixture";
 import {
   clamp,
+  dockAnimationHeight,
   dockState,
   effectiveDockProgress,
   fragmentTransform,
@@ -124,7 +125,12 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
       setProgress(
         reducedMotion
           ? 1
-          : scrollProgress(window.scrollY, heroTop, track.offsetHeight, window.innerHeight),
+          : scrollProgress(
+              window.scrollY,
+              heroTop,
+              dockAnimationHeight(window.innerWidth, track.offsetHeight),
+              window.innerHeight,
+            ),
       );
     };
     const schedule = () => {

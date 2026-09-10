@@ -7,6 +7,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { stopChild } from "./lib/child-process.mjs";
+import {
+  MOBILE_DOCK_ANIMATION_VIEWPORTS,
+  MOBILE_DOCK_TRACK_VIEWPORTS,
+} from "../src/features/landing/route-dock-math.ts";
 
 function chromeExecutable() {
   return [process.env.CHROME_PATH, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"]
@@ -195,11 +199,11 @@ async function setProgress(browser, progress) {
     `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); scrollTo(0, (hero.offsetHeight - innerHeight) * ${progress}); window.dispatchEvent(new Event('scroll')); return true; })()`,
   );
   const expected =
-    progress < 0.15
+    progress < 0.14
       ? "scattered"
-      : progress < 0.55
+      : progress < 0.5
         ? "routing"
-        : progress < 0.8
+        : progress < 0.75
           ? "docking"
           : "assembled";
   await waitFor(
@@ -250,8 +254,8 @@ try {
 
   for (const [progress, expected] of [
     [0.25, "routing"],
-    [0.5, "routing"],
-    [0.75, "docking"],
+    [0.49, "routing"],
+    [0.7, "docking"],
   ]) {
     await setProgress(browser, progress);
     assert.equal(
@@ -261,9 +265,9 @@ try {
       ),
       expected,
     );
-    if (progress === 0.5) await screenshot(browser, screenshotDirectory, "02-routing-desktop.png");
+    if (progress === 0.49) await screenshot(browser, screenshotDirectory, "02-routing-desktop.png");
   }
-  await setProgress(browser, 0.78);
+  await setProgress(browser, 0.72);
   const alignment = await evaluate(
     browser,
     `([...document.querySelectorAll('[data-fragment]')].map((fragment) => { const target = document.querySelector('[data-dock-target="' + fragment.dataset.fragment + '"]'); const a = fragment.getBoundingClientRect(); const b = target.getBoundingClientRect(); return { delta: Math.max(Math.abs(a.left-b.left), Math.abs(a.top-b.top), Math.abs(a.width-b.width), Math.abs(a.height-b.height)), opacity: Number(getComputedStyle(fragment).opacity) }; }))`,
@@ -299,7 +303,7 @@ try {
     await setProgress(browser, 0.9);
     const responsive = await evaluate(
       browser,
-      `(() => { const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState }; })()`,
+      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), state: hero.dataset.dockState, trailingHold: hero.offsetHeight * (1 - ${MOBILE_DOCK_ANIMATION_VIEWPORTS / MOBILE_DOCK_TRACK_VIEWPORTS}), viewport: innerHeight }; })()`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
@@ -309,9 +313,44 @@ try {
     if (width < 700) {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
+      assert.ok(
+        responsive.trailingHold >= responsive.viewport,
+        `The ${width}px hero tail held for less than one viewport.`,
+      );
     }
     if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
   }
+
+  await viewport(browser, 390, 844, true);
+  await navigate(browser, app.baseUrl);
+  const revealBefore = await evaluate(
+    browser,
+    `(() => { const section = document.querySelector('.landing-reveal-section[data-reveal-state="pending"]'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .9); window.dispatchEvent(new Event('scroll')); return true; })()`,
+  );
+  assert.equal(revealBefore, true);
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  assert.equal(
+    await evaluate(
+      browser,
+      `document.querySelector('.landing-reveal-section')?.dataset.revealState`,
+    ),
+    "pending",
+  );
+  await evaluate(
+    browser,
+    `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .8); window.dispatchEvent(new Event('scroll')); return true; })()`,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.landing-reveal-section')?.dataset.revealState === 'visible'`,
+    "in-viewport landing section reveal",
+  );
+  const revealTriggered = await evaluate(
+    browser,
+    `(() => { const section = document.querySelector('.landing-reveal-section'); const target = section.firstElementChild.getBoundingClientRect(); return { targetTop: target.top, viewport: innerHeight }; })()`,
+  );
+  assert.ok(revealTriggered.targetTop >= 0);
+  assert.ok(revealTriggered.targetTop <= revealTriggered.viewport * 0.82);
 
   await browser.cdp.send(
     "Emulation.setEmulatedMedia",
