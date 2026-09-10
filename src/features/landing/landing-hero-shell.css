@@ -116,7 +116,7 @@
 
 .hero-copy {
   left: clamp(1.25rem, 5vw, 5.5rem);
-  max-width: min(36rem, 38vw);
+  max-width: min(34rem, 34vw);
   position: absolute;
   top: clamp(7.5rem, 19vh, 12rem);
   z-index: 30;
@@ -153,7 +153,7 @@
 }
 
 html[lang="zh-CN"] .hero-copy {
-  max-width: min(44rem, 54vw);
+  max-width: min(34rem, 34vw);
 }
 
 html[lang="zh-CN"] .hero-copy h1 {
