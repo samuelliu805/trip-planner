@@ -1,6 +1,7 @@
 @media (max-width: 699px) {
-  .route-dock-track {
-    height: 520svh;
+  .route-dock-mobile-tail {
+    display: block;
+    height: clamp(9rem, 20svh, 11rem);
   }
   .plandock-nav {
     padding-inline: 1rem;
@@ -11,23 +12,14 @@
   }
   .plandock-nav .nav-sign-in.nav-account {
     display: inline-flex;
-    max-width: min(5.5rem, 22vw);
+    justify-content: flex-start;
+    max-width: min(8.5rem, 34vw);
+    overflow: hidden;
     padding-inline: 0.5rem;
+    text-align: left;
   }
   .plandock-nav .nav-start {
     display: none;
-  }
-  .plandock-nav .nav-region-switch {
-    min-width: 44px;
-    padding-inline: 0.5rem;
-  }
-  .nav-region-switch-label {
-    display: none;
-  }
-  .nav-region-switch-short {
-    display: inline;
-    font-size: 0.72rem;
-    font-weight: 800;
   }
   .hero-copy {
     left: 1.15rem;

@@ -136,7 +136,6 @@
   gap: 22px;
   justify-content: flex-end;
 }
-
 .public-info-page {
   background: var(--dock-paper, #f7f4ec);
   color: #132238;
@@ -249,6 +248,8 @@
   }
   .route-stops li {
     align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
     min-height: 110px;
   }
   .route-stops li:not(:last-child)::after {
@@ -280,6 +281,7 @@
     text-align: center;
   }
   .plandock-footer nav {
+    flex-wrap: wrap;
     justify-content: center;
   }
   .public-info-page article section {

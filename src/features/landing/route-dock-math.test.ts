@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { translateMessage } from "../i18n/translate.ts";
+
 import {
   dockState,
-  dockAnimationHeight,
   effectiveDockProgress,
   fragmentTransform,
   mobileWorkspaceLayout,
@@ -21,12 +22,6 @@ test("scroll progress uses the actual scrollable hero range", () => {
   assert.equal(scrollProgress(5000, 200, 3900, 1000), 1);
 });
 
-test("mobile extends the hero tail without slowing the docking animation", () => {
-  assert.equal(dockAnimationHeight(390, 5_200), 3_900);
-  assert.equal(dockAnimationHeight(699, 5_200), 3_900);
-  assert.equal(dockAnimationHeight(700, 5_200), 5_200);
-});
-
 test("mobile landing entry resets only the unanchored mobile page", () => {
   assert.equal(shouldResetLandingScroll(699, ""), true);
   assert.equal(shouldResetLandingScroll(700, ""), false);
@@ -42,6 +37,8 @@ test("regional landing links always point to the other deployment", () => {
     href: "https://trip-planner-ivory-one.vercel.app/",
     message: "Go to Global site",
   });
+  assert.equal(translateMessage("zh-CN", "Go to China site"), "前往中国站");
+  assert.equal(translateMessage("zh-CN", "Go to Global site"), "前往全球站");
 });
 
 test("mobile workspace preserves its side and bottom gutters", () => {

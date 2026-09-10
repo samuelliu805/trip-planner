@@ -15,9 +15,6 @@ export type MobileWorkspaceLayout = {
   width: number;
 };
 
-export const MOBILE_DOCK_ANIMATION_VIEWPORTS = 3.9;
-export const MOBILE_DOCK_TRACK_VIEWPORTS = 5.2;
-
 export function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
 }
@@ -30,11 +27,6 @@ export function scrollProgress(
 ) {
   const range = Math.max(1, heroHeight - viewport);
   return clamp((scrollY - heroTop) / range);
-}
-
-export function dockAnimationHeight(viewportWidth: number, trackHeight: number) {
-  if (viewportWidth >= 700) return trackHeight;
-  return trackHeight * (MOBILE_DOCK_ANIMATION_VIEWPORTS / MOBILE_DOCK_TRACK_VIEWPORTS);
 }
 
 export function shouldResetLandingScroll(viewportWidth: number, hash: string) {

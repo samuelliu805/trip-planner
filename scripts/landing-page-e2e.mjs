@@ -7,10 +7,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { stopChild } from "./lib/child-process.mjs";
-import {
-  MOBILE_DOCK_ANIMATION_VIEWPORTS,
-  MOBILE_DOCK_TRACK_VIEWPORTS,
-} from "../src/features/landing/route-dock-math.ts";
 
 function chromeExecutable() {
   return [process.env.CHROME_PATH, "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"]
@@ -303,7 +299,7 @@ try {
     await setProgress(browser, 0.9);
     const responsive = await evaluate(
       browser,
-      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), state: hero.dataset.dockState, trailingHold: hero.offsetHeight * (1 - ${MOBILE_DOCK_ANIMATION_VIEWPORTS / MOBILE_DOCK_TRACK_VIEWPORTS}), viewport: innerHeight }; })()`,
+      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const tail = hero.querySelector('.route-dock-mobile-tail'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), state: track.dataset.dockState, tailHeight: tail.offsetHeight, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
@@ -313,16 +309,44 @@ try {
     if (width < 700) {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
+      assert.ok(responsive.tailHeight >= 144, `The ${width}px hero tail was too short.`);
       assert.ok(
-        responsive.trailingHold >= responsive.viewport,
-        `The ${width}px hero tail held for less than one viewport.`,
+        Math.abs(responsive.heroHeight - responsive.trackHeight - responsive.tailHeight) <= 1,
+        `The ${width}px hero height did not include its static tail.`,
       );
+      assert.ok(Math.abs(responsive.trackHeight / responsive.viewport - 3.9) < 0.02);
+      assert.ok(responsive.nextTop >= responsive.viewport + responsive.tailHeight - 1);
     }
     if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
   }
 
   await viewport(browser, 390, 844, true);
   await navigate(browser, app.baseUrl);
+  await evaluate(
+    browser,
+    `(() => { const account = document.querySelector('.nav-sign-in'); account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
+  );
+  const accountTruncation = await evaluate(
+    browser,
+    `(() => { const account = document.querySelector('.nav-account'); const label = account.querySelector('.nav-account-label'); const accountRect = account.getBoundingClientRect(); const navRect = document.querySelector('.plandock-nav').getBoundingClientRect(); const style = getComputedStyle(label); return { direction: style.direction, left: accountRect.left, navLeft: navRect.left, navRight: navRect.right, overflowed: label.scrollWidth > label.clientWidth, right: accountRect.right, textOverflow: style.textOverflow }; })()`,
+  );
+  assert.equal(accountTruncation.direction, "ltr");
+  assert.equal(accountTruncation.textOverflow, "ellipsis");
+  assert.equal(accountTruncation.overflowed, true);
+  assert.ok(accountTruncation.left >= accountTruncation.navLeft);
+  assert.ok(accountTruncation.right <= accountTruncation.navRight);
+  assert.equal(
+    await evaluate(browser, `document.querySelector('.plandock-nav .nav-region-switch')`),
+    null,
+  );
+  assert.equal(
+    await evaluate(
+      browser,
+      `document.querySelector('.plandock-footer .footer-region-switch')?.textContent.trim()`,
+    ),
+    "Go to China site",
+  );
+
   const revealBefore = await evaluate(
     browser,
     `(() => { const section = document.querySelector('.landing-reveal-section[data-reveal-state="pending"]'); const target = section.firstElementChild; scrollBy(0, target.getBoundingClientRect().top - innerHeight * .9); window.dispatchEvent(new Event('scroll')); return true; })()`,
@@ -351,6 +375,20 @@ try {
   );
   assert.ok(revealTriggered.targetTop >= 0);
   assert.ok(revealTriggered.targetTop <= revealTriggered.viewport * 0.82);
+
+  await evaluate(
+    browser,
+    `document.querySelector('.route-section').scrollIntoView({ block: 'start' }); true`,
+  );
+  const mobileRouteStops = await evaluate(
+    browser,
+    `([...document.querySelectorAll('.route-stops li')].map((item, index, items) => { const number = item.querySelector(':scope > span').getBoundingClientRect(); const label = item.querySelector('strong').getBoundingClientRect(); const itemRect = item.getBoundingClientRect(); const line = getComputedStyle(item, '::after'); return { direction: getComputedStyle(item).flexDirection, labelTop: label.top, lineTop: index < items.length - 1 ? itemRect.top + parseFloat(line.top) : null, numberBottom: number.bottom }; }))`,
+  );
+  for (const stop of mobileRouteStops) {
+    assert.equal(stop.direction, "column");
+    assert.ok(stop.labelTop > stop.numberBottom);
+    if (stop.lineTop !== null) assert.ok(stop.lineTop < stop.labelTop);
+  }
 
   await browser.cdp.send(
     "Emulation.setEmulatedMedia",

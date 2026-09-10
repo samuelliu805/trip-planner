@@ -12,7 +12,6 @@ import { DockContent } from "./dock-content";
 import { dockKinds, type DockKind } from "./paris-fixture";
 import {
   clamp,
-  dockAnimationHeight,
   dockState,
   effectiveDockProgress,
   fragmentTransform,
@@ -81,7 +80,7 @@ function initialRect(kind: DockKind, width: number, height: number): FragmentTra
 }
 
 export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) {
-  const trackRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
   const copyRef = useRef<HTMLDivElement>(null);
@@ -125,12 +124,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
       setProgress(
         reducedMotion
           ? 1
-          : scrollProgress(
-              window.scrollY,
-              heroTop,
-              dockAnimationHeight(window.innerWidth, track.offsetHeight),
-              window.innerHeight,
-            ),
+          : scrollProgress(window.scrollY, heroTop, track.offsetHeight, window.innerHeight),
       );
     };
     const schedule = () => {
@@ -185,89 +179,92 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
   }, [effectiveProgress, targets, viewportSize]);
 
   return (
-    <section
-      className="route-dock-track"
-      data-dock-ready={motionReady ? "true" : "false"}
-      data-dock-state={state}
-      data-testid="route-dock-hero"
-      ref={trackRef}
-    >
-      <div className="route-dock-viewport" ref={viewportRef}>
-        <div
-          className="route-dock-canvas"
-          data-webgl-state={webglFailed ? "fallback" : webglReady ? "ready" : "loading"}
-        >
-          <RouteDockCanvas
-            onFailure={handleWebglFailure}
-            onReady={handleWebglReady}
-            progress={effectiveProgress}
-          />
-        </div>
-        <div className="hero-copy" ref={copyRef}>
-          <p className="landing-eyebrow">
-            <T message="THE CALM WAY TO PLAN A TRIP" />
-          </p>
-          <h1>
-            <T message="Plan every trip in one place." />
-          </h1>
-          <p className="hero-support">
-            <T message="Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road." />
-          </p>
-          <div className="hero-actions">
-            <Button asChild size="lg">
-              <Link href={startHref}>
-                <T message="Start planning" />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="#how-it-works">
-                <T message="See how it works" />
-              </Link>
-            </Button>
+    <section className="route-dock-hero">
+      <div
+        className="route-dock-track"
+        data-dock-ready={motionReady ? "true" : "false"}
+        data-dock-state={state}
+        data-testid="route-dock-hero"
+        ref={trackRef}
+      >
+        <div className="route-dock-viewport" ref={viewportRef}>
+          <div
+            className="route-dock-canvas"
+            data-webgl-state={webglFailed ? "fallback" : webglReady ? "ready" : "loading"}
+          >
+            <RouteDockCanvas
+              onFailure={handleWebglFailure}
+              onReady={handleWebglReady}
+              progress={effectiveProgress}
+            />
           </div>
-          <p className="hero-detail">
-            <T message="Timeline, table, map, options and travel documents—finally connected." />
-          </p>
-        </div>
-        <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
-          <AssembledWorkspace targetOpacity={destinationOpacity} />
-        </div>
-        <div className="fragment-layer" ref={layerRef}>
-          {dockKinds.map((kind) => {
-            const transform =
-              transforms[kind] ?? initialRect(kind, viewportSize.width, viewportSize.height);
-            return (
-              <div
-                className={`moving-fragment fragment-${kind}`}
-                data-fragment={kind}
-                key={kind}
-                style={{
-                  borderRadius: transform.borderRadius,
-                  height: transform.height,
-                  left: transform.x,
-                  opacity: reducedMotion || webglFailed ? 0 : transform.opacity,
-                  top: transform.y,
-                  transform: `rotate(${transform.rotation}deg) scale(${transform.scale})`,
-                  width: transform.width,
-                }}
-              >
-                <DockContent kind={kind} />
-              </div>
-            );
-          })}
-        </div>
-        <div className="completion-label" aria-hidden={state !== "assembled"}>
-          <span>
-            <T message="EVERYTHING IN ONE TRIP" />
-          </span>
-          <strong>
-            <T message="Timeline · Map · Options · Documents" />
-          </strong>
-        </div>
-        <div className="scroll-cue" aria-hidden="true">
-          <ArrowDown />
+          <div className="hero-copy" ref={copyRef}>
+            <p className="landing-eyebrow">
+              <T message="THE CALM WAY TO PLAN A TRIP" />
+            </p>
+            <h1>
+              <T message="Plan every trip in one place." />
+            </h1>
+            <p className="hero-support">
+              <T message="Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road." />
+            </p>
+            <div className="hero-actions">
+              <Button asChild size="lg">
+                <Link href={startHref}>
+                  <T message="Start planning" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="#how-it-works">
+                  <T message="See how it works" />
+                </Link>
+              </Button>
+            </div>
+            <p className="hero-detail">
+              <T message="Timeline, table, map, options and travel documents—finally connected." />
+            </p>
+          </div>
+          <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
+            <AssembledWorkspace targetOpacity={destinationOpacity} />
+          </div>
+          <div className="fragment-layer" ref={layerRef}>
+            {dockKinds.map((kind) => {
+              const transform =
+                transforms[kind] ?? initialRect(kind, viewportSize.width, viewportSize.height);
+              return (
+                <div
+                  className={`moving-fragment fragment-${kind}`}
+                  data-fragment={kind}
+                  key={kind}
+                  style={{
+                    borderRadius: transform.borderRadius,
+                    height: transform.height,
+                    left: transform.x,
+                    opacity: reducedMotion || webglFailed ? 0 : transform.opacity,
+                    top: transform.y,
+                    transform: `rotate(${transform.rotation}deg) scale(${transform.scale})`,
+                    width: transform.width,
+                  }}
+                >
+                  <DockContent kind={kind} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="completion-label" aria-hidden={state !== "assembled"}>
+            <span>
+              <T message="EVERYTHING IN ONE TRIP" />
+            </span>
+            <strong>
+              <T message="Timeline · Map · Options · Documents" />
+            </strong>
+          </div>
+          <div className="scroll-cue" aria-hidden="true">
+            <ArrowDown />
+          </div>
         </div>
       </div>
+      <div aria-hidden="true" className="route-dock-mobile-tail" />
     </section>
   );
 }

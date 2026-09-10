@@ -1,3 +1,4 @@
+import { Globe2 } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { tripPlannerBrandName } from "./brand";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
 import { LandingRevealSection } from "./landing-reveal-section";
+import { alternateLandingSite } from "./regional-landing-sites";
 import { RouteDockHero } from "./route-dock-hero";
 
 import "./landing-hero-shell.css";
@@ -31,9 +33,10 @@ export function LandingPage({
   year: number;
 }) {
   const startHref = accountLabel ? "/trips" : "/guest";
+  const alternateSite = alternateLandingSite(appRegion);
   return (
     <main className="plandock-page">
-      <LandingNavigation accountLabel={accountLabel} appRegion={appRegion} />
+      <LandingNavigation accountLabel={accountLabel} />
       <RouteDockHero startHref={startHref} />
       <FeatureSections />
       <LandingRevealSection className="landing-final-cta">
@@ -59,7 +62,16 @@ export function LandingPage({
         <p>
           © {year} {tripPlannerBrandName}
         </p>
-        <nav aria-label="Legal and support" data-i18n-aria-label="Legal and support">
+        <nav aria-label="Footer navigation" data-i18n-aria-label="Footer navigation">
+          <a
+            aria-label={alternateSite.message}
+            className="footer-region-switch"
+            data-i18n-aria-label={alternateSite.message}
+            href={alternateSite.href}
+          >
+            <Globe2 aria-hidden="true" />
+            <T message={alternateSite.message} />
+          </a>
           <Link href="/privacy">
             <T message="Privacy" />
           </Link>
