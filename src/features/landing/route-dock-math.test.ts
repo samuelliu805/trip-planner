@@ -64,7 +64,9 @@ test("dock states follow the specified transition boundaries", () => {
 
 test("every fragment reaches its measured target before crossfade", () => {
   const start: FragmentTransform = {
+    blur: 1.5,
     borderRadius: 16,
+    depth: 60,
     height: 80,
     opacity: 1,
     rotation: -4,
@@ -80,6 +82,8 @@ test("every fragment reaches its measured target before crossfade", () => {
     assert.ok(Math.abs(result.y - target.y) < 0.001);
     assert.ok(Math.abs(result.width - target.width) < 0.001);
     assert.ok(Math.abs(result.height - target.height) < 0.001);
+    assert.equal(result.depth, 0);
+    assert.equal(result.blur, 0);
     assert.equal(result.opacity, 1);
   }
   assert.ok(fragmentTransform("route", 0.68, start, target).scale > 1);

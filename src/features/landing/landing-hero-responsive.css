@@ -42,6 +42,7 @@
   pointer-events: none;
   position: absolute;
   transform-origin: center;
+  transform-style: preserve-3d;
   will-change: left, top, width, height, transform;
   z-index: 24;
 }
@@ -55,6 +56,8 @@
   inset: 0;
   pointer-events: none;
   position: absolute;
+  perspective: 1200px;
+  perspective-origin: 72% 48%;
   z-index: 20;
 }
 .completion-label {
@@ -70,6 +73,24 @@
 .completion-label span,
 .completion-label strong {
   display: block;
+}
+.completion-label button {
+  align-items: center;
+  color: rgba(247, 244, 236, 0.66);
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 750;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  min-height: 44px;
+  padding-left: 0.6rem;
+}
+.completion-label button:disabled {
+  pointer-events: none;
+}
+.completion-label button svg {
+  height: 0.8rem;
+  width: 0.8rem;
 }
 .completion-label span {
   color: #9dd3c4;

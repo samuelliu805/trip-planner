@@ -18,7 +18,7 @@ import { appUserIdentityLabel } from "@/platform/contracts/auth";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
   const siteName = tripPlannerBrandName;
-  const title = translateMessage(locale, "Trip Planner — Plan routes, stays and travel details");
+  const title = translateMessage(locale, "There We Go — Plan routes, stays and travel details");
   const description = translateMessage(locale, landingDescriptionMessage);
   return {
     alternates: { canonical: "/" },
@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       images: [
         {
-          alt: translateMessage(locale, "Trip Planner itinerary workspace"),
+          alt: translateMessage(locale, "There We Go itinerary workspace"),
           height: 630,
           url: "/opengraph-image",
           width: 1200,

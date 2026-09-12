@@ -3,7 +3,9 @@ import type { DockKind } from "./paris-fixture";
 export type DockState = "scattered" | "routing" | "docking" | "assembled";
 export type DockRect = { height: number; width: number; x: number; y: number };
 export type FragmentTransform = DockRect & {
+  blur: number;
   borderRadius: number;
+  depth: number;
   opacity: number;
   rotation: number;
   scale: number;
@@ -76,11 +78,11 @@ export function mix(from: number, to: number, amount: number) {
   return from + (to - from) * amount;
 }
 
-const routeOffsets: Record<DockKind, { x: number; y: number; rotation: number }> = {
-  route: { x: -46, y: -54, rotation: -2 },
-  stay: { x: 58, y: -34, rotation: 1.5 },
-  activity: { x: -38, y: 46, rotation: -1.2 },
-  document: { x: 48, y: 54, rotation: 2.2 },
+const routeOffsets: Record<DockKind, { depth: number; rotation: number; x: number; y: number }> = {
+  route: { depth: -50, x: -46, y: -54, rotation: -2 },
+  stay: { depth: 64, x: 58, y: -34, rotation: 1.5 },
+  activity: { depth: 28, x: -38, y: 46, rotation: -1.2 },
+  document: { depth: -24, x: 48, y: 54, rotation: 2.2 },
 };
 
 export function fragmentTransform(
@@ -105,9 +107,11 @@ export function fragmentTransform(
     y: mix(start.y, approach.y, routeT) + Math.sin(routeT * Math.PI) * offset.y * 0.2,
     width: mix(start.width, approach.width, routeT),
     height: mix(start.height, approach.height, routeT),
+    depth: mix(start.depth, offset.depth, routeT),
   };
   const crossfade = clamp((progress - 0.72) / 0.03);
   return {
+    blur: mix(mix(start.blur, 0.35, routeT), 0, dockT),
     x: mix(routed.x, target.x, dockT),
     y: mix(routed.y, target.y, dockT),
     width: mix(routed.width, target.width, dockT),
@@ -115,6 +119,7 @@ export function fragmentTransform(
     scale: mix(mix(start.scale, 0.98, routeT), 1, dockT) + snapScale,
     rotation: mix(mix(start.rotation, offset.rotation, routeT), 0, dockT),
     borderRadius: mix(mix(start.borderRadius, 13, routeT), 8, dockT),
+    depth: mix(routed.depth, 0, dockT),
     opacity: 1 - crossfade,
   };
 }

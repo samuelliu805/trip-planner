@@ -41,17 +41,23 @@ export function RouteDockCanvas({
       try {
         const THREE = await import("three");
         if (disposed) return;
+        const mobile = window.innerWidth < 700;
         const renderer = new THREE.WebGLRenderer({
           alpha: true,
-          antialias: true,
+          antialias: !mobile,
           canvas,
-          powerPreference: "high-performance",
+          powerPreference: mobile ? "low-power" : "high-performance",
         });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1 : 1.5));
         renderer.setClearColor(0x000000, 0);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         const routeScene = createRouteDockScene(THREE);
         const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+        const canAnimate = () =>
+          visibleRef.current &&
+          document.visibilityState === "visible" &&
+          !motionQuery.matches &&
+          progressRef.current < 0.86;
 
         const renderScene = (time: number) => {
           if (!visibleRef.current || disposed) return;
@@ -61,15 +67,14 @@ export function RouteDockCanvas({
         const animate = (time: number) => {
           animationFrame = 0;
           renderScene(time);
-          if (!disposed && visibleRef.current && !motionQuery.matches)
-            animationFrame = window.requestAnimationFrame(animate);
+          if (!disposed && canAnimate()) animationFrame = window.requestAnimationFrame(animate);
         };
         const startAnimation = () => {
           window.cancelAnimationFrame(animationFrame);
           animationFrame = 0;
+          if (document.visibilityState === "hidden") return;
           renderScene(performance.now());
-          if (visibleRef.current && !motionQuery.matches)
-            animationFrame = window.requestAnimationFrame(animate);
+          if (canAnimate()) animationFrame = window.requestAnimationFrame(animate);
         };
         const handlePointerMove = (event: PointerEvent) => {
           if (motionQuery.matches) return;
@@ -81,6 +86,9 @@ export function RouteDockCanvas({
         const resize = () => {
           const width = Math.max(1, canvas.clientWidth);
           const height = Math.max(1, canvas.clientHeight);
+          renderer.setPixelRatio(
+            Math.min(window.devicePixelRatio, window.innerWidth < 700 ? 1 : 1.5),
+          );
           renderer.setSize(width, height, false);
           routeScene.camera.aspect = width / height;
           routeScene.camera.updateProjectionMatrix();
@@ -88,7 +96,7 @@ export function RouteDockCanvas({
         };
         renderRef.current = (nextProgress) => {
           progressRef.current = nextProgress;
-          renderScene(performance.now());
+          startAnimation();
         };
         resizeObserver = new ResizeObserver(resize);
         resizeObserver.observe(canvas);
@@ -99,6 +107,7 @@ export function RouteDockCanvas({
         });
         intersectionObserver.observe(canvas);
         window.addEventListener("pointermove", handlePointerMove, { passive: true });
+        document.addEventListener("visibilitychange", startAnimation);
         motionQuery.addEventListener("change", startAnimation);
         resize();
         startAnimation();
@@ -106,6 +115,7 @@ export function RouteDockCanvas({
         cleanup = () => {
           window.cancelAnimationFrame(animationFrame);
           window.removeEventListener("pointermove", handlePointerMove);
+          document.removeEventListener("visibilitychange", startAnimation);
           motionQuery.removeEventListener("change", startAnimation);
           resizeObserver?.disconnect();
           intersectionObserver?.disconnect();

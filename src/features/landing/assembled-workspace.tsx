@@ -16,13 +16,19 @@ function Target({ kind, opacity }: { kind: DockKind; opacity: number }) {
   );
 }
 
-export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number }) {
+export function AssembledWorkspace({
+  targetOpacity,
+  testId = "assembled-product",
+}: {
+  targetOpacity: number;
+  testId?: string;
+}) {
   return (
     <section
       aria-label="Trip itinerary workspace"
       className="plandock-workspace"
       data-i18n-aria-label="Trip itinerary workspace"
-      data-testid="assembled-product"
+      data-testid={testId}
     >
       <header className="workspace-header">
         <div>

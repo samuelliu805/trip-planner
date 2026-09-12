@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { useLandingScrollReset, useRouteDockMeasurements } from "./route-dock-la
 
 const starts: Record<DockKind, FragmentTransform> = {
   route: {
+    blur: 1.2,
     x: 0,
     y: 0,
     width: 238,
@@ -32,10 +33,23 @@ const starts: Record<DockKind, FragmentTransform> = {
     scale: 1,
     rotation: -5,
     borderRadius: 16,
+    depth: -70,
     opacity: 1,
   },
-  stay: { x: 0, y: 0, width: 220, height: 78, scale: 1, rotation: 3, borderRadius: 16, opacity: 1 },
+  stay: {
+    blur: 0,
+    x: 0,
+    y: 0,
+    width: 220,
+    height: 78,
+    scale: 1.04,
+    rotation: 3,
+    borderRadius: 16,
+    depth: 90,
+    opacity: 1,
+  },
   activity: {
+    blur: 0.4,
     x: 0,
     y: 0,
     width: 216,
@@ -43,9 +57,11 @@ const starts: Record<DockKind, FragmentTransform> = {
     scale: 1,
     rotation: -2,
     borderRadius: 16,
+    depth: 35,
     opacity: 1,
   },
   document: {
+    blur: 0.9,
     x: 0,
     y: 0,
     width: 226,
@@ -53,6 +69,7 @@ const starts: Record<DockKind, FragmentTransform> = {
     scale: 1,
     rotation: 4,
     borderRadius: 16,
+    depth: -45,
     opacity: 1,
   },
 };
@@ -98,6 +115,12 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
   });
   const handleWebglFailure = useCallback(() => setWebglFailed(true), []);
   const handleWebglReady = useCallback(() => setWebglReady(true), []);
+  const replay = useCallback(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    const top = track.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ behavior: reducedMotion ? "auto" : "smooth", top });
+  }, [reducedMotion]);
 
   useLandingScrollReset();
 
@@ -161,6 +184,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
         "--mobile-workspace-scale": mobileWorkspace.scale,
         opacity: workspaceOpacity,
         top: mobileWorkspace.top,
+        transform: `translateX(-50%) scale(${state === "assembled" ? mobileWorkspace.scale : mobileWorkspace.scale * 0.985})`,
         width: mobileWorkspace.width,
       }
     : { opacity: workspaceOpacity };
@@ -241,11 +265,12 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
                   key={kind}
                   style={{
                     borderRadius: transform.borderRadius,
+                    filter: `blur(${transform.blur}px)`,
                     height: transform.height,
                     left: transform.x,
                     opacity: reducedMotion || webglFailed ? 0 : transform.opacity,
                     top: transform.y,
-                    transform: `rotate(${transform.rotation}deg) scale(${transform.scale})`,
+                    transform: `translate3d(0, 0, ${transform.depth}px) rotate(${transform.rotation}deg) scale(${transform.scale})`,
                     width: transform.width,
                   }}
                 >
@@ -261,6 +286,10 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
             <strong>
               <T message="Timeline · Map · Options · Documents" />
             </strong>
+            <button disabled={state !== "assembled"} onClick={replay} type="button">
+              <RotateCcw aria-hidden="true" />
+              <T message="Replay the journey" />
+            </button>
           </div>
           <div className="scroll-cue" aria-hidden="true">
             <ArrowDown />

@@ -56,7 +56,7 @@
   .hero-detail {
     display: none;
   }
-  .workspace-stage {
+  .route-dock-viewport .workspace-stage {
     left: 50%;
     right: auto;
     top: max(48svh, 22.5rem);
@@ -64,98 +64,98 @@
     transform-origin: top center;
     width: auto;
   }
-  .route-dock-track[data-dock-state="assembled"] .workspace-stage {
+  .route-dock-track[data-dock-state="assembled"] .route-dock-viewport .workspace-stage {
     transform: translateX(-50%) scale(var(--mobile-workspace-scale, 1));
   }
-  .plandock-workspace {
+  .route-dock-viewport .plandock-workspace {
     border-radius: 12px;
     min-height: 410px;
   }
-  .workspace-header {
+  .route-dock-viewport .workspace-header {
     align-items: center;
     min-height: 76px;
     padding: 10px 11px;
   }
-  .workspace-header h2 {
+  .route-dock-viewport .workspace-header h2 {
     font-size: 1rem;
   }
-  .workspace-header p:last-child {
+  .route-dock-viewport .workspace-header p:last-child {
     font-size: 0.56rem;
   }
-  .workspace-view-tabs span {
+  .route-dock-viewport .workspace-view-tabs span {
     font-size: 0;
     padding: 7px;
   }
-  .workspace-main {
+  .route-dock-viewport .workspace-main {
     grid-template-columns: 1.55fr 0.8fr;
     min-height: 260px;
   }
-  .workspace-row {
+  .route-dock-viewport .workspace-row {
     grid-template-columns: 42px 40px minmax(56px, 1fr) minmax(62px, 1.08fr);
     min-height: 56px;
   }
-  .workspace-row > span,
-  .workspace-row > .plandock-target {
+  .route-dock-viewport .workspace-row > span,
+  .route-dock-viewport .workspace-row > .plandock-target {
     padding: 5px 4px;
   }
-  .workspace-row > span {
+  .route-dock-viewport .workspace-row > span {
     font-size: 0.49rem;
   }
-  .workspace-row.is-header {
+  .route-dock-viewport .workspace-row.is-header {
     min-height: 28px;
   }
-  .workspace-row.is-header span {
+  .route-dock-viewport .workspace-row.is-header span {
     font-size: 0.44rem;
   }
-  .target-stay,
-  .target-activity {
+  .route-dock-viewport .target-stay,
+  .route-dock-viewport .target-activity {
     height: 56px;
   }
-  .workspace-map {
+  .route-dock-viewport .workspace-map {
     padding: 7px;
   }
-  .target-route {
+  .route-dock-viewport .target-route {
     bottom: 48px;
     height: 54px;
     left: 7px;
     right: 7px;
   }
-  .workspace-options {
+  .route-dock-viewport .workspace-options {
     bottom: 7px;
     left: 7px;
     padding: 6px;
     right: 7px;
   }
-  .workspace-options small {
+  .route-dock-viewport .workspace-options small {
     display: none;
   }
-  .workspace-resources {
+  .route-dock-viewport .workspace-resources {
     height: 70px;
     padding: 7px 10px;
   }
-  .resources-label {
+  .route-dock-viewport .resources-label {
     font-size: 0;
     width: 18px;
   }
-  .target-document {
+  .route-dock-viewport .target-document {
     height: 54px;
   }
-  .dock-fragment-copy {
+  .route-dock-viewport .dock-fragment-copy {
     gap: 5px;
     padding: 5px;
   }
-  .dock-fragment-copy > svg {
+  .route-dock-viewport .dock-fragment-copy > svg {
     height: 23px;
     padding: 5px;
     width: 23px;
   }
-  .dock-fragment-copy strong {
+  .route-dock-viewport .dock-fragment-copy strong {
     font-size: 0.49rem;
   }
-  .moving-fragment .dock-fragment-copy strong {
+  .route-dock-viewport .moving-fragment .dock-fragment-copy strong {
     font-size: 0.67rem;
   }
-  .moving-fragment .dock-fragment-copy span {
+  .route-dock-viewport .moving-fragment .dock-fragment-copy span {
     font-size: 0.55rem;
   }
   .completion-label {

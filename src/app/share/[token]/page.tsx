@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
       description,
       images: [{ alt: itinerary.metadata.title, height: 630, url: imageUrl, width: 1200 }],
       locale: locale === "zh-CN" ? "zh_CN" : "en_US",
-      siteName: locale === "zh-CN" ? "行程规划" : "Trip Planner",
+      siteName: "There We Go",
       title: itinerary.metadata.title,
       type: "website",
       url: canonicalUrl,

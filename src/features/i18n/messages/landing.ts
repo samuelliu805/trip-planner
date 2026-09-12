@@ -1,6 +1,7 @@
 export const landingZhCN: Record<string, string> = {
+  "There We Go": "There We Go",
   "THE CALM WAY TO PLAN A TRIP": "旅行计划，不必手忙脚乱",
-  "Plan every trip in one place.": "一站搞定整趟旅行。",
+  "Plan every trip in one place.": "把整趟旅行，安排在一起。",
   "Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road.":
     "路线、备选、预订和票据都放在一起，随时整理，也能直接分享一份路上真正用得上的行程。",
   "See how it works": "看看怎么用",
@@ -8,6 +9,7 @@ export const landingZhCN: Record<string, string> = {
     "日程、表格、地图、备选和旅行资料，终于都在一起了。",
   "EVERYTHING IN ONE TRIP": "一趟旅行，所有信息都归位",
   "Timeline · Map · Options · Documents": "日程 · 地图 · 备选 · 资料",
+  "Replay the journey": "重播归位过程",
   "TRIP WORKSPACE": "行程总览",
   "4 days": "4 天",
   Matrix: "行程表",
@@ -27,8 +29,8 @@ export const landingZhCN: Record<string, string> = {
   "Go to Global site": "前往全球站",
   "FROM LOOSE PIECES TO A WORKING ROUTE": "从零散信息，到一份能执行的行程",
   "Plan with the shape of the trip in view.": "先看全程，再排好每一天。",
-  "Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves.":
-    "Trip Planner 把日期、地点、路线备选和参考资料放在一处。怎么选、怎么排，始终由你决定。",
+  "There We Go keeps days, places, route choices and source material connected without pretending the decisions make themselves.":
+    "There We Go 把日期、地点、路线备选和参考资料放在一处。怎么选、怎么排，始终由你决定。",
   "01 · PLAN THE WHOLE TRIP": "01 · 先把整趟旅行排明白",
   "See every day at once.": "每一天，一眼就能看全。",
   "Use a structured Matrix or Timeline for accommodation, transport, activities, meals and notes. Reorder the day when the plan changes.":
@@ -49,15 +51,17 @@ export const landingZhCN: Record<string, string> = {
   "Save route and trip options side by side. Compare their known details without invented scores or automatic winners.":
     "把路线和行程备选并排保存，只比较已知信息。没有凭空打分，也不会替你做决定。",
   "Paris Trip": "巴黎之旅",
-  "Privacy | Trip Planner": "隐私 | 行程规划",
-  "Terms | Trip Planner": "条款 | 行程规划",
-  "Support | Trip Planner": "支持 | 行程规划",
+  "Privacy | There We Go": "隐私 | There We Go",
+  "Terms | There We Go": "条款 | There We Go",
+  "Support | There We Go": "支持 | There We Go",
   "RER B + Metro": "RER B + 地铁",
   "RER B + walk": "RER B + 步行",
   "Direct · 38 min": "直达 · 38 分钟",
   "One change · 44 min": "换乘一次 · 44 分钟",
   "Louvre timed ticket.pdf": "卢浮宫定时门票.pdf",
   "PARIS · DAY 1": "巴黎 · 第 1 天",
+  "Illustrative Paris route map": "巴黎路线示意图",
+  "Illustrative map · no live map data": "示意地图 · 不调用实时地图数据",
   "Paris, France": "法国巴黎",
   "Transfer to Rive Gauche": "前往左岸",
   "In plan": "已加入计划",
@@ -70,6 +74,25 @@ export const landingZhCN: Record<string, string> = {
   "Booking link": "预订链接",
   "Connected to Louvre Museum": "已连接至卢浮宫博物馆",
   "Keep the source beside the plan—not in another tab.": "资料就在行程旁边，不用再翻一堆标签页。",
+  "05 · SHARE A TRIP PEOPLE CAN READ": "05 · 把行程分享成一份可读成品",
+  "Turn the workspace into a travel-ready page.": "从规划工作区，到路上好读的分享页。",
+  "Publish a read-only view of the plan you choose. Inviting someone to collaborate is a separate action, with separate access.":
+    "把你选定的计划发布为只读页面。邀请他人共同编辑是另一项操作，也有独立的访问权限。",
+  "View read-only sample": "查看只读示例",
+  "Replay transition": "重播过渡",
+  "Planning workspace": "规划工作区",
+  "Public · read only": "公开 · 只读",
+  "Local demonstration": "本地演示",
+  "Public share": "公开分享",
+  "Anyone with the link can read the published snapshot.": "获得链接的人可以查看已发布的只读快照。",
+  "Invite to collaborate": "邀请协作",
+  "Editing access is granted separately by the trip owner.": "编辑权限由行程所有者另行授予。",
+  "Route A": "方案 A",
+  "Arrival and the Left Bank": "抵达与左岸",
+  "Museums and the canal": "美术馆与运河",
+  "Versailles day trip": "凡尔赛一日行",
+  "Four days across Paris and Versailles.": "穿行巴黎与凡尔赛的四日行程。",
+  "Go to {brand}": "前往 {brand}",
   "A DETERMINISTIC LOCAL SAMPLE": "固定的本地示例",
   "A multi-day Paris plan, shown with the same dates, places, route choices and document relationships throughout this page.":
     "一份多日巴黎计划；整页始终使用同一组日期、地点、路线选择与文件关系。",
@@ -90,9 +113,9 @@ export const landingZhCN: Record<string, string> = {
   "Legal and support": "法律信息与支持",
   "Build the route, compare options, keep travel documents close, and share one usable trip plan.":
     "把每天的行程、路线备选、住宿、预订和票据放在一起，随时调整并分享一份路上真正用得上的旅行计划。",
-  "Trip Planner — Plan routes, stays and travel details":
-    "Trip Planner：路线、住宿和旅行资料一处整理",
-  "Trip Planner itinerary workspace": "Trip Planner 行程规划区",
+  "There We Go — Plan routes, stays and travel details":
+    "There We Go：路线、住宿和旅行资料一处整理",
+  "There We Go itinerary workspace": "There We Go 行程规划区",
   "Visual itinerary planning": "用行程表直观看全程",
   "Day-by-day route planning": "按天规划路线",
   "Travel option comparison": "并排比较旅行备选",
@@ -116,10 +139,10 @@ export const landingZhCN: Record<string, string> = {
   "Gare du Nord": "巴黎北站",
   "Rive Gauche": "巴黎左岸",
   "PDF · 184 KB": "PDF · 184 KB",
-  "Back to Trip Planner": "返回行程规划",
+  "Back to There We Go": "返回 There We Go",
   PRIVACY: "隐私",
   "Your trip information should stay understandable.": "你的行程信息应当清晰可控。",
-  "Trip Planner uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.":
+  "There We Go uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.":
     "行程规划使用账户、行程和必要的技术信息，以提供规划工作区、你主动启用的公开分享与服务稳定性。",
   "What is stored": "存储哪些信息",
   "Signed-in plans are stored by the configured regional service. Guest plans stay in this browser unless you choose to save them to an account.":
@@ -131,8 +154,8 @@ export const landingZhCN: Record<string, string> = {
   "Authentication, storage, mapping and optional telemetry follow the provider configured for the application region.":
     "身份验证、存储、地图和可选遥测均遵循应用所在区域配置的服务提供方。",
   TERMS: "条款",
-  "Trip Planner helps you organize a plan.": "行程规划帮助你整理计划。",
-  "Trip Planner is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.":
+  "There We Go helps you organize a plan.": "There We Go 帮助你整理计划。",
+  "There We Go is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.":
     "行程规划是旅行规划工作区，不销售旅行产品、不代为预订、不保证可用性，也不能替代旅行服务商的意见。",
   "Your responsibility": "你的责任",
   "Check dates, reservations, entry requirements, prices and transport details with the relevant provider before you travel.":
@@ -141,7 +164,7 @@ export const landingZhCN: Record<string, string> = {
   "You are responsible for the trip information and files you add, and for choosing what to publish through a share link.":
     "你需对添加的行程信息和文件负责，并自行决定通过分享链接发布哪些内容。",
   Availability: "可用性",
-  "Features may change as the product develops. Do not rely on Trip Planner as the only copy of an essential ticket or travel document.":
+  "Features may change as the product develops. Do not rely on There We Go as the only copy of an essential ticket or travel document.":
     "产品功能可能随发展而变化。请勿将行程规划作为重要票据或旅行文件的唯一备份。",
   SUPPORT: "支持",
   "Need a hand with your plan?": "规划遇到问题？",

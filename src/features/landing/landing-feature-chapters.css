@@ -1,221 +1,83 @@
-/* Desktop feature chapters keep the copy readable while each product example assembles. */
-@media (min-width: 900px) and (min-height: 680px) {
-  .feature-section {
-    align-items: start;
-    min-height: 150svh;
-    padding-block: clamp(8rem, 16svh, 12rem);
+/* Supporting chapters enter once and keep native page scrolling in control. */
+@media (prefers-reduced-motion: no-preference) {
+  .matrix-section[data-reveal-state="pending"] .feature-matrix-photo,
+  .options-section[data-reveal-state="pending"] .options-demo-photo {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0.35;
+    transform: translateY(1rem) rotate(4deg);
   }
 
-  .feature-section > .feature-heading {
-    position: sticky;
-    top: clamp(9rem, 24svh, 14rem);
+  .matrix-section[data-reveal-state="visible"] .feature-matrix-photo,
+  .options-section[data-reveal-state="visible"] .options-demo-photo {
+    clip-path: inset(0);
+    opacity: 1;
+    transform: none;
+    transition:
+      clip-path 820ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 520ms ease,
+      transform 820ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .matrix-section > .feature-matrix-stage,
-  .route-section > .route-demo,
-  .options-section > .options-demo,
-  .documents-section > .documents-demo {
-    position: sticky;
-    top: clamp(7rem, 16svh, 10rem);
+  .matrix-section[data-reveal-state="pending"] .feature-matrix-row:not(.is-header),
+  .options-section[data-reveal-state="pending"] .options-demo article,
+  .documents-section[data-reveal-state="pending"] .documents-demo > * {
+    filter: blur(4px);
+    opacity: 0;
+    transform: translateY(1.25rem);
   }
 
-  .matrix-section {
-    view-timeline-name: --matrix-chapter;
+  .matrix-section[data-reveal-state="visible"] .feature-matrix-row:not(.is-header),
+  .options-section[data-reveal-state="visible"] .options-demo article,
+  .documents-section[data-reveal-state="visible"] .documents-demo > * {
+    filter: none;
+    opacity: 1;
+    transform: none;
+    transition:
+      filter 620ms ease,
+      opacity 620ms ease,
+      transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  .route-section {
-    view-timeline-name: --route-chapter;
+  .feature-section[data-reveal-state="visible"] :is(.feature-matrix-row, article):nth-child(2),
+  .documents-section[data-reveal-state="visible"] .documents-demo > :nth-child(2) {
+    transition-delay: 80ms;
   }
 
-  .options-section {
-    view-timeline-name: --options-chapter;
+  .feature-section[data-reveal-state="visible"] :is(.feature-matrix-row, article):nth-child(3),
+  .documents-section[data-reveal-state="visible"] .documents-demo > :nth-child(3) {
+    transition-delay: 160ms;
   }
 
-  .documents-section {
-    view-timeline-name: --documents-chapter;
+  .feature-section[data-reveal-state="visible"] .feature-matrix-row:nth-child(4) {
+    transition-delay: 240ms;
   }
 }
 
-@media (min-width: 900px) and (min-height: 680px) and (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .feature-section
-      :is(.feature-matrix-row, .manual-order, .route-stops li, .options-demo article),
-    .documents-demo > * {
-      animation-duration: 1ms;
-      animation-fill-mode: both;
-      animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-    }
+@media (hover: hover) and (pointer: fine) {
+  .feature-matrix,
+  .options-demo,
+  .documents-demo > * {
+    transition:
+      border-color 180ms ease,
+      box-shadow 220ms ease,
+      transform 220ms ease;
+  }
 
-    .feature-matrix-row:not(.is-header),
-    .manual-order {
-      animation-name: chapter-rise;
-      animation-timeline: --matrix-chapter;
-    }
+  .feature-matrix:hover,
+  .options-demo:hover {
+    box-shadow: 0 32px 78px rgba(19, 34, 56, 0.16);
+    transform: translateY(-3px);
+  }
 
-    .feature-matrix-row:nth-child(2) {
-      animation-range: entry 18% cover 34%;
-    }
-
-    .feature-matrix-row:nth-child(3) {
-      animation-range: entry 25% cover 41%;
-    }
-
-    .feature-matrix-row:nth-child(4) {
-      animation-range: entry 32% cover 48%;
-    }
-
-    .manual-order {
-      animation-range: entry 40% cover 56%;
-    }
-
-    .feature-matrix-photo {
-      animation: chapter-photo 1ms cubic-bezier(0.22, 1, 0.36, 1) both;
-      animation-range: entry 12% cover 50%;
-      animation-timeline: --matrix-chapter;
-    }
-
-    .route-map path {
-      animation: chapter-route 1ms ease-out both;
-      animation-range: entry 16% cover 50%;
-      animation-timeline: --route-chapter;
-      stroke-dasharray: 640;
-    }
-
-    .route-map circle {
-      animation: chapter-pin 1ms cubic-bezier(0.22, 1, 0.36, 1) both;
-      animation-range: entry 32% cover 48%;
-      animation-timeline: --route-chapter;
-      transform-box: fill-box;
-      transform-origin: center;
-    }
-
-    .route-stops li {
-      animation-name: chapter-slide;
-      animation-timeline: --route-chapter;
-    }
-
-    .route-stops li:nth-child(1) {
-      animation-range: entry 24% cover 38%;
-    }
-
-    .route-stops li:nth-child(2) {
-      animation-range: entry 32% cover 46%;
-    }
-
-    .route-stops li:nth-child(3) {
-      animation-range: entry 40% cover 54%;
-    }
-
-    .options-demo-photo {
-      animation: chapter-uncover 1ms cubic-bezier(0.22, 1, 0.36, 1) both;
-      animation-range: entry 12% cover 40%;
-      animation-timeline: --options-chapter;
-    }
-
-    .options-demo article {
-      animation-name: chapter-slide;
-      animation-timeline: --options-chapter;
-    }
-
-    .options-demo article:nth-of-type(1) {
-      animation-range: entry 24% cover 38%;
-    }
-
-    .options-demo article:nth-of-type(2) {
-      animation-range: entry 32% cover 46%;
-    }
-
-    .options-demo article:nth-of-type(3) {
-      animation-range: entry 40% cover 54%;
-    }
-
-    .documents-demo > * {
-      animation-name: chapter-document;
-      animation-timeline: --documents-chapter;
-    }
-
-    .document-link {
-      animation-range: entry 18% cover 34%;
-    }
-
-    .document-file {
-      animation-range: entry 28% cover 44%;
-    }
-
-    .document-note {
-      animation-range: entry 38% cover 54%;
-    }
+  .documents-demo > *:hover {
+    border-color: rgba(120, 183, 154, 0.62);
+    transform: translateY(-2px) rotate(0deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .feature-section {
+  .feature-section,
+  .share-section {
     min-height: auto;
-  }
-
-  .feature-section > .feature-heading,
-  .route-section > .route-demo,
-  .options-section > .options-demo {
-    position: static;
-  }
-
-  .matrix-section > .feature-matrix-stage,
-  .documents-section > .documents-demo {
-    position: relative;
-  }
-}
-
-@keyframes chapter-rise {
-  from {
-    filter: blur(5px);
-    opacity: 0.16;
-    transform: translateY(1.75rem);
-  }
-}
-
-@keyframes chapter-slide {
-  from {
-    filter: blur(4px);
-    opacity: 0.14;
-    transform: translateX(1.75rem);
-  }
-}
-
-@keyframes chapter-photo {
-  from {
-    opacity: 0.25;
-    transform: translate(1.5rem, 1rem) rotate(9deg) scale(0.9);
-  }
-}
-
-@keyframes chapter-route {
-  from {
-    stroke-dashoffset: 640;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes chapter-pin {
-  from {
-    opacity: 0;
-    transform: scale(0);
-  }
-}
-
-@keyframes chapter-uncover {
-  from {
-    clip-path: inset(0 0 100% 0);
-    opacity: 0.35;
-  }
-}
-
-@keyframes chapter-document {
-  from {
-    filter: blur(4px);
-    opacity: 0.12;
-    transform: translate(2rem, 1rem) rotate(2deg);
   }
 }

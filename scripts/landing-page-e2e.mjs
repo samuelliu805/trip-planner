@@ -245,7 +245,7 @@ try {
   assert.equal(seo.canonicalPath, "/");
   assert.match(seo.description, /route/i);
   assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
-  assert.match(seo.title, /^Trip Planner/);
+  assert.match(seo.title, /^There We Go/);
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
 
   for (const [progress, expected] of [
@@ -288,12 +288,59 @@ try {
       await screenshot(browser, screenshotDirectory, "04-assembled-desktop.png");
   }
 
+  await evaluate(
+    browser,
+    `document.querySelector('.route-section').scrollIntoView({ block: 'center' }); true`,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.route-section')?.dataset.revealState === 'visible'`,
+    "route story reveal",
+  );
+  await new Promise((resolve) => setTimeout(resolve, 1_750));
+  const routeStory = await evaluate(
+    browser,
+    `(() => { const story = document.querySelector('[data-testid="landing-route-story"]'); const path = story.querySelector('path'); return { disclosure: story.querySelector('.map-disclosure')?.textContent.trim(), pathLength: path.getAttribute('pathLength'), points: story.querySelectorAll('.route-point').length, stops: story.querySelectorAll('.route-stops li').length }; })()`,
+  );
+  assert.deepEqual(routeStory, {
+    disclosure: "Illustrative map · no live map data",
+    pathLength: "1",
+    points: 3,
+    stops: 3,
+  });
+  await screenshot(browser, screenshotDirectory, "05-route-story-desktop.png");
+
+  await evaluate(
+    browser,
+    `document.querySelector('#share-demo').scrollIntoView({ block: 'center' }); true`,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.share-story')?.dataset.shareState === 'published' && Number(getComputedStyle(document.querySelector('.landing-public-sheet')).opacity) > .99`,
+    "read-only share sample",
+  );
+  const shareStory = await evaluate(
+    browser,
+    `(() => { const story = document.querySelector('.share-story'); const sheet = story.querySelector('.landing-public-sheet'); return { accessNotes: story.querySelectorAll('.share-access-note > span').length, brand: sheet.querySelector('.public-brand-wordmark')?.textContent.trim(), hasProductionOverview: Boolean(sheet.querySelector('.public-overview.overview-v4')), local: sheet.querySelector('.landing-public-ribbon small')?.textContent.trim(), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, visible: getComputedStyle(sheet).visibility === 'visible' && Number(getComputedStyle(sheet).opacity) > .99 }; })()`,
+  );
+  assert.deepEqual(shareStory, {
+    accessNotes: 2,
+    brand: "there we go",
+    hasProductionOverview: true,
+    local: "Local demonstration",
+    overflow: 0,
+    visible: true,
+  });
+  await screenshot(browser, screenshotDirectory, "06-share-story-desktop.png");
+
   for (const [width, height] of [
+    [1280, 800],
     [1024, 768],
     [820, 1180],
     [768, 1024],
     [430, 932],
     [390, 844],
+    [360, 800],
   ]) {
     await viewport(browser, width, height, width < 700);
     await navigate(browser, app.baseUrl);
@@ -353,7 +400,7 @@ try {
       );
       assert.ok(responsive.nextTop >= responsive.viewport - 1);
     }
-    if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
+    if (width === 390) await screenshot(browser, screenshotDirectory, "07-assembled-mobile.png");
   }
 
   await evaluate(
@@ -477,7 +524,7 @@ try {
     ),
     true,
   );
-  await screenshot(browser, screenshotDirectory, "06-reduced-motion.png");
+  await screenshot(browser, screenshotDirectory, "08-reduced-motion.png");
 
   await browser.cdp.send("Emulation.setEmulatedMedia", { features: [] }, browser.sessionId);
   await navigate(browser, app.baseUrl, "/?webgl=off", "fallback");
@@ -516,26 +563,27 @@ try {
   }
   const landingCopy = await evaluate(
     browser,
-    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), tripPlannerMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'Trip Planner').length })`,
+    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasReadOnlySample: document.querySelector('.share-story button')?.textContent.includes('View read-only sample') === true, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'there we go').length })`,
   );
   assert.deepEqual(landingCopy, {
     hasHowItWorksLink: true,
+    hasReadOnlySample: true,
     hasSampleLink: false,
     mentionsOldBrand: false,
     mentionsSampleTrip: false,
-    tripPlannerMarks: 2,
+    wordmarks: 2,
   });
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('一站搞定')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('把整趟旅行')`,
     "Simplified Chinese landing copy",
   );
   await viewport(browser, 390, 844, true);
   await navigate(browser, app.baseUrl);
   const chineseLanding = await evaluate(
     browser,
-    `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'Trip Planner').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,
+    `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'there we go').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,
   );
   assert.equal(chineseLanding.brandMarks, 2);
   assert.ok(

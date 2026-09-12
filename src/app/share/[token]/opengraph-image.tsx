@@ -6,7 +6,7 @@ import { translateMessage } from "@/features/i18n/translate";
 import { getPublicItinerary } from "@/features/sharing/data";
 import { localizeGeneratedPublicDescription } from "@/features/sharing/public-copy";
 
-export const alt = "Trip Planner 行程";
+export const alt = "There We Go 行程";
 export const contentType = "image/png";
 export const size = { height: 630, width: 1200 };
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export const revalidate = 0;
 export default async function OpenGraphImage({ params }: { params: Promise<{ token: string }> }) {
   const [{ token }, locale] = await Promise.all([params, getRequestLocale()]);
   const itinerary = z.uuid().safeParse(token).success ? await getPublicItinerary(token) : null;
-  const title = itinerary?.metadata.title ?? translateMessage(locale, "Trip Planner");
+  const title = itinerary?.metadata.title ?? "There We Go";
   const description = itinerary
     ? localizeGeneratedPublicDescription(itinerary.metadata.description, locale)
     : translateMessage(locale, "Shared itinerary");
@@ -53,7 +53,7 @@ export default async function OpenGraphImage({ params }: { params: Promise<{ tok
               textTransform: locale === "zh-CN" ? "none" : "uppercase",
             }}
           >
-            {translateMessage(locale, "Trip Planner")}
+            {translateMessage(locale, "There We Go")}
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 54, fontWeight: 700, lineHeight: 1.08 }}>
