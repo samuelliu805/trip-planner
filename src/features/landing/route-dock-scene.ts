@@ -18,6 +18,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
     new THREE.Vector3(5.4, -1.35, -0.55),
   ]);
   const routePoints = routeCurve.getPoints(180);
+  const routeBaseGeometry = new THREE.BufferGeometry().setFromPoints(routePoints);
   const routeGeometry = new THREE.BufferGeometry().setFromPoints(routePoints);
   routeGeometry.setDrawRange(0, 0);
   const routeMaterial = new THREE.LineBasicMaterial({
@@ -34,7 +35,14 @@ export function createRouteDockScene(THREE: ThreeModule) {
     opacity: 0.24,
     transparent: true,
   });
+  const routeBaseMaterial = new THREE.LineBasicMaterial({
+    color: 0x78b79a,
+    depthWrite: false,
+    opacity: 0.2,
+    transparent: true,
+  });
   routeField.add(
+    new THREE.Line(routeBaseGeometry, routeBaseMaterial),
     new THREE.Line(routeGeometry, routeGlowMaterial),
     new THREE.Line(routeGeometry, routeMaterial),
   );
@@ -95,25 +103,6 @@ export function createRouteDockScene(THREE: ThreeModule) {
   arrivalRing.position.copy(routeCurve.getPointAt(1));
   routeField.add(arrivalRing);
 
-  const particleGeometry = new THREE.BufferGeometry();
-  const particlePositions = new Float32Array(72 * 3);
-  for (let index = 0; index < 72; index += 1) {
-    particlePositions[index * 3] = ((index * 47) % 137) / 10 - 6.8;
-    particlePositions[index * 3 + 1] = ((index * 29) % 79) / 10 - 3.9;
-    particlePositions[index * 3 + 2] = -1.5 - ((index * 17) % 37) / 12;
-  }
-  particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
-  const particleMaterial = new THREE.PointsMaterial({
-    blending: THREE.AdditiveBlending,
-    color: 0x90c7b2,
-    depthWrite: false,
-    opacity: 0.32,
-    size: 0.04,
-    transparent: true,
-  });
-  const particles = new THREE.Points(particleGeometry, particleMaterial);
-  scene.add(particles);
-
   const completionLight = new THREE.PointLight(0x70d4b4, 0, 12);
   completionLight.position.set(3.2, 0.3, 2);
   scene.add(completionLight);
@@ -139,12 +128,11 @@ export function createRouteDockScene(THREE: ThreeModule) {
     routeGeometry.setDrawRange(0, Math.round(routePoints.length * routeProgress));
     routeMaterial.opacity = 0.9 * routeVisibility;
     routeGlowMaterial.opacity = 0.24 * routeVisibility;
+    routeBaseMaterial.opacity = 0.2 * routeVisibility;
     pointer.x += (targetPointer.x - pointer.x) * 0.045;
     pointer.y += (targetPointer.y - pointer.y) * 0.045;
     routeField.rotation.x = pointer.y * -0.025;
     routeField.rotation.y = pointer.x * 0.035;
-    particles.rotation.z = nextProgress * 0.04 + elapsed * 0.006;
-    particles.position.y = Math.sin(elapsed * 0.34) * 0.055;
     routeNodes.forEach((node, index) => {
       const revealed = nextProgress > 0.12 && routeProgress >= nodeStops[index] - 0.025;
       const pulse = 1 + Math.sin(elapsed * 2.4 + index * 0.9) * 0.16;
@@ -170,8 +158,10 @@ export function createRouteDockScene(THREE: ThreeModule) {
 
   function dispose() {
     routeGeometry.dispose();
+    routeBaseGeometry.dispose();
     routeMaterial.dispose();
     routeGlowMaterial.dispose();
+    routeBaseMaterial.dispose();
     nodeGeometry.dispose();
     nodeMaterials.forEach((material) => material.dispose());
     travelerGeometry.dispose();
@@ -180,8 +170,6 @@ export function createRouteDockScene(THREE: ThreeModule) {
     haloMaterial.dispose();
     arrivalGeometry.dispose();
     arrivalMaterial.dispose();
-    particleGeometry.dispose();
-    particleMaterial.dispose();
   }
 
   return { camera, dispose, render, scene };

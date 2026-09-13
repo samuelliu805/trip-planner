@@ -6,6 +6,7 @@ import { zhCN } from "date-fns/locale";
 import Link from "next/link";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { tripPlannerBrandName, tripPlannerWordmark } from "@/features/landing/brand";
 import type { CompiledPublicTemplateV1 } from "../templates/schema";
 import type { PublicItinerary } from "../types";
 
@@ -32,7 +33,11 @@ export function PublicTripHeader({
   const BrandIcon = template.id === "journal" ? Send : Route;
   return (
     <div className="public-brand-area" id="public-itinerary-top">
-      <Link aria-label={t("Go to Trip Planner")} className="public-brand-kicker" href="/">
+      <Link
+        aria-label={t("Go to {brand}", { brand: tripPlannerBrandName })}
+        className="public-brand-kicker"
+        href="/"
+      >
         {template.id === "ethereal" ? (
           <span aria-hidden="true" className="public-brand-monogram">
             <T message={" TP "} />
@@ -40,7 +45,7 @@ export function PublicTripHeader({
         ) : (
           <BrandIcon aria-hidden="true" className="size-3.5" />
         )}
-        <T message="Trip Planner" />
+        <span className="public-brand-wordmark">{tripPlannerWordmark}</span>
       </Link>
       <h1 className="public-trip-title">{itinerary.trip.title}</h1>
       <p className="public-trip-meta">

@@ -99,7 +99,7 @@
 
 .route-dock-hero {
   --route-dock-stage-height: 100svh;
-  --route-dock-track-height: 390svh;
+  --route-dock-track-height: 350svh;
   background: var(--dock-navy);
   position: relative;
 }
@@ -125,9 +125,10 @@
 .route-dock-viewport::after {
   background: linear-gradient(
     90deg,
-    rgba(19, 34, 56, 0.88) 0%,
-    rgba(19, 34, 56, 0.38) 42%,
-    transparent 68%
+    rgba(19, 34, 56, 0.9) 0%,
+    rgba(19, 34, 56, 0.48) 36%,
+    rgba(19, 34, 56, 0.05) 59%,
+    transparent 76%
   );
   content: "";
   inset: 0;

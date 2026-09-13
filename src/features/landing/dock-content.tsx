@@ -1,5 +1,4 @@
-import { BedDouble, FileText, MapPin, Route } from "lucide-react";
-import { Fragment } from "react";
+import { BedDouble, CalendarClock, MapPin, Ticket } from "lucide-react";
 
 import { T } from "@/features/i18n/i18n-provider";
 
@@ -9,20 +8,18 @@ import type { DockKind } from "./paris-fixture";
 export function DockContent({ kind, compact = false }: { kind: DockKind; compact?: boolean }) {
   if (kind === "route") {
     return (
-      <div className="dock-fragment-copy dock-fragment-route">
-        <Route aria-hidden="true" />
+      <div className="dock-fragment-copy dock-fragment-place">
+        <MapPin aria-hidden="true" />
         <div>
+          <span>
+            <T message="Place card" />
+          </span>
           <strong>
-            <T message={parisLandingFixture.route.label} />
+            <T message="Louvre Museum" />
           </strong>
           {!compact ? (
             <span>
-              {parisLandingFixture.route.stops.map((stop, index) => (
-                <Fragment key={stop}>
-                  {index > 0 ? " · " : null}
-                  <T message={stop} />
-                </Fragment>
-              ))}
+              <T message="Paris · saved place" />
             </span>
           ) : null}
         </div>
@@ -35,7 +32,7 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
         <BedDouble aria-hidden="true" />
         <div>
           <span>
-            <T message="Stay" />
+            <T message="Stay option" />
           </span>
           <strong>
             <T message={parisLandingFixture.days[0].stay} />
@@ -47,13 +44,13 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
   if (kind === "activity") {
     return (
       <div className="dock-fragment-copy">
-        <MapPin aria-hidden="true" />
+        <CalendarClock aria-hidden="true" />
         <div>
           <span>
-            <T message="Activity" />
+            <T message="Schedule snippet" />
           </span>
           <strong>
-            <T message={parisLandingFixture.days[0].activity} />
+            14:30 · <T message={parisLandingFixture.days[0].activity} />
           </strong>
         </div>
       </div>
@@ -61,10 +58,10 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
   }
   return (
     <div className="dock-fragment-copy">
-      <FileText aria-hidden="true" />
+      <Ticket aria-hidden="true" />
       <div>
         <span>
-          <T message="Document" />
+          <T message="Museum ticket" />
         </span>
         <strong>
           <T message={parisLandingFixture.document.label} />

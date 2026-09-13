@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { T } from "@/features/i18n/i18n-provider";
 
+import { tripPlannerWordmark } from "./brand";
 import "./landing-conversion.css";
 
 const content = {
@@ -10,7 +11,7 @@ const content = {
     eyebrow: "PRIVACY",
     title: "Your trip information should stay understandable.",
     intro:
-      "Trip Planner uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.",
+      "There We Go uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.",
     sections: [
       [
         "What is stored",
@@ -28,9 +29,9 @@ const content = {
   },
   terms: {
     eyebrow: "TERMS",
-    title: "Trip Planner helps you organize a plan.",
+    title: "There We Go helps you organize a plan.",
     intro:
-      "Trip Planner is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.",
+      "There We Go is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.",
     sections: [
       [
         "Your responsibility",
@@ -42,7 +43,7 @@ const content = {
       ],
       [
         "Availability",
-        "Features may change as the product develops. Do not rely on Trip Planner as the only copy of an essential ticket or travel document.",
+        "Features may change as the product develops. Do not rely on There We Go as the only copy of an essential ticket or travel document.",
       ],
     ],
   },
@@ -71,11 +72,9 @@ export function PublicInfoPage({ kind }: { kind: keyof typeof content }) {
       <nav>
         <Link href="/">
           <ArrowLeft aria-hidden="true" />
-          <T message="Back to Trip Planner" />
+          <T message="Back to There We Go" />
         </Link>
-        <span className="plandock-wordmark">
-          <T message="Trip Planner" />
-        </span>
+        <span className="plandock-wordmark">{tripPlannerWordmark}</span>
       </nav>
       <article>
         <p className="landing-eyebrow">

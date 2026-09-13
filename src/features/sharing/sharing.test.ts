@@ -1715,7 +1715,11 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     publicTripHeader,
-    /<Link aria-label=\{t\("Go to Trip Planner"\)\} className="public-brand-kicker" href="\/">/,
+    /aria-label=\{t\("Go to \{brand\}", \{ brand: tripPlannerBrandName \}\)\}[\s\S]*className="public-brand-kicker"[\s\S]*href="\/"/,
+  );
+  assert.match(
+    publicTripHeader,
+    /<span className="public-brand-wordmark">\{tripPlannerWordmark\}<\/span>/,
   );
   assert.match(tripAppBar, /onClick=\{\(\) => window\.location\.assign\("\/trips"\)\}/);
   assert.doesNotMatch(tripAppBar, /href="\/trips"/);

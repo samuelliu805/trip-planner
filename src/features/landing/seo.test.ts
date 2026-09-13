@@ -3,6 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { getLandingStructuredData, serializeStructuredData } from "./seo.ts";
+import { tripPlannerBrandName, tripPlannerWordmark } from "./brand.ts";
+import { parisPublicItinerary } from "./landing-public-fixture.ts";
+import { publicItinerarySchema } from "../sharing/schema.ts";
 
 test("landing structured data describes the website and free web app", () => {
   const data = getLandingStructuredData("en", "https://trip-planner.example/path");
@@ -15,6 +18,14 @@ test("landing structured data describes the website and free web app", () => {
   assert.equal(data["@graph"][0].url, "https://trip-planner.example/");
   assert.equal(data["@graph"][1].isAccessibleForFree, true);
   assert.equal(data["@graph"][1].featureList.length, 4);
+  assert.equal(data["@graph"][0].name, "There We Go");
+  assert.equal(tripPlannerBrandName, "There We Go");
+  assert.equal(tripPlannerWordmark, "there we go");
+});
+
+test("landing public sample stays compatible with the production share schema", () => {
+  assert.equal(publicItinerarySchema.safeParse(parisPublicItinerary).success, true);
+  assert.equal(parisPublicItinerary.settings.allowRouteExplore, false);
 });
 
 test("landing structured data localizes Chinese search copy and escapes markup", () => {

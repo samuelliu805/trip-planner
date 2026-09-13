@@ -1,0 +1,258 @@
+.share-section {
+  background:
+    radial-gradient(circle at 8% 24%, rgba(120, 183, 154, 0.17), transparent 30%),
+    linear-gradient(150deg, #132238 0 62%, #1c3343 100%);
+  color: var(--dock-paper);
+  display: grid;
+  gap: clamp(2rem, 5vw, 5rem);
+  grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr);
+  margin-top: clamp(4rem, 8vw, 8rem);
+  padding: clamp(5rem, 9vw, 8rem) max(1.25rem, calc((100vw - 1320px) / 2));
+}
+
+.share-section .feature-heading {
+  align-self: center;
+}
+
+.share-section .feature-heading .landing-eyebrow {
+  color: #9fd2c1;
+}
+
+.share-section .feature-heading > p:last-child {
+  color: rgba(247, 244, 236, 0.7);
+}
+
+.share-story {
+  min-width: 0;
+}
+
+.share-story-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.share-story-actions svg {
+  height: 1rem;
+  width: 1rem;
+}
+
+.share-replay {
+  align-items: center;
+  color: rgba(247, 244, 236, 0.74);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 750;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+}
+
+.share-stage {
+  height: clamp(31rem, 47vw, 39rem);
+  isolation: isolate;
+  perspective: 1400px;
+  position: relative;
+  scroll-margin-top: calc(var(--landing-nav-height) + 1rem);
+}
+
+.share-planner-source,
+.landing-public-sheet {
+  border-radius: 20px;
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+  transform-origin: center;
+}
+
+.share-planner-source {
+  transform: rotateY(0) translateZ(0);
+  z-index: 2;
+}
+
+.share-planner-source .plandock-workspace {
+  height: 100%;
+  min-height: 0;
+}
+
+.share-stage-label {
+  background: var(--dock-navy);
+  border: 1px solid rgba(247, 244, 236, 0.18);
+  border-radius: 999px;
+  color: var(--dock-paper);
+  font-size: 0.62rem;
+  font-weight: 800;
+  left: 1rem;
+  letter-spacing: 0.1em;
+  padding: 0.45rem 0.65rem;
+  position: absolute;
+  top: 1rem;
+  z-index: 4;
+}
+
+.landing-public-sheet {
+  background: #fbf7ec;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.36);
+  color: #2d352f;
+  opacity: 0;
+  clip-path: inset(5% 4% 8% 4% round 24px);
+  transform: rotateY(-9deg) translate3d(5%, 1.5rem, -80px) scale(0.92);
+  visibility: hidden;
+  z-index: 3;
+}
+
+.landing-public-ribbon {
+  align-items: center;
+  background: #dfe9df;
+  color: #49634f;
+  display: flex;
+  font-size: 0.66rem;
+  font-weight: 800;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0.45rem 1rem;
+  text-transform: uppercase;
+}
+
+.landing-public-ribbon span {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.4rem;
+}
+
+.landing-public-ribbon svg {
+  height: 0.85rem;
+  width: 0.85rem;
+}
+
+.landing-public-ribbon small {
+  color: #6f756e;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+}
+
+.landing-public-sheet .public-template-region-brand-row {
+  min-height: 6.4rem;
+}
+
+.share-story .landing-public-sheet .public-brand-kicker {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+}
+
+.landing-public-content {
+  height: calc(100% - 13.2rem);
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.landing-public-content .public-overview {
+  transform-origin: top center;
+}
+
+.share-access-note {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.share-access-note > span {
+  align-items: start;
+  background: rgba(247, 244, 236, 0.06);
+  border: 1px solid rgba(247, 244, 236, 0.12);
+  border-radius: 12px;
+  color: rgba(247, 244, 236, 0.66);
+  display: grid;
+  font-size: 0.68rem;
+  gap: 0.15rem 0.5rem;
+  grid-template-columns: auto 1fr;
+  line-height: 1.45;
+  padding: 0.8rem;
+}
+
+.share-access-note svg {
+  color: #9fd2c1;
+  grid-row: 1 / span 2;
+  height: 1rem;
+  margin-top: 0.1rem;
+  width: 1rem;
+}
+
+.share-access-note strong {
+  color: var(--dock-paper);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 899px) {
+  .share-section {
+    grid-template-columns: 1fr;
+  }
+
+  .share-story-actions {
+    justify-content: flex-start;
+  }
+
+  .landing-public-sheet .public-template-region-brand-row {
+    min-height: 6.2rem;
+  }
+}
+
+@media (max-width: 540px) {
+  .share-section {
+    padding-inline: 1rem;
+  }
+
+  .share-stage {
+    height: 31rem;
+    overflow: hidden;
+  }
+
+  .share-planner-source .plandock-workspace {
+    min-width: 650px;
+    transform: scale(0.58);
+    transform-origin: top left;
+    width: 650px;
+  }
+
+  .landing-public-sheet .public-trip-title {
+    font-size: 1.55rem;
+  }
+
+  .landing-public-content .public-overview {
+    padding: 0.8rem 0.7rem 2rem;
+  }
+
+  .landing-public-content .overview-day-v4 {
+    padding-bottom: 1rem;
+  }
+
+  .landing-public-content .overview-board-v4 {
+    grid-template-columns: 1fr;
+  }
+
+  .share-access-note {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .share-planner-source {
+    display: none;
+  }
+
+  .landing-public-sheet {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    visibility: visible !important;
+  }
+
+  .share-replay {
+    display: none;
+  }
+}

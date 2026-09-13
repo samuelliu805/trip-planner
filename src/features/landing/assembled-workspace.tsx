@@ -1,4 +1,13 @@
-import { CalendarDays, Columns3, Lightbulb, ListOrdered, Map, Paperclip } from "lucide-react";
+import {
+  CalendarDays,
+  Columns3,
+  FileCheck2,
+  Lightbulb,
+  ListOrdered,
+  Map,
+  Paperclip,
+} from "lucide-react";
+import { memo } from "react";
 
 import { T } from "@/features/i18n/i18n-provider";
 
@@ -16,13 +25,19 @@ function Target({ kind, opacity }: { kind: DockKind; opacity: number }) {
   );
 }
 
-export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number }) {
+export const AssembledWorkspace = memo(function AssembledWorkspace({
+  targetOpacity,
+  testId = "assembled-product",
+}: {
+  targetOpacity: number;
+  testId?: string;
+}) {
   return (
     <section
       aria-label="Trip itinerary workspace"
       className="plandock-workspace"
       data-i18n-aria-label="Trip itinerary workspace"
-      data-testid="assembled-product"
+      data-testid={testId}
     >
       <header className="workspace-header">
         <div>
@@ -85,15 +100,14 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
               <span>
                 <T message={day.city} />
               </span>
+              <span>
+                <T message={day.stay} />
+              </span>
               {index === 0 ? (
-                <Target kind="stay" opacity={targetOpacity} />
-              ) : (
-                <span>
-                  <T message={day.stay} />
-                </span>
-              )}
-              {index === 0 ? (
-                <Target kind="activity" opacity={targetOpacity} />
+                <div className="workspace-activity-stack">
+                  <Target kind="activity" opacity={targetOpacity} />
+                  <Target kind="document" opacity={targetOpacity} />
+                </div>
               ) : (
                 <span>
                   <T message={day.activity} />
@@ -120,24 +134,37 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
             <i className="map-dot dot-three" />
           </div>
           <Target kind="route" opacity={targetOpacity} />
-          <div className="workspace-options">
-            <span>
-              <Lightbulb aria-hidden="true" />
-              <T message="Ideas & options" />
-            </span>
-            <small>
-              2 <T message="routes saved" />
-            </small>
+          <div className="workspace-options-panel">
+            <div className="workspace-options-heading">
+              <span>
+                <Lightbulb aria-hidden="true" />
+                <T message="Ideas & options" />
+              </span>
+              <small>
+                2 <T message="stays saved" />
+              </small>
+            </div>
+            <Target kind="stay" opacity={targetOpacity} />
           </div>
         </aside>
       </div>
       <footer className="workspace-resources">
         <span className="resources-label">
           <Paperclip aria-hidden="true" />
-          <T message="Trip documents" />
+          <T message="Trip files" />
         </span>
-        <Target kind="document" opacity={targetOpacity} />
+        <div className="workspace-file-summary">
+          <FileCheck2 aria-hidden="true" />
+          <span>
+            <strong>
+              1 <T message="activity attachment" />
+            </strong>
+            <small>
+              <T message="Files stay beside the itinerary item." />
+            </small>
+          </span>
+        </div>
       </footer>
     </section>
   );
-}
+});

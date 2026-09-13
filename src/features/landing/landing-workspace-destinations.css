@@ -1,0 +1,116 @@
+.workspace-stage .plandock-target-content {
+  opacity: var(--dock-target-opacity, 1) !important;
+}
+
+.workspace-activity-stack {
+  display: grid;
+  gap: 4px;
+  grid-template-rows: minmax(30px, 1fr) 25px;
+}
+.workspace-activity-stack .plandock-target {
+  min-height: 0;
+}
+.workspace-activity-stack .target-activity {
+  height: 40px;
+}
+.workspace-activity-stack .target-document {
+  background: rgba(240, 228, 192, 0.3);
+  border-color: rgba(173, 139, 73, 0.3);
+  height: 25px;
+}
+.workspace-activity-stack .target-document .dock-fragment-copy {
+  gap: 5px;
+  padding: 2px 5px;
+}
+.workspace-activity-stack .target-document .dock-fragment-copy > svg {
+  height: 18px;
+  padding: 4px;
+  width: 18px;
+}
+.workspace-activity-stack .target-document .dock-fragment-copy span {
+  display: none;
+}
+.workspace-activity-stack .target-document .dock-fragment-copy strong {
+  font-size: 0.5rem;
+}
+
+.target-route {
+  border: 1px solid rgba(78, 156, 166, 0.24);
+  border-radius: 8px;
+  bottom: 91px;
+  height: 76px;
+  left: 12px;
+  position: absolute;
+  right: 12px;
+}
+.workspace-options-panel {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(120, 183, 154, 0.28);
+  border-radius: 9px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  font-size: 0.58rem;
+  gap: 5px;
+  left: 12px;
+  padding: 6px;
+  position: absolute;
+  right: 12px;
+}
+.workspace-options-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+.workspace-options-heading span {
+  align-items: center;
+  display: flex;
+  font-weight: 800;
+  gap: 4px;
+}
+.workspace-options-heading svg {
+  height: 12px;
+  width: 12px;
+}
+.workspace-options-heading small {
+  color: #68727a;
+}
+.workspace-options-panel .target-stay {
+  height: 43px;
+}
+.workspace-options-panel .target-stay .dock-fragment-copy {
+  padding: 4px 6px;
+}
+.workspace-options-panel .target-stay .dock-fragment-copy > svg {
+  height: 23px;
+  padding: 5px;
+  width: 23px;
+}
+
+.workspace-file-summary {
+  align-items: center;
+  border: 1px solid rgba(78, 156, 166, 0.24);
+  border-radius: 8px;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  height: 52px;
+  padding: 8px 10px;
+}
+.workspace-file-summary > svg {
+  color: #4e9c8b;
+  height: 20px;
+  width: 20px;
+}
+.workspace-file-summary > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.workspace-file-summary strong {
+  font-size: 0.6rem;
+}
+.workspace-file-summary small {
+  color: #68727a;
+  font-size: 0.52rem;
+}

@@ -42,6 +42,7 @@
   pointer-events: none;
   position: absolute;
   transform-origin: center;
+  transform-style: preserve-3d;
   will-change: left, top, width, height, transform;
   z-index: 24;
 }
@@ -51,11 +52,59 @@
 .moving-fragment .dock-fragment-copy strong {
   font-size: 0.8rem;
 }
+.fragment-card-face {
+  height: 100%;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .route-dock-track[data-dock-ready="true"][data-dock-state="scattered"] .fragment-card-face {
+    animation: fragment-card-arrival 980ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--fragment-index) * 85ms);
+  }
+}
+
+@keyframes fragment-card-arrival {
+  from {
+    filter: blur(7px);
+    opacity: 0;
+    transform: translate3d(3.5rem, 2.2rem, 0) scale(0.82);
+  }
+}
 .fragment-layer {
   inset: 0;
   pointer-events: none;
   position: absolute;
+  perspective: 1200px;
+  perspective-origin: 72% 48%;
   z-index: 20;
+}
+.scene-state {
+  align-items: center;
+  bottom: 1.55rem;
+  display: flex;
+  gap: 0.65rem;
+  position: absolute;
+  right: clamp(1rem, 4vw, 4rem);
+  z-index: 32;
+}
+.scene-state > span {
+  align-items: center;
+  border: 1px solid rgba(159, 210, 193, 0.45);
+  border-radius: 50%;
+  color: #a8dbc9;
+  display: flex;
+  font-size: 0.68rem;
+  font-weight: 850;
+  height: 1.75rem;
+  justify-content: center;
+  width: 1.75rem;
+}
+.scene-state strong {
+  color: rgba(247, 244, 236, 0.68);
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 .completion-label {
   bottom: auto;
@@ -70,6 +119,24 @@
 .completion-label span,
 .completion-label strong {
   display: block;
+}
+.completion-label button {
+  align-items: center;
+  color: rgba(247, 244, 236, 0.66);
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 750;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+  min-height: 44px;
+  padding-left: 0.6rem;
+}
+.completion-label button:disabled {
+  pointer-events: none;
+}
+.completion-label button svg {
+  height: 0.8rem;
+  width: 0.8rem;
 }
 .completion-label span {
   color: #9dd3c4;

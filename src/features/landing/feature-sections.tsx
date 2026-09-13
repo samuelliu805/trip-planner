@@ -1,10 +1,9 @@
-import { Check, FileText, Link2, Paperclip, TrainFront } from "lucide-react";
-import Image from "next/image";
-
 import { T } from "@/features/i18n/i18n-provider";
 
+import { DocumentsDemo, MatrixDemo, OptionsDemo } from "./feature-demos";
 import { LandingRevealSection } from "./landing-reveal-section";
-import { parisLandingFixture } from "./paris-fixture";
+import { RouteStory } from "./route-story";
+import { ShareStory } from "./share-story";
 
 function SectionHeading({
   eyebrow,
@@ -30,212 +29,6 @@ function SectionHeading({
   );
 }
 
-function MatrixDemo() {
-  return (
-    <div className="feature-matrix-stage">
-      <figure aria-hidden="true" className="feature-matrix-photo">
-        <Image alt="" fill sizes="160px" src="/landing/travel-desk.webp" />
-        <span>
-          <T message="PAR · 07:40" />
-        </span>
-      </figure>
-      <div
-        className="feature-matrix"
-        aria-label="Itinerary matrix preview"
-        data-i18n-aria-label="Itinerary matrix preview"
-      >
-        <div className="feature-matrix-row is-header">
-          <span>
-            <T message="Date" />
-          </span>
-          <span>
-            <T message="Stay" />
-          </span>
-          <span>
-            <T message="Transport" />
-          </span>
-          <span>
-            <T message="Activities" />
-          </span>
-          <span>
-            <T message="Meals / notes" />
-          </span>
-        </div>
-        {parisLandingFixture.days.map((day, index) => (
-          <div className="feature-matrix-row" key={day.day}>
-            <span>
-              <b>
-                <T message={day.day} />
-              </b>
-              <small>
-                <T message={day.date} />
-              </small>
-            </span>
-            <span>
-              <T message={day.stay} />
-            </span>
-            <span>
-              {index === 0 ? (
-                <>
-                  <TrainFront aria-hidden="true" />
-                  <T message="Metro to hotel" />
-                </>
-              ) : (
-                <T message="Walk + Metro" />
-              )}
-            </span>
-            <span>
-              <T message={day.activity} />
-            </span>
-            <span>
-              <T message={day.meal} />
-            </span>
-          </div>
-        ))}
-        <div className="manual-order">
-          <span>01</span>
-          <i />
-          <span>02</span>
-          <i />
-          <span>03</span>
-          <T message="Manual order stays yours" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RouteDemo() {
-  return (
-    <div className="route-demo">
-      <div className="route-map" aria-hidden="true">
-        <Image
-          alt=""
-          className="route-map-photo"
-          fill
-          sizes="(max-width: 760px) 100vw, 42vw"
-          src="/landing/seine-route.webp"
-        />
-        <i className="route-river" />
-        <i className="route-street street-one" />
-        <i className="route-street street-two" />
-        <svg viewBox="0 0 420 250">
-          <path d="M64 194 C124 170 108 87 185 103 S270 188 354 58" />
-          <circle cx="64" cy="194" r="7" />
-          <circle cx="185" cy="103" r="7" />
-          <circle cx="354" cy="58" r="7" />
-        </svg>
-        <span className="map-caption">
-          <T message="PARIS · DAY 1" />
-        </span>
-      </div>
-      <ol className="route-stops">
-        {parisLandingFixture.route.stops.map((stop, index) => (
-          <li key={stop}>
-            <span>{index + 1}</span>
-            <div>
-              <strong>
-                <T message={stop} />
-              </strong>
-              <small>
-                {index === 0 ? (
-                  <T message="Arrival" />
-                ) : index === 1 ? (
-                  <T message="Timed activity" />
-                ) : (
-                  <T message="Stay" />
-                )}
-              </small>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
-function OptionsDemo() {
-  return (
-    <div className="options-demo">
-      <div className="options-demo-head">
-        <span>
-          <T message="Ideas & Options" />
-        </span>
-        <small>
-          <T message="Transfer to Rive Gauche" />
-        </small>
-      </div>
-      <figure aria-hidden="true" className="options-demo-photo">
-        <Image
-          alt=""
-          fill
-          sizes="(max-width: 760px) 100vw, 42vw"
-          src="/landing/paris-morning.webp"
-        />
-        <span />
-      </figure>
-      {parisLandingFixture.options.map((option, index) => (
-        <article key={option.label}>
-          <span className="option-radio" aria-hidden="true">
-            {index === 0 ? <i /> : null}
-          </span>
-          <div>
-            <strong>
-              <T message={option.label} />
-            </strong>
-            <small>
-              <T message={option.detail} />
-            </small>
-          </div>
-          <span className="option-state">
-            <T message={index === 0 ? "In plan" : "Saved option"} />
-          </span>
-        </article>
-      ))}
-      <p>
-        <T message="Compare the route and timing, then choose for yourself." />
-      </p>
-    </div>
-  );
-}
-
-function DocumentsDemo() {
-  return (
-    <div className="documents-demo">
-      <div className="document-link">
-        <Link2 aria-hidden="true" />
-        <div>
-          <small>
-            <T message="Booking link" />
-          </small>
-          <strong>{"louvre.fr/visit"}</strong>
-        </div>
-        <Check aria-hidden="true" />
-      </div>
-      <div className="document-file">
-        <span>
-          <FileText aria-hidden="true" />
-        </span>
-        <div>
-          <strong>
-            <T message={parisLandingFixture.document.label} />
-          </strong>
-          <small>
-            <T message={parisLandingFixture.document.meta} /> ·{" "}
-            <T message="Connected to Louvre Museum" />
-          </small>
-        </div>
-      </div>
-      <div className="document-note">
-        <Paperclip aria-hidden="true" />
-        <span>
-          <T message="Keep the source beside the plan—not in another tab." />
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function FeatureSections() {
   return (
     <div className="landing-feature-story" id="features">
@@ -247,9 +40,10 @@ export function FeatureSections() {
           <T message="Plan with the shape of the trip in view." />
         </h2>
         <p>
-          <T message="Trip Planner keeps days, places, route choices and source material connected without pretending the decisions make themselves." />
+          <T message="There We Go keeps days, places, route choices and source material connected without pretending the decisions make themselves." />
         </p>
       </LandingRevealSection>
+
       <LandingRevealSection className="feature-section matrix-section">
         <SectionHeading
           eyebrow="01 · PLAN THE WHOLE TRIP"
@@ -258,14 +52,16 @@ export function FeatureSections() {
         />
         <MatrixDemo />
       </LandingRevealSection>
+
       <LandingRevealSection className="feature-section route-section">
         <SectionHeading
           eyebrow="02 · UNDERSTAND THE ROUTE"
           title="Make movement part of the plan."
           body="Connect places to itinerary items, inspect the day’s sequence and keep the route beside the schedule."
         />
-        <RouteDemo />
+        <RouteStory />
       </LandingRevealSection>
+
       <LandingRevealSection className="feature-section options-section">
         <OptionsDemo />
         <SectionHeading
@@ -274,6 +70,7 @@ export function FeatureSections() {
           body="Save route and trip options side by side. Compare their known details without invented scores or automatic winners."
         />
       </LandingRevealSection>
+
       <LandingRevealSection className="feature-section documents-section">
         <SectionHeading
           eyebrow="04 · KEEP THE SOURCE MATERIAL"
@@ -281,6 +78,15 @@ export function FeatureSections() {
           body="Keep useful links, notes, bookings and supported files connected to the part of the trip they belong to."
         />
         <DocumentsDemo />
+      </LandingRevealSection>
+
+      <LandingRevealSection className="share-section" id="share-demo">
+        <SectionHeading
+          eyebrow="05 · SHARE A TRIP PEOPLE CAN READ"
+          title="Turn the workspace into a travel-ready page."
+          body="Publish a read-only view of the plan you choose. Inviting someone to collaborate is a separate action, with separate access."
+        />
+        <ShareStory />
       </LandingRevealSection>
     </div>
   );
