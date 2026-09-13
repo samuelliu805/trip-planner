@@ -116,7 +116,7 @@ export function createRouteDockScene(THREE: ThreeModule) {
     const aspect = camera.aspect;
     let routeScaleX = 1;
     if (aspect < 0.65) {
-      routeField.position.set(-0.8, -2.2, 0);
+      routeField.position.set(-0.8, -1.2, 0);
       routeScaleX = 0.38;
     } else if (aspect < 1) {
       routeField.position.set(-0.4, -0.3, 0);

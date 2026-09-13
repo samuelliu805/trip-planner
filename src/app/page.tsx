@@ -18,7 +18,7 @@ import { appUserIdentityLabel } from "@/platform/contracts/auth";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
   const siteName = tripPlannerBrandName;
-  const title = translateMessage(locale, "There we go — Plan routes, stays and travel details");
+  const title = translateMessage(locale, "There we go — Trip planner");
   const description = translateMessage(locale, landingDescriptionMessage);
   return {
     alternates: { canonical: "/" },

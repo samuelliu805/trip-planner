@@ -41,16 +41,15 @@ export function mobileWorkspaceLayout(
   copyBottom: number,
   workspaceHeight: number,
 ): MobileWorkspaceLayout {
-  const sideGutter = 10;
-  const bottomGutter = 76;
+  const sideGutter = 12;
+  const bottomGutter = 84;
   const copyGap = 24;
-  const top = Math.max(viewportHeight * 0.48, copyBottom + copyGap);
-  const availableHeight = Math.max(1, viewportHeight - top - bottomGutter);
-  const scale = clamp(availableHeight / Math.max(1, workspaceHeight), 0.32, 1);
+  const latestTop = Math.max(0, viewportHeight - workspaceHeight - bottomGutter);
+  const preferredTop = Math.max(viewportHeight * 0.43, copyBottom + copyGap);
   return {
-    scale,
-    top,
-    width: Math.max(1, viewportWidth - sideGutter * 2) / scale,
+    scale: 1,
+    top: Math.min(preferredTop, latestTop),
+    width: Math.max(1, viewportWidth - sideGutter * 2),
   };
 }
 
@@ -79,10 +78,10 @@ export function mix(from: number, to: number, amount: number) {
 }
 
 const routeOffsets: Record<DockKind, { depth: number; rotation: number; x: number; y: number }> = {
-  route: { depth: -50, x: -46, y: -54, rotation: -2 },
-  stay: { depth: 64, x: 58, y: -34, rotation: 1.5 },
-  activity: { depth: 28, x: -38, y: 46, rotation: -1.2 },
-  document: { depth: -24, x: 48, y: 54, rotation: 2.2 },
+  route: { depth: -50, x: -18, y: -22, rotation: -2 },
+  stay: { depth: 64, x: 20, y: 48, rotation: 1.5 },
+  activity: { depth: 28, x: -285, y: -62, rotation: -1.2 },
+  document: { depth: -24, x: -280, y: 122, rotation: 2.2 },
 };
 
 export function fragmentTransform(
@@ -106,8 +105,8 @@ export function fragmentTransform(
   const approach = {
     x: target.x + offset.x,
     y: target.y + offset.y,
-    width: mix(start.width, target.width, 0.55),
-    height: mix(start.height, target.height, 0.55),
+    width: mix(start.width, target.width, 0.82),
+    height: mix(start.height, target.height, 0.82),
   };
   const routed = {
     x: mix(start.x, approach.x, routeT),

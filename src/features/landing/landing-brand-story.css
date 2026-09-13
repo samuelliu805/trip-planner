@@ -1,47 +1,15 @@
 /* The landing's editorial layer. Product workspace styles remain scoped separately. */
 
-.landing-intro {
-  max-width: 1080px;
-  padding-block: clamp(4rem, 8vw, 7rem);
-}
-.landing-intro h2 {
-  max-width: 800px;
-  margin-inline: auto;
-  line-height: 1.06;
-}
-.landing-intro > p {
-  max-width: 660px;
-  margin-inline: auto;
-}
-.landing-intro > p:not(.landing-eyebrow) {
-  color: var(--dock-ink-muted);
-  line-height: 1.7;
-  margin-top: 1.5rem;
-}
-.journey-index {
-  display: flex;
-  justify-content: center;
-  gap: 2.5rem;
-  margin-top: 2.5rem;
-}
-.journey-index span {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-}
-.journey-index i {
-  color: var(--dock-accent);
-  font-size: 0.6rem;
-  font-style: normal;
-  border-bottom: 1px solid #aac4b2;
-  padding-block: 5px;
-}
 .feature-heading h2 {
   line-height: 1.04;
 }
 .feature-section {
   padding-block: clamp(4rem, 7vw, 7rem);
+}
+.matrix-section {
+  background: #fbf7ed;
+  max-width: none;
+  padding-inline: max(1.25rem, calc((100vw - 1180px) / 2));
 }
 .documents-section {
   padding-bottom: clamp(4rem, 7vw, 6rem);
@@ -59,14 +27,14 @@
 }
 .departure-story > img {
   object-fit: cover;
-  object-position: 50% 58%;
+  object-position: 50% 44%;
   z-index: -2;
 }
 .departure-story::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #132238ed, #1322386b 70%, #13223855);
+  background: linear-gradient(90deg, #132238f2, #1322389c 60%, #13223875);
   z-index: -1;
 }
 .departure-copy h2 {
@@ -151,17 +119,6 @@
   background: #e4ece470;
 }
 @media (max-width: 699px) {
-  .journey-index {
-    justify-content: space-between;
-    gap: 0.75rem;
-  }
-  .journey-index span {
-    display: grid;
-    font-size: 0.65rem;
-  }
-  .journey-index i {
-    width: fit-content;
-  }
   .departure-story {
     display: block;
     padding-block: 3.5rem;

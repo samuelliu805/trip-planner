@@ -218,9 +218,6 @@
 }
 
 @media (max-width: 760px) {
-  .landing-intro {
-    text-align: left;
-  }
   .feature-section,
   .options-section,
   .sample-trip {

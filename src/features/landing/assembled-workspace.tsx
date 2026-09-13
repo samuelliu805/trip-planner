@@ -10,28 +10,39 @@ import {
 import { memo } from "react";
 
 import { T } from "@/features/i18n/i18n-provider";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { DockContent } from "./dock-content";
-import { parisLandingFixture } from "./paris-fixture";
-import type { DockKind } from "./paris-fixture";
+import { landingFixtureForRegion, type DockKind } from "./paris-fixture";
 
-function Target({ kind, opacity }: { kind: DockKind; opacity: number }) {
+function Target({
+  appRegion,
+  kind,
+  opacity,
+}: {
+  appRegion: AppRegion;
+  kind: DockKind;
+  opacity: number;
+}) {
   return (
     <div className={`plandock-target target-${kind}`} data-dock-target={kind}>
       <div className="plandock-target-content" style={{ opacity }}>
-        <DockContent compact kind={kind} />
+        <DockContent appRegion={appRegion} compact kind={kind} />
       </div>
     </div>
   );
 }
 
 export const AssembledWorkspace = memo(function AssembledWorkspace({
+  appRegion = "global",
   targetOpacity,
   testId = "assembled-product",
 }: {
+  appRegion?: AppRegion;
   targetOpacity: number;
   testId?: string;
 }) {
+  const fixture = landingFixtureForRegion(appRegion);
   return (
     <section
       aria-label="Trip itinerary workspace"
@@ -45,10 +56,10 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
             <T message="TRIP WORKSPACE" />
           </p>
           <h2>
-            <T message={parisLandingFixture.title} />
+            <T message={fixture.title} />
           </h2>
           <p>
-            <CalendarDays aria-hidden="true" /> <T message={parisLandingFixture.dateRange} /> ·{" "}
+            <CalendarDays aria-hidden="true" /> <T message={fixture.dateRange} /> ·{" "}
             <T message="4 days" />
           </p>
         </div>
@@ -89,7 +100,7 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
               <T message="Activities" />
             </span>
           </div>
-          {parisLandingFixture.days.map((day, index) => (
+          {fixture.days.map((day, index) => (
             <div className="workspace-row" role="row" key={day.day}>
               <span className="workspace-date">
                 <strong>
@@ -105,8 +116,8 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
               </span>
               {index === 0 ? (
                 <div className="workspace-activity-stack">
-                  <Target kind="activity" opacity={targetOpacity} />
-                  <Target kind="document" opacity={targetOpacity} />
+                  <Target appRegion={appRegion} kind="activity" opacity={targetOpacity} />
+                  <Target appRegion={appRegion} kind="document" opacity={targetOpacity} />
                 </div>
               ) : (
                 <span>
@@ -133,7 +144,7 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
             <i className="map-dot dot-two" />
             <i className="map-dot dot-three" />
           </div>
-          <Target kind="route" opacity={targetOpacity} />
+          <Target appRegion={appRegion} kind="route" opacity={targetOpacity} />
           <div className="workspace-options-panel">
             <div className="workspace-options-heading">
               <span>
@@ -144,7 +155,7 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
                 2 <T message="stays saved" />
               </small>
             </div>
-            <Target kind="stay" opacity={targetOpacity} />
+            <Target appRegion={appRegion} kind="stay" opacity={targetOpacity} />
           </div>
         </aside>
       </div>

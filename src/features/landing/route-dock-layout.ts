@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import { dockKinds, type DockKind } from "./paris-fixture";
 import { shouldResetLandingScroll, type DockRect } from "./route-dock-math";
@@ -39,6 +39,7 @@ export function useRouteDockMeasurements({
   workspaceRef: RefObject<HTMLDivElement | null>;
   measureKey: string;
 }) {
+  const stableViewportRef = useRef({ height: 0, width: 0 });
   const [targets, setTargets] = useState<Partial<Record<DockKind, DockRect>>>({});
   const [viewportSize, setViewportSize] = useState({
     copyBottom: 0,
@@ -57,6 +58,17 @@ export function useRouteDockMeasurements({
     const measure = () => {
       const layerRect = layer.getBoundingClientRect();
       const copyRect = copy.getBoundingClientRect();
+      const rawVisibleHeight = window.visualViewport?.height ?? window.innerHeight;
+      let visibleHeight = rawVisibleHeight;
+      if (layerRect.width <= 1024) {
+        const stable = stableViewportRef.current;
+        if (!stable.height || Math.abs(stable.width - layerRect.width) > 2) {
+          stableViewportRef.current = { height: rawVisibleHeight, width: layerRect.width };
+        } else {
+          stable.height = Math.min(stable.height, rawVisibleHeight);
+        }
+        visibleHeight = stableViewportRef.current.height;
+      }
       const measured: Partial<Record<DockKind, DockRect>> = {};
       for (const kind of dockKinds) {
         const target = viewport.querySelector<HTMLElement>(`[data-dock-target="${kind}"]`);
@@ -72,7 +84,7 @@ export function useRouteDockMeasurements({
       setViewportSize({
         copyBottom: copyRect.bottom - layerRect.top,
         height: layerRect.height,
-        visibleHeight: window.visualViewport?.height ?? window.innerHeight,
+        visibleHeight,
         width: layerRect.width,
         workspaceHeight: workspace.offsetHeight,
       });

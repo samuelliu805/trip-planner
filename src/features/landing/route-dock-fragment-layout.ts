@@ -61,15 +61,30 @@ const desktopPositions: Record<DockKind, { x: number; y: number }> = {
 
 export function initialFragmentRect(kind: DockKind, width: number, height: number) {
   const mobile = width < 700;
+  const compact = !mobile && width <= 1024;
   const index = dockKinds.indexOf(kind);
   const row = Math.floor(index / (mobile ? 2 : 1));
   const column = index % (mobile ? 2 : 1);
   const base = fragmentStarts[kind];
+  const compactPositions: Record<DockKind, { x: number; y: number }> = {
+    route: { x: 0.42, y: 0.13 },
+    stay: { x: 0.68, y: 0.25 },
+    activity: { x: 0.44, y: 0.6 },
+    document: { x: 0.68, y: 0.73 },
+  };
   return {
     ...base,
-    width: mobile ? Math.min(base.width, width * 0.4) : base.width,
-    height: mobile ? 70 : base.height,
-    x: mobile ? width * 0.08 + column * (width * 0.44) : width * desktopPositions[kind].x,
-    y: mobile ? height * 0.57 + row * 86 : height * desktopPositions[kind].y,
+    width: mobile
+      ? Math.min(base.width, width * (kind === "route" ? 0.58 : 0.4))
+      : compact
+        ? base.width * 0.84
+        : base.width,
+    height: mobile ? 70 : compact ? base.height * 0.84 : base.height,
+    x: mobile
+      ? width * (kind === "route" ? 0.1 : 0.08) + column * (width * 0.44)
+      : width * (compact ? compactPositions[kind].x : desktopPositions[kind].x),
+    y: mobile
+      ? height * 0.57 + row * 86
+      : height * (compact ? compactPositions[kind].y : desktopPositions[kind].y),
   };
 }

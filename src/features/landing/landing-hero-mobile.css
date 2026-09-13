@@ -1,11 +1,18 @@
 @media (max-width: 699px) {
   .route-dock-hero {
-    --route-dock-mobile-extension: clamp(6rem, 14svh, 8rem);
-    --route-dock-stage-height: calc(100svh + var(--route-dock-mobile-extension));
-    --route-dock-track-height: calc(270svh + var(--route-dock-mobile-extension));
+    --route-dock-mobile-extension: 0px;
+    --route-dock-stage-height: 100svh;
+    --route-dock-track-height: 220svh;
   }
   .plandock-nav {
     padding-inline: 1rem;
+  }
+  .plandock-brand-lockup {
+    gap: 0.45rem;
+  }
+  .plandock-brand-lockup > span {
+    font-size: 0.5rem;
+    padding-left: 0.45rem;
   }
   .plandock-nav .nav-sign-in {
     display: inline-flex;
@@ -22,6 +29,9 @@
   .plandock-nav .nav-start {
     display: none;
   }
+  .plandock-nav[data-authenticated="true"] .plandock-brand-lockup > span {
+    display: none;
+  }
   .hero-copy {
     left: 1.15rem;
     max-width: calc(100% - 2.3rem);
@@ -29,7 +39,7 @@
     top: 86px;
   }
   .hero-copy h1 {
-    font-size: clamp(2.65rem, 13vw, 3.65rem);
+    font-size: clamp(2.55rem, 11.8vw, 3.35rem);
     max-width: 22rem;
   }
   html[lang="zh-CN"] .hero-copy {
@@ -51,7 +61,7 @@
   }
   .hero-actions a {
     min-height: 44px;
-    padding-inline: 1rem;
+    padding-inline: 1.2rem;
   }
   .hero-detail {
     display: none;
@@ -59,40 +69,44 @@
   .route-dock-viewport .workspace-stage {
     left: 50%;
     right: auto;
-    top: max(48svh, 22.5rem);
-    transform: translateX(-50%) scale(var(--mobile-workspace-rest-scale, 0.985));
+    top: max(43svh, 20rem);
+    transform: translateX(-50%);
     transform-origin: top center;
     width: auto;
+    will-change: auto;
   }
   .route-dock-track[data-dock-state="assembled"] .route-dock-viewport .workspace-stage {
-    transform: translateX(-50%) scale(var(--mobile-workspace-scale, 1));
+    transform: translateX(-50%);
   }
   .route-dock-viewport .plandock-workspace {
     border-radius: 12px;
-    min-height: 410px;
+    min-height: 250px;
   }
   .route-dock-viewport .workspace-header {
     align-items: center;
-    min-height: 76px;
-    padding: 10px 11px;
+    min-height: 56px;
+    padding: 7px 9px;
   }
   .route-dock-viewport .workspace-header h2 {
     font-size: 1rem;
   }
   .route-dock-viewport .workspace-header p:last-child {
-    font-size: 0.56rem;
+    font-size: 0.52rem;
   }
   .route-dock-viewport .workspace-view-tabs span {
     font-size: 0;
     padding: 7px;
   }
   .route-dock-viewport .workspace-main {
-    grid-template-columns: 1.55fr 0.8fr;
-    min-height: 260px;
+    grid-template-columns: 1.4fr 1fr;
+    min-height: 148px;
   }
   .route-dock-viewport .workspace-row {
-    grid-template-columns: 42px 40px minmax(56px, 1fr) minmax(62px, 1.08fr);
-    min-height: 56px;
+    grid-template-columns: 44px minmax(0, 1fr);
+    min-height: 42px;
+  }
+  .route-dock-viewport .workspace-row > :is(:nth-child(2), :nth-child(3)) {
+    display: none;
   }
   .route-dock-viewport .workspace-row > span,
   .route-dock-viewport .workspace-row > .plandock-target,
@@ -100,23 +114,23 @@
     padding: 5px 4px;
   }
   .route-dock-viewport .workspace-row > span {
-    font-size: 0.49rem;
+    font-size: 0.46rem;
   }
   .route-dock-viewport .workspace-row.is-header {
-    min-height: 28px;
+    min-height: 22px;
   }
   .route-dock-viewport .workspace-row.is-header span {
     font-size: 0.44rem;
   }
   .route-dock-viewport .workspace-activity-stack {
     gap: 2px;
-    grid-template-rows: 29px 17px;
+    grid-template-rows: 24px 14px;
   }
   .route-dock-viewport .workspace-activity-stack .target-activity {
-    height: 29px;
+    height: 24px;
   }
   .route-dock-viewport .workspace-activity-stack .target-document {
-    height: 17px;
+    height: 14px;
   }
   .route-dock-viewport .workspace-activity-stack .target-document .dock-fragment-copy > svg {
     height: 13px;
@@ -127,53 +141,58 @@
     font-size: 0.38rem;
   }
   .route-dock-viewport .workspace-map {
-    padding: 7px;
+    padding: 6px;
   }
   .route-dock-viewport .target-route {
-    bottom: 68px;
-    height: 54px;
-    left: 7px;
-    right: 7px;
+    bottom: 51px;
+    height: 43px;
+    left: 6px;
+    right: 6px;
   }
   .route-dock-viewport .workspace-options-panel {
-    bottom: 7px;
-    left: 7px;
-    padding: 4px;
-    right: 7px;
+    bottom: 5px;
+    left: 6px;
+    padding: 3px;
+    right: 6px;
   }
   .route-dock-viewport .workspace-options-heading small {
     display: none;
   }
   .route-dock-viewport .workspace-options-panel .target-stay {
-    height: 32px;
+    height: 26px;
   }
   .route-dock-viewport .workspace-resources {
-    height: 70px;
-    padding: 7px 10px;
+    height: 46px;
+    padding: 5px 8px;
   }
   .route-dock-viewport .resources-label {
     font-size: 0;
     width: 18px;
   }
   .route-dock-viewport .dock-fragment-copy {
-    gap: 5px;
-    padding: 5px;
+    gap: 4px;
+    padding: 4px;
   }
   .route-dock-viewport .dock-fragment-copy > svg {
-    height: 23px;
-    padding: 5px;
-    width: 23px;
+    height: 20px;
+    padding: 4px;
+    width: 20px;
   }
   .route-dock-viewport .dock-fragment-copy strong {
     font-size: 0.49rem;
   }
   .route-dock-viewport .moving-fragment .dock-fragment-copy strong {
-    font-size: 0.67rem;
+    font-size: 0.72rem;
   }
   .route-dock-viewport .moving-fragment .dock-fragment-copy span {
     font-size: 0.55rem;
   }
   .completion-label {
+    display: none;
+  }
+  .fragment-activity,
+  .fragment-stay,
+  .fragment-document {
     display: none;
   }
   .scene-state {

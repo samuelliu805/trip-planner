@@ -220,6 +220,13 @@ async function screenshot(browser, directory, name) {
   await writeFile(join(directory, name), Buffer.from(data, "base64"));
 }
 
+async function visibleFragmentOverlaps(browser) {
+  return evaluate(
+    browser,
+    `(() => { const fragments = [...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none' && Number(getComputedStyle(node).opacity) > .05).map((node) => ({ kind: node.dataset.fragment, rect: node.getBoundingClientRect() })); const overlaps = []; for (let index = 0; index < fragments.length; index += 1) { for (let other = index + 1; other < fragments.length; other += 1) { const a = fragments[index]; const b = fragments[other]; const width = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left); const height = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top); if (width > 2 && height > 2) overlaps.push([a.kind, b.kind]); } } return overlaps; })()`,
+  );
+}
+
 const app = await startApp();
 const browser = await launchBrowser();
 const screenshotDirectory = process.env.LANDING_E2E_SCREENSHOT_DIR;
@@ -238,11 +245,30 @@ try {
     state: "scattered",
     webgl: true,
   });
+  assert.deepEqual(
+    await visibleFragmentOverlaps(browser),
+    [],
+    "Desktop item cards overlap in the scattered state.",
+  );
+  const navigation = await evaluate(
+    browser,
+    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorCenterDelta: Math.abs(center(descriptor)-center(nav)), descriptorPresent: Boolean(descriptor), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
+  );
+  assert.equal(navigation.descriptorPresent, true);
+  assert.equal(navigation.howItWorks, false);
+  assert.ok(
+    navigation.brandCenterDelta <= 2,
+    `Brand wordmark is misaligned by ${navigation.brandCenterDelta}px.`,
+  );
+  assert.ok(
+    navigation.descriptorCenterDelta <= 2,
+    `Trip planner descriptor is misaligned by ${navigation.descriptorCenterDelta}px.`,
+  );
   const initialDesk = await evaluate(
     browser,
     `(() => { const workspace = document.querySelector('[data-testid="assembled-product"]'); const style = getComputedStyle(document.querySelector('.workspace-stage')); return { opacity: Number(style.opacity), transform: style.transform, visibleWorkspace: workspace.getBoundingClientRect().top < innerHeight, targets: [...document.querySelectorAll('.route-dock-viewport [data-dock-target]')].map((node) => node.dataset.dockTarget).sort() }; })()`,
   );
-  assert.ok(initialDesk.opacity >= 0.68);
+  assert.ok(initialDesk.opacity >= 0.3);
   assert.notEqual(initialDesk.transform, "none");
   assert.equal(initialDesk.visibleWorkspace, true);
   assert.deepEqual(initialDesk.targets, ["activity", "document", "route", "stay"]);
@@ -253,7 +279,7 @@ try {
   assert.equal(seo.canonicalPath, "/");
   assert.match(seo.description, /route/i);
   assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
-  assert.match(seo.title, /^There we go/);
+  assert.equal(seo.title, "There we go — Trip planner");
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
 
   for (const [progress, expected] of [
@@ -269,7 +295,14 @@ try {
       ),
       expected,
     );
-    if (progress === 0.49) await screenshot(browser, screenshotDirectory, "02-routing-desktop.png");
+    assert.deepEqual(
+      await visibleFragmentOverlaps(browser),
+      [],
+      `Desktop item cards overlap at ${progress} progress.`,
+    );
+    if (progress === 0.49) {
+      await screenshot(browser, screenshotDirectory, "02-routing-desktop.png");
+    }
   }
   await setProgress(browser, 0.72);
   const alignment = await evaluate(
@@ -286,7 +319,7 @@ try {
     await setProgress(browser, progress);
     const assembled = await evaluate(
       browser,
-      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.2 >= innerHeight*.5, nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
+      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.2 >= innerHeight*.5, nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
     );
     assert.equal(assembled.state, "assembled");
     assert.equal(assembled.visible, true);
@@ -355,6 +388,13 @@ try {
   );
   for (const gap of chapterSeams)
     assert.ok(Math.abs(gap) <= 1, `A background gap returned between chapters: ${gap}px`);
+  const visualChapters = await evaluate(
+    browser,
+    `(() => { const imageSource = (node) => { const url = new URL(node.currentSrc); return url.searchParams.get('url') ?? url.pathname; }; return { departureImage: imageSource(document.querySelector('.departure-story > img')), hasHeroPostcard: Boolean(document.querySelector('.hero-postcard')), hasIntro: Boolean(document.querySelector('.landing-intro')) }; })()`,
+  );
+  assert.equal(visualChapters.hasIntro, false);
+  assert.equal(visualChapters.hasHeroPostcard, false);
+  assert.match(visualChapters.departureImage, /travel-desk\.webp/);
 
   await evaluate(
     browser,
@@ -416,18 +456,52 @@ try {
   ]) {
     await viewport(browser, width, height, width < 700);
     await navigate(browser, app.baseUrl);
+    if (width >= 700 && width <= 1024) {
+      for (const cardProgress of [0, 0.25, 0.35, 0.4, 0.49]) {
+        await setProgress(browser, cardProgress);
+        assert.deepEqual(
+          await visibleFragmentOverlaps(browser),
+          [],
+          `${width}px item cards overlap at ${cardProgress} progress.`,
+        );
+      }
+      await setProgress(browser, 0);
+    }
     if (width < 700) {
       await waitFor(
         browser,
         `document.querySelector('.workspace-stage').style.getPropertyValue('--mobile-workspace-scale').length > 0`,
         `${width}px mobile workspace measurement`,
       );
+      const visibleFragments = await evaluate(
+        browser,
+        `[...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none').length`,
+      );
+      assert.equal(visibleFragments, 1, `${width}px should keep one readable loose card.`);
+      assert.equal(
+        await evaluate(
+          browser,
+          `Boolean(document.querySelector('[data-testid="route-dock-canvas"]')?.getContext('webgl2'))`,
+        ),
+        true,
+        `${width}px should render the route circle with WebGL.`,
+      );
     }
+    const initialWorkspaceScale = await evaluate(
+      browser,
+      `(() => { const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return Math.hypot(matrix.a, matrix.b); })()`,
+    );
     await setProgress(browser, 0.9);
     const animationEndpoint = await evaluate(
       browser,
-      `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, viewport: innerHeight }; })()`,
+      `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, scale: Math.hypot(matrix.a, matrix.b), viewport: innerHeight }; })()`,
     );
+    if (width <= 1024) {
+      assert.ok(
+        Math.abs(animationEndpoint.scale - initialWorkspaceScale) <= 0.002,
+        `${width}px workspace changed scale while scrolling.`,
+      );
+    }
     if (width < 700) {
       assert.ok(
         animationEndpoint.productTop - animationEndpoint.copyBottom >= 23,
@@ -445,7 +519,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 120));
     const responsive = await evaluate(
       browser,
-      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const stage = hero.querySelector('.route-dock-viewport'); const canvas = hero.querySelector('.route-dock-canvas'); const fragments = hero.querySelector('.fragment-layer'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, canvasHeight: canvas.offsetHeight, fragmentHeight: fragments.offsetHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), stageHeight: stage.offsetHeight, state: track.dataset.dockState, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
+      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const stage = hero.querySelector('.route-dock-viewport'); const canvas = hero.querySelector('.route-dock-canvas'); const fragments = hero.querySelector('.fragment-layer'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, canvasHeight: canvas.offsetHeight, fragmentHeight: fragments.offsetHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), stageHeight: stage.offsetHeight, state: track.dataset.dockState, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
@@ -456,9 +530,8 @@ try {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
       assert.ok(
-        responsive.stageHeight - responsive.viewport >= 95 &&
-          responsive.stageHeight - responsive.viewport <= 129,
-        `The ${width}px hero stage extension fell outside its responsive bounds.`,
+        Math.abs(responsive.stageHeight - responsive.viewport) <= 1,
+        `The ${width}px hero stage no longer matches the visible viewport.`,
       );
       assert.ok(
         Math.abs(responsive.heroHeight - responsive.trackHeight) <= 1,
@@ -467,7 +540,7 @@ try {
       assert.ok(Math.abs(responsive.canvasHeight - responsive.stageHeight) <= 1);
       assert.ok(Math.abs(responsive.fragmentHeight - responsive.stageHeight) <= 1);
       assert.ok(
-        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 1.7) <
+        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 1.2) <
           0.02,
       );
       assert.ok(responsive.nextTop >= responsive.viewport - 1);
@@ -477,12 +550,17 @@ try {
     // Regression: the state rail owns space below the product, including B on tablets.
     await setProgress(browser, 0.6);
     await new Promise((resolve) => setTimeout(resolve, 750));
+    assert.deepEqual(
+      await visibleFragmentOverlaps(browser),
+      [],
+      `${width}px item cards overlap in the docking state.`,
+    );
     const clearance = await evaluate(
       browser,
       `(() => { const rail = document.querySelector('.scene-state').getBoundingClientRect(); const product = document.querySelector('.workspace-stage').getBoundingClientRect(); const copy = document.querySelector('.hero-copy').getBoundingClientRect(); return { productGap: rail.top - product.bottom, copyGap: rail.top - copy.bottom }; })()`,
     );
     assert.ok(
-      clearance.productGap >= 8,
+      clearance.productGap >= 16,
       `${width}px B product overlaps its state rail: ${JSON.stringify(clearance)}`,
     );
     assert.ok(clearance.copyGap >= 8, `${width}px B copy overlaps its state rail`);
@@ -509,6 +587,27 @@ try {
         `document.querySelector('.share-story-actions').scrollIntoView({block:'start'}); scrollBy(0,-90); true`,
       );
       await screenshot(browser, screenshotDirectory, "11-planning-mobile.png");
+      await evaluate(
+        browser,
+        `document.querySelectorAll('.share-view-toggle button')[1].click(); true`,
+      );
+      await waitFor(
+        browser,
+        `document.querySelector('.share-story').dataset.shareState === 'published'`,
+        "compact mobile share result",
+      );
+      await new Promise((resolve) => setTimeout(resolve, 950));
+      const mobileShare = await evaluate(
+        browser,
+        `(() => { const days = [...document.querySelectorAll('.landing-public-sheet .overview-day-v4')]; const rects = days.map((day) => day.getBoundingClientRect()); return { days: days.length, height: document.querySelector('.landing-public-sheet').offsetHeight, oneColumn: rects.every((rect, index) => index === 0 || rect.top >= rects[index - 1].bottom - 1), overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth }; })()`,
+      );
+      assert.equal(mobileShare.days, 3);
+      assert.equal(mobileShare.oneColumn, true);
+      assert.ok(
+        mobileShare.height <= 1900,
+        `390px share sample is too tall: ${mobileShare.height}px`,
+      );
+      assert.ok(mobileShare.overflow <= 1);
     }
   }
 
@@ -519,7 +618,7 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 120));
   const canvasTailCoverage = await evaluate(
     browser,
-    `(() => { const canvas = document.querySelector('.route-dock-canvas').getBoundingClientRect(); const canvasTrack = document.querySelector('.route-dock-canvas-track').getBoundingClientRect(); const hero = document.querySelector('.route-dock-hero').getBoundingClientRect(); return { canvasBottom: canvas.bottom, canvasTop: canvas.top, canvasTrackBottom: canvasTrack.bottom, heroBottom: hero.bottom, nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, viewport: innerHeight }; })()`,
+    `(() => { const canvas = document.querySelector('.route-dock-canvas').getBoundingClientRect(); const canvasTrack = document.querySelector('.route-dock-canvas-track').getBoundingClientRect(); const hero = document.querySelector('.route-dock-hero').getBoundingClientRect(); return { canvasBottom: canvas.bottom, canvasTop: canvas.top, canvasTrackBottom: canvasTrack.bottom, heroBottom: hero.bottom, nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, viewport: innerHeight }; })()`,
   );
   assert.ok(canvasTailCoverage.canvasTop <= 1);
   assert.ok(canvasTailCoverage.canvasBottom >= canvasTailCoverage.viewport - 1);
@@ -547,7 +646,7 @@ try {
 
   await evaluate(
     browser,
-    `(() => { const account = document.querySelector('.nav-sign-in'); account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
+    `(() => { const nav = document.querySelector('.plandock-nav'); const account = document.querySelector('.nav-sign-in'); nav.dataset.authenticated = 'true'; account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
   );
   const accountTruncation = await evaluate(
     browser,
@@ -681,13 +780,17 @@ try {
   }
   const landingCopy = await evaluate(
     browser,
-    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
+    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasIntro: Boolean(document.querySelector('.landing-intro')), hasPlannerDescriptor: document.querySelector('.plandock-brand-lockup > span')?.textContent.trim() === 'Trip planner', hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, heroActions: document.querySelectorAll('.hero-actions a').length, heroEyebrow: document.querySelector('.hero-copy .landing-eyebrow')?.textContent.trim(), mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
   );
   assert.deepEqual(landingCopy, {
     hasHowItWorksLink: false,
+    hasIntro: false,
+    hasPlannerDescriptor: true,
     hasPreviewToggle: true,
     hasSampleEntry: true,
     hasSampleLink: false,
+    heroActions: 1,
+    heroEyebrow: "Trip planner",
     mentionsOldBrand: false,
     mentionsSampleTrip: false,
     wordmarks: 2,

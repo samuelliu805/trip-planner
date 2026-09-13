@@ -38,9 +38,33 @@
 }
 
 .plandock-wordmark {
+  align-items: center;
+  display: inline-flex;
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.04em;
+  line-height: 1;
+  min-height: 44px;
+  white-space: nowrap;
+}
+.plandock-brand-lockup {
+  align-items: center;
+  display: flex;
+  gap: 0.65rem;
+  line-height: 1;
+}
+.plandock-brand-lockup > span {
+  align-items: center;
+  border-left: 1px solid rgba(247, 244, 236, 0.22);
+  color: rgba(247, 244, 236, 0.62);
+  display: inline-flex;
+  font-size: 0.58rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  min-height: 1rem;
+  padding-left: 0.65rem;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 .plandock-nav-links,
@@ -155,6 +179,16 @@
   inset: 0;
   position: absolute;
 }
+@media (max-width: 699px) {
+  .route-dock-canvas::before {
+    background:
+      radial-gradient(circle at 78% 54%, rgba(120, 183, 154, 0.11), transparent 30%),
+      linear-gradient(135deg, transparent 58%, rgba(247, 244, 236, 0.035) 58.2%, transparent 58.5%);
+    content: "";
+    inset: 0;
+    position: absolute;
+  }
+}
 
 .hero-copy {
   left: clamp(1.25rem, 5vw, 5.5rem);
@@ -171,6 +205,7 @@
 }
 .hero-copy .landing-eyebrow {
   color: #99cec0;
+  text-transform: uppercase;
 }
 .hero-copy h1 {
   font-size: clamp(3.35rem, 5.4vw, 5.7rem);
@@ -190,7 +225,7 @@
 }
 
 #features,
-#how-it-works {
+#share-demo {
   scroll-margin-top: calc(var(--landing-nav-height) + 1rem);
 }
 
@@ -209,14 +244,12 @@ html[lang="zh-CN"] .hero-copy h1 {
   gap: 0.75rem;
   margin-top: 1.75rem;
 }
-.hero-actions a:first-child {
+.hero-actions a {
   background: var(--dock-mint);
   color: var(--dock-navy);
 }
-.hero-actions a:last-child {
-  background: rgba(247, 244, 236, 0.04);
-  border-color: rgba(247, 244, 236, 0.32);
-  color: var(--dock-paper);
+.hero-actions a:hover {
+  background: #91cdb0;
 }
 .hero-detail {
   color: rgba(247, 244, 236, 0.55);

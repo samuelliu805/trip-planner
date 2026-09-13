@@ -57,7 +57,7 @@
     margin-top: 0.9rem;
   }
   .scene-state {
-    bottom: calc(18px + var(--route-dock-mobile-extension));
+    bottom: calc(8px + var(--route-dock-mobile-extension));
     left: 1rem;
     right: 1rem;
     gap: 0.4rem;

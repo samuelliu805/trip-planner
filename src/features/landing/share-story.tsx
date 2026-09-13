@@ -7,19 +7,24 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { PublicOverview } from "@/features/sharing/components/public-overview";
 import { PublicTripHeader } from "@/features/sharing/components/public-trip-header";
 import { journalPublicTemplateV1 } from "@/features/sharing/templates/generated/journal-v1";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { AssembledWorkspace } from "./assembled-workspace";
 import { parisPublicItinerary } from "./landing-public-fixture";
 import { tripPlannerWordmark } from "./brand";
+import { landingFixtureForRegion } from "./paris-fixture";
+import { sichuanPublicItinerary } from "./sichuan-public-fixture";
 import { useShareStage } from "./use-share-stage";
 
-export function ShareStory() {
+export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const revealObserverRef = useRef<IntersectionObserver | null>(null);
   const [published, setPublished] = useState(false);
   const [selectedDayRef, setSelectedDayRef] = useState<string>();
   const [selectedItemRef, setSelectedItemRef] = useState<string>();
   const { t } = useI18n();
+  const fixture = landingFixtureForRegion(appRegion);
+  const sourceItinerary = appRegion === "cn" ? sichuanPublicItinerary : parisPublicItinerary;
   useShareStage(stageRef, published);
   const selectView = (value: boolean) => {
     revealObserverRef.current?.disconnect();
@@ -27,19 +32,27 @@ export function ShareStory() {
   };
   const itinerary = useMemo(
     () => ({
-      ...parisPublicItinerary,
-      citySequence: parisPublicItinerary.citySequence.map((city) => ({
+      ...sourceItinerary,
+      citySequence: sourceItinerary.citySequence.map((city) => ({
         ...city,
         name: t(city.name),
       })),
-      days: parisPublicItinerary.days.map((day) => ({
+      days: sourceItinerary.days.map((day) => ({
         ...day,
         city: t(day.city),
         localities: day.localities.map((locality) => t(locality)),
         primaryLocality: t(day.primaryLocality),
+        title: t(day.title),
         items: day.items.map((item) => ({
           ...item,
           title: t(item.title),
+          transport:
+            "transport" in item && item.transport
+              ? {
+                  destination: t(item.transport.destination),
+                  origin: t(item.transport.origin),
+                }
+              : undefined,
           place: item.place
             ? {
                 ...item.place,
@@ -50,13 +63,15 @@ export function ShareStory() {
         })),
       })),
       metadata: {
-        ...parisPublicItinerary.metadata,
-        title: t(parisPublicItinerary.metadata.title),
+        ...sourceItinerary.metadata,
+        coverCities: sourceItinerary.metadata.coverCities.map((city) => t(city)),
+        description: t(sourceItinerary.metadata.description),
+        title: t(sourceItinerary.metadata.title),
       },
-      trip: { ...parisPublicItinerary.trip, title: t(parisPublicItinerary.trip.title) },
-      variant: { ...parisPublicItinerary.variant, name: t(parisPublicItinerary.variant.name) },
+      trip: { ...sourceItinerary.trip, title: t(sourceItinerary.trip.title) },
+      variant: { ...sourceItinerary.variant, name: t(sourceItinerary.variant.name) },
     }),
-    [t],
+    [sourceItinerary, t],
   );
 
   useEffect(() => {
@@ -118,7 +133,11 @@ export function ShareStory() {
 
       <div className="share-stage" id="share-preview" ref={stageRef}>
         <div className="share-planner-source" aria-hidden={published} inert={published}>
-          <AssembledWorkspace targetOpacity={1} testId="share-source-workspace" />
+          <AssembledWorkspace
+            appRegion={appRegion}
+            targetOpacity={1}
+            testId="share-source-workspace"
+          />
         </div>
 
         <div
@@ -155,13 +174,13 @@ export function ShareStory() {
             </svg>
             <div>
               <small>
-                <T message="Louvre Museum" />
+                <T message={fixture.route.stops[0]} />
               </small>
               <small>
-                <T message="Saint-Germain" />
+                <T message={fixture.route.stops[1]} />
               </small>
               <small>
-                <T message="Rive Gauche" />
+                <T message={fixture.route.stops[2]} />
               </small>
             </div>
           </div>
