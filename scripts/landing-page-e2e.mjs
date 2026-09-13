@@ -555,7 +555,7 @@ try {
       browser,
       `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, scale: Math.hypot(matrix.a, matrix.b), viewport: innerHeight }; })()`,
     );
-    if (width <= 1024) {
+    if (width <= 1366) {
       assert.ok(
         Math.abs(animationEndpoint.scale - initialWorkspaceScale) <= 0.002,
         `${width}px workspace changed scale while scrolling.`,
@@ -727,6 +727,19 @@ try {
     ),
     "Go to China site",
   );
+  const mobileEditorialLayout = await evaluate(
+    browser,
+    `(() => { const section = document.querySelector('.matrix-section'); section.scrollIntoView({block:'start'}); const heading = section.querySelector('.feature-heading').getBoundingClientRect(); const photo = section.querySelector('.feature-matrix-photo').getBoundingClientRect(); const footerBrand = document.querySelector('.plandock-footer .plandock-wordmark').getBoundingClientRect(); const transport = section.querySelector('.feature-matrix-transport'); const icon = transport.querySelector('svg').getBoundingClientRect(); const transportRect = transport.getBoundingClientRect(); const nowrap = [...section.querySelectorAll('.feature-matrix-row:not(.is-header)')].every((row) => [...row.children].slice(1).every((cell) => getComputedStyle(cell).whiteSpace === 'nowrap')); return { footerCenterDelta: Math.abs((footerBrand.left + footerBrand.right) / 2 - document.documentElement.clientWidth / 2), headingPhotoGap: photo.top - heading.bottom, iconCenterDelta: Math.abs((icon.top + icon.bottom) / 2 - (transportRect.top + transportRect.bottom) / 2), nowrap, transportDirection: getComputedStyle(transport).flexDirection }; })()`,
+  );
+  assert.ok(
+    mobileEditorialLayout.headingPhotoGap >= 24,
+    `The mobile editorial photo covers its heading: ${JSON.stringify(mobileEditorialLayout)}`,
+  );
+  assert.ok(mobileEditorialLayout.footerCenterDelta <= 1);
+  assert.ok(mobileEditorialLayout.iconCenterDelta <= 1);
+  assert.equal(mobileEditorialLayout.nowrap, true);
+  assert.equal(mobileEditorialLayout.transportDirection, "row");
+  await navigate(browser, app.baseUrl);
 
   const revealBefore = await evaluate(
     browser,
@@ -890,6 +903,12 @@ try {
   assert.ok(chineseLanding.navClearance >= 12);
   assert.ok(chineseLanding.overflow <= 1);
   assert.deepEqual(chineseLanding.untranslatedFixture, []);
+  const chineseDocumentHeading = await evaluate(
+    browser,
+    `(() => { const heading = document.querySelector('.documents-section .feature-heading h2'); return { copy: heading.textContent, whiteSpace: getComputedStyle(heading).whiteSpace }; })()`,
+  );
+  assert.equal(chineseDocumentHeading.copy, "要用的票据，\n正好就在手边。");
+  assert.equal(chineseDocumentHeading.whiteSpace, "pre-line");
 
   assert.deepEqual(browser.cdp.errors, []);
   assert.deepEqual(browser.cdp.failedRequests, []);

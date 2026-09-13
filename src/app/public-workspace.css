@@ -108,7 +108,7 @@ body:has(.public-itinerary-shell) {
 
 .public-brand-wordmark {
   letter-spacing: -0.02em;
-  text-transform: lowercase;
+  text-transform: none;
 }
 
 .public-trip-title {

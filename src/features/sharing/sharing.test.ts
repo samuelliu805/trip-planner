@@ -1721,6 +1721,7 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
     publicTripHeader,
     /<span className="public-brand-wordmark">\{tripPlannerWordmark\}<\/span>/,
   );
+  assert.match(styles, /\.public-brand-wordmark \{[^}]*text-transform: none/);
   assert.match(tripAppBar, /onClick=\{\(\) => window\.location\.assign\("\/trips"\)\}/);
   assert.doesNotMatch(tripAppBar, /href="\/trips"/);
   assert.match(
@@ -2581,6 +2582,14 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(
     styles,
     /\.timeline-transport-title-v4 \{[\s\S]*flex: 0 0 auto;[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.timeline-transport-inline-v4 \{[^}]*min-height: 1\.75rem;[^}]*grid-template-columns: 1rem minmax\(0, 1fr\) auto/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 899px\)[\s\S]*\.public-template-journal \.timeline-transport-list-v4 \{[^}]*grid-column: 2;[^}]*margin-top: 0\.125rem/,
   );
   assert.match(
     styles,

@@ -61,7 +61,7 @@ export function useRouteDockMeasurements({
       const copyRect = copy.getBoundingClientRect();
       const rawVisibleHeight = window.visualViewport?.height ?? window.innerHeight;
       let visibleHeight = rawVisibleHeight;
-      if (layerRect.width <= 1024) {
+      if (layerRect.width <= 1024 || window.matchMedia("(pointer: coarse)").matches) {
         const stable = stableViewportRef.current;
         if (!stable.height || Math.abs(stable.width - layerRect.width) > 2) {
           stableViewportRef.current = { height: rawVisibleHeight, width: layerRect.width };

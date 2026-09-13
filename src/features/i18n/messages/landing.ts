@@ -26,7 +26,7 @@ export const landingZhCN: Record<string, string> = {
   "Every day, ready at a glance.": "每一天，都准备得一目了然。",
   "See the day before you travel it.": "还没出发，先看清当天怎么走。",
   "Decide with the details in view.": "信息都摆清楚，再做决定。",
-  "The right ticket, right when you need it.": "要用的票据，正好就在手边。",
+  "The right ticket, right when you need it.": "要用的票据，\n正好就在手边。",
   "READY LOOKS LIKE THIS": "准备好出发，就是这个样子",
   "Everything in place.": "一切就绪。",
   "The route is set, the tickets are close, and the plan is ready to use.":

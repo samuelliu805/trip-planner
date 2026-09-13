@@ -17,6 +17,11 @@ export type MobileWorkspaceLayout = {
   width: number;
 };
 
+export type TabletWorkspaceLayout = {
+  scale: number;
+  top: number;
+};
+
 export function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
 }
@@ -40,14 +45,29 @@ export function mobileWorkspaceLayout(
   viewportHeight: number,
   copyBottom: number,
 ): MobileWorkspaceLayout {
-  const sideGutter = 12;
-  const copyGap = 32;
+  const sideGutter = 16;
+  const copyGap = 36;
   const preferredTop = Math.max(viewportHeight * 0.34, copyBottom + copyGap);
   return {
     scale: 1,
     top: preferredTop,
     width: Math.max(1, viewportWidth - sideGutter * 2),
   };
+}
+
+export function tabletWorkspaceLayout(
+  viewportWidth: number,
+  viewportHeight: number,
+  workspaceHeight: number,
+): TabletWorkspaceLayout {
+  const top = clamp(viewportHeight * 0.17, 112, 150);
+  const rotationAllowance = Math.min(32, viewportWidth * 0.035);
+  const scale = clamp(
+    (viewportHeight - top - 120) / Math.max(1, workspaceHeight + rotationAllowance),
+    0.68,
+    1,
+  );
+  return { scale, top };
 }
 
 export function dockState(progress: number): DockState {

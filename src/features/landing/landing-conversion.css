@@ -226,6 +226,10 @@
   .feature-section {
     padding-block: 5rem;
   }
+  .matrix-section {
+    row-gap: 2.75rem;
+    padding-inline: 1.5rem;
+  }
   .options-section .feature-heading {
     grid-row: 1;
   }
@@ -278,6 +282,9 @@
   .plandock-footer {
     grid-template-columns: 1fr;
     text-align: center;
+  }
+  .plandock-footer .plandock-wordmark {
+    justify-self: center;
   }
   .plandock-footer nav {
     flex-wrap: wrap;

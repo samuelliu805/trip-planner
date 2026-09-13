@@ -10,6 +10,7 @@ import {
   mobileWorkspaceLayout,
   scrollProgress,
   shouldResetLandingScroll,
+  tabletWorkspaceLayout,
   targetContentOpacity,
   type FragmentTransform,
 } from "./route-dock-math.ts";
@@ -43,16 +44,28 @@ test("regional landing links always point to the other deployment", () => {
 
 test("mobile workspace uses a native-size one-column viewport without scaling", () => {
   const short = mobileWorkspaceLayout(375, 667, 306);
-  assert.equal(short.top, 338);
+  assert.equal(short.top, 342);
   assert.equal(short.scale, 1);
-  assert.equal(short.width, 351);
-  assert.equal(short.top + 250, 588);
+  assert.equal(short.width, 343);
+  assert.equal(short.top + 250, 592);
 
   const tall = mobileWorkspaceLayout(375, 932, 365);
-  assert.equal(tall.top, 397);
+  assert.equal(tall.top, 401);
   assert.equal(tall.scale, 1);
-  assert.equal(tall.width, 351);
+  assert.equal(tall.width, 343);
   assert.ok(tall.top + 250 <= 932 - 84);
+});
+
+test("tablet workspace keeps a stable rail below the transformed preview", () => {
+  const landscape = tabletWorkspaceLayout(1280, 807, 570);
+  assert.equal(landscape.top, 137.19);
+  assert.ok(landscape.scale < 1);
+  assert.ok(landscape.top + 570 * landscape.scale <= 807 - 120);
+
+  const portrait = tabletWorkspaceLayout(768, 1024, 570);
+  assert.equal(portrait.top, 150);
+  assert.equal(portrait.scale, 1);
+  assert.ok(portrait.top + 570 <= 1024 - 120);
 });
 
 test("dock states follow the specified transition boundaries", () => {

@@ -3,6 +3,13 @@
 .feature-heading h2 {
   line-height: 1.04;
 }
+html[lang="zh-CN"] .feature-heading h2 {
+  line-break: strict;
+  word-break: auto-phrase;
+}
+html[lang="zh-CN"] .documents-section .feature-heading h2 {
+  white-space: pre-line;
+}
 .feature-section {
   padding-block: clamp(4rem, 7vw, 7rem);
 }

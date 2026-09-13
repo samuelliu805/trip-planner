@@ -18,6 +18,7 @@ import {
   fragmentTransform,
   mobileWorkspaceLayout,
   scrollProgress,
+  tabletWorkspaceLayout,
   targetContentOpacity,
   type FragmentTransform,
 } from "./route-dock-math";
@@ -125,19 +126,28 @@ export function RouteDockHero({
           viewportSize.copyBottom,
         )
       : null;
+  const tabletWorkspace =
+    viewportSize.width >= 700 && viewportSize.width <= 1366
+      ? tabletWorkspaceLayout(
+          viewportSize.width,
+          viewportSize.visibleHeight,
+          viewportSize.workspaceHeight,
+        )
+      : null;
   // Leave a dedicated reading rail below the scene, including on short tablets.
-  const desktopScale = Math.min(
-    1,
-    (viewportSize.visibleHeight - 240) / Math.max(1, viewportSize.workspaceHeight),
-  );
-  const desktopTop = Math.min(
-    viewportSize.width >= 1800 ? 350 : 260,
-    Math.max(
-      124,
-      (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
-    ),
-  );
-  const compactStage = viewportSize.width <= 1024;
+  const desktopScale =
+    tabletWorkspace?.scale ??
+    Math.min(1, (viewportSize.visibleHeight - 240) / Math.max(1, viewportSize.workspaceHeight));
+  const desktopTop =
+    tabletWorkspace?.top ??
+    Math.min(
+      viewportSize.width >= 1800 ? 350 : 260,
+      Math.max(
+        124,
+        (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
+      ),
+    );
+  const compactStage = viewportSize.width <= 1366;
   const workspaceStyle: WorkspaceStyle = !hasMeasured
     ? { opacity: 0 }
     : mobileWorkspace

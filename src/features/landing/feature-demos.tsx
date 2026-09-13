@@ -46,7 +46,7 @@ export function MatrixDemo({ appRegion }: { appRegion: AppRegion }) {
             <span>
               <T message={day.stay} />
             </span>
-            <span>
+            <span className="feature-matrix-transport">
               {index === 0 ? <TrainFront aria-hidden="true" /> : null}
               <T message={index === 0 ? fixture.transport[0] : fixture.transport[1]} />
             </span>

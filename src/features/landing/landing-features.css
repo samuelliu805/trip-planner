@@ -55,10 +55,19 @@
   padding: 10px;
   text-overflow: ellipsis;
 }
+.feature-matrix-row:not(.is-header) > span:not(:first-child) {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.feature-matrix-row > .feature-matrix-transport {
+  align-items: center;
+  flex-direction: row;
+  gap: 0.4rem;
+}
 .feature-matrix-row > span svg {
   color: #4e9ca6;
+  flex: 0 0 auto;
   height: 14px;
-  margin-bottom: 4px;
   width: 14px;
 }
 .feature-matrix-row small {

@@ -135,6 +135,9 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
+  .landing-public-signature {
+    justify-content: center;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .share-stage,

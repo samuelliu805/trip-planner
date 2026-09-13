@@ -31,16 +31,16 @@
   }
 
   .public-template-journal .timeline-transport-list-v4 {
-    grid-column: 1 / -1;
-    margin-top: 0.375rem;
+    grid-column: 2;
+    margin-top: 0.125rem;
   }
 
   .public-template-journal .timeline-transport-inline-v4 {
-    grid-template-columns: 1.75rem minmax(0, 1fr);
+    grid-template-columns: 1rem minmax(0, 1fr) auto;
   }
 
   .public-template-journal .timeline-transport-meta-v4 {
-    grid-column: 2;
+    grid-column: auto;
   }
 
   .public-template-journal .timeline-node-list-v4 {
