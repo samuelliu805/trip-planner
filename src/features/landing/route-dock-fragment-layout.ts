@@ -1,4 +1,4 @@
-import { dockKinds, type DockKind } from "./paris-fixture";
+import type { DockKind } from "./paris-fixture";
 import type { FragmentTransform } from "./route-dock-math";
 
 const fragmentStarts: Record<DockKind, FragmentTransform> = {
@@ -53,7 +53,7 @@ const fragmentStarts: Record<DockKind, FragmentTransform> = {
 };
 
 const desktopPositions: Record<DockKind, { x: number; y: number }> = {
-  route: { x: 0.47, y: 0.14 },
+  route: { x: 0.5, y: 0.1 },
   stay: { x: 0.77, y: 0.28 },
   activity: { x: 0.5, y: 0.48 },
   document: { x: 0.75, y: 0.65 },
@@ -69,23 +69,20 @@ const compactPositions: Record<DockKind, { x: number; y: number }> = {
 export function initialFragmentRect(kind: DockKind, width: number, height: number) {
   const mobile = width < 700;
   const compact = !mobile && width <= 1024;
-  const index = dockKinds.indexOf(kind);
-  const row = Math.floor(index / (mobile ? 2 : 1));
-  const column = index % (mobile ? 2 : 1);
   const base = fragmentStarts[kind];
   return {
     ...base,
     width: mobile
-      ? Math.min(base.width, width * (kind === "route" ? 0.58 : 0.4))
+      ? Math.min(base.width, width * (kind === "route" ? 0.56 : 0.54))
       : compact
         ? base.width * 0.84
         : base.width,
-    height: mobile ? 70 : compact ? base.height * 0.84 : base.height,
+    height: mobile ? (kind === "route" ? 60 : 56) : compact ? base.height * 0.84 : base.height,
     x: mobile
-      ? width * (kind === "route" ? 0.1 : 0.08) + column * (width * 0.44)
+      ? width * (kind === "route" ? 0.07 : 0.39)
       : width * (compact ? compactPositions[kind].x : desktopPositions[kind].x),
     y: mobile
-      ? height * 0.57 + row * 86
+      ? height * (kind === "route" ? 0.51 : 0.66)
       : height * (compact ? compactPositions[kind].y : desktopPositions[kind].y),
   };
 }

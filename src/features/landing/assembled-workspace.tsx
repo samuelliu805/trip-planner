@@ -133,12 +133,24 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
             <T message="Day route" />
           </div>
           <div className="map-paper" aria-hidden="true">
-            <i className="map-road road-one" />
-            <i className="map-road road-two" />
+            <svg className="map-route" preserveAspectRatio="none" viewBox="0 0 260 260">
+              <path
+                className="map-route-secondary"
+                d="M-12 70 C62 102 91 146 154 179 S238 221 278 216"
+              />
+              <path
+                className="map-route-secondary"
+                d="M-8 214 C54 184 92 113 153 84 S230 56 274 22"
+              />
+              <path
+                className="map-route-primary"
+                d="M44 190 C74 166 104 160 134 130 S191 89 224 67"
+              />
+              <circle cx="44" cy="190" r="8" />
+              <circle cx="134" cy="130" r="8" />
+              <circle cx="224" cy="67" r="8" />
+            </svg>
             <i className="map-river" />
-            <i className="map-dot dot-one" />
-            <i className="map-dot dot-two" />
-            <i className="map-dot dot-three" />
           </div>
           <Target appRegion={appRegion} kind="route" opacity={targetOpacity} />
         </aside>

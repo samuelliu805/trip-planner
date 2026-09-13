@@ -59,7 +59,7 @@ export function TimelineExportDocument({
             <T
               message={
                 destinationType === "homepage"
-                  ? "Plan your next journey with Trip Planner"
+                  ? "Plan your next journey with There we go"
                   : "Scan to explore the full itinerary"
               }
             />

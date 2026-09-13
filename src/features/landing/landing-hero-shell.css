@@ -1,12 +1,13 @@
 .plandock-page {
-  --dock-navy: #132238;
-  --dock-paper: #f7f4ec;
-  --dock-cyan: #4e9ca6;
-  --dock-mint: #78b79a;
-  --dock-border: #d9d5ca;
+  --dock-navy: var(--brand-navy);
+  --dock-paper: var(--brand-paper);
+  --dock-cyan: var(--brand-route);
+  --dock-mint: var(--brand-mint);
+  --dock-border: var(--brand-border);
   --dock-ink-muted: #5c6965;
   --dock-sage: #e4ece4;
-  --dock-accent: #367c61;
+  --dock-accent: var(--brand-green);
+  --landing-frame-inset: max(clamp(1rem, 4vw, 4.8rem), calc((100vw - 1920px) / 2 + 4.8rem));
   --landing-nav-height: calc(72px + env(safe-area-inset-top, 0px));
   background: var(--dock-paper);
   color: var(--dock-navy);
@@ -20,16 +21,16 @@
   align-items: center;
   backdrop-filter: blur(16px);
   background: rgba(19, 34, 56, 0.94);
-  border-bottom: 1px solid rgba(247, 244, 236, 0.12);
+  border-bottom: 1px solid rgba(251, 250, 246, 0.12);
   box-shadow: 0 8px 30px rgba(9, 18, 31, 0.12);
   box-sizing: border-box;
-  color: #f7f4ec;
+  color: #fbfaf6;
   display: flex;
   height: var(--landing-nav-height);
   justify-content: space-between;
   left: 0;
   margin: auto;
-  padding: 0 clamp(1rem, 4vw, 4rem);
+  padding: 0 var(--landing-frame-inset);
   padding-top: env(safe-area-inset-top, 0px);
   position: fixed;
   right: 0;
@@ -111,7 +112,7 @@
 
 .route-dock-hero {
   --route-dock-stage-height: 100svh;
-  --route-dock-track-height: 350svh;
+  --route-dock-track-height: 280svh;
   background: var(--dock-navy);
   position: relative;
 }
@@ -168,7 +169,7 @@
   .route-dock-canvas::before {
     background:
       radial-gradient(circle at 78% 54%, rgba(120, 183, 154, 0.11), transparent 30%),
-      linear-gradient(135deg, transparent 58%, rgba(247, 244, 236, 0.035) 58.2%, transparent 58.5%);
+      linear-gradient(135deg, transparent 58%, rgba(251, 250, 246, 0.035) 58.2%, transparent 58.5%);
     content: "";
     inset: 0;
     position: absolute;
@@ -176,10 +177,10 @@
 }
 
 .hero-copy {
-  left: clamp(1.25rem, 5vw, 5.5rem);
-  max-width: min(34rem, 34vw);
+  left: var(--landing-frame-inset);
+  max-width: min(40rem, 38vw);
   position: absolute;
-  top: clamp(8rem, 23vh, 15rem);
+  top: clamp(7.75rem, 19vh, 13rem);
   z-index: 30;
 }
 .landing-eyebrow {
@@ -189,7 +190,7 @@
   line-height: 1.4;
 }
 .hero-copy h1 {
-  font-size: clamp(3.35rem, 5.4vw, 5.7rem);
+  font-size: clamp(3.7rem, 5.75vw, 6.6rem);
   font-weight: 700;
   letter-spacing: -0.07em;
   line-height: 1.04;
@@ -197,8 +198,8 @@
   text-wrap: balance;
 }
 .hero-support {
-  color: rgba(247, 244, 236, 0.78);
-  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  color: rgba(251, 250, 246, 0.78);
+  font-size: clamp(1.05rem, 1.25vw, 1.28rem);
   line-height: 1.65;
   margin-top: 1.6rem;
   max-width: 35rem;
@@ -211,7 +212,7 @@
 }
 
 html[lang="zh-CN"] .hero-copy {
-  max-width: min(34rem, 34vw);
+  max-width: min(40rem, 38vw);
 }
 
 html[lang="zh-CN"] .hero-copy h1 {
@@ -230,10 +231,10 @@ html[lang="zh-CN"] .hero-copy h1 {
   color: var(--dock-navy);
 }
 .hero-actions a:hover {
-  background: #91cdb0;
+  background: var(--brand-mint-hover);
 }
 .hero-detail {
-  color: rgba(247, 244, 236, 0.55);
+  color: rgba(251, 250, 246, 0.55);
   font-size: 0.8rem;
   margin-top: 1.15rem;
 }

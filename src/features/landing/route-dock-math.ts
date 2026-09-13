@@ -98,7 +98,7 @@ export function fragmentTransform(
   const offset = {
     ...baseOffset,
     x: baseOffset.x * horizontalScale,
-    y: baseOffset.y * movementScale,
+    y: baseOffset.y * movementScale + (kind === "document" && movementScale < 1 ? 32 : 0),
     depth: baseOffset.depth * movementScale,
   };
   const approach = {

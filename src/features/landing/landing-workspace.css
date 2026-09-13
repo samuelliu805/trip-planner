@@ -1,10 +1,10 @@
 .workspace-stage {
   position: absolute;
-  right: clamp(1rem, 4vw, 4rem);
+  right: var(--landing-frame-inset);
   top: 14vh;
   transform: scale(0.9) rotate(-5.5deg);
   transform-origin: top center;
-  width: min(52vw, 760px);
+  width: min(52vw, 980px);
   will-change: transform;
   z-index: 10;
 }
@@ -97,6 +97,7 @@
   line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .workspace-row.is-header {
   background: #efeee9;
@@ -156,18 +157,28 @@
   overflow: hidden;
   position: absolute;
 }
-.map-road {
-  background: #d9ddd7;
-  height: 2px;
-  left: -20%;
+.map-route {
+  height: 100%;
+  inset: 0;
   position: absolute;
-  top: 42%;
-  transform: rotate(-24deg);
-  width: 150%;
+  width: 100%;
 }
-.road-two {
-  top: 66%;
-  transform: rotate(31deg);
+.map-route-secondary {
+  fill: none;
+  opacity: 0.38;
+  stroke: #9aa7a2;
+  stroke-width: 2;
+}
+.map-route-primary {
+  fill: none;
+  stroke: var(--dock-cyan);
+  stroke-linecap: round;
+  stroke-width: 5;
+}
+.map-route circle {
+  fill: var(--dock-cyan);
+  stroke: #edf0eb;
+  stroke-width: 5;
 }
 .map-river {
   border: 8px solid rgba(78, 156, 166, 0.16);
@@ -181,26 +192,6 @@
   transform: rotate(-10deg);
   width: 125%;
 }
-.map-dot {
-  background: var(--dock-cyan);
-  border: 3px solid #edf0eb;
-  border-radius: 50%;
-  height: 13px;
-  position: absolute;
-  width: 13px;
-}
-.dot-one {
-  left: 23%;
-  top: 62%;
-}
-.dot-two {
-  left: 50%;
-  top: 46%;
-}
-.dot-three {
-  right: 18%;
-  top: 30%;
-}
 .workspace-resources {
   align-items: center;
   background: #f4f1e9;
@@ -209,6 +200,24 @@
   gap: 12px;
   height: 84px;
   padding: 10px 16px;
+}
+
+@media (min-width: 1200px) {
+  .plandock-workspace {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-height: clamp(530px, 36vw, 640px);
+  }
+  .workspace-main {
+    min-height: 0;
+  }
+  .workspace-matrix {
+    display: grid;
+    grid-template-rows: 33px repeat(3, minmax(0, 1fr));
+  }
+  .workspace-row {
+    min-height: 0;
+  }
 }
 .resources-label {
   align-items: center;

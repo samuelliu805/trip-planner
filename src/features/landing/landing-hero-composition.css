@@ -1,15 +1,16 @@
 .hero-support {
-  max-width: 26rem;
+  max-width: 34rem;
 }
 .hero-copy .landing-eyebrow {
   letter-spacing: 0.14em;
 }
 .scene-state {
-  left: clamp(1.25rem, 5vw, 5.5rem);
-  right: clamp(1.25rem, 5vw, 5.5rem);
-  bottom: 22px;
+  left: var(--landing-frame-inset);
+  right: var(--landing-frame-inset);
+  bottom: auto;
+  top: min(calc(var(--hero-workspace-bottom, 78svh) + 3.25rem), calc(100% - 68px));
   min-height: 48px;
-  border-top: 1px solid #f7f4ec24;
+  border-top: 1px solid #fbfaf624;
   padding-top: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -30,7 +31,7 @@
 .scene-state > .is-current {
   opacity: 1;
 }
-.scene-state span {
+.scene-state > div > span {
   display: grid;
   place-items: center;
   width: 27px;
@@ -41,15 +42,18 @@
   font-size: 0.65rem;
   flex-shrink: 0;
 }
-.scene-state .is-current span {
+.scene-state .is-current > span {
   background: #a8d6bb;
   color: var(--dock-navy);
 }
 .scene-state strong {
   color: var(--dock-paper);
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   letter-spacing: 0;
   text-transform: none;
+}
+.state-label-short {
+  display: none;
 }
 .scroll-cue {
   display: none;

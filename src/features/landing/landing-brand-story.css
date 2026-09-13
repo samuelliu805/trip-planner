@@ -48,7 +48,7 @@
   color: #a8d6bb;
 }
 .departure-copy > p:last-child {
-  color: #f7f4ecc9;
+  color: #fbfaf6c9;
   font-size: 1rem;
 }
 .departure-story > a {
@@ -57,7 +57,7 @@
   align-items: center;
   align-self: flex-end;
   padding-block: 14px;
-  border-bottom: 1px solid #f7f4ec70;
+  border-bottom: 1px solid #fbfaf670;
   font-size: 0.8rem;
 }
 .departure-story > a svg {

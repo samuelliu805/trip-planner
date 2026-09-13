@@ -12,6 +12,7 @@ import { translateMessage } from "@/features/i18n/translate";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 import { getAuthProvider } from "@/platform/composition/server";
 import { appUserIdentityLabel } from "@/platform/contracts/auth";
+import { tripPlannerWordmark } from "@/features/landing/brand";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
@@ -54,7 +55,7 @@ export default async function HomePage() {
       >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link className="text-xl font-bold text-primary sm:text-2xl" href="/home">
-            <T message={" Trip Planner "} />
+            {tripPlannerWordmark}
           </Link>
           {user ? (
             <div className="flex min-w-0 items-center gap-1 sm:gap-2">

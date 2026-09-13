@@ -93,7 +93,7 @@
   width: 1.75rem;
 }
 .scene-state strong {
-  color: rgba(247, 244, 236, 0.68);
+  color: rgba(251, 250, 246, 0.68);
   font-size: 0.66rem;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -114,7 +114,7 @@
 }
 .completion-label button {
   align-items: center;
-  color: rgba(247, 244, 236, 0.66);
+  color: rgba(251, 250, 246, 0.66);
   display: inline-flex;
   font-size: 0.68rem;
   font-weight: 750;

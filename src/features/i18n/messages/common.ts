@@ -58,7 +58,6 @@ export const commonZhCN: Record<string, string> = {
   "Simplified Chinese": "简体中文",
   Style: "样式",
   To: "到",
-  "Trip Planner": "行程规划",
   "Try again": "重试",
   Undo: "撤销",
   "Updating…": "正在更新…",

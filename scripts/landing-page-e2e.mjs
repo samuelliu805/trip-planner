@@ -282,8 +282,33 @@ try {
   assert.equal(seo.canonicalPath, "/");
   assert.match(seo.description, /route/i);
   assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
-  assert.equal(seo.title, "There we go — Trip planner");
+  assert.equal(seo.title, "There we go — Travel plans, ready to go");
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
+
+  await viewport(browser, 2560, 1389);
+  await navigate(browser, app.baseUrl);
+  const ultraWide = await evaluate(
+    browser,
+    `(() => { const nav = document.querySelector('.plandock-wordmark').getBoundingClientRect(); const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const workspace = document.querySelector('.workspace-stage').getBoundingClientRect(); const rail = document.querySelector('.scene-state').getBoundingClientRect(); return { alignment: Math.abs(nav.left-copy.left), headingSize: parseFloat(getComputedStyle(document.querySelector('.hero-copy h1')).fontSize), railBottom: rail.bottom, viewport: innerHeight, workspaceWidth: workspace.width }; })()`,
+  );
+  assert.ok(
+    ultraWide.alignment <= 1,
+    `Ultra-wide brand alignment drifted: ${ultraWide.alignment}px.`,
+  );
+  assert.ok(
+    ultraWide.headingSize >= 100,
+    `Ultra-wide heading stayed too small: ${ultraWide.headingSize}px.`,
+  );
+  assert.ok(
+    ultraWide.workspaceWidth >= 900,
+    `Ultra-wide workspace stayed too small: ${ultraWide.workspaceWidth}px.`,
+  );
+  assert.ok(
+    ultraWide.railBottom <= ultraWide.viewport * 0.82,
+    "Ultra-wide state rail fell below the composed scene.",
+  );
+  await viewport(browser, 1440, 900);
+  await navigate(browser, app.baseUrl);
 
   for (const [progress, expected] of [
     [0.25, "routing"],
@@ -313,7 +338,7 @@ try {
         await overlapsBetween(
           browser,
           '[data-fragment="route"]',
-          ".route-dock-viewport .workspace-map .map-dot",
+          ".route-dock-viewport .workspace-map .map-route circle",
         ),
         [],
         "The desktop place card covers a route dot while moving into place.",
@@ -336,7 +361,7 @@ try {
     await setProgress(browser, progress);
     const assembled = await evaluate(
       browser,
-      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.2 >= innerHeight*.5, nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
+      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.25 >= innerHeight*.4, nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
     );
     assert.equal(assembled.state, "assembled");
     assert.equal(assembled.visible, true);
@@ -494,7 +519,12 @@ try {
         browser,
         `[...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none').length`,
       );
-      assert.equal(visibleFragments, 1, `${width}px should keep one readable loose card.`);
+      assert.equal(visibleFragments, 2, `${width}px should keep two readable loose cards.`);
+      assert.deepEqual(
+        await visibleFragmentOverlaps(browser),
+        [],
+        `${width}px loose mobile cards overlap.`,
+      );
       assert.equal(
         await evaluate(
           browser,
@@ -505,7 +535,7 @@ try {
       );
       const initialClearance = await evaluate(
         browser,
-        `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const workspace = document.querySelector('.workspace-stage').getBoundingClientRect(); const action = document.querySelector('.hero-actions').getBoundingClientRect(); const looseCard = [...document.querySelectorAll('[data-fragment]')].find((node) => getComputedStyle(node).display !== 'none')?.getBoundingClientRect(); return { cardGap: looseCard ? looseCard.top-action.bottom : 0, workspaceGap: workspace.top-copy.bottom }; })()`,
+        `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const workspace = document.querySelector('.workspace-stage').getBoundingClientRect(); const action = document.querySelector('.hero-actions').getBoundingClientRect(); const looseCards = [...document.querySelectorAll('[data-fragment]')].filter((node) => getComputedStyle(node).display !== 'none').map((node) => node.getBoundingClientRect()); return { cardGap: Math.min(...looseCards.map((card) => card.top-action.bottom)), workspaceGap: workspace.top-copy.bottom }; })()`,
       );
       assert.ok(
         initialClearance.workspaceGap >= 28,
@@ -569,7 +599,7 @@ try {
       assert.ok(Math.abs(responsive.canvasHeight - responsive.stageHeight) <= 1);
       assert.ok(Math.abs(responsive.fragmentHeight - responsive.stageHeight) <= 1);
       assert.ok(
-        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 1.2) <
+        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 0.9) <
           0.02,
       );
       assert.ok(responsive.nextTop >= responsive.viewport - 1);
@@ -791,6 +821,14 @@ try {
     `Promise.all(['/guest','/login','/privacy','/terms','/support','/robots.txt','/sitemap.xml'].map(async (path) => [path, (await fetch(path)).status]))`,
   );
   for (const [path, status] of routes) assert.equal(status, 200, `${path} returned ${status}`);
+  const authBranding = await evaluate(
+    browser,
+    `Promise.all(['/login','/signup'].map(async (path) => { const html = await (await fetch(path)).text(); const page = new DOMParser().parseFromString(html, 'text/html'); return [path, { brand: page.querySelector('header a')?.textContent.trim(), oldBrand: /Trip Planner/i.test(page.body.textContent) }]; }))`,
+  );
+  for (const [path, branding] of authBranding) {
+    assert.equal(branding.brand, "There we go", `${path} lost the shared brand header.`);
+    assert.equal(branding.oldBrand, false, `${path} still exposes the old product name.`);
+  }
   const discoveryFiles = await evaluate(
     browser,
     `Promise.all(['/robots.txt','/sitemap.xml'].map(async (path) => [path, await (await fetch(path)).text()]))`,
@@ -809,7 +847,7 @@ try {
   }
   const landingCopy = await evaluate(
     browser,
-    `({ cardLabels: [...document.querySelectorAll('.moving-fragment .dock-fragment-copy')].map((node) => node.textContent.trim()), hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasIntro: Boolean(document.querySelector('.landing-intro')), hasOptionsPanel: Boolean(document.querySelector('.workspace-options-panel')), hasPlannerDescriptor: Boolean(document.querySelector('.plandock-brand-lockup > span')), hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, heroActions: document.querySelectorAll('.hero-actions a').length, heroHeading: document.querySelector('.hero-copy h1')?.textContent.trim(), mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
+    `({ cardLabels: [...document.querySelectorAll('.moving-fragment .dock-fragment-copy')].map((node) => node.textContent.trim()), hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasIntro: Boolean(document.querySelector('.landing-intro')), hasOptionsPanel: Boolean(document.querySelector('.workspace-options-panel')), hasPlannerDescriptor: Boolean(document.querySelector('.plandock-brand-lockup > span')), hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, heroActions: document.querySelectorAll('.hero-actions a').length, heroHeading: document.querySelector('.hero-copy h1')?.textContent.trim(), mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsOldProductName: /Trip Planner/i.test(document.body.innerText), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
   );
   assert.deepEqual(landingCopy, {
     cardLabels: [
@@ -828,6 +866,7 @@ try {
     heroActions: 1,
     heroHeading: "Plan it. Ready to go.",
     mentionsOldBrand: false,
+    mentionsOldProductName: false,
     mentionsSampleTrip: false,
     wordmarks: 2,
   });

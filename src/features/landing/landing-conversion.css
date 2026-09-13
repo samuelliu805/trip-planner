@@ -128,7 +128,7 @@
   padding: 28px clamp(1.25rem, 5vw, 4rem);
 }
 .plandock-footer p {
-  color: rgba(247, 244, 236, 0.55);
+  color: rgba(251, 250, 246, 0.55);
   text-align: center;
 }
 .plandock-footer nav {
@@ -137,7 +137,7 @@
   justify-content: flex-end;
 }
 .public-info-page {
-  background: var(--dock-paper, #f7f4ec);
+  background: var(--dock-paper, #fbfaf6);
   color: #132238;
   font-family: var(--font-journal-sans), sans-serif;
   min-height: 100svh;
@@ -203,7 +203,7 @@
   align-items: center;
   background: #132238;
   border-radius: 8px;
-  color: #f7f4ec;
+  color: #fbfaf6;
   display: inline-flex;
   font-size: 0.82rem;
   font-weight: 800;

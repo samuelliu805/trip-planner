@@ -3,14 +3,11 @@ export const landingZhCN: Record<string, string> = {
   "Ready before you go.": "准备好，再出发。",
   "Plan it. Ready to go.": "规划好，再出发。",
   "Route, stays, days and tickets—all in one plan.": "路线、住宿、日程和票据，一份计划就够。",
-  "THE TRIP PLANNER THAT GETS YOU READY": "从想去，到准备好出发",
   "Plan it.": "规划好，",
   "Ready when you are.": "随时出发。",
   "Ready to go.": "准备出发。",
   "Routes, stays, daily plans and tickets—organized in one place, so you always know what’s next.":
     "路线、住宿、日程和票据，都在一份旅行计划里准备好。下一站是什么，出发前就心里有数。",
-  "Trip planner": "旅行规划",
-  "ONE TRIP PLANNER. EVERY DETAIL READY.": "一份旅行规划，所有细节就绪",
   "Know what’s next—before you go.": "出发之前，每一步都心里有数。",
   "Build the days, connect the route, compare stays and keep every booking close. There we go turns loose travel research into one plan you can actually use.":
     "排好每天的安排，连起路线，比较住宿，把预订资料放在手边。There we go 把零散攻略整理成一份真正能带上路的计划。",
@@ -23,6 +20,9 @@ export const landingZhCN: Record<string, string> = {
   "Ideas scattered": "想法散落",
   "Details in place": "细节归位",
   "Ready to go": "行程就绪",
+  Ideas: "想法",
+  "In place": "归位",
+  Ready: "就绪",
   "Every day, ready at a glance.": "每一天，都准备得一目了然。",
   "See the day before you travel it.": "还没出发，先看清当天怎么走。",
   "Decide with the details in view.": "信息都摆清楚，再做决定。",
@@ -239,9 +239,7 @@ export const landingZhCN: Record<string, string> = {
     "把每天的行程、路线备选、住宿、预订和票据放在一起，随时调整并分享一份路上真正用得上的旅行计划。",
   "There we go — Plan routes, stays and travel details":
     "There we go：路线、住宿和旅行资料一处整理",
-  "There we go — Trip planner for routes, stays and travel details":
-    "There we go：路线、住宿与旅行资料一处整理的旅行规划工具",
-  "There we go — Trip planner": "There we go：旅行规划",
+  "There we go — Travel plans, ready to go": "There we go：旅行计划，准备好再出发",
   "There we go itinerary workspace": "There we go 行程规划区",
   "Visual itinerary planning": "用行程表直观看全程",
   "Day-by-day route planning": "按天规划路线",
@@ -271,7 +269,7 @@ export const landingZhCN: Record<string, string> = {
   PRIVACY: "隐私",
   "Your trip information should stay understandable.": "你的行程信息应当清晰可控。",
   "There we go uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.":
-    "行程规划使用账户、行程和必要的技术信息，以提供规划工作区、你主动启用的公开分享与服务稳定性。",
+    "There we go 使用账户、行程和必要的技术信息，以提供规划工作区、你主动启用的公开分享与服务稳定性。",
   "What is stored": "存储哪些信息",
   "Signed-in plans are stored by the configured regional service. Guest plans stay in this browser unless you choose to save them to an account.":
     "登录后的计划由当前区域配置的服务存储。访客计划保留在此浏览器中，除非你选择将其保存到账户。",
@@ -284,7 +282,7 @@ export const landingZhCN: Record<string, string> = {
   TERMS: "条款",
   "There we go helps you organize a plan.": "There we go 帮助你整理计划。",
   "There we go is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.":
-    "行程规划是旅行规划工作区，不销售旅行产品、不代为预订、不保证可用性，也不能替代旅行服务商的意见。",
+    "There we go 是旅行规划工作区，不销售旅行产品、不代为预订、不保证可用性，也不能替代旅行服务商的意见。",
   "Your responsibility": "你的责任",
   "Check dates, reservations, entry requirements, prices and transport details with the relevant provider before you travel.":
     "出行前，请向相关服务商核对日期、预订、入境要求、价格和交通详情。",
@@ -293,7 +291,7 @@ export const landingZhCN: Record<string, string> = {
     "你需对添加的行程信息和文件负责，并自行决定通过分享链接发布哪些内容。",
   Availability: "可用性",
   "Features may change as the product develops. Do not rely on There we go as the only copy of an essential ticket or travel document.":
-    "产品功能可能随发展而变化。请勿将行程规划作为重要票据或旅行文件的唯一备份。",
+    "产品功能可能随发展而变化。请勿将 There we go 作为重要票据或旅行文件的唯一备份。",
   SUPPORT: "支持",
   "Need a hand with your plan?": "规划遇到问题？",
   "For product questions or a reproducible issue, use the project support channel and include the route, device and steps that led to the problem.":

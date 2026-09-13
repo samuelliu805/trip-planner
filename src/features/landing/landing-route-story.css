@@ -6,7 +6,7 @@
 
 .route-map::after {
   background:
-    linear-gradient(90deg, rgba(247, 244, 236, 0.2), transparent 42%),
+    linear-gradient(90deg, rgba(251, 250, 246, 0.2), transparent 42%),
     radial-gradient(circle at 72% 22%, rgba(120, 183, 154, 0.2), transparent 30%);
   content: "";
   inset: 0;
@@ -22,7 +22,7 @@
 }
 
 .map-disclosure {
-  background: rgba(247, 244, 236, 0.9);
+  background: rgba(251, 250, 246, 0.9);
   border: 1px solid rgba(19, 34, 56, 0.12);
   border-radius: 999px;
   color: #50605c;

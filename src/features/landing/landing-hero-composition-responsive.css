@@ -41,7 +41,7 @@
     top: calc(var(--landing-nav-height) + 20px);
   }
   .hero-copy h1 {
-    font-size: clamp(2.5rem, 10.8vw, 3.1rem);
+    font-size: clamp(2.65rem, 11.6vw, 3.25rem);
     line-height: 1.04;
     margin-top: 0;
   }
@@ -49,7 +49,7 @@
     font-size: clamp(2.2rem, 9.5vw, 2.65rem);
   }
   .hero-support {
-    font-size: 0.86rem;
+    font-size: 0.94rem;
     line-height: 1.45;
     max-width: 23rem;
   }
@@ -57,23 +57,30 @@
     margin-top: 0.9rem;
   }
   .scene-state {
-    bottom: calc(8px + var(--route-dock-mobile-extension));
+    bottom: auto;
     left: 1rem;
     right: 1rem;
     gap: 0.4rem;
     padding-top: 10px;
+    top: min(calc(var(--hero-workspace-bottom, 70svh) + 3.25rem), calc(100% - 58px));
   }
   .scene-state > div {
     gap: 0.35rem;
   }
-  .scene-state span {
-    width: 22px;
-    height: 22px;
-    font-size: 0.55rem;
+  .scene-state > div > span {
+    width: 26px;
+    height: 26px;
+    font-size: 0.6rem;
   }
   .scene-state strong {
-    font-size: 0.54rem;
+    font-size: 0.62rem;
     line-height: 1.25;
+  }
+  .state-label-full {
+    display: none;
+  }
+  .state-label-short {
+    display: inline;
   }
   .scene-state > div:last-child {
     justify-content: flex-start;

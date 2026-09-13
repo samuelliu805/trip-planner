@@ -10,25 +10,32 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --brand-navy: #132238;
+  --brand-paper: #fbfaf6;
+  --brand-mint: #78b79a;
+  --brand-mint-hover: #91cdb0;
+  --brand-route: #4e9ca6;
+  --brand-green: #367c61;
+  --brand-border: #d9d5ca;
   --radius: 0.75rem;
-  --background: oklch(0.985 0.006 95);
-  --foreground: oklch(0.2 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 260);
-  --primary: oklch(0.51 0.16 165);
-  --primary-foreground: oklch(0.98 0.01 165);
-  --secondary: oklch(0.95 0.015 165);
-  --secondary-foreground: oklch(0.25 0.04 165);
-  --muted: oklch(0.95 0.008 95);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.93 0.03 165);
-  --accent-foreground: oklch(0.25 0.04 165);
+  --background: var(--brand-paper);
+  --foreground: var(--brand-navy);
+  --card: #fffefa;
+  --card-foreground: var(--brand-navy);
+  --popover: #fffefa;
+  --popover-foreground: var(--brand-navy);
+  --primary: var(--brand-green);
+  --primary-foreground: var(--brand-paper);
+  --secondary: #e4ece4;
+  --secondary-foreground: var(--brand-navy);
+  --muted: #f1eee6;
+  --muted-foreground: #5c6965;
+  --accent: #e4ece4;
+  --accent-foreground: var(--brand-navy);
   --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.9 0.012 95);
-  --input: oklch(0.9 0.012 95);
-  --ring: oklch(0.51 0.16 165);
+  --border: var(--brand-border);
+  --input: var(--brand-border);
+  --ring: var(--brand-route);
 }
 
 @theme inline {

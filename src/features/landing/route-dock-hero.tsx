@@ -34,6 +34,10 @@ type FragmentStyle = CSSProperties & {
   "--fragment-index": number;
 };
 
+type ViewportStyle = CSSProperties & {
+  "--hero-workspace-bottom"?: string;
+};
+
 export function RouteDockHero({
   appRegion,
   startHref = "/guest",
@@ -126,9 +130,12 @@ export function RouteDockHero({
     1,
     (viewportSize.visibleHeight - 240) / Math.max(1, viewportSize.workspaceHeight),
   );
-  const desktopTop = Math.max(
-    132,
-    (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
+  const desktopTop = Math.min(
+    viewportSize.width >= 1800 ? 350 : 260,
+    Math.max(
+      124,
+      (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
+    ),
   );
   const compactStage = viewportSize.width <= 1024;
   const workspaceStyle: WorkspaceStyle = !hasMeasured
@@ -148,6 +155,12 @@ export function RouteDockHero({
           top: desktopTop,
           transform: `translate3d(0, ${compactStage ? 0 : (1 - deskProgress) * 14}px, 0) rotate(${(-(compactStage ? 2 : 4) * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale})`,
         };
+  const workspaceBottom = mobileWorkspace
+    ? mobileWorkspace.top + viewportSize.workspaceHeight
+    : desktopTop + viewportSize.workspaceHeight * desktopScale;
+  const viewportStyle: ViewportStyle = hasMeasured
+    ? { "--hero-workspace-bottom": `${workspaceBottom}px` }
+    : {};
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
     for (const kind of dockKinds) {
@@ -192,7 +205,7 @@ export function RouteDockHero({
         data-testid="route-dock-hero"
         ref={trackRef}
       >
-        <div className="route-dock-viewport" ref={viewportRef}>
+        <div className="route-dock-viewport" ref={viewportRef} style={viewportStyle}>
           <div className="hero-copy" ref={copyRef}>
             <h1>
               <T message="Plan it. Ready to go." />
@@ -243,23 +256,32 @@ export function RouteDockHero({
             })}
           </div>
           <div className="scene-state" aria-live="polite">
-            {(["Ideas scattered", "Details in place", "Ready to go"] as const).map(
-              (label, index) => (
-                <div
-                  key={label}
-                  className={
-                    (state === "scattered" ? 0 : state === "assembled" ? 2 : 1) === index
-                      ? "is-current"
-                      : undefined
-                  }
-                >
-                  <span>{["A", "B", "C"][index]}</span>
-                  <strong>
+            {(
+              [
+                ["Ideas scattered", "Ideas"],
+                ["Details in place", "In place"],
+                ["Ready to go", "Ready"],
+              ] as const
+            ).map(([label, shortLabel], index) => (
+              <div
+                key={label}
+                className={
+                  (state === "scattered" ? 0 : state === "assembled" ? 2 : 1) === index
+                    ? "is-current"
+                    : undefined
+                }
+              >
+                <span>{["A", "B", "C"][index]}</span>
+                <strong>
+                  <span className="state-label-full">
                     <T message={label} />
-                  </strong>
-                </div>
-              ),
-            )}
+                  </span>
+                  <span className="state-label-short">
+                    <T message={shortLabel} />
+                  </span>
+                </strong>
+              </div>
+            ))}
           </div>
           <div className="scroll-cue" aria-hidden="true">
             <ArrowDown />
