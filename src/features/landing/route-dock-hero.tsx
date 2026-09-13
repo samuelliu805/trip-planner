@@ -6,11 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 
 import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 import Link from "next/link";
 
 import { AssembledWorkspace } from "./assembled-workspace";
 import { DockContent } from "./dock-content";
-import { dockKinds, type DockKind } from "./paris-fixture";
+import { dockKinds, landingFixtureForRegion, type DockKind } from "./paris-fixture";
 import {
   clamp,
   dockState,
@@ -35,7 +36,13 @@ type FragmentStyle = CSSProperties & {
   "--fragment-index": number;
 };
 
-export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) {
+export function RouteDockHero({
+  appRegion,
+  startHref = "/guest",
+}: {
+  appRegion: AppRegion;
+  startHref?: string;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -48,6 +55,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
   const [motionReady, setMotionReady] = useState(false);
   const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
   const state = dockState(effectiveProgress);
+  const fixture = landingFixtureForRegion(appRegion);
   const { targets, viewportSize } = useRouteDockMeasurements({
     copyRef,
     layerRef,
@@ -122,21 +130,22 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     132,
     (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
   );
+  const compactStage = viewportSize.width <= 1024;
   const workspaceStyle: WorkspaceStyle = mobileWorkspace
     ? {
         "--dock-target-opacity": destinationOpacity,
-        "--mobile-workspace-rest-scale": mobileWorkspace.scale * 0.985,
+        "--mobile-workspace-rest-scale": mobileWorkspace.scale,
         "--mobile-workspace-scale": mobileWorkspace.scale,
         opacity: workspaceOpacity,
         top: mobileWorkspace.top,
-        transform: `translateX(-50%) rotate(${(-2.4 * (1 - deskProgress)).toFixed(2)}deg) scale(${mobileWorkspace.scale * (0.94 + deskProgress * 0.06)})`,
+        transform: `translateX(-50%) rotate(${(-1.8 * (1 - deskProgress)).toFixed(2)}deg) scale(${mobileWorkspace.scale})`,
         width: mobileWorkspace.width,
       }
     : {
         "--dock-target-opacity": destinationOpacity,
         opacity: workspaceOpacity,
         top: desktopTop,
-        transform: `translate3d(0, ${(1 - deskProgress) * 18}px, 0) rotate(${(-5.5 * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale * (0.9 + deskProgress * 0.1)})`,
+        transform: `translate3d(0, ${compactStage ? 0 : (1 - deskProgress) * 18}px, 0) rotate(${(-(compactStage ? 3 : 5.5) * (1 - deskProgress)).toFixed(2)}deg) scale(${compactStage ? desktopScale : desktopScale * (0.9 + deskProgress * 0.1)})`,
       };
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
@@ -148,9 +157,9 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
         effectiveProgress,
         initialFragmentRect(kind, viewportSize.width, viewportSize.height),
         target,
-        viewportSize.width < 700 ? 0.3 : 1,
+        viewportSize.width < 700 ? 0.3 : viewportSize.width <= 1024 ? 0.65 : 1,
       );
-      if (viewportSize.width < 700 && effectiveProgress < 0.7) {
+      if (viewportSize.width <= 1024 && effectiveProgress < 0.7) {
         transform.x = clamp(transform.x, 8, viewportSize.width - transform.width - 12);
       }
       result[kind] = transform;
@@ -185,28 +194,23 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
         <div className="route-dock-viewport" ref={viewportRef}>
           <div className="hero-copy" ref={copyRef}>
             <p className="landing-eyebrow">
-              <T message="GOOD TRIPS COME TOGETHER" />
+              <T message="THE TRIP PLANNER THAT GETS YOU READY" />
             </p>
             <h1>
               <span>
-                <T message="From “we should go”" />
+                <T message="Plan it." />
               </span>
               <span className="hero-title-destination">
-                <T message="to “There we go.”" />
+                <T message="Ready to go." />
               </span>
             </h1>
             <p className="hero-support">
-              <T message="A place for your maybes, your plans and your people. Bring it all together, then look forward to going." />
+              <T message="Routes, stays, daily plans and tickets—organized in one place, so you always know what’s next." />
             </p>
             <div className="hero-actions">
               <Button asChild size="lg">
                 <Link href={startHref}>
                   <T message="Start planning" />
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="#how-it-works">
-                  <T message="See how it works" />
                 </Link>
               </Button>
             </div>
@@ -220,11 +224,11 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
               fill
               loading="eager"
               sizes="(max-width: 699px) 180px, 320px"
-              src="/landing/paris-morning.webp"
+              src={fixture.heroPhoto}
             />
             <figcaption>
               <span>
-                <T message="PARIS, FRANCE" />
+                <T message={fixture.cityLabel} />
               </span>
               <strong>
                 <T message="Let’s go here." />
@@ -232,7 +236,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
             </figcaption>
           </figure>
           <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
-            <AssembledWorkspace targetOpacity={1} />
+            <AssembledWorkspace appRegion={appRegion} targetOpacity={1} />
           </div>
           <div className="fragment-layer" ref={layerRef}>
             {dockKinds.map((kind, index) => {
@@ -259,14 +263,14 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
                   }
                 >
                   <div className="fragment-card-face">
-                    <DockContent kind={kind} />
+                    <DockContent appRegion={appRegion} kind={kind} />
                   </div>
                 </div>
               );
             })}
           </div>
           <div className="scene-state" aria-live="polite">
-            {(["Loose travel notes", "Finding their place", "One readable itinerary"] as const).map(
+            {(["Ideas scattered", "Details in place", "Ready to go"] as const).map(
               (label, index) => (
                 <div
                   key={label}

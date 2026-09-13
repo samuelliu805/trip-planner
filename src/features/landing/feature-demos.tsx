@@ -2,16 +2,23 @@ import { Check, FileText, Link2, Paperclip, TrainFront } from "lucide-react";
 import Image from "next/image";
 
 import { T } from "@/features/i18n/i18n-provider";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 
-import { parisLandingFixture } from "./paris-fixture";
+import { landingFixtureForRegion } from "./paris-fixture";
 
-export function MatrixDemo() {
+export function MatrixDemo({ appRegion }: { appRegion: AppRegion }) {
+  const fixture = landingFixtureForRegion(appRegion);
   return (
     <div className="feature-matrix-stage">
       <figure aria-hidden="true" className="feature-matrix-photo">
-        <Image alt="" fill sizes="160px" src="/landing/travel-desk.webp" />
+        <Image
+          alt=""
+          fill
+          sizes="160px"
+          src={appRegion === "cn" ? fixture.heroPhoto : "/landing/travel-desk.webp"}
+        />
         <span>
-          <T message="PAR · 07:40" />
+          <T message={fixture.code} />
         </span>
       </figure>
       <div
@@ -26,7 +33,7 @@ export function MatrixDemo() {
             </span>
           ))}
         </div>
-        {parisLandingFixture.days.map((day, index) => (
+        {fixture.days.map((day, index) => (
           <div className="feature-matrix-row" key={day.day}>
             <span>
               <b>
@@ -41,7 +48,7 @@ export function MatrixDemo() {
             </span>
             <span>
               {index === 0 ? <TrainFront aria-hidden="true" /> : null}
-              <T message={index === 0 ? "Metro to hotel" : "Walk + Metro"} />
+              <T message={index === 0 ? fixture.transport[0] : fixture.transport[1]} />
             </span>
             <span>
               <T message={day.activity} />
@@ -64,7 +71,8 @@ export function MatrixDemo() {
   );
 }
 
-export function OptionsDemo() {
+export function OptionsDemo({ appRegion }: { appRegion: AppRegion }) {
+  const fixture = landingFixtureForRegion(appRegion);
   return (
     <div className="options-demo">
       <div className="options-demo-head">
@@ -72,19 +80,14 @@ export function OptionsDemo() {
           <T message="Ideas & Options" />
         </span>
         <small>
-          <T message="Transfer to Rive Gauche" />
+          <T message={fixture.optionsDestination} />
         </small>
       </div>
       <figure aria-hidden="true" className="options-demo-photo">
-        <Image
-          alt=""
-          fill
-          sizes="(max-width: 760px) 100vw, 42vw"
-          src="/landing/paris-morning.webp"
-        />
+        <Image alt="" fill sizes="(max-width: 760px) 100vw, 42vw" src={fixture.heroPhoto} />
         <span />
       </figure>
-      {parisLandingFixture.options.map((option, index) => (
+      {fixture.options.map((option, index) => (
         <article key={option.label}>
           <span className="option-radio" aria-hidden="true">
             {index === 0 ? <i /> : null}
@@ -109,7 +112,8 @@ export function OptionsDemo() {
   );
 }
 
-export function DocumentsDemo() {
+export function DocumentsDemo({ appRegion }: { appRegion: AppRegion }) {
+  const fixture = landingFixtureForRegion(appRegion);
   return (
     <div className="documents-demo">
       <div className="document-link">
@@ -118,7 +122,9 @@ export function DocumentsDemo() {
           <small>
             <T message="Booking link" />
           </small>
-          <strong>{"louvre.fr/visit"}</strong>
+          <strong>
+            <T message={fixture.document.link} />
+          </strong>
         </div>
         <Check aria-hidden="true" />
       </div>
@@ -128,11 +134,10 @@ export function DocumentsDemo() {
         </span>
         <div>
           <strong>
-            <T message={parisLandingFixture.document.label} />
+            <T message={fixture.document.label} />
           </strong>
           <small>
-            <T message={parisLandingFixture.document.meta} /> ·{" "}
-            <T message="Connected to Louvre Museum" />
+            <T message={fixture.document.meta} /> · <T message={fixture.document.connection} />
           </small>
         </div>
       </div>

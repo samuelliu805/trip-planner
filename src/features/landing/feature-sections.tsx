@@ -1,12 +1,12 @@
 import { T } from "@/features/i18n/i18n-provider";
 import Image from "next/image";
 import { ArrowDownRight } from "lucide-react";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { DocumentsDemo, MatrixDemo, OptionsDemo } from "./feature-demos";
 import { LandingRevealSection } from "./landing-reveal-section";
 import { RouteStory } from "./route-story";
 import { ShareStory } from "./share-story";
-import { tripPlannerWordmark } from "./brand";
 
 function SectionHeading({
   eyebrow,
@@ -32,31 +32,31 @@ function SectionHeading({
   );
 }
 
-export function FeatureSections() {
+export function FeatureSections({ appRegion }: { appRegion: AppRegion }) {
   return (
     <div className="landing-feature-story" id="features">
-      <LandingRevealSection className="landing-intro" id="how-it-works">
+      <LandingRevealSection className="landing-intro">
         <p className="landing-eyebrow">
-          <T message="A LITTLE PLANNING. A LOT TO LOOK FORWARD TO." />
+          <T message="ONE TRIP PLANNER. EVERY DETAIL READY." />
         </p>
         <h2>
-          <T message="Good trips come together." />
+          <T message="Know what’s next—before you go." />
         </h2>
         <p>
-          <T message="The café you saved. The museum you can’t miss. A few days to make your own. Give them a place in the same plan." />
+          <T message="Build the days, connect the route, compare stays and keep every booking close. There we go turns loose travel research into one plan you can actually use." />
         </p>
         <div className="journey-index" aria-hidden="true">
           <span>
             <i>01</i>
-            <T message="Find your rhythm" />
+            <T message="Shape the trip" />
           </span>
           <span>
             <i>02—04</i>
-            <T message="Bring the details" />
+            <T message="Check every detail" />
           </span>
           <span>
             <i>05</i>
-            <T message="Go together" />
+            <T message="Ready to take along" />
           </span>
         </div>
       </LandingRevealSection>
@@ -64,26 +64,26 @@ export function FeatureSections() {
       <LandingRevealSection className="feature-section matrix-section">
         <SectionHeading
           eyebrow="01 · PLAN THE WHOLE TRIP"
-          title="See every day at once."
+          title="Every day, ready at a glance."
           body="Use a structured Matrix or Timeline for accommodation, transport, activities, meals and notes. Reorder the day when the plan changes."
         />
-        <MatrixDemo />
+        <MatrixDemo appRegion={appRegion} />
       </LandingRevealSection>
 
       <LandingRevealSection className="feature-section route-section">
         <SectionHeading
           eyebrow="02 · UNDERSTAND THE ROUTE"
-          title="Make movement part of the plan."
+          title="See the day before you travel it."
           body="Connect places to itinerary items, inspect the day’s sequence and keep the route beside the schedule."
         />
-        <RouteStory />
+        <RouteStory appRegion={appRegion} />
       </LandingRevealSection>
 
       <LandingRevealSection className="feature-section options-section">
-        <OptionsDemo />
+        <OptionsDemo appRegion={appRegion} />
         <SectionHeading
           eyebrow="03 · COMPARE BEFORE DECIDING"
-          title="Keep alternatives visible."
+          title="Decide with the details in view."
           body="Save route and trip options side by side. Compare their known details without invented scores or automatic winners."
         />
       </LandingRevealSection>
@@ -91,24 +91,23 @@ export function FeatureSections() {
       <LandingRevealSection className="feature-section documents-section">
         <SectionHeading
           eyebrow="04 · KEEP THE SOURCE MATERIAL"
-          title="Tickets stay with the item."
+          title="The right ticket, right when you need it."
           body="Keep useful links, notes, bookings and supported files connected to the part of the trip they belong to."
         />
-        <DocumentsDemo />
+        <DocumentsDemo appRegion={appRegion} />
       </LandingRevealSection>
 
       <LandingRevealSection className="departure-story">
-        <Image alt="" fill sizes="100vw" src="/landing/paris-morning.webp" />
+        <Image alt="" fill sizes="100vw" src="/landing/travel-desk.webp" />
         <div className="departure-copy">
           <p className="landing-eyebrow">
-            <T message="THE PLAN IS COMING TOGETHER" />
+            <T message="READY LOOKS LIKE THIS" />
           </p>
           <h2>
-            {tripPlannerWordmark}
-            <span>.</span>
+            <T message="Everything in place." />
           </h2>
           <p>
-            <T message="Less searching. More being there." />
+            <T message="The route is set, the tickets are close, and the plan is ready to use." />
           </p>
         </div>
         <a href="#share-demo">
@@ -120,10 +119,14 @@ export function FeatureSections() {
       <LandingRevealSection className="share-section" id="share-demo">
         <SectionHeading
           eyebrow="05 · SHARE A TRIP PEOPLE CAN READ"
-          title="Your plans. A page to take with you."
-          body="Turn the same Paris plan into a travel journal. A clear, read-only page to send to the people you’re going with."
+          title="A ready trip is easy to share."
+          body={
+            appRegion === "cn"
+              ? "Turn the same western Sichuan plan into a compact travel journal: a clear, read-only page that stays useful on the road."
+              : "Turn the same Paris plan into a compact travel journal: a clear, read-only page that stays useful on the road."
+          }
         />
-        <ShareStory />
+        <ShareStory appRegion={appRegion} />
       </LandingRevealSection>
     </div>
   );

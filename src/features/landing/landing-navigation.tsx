@@ -15,15 +15,17 @@ export function LandingNavigation({ accountLabel }: { accountLabel?: string }) {
       data-authenticated={accountLabel ? "true" : undefined}
       data-i18n-aria-label="Primary navigation"
     >
-      <Link className="plandock-wordmark" href="/" aria-label={`${tripPlannerBrandName} home`}>
-        {tripPlannerWordmark}
-      </Link>
+      <div className="plandock-brand-lockup">
+        <Link className="plandock-wordmark" href="/" aria-label={`${tripPlannerBrandName} home`}>
+          {tripPlannerWordmark}
+        </Link>
+        <span>
+          <T message="Trip planner" />
+        </span>
+      </div>
       <div className="plandock-nav-links">
         <Link href="#features">
           <T message="Features" />
-        </Link>
-        <Link href="#how-it-works">
-          <T message="How it works" />
         </Link>
       </div>
       <div className="plandock-nav-actions">

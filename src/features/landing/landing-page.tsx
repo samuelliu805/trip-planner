@@ -45,14 +45,14 @@ export function LandingPage({
   return (
     <main className="plandock-page">
       <LandingNavigation accountLabel={accountLabel} />
-      <RouteDockHero startHref={startHref} />
-      <FeatureSections />
+      <RouteDockHero appRegion={appRegion} startHref={startHref} />
+      <FeatureSections appRegion={appRegion} />
       <LandingRevealSection className="landing-final-cta">
         <p className="landing-eyebrow">
-          <T message="GOOD TRIPS COME TOGETHER" />
+          <T message="YOUR TRIP, READY TO USE" />
         </p>
         <h2>
-          <T message="Let’s give it somewhere to start." />
+          <T message="Ready when you are." />
         </h2>
         <p>
           <T message="Start locally. Create an account when you are ready to keep planning across devices." />
