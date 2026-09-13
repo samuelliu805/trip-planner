@@ -21,80 +21,18 @@ import {
   type FragmentTransform,
 } from "./route-dock-math";
 import { RouteDockCanvas } from "./route-dock-canvas";
+import { initialFragmentRect } from "./route-dock-fragment-layout";
 import { useLandingScrollReset, useRouteDockMeasurements } from "./route-dock-layout";
 
-const starts: Record<DockKind, FragmentTransform> = {
-  route: {
-    blur: 1.2,
-    x: 0,
-    y: 0,
-    width: 238,
-    height: 88,
-    scale: 1,
-    rotation: -5,
-    borderRadius: 16,
-    depth: -70,
-    opacity: 1,
-  },
-  stay: {
-    blur: 0,
-    x: 0,
-    y: 0,
-    width: 220,
-    height: 78,
-    scale: 1.04,
-    rotation: 3,
-    borderRadius: 16,
-    depth: 90,
-    opacity: 1,
-  },
-  activity: {
-    blur: 0.4,
-    x: 0,
-    y: 0,
-    width: 216,
-    height: 78,
-    scale: 1,
-    rotation: -2,
-    borderRadius: 16,
-    depth: 35,
-    opacity: 1,
-  },
-  document: {
-    blur: 0.9,
-    x: 0,
-    y: 0,
-    width: 226,
-    height: 82,
-    scale: 1,
-    rotation: 4,
-    borderRadius: 16,
-    depth: -45,
-    opacity: 1,
-  },
-};
-
 type WorkspaceStyle = CSSProperties & {
+  "--dock-target-opacity"?: number;
   "--mobile-workspace-rest-scale"?: number;
   "--mobile-workspace-scale"?: number;
 };
 
-function initialRect(kind: DockKind, width: number, height: number): FragmentTransform {
-  const mobile = width < 700;
-  const index = dockKinds.indexOf(kind);
-  const columns = mobile ? 2 : 1;
-  const row = Math.floor(index / columns);
-  const column = index % columns;
-  const base = starts[kind];
-  const fragmentWidth = mobile ? Math.min(base.width, width * 0.4) : base.width;
-  return {
-    ...base,
-    width: fragmentWidth,
-    height: mobile ? 70 : base.height,
-    x: mobile ? width * 0.08 + column * (width * 0.44) : width * 0.58 + (index % 2) * 44,
-    y: mobile ? height * 0.57 + row * 86 : height * 0.22 + index * 104,
-  };
-}
+type FragmentStyle = CSSProperties & {
+  "--fragment-index": number;
+};
 
 export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -107,11 +45,14 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
   const [webglFailed, setWebglFailed] = useState(false);
   const [webglReady, setWebglReady] = useState(false);
   const [motionReady, setMotionReady] = useState(false);
+  const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
+  const state = dockState(effectiveProgress);
   const { targets, viewportSize } = useRouteDockMeasurements({
     copyRef,
     layerRef,
     viewportRef,
     workspaceRef,
+    measureKey: state,
   });
   const handleWebglFailure = useCallback(() => setWebglFailed(true), []);
   const handleWebglReady = useCallback(() => setWebglReady(true), []);
@@ -164,11 +105,10 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     };
   }, [reducedMotion]);
 
-  const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
-  const state = dockState(effectiveProgress);
   const destinationOpacity = targetContentOpacity(effectiveProgress);
+  const deskProgress = clamp(effectiveProgress / 0.5);
   const workspaceOpacity =
-    reducedMotion || webglFailed ? 1 : clamp((effectiveProgress - 0.32) / 0.23);
+    reducedMotion || webglFailed ? 1 : 0.7 + clamp(effectiveProgress / 0.62) * 0.3;
   const mobileWorkspace =
     viewportSize.width < 700
       ? mobileWorkspaceLayout(
@@ -180,14 +120,19 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
       : null;
   const workspaceStyle: WorkspaceStyle = mobileWorkspace
     ? {
+        "--dock-target-opacity": destinationOpacity,
         "--mobile-workspace-rest-scale": mobileWorkspace.scale * 0.985,
         "--mobile-workspace-scale": mobileWorkspace.scale,
         opacity: workspaceOpacity,
         top: mobileWorkspace.top,
-        transform: `translateX(-50%) scale(${state === "assembled" ? mobileWorkspace.scale : mobileWorkspace.scale * 0.985})`,
+        transform: `translateX(-50%) rotate(${(-2.4 * (1 - deskProgress)).toFixed(2)}deg) scale(${mobileWorkspace.scale * (0.94 + deskProgress * 0.06)})`,
         width: mobileWorkspace.width,
       }
-    : { opacity: workspaceOpacity };
+    : {
+        "--dock-target-opacity": destinationOpacity,
+        opacity: workspaceOpacity,
+        transform: `translate3d(0, ${(1 - deskProgress) * 18}px, 0) rotate(${(-5.5 * (1 - deskProgress)).toFixed(2)}deg) scale(${0.9 + deskProgress * 0.1})`,
+      };
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
     for (const kind of dockKinds) {
@@ -196,7 +141,7 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
       result[kind] = fragmentTransform(
         kind,
         effectiveProgress,
-        initialRect(kind, viewportSize.width, viewportSize.height),
+        initialFragmentRect(kind, viewportSize.width, viewportSize.height),
         target,
       );
     }
@@ -252,32 +197,52 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
             </p>
           </div>
           <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
-            <AssembledWorkspace targetOpacity={destinationOpacity} />
+            <AssembledWorkspace targetOpacity={1} />
           </div>
           <div className="fragment-layer" ref={layerRef}>
-            {dockKinds.map((kind) => {
+            {dockKinds.map((kind, index) => {
               const transform =
-                transforms[kind] ?? initialRect(kind, viewportSize.width, viewportSize.height);
+                transforms[kind] ??
+                initialFragmentRect(kind, viewportSize.width, viewportSize.height);
               return (
                 <div
                   className={`moving-fragment fragment-${kind}`}
                   data-fragment={kind}
                   key={kind}
-                  style={{
-                    borderRadius: transform.borderRadius,
-                    filter: `blur(${transform.blur}px)`,
-                    height: transform.height,
-                    left: transform.x,
-                    opacity: reducedMotion || webglFailed ? 0 : transform.opacity,
-                    top: transform.y,
-                    transform: `translate3d(0, 0, ${transform.depth}px) rotate(${transform.rotation}deg) scale(${transform.scale})`,
-                    width: transform.width,
-                  }}
+                  style={
+                    {
+                      "--fragment-index": index,
+                      borderRadius: transform.borderRadius,
+                      filter: `blur(${transform.blur}px)`,
+                      height: transform.height,
+                      left: transform.x,
+                      opacity: reducedMotion || webglFailed ? 0 : transform.opacity,
+                      top: transform.y,
+                      transform: `translate3d(0, 0, ${transform.depth}px) rotate(${transform.rotation}deg) scale(${transform.scale})`,
+                      width: transform.width,
+                    } as FragmentStyle
+                  }
                 >
-                  <DockContent kind={kind} />
+                  <div className="fragment-card-face">
+                    <DockContent kind={kind} />
+                  </div>
                 </div>
               );
             })}
+          </div>
+          <div className="scene-state" aria-live="polite">
+            <span>{state === "scattered" ? "A" : state === "assembled" ? "C" : "B"}</span>
+            <strong>
+              <T
+                message={
+                  state === "scattered"
+                    ? "Loose travel notes"
+                    : state === "assembled"
+                      ? "One readable itinerary"
+                      : "Finding their place"
+                }
+              />
+            </strong>
           </div>
           <div className="completion-label" aria-hidden={state !== "assembled"}>
             <span>

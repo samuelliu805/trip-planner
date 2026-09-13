@@ -1,24 +1,21 @@
 .workspace-stage {
   position: absolute;
   right: clamp(1rem, 4vw, 4rem);
-  top: 13vh;
-  transform: scale(0.985);
+  top: 14vh;
+  transform: scale(0.9) rotate(-5.5deg);
   transform-origin: center;
-  transition:
-    top 500ms ease,
-    transform 520ms cubic-bezier(0.2, 1.45, 0.45, 1);
-  width: min(52vw, 750px);
+  transition: top 220ms ease;
+  width: min(55vw, 790px);
   will-change: transform;
   z-index: 10;
-}
-.route-dock-track[data-dock-state="assembled"] .workspace-stage {
-  transform: scale(1);
 }
 .plandock-workspace {
   background: #fbfaf6;
   border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 18px;
-  box-shadow: 0 35px 90px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 48px 120px rgba(3, 10, 20, 0.48),
+    0 12px 30px rgba(3, 10, 20, 0.25);
   color: var(--dock-navy);
   min-height: 530px;
   overflow: hidden;
@@ -90,7 +87,8 @@
   min-height: 78px;
 }
 .workspace-row > span,
-.workspace-row > .plandock-target {
+.workspace-row > .plandock-target,
+.workspace-row > .workspace-activity-stack {
   border-right: 1px solid #e3e0d8;
   min-width: 0;
   padding: 9px 7px;
@@ -133,10 +131,6 @@
   height: 100%;
   transition: opacity 80ms linear;
   width: 100%;
-}
-.target-stay,
-.target-activity {
-  height: 78px;
 }
 .workspace-map {
   background: #edf0eb;
@@ -208,41 +202,6 @@
   right: 18%;
   top: 30%;
 }
-.target-route {
-  border: 1px solid rgba(78, 156, 166, 0.24);
-  border-radius: 8px;
-  bottom: 61px;
-  height: 76px;
-  left: 12px;
-  position: absolute;
-  right: 12px;
-}
-.workspace-options {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.76);
-  border-radius: 7px;
-  bottom: 12px;
-  display: flex;
-  font-size: 0.58rem;
-  justify-content: space-between;
-  left: 12px;
-  padding: 8px;
-  position: absolute;
-  right: 12px;
-}
-.workspace-options span {
-  align-items: center;
-  display: flex;
-  font-weight: 800;
-  gap: 4px;
-}
-.workspace-options svg {
-  height: 12px;
-  width: 12px;
-}
-.workspace-options small {
-  color: #68727a;
-}
 .workspace-resources {
   align-items: center;
   background: #f4f1e9;
@@ -263,10 +222,4 @@
 .resources-label svg {
   height: 13px;
   width: 13px;
-}
-.target-document {
-  border: 1px solid rgba(78, 156, 166, 0.24);
-  border-radius: 8px;
-  flex: 1;
-  height: 62px;
 }

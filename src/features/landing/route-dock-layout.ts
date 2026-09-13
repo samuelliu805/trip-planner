@@ -31,11 +31,13 @@ export function useRouteDockMeasurements({
   layerRef,
   viewportRef,
   workspaceRef,
+  measureKey,
 }: {
   copyRef: RefObject<HTMLDivElement | null>;
   layerRef: RefObject<HTMLDivElement | null>;
   viewportRef: RefObject<HTMLDivElement | null>;
   workspaceRef: RefObject<HTMLDivElement | null>;
+  measureKey: string;
 }) {
   const [targets, setTargets] = useState<Partial<Record<DockKind, DockRect>>>({});
   const [viewportSize, setViewportSize] = useState({
@@ -87,7 +89,7 @@ export function useRouteDockMeasurements({
       observer.disconnect();
       window.visualViewport?.removeEventListener("resize", measure);
     };
-  }, [copyRef, layerRef, viewportRef, workspaceRef]);
+  }, [copyRef, layerRef, measureKey, viewportRef, workspaceRef]);
 
   return { targets, viewportSize };
 }

@@ -243,22 +243,24 @@
   }
   .route-stops {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    padding: 18px 12px;
+    grid-template-columns: 1fr;
+    padding: 12px;
   }
   .route-stops li {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 110px;
+    min-height: 62px;
+  }
+  .route-stops button {
+    min-height: 56px;
+    padding-block: 0.4rem;
   }
   .route-stops li:not(:last-child)::after {
-    border-left: 0;
-    border-top: 1px dashed #91a69e;
-    height: 0;
-    left: 33px;
-    top: 13px;
-    width: calc(100% - 34px);
+    border-left: 1px dashed #91a69e;
+    border-top: 0;
+    bottom: -7px;
+    height: 16px;
+    left: 26px;
+    top: auto;
+    width: 0;
   }
   .route-stops strong {
     font-size: 0.68rem;

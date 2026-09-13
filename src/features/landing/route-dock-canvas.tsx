@@ -53,6 +53,7 @@ export function RouteDockCanvas({
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         const routeScene = createRouteDockScene(THREE);
         const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+        const pointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
         const canAnimate = () =>
           visibleRef.current &&
           document.visibilityState === "visible" &&
@@ -77,7 +78,7 @@ export function RouteDockCanvas({
           if (canAnimate()) animationFrame = window.requestAnimationFrame(animate);
         };
         const handlePointerMove = (event: PointerEvent) => {
-          if (motionQuery.matches) return;
+          if (motionQuery.matches || !pointerQuery.matches) return;
           pointerRef.current = {
             x: (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2,
             y: (event.clientY / Math.max(1, window.innerHeight) - 0.5) * 2,

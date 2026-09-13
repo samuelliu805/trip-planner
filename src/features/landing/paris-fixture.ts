@@ -33,7 +33,7 @@ export const parisLandingFixture = {
   ],
   route: {
     label: "Paris day route",
-    stops: ["Gare du Nord", "Louvre Museum", "Rive Gauche"],
+    stops: ["Louvre Museum", "Saint-Germain", "Rive Gauche"],
   },
   options: [
     { detail: "Direct · 38 min", label: "RER B + Metro" },
