@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowDown } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -113,15 +112,6 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
           viewportSize.workspaceHeight,
         )
       : null;
-  // Leave a dedicated reading rail below the scene, including on short tablets.
-  const desktopScale = Math.min(
-    1,
-    (viewportSize.visibleHeight - 240) / Math.max(1, viewportSize.workspaceHeight),
-  );
-  const desktopTop = Math.max(
-    132,
-    (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
-  );
   const workspaceStyle: WorkspaceStyle = mobileWorkspace
     ? {
         "--dock-target-opacity": destinationOpacity,
@@ -135,25 +125,19 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     : {
         "--dock-target-opacity": destinationOpacity,
         opacity: workspaceOpacity,
-        top: desktopTop,
-        transform: `translate3d(0, ${(1 - deskProgress) * 18}px, 0) rotate(${(-5.5 * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale * (0.9 + deskProgress * 0.1)})`,
+        transform: `translate3d(0, ${(1 - deskProgress) * 18}px, 0) rotate(${(-5.5 * (1 - deskProgress)).toFixed(2)}deg) scale(${0.9 + deskProgress * 0.1})`,
       };
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
     for (const kind of dockKinds) {
       const target = targets[kind];
       if (!target) continue;
-      const transform = fragmentTransform(
+      result[kind] = fragmentTransform(
         kind,
         effectiveProgress,
         initialFragmentRect(kind, viewportSize.width, viewportSize.height),
         target,
-        viewportSize.width < 700 ? 0.3 : 1,
       );
-      if (viewportSize.width < 700 && effectiveProgress < 0.7) {
-        transform.x = clamp(transform.x, 8, viewportSize.width - transform.width - 12);
-      }
-      result[kind] = transform;
     }
     return result;
   }, [effectiveProgress, targets, viewportSize]);
@@ -185,18 +169,13 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
         <div className="route-dock-viewport" ref={viewportRef}>
           <div className="hero-copy" ref={copyRef}>
             <p className="landing-eyebrow">
-              <T message="GOOD TRIPS COME TOGETHER" />
+              <T message="ONE CLEAR PLAN" />
             </p>
             <h1>
-              <span>
-                <T message="From “we should go”" />
-              </span>
-              <span className="hero-title-destination">
-                <T message="to “There we go.”" />
-              </span>
+              <T message="Ready before you go." />
             </h1>
             <p className="hero-support">
-              <T message="A place for your maybes, your plans and your people. Bring it all together, then look forward to going." />
+              <T message="Route, stays, days and tickets—all in one plan." />
             </p>
             <div className="hero-actions">
               <Button asChild size="lg">
@@ -204,33 +183,8 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
                   <T message="Start planning" />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="#how-it-works">
-                  <T message="See how it works" />
-                </Link>
-              </Button>
             </div>
-            <p className="hero-detail">
-              <T message="Start with an idea. No account needed." />
-            </p>
           </div>
-          <figure className="hero-postcard" aria-hidden="true">
-            <Image
-              alt=""
-              fill
-              loading="eager"
-              sizes="(max-width: 699px) 180px, 320px"
-              src="/landing/paris-morning.webp"
-            />
-            <figcaption>
-              <span>
-                <T message="PARIS, FRANCE" />
-              </span>
-              <strong>
-                <T message="Let’s go here." />
-              </strong>
-            </figcaption>
-          </figure>
           <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
             <AssembledWorkspace targetOpacity={1} />
           </div>

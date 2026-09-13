@@ -1,4 +1,7 @@
 export const landingZhCN: Record<string, string> = {
+  "ONE CLEAR PLAN": "一份清楚的计划",
+  "Ready before you go.": "准备好，再出发。",
+  "Route, stays, days and tickets—all in one plan.": "路线、住宿、日程和票据，一份计划就够。",
   "GOOD TRIPS COME TOGETHER": "想去的地方，一起去",
   "From “we should go”": "把「想去」，",
   "to “There we go.”": "变成「一起去」。",

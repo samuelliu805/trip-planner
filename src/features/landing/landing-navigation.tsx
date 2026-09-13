@@ -22,9 +22,6 @@ export function LandingNavigation({ accountLabel }: { accountLabel?: string }) {
         <Link href="#features">
           <T message="Features" />
         </Link>
-        <Link href="#how-it-works">
-          <T message="How it works" />
-        </Link>
       </div>
       <div className="plandock-nav-actions">
         <LanguageSwitcher />

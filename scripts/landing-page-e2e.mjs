@@ -684,7 +684,7 @@ try {
     `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
   );
   assert.deepEqual(landingCopy, {
-    hasHowItWorksLink: true,
+    hasHowItWorksLink: false,
     hasPreviewToggle: true,
     hasSampleEntry: true,
     hasSampleLink: false,
@@ -695,7 +695,7 @@ try {
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('把「想去」')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('准备好')`,
     "Simplified Chinese landing copy",
   );
   await viewport(browser, 390, 844, true);
