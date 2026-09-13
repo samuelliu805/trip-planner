@@ -1,9 +1,7 @@
 /* The landing's editorial layer. Product workspace styles remain scoped separately. */
 
 .landing-intro {
-  background: #dfeae3;
-  max-width: none;
-  padding-inline: max(1.25rem, calc((100vw - 1080px) / 2));
+  max-width: 1080px;
   padding-block: clamp(4rem, 8vw, 7rem);
 }
 .landing-intro h2 {
@@ -45,11 +43,6 @@
 .feature-section {
   padding-block: clamp(4rem, 7vw, 7rem);
 }
-.matrix-section {
-  background: #fbf7ed;
-  max-width: none;
-  padding-inline: max(1.25rem, calc((100vw - 1180px) / 2));
-}
 .documents-section {
   padding-bottom: clamp(4rem, 7vw, 6rem);
 }
@@ -66,14 +59,14 @@
 }
 .departure-story > img {
   object-fit: cover;
-  object-position: 50% 44%;
+  object-position: 50% 58%;
   z-index: -2;
 }
 .departure-story::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #132238f2, #1322389c 60%, #13223875);
+  background: linear-gradient(90deg, #132238ed, #1322386b 70%, #13223855);
   z-index: -1;
 }
 .departure-copy h2 {
@@ -158,9 +151,6 @@
   background: #e4ece470;
 }
 @media (max-width: 699px) {
-  .landing-intro {
-    padding-inline: 1.25rem;
-  }
   .journey-index {
     justify-content: space-between;
     gap: 0.75rem;

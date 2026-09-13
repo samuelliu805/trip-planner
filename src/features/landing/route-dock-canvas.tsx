@@ -38,20 +38,17 @@ export function RouteDockCanvas({
         onFailure();
         return;
       }
-      if (window.matchMedia("(max-width: 699px)").matches) {
-        onReady();
-        return;
-      }
       try {
         const THREE = await import("three");
         if (disposed) return;
+        const mobile = window.innerWidth < 700;
         const renderer = new THREE.WebGLRenderer({
           alpha: true,
-          antialias: true,
+          antialias: !mobile,
           canvas,
-          powerPreference: "high-performance",
+          powerPreference: mobile ? "low-power" : "high-performance",
         });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1 : 1.5));
         renderer.setClearColor(0x000000, 0);
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         const routeScene = createRouteDockScene(THREE);
@@ -90,7 +87,9 @@ export function RouteDockCanvas({
         const resize = () => {
           const width = Math.max(1, canvas.clientWidth);
           const height = Math.max(1, canvas.clientHeight);
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          renderer.setPixelRatio(
+            Math.min(window.devicePixelRatio, window.innerWidth < 700 ? 1 : 1.5),
+          );
           renderer.setSize(width, height, false);
           routeScene.camera.aspect = width / height;
           routeScene.camera.updateProjectionMatrix();

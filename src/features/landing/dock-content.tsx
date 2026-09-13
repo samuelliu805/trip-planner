@@ -1,20 +1,11 @@
 import { BedDouble, CalendarClock, MapPin, Ticket } from "lucide-react";
 
 import { T } from "@/features/i18n/i18n-provider";
-import type { AppRegion } from "@/platform/config/provider-matrix";
 
-import { landingFixtureForRegion, type DockKind } from "./paris-fixture";
+import { parisLandingFixture } from "./paris-fixture";
+import type { DockKind } from "./paris-fixture";
 
-export function DockContent({
-  appRegion = "global",
-  kind,
-  compact = false,
-}: {
-  appRegion?: AppRegion;
-  kind: DockKind;
-  compact?: boolean;
-}) {
-  const fixture = landingFixtureForRegion(appRegion);
+export function DockContent({ kind, compact = false }: { kind: DockKind; compact?: boolean }) {
   if (kind === "route") {
     return (
       <div className="dock-fragment-copy dock-fragment-place">
@@ -24,11 +15,11 @@ export function DockContent({
             <T message="Place card" />
           </span>
           <strong>
-            <T message={fixture.place.label} />
+            <T message="Louvre Museum" />
           </strong>
           {!compact ? (
             <span>
-              <T message={fixture.place.meta} />
+              <T message="Paris · saved place" />
             </span>
           ) : null}
         </div>
@@ -44,7 +35,7 @@ export function DockContent({
             <T message="Stay option" />
           </span>
           <strong>
-            <T message={fixture.days[0].stay} />
+            <T message={parisLandingFixture.days[0].stay} />
           </strong>
         </div>
       </div>
@@ -59,7 +50,7 @@ export function DockContent({
             <T message="Schedule snippet" />
           </span>
           <strong>
-            {fixture.activityTime} · <T message={fixture.days[0].activity} />
+            14:30 · <T message={parisLandingFixture.days[0].activity} />
           </strong>
         </div>
       </div>
@@ -73,11 +64,11 @@ export function DockContent({
           <T message="Museum ticket" />
         </span>
         <strong>
-          <T message={fixture.document.label} />
+          <T message={parisLandingFixture.document.label} />
         </strong>
         {!compact ? (
           <span>
-            <T message={fixture.document.meta} />
+            <T message={parisLandingFixture.document.meta} />
           </span>
         ) : null}
       </div>

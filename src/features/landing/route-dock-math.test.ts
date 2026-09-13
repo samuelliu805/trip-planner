@@ -41,18 +41,18 @@ test("regional landing links always point to the other deployment", () => {
   assert.equal(translateMessage("zh-CN", "Go to Global site"), "前往全球站");
 });
 
-test("mobile workspace uses a native-size one-column viewport without scaling", () => {
-  const short = mobileWorkspaceLayout(375, 667, 306, 250);
-  assert.equal(short.top, 330);
-  assert.equal(short.scale, 1);
-  assert.equal(short.width, 351);
-  assert.equal(short.top + 250, 580);
+test("mobile workspace preserves its side and bottom gutters", () => {
+  const short = mobileWorkspaceLayout(375, 667, 331, 410);
+  assert.equal(short.top, 355);
+  assert.ok(Math.abs(short.scale - 236 / 410) < 1e-9);
+  assert.ok(Math.abs(short.width * short.scale - 355) < 1e-9);
+  assert.ok(Math.abs(short.top + 410 * short.scale - 591) < 1e-9);
 
-  const tall = mobileWorkspaceLayout(375, 932, 365, 250);
-  assert.ok(Math.abs(tall.top - 400.76) < 1e-9);
-  assert.equal(tall.scale, 1);
-  assert.equal(tall.width, 351);
-  assert.ok(tall.top + 250 <= 932 - 84);
+  const tall = mobileWorkspaceLayout(375, 932, 365, 410);
+  assert.ok(Math.abs(tall.top - 447.36) < 1e-9);
+  assert.ok(Math.abs(tall.scale - 408.64 / 410) < 1e-9);
+  assert.ok(Math.abs(tall.width * tall.scale - 355) < 1e-9);
+  assert.ok(tall.top + 410 * tall.scale <= 932 - 76);
 });
 
 test("dock states follow the specified transition boundaries", () => {

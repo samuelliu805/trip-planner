@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "There we go — trip planner, ready when you are";
+export const alt = "There we go — plan every trip in one place";
 export const size = { height: 630, width: 1200 };
 export const contentType = "image/png";
 
@@ -31,7 +31,7 @@ export default function OpenGraphImage() {
             marginTop: 28,
           }}
         >
-          {"Know what’s next before you go."}
+          {"Plan every trip in one place."}
         </span>
       </div>
       <div

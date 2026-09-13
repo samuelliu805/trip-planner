@@ -1,8 +1,69 @@
+.hero-copy h1 > span {
+  display: block;
+}
+.hero-copy h1 > span:first-child {
+  font-size: 0.77em;
+  letter-spacing: -0.045em;
+}
+.hero-title-destination {
+  color: #a8d6bb;
+  margin-top: 0.2em;
+}
+html[lang="en"] .hero-title-destination {
+  font-size: 0.82em;
+  white-space: nowrap;
+  letter-spacing: -0.065em;
+}
+html[lang="zh-CN"] .hero-title-destination {
+  font-size: 0.7em;
+  white-space: nowrap;
+}
 .hero-support {
-  max-width: 26rem;
+  max-width: 29rem;
 }
 .hero-copy .landing-eyebrow {
   letter-spacing: 0.14em;
+}
+.hero-postcard {
+  position: absolute;
+  z-index: 12;
+  top: 13%;
+  left: 51%;
+  width: clamp(180px, 22vw, 310px);
+  aspect-ratio: 1.32;
+  border: 8px solid var(--dock-paper);
+  border-bottom-width: 48px;
+  box-shadow: 0 22px 48px #040e2340;
+  transform: rotate(-12deg);
+  transition:
+    transform 700ms ease,
+    opacity 500ms ease;
+}
+.hero-postcard img {
+  object-fit: cover;
+}
+.hero-postcard figcaption {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 5px;
+  right: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  color: var(--dock-navy);
+  gap: 5px;
+}
+.hero-postcard span {
+  font-size: 0.48rem;
+  letter-spacing: 0.12em;
+}
+.hero-postcard strong {
+  font-size: 0.76rem;
+}
+.route-dock-track:not([data-dock-state="scattered"]) .hero-postcard {
+  opacity: 0;
+  transform: translate(8%, 20%) rotate(-3deg) scale(0.8);
+  pointer-events: none;
 }
 .scene-state {
   left: clamp(1.25rem, 5vw, 5.5rem);
@@ -67,4 +128,7 @@
 }
 .route-dock-hero[data-static="true"] .route-dock-track {
   height: var(--route-dock-stage-height);
+}
+.route-dock-hero[data-static="true"] .hero-postcard {
+  display: none;
 }

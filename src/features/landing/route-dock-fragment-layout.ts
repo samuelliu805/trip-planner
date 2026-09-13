@@ -67,11 +67,9 @@ export function initialFragmentRect(kind: DockKind, width: number, height: numbe
   const base = fragmentStarts[kind];
   return {
     ...base,
-    width: mobile ? Math.min(base.width, width * (kind === "route" ? 0.58 : 0.4)) : base.width,
+    width: mobile ? Math.min(base.width, width * 0.4) : base.width,
     height: mobile ? 70 : base.height,
-    x: mobile
-      ? width * (kind === "route" ? 0.1 : 0.08) + column * (width * 0.44)
-      : width * desktopPositions[kind].x,
+    x: mobile ? width * 0.08 + column * (width * 0.44) : width * desktopPositions[kind].x,
     y: mobile ? height * 0.57 + row * 86 : height * desktopPositions[kind].y,
   };
 }

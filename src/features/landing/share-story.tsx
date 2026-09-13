@@ -7,24 +7,19 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { PublicOverview } from "@/features/sharing/components/public-overview";
 import { PublicTripHeader } from "@/features/sharing/components/public-trip-header";
 import { journalPublicTemplateV1 } from "@/features/sharing/templates/generated/journal-v1";
-import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { AssembledWorkspace } from "./assembled-workspace";
 import { parisPublicItinerary } from "./landing-public-fixture";
 import { tripPlannerWordmark } from "./brand";
-import { landingFixtureForRegion } from "./paris-fixture";
-import { sichuanPublicItinerary } from "./sichuan-public-fixture";
 import { useShareStage } from "./use-share-stage";
 
-export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
+export function ShareStory() {
   const stageRef = useRef<HTMLDivElement>(null);
   const revealObserverRef = useRef<IntersectionObserver | null>(null);
   const [published, setPublished] = useState(false);
   const [selectedDayRef, setSelectedDayRef] = useState<string>();
   const [selectedItemRef, setSelectedItemRef] = useState<string>();
   const { t } = useI18n();
-  const fixture = landingFixtureForRegion(appRegion);
-  const sourceItinerary = appRegion === "cn" ? sichuanPublicItinerary : parisPublicItinerary;
   useShareStage(stageRef, published);
   const selectView = (value: boolean) => {
     revealObserverRef.current?.disconnect();
@@ -32,27 +27,19 @@ export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
   };
   const itinerary = useMemo(
     () => ({
-      ...sourceItinerary,
-      citySequence: sourceItinerary.citySequence.map((city) => ({
+      ...parisPublicItinerary,
+      citySequence: parisPublicItinerary.citySequence.map((city) => ({
         ...city,
         name: t(city.name),
       })),
-      days: sourceItinerary.days.map((day) => ({
+      days: parisPublicItinerary.days.map((day) => ({
         ...day,
         city: t(day.city),
         localities: day.localities.map((locality) => t(locality)),
         primaryLocality: t(day.primaryLocality),
-        title: t(day.title),
         items: day.items.map((item) => ({
           ...item,
           title: t(item.title),
-          transport:
-            "transport" in item && item.transport
-              ? {
-                  destination: t(item.transport.destination),
-                  origin: t(item.transport.origin),
-                }
-              : undefined,
           place: item.place
             ? {
                 ...item.place,
@@ -63,15 +50,13 @@ export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
         })),
       })),
       metadata: {
-        ...sourceItinerary.metadata,
-        coverCities: sourceItinerary.metadata.coverCities.map((city) => t(city)),
-        description: t(sourceItinerary.metadata.description),
-        title: t(sourceItinerary.metadata.title),
+        ...parisPublicItinerary.metadata,
+        title: t(parisPublicItinerary.metadata.title),
       },
-      trip: { ...sourceItinerary.trip, title: t(sourceItinerary.trip.title) },
-      variant: { ...sourceItinerary.variant, name: t(sourceItinerary.variant.name) },
+      trip: { ...parisPublicItinerary.trip, title: t(parisPublicItinerary.trip.title) },
+      variant: { ...parisPublicItinerary.variant, name: t(parisPublicItinerary.variant.name) },
     }),
-    [sourceItinerary, t],
+    [t],
   );
 
   useEffect(() => {
@@ -133,11 +118,7 @@ export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
 
       <div className="share-stage" id="share-preview" ref={stageRef}>
         <div className="share-planner-source" aria-hidden={published} inert={published}>
-          <AssembledWorkspace
-            appRegion={appRegion}
-            targetOpacity={1}
-            testId="share-source-workspace"
-          />
+          <AssembledWorkspace targetOpacity={1} testId="share-source-workspace" />
         </div>
 
         <div
@@ -174,13 +155,13 @@ export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
             </svg>
             <div>
               <small>
-                <T message={fixture.route.stops[0]} />
+                <T message="Louvre Museum" />
               </small>
               <small>
-                <T message={fixture.route.stops[1]} />
+                <T message="Saint-Germain" />
               </small>
               <small>
-                <T message={fixture.route.stops[2]} />
+                <T message="Rive Gauche" />
               </small>
             </div>
           </div>

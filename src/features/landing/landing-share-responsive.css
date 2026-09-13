@@ -5,7 +5,7 @@
   }
   .share-story .overview-board-v4 {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .share-story .landing-public-content .public-overview {
     padding: 1.25rem;
@@ -22,17 +22,8 @@
   .share-story-actions {
     gap: 0.5rem;
   }
-  .share-story .overview-days-v4 {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-  .share-story .overview-day-v4,
-  .share-story .overview-day-v4 + .overview-day-v4 {
-    padding: 0.7rem 0 0.9rem;
-  }
   .share-story .overview-board-v4 {
     grid-template-columns: 1fr;
-    gap: 0.45rem;
   }
   .share-story .landing-public-content .public-overview {
     padding: 1rem;
@@ -41,22 +32,7 @@
     padding: 1.1rem;
   }
   .landing-public-sheet .public-trip-title {
-    font-size: 2rem;
-  }
-  .share-story .overview-day-heading-v4 {
-    min-height: 0;
-  }
-  .share-story .overview-day-title-v4 strong {
-    font-size: 0.78rem;
-  }
-  .share-story .overview-day-title-v4 > span:last-child,
-  .share-story .overview-item-meta-v4,
-  .share-story .overview-item-notes-v4 {
-    font-size: 0.58rem;
-  }
-  .share-story .landing-public-sheet .overview-item-card-v4:is(.activity, .hotel, .rental, .meal) {
-    min-height: 0;
-    padding: 0.6rem 0.42rem;
+    font-size: 2.2rem;
   }
   .share-planner-source .workspace-header {
     padding: 14px 12px;

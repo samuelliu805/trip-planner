@@ -238,21 +238,11 @@ try {
     state: "scattered",
     webgl: true,
   });
-  const navigation = await evaluate(
-    browser,
-    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const nav = document.querySelector('.plandock-nav'); return { centerDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(document.querySelector('.plandock-brand-lockup > span')), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
-  );
-  assert.equal(navigation.descriptorPresent, false);
-  assert.equal(navigation.howItWorks, false);
-  assert.ok(
-    navigation.centerDelta <= 2,
-    `Brand lockup is misaligned by ${navigation.centerDelta}px.`,
-  );
   const initialDesk = await evaluate(
     browser,
     `(() => { const workspace = document.querySelector('[data-testid="assembled-product"]'); const style = getComputedStyle(document.querySelector('.workspace-stage')); return { opacity: Number(style.opacity), transform: style.transform, visibleWorkspace: workspace.getBoundingClientRect().top < innerHeight, targets: [...document.querySelectorAll('.route-dock-viewport [data-dock-target]')].map((node) => node.dataset.dockTarget).sort() }; })()`,
   );
-  assert.ok(initialDesk.opacity >= 0.3);
+  assert.ok(initialDesk.opacity >= 0.68);
   assert.notEqual(initialDesk.transform, "none");
   assert.equal(initialDesk.visibleWorkspace, true);
   assert.deepEqual(initialDesk.targets, ["activity", "document", "route", "stay"]);
@@ -296,7 +286,7 @@ try {
     await setProgress(browser, progress);
     const assembled = await evaluate(
       browser,
-      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.2 >= innerHeight*.5, nextTop: document.querySelector('.landing-intro').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
+      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.2 >= innerHeight*.5, nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
     );
     assert.equal(assembled.state, "assembled");
     assert.equal(assembled.visible, true);
@@ -365,13 +355,6 @@ try {
   );
   for (const gap of chapterSeams)
     assert.ok(Math.abs(gap) <= 1, `A background gap returned between chapters: ${gap}px`);
-  const visualChapters = await evaluate(
-    browser,
-    `(() => { const imageSource = (node) => { const url = new URL(node.currentSrc); return url.searchParams.get('url') ?? url.pathname; }; return { departureImage: imageSource(document.querySelector('.departure-story > img')), hasHeroPostcard: Boolean(document.querySelector('.hero-postcard')), introBackground: getComputedStyle(document.querySelector('.landing-intro')).backgroundColor, matrixBackground: getComputedStyle(document.querySelector('.matrix-section')).backgroundColor }; })()`,
-  );
-  assert.notEqual(visualChapters.introBackground, visualChapters.matrixBackground);
-  assert.equal(visualChapters.hasHeroPostcard, false);
-  assert.match(visualChapters.departureImage, /travel-desk\.webp/);
 
   await evaluate(
     browser,
@@ -439,27 +422,12 @@ try {
         `document.querySelector('.workspace-stage').style.getPropertyValue('--mobile-workspace-scale').length > 0`,
         `${width}px mobile workspace measurement`,
       );
-      const visibleFragments = await evaluate(
-        browser,
-        `[...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none').length`,
-      );
-      assert.equal(visibleFragments, 1, `${width}px should keep one readable loose card.`);
     }
-    const initialWorkspaceScale = await evaluate(
-      browser,
-      `(() => { const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return Math.hypot(matrix.a, matrix.b); })()`,
-    );
     await setProgress(browser, 0.9);
     const animationEndpoint = await evaluate(
       browser,
-      `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, scale: Math.hypot(matrix.a, matrix.b), viewport: innerHeight }; })()`,
+      `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, viewport: innerHeight }; })()`,
     );
-    if (width <= 1024) {
-      assert.ok(
-        Math.abs(animationEndpoint.scale - initialWorkspaceScale) <= 0.002,
-        `${width}px workspace changed scale while scrolling.`,
-      );
-    }
     if (width < 700) {
       assert.ok(
         animationEndpoint.productTop - animationEndpoint.copyBottom >= 23,
@@ -477,7 +445,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 120));
     const responsive = await evaluate(
       browser,
-      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const stage = hero.querySelector('.route-dock-viewport'); const canvas = hero.querySelector('.route-dock-canvas'); const fragments = hero.querySelector('.fragment-layer'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, canvasHeight: canvas.offsetHeight, fragmentHeight: fragments.offsetHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('.landing-intro').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), stageHeight: stage.offsetHeight, state: track.dataset.dockState, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
+      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const stage = hero.querySelector('.route-dock-viewport'); const canvas = hero.querySelector('.route-dock-canvas'); const fragments = hero.querySelector('.fragment-layer'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, canvasHeight: canvas.offsetHeight, fragmentHeight: fragments.offsetHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), stageHeight: stage.offsetHeight, state: track.dataset.dockState, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
@@ -488,8 +456,9 @@ try {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
       assert.ok(
-        Math.abs(responsive.stageHeight - responsive.viewport) <= 1,
-        `The ${width}px hero stage no longer matches the visible viewport.`,
+        responsive.stageHeight - responsive.viewport >= 95 &&
+          responsive.stageHeight - responsive.viewport <= 129,
+        `The ${width}px hero stage extension fell outside its responsive bounds.`,
       );
       assert.ok(
         Math.abs(responsive.heroHeight - responsive.trackHeight) <= 1,
@@ -498,7 +467,7 @@ try {
       assert.ok(Math.abs(responsive.canvasHeight - responsive.stageHeight) <= 1);
       assert.ok(Math.abs(responsive.fragmentHeight - responsive.stageHeight) <= 1);
       assert.ok(
-        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 1.2) <
+        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 1.7) <
           0.02,
       );
       assert.ok(responsive.nextTop >= responsive.viewport - 1);
@@ -540,27 +509,6 @@ try {
         `document.querySelector('.share-story-actions').scrollIntoView({block:'start'}); scrollBy(0,-90); true`,
       );
       await screenshot(browser, screenshotDirectory, "11-planning-mobile.png");
-      await evaluate(
-        browser,
-        `document.querySelectorAll('.share-view-toggle button')[1].click(); true`,
-      );
-      await waitFor(
-        browser,
-        `document.querySelector('.share-story').dataset.shareState === 'published'`,
-        "compact mobile share result",
-      );
-      await new Promise((resolve) => setTimeout(resolve, 950));
-      const mobileShare = await evaluate(
-        browser,
-        `(() => { const days = [...document.querySelectorAll('.landing-public-sheet .overview-day-v4')]; const rects = days.map((day) => day.getBoundingClientRect()); return { days: days.length, height: document.querySelector('.landing-public-sheet').offsetHeight, oneColumn: rects.every((rect, index) => index === 0 || rect.top >= rects[index - 1].bottom - 1), overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth }; })()`,
-      );
-      assert.equal(mobileShare.days, 3);
-      assert.equal(mobileShare.oneColumn, true);
-      assert.ok(
-        mobileShare.height <= 1900,
-        `390px share sample is too tall: ${mobileShare.height}px`,
-      );
-      assert.ok(mobileShare.overflow <= 1);
     }
   }
 
@@ -571,7 +519,7 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 120));
   const canvasTailCoverage = await evaluate(
     browser,
-    `(() => { const canvas = document.querySelector('.route-dock-canvas').getBoundingClientRect(); const canvasTrack = document.querySelector('.route-dock-canvas-track').getBoundingClientRect(); const hero = document.querySelector('.route-dock-hero').getBoundingClientRect(); return { canvasBottom: canvas.bottom, canvasTop: canvas.top, canvasTrackBottom: canvasTrack.bottom, heroBottom: hero.bottom, nextTop: document.querySelector('.landing-intro').getBoundingClientRect().top, viewport: innerHeight }; })()`,
+    `(() => { const canvas = document.querySelector('.route-dock-canvas').getBoundingClientRect(); const canvasTrack = document.querySelector('.route-dock-canvas-track').getBoundingClientRect(); const hero = document.querySelector('.route-dock-hero').getBoundingClientRect(); return { canvasBottom: canvas.bottom, canvasTop: canvas.top, canvasTrackBottom: canvasTrack.bottom, heroBottom: hero.bottom, nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, viewport: innerHeight }; })()`,
   );
   assert.ok(canvasTailCoverage.canvasTop <= 1);
   assert.ok(canvasTailCoverage.canvasBottom >= canvasTailCoverage.viewport - 1);
@@ -599,7 +547,7 @@ try {
 
   await evaluate(
     browser,
-    `(() => { const nav = document.querySelector('.plandock-nav'); const account = document.querySelector('.nav-sign-in'); nav.dataset.authenticated = 'true'; account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
+    `(() => { const account = document.querySelector('.nav-sign-in'); account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
   );
   const accountTruncation = await evaluate(
     browser,
@@ -733,15 +681,13 @@ try {
   }
   const landingCopy = await evaluate(
     browser,
-    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasPlannerDescriptor: document.querySelector('.plandock-brand-lockup > span')?.textContent.trim() === 'Trip planner', hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, heroActions: document.querySelectorAll('.hero-actions a').length, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
+    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
   );
   assert.deepEqual(landingCopy, {
-    hasHowItWorksLink: false,
-    hasPlannerDescriptor: false,
+    hasHowItWorksLink: true,
     hasPreviewToggle: true,
     hasSampleEntry: true,
     hasSampleLink: false,
-    heroActions: 1,
     mentionsOldBrand: false,
     mentionsSampleTrip: false,
     wordmarks: 2,
@@ -749,7 +695,7 @@ try {
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('准备好')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('把「想去」')`,
     "Simplified Chinese landing copy",
   );
   await viewport(browser, 390, 844, true);

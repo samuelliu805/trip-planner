@@ -4,10 +4,10 @@ import Image from "next/image";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 
 import { T } from "@/features/i18n/i18n-provider";
-import type { AppRegion } from "@/platform/config/provider-matrix";
 
-import { landingFixtureForRegion } from "./paris-fixture";
+import { parisLandingFixture } from "./paris-fixture";
 
+const stopMeta = ["Museum morning", "Neighbourhood walk", "Evening base"] as const;
 const routeSegments = [
   "M54 184 C92 176 111 151 151 143",
   "M151 143 C199 134 213 98 270 112",
@@ -19,12 +19,11 @@ const routePoints = [
   { cx: 366, cy: 58 },
 ] as const;
 
-export function RouteStory({ appRegion }: { appRegion: AppRegion }) {
+export function RouteStory() {
   const storyRef = useRef<HTMLDivElement>(null);
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [activeStop, setActiveStop] = useState(0);
   const [entered, setEntered] = useState(false);
-  const fixture = landingFixtureForRegion(appRegion);
 
   useEffect(() => {
     const story = storyRef.current;
@@ -76,18 +75,18 @@ export function RouteStory({ appRegion }: { appRegion: AppRegion }) {
       ref={storyRef}
     >
       <ol
-        aria-label={fixture.route.label}
+        aria-label="Paris itinerary stops"
         className="route-stops"
-        data-i18n-aria-label={fixture.route.label}
+        data-i18n-aria-label="Paris itinerary stops"
       >
-        {fixture.route.stops.map((stop, index) => (
+        {parisLandingFixture.route.stops.map((stop, index) => (
           <li
             className={index === activeStop ? "is-active" : undefined}
             key={stop}
             style={{ "--route-stop-index": index } as CSSProperties}
           >
             <button
-              aria-controls="landing-route-map"
+              aria-controls="paris-route-map"
               aria-pressed={index === activeStop}
               onClick={() => setActiveStop(index)}
               onKeyDown={(event) => handleKeyDown(event, index)}
@@ -102,7 +101,7 @@ export function RouteStory({ appRegion }: { appRegion: AppRegion }) {
                   <T message={stop} />
                 </strong>
                 <small>
-                  <T message={fixture.route.stopMeta[index]} />
+                  <T message={stopMeta[index]} />
                 </small>
               </span>
             </button>
@@ -110,10 +109,10 @@ export function RouteStory({ appRegion }: { appRegion: AppRegion }) {
         ))}
       </ol>
       <div
-        aria-label={fixture.route.ariaLabel}
+        aria-label="Illustrative Paris route map"
         className="route-map"
-        data-i18n-aria-label={fixture.route.ariaLabel}
-        id="landing-route-map"
+        data-i18n-aria-label="Illustrative Paris route map"
+        id="paris-route-map"
         role="img"
       >
         <Image
@@ -121,7 +120,7 @@ export function RouteStory({ appRegion }: { appRegion: AppRegion }) {
           className="route-map-photo"
           fill
           sizes="(max-width: 760px) 100vw, 48vw"
-          src={fixture.route.photo}
+          src="/landing/seine-route.webp"
         />
         <i className="route-river" />
         <i className="route-street street-one" />
@@ -151,7 +150,7 @@ export function RouteStory({ appRegion }: { appRegion: AppRegion }) {
           ))}
         </svg>
         <span className="map-caption">
-          <T message={fixture.route.mapLabel} />
+          <T message="PARIS · DAY 1" />
         </span>
         <span className="map-disclosure">
           <T message="Illustrative map · no live map data" />
@@ -161,7 +160,7 @@ export function RouteStory({ appRegion }: { appRegion: AppRegion }) {
             <T message="Selected stop" />
           </small>
           <strong>
-            <T message={fixture.route.stops[activeStop]} />
+            <T message={parisLandingFixture.route.stops[activeStop]} />
           </strong>
         </div>
       </div>

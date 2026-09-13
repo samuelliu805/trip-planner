@@ -2,23 +2,16 @@ import { Check, FileText, Link2, Paperclip, TrainFront } from "lucide-react";
 import Image from "next/image";
 
 import { T } from "@/features/i18n/i18n-provider";
-import type { AppRegion } from "@/platform/config/provider-matrix";
 
-import { landingFixtureForRegion } from "./paris-fixture";
+import { parisLandingFixture } from "./paris-fixture";
 
-export function MatrixDemo({ appRegion }: { appRegion: AppRegion }) {
-  const fixture = landingFixtureForRegion(appRegion);
+export function MatrixDemo() {
   return (
     <div className="feature-matrix-stage">
       <figure aria-hidden="true" className="feature-matrix-photo">
-        <Image
-          alt=""
-          fill
-          sizes="160px"
-          src={appRegion === "cn" ? fixture.heroPhoto : "/landing/travel-desk.webp"}
-        />
+        <Image alt="" fill sizes="160px" src="/landing/travel-desk.webp" />
         <span>
-          <T message={fixture.code} />
+          <T message="PAR · 07:40" />
         </span>
       </figure>
       <div
@@ -33,7 +26,7 @@ export function MatrixDemo({ appRegion }: { appRegion: AppRegion }) {
             </span>
           ))}
         </div>
-        {fixture.days.map((day, index) => (
+        {parisLandingFixture.days.map((day, index) => (
           <div className="feature-matrix-row" key={day.day}>
             <span>
               <b>
@@ -48,7 +41,7 @@ export function MatrixDemo({ appRegion }: { appRegion: AppRegion }) {
             </span>
             <span>
               {index === 0 ? <TrainFront aria-hidden="true" /> : null}
-              <T message={index === 0 ? fixture.transport[0] : fixture.transport[1]} />
+              <T message={index === 0 ? "Metro to hotel" : "Walk + Metro"} />
             </span>
             <span>
               <T message={day.activity} />
@@ -71,8 +64,7 @@ export function MatrixDemo({ appRegion }: { appRegion: AppRegion }) {
   );
 }
 
-export function OptionsDemo({ appRegion }: { appRegion: AppRegion }) {
-  const fixture = landingFixtureForRegion(appRegion);
+export function OptionsDemo() {
   return (
     <div className="options-demo">
       <div className="options-demo-head">
@@ -80,14 +72,19 @@ export function OptionsDemo({ appRegion }: { appRegion: AppRegion }) {
           <T message="Ideas & Options" />
         </span>
         <small>
-          <T message={fixture.optionsDestination} />
+          <T message="Transfer to Rive Gauche" />
         </small>
       </div>
       <figure aria-hidden="true" className="options-demo-photo">
-        <Image alt="" fill sizes="(max-width: 760px) 100vw, 42vw" src={fixture.heroPhoto} />
+        <Image
+          alt=""
+          fill
+          sizes="(max-width: 760px) 100vw, 42vw"
+          src="/landing/paris-morning.webp"
+        />
         <span />
       </figure>
-      {fixture.options.map((option, index) => (
+      {parisLandingFixture.options.map((option, index) => (
         <article key={option.label}>
           <span className="option-radio" aria-hidden="true">
             {index === 0 ? <i /> : null}
@@ -112,8 +109,7 @@ export function OptionsDemo({ appRegion }: { appRegion: AppRegion }) {
   );
 }
 
-export function DocumentsDemo({ appRegion }: { appRegion: AppRegion }) {
-  const fixture = landingFixtureForRegion(appRegion);
+export function DocumentsDemo() {
   return (
     <div className="documents-demo">
       <div className="document-link">
@@ -122,9 +118,7 @@ export function DocumentsDemo({ appRegion }: { appRegion: AppRegion }) {
           <small>
             <T message="Booking link" />
           </small>
-          <strong>
-            <T message={fixture.document.link} />
-          </strong>
+          <strong>{"louvre.fr/visit"}</strong>
         </div>
         <Check aria-hidden="true" />
       </div>
@@ -134,10 +128,11 @@ export function DocumentsDemo({ appRegion }: { appRegion: AppRegion }) {
         </span>
         <div>
           <strong>
-            <T message={fixture.document.label} />
+            <T message={parisLandingFixture.document.label} />
           </strong>
           <small>
-            <T message={fixture.document.meta} /> · <T message={fixture.document.connection} />
+            <T message={parisLandingFixture.document.meta} /> ·{" "}
+            <T message="Connected to Louvre Museum" />
           </small>
         </div>
       </div>

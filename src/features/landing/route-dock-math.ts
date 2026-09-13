@@ -41,15 +41,16 @@ export function mobileWorkspaceLayout(
   copyBottom: number,
   workspaceHeight: number,
 ): MobileWorkspaceLayout {
-  const sideGutter = 12;
-  const bottomGutter = 84;
+  const sideGutter = 10;
+  const bottomGutter = 76;
   const copyGap = 24;
-  const latestTop = Math.max(0, viewportHeight - workspaceHeight - bottomGutter);
-  const preferredTop = Math.max(viewportHeight * 0.43, copyBottom + copyGap);
+  const top = Math.max(viewportHeight * 0.48, copyBottom + copyGap);
+  const availableHeight = Math.max(1, viewportHeight - top - bottomGutter);
+  const scale = clamp(availableHeight / Math.max(1, workspaceHeight), 0.32, 1);
   return {
-    scale: 1,
-    top: Math.min(preferredTop, latestTop),
-    width: Math.max(1, viewportWidth - sideGutter * 2),
+    scale,
+    top,
+    width: Math.max(1, viewportWidth - sideGutter * 2) / scale,
   };
 }
 
