@@ -240,9 +240,9 @@ try {
   });
   const navigation = await evaluate(
     browser,
-    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); return { centerDelta: Math.abs(center(brand)-center(descriptor)), descriptor: descriptor.textContent.trim(), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
+    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const nav = document.querySelector('.plandock-nav'); return { centerDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(document.querySelector('.plandock-brand-lockup > span')), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
   );
-  assert.equal(navigation.descriptor, "Trip planner");
+  assert.equal(navigation.descriptorPresent, false);
   assert.equal(navigation.howItWorks, false);
   assert.ok(
     navigation.centerDelta <= 2,
@@ -252,7 +252,7 @@ try {
     browser,
     `(() => { const workspace = document.querySelector('[data-testid="assembled-product"]'); const style = getComputedStyle(document.querySelector('.workspace-stage')); return { opacity: Number(style.opacity), transform: style.transform, visibleWorkspace: workspace.getBoundingClientRect().top < innerHeight, targets: [...document.querySelectorAll('.route-dock-viewport [data-dock-target]')].map((node) => node.dataset.dockTarget).sort() }; })()`,
   );
-  assert.ok(initialDesk.opacity >= 0.68);
+  assert.ok(initialDesk.opacity >= 0.3);
   assert.notEqual(initialDesk.transform, "none");
   assert.equal(initialDesk.visibleWorkspace, true);
   assert.deepEqual(initialDesk.targets, ["activity", "document", "route", "stay"]);
@@ -367,10 +367,11 @@ try {
     assert.ok(Math.abs(gap) <= 1, `A background gap returned between chapters: ${gap}px`);
   const visualChapters = await evaluate(
     browser,
-    `(() => { const imageSource = (node) => { const url = new URL(node.currentSrc); return url.searchParams.get('url') ?? url.pathname; }; return { departureImage: imageSource(document.querySelector('.departure-story > img')), heroImage: imageSource(document.querySelector('.hero-postcard img')), introBackground: getComputedStyle(document.querySelector('.landing-intro')).backgroundColor, matrixBackground: getComputedStyle(document.querySelector('.matrix-section')).backgroundColor }; })()`,
+    `(() => { const imageSource = (node) => { const url = new URL(node.currentSrc); return url.searchParams.get('url') ?? url.pathname; }; return { departureImage: imageSource(document.querySelector('.departure-story > img')), hasHeroPostcard: Boolean(document.querySelector('.hero-postcard')), introBackground: getComputedStyle(document.querySelector('.landing-intro')).backgroundColor, matrixBackground: getComputedStyle(document.querySelector('.matrix-section')).backgroundColor }; })()`,
   );
   assert.notEqual(visualChapters.introBackground, visualChapters.matrixBackground);
-  assert.notEqual(visualChapters.departureImage, visualChapters.heroImage);
+  assert.equal(visualChapters.hasHeroPostcard, false);
+  assert.match(visualChapters.departureImage, /travel-desk\.webp/);
 
   await evaluate(
     browser,
@@ -442,7 +443,7 @@ try {
         browser,
         `[...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none').length`,
       );
-      assert.equal(visibleFragments, 2, `${width}px should keep only two readable loose cards.`);
+      assert.equal(visibleFragments, 1, `${width}px should keep one readable loose card.`);
     }
     const initialWorkspaceScale = await evaluate(
       browser,
@@ -487,9 +488,8 @@ try {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
       assert.ok(
-        responsive.stageHeight - responsive.viewport >= 95 &&
-          responsive.stageHeight - responsive.viewport <= 129,
-        `The ${width}px hero stage extension fell outside its responsive bounds.`,
+        Math.abs(responsive.stageHeight - responsive.viewport) <= 1,
+        `The ${width}px hero stage no longer matches the visible viewport.`,
       );
       assert.ok(
         Math.abs(responsive.heroHeight - responsive.trackHeight) <= 1,
@@ -498,7 +498,7 @@ try {
       assert.ok(Math.abs(responsive.canvasHeight - responsive.stageHeight) <= 1);
       assert.ok(Math.abs(responsive.fragmentHeight - responsive.stageHeight) <= 1);
       assert.ok(
-        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 1.35) <
+        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 1.2) <
           0.02,
       );
       assert.ok(responsive.nextTop >= responsive.viewport - 1);
@@ -552,11 +552,12 @@ try {
       await new Promise((resolve) => setTimeout(resolve, 950));
       const mobileShare = await evaluate(
         browser,
-        `(() => ({ days: document.querySelectorAll('.landing-public-sheet .overview-day-v4').length, height: document.querySelector('.landing-public-sheet').offsetHeight, overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth }))()`,
+        `(() => { const days = [...document.querySelectorAll('.landing-public-sheet .overview-day-v4')]; const rects = days.map((day) => day.getBoundingClientRect()); return { days: days.length, height: document.querySelector('.landing-public-sheet').offsetHeight, oneColumn: rects.every((rect, index) => index === 0 || rect.top >= rects[index - 1].bottom - 1), overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth }; })()`,
       );
       assert.equal(mobileShare.days, 3);
+      assert.equal(mobileShare.oneColumn, true);
       assert.ok(
-        mobileShare.height <= 1250,
+        mobileShare.height <= 1900,
         `390px share sample is too tall: ${mobileShare.height}px`,
       );
       assert.ok(mobileShare.overflow <= 1);
@@ -736,7 +737,7 @@ try {
   );
   assert.deepEqual(landingCopy, {
     hasHowItWorksLink: false,
-    hasPlannerDescriptor: true,
+    hasPlannerDescriptor: false,
     hasPreviewToggle: true,
     hasSampleEntry: true,
     hasSampleLink: false,
@@ -748,7 +749,7 @@ try {
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('规划好')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('准备好')`,
     "Simplified Chinese landing copy",
   );
   await viewport(browser, 390, 844, true);

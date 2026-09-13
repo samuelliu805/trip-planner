@@ -50,18 +50,7 @@
 .plandock-brand-lockup {
   align-items: center;
   display: flex;
-  gap: 0.7rem;
   line-height: 1;
-}
-.plandock-brand-lockup > span {
-  border-left: 1px solid rgba(247, 244, 236, 0.22);
-  color: rgba(247, 244, 236, 0.62);
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  padding-left: 0.7rem;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 .plandock-nav-links,
 .plandock-nav-actions {
@@ -174,6 +163,16 @@
   content: "";
   inset: 0;
   position: absolute;
+}
+@media (max-width: 699px) {
+  .route-dock-canvas::before {
+    background:
+      radial-gradient(circle at 78% 54%, rgba(120, 183, 154, 0.11), transparent 30%),
+      linear-gradient(135deg, transparent 58%, rgba(247, 244, 236, 0.035) 58.2%, transparent 58.5%);
+    content: "";
+    inset: 0;
+    position: absolute;
+  }
 }
 
 .hero-copy {

@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowDown } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import Link from "next/link";
 
 import { AssembledWorkspace } from "./assembled-workspace";
 import { DockContent } from "./dock-content";
-import { dockKinds, landingFixtureForRegion, type DockKind } from "./paris-fixture";
+import { dockKinds, type DockKind } from "./paris-fixture";
 import {
   clamp,
   dockState,
@@ -28,7 +27,6 @@ import { useLandingScrollReset, useRouteDockMeasurements } from "./route-dock-la
 
 type WorkspaceStyle = CSSProperties & {
   "--dock-target-opacity"?: number;
-  "--mobile-workspace-rest-scale"?: number;
   "--mobile-workspace-scale"?: number;
 };
 
@@ -55,7 +53,6 @@ export function RouteDockHero({
   const [motionReady, setMotionReady] = useState(false);
   const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
   const state = dockState(effectiveProgress);
-  const fixture = landingFixtureForRegion(appRegion);
   const { targets, viewportSize } = useRouteDockMeasurements({
     copyRef,
     layerRef,
@@ -111,7 +108,11 @@ export function RouteDockHero({
   const destinationOpacity = targetContentOpacity(effectiveProgress);
   const deskProgress = clamp(effectiveProgress / 0.5);
   const workspaceOpacity =
-    reducedMotion || webglFailed ? 1 : 0.7 + clamp(effectiveProgress / 0.62) * 0.3;
+    reducedMotion || webglFailed
+      ? 1
+      : viewportSize.width < 700
+        ? 0.82 + clamp(effectiveProgress / 0.62) * 0.18
+        : 0.34 + clamp(effectiveProgress / 0.62) * 0.66;
   const mobileWorkspace =
     viewportSize.width < 700
       ? mobileWorkspaceLayout(
@@ -134,18 +135,17 @@ export function RouteDockHero({
   const workspaceStyle: WorkspaceStyle = mobileWorkspace
     ? {
         "--dock-target-opacity": destinationOpacity,
-        "--mobile-workspace-rest-scale": mobileWorkspace.scale,
         "--mobile-workspace-scale": mobileWorkspace.scale,
         opacity: workspaceOpacity,
         top: mobileWorkspace.top,
-        transform: `translateX(-50%) rotate(${(-1.8 * (1 - deskProgress)).toFixed(2)}deg) scale(${mobileWorkspace.scale})`,
+        transform: "translateX(-50%)",
         width: mobileWorkspace.width,
       }
     : {
         "--dock-target-opacity": destinationOpacity,
         opacity: workspaceOpacity,
         top: desktopTop,
-        transform: `translate3d(0, ${compactStage ? 0 : (1 - deskProgress) * 18}px, 0) rotate(${(-(compactStage ? 3 : 5.5) * (1 - deskProgress)).toFixed(2)}deg) scale(${compactStage ? desktopScale : desktopScale * (0.9 + deskProgress * 0.1)})`,
+        transform: `translate3d(0, ${compactStage ? 0 : (1 - deskProgress) * 14}px, 0) rotate(${(-(compactStage ? 2 : 4) * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale})`,
       };
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
@@ -194,18 +194,13 @@ export function RouteDockHero({
         <div className="route-dock-viewport" ref={viewportRef}>
           <div className="hero-copy" ref={copyRef}>
             <p className="landing-eyebrow">
-              <T message="THE TRIP PLANNER THAT GETS YOU READY" />
+              <T message="ONE CLEAR PLAN" />
             </p>
             <h1>
-              <span>
-                <T message="Plan it." />
-              </span>
-              <span className="hero-title-destination">
-                <T message="Ready to go." />
-              </span>
+              <T message="Ready before you go." />
             </h1>
             <p className="hero-support">
-              <T message="Routes, stays, daily plans and tickets—organized in one place, so you always know what’s next." />
+              <T message="Route, stays, days and tickets—all in one plan." />
             </p>
             <div className="hero-actions">
               <Button asChild size="lg">
@@ -214,27 +209,7 @@ export function RouteDockHero({
                 </Link>
               </Button>
             </div>
-            <p className="hero-detail">
-              <T message="Start with an idea. No account needed." />
-            </p>
           </div>
-          <figure className="hero-postcard" aria-hidden="true">
-            <Image
-              alt=""
-              fill
-              loading="eager"
-              sizes="(max-width: 699px) 180px, 320px"
-              src={fixture.heroPhoto}
-            />
-            <figcaption>
-              <span>
-                <T message={fixture.cityLabel} />
-              </span>
-              <strong>
-                <T message="Let’s go here." />
-              </strong>
-            </figcaption>
-          </figure>
           <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
             <AssembledWorkspace appRegion={appRegion} targetOpacity={1} />
           </div>
