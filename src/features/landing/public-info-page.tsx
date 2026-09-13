@@ -11,7 +11,7 @@ const content = {
     eyebrow: "PRIVACY",
     title: "Your trip information should stay understandable.",
     intro:
-      "There We Go uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.",
+      "There we go uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.",
     sections: [
       [
         "What is stored",
@@ -29,9 +29,9 @@ const content = {
   },
   terms: {
     eyebrow: "TERMS",
-    title: "There We Go helps you organize a plan.",
+    title: "There we go helps you organize a plan.",
     intro:
-      "There We Go is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.",
+      "There we go is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.",
     sections: [
       [
         "Your responsibility",
@@ -43,7 +43,7 @@ const content = {
       ],
       [
         "Availability",
-        "Features may change as the product develops. Do not rely on There We Go as the only copy of an essential ticket or travel document.",
+        "Features may change as the product develops. Do not rely on There we go as the only copy of an essential ticket or travel document.",
       ],
     ],
   },
@@ -72,7 +72,7 @@ export function PublicInfoPage({ kind }: { kind: keyof typeof content }) {
       <nav>
         <Link href="/">
           <ArrowLeft aria-hidden="true" />
-          <T message="Back to There We Go" />
+          <T message="Back to There we go" />
         </Link>
         <span className="plandock-wordmark">{tripPlannerWordmark}</span>
       </nav>

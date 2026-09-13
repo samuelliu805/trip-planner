@@ -253,7 +253,7 @@ try {
   assert.equal(seo.canonicalPath, "/");
   assert.match(seo.description, /route/i);
   assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
-  assert.match(seo.title, /^There We Go/);
+  assert.match(seo.title, /^There we go/);
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
 
   for (const [progress, expected] of [
@@ -349,6 +349,13 @@ try {
   );
   await screenshot(browser, screenshotDirectory, "06-route-stop-after-desktop.png");
 
+  const chapterSeams = await evaluate(
+    browser,
+    `(() => { const docs=document.querySelector('.documents-section').getBoundingClientRect(); const departure=document.querySelector('.departure-story').getBoundingClientRect(); const share=document.querySelector('.share-section').getBoundingClientRect(); return [departure.top-docs.bottom,share.top-departure.bottom]; })()`,
+  );
+  for (const gap of chapterSeams)
+    assert.ok(Math.abs(gap) <= 1, `A background gap returned between chapters: ${gap}px`);
+
   await evaluate(
     browser,
     `document.querySelector('#share-demo').scrollIntoView({ block: 'center' }); true`,
@@ -364,13 +371,13 @@ try {
   );
   assert.deepEqual(shareStory, {
     accessNotes: 2,
-    brand: "there we go",
+    brand: "There we go",
     hasProductionOverview: true,
     hasRoute: true,
     local: "Local demonstration",
     overflow: 0,
     sampleHref: "#share-preview",
-    signature: "There We Go",
+    signature: "There we go",
     toggles: 2,
     visible: true,
   });
@@ -386,16 +393,21 @@ try {
   );
   await new Promise((resolve) => setTimeout(resolve, 950));
   await screenshot(browser, screenshotDirectory, "07-share-before-desktop.png");
-  await evaluate(browser, `document.querySelector('.share-replay').click(); true`);
+  assert.equal(await evaluate(browser, `document.querySelector('.share-replay')`), null);
+  await evaluate(
+    browser,
+    `document.querySelectorAll('.share-view-toggle button')[1].click(); true`,
+  );
   await waitFor(
     browser,
     `document.querySelector('.share-story').dataset.shareState === 'published'`,
-    "replayed share transition",
+    "share result selected",
   );
 
   for (const [width, height] of [
     [1280, 800],
     [1024, 768],
+    [1180, 820],
     [820, 1180],
     [768, 1024],
     [430, 932],
@@ -461,6 +473,43 @@ try {
       assert.ok(responsive.nextTop >= responsive.viewport - 1);
     }
     if (width === 390) await screenshot(browser, screenshotDirectory, "09-assembled-mobile.png");
+
+    // Regression: the state rail owns space below the product, including B on tablets.
+    await setProgress(browser, 0.6);
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    const clearance = await evaluate(
+      browser,
+      `(() => { const rail = document.querySelector('.scene-state').getBoundingClientRect(); const product = document.querySelector('.workspace-stage').getBoundingClientRect(); const copy = document.querySelector('.hero-copy').getBoundingClientRect(); return { productGap: rail.top - product.bottom, copyGap: rail.top - copy.bottom }; })()`,
+    );
+    assert.ok(
+      clearance.productGap >= 8,
+      `${width}px B product overlaps its state rail: ${JSON.stringify(clearance)}`,
+    );
+    assert.ok(clearance.copyGap >= 8, `${width}px B copy overlaps its state rail`);
+
+    await evaluate(
+      browser,
+      `document.querySelector('.share-view-toggle button').click(); document.querySelector('#share-demo').scrollIntoView({block:'start'}); true`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    const planningFit = await evaluate(
+      browser,
+      `(() => { const stage = document.querySelector('.share-stage').getBoundingClientRect(); const source = document.querySelector('.share-planner-source').getBoundingClientRect(); const note = document.querySelector('.share-access-note').getBoundingClientRect(); const sourceContent = document.querySelector('.share-planner-source .plandock-workspace').getBoundingClientRect(); return { blank: stage.height-sourceContent.height, gap: note.top-source.bottom, overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth, state: document.querySelector('.share-story').dataset.shareState }; })()`,
+    );
+    assert.equal(planningFit.state, "planning");
+    assert.ok(
+      Math.abs(planningFit.blank) <= 3,
+      `${width}px planning view reserves unused space: ${JSON.stringify(planningFit)}`,
+    );
+    assert.ok(planningFit.gap >= 16 && planningFit.gap <= 40);
+    assert.ok(planningFit.overflow <= 1);
+    if (width === 390) {
+      await evaluate(
+        browser,
+        `document.querySelector('.share-story-actions').scrollIntoView({block:'start'}); scrollBy(0,-90); true`,
+      );
+      await screenshot(browser, screenshotDirectory, "11-planning-mobile.png");
+    }
   }
 
   await evaluate(
@@ -583,6 +632,18 @@ try {
   );
   await screenshot(browser, screenshotDirectory, "10-reduced-motion.png");
 
+  for (const index of [0, 1]) {
+    await evaluate(
+      browser,
+      `document.querySelectorAll('.share-view-toggle button')[${index}].click(); true`,
+    );
+    await waitFor(
+      browser,
+      `getComputedStyle(document.querySelector('${index === 0 ? ".share-planner-source" : ".landing-public-sheet"}')).visibility === 'visible'`,
+      "reduced-motion preview selection",
+    );
+  }
+
   await browser.cdp.send("Emulation.setEmulatedMedia", { features: [] }, browser.sessionId);
   await navigate(browser, app.baseUrl, "/?webgl=off", "fallback");
   await waitFor(
@@ -620,7 +681,7 @@ try {
   }
   const landingCopy = await evaluate(
     browser,
-    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'there we go').length })`,
+    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
   );
   assert.deepEqual(landingCopy, {
     hasHowItWorksLink: true,
@@ -634,14 +695,14 @@ try {
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('把整趟旅行')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('把「想去」')`,
     "Simplified Chinese landing copy",
   );
   await viewport(browser, 390, 844, true);
   await navigate(browser, app.baseUrl);
   const chineseLanding = await evaluate(
     browser,
-    `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'there we go').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Saint-Germain','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,
+    `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Saint-Germain','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,
   );
   assert.equal(chineseLanding.brandMarks, 2);
   assert.ok(

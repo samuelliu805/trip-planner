@@ -42,7 +42,7 @@ export function mobileWorkspaceLayout(
   workspaceHeight: number,
 ): MobileWorkspaceLayout {
   const sideGutter = 10;
-  const bottomGutter = 24;
+  const bottomGutter = 76;
   const copyGap = 24;
   const top = Math.max(viewportHeight * 0.48, copyBottom + copyGap);
   const availableHeight = Math.max(1, viewportHeight - top - bottomGutter);
@@ -90,12 +90,19 @@ export function fragmentTransform(
   progress: number,
   start: FragmentTransform,
   target: DockRect,
+  movementScale = 1,
 ): FragmentTransform {
   const routeT = easeInOutCubic((progress - 0.14) / 0.36);
   const dockT = easeInOutCubic((progress - 0.5) / 0.22);
   const snapT = clamp((progress - 0.64) / 0.08);
   const snapScale = Math.sin(snapT * Math.PI) * 0.025;
-  const offset = routeOffsets[kind];
+  const baseOffset = routeOffsets[kind];
+  const offset = {
+    ...baseOffset,
+    x: baseOffset.x * movementScale,
+    y: baseOffset.y * movementScale,
+    depth: baseOffset.depth * movementScale,
+  };
   const approach = {
     x: target.x + offset.x,
     y: target.y + offset.y,

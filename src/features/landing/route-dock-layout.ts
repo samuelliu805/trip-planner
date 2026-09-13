@@ -84,8 +84,15 @@ export function useRouteDockMeasurements({
     observer.observe(copy);
     observer.observe(workspace);
     measure();
+    let active = true;
+    void document.fonts.ready.then(() => {
+      if (active) measure();
+    });
+    const settledFrame = window.requestAnimationFrame(measure);
     window.visualViewport?.addEventListener("resize", measure);
     return () => {
+      active = false;
+      window.cancelAnimationFrame(settledFrame);
       observer.disconnect();
       window.visualViewport?.removeEventListener("resize", measure);
     };

@@ -18,9 +18,9 @@ test("landing structured data describes the website and free web app", () => {
   assert.equal(data["@graph"][0].url, "https://trip-planner.example/");
   assert.equal(data["@graph"][1].isAccessibleForFree, true);
   assert.equal(data["@graph"][1].featureList.length, 4);
-  assert.equal(data["@graph"][0].name, "There We Go");
-  assert.equal(tripPlannerBrandName, "There We Go");
-  assert.equal(tripPlannerWordmark, "there we go");
+  assert.equal(data["@graph"][0].name, "There we go");
+  assert.equal(tripPlannerBrandName, "There we go");
+  assert.equal(tripPlannerWordmark, "There we go");
 });
 
 test("landing public sample stays compatible with the production share schema", () => {

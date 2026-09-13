@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowDown, RotateCcw } from "lucide-react";
+import { ArrowDown } from "lucide-react";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -56,12 +57,6 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
   });
   const handleWebglFailure = useCallback(() => setWebglFailed(true), []);
   const handleWebglReady = useCallback(() => setWebglReady(true), []);
-  const replay = useCallback(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    const top = track.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ behavior: reducedMotion ? "auto" : "smooth", top });
-  }, [reducedMotion]);
 
   useLandingScrollReset();
 
@@ -118,6 +113,15 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
           viewportSize.workspaceHeight,
         )
       : null;
+  // Leave a dedicated reading rail below the scene, including on short tablets.
+  const desktopScale = Math.min(
+    1,
+    (viewportSize.visibleHeight - 240) / Math.max(1, viewportSize.workspaceHeight),
+  );
+  const desktopTop = Math.max(
+    132,
+    (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
+  );
   const workspaceStyle: WorkspaceStyle = mobileWorkspace
     ? {
         "--dock-target-opacity": destinationOpacity,
@@ -131,25 +135,34 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     : {
         "--dock-target-opacity": destinationOpacity,
         opacity: workspaceOpacity,
-        transform: `translate3d(0, ${(1 - deskProgress) * 18}px, 0) rotate(${(-5.5 * (1 - deskProgress)).toFixed(2)}deg) scale(${0.9 + deskProgress * 0.1})`,
+        top: desktopTop,
+        transform: `translate3d(0, ${(1 - deskProgress) * 18}px, 0) rotate(${(-5.5 * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale * (0.9 + deskProgress * 0.1)})`,
       };
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
     for (const kind of dockKinds) {
       const target = targets[kind];
       if (!target) continue;
-      result[kind] = fragmentTransform(
+      const transform = fragmentTransform(
         kind,
         effectiveProgress,
         initialFragmentRect(kind, viewportSize.width, viewportSize.height),
         target,
+        viewportSize.width < 700 ? 0.3 : 1,
       );
+      if (viewportSize.width < 700 && effectiveProgress < 0.7) {
+        transform.x = clamp(transform.x, 8, viewportSize.width - transform.width - 12);
+      }
+      result[kind] = transform;
     }
     return result;
   }, [effectiveProgress, targets, viewportSize]);
 
   return (
-    <section className="route-dock-hero">
+    <section
+      className="route-dock-hero"
+      data-static={reducedMotion || webglFailed ? "true" : undefined}
+    >
       <div className="route-dock-canvas-track">
         <div
           className="route-dock-canvas"
@@ -172,13 +185,18 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
         <div className="route-dock-viewport" ref={viewportRef}>
           <div className="hero-copy" ref={copyRef}>
             <p className="landing-eyebrow">
-              <T message="THE CALM WAY TO PLAN A TRIP" />
+              <T message="GOOD TRIPS COME TOGETHER" />
             </p>
             <h1>
-              <T message="Plan every trip in one place." />
+              <span>
+                <T message="From “we should go”" />
+              </span>
+              <span className="hero-title-destination">
+                <T message="to “There we go.”" />
+              </span>
             </h1>
             <p className="hero-support">
-              <T message="Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road." />
+              <T message="A place for your maybes, your plans and your people. Bring it all together, then look forward to going." />
             </p>
             <div className="hero-actions">
               <Button asChild size="lg">
@@ -193,9 +211,26 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
               </Button>
             </div>
             <p className="hero-detail">
-              <T message="Timeline, table, map, options and travel documents—finally connected." />
+              <T message="Start with an idea. No account needed." />
             </p>
           </div>
+          <figure className="hero-postcard" aria-hidden="true">
+            <Image
+              alt=""
+              fill
+              loading="eager"
+              sizes="(max-width: 699px) 180px, 320px"
+              src="/landing/paris-morning.webp"
+            />
+            <figcaption>
+              <span>
+                <T message="PARIS, FRANCE" />
+              </span>
+              <strong>
+                <T message="Let’s go here." />
+              </strong>
+            </figcaption>
+          </figure>
           <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
             <AssembledWorkspace targetOpacity={1} />
           </div>
@@ -231,30 +266,23 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
             })}
           </div>
           <div className="scene-state" aria-live="polite">
-            <span>{state === "scattered" ? "A" : state === "assembled" ? "C" : "B"}</span>
-            <strong>
-              <T
-                message={
-                  state === "scattered"
-                    ? "Loose travel notes"
-                    : state === "assembled"
-                      ? "One readable itinerary"
-                      : "Finding their place"
-                }
-              />
-            </strong>
-          </div>
-          <div className="completion-label" aria-hidden={state !== "assembled"}>
-            <span>
-              <T message="EVERYTHING IN ONE TRIP" />
-            </span>
-            <strong>
-              <T message="Timeline · Map · Options · Documents" />
-            </strong>
-            <button disabled={state !== "assembled"} onClick={replay} type="button">
-              <RotateCcw aria-hidden="true" />
-              <T message="Replay the journey" />
-            </button>
+            {(["Loose travel notes", "Finding their place", "One readable itinerary"] as const).map(
+              (label, index) => (
+                <div
+                  key={label}
+                  className={
+                    (state === "scattered" ? 0 : state === "assembled" ? 2 : 1) === index
+                      ? "is-current"
+                      : undefined
+                  }
+                >
+                  <span>{["A", "B", "C"][index]}</span>
+                  <strong>
+                    <T message={label} />
+                  </strong>
+                </div>
+              ),
+            )}
           </div>
           <div className="scroll-cue" aria-hidden="true">
             <ArrowDown />

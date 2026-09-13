@@ -24,8 +24,12 @@ import "./landing-feature-chapters.css";
 import "./landing-route-story.css";
 import "./landing-share-story.css";
 import "./landing-share-transform.css";
+import "./landing-share-responsive.css";
 import "./landing-section-reveal.css";
 import "./landing-conversion.css";
+import "./landing-hero-composition.css";
+import "./landing-hero-composition-responsive.css";
+import "./landing-brand-story.css";
 
 export function LandingPage({
   accountLabel,
@@ -45,10 +49,10 @@ export function LandingPage({
       <FeatureSections />
       <LandingRevealSection className="landing-final-cta">
         <p className="landing-eyebrow">
-          <T message="YOUR TRIP, READY TO USE" />
+          <T message="GOOD TRIPS COME TOGETHER" />
         </p>
         <h2>
-          <T message="Bring the pieces together." />
+          <T message="Let’s give it somewhere to start." />
         </h2>
         <p>
           <T message="Start locally. Create an account when you are ready to keep planning across devices." />

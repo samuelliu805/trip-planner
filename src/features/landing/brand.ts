@@ -1,2 +1,2 @@
-export const tripPlannerBrandName = "There We Go";
-export const tripPlannerWordmark = "there we go";
+export const tripPlannerBrandName = "There we go";
+export const tripPlannerWordmark = "There we go";

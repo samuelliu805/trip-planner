@@ -1,6 +1,6 @@
 .share-view-toggle {
-  background: rgba(247, 244, 236, 0.08);
-  border: 1px solid rgba(247, 244, 236, 0.16);
+  background: #ebe9e0;
+  border: 1px solid var(--dock-border);
   border-radius: 12px;
   display: flex;
   padding: 3px;
@@ -8,24 +8,24 @@
 .share-view-toggle button {
   align-items: center;
   border-radius: 9px;
-  color: rgba(247, 244, 236, 0.7);
+  color: var(--dock-ink-muted);
   display: inline-flex;
   font-size: 0.72rem;
   font-weight: 750;
   gap: 0.4rem;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0.5rem 0.7rem;
 }
 .share-view-toggle button.is-active {
   background: var(--dock-mint);
-  box-shadow: 0 7px 20px rgba(4, 15, 25, 0.24);
+  box-shadow: 0 3px 8px #13223812;
   color: var(--dock-navy);
 }
 .share-sample-entry {
   align-items: center;
-  border: 1px solid rgba(247, 244, 236, 0.2);
+  border: 1px solid var(--dock-border);
   border-radius: 10px;
-  color: var(--dock-paper);
+  color: var(--dock-navy);
   display: inline-flex;
   font-size: 0.72rem;
   font-weight: 750;
@@ -34,11 +34,11 @@
   padding: 0.55rem 0.75rem;
 }
 .share-sample-entry:hover {
-  background: rgba(247, 244, 236, 0.08);
+  background: var(--dock-sage);
 }
 
 .landing-public-route {
-  background: #eef1e7;
+  background: var(--dock-sage);
   border-block: 1px solid rgba(84, 111, 89, 0.16);
   display: grid;
   grid-template-columns: auto minmax(120px, 1fr);
@@ -67,8 +67,8 @@
   stroke-width: 2.5;
 }
 .landing-public-route circle {
-  fill: #ef7e65;
-  stroke: #eef1e7;
+  fill: var(--dock-accent);
+  stroke: var(--dock-sage);
   stroke-width: 3;
 }
 .landing-public-route > div {
@@ -92,14 +92,14 @@
   left: 0;
   min-height: 28px;
   padding: 0.45rem 1rem;
-  position: absolute;
+  position: relative;
   right: 0;
 }
 .landing-public-signature strong {
   color: #365c4a;
   font-size: 0.72rem;
   letter-spacing: -0.03em;
-  text-transform: lowercase;
+  text-transform: none;
 }
 
 .share-story[data-share-state="published"] .share-planner-source {

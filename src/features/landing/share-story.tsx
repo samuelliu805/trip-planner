@@ -1,7 +1,7 @@
 "use client";
 
-import { BookOpen, ExternalLink, Eye, LayoutGrid, RotateCcw, Route, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, ExternalLink, Eye, LayoutGrid, Route, Users } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { PublicOverview } from "@/features/sharing/components/public-overview";
@@ -10,14 +10,21 @@ import { journalPublicTemplateV1 } from "@/features/sharing/templates/generated/
 
 import { AssembledWorkspace } from "./assembled-workspace";
 import { parisPublicItinerary } from "./landing-public-fixture";
+import { tripPlannerWordmark } from "./brand";
+import { useShareStage } from "./use-share-stage";
 
 export function ShareStory() {
   const stageRef = useRef<HTMLDivElement>(null);
-  const replayTimerRef = useRef<number | undefined>(undefined);
+  const revealObserverRef = useRef<IntersectionObserver | null>(null);
   const [published, setPublished] = useState(false);
   const [selectedDayRef, setSelectedDayRef] = useState<string>();
   const [selectedItemRef, setSelectedItemRef] = useState<string>();
   const { t } = useI18n();
+  useShareStage(stageRef, published);
+  const selectView = (value: boolean) => {
+    revealObserverRef.current?.disconnect();
+    setPublished(value);
+  };
   const itinerary = useMemo(
     () => ({
       ...parisPublicItinerary,
@@ -68,18 +75,11 @@ export function ShareStory() {
       },
       { rootMargin: "0px 0px -18%", threshold: 0.28 },
     );
+    revealObserverRef.current = observer;
     observer.observe(stage);
     return () => {
       observer.disconnect();
-      if (replayTimerRef.current) window.clearTimeout(replayTimerRef.current);
     };
-  }, []);
-
-  const replay = useCallback(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    setPublished(false);
-    if (replayTimerRef.current) window.clearTimeout(replayTimerRef.current);
-    replayTimerRef.current = window.setTimeout(() => setPublished(true), 520);
   }, []);
 
   return (
@@ -94,7 +94,7 @@ export function ShareStory() {
           <button
             aria-pressed={!published}
             className={!published ? "is-active" : undefined}
-            onClick={() => setPublished(false)}
+            onClick={() => selectView(false)}
             type="button"
           >
             <LayoutGrid aria-hidden="true" />
@@ -103,33 +103,27 @@ export function ShareStory() {
           <button
             aria-pressed={published}
             className={published ? "is-active" : undefined}
-            onClick={() => setPublished(true)}
+            onClick={() => selectView(true)}
             type="button"
           >
             <BookOpen aria-hidden="true" />
             <T message="Share result" />
           </button>
         </div>
-        <button className="share-replay" onClick={replay} type="button">
-          <RotateCcw aria-hidden="true" />
-          <T message="Replay transition" />
-        </button>
-        <a className="share-sample-entry" href="#share-preview" onClick={() => setPublished(true)}>
+        <a className="share-sample-entry" href="#share-preview" onClick={() => selectView(true)}>
           <ExternalLink aria-hidden="true" />
           <T message="Open sample preview" />
         </a>
       </div>
 
       <div className="share-stage" id="share-preview" ref={stageRef}>
-        <div className="share-planner-source" aria-hidden={published}>
-          <span className="share-stage-label">
-            <T message="Planning workspace" />
-          </span>
+        <div className="share-planner-source" aria-hidden={published} inert={published}>
           <AssembledWorkspace targetOpacity={1} testId="share-source-workspace" />
         </div>
 
         <div
           aria-hidden={!published}
+          inert={!published}
           className="landing-public-sheet public-template-journal public-share-surface"
         >
           <div className="landing-public-ribbon">
@@ -187,9 +181,7 @@ export function ShareStory() {
             <span>
               <T message="Planned and shared with" />
             </span>
-            <strong>
-              <T message="There We Go" />
-            </strong>
+            <strong>{tripPlannerWordmark}</strong>
           </footer>
         </div>
       </div>

@@ -1,5 +1,27 @@
 export const landingZhCN: Record<string, string> = {
-  "There We Go": "There We Go",
+  "GOOD TRIPS COME TOGETHER": "想去的地方，一起去",
+  "From “we should go”": "把「想去」，",
+  "to “There we go.”": "变成「一起去」。",
+  "A place for your maybes, your plans and your people. Bring it all together, then look forward to going.":
+    "想去的地方、还没定的安排、一起出发的人。把这一趟放在一起，剩下的，就好好期待。",
+  "Start with an idea. No account needed.": "有个想法，就能开始。无需注册。",
+  "Let’s go here.": "这一站，就这里。",
+  "PARIS, FRANCE": "法国 · 巴黎",
+  "A LITTLE PLANNING. A LOT TO LOOK FORWARD TO.": "计划一点点，期待多一点",
+  "Good trips come together.": "好旅行，慢慢成形。",
+  "The café you saved. The museum you can’t miss. A few days to make your own. Give them a place in the same plan.":
+    "收藏的咖啡馆、不想错过的博物馆，还有几天属于自己的时间。把它们放进同一份计划。",
+  "Find your rhythm": "排出自己的节奏",
+  "Bring the details": "带上有用的细节",
+  "Go together": "分享，一起出发",
+  "THE PLAN IS COMING TOGETHER": "这下，安排好了",
+  "Less searching. More being there.": "少一点翻找，多一点在场。",
+  "A trip worth sharing": "把期待分享出去",
+  "Your plans. A page to take with you.": "你做的计划，变成随行的手记。",
+  "Turn the same Paris plan into a travel journal. A clear, read-only page to send to the people you’re going with.":
+    "同一份巴黎计划，变成清楚、好读的旅行手记。发给同行的人，一起期待出发。",
+  "Let’s give it somewhere to start.": "就从这儿，开始吧。",
+  "There we go": "There we go",
   "THE CALM WAY TO PLAN A TRIP": "旅行计划，不必手忙脚乱",
   "Plan every trip in one place.": "把整趟旅行，安排在一起。",
   "Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road.":
@@ -41,8 +63,8 @@ export const landingZhCN: Record<string, string> = {
   "Go to Global site": "前往全球站",
   "FROM LOOSE PIECES TO A WORKING ROUTE": "从零散信息，到一份能执行的行程",
   "Plan with the shape of the trip in view.": "先看全程，再排好每一天。",
-  "There We Go keeps days, places, route choices and source material connected without pretending the decisions make themselves.":
-    "There We Go 把日期、地点、路线备选和参考资料放在一处。怎么选、怎么排，始终由你决定。",
+  "There we go keeps days, places, route choices and source material connected without pretending the decisions make themselves.":
+    "There we go 把日期、地点、路线备选和参考资料放在一处。怎么选、怎么排，始终由你决定。",
   "01 · PLAN THE WHOLE TRIP": "01 · 先把整趟旅行排明白",
   "See every day at once.": "每一天，一眼就能看全。",
   "Use a structured Matrix or Timeline for accommodation, transport, activities, meals and notes. Reorder the day when the plan changes.":
@@ -68,9 +90,9 @@ export const landingZhCN: Record<string, string> = {
   "Save route and trip options side by side. Compare their known details without invented scores or automatic winners.":
     "把路线和行程备选并排保存，只比较已知信息。没有凭空打分，也不会替你做决定。",
   "Paris Trip": "巴黎之旅",
-  "Privacy | There We Go": "隐私 | There We Go",
-  "Terms | There We Go": "条款 | There We Go",
-  "Support | There We Go": "支持 | There We Go",
+  "Privacy | There we go": "隐私 | There we go",
+  "Terms | There we go": "条款 | There we go",
+  "Support | There we go": "支持 | There we go",
   "RER B + Metro": "RER B + 地铁",
   "RER B + walk": "RER B + 步行",
   "Direct · 38 min": "直达 · 38 分钟",
@@ -136,9 +158,9 @@ export const landingZhCN: Record<string, string> = {
   "Legal and support": "法律信息与支持",
   "Build the route, compare options, keep travel documents close, and share one usable trip plan.":
     "把每天的行程、路线备选、住宿、预订和票据放在一起，随时调整并分享一份路上真正用得上的旅行计划。",
-  "There We Go — Plan routes, stays and travel details":
-    "There We Go：路线、住宿和旅行资料一处整理",
-  "There We Go itinerary workspace": "There We Go 行程规划区",
+  "There we go — Plan routes, stays and travel details":
+    "There we go：路线、住宿和旅行资料一处整理",
+  "There we go itinerary workspace": "There we go 行程规划区",
   "Visual itinerary planning": "用行程表直观看全程",
   "Day-by-day route planning": "按天规划路线",
   "Travel option comparison": "并排比较旅行备选",
@@ -163,10 +185,10 @@ export const landingZhCN: Record<string, string> = {
   "Saint-Germain": "圣日耳曼",
   "Rive Gauche": "巴黎左岸",
   "PDF · 184 KB": "PDF · 184 KB",
-  "Back to There We Go": "返回 There We Go",
+  "Back to There we go": "返回 There we go",
   PRIVACY: "隐私",
   "Your trip information should stay understandable.": "你的行程信息应当清晰可控。",
-  "There We Go uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.":
+  "There we go uses account, trip and technical information to provide the planning workspace, public sharing you choose to enable, and service reliability.":
     "行程规划使用账户、行程和必要的技术信息，以提供规划工作区、你主动启用的公开分享与服务稳定性。",
   "What is stored": "存储哪些信息",
   "Signed-in plans are stored by the configured regional service. Guest plans stay in this browser unless you choose to save them to an account.":
@@ -178,8 +200,8 @@ export const landingZhCN: Record<string, string> = {
   "Authentication, storage, mapping and optional telemetry follow the provider configured for the application region.":
     "身份验证、存储、地图和可选遥测均遵循应用所在区域配置的服务提供方。",
   TERMS: "条款",
-  "There We Go helps you organize a plan.": "There We Go 帮助你整理计划。",
-  "There We Go is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.":
+  "There we go helps you organize a plan.": "There we go 帮助你整理计划。",
+  "There we go is a planning workspace. It does not sell travel, make bookings, guarantee availability or replace advice from a travel provider.":
     "行程规划是旅行规划工作区，不销售旅行产品、不代为预订、不保证可用性，也不能替代旅行服务商的意见。",
   "Your responsibility": "你的责任",
   "Check dates, reservations, entry requirements, prices and transport details with the relevant provider before you travel.":
@@ -188,7 +210,7 @@ export const landingZhCN: Record<string, string> = {
   "You are responsible for the trip information and files you add, and for choosing what to publish through a share link.":
     "你需对添加的行程信息和文件负责，并自行决定通过分享链接发布哪些内容。",
   Availability: "可用性",
-  "Features may change as the product develops. Do not rely on There We Go as the only copy of an essential ticket or travel document.":
+  "Features may change as the product develops. Do not rely on There we go as the only copy of an essential ticket or travel document.":
     "产品功能可能随发展而变化。请勿将行程规划作为重要票据或旅行文件的唯一备份。",
   SUPPORT: "支持",
   "Need a hand with your plan?": "规划遇到问题？",

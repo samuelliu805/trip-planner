@@ -3,9 +3,8 @@
   right: clamp(1rem, 4vw, 4rem);
   top: 14vh;
   transform: scale(0.9) rotate(-5.5deg);
-  transform-origin: center;
-  transition: top 220ms ease;
-  width: min(55vw, 790px);
+  transform-origin: top center;
+  width: min(52vw, 760px);
   will-change: transform;
   z-index: 10;
 }

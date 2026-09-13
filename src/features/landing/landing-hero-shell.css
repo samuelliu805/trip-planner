@@ -4,6 +4,9 @@
   --dock-cyan: #4e9ca6;
   --dock-mint: #78b79a;
   --dock-border: #d9d5ca;
+  --dock-ink-muted: #5c6965;
+  --dock-sage: #e4ece4;
+  --dock-accent: #367c61;
   --landing-nav-height: calc(72px + env(safe-area-inset-top, 0px));
   background: var(--dock-paper);
   color: var(--dock-navy);
@@ -157,7 +160,7 @@
   left: clamp(1.25rem, 5vw, 5.5rem);
   max-width: min(34rem, 34vw);
   position: absolute;
-  top: clamp(7.5rem, 19vh, 12rem);
+  top: clamp(8rem, 23vh, 15rem);
   z-index: 30;
 }
 .landing-eyebrow {
@@ -170,10 +173,10 @@
   color: #99cec0;
 }
 .hero-copy h1 {
-  font-size: clamp(3.35rem, 5.8vw, 6.2rem);
+  font-size: clamp(3.35rem, 5.4vw, 5.7rem);
   font-weight: 700;
   letter-spacing: -0.07em;
-  line-height: 0.91;
+  line-height: 1.04;
   margin-top: 1.25rem;
   text-wrap: balance;
 }

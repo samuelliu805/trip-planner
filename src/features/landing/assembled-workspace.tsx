@@ -75,7 +75,7 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
           aria-label="Itinerary preview"
           data-i18n-aria-label="Itinerary preview"
         >
-          <div className="workspace-row workspace-labels" role="row">
+          <div className="workspace-row workspace-labels is-header" role="row">
             <span>
               <T message="Date" />
             </span>
