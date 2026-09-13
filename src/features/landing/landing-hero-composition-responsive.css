@@ -38,12 +38,12 @@
 }
 @media (max-width: 699px) {
   .hero-copy {
-    top: calc(var(--landing-nav-height) + 25px);
+    top: calc(var(--landing-nav-height) + 20px);
   }
   .hero-copy h1 {
     font-size: clamp(2.5rem, 10.8vw, 3.1rem);
     line-height: 1.04;
-    margin-top: 0.7rem;
+    margin-top: 0;
   }
   html[lang="zh-CN"] .hero-copy h1 {
     font-size: clamp(2.2rem, 9.5vw, 2.65rem);

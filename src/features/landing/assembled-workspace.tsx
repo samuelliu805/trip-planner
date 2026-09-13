@@ -1,12 +1,4 @@
-import {
-  CalendarDays,
-  Columns3,
-  FileCheck2,
-  Lightbulb,
-  ListOrdered,
-  Map,
-  Paperclip,
-} from "lucide-react";
+import { CalendarDays, Columns3, FileCheck2, ListOrdered, Map, Paperclip } from "lucide-react";
 import { memo } from "react";
 
 import { T } from "@/features/i18n/i18n-provider";
@@ -27,7 +19,7 @@ function Target({
   return (
     <div className={`plandock-target target-${kind}`} data-dock-target={kind}>
       <div className="plandock-target-content" style={{ opacity }}>
-        <DockContent appRegion={appRegion} compact kind={kind} />
+        <DockContent appRegion={appRegion} kind={kind} />
       </div>
     </div>
   );
@@ -111,9 +103,13 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
               <span>
                 <T message={day.city} />
               </span>
-              <span>
-                <T message={day.stay} />
-              </span>
+              {index === 0 ? (
+                <Target appRegion={appRegion} kind="stay" opacity={targetOpacity} />
+              ) : (
+                <span>
+                  <T message={day.stay} />
+                </span>
+              )}
               {index === 0 ? (
                 <div className="workspace-activity-stack">
                   <Target appRegion={appRegion} kind="activity" opacity={targetOpacity} />
@@ -145,18 +141,6 @@ export const AssembledWorkspace = memo(function AssembledWorkspace({
             <i className="map-dot dot-three" />
           </div>
           <Target appRegion={appRegion} kind="route" opacity={targetOpacity} />
-          <div className="workspace-options-panel">
-            <div className="workspace-options-heading">
-              <span>
-                <Lightbulb aria-hidden="true" />
-                <T message="Ideas & options" />
-              </span>
-              <small>
-                2 <T message="stays saved" />
-              </small>
-            </div>
-            <Target appRegion={appRegion} kind="stay" opacity={targetOpacity} />
-          </div>
         </aside>
       </div>
       <footer className="workspace-resources">

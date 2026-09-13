@@ -7,13 +7,6 @@
   .plandock-nav {
     padding-inline: 1rem;
   }
-  .plandock-brand-lockup {
-    gap: 0.45rem;
-  }
-  .plandock-brand-lockup > span {
-    font-size: 0.5rem;
-    padding-left: 0.45rem;
-  }
   .plandock-nav .nav-sign-in {
     display: inline-flex;
     padding-inline: 0.5rem;
@@ -27,9 +20,6 @@
     text-align: left;
   }
   .plandock-nav .nav-start {
-    display: none;
-  }
-  .plandock-nav[data-authenticated="true"] .plandock-brand-lockup > span {
     display: none;
   }
   .hero-copy {
@@ -84,7 +74,8 @@
   }
   .route-dock-viewport .workspace-header {
     align-items: center;
-    min-height: 56px;
+    height: 56px;
+    min-height: 0;
     padding: 7px 9px;
   }
   .route-dock-viewport .workspace-header h2 {
@@ -92,6 +83,7 @@
   }
   .route-dock-viewport .workspace-header p:last-child {
     font-size: 0.52rem;
+    white-space: nowrap;
   }
   .route-dock-viewport .workspace-view-tabs span {
     font-size: 0;
@@ -144,22 +136,10 @@
     padding: 6px;
   }
   .route-dock-viewport .target-route {
-    bottom: 51px;
-    height: 43px;
+    bottom: 7px;
+    height: 39px;
     left: 6px;
     right: 6px;
-  }
-  .route-dock-viewport .workspace-options-panel {
-    bottom: 5px;
-    left: 6px;
-    padding: 3px;
-    right: 6px;
-  }
-  .route-dock-viewport .workspace-options-heading small {
-    display: none;
-  }
-  .route-dock-viewport .workspace-options-panel .target-stay {
-    height: 26px;
   }
   .route-dock-viewport .workspace-resources {
     height: 46px;
@@ -183,9 +163,6 @@
   }
   .route-dock-viewport .moving-fragment .dock-fragment-copy strong {
     font-size: 0.72rem;
-  }
-  .route-dock-viewport .moving-fragment .dock-fragment-copy span {
-    font-size: 0.55rem;
   }
   .completion-label {
     display: none;

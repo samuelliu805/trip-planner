@@ -53,7 +53,7 @@ export function RouteDockHero({
   const [motionReady, setMotionReady] = useState(false);
   const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
   const state = dockState(effectiveProgress);
-  const { targets, viewportSize } = useRouteDockMeasurements({
+  const { hasMeasured, targets, viewportSize } = useRouteDockMeasurements({
     copyRef,
     layerRef,
     viewportRef,
@@ -119,7 +119,6 @@ export function RouteDockHero({
           viewportSize.width,
           viewportSize.visibleHeight,
           viewportSize.copyBottom,
-          viewportSize.workspaceHeight,
         )
       : null;
   // Leave a dedicated reading rail below the scene, including on short tablets.
@@ -132,21 +131,23 @@ export function RouteDockHero({
     (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
   );
   const compactStage = viewportSize.width <= 1024;
-  const workspaceStyle: WorkspaceStyle = mobileWorkspace
-    ? {
-        "--dock-target-opacity": destinationOpacity,
-        "--mobile-workspace-scale": mobileWorkspace.scale,
-        opacity: workspaceOpacity,
-        top: mobileWorkspace.top,
-        transform: "translateX(-50%)",
-        width: mobileWorkspace.width,
-      }
-    : {
-        "--dock-target-opacity": destinationOpacity,
-        opacity: workspaceOpacity,
-        top: desktopTop,
-        transform: `translate3d(0, ${compactStage ? 0 : (1 - deskProgress) * 14}px, 0) rotate(${(-(compactStage ? 2 : 4) * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale})`,
-      };
+  const workspaceStyle: WorkspaceStyle = !hasMeasured
+    ? { opacity: 0 }
+    : mobileWorkspace
+      ? {
+          "--dock-target-opacity": destinationOpacity,
+          "--mobile-workspace-scale": mobileWorkspace.scale,
+          opacity: workspaceOpacity,
+          top: mobileWorkspace.top,
+          transform: "translateX(-50%)",
+          width: mobileWorkspace.width,
+        }
+      : {
+          "--dock-target-opacity": destinationOpacity,
+          opacity: workspaceOpacity,
+          top: desktopTop,
+          transform: `translate3d(0, ${compactStage ? 0 : (1 - deskProgress) * 14}px, 0) rotate(${(-(compactStage ? 2 : 4) * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale})`,
+        };
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
     for (const kind of dockKinds) {
@@ -159,7 +160,7 @@ export function RouteDockHero({
         target,
         viewportSize.width < 700 ? 0.3 : viewportSize.width <= 1024 ? 0.65 : 1,
       );
-      if (viewportSize.width <= 1024 && effectiveProgress < 0.7) {
+      if (effectiveProgress < 0.7) {
         transform.x = clamp(transform.x, 8, viewportSize.width - transform.width - 12);
       }
       result[kind] = transform;
@@ -186,18 +187,15 @@ export function RouteDockHero({
       </div>
       <div
         className="route-dock-track"
-        data-dock-ready={motionReady ? "true" : "false"}
+        data-dock-ready={motionReady && hasMeasured ? "true" : "false"}
         data-dock-state={state}
         data-testid="route-dock-hero"
         ref={trackRef}
       >
         <div className="route-dock-viewport" ref={viewportRef}>
           <div className="hero-copy" ref={copyRef}>
-            <p className="landing-eyebrow">
-              <T message="Trip planner" />
-            </p>
             <h1>
-              <T message="Ready before you go." />
+              <T message="Plan it. Ready to go." />
             </h1>
             <p className="hero-support">
               <T message="Route, stays, days and tickets—all in one plan." />
@@ -230,7 +228,7 @@ export function RouteDockHero({
                       filter: `blur(${transform.blur}px)`,
                       height: transform.height,
                       left: transform.x,
-                      opacity: reducedMotion || webglFailed ? 0 : transform.opacity,
+                      opacity: !hasMeasured || reducedMotion || webglFailed ? 0 : transform.opacity,
                       top: transform.y,
                       transform: `translate3d(0, 0, ${transform.depth}px) rotate(${transform.rotation}deg) scale(${transform.scale})`,
                       width: transform.width,

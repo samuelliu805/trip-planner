@@ -1,4 +1,8 @@
 /* Supporting chapters enter once and keep native page scrolling in control. */
+.route-dock-track[data-dock-ready="false"] :is(.workspace-stage, .moving-fragment) {
+  opacity: 0 !important;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .route-dock-track[data-dock-ready="true"][data-dock-state="scattered"] .hero-copy {
     animation: landing-hero-copy-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;

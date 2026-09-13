@@ -40,6 +40,7 @@ export function useRouteDockMeasurements({
   measureKey: string;
 }) {
   const stableViewportRef = useRef({ height: 0, width: 0 });
+  const [hasMeasured, setHasMeasured] = useState(false);
   const [targets, setTargets] = useState<Partial<Record<DockKind, DockRect>>>({});
   const [viewportSize, setViewportSize] = useState({
     copyBottom: 0,
@@ -89,6 +90,7 @@ export function useRouteDockMeasurements({
         workspaceHeight: workspace.offsetHeight,
       });
       setTargets(measured);
+      setHasMeasured(true);
     };
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
@@ -110,5 +112,5 @@ export function useRouteDockMeasurements({
     };
   }, [copyRef, layerRef, measureKey, viewportRef, workspaceRef]);
 
-  return { targets, viewportSize };
+  return { hasMeasured, targets, viewportSize };
 }

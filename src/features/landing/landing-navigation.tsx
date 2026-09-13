@@ -19,9 +19,6 @@ export function LandingNavigation({ accountLabel }: { accountLabel?: string }) {
         <Link className="plandock-wordmark" href="/" aria-label={`${tripPlannerBrandName} home`}>
           {tripPlannerWordmark}
         </Link>
-        <span>
-          <T message="Trip planner" />
-        </span>
       </div>
       <div className="plandock-nav-links">
         <Link href="#features">

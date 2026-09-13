@@ -50,22 +50,7 @@
 .plandock-brand-lockup {
   align-items: center;
   display: flex;
-  gap: 0.65rem;
   line-height: 1;
-}
-.plandock-brand-lockup > span {
-  align-items: center;
-  border-left: 1px solid rgba(247, 244, 236, 0.22);
-  color: rgba(247, 244, 236, 0.62);
-  display: inline-flex;
-  font-size: 0.58rem;
-  font-weight: 750;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  min-height: 1rem;
-  padding-left: 0.65rem;
-  text-transform: uppercase;
-  white-space: nowrap;
 }
 .plandock-nav-links,
 .plandock-nav-actions {
@@ -202,10 +187,6 @@
   font-weight: 800;
   letter-spacing: 0.16em;
   line-height: 1.4;
-}
-.hero-copy .landing-eyebrow {
-  color: #99cec0;
-  text-transform: uppercase;
 }
 .hero-copy h1 {
   font-size: clamp(3.35rem, 5.4vw, 5.7rem);

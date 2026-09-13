@@ -227,6 +227,13 @@ async function visibleFragmentOverlaps(browser) {
   );
 }
 
+async function overlapsBetween(browser, firstSelector, secondSelector) {
+  return evaluate(
+    browser,
+    `(() => { const visible = (selector) => [...document.querySelectorAll(selector)].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none' && Number(getComputedStyle(node).opacity) > .05); const first = visible(${JSON.stringify(firstSelector)}); const second = visible(${JSON.stringify(secondSelector)}); return first.flatMap((a) => second.flatMap((b) => { const aRect = a.getBoundingClientRect(); const bRect = b.getBoundingClientRect(); const width = Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left); const height = Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top); return width > 2 && height > 2 ? [[a.dataset.fragment ?? a.className, b.dataset.fragment ?? b.className]] : []; })); })()`,
+  );
+}
+
 const app = await startApp();
 const browser = await launchBrowser();
 const screenshotDirectory = process.env.LANDING_E2E_SCREENSHOT_DIR;
@@ -252,17 +259,13 @@ try {
   );
   const navigation = await evaluate(
     browser,
-    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorCenterDelta: Math.abs(center(descriptor)-center(nav)), descriptorPresent: Boolean(descriptor), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
+    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(descriptor), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
   );
-  assert.equal(navigation.descriptorPresent, true);
+  assert.equal(navigation.descriptorPresent, false);
   assert.equal(navigation.howItWorks, false);
   assert.ok(
     navigation.brandCenterDelta <= 2,
     `Brand wordmark is misaligned by ${navigation.brandCenterDelta}px.`,
-  );
-  assert.ok(
-    navigation.descriptorCenterDelta <= 2,
-    `Trip planner descriptor is misaligned by ${navigation.descriptorCenterDelta}px.`,
   );
   const initialDesk = await evaluate(
     browser,
@@ -301,6 +304,20 @@ try {
       `Desktop item cards overlap at ${progress} progress.`,
     );
     if (progress === 0.49) {
+      assert.deepEqual(
+        await overlapsBetween(browser, "[data-fragment]", ".workspace-header"),
+        [],
+        "A moving card covers the itinerary title while information is finding its place.",
+      );
+      assert.deepEqual(
+        await overlapsBetween(
+          browser,
+          '[data-fragment="route"]',
+          ".route-dock-viewport .workspace-map .map-dot",
+        ),
+        [],
+        "The desktop place card covers a route dot while moving into place.",
+      );
       await screenshot(browser, screenshotDirectory, "02-routing-desktop.png");
     }
   }
@@ -485,6 +502,18 @@ try {
         ),
         true,
         `${width}px should render the route circle with WebGL.`,
+      );
+      const initialClearance = await evaluate(
+        browser,
+        `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const workspace = document.querySelector('.workspace-stage').getBoundingClientRect(); const action = document.querySelector('.hero-actions').getBoundingClientRect(); const looseCard = [...document.querySelectorAll('[data-fragment]')].find((node) => getComputedStyle(node).display !== 'none')?.getBoundingClientRect(); return { cardGap: looseCard ? looseCard.top-action.bottom : 0, workspaceGap: workspace.top-copy.bottom }; })()`,
+      );
+      assert.ok(
+        initialClearance.workspaceGap >= 28,
+        `${width}px workspace overlaps the hero copy: ${JSON.stringify(initialClearance)}`,
+      );
+      assert.ok(
+        initialClearance.cardGap >= 20,
+        `${width}px loose card overlaps Start planning: ${JSON.stringify(initialClearance)}`,
       );
     }
     const initialWorkspaceScale = await evaluate(
@@ -780,17 +809,24 @@ try {
   }
   const landingCopy = await evaluate(
     browser,
-    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasIntro: Boolean(document.querySelector('.landing-intro')), hasPlannerDescriptor: document.querySelector('.plandock-brand-lockup > span')?.textContent.trim() === 'Trip planner', hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, heroActions: document.querySelectorAll('.hero-actions a').length, heroEyebrow: document.querySelector('.hero-copy .landing-eyebrow')?.textContent.trim(), mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
+    `({ cardLabels: [...document.querySelectorAll('.moving-fragment .dock-fragment-copy')].map((node) => node.textContent.trim()), hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasIntro: Boolean(document.querySelector('.landing-intro')), hasOptionsPanel: Boolean(document.querySelector('.workspace-options-panel')), hasPlannerDescriptor: Boolean(document.querySelector('.plandock-brand-lockup > span')), hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, heroActions: document.querySelectorAll('.hero-actions a').length, heroHeading: document.querySelector('.hero-copy h1')?.textContent.trim(), mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
   );
   assert.deepEqual(landingCopy, {
+    cardLabels: [
+      "Louvre Museum",
+      "Marriott Rive Gauche",
+      "14:30 · Louvre Museum",
+      "Louvre timed ticket.pdf",
+    ],
     hasHowItWorksLink: false,
     hasIntro: false,
-    hasPlannerDescriptor: true,
+    hasOptionsPanel: false,
+    hasPlannerDescriptor: false,
     hasPreviewToggle: true,
     hasSampleEntry: true,
     hasSampleLink: false,
     heroActions: 1,
-    heroEyebrow: "Trip planner",
+    heroHeading: "Plan it. Ready to go.",
     mentionsOldBrand: false,
     mentionsSampleTrip: false,
     wordmarks: 2,
@@ -798,7 +834,7 @@ try {
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('准备好')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('规划好')`,
     "Simplified Chinese landing copy",
   );
   await viewport(browser, 390, 844, true);

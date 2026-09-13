@@ -39,16 +39,13 @@ export function mobileWorkspaceLayout(
   viewportWidth: number,
   viewportHeight: number,
   copyBottom: number,
-  workspaceHeight: number,
 ): MobileWorkspaceLayout {
   const sideGutter = 12;
-  const bottomGutter = 84;
-  const copyGap = 24;
-  const latestTop = Math.max(0, viewportHeight - workspaceHeight - bottomGutter);
-  const preferredTop = Math.max(viewportHeight * 0.43, copyBottom + copyGap);
+  const copyGap = 32;
+  const preferredTop = Math.max(viewportHeight * 0.34, copyBottom + copyGap);
   return {
     scale: 1,
-    top: Math.min(preferredTop, latestTop),
+    top: preferredTop,
     width: Math.max(1, viewportWidth - sideGutter * 2),
   };
 }
@@ -78,10 +75,10 @@ export function mix(from: number, to: number, amount: number) {
 }
 
 const routeOffsets: Record<DockKind, { depth: number; rotation: number; x: number; y: number }> = {
-  route: { depth: -50, x: -18, y: -22, rotation: -2 },
+  route: { depth: -50, x: 100, y: 100, rotation: -2 },
   stay: { depth: 64, x: 20, y: 48, rotation: 1.5 },
-  activity: { depth: 28, x: -285, y: -62, rotation: -1.2 },
-  document: { depth: -24, x: -280, y: 122, rotation: 2.2 },
+  activity: { depth: 28, x: 260, y: 100, rotation: -1.2 },
+  document: { depth: -24, x: -310, y: 122, rotation: 2.2 },
 };
 
 export function fragmentTransform(
@@ -96,9 +93,11 @@ export function fragmentTransform(
   const snapT = clamp((progress - 0.64) / 0.08);
   const snapScale = Math.sin(snapT * Math.PI) * 0.025;
   const baseOffset = routeOffsets[kind];
+  const horizontalScale =
+    kind === "activity" && movementScale < 1 ? Math.max(0.85, movementScale) : movementScale;
   const offset = {
     ...baseOffset,
-    x: baseOffset.x * movementScale,
+    x: baseOffset.x * horizontalScale,
     y: baseOffset.y * movementScale,
     depth: baseOffset.depth * movementScale,
   };
@@ -110,7 +109,10 @@ export function fragmentTransform(
   };
   const routed = {
     x: mix(start.x, approach.x, routeT),
-    y: mix(start.y, approach.y, routeT) + Math.sin(routeT * Math.PI) * offset.y * 0.2,
+    y:
+      mix(start.y, approach.y, routeT) +
+      Math.sin(routeT * Math.PI) * offset.y * 0.2 -
+      (kind === "route" ? Math.sin(routeT * Math.PI * 2) * 45 * movementScale : 0),
     width: mix(start.width, approach.width, routeT),
     height: mix(start.height, approach.height, routeT),
     depth: mix(start.depth, offset.depth, routeT),

@@ -20,11 +20,6 @@
   flex-direction: column;
   min-width: 0;
 }
-.dock-fragment-copy span {
-  color: #68727a;
-  font-size: 0.54rem;
-  line-height: 1.3;
-}
 .dock-fragment-copy strong {
   font-size: 0.62rem;
   line-height: 1.25;
@@ -45,9 +40,6 @@
   transform-style: preserve-3d;
   will-change: left, top, width, height, transform;
   z-index: 24;
-}
-.moving-fragment .dock-fragment-copy span {
-  font-size: 0.68rem;
 }
 .moving-fragment .dock-fragment-copy strong {
   font-size: 0.8rem;

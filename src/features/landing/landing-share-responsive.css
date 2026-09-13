@@ -102,17 +102,9 @@
   .share-planner-source .target-route {
     bottom: 15px;
     left: 10px;
-    width: 44%;
-    height: 67px;
-  }
-  .share-planner-source .workspace-options-panel {
-    bottom: 15px;
-    left: auto;
     right: 10px;
-    width: 46%;
-  }
-  .share-planner-source .workspace-options-heading small {
-    display: none;
+    width: auto;
+    height: 67px;
   }
   .share-planner-source .dock-fragment-copy {
     gap: 4px;

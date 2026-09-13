@@ -42,14 +42,14 @@ test("regional landing links always point to the other deployment", () => {
 });
 
 test("mobile workspace uses a native-size one-column viewport without scaling", () => {
-  const short = mobileWorkspaceLayout(375, 667, 306, 250);
-  assert.equal(short.top, 330);
+  const short = mobileWorkspaceLayout(375, 667, 306);
+  assert.equal(short.top, 338);
   assert.equal(short.scale, 1);
   assert.equal(short.width, 351);
-  assert.equal(short.top + 250, 580);
+  assert.equal(short.top + 250, 588);
 
-  const tall = mobileWorkspaceLayout(375, 932, 365, 250);
-  assert.ok(Math.abs(tall.top - 400.76) < 1e-9);
+  const tall = mobileWorkspaceLayout(375, 932, 365);
+  assert.equal(tall.top, 397);
   assert.equal(tall.scale, 1);
   assert.equal(tall.width, 351);
   assert.ok(tall.top + 250 <= 932 - 84);
