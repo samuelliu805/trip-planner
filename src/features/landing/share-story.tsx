@@ -159,22 +159,24 @@ export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
                 <T message="Day 1 route" />
               </strong>
             </span>
-            <svg aria-hidden="true" viewBox="0 0 360 42">
-              <path d="M18 22 C78 5 115 36 173 20 S274 7 342 21" />
-              <circle cx="18" cy="22" r="5" />
-              <circle cx="173" cy="20" r="5" />
-              <circle cx="342" cy="21" r="5" />
-            </svg>
-            <div>
-              <small>
-                <T message={fixture.route.stops[0]} />
-              </small>
-              <small>
-                <T message={fixture.route.stops[1]} />
-              </small>
-              <small>
-                <T message={fixture.route.stops[2]} />
-              </small>
+            <div className="landing-public-route-plot">
+              <svg aria-hidden="true" viewBox="0 0 360 42">
+                <path d="M60 22 C104 5 137 36 180 20 S256 7 300 21" />
+                <circle cx="60" cy="22" r="5" />
+                <circle cx="180" cy="20" r="5" />
+                <circle cx="300" cy="21" r="5" />
+              </svg>
+              <div className="landing-public-route-labels">
+                <small>
+                  <T message={fixture.route.stops[0]} />
+                </small>
+                <small>
+                  <T message={fixture.route.stops[1]} />
+                </small>
+                <small>
+                  <T message={fixture.route.stops[2]} />
+                </small>
+              </div>
             </div>
           </div>
           <div className="landing-public-content">

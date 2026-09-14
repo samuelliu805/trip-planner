@@ -469,6 +469,16 @@ try {
     toggles: 2,
     visible: true,
   });
+  const shareRouteAlignment = await evaluate(
+    browser,
+    `(() => { const plot = document.querySelector('.landing-public-route-plot'); const circles = [...plot.querySelectorAll('circle')]; const labels = [...plot.querySelectorAll('.landing-public-route-labels small')]; const center = (node) => { const rect = node.getBoundingClientRect(); return rect.left + rect.width / 2; }; return { delta: Math.max(...circles.map((circle, index) => Math.abs(center(circle) - center(labels[index])))), labelCount: labels.length, plotWidth: plot.getBoundingClientRect().width }; })()`,
+  );
+  assert.equal(shareRouteAlignment.labelCount, 3);
+  assert.ok(
+    shareRouteAlignment.delta <= 1,
+    `Share route labels drifted from their dots: ${JSON.stringify(shareRouteAlignment)}.`,
+  );
+  assert.ok(shareRouteAlignment.plotWidth <= 361);
   await screenshot(browser, screenshotDirectory, "08-share-after-desktop.png");
   await evaluate(
     browser,
@@ -686,6 +696,31 @@ try {
     );
     assert.ok(planningFit.gap >= 16 && planningFit.gap <= 40);
     assert.ok(planningFit.overflow <= 1);
+    if (width === 1280) {
+      await evaluate(
+        browser,
+        `document.querySelectorAll('.share-view-toggle button')[1].click(); true`,
+      );
+      await waitFor(
+        browser,
+        `document.querySelector('.share-story').dataset.shareState === 'published' && Number(getComputedStyle(document.querySelector('.landing-public-sheet')).opacity) > .99 && getComputedStyle(document.querySelector('.landing-public-route')).transform === 'none'`,
+        "tablet share result",
+      );
+      const tabletRouteAlignment = await evaluate(
+        browser,
+        `(() => { const plot = document.querySelector('.landing-public-route-plot'); const route = document.querySelector('.landing-public-route'); const circles = [...plot.querySelectorAll('circle')]; const labels = [...plot.querySelectorAll('.landing-public-route-labels small')]; const center = (node) => { const rect = node.getBoundingClientRect(); return rect.left + rect.width / 2; }; const routeRect = route.getBoundingClientRect(); const plotRect = plot.getBoundingClientRect(); return { centerDelta: Math.abs(plotRect.left + plotRect.width / 2 - (routeRect.left + routeRect.width / 2)), dotLabelDelta: Math.max(...circles.map((circle, index) => Math.abs(center(circle) - center(labels[index])))), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; })()`,
+      );
+      assert.ok(
+        tabletRouteAlignment.centerDelta <= 1,
+        `Tablet share route plot is not centered with its label: ${JSON.stringify(tabletRouteAlignment)}.`,
+      );
+      assert.ok(
+        tabletRouteAlignment.dotLabelDelta <= 1,
+        `Tablet share route labels drifted from their dots: ${JSON.stringify(tabletRouteAlignment)}.`,
+      );
+      assert.ok(tabletRouteAlignment.overflow <= 1);
+      await screenshot(browser, screenshotDirectory, "33-tablet-share-route-alignment.png");
+    }
     if (width === 390) {
       await evaluate(
         browser,
