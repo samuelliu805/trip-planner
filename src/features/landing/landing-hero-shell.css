@@ -1,10 +1,15 @@
 .plandock-page {
-  --dock-navy: #132238;
-  --dock-paper: #f7f4ec;
-  --dock-cyan: #4e9ca6;
-  --dock-mint: #78b79a;
-  --dock-border: #d9d5ca;
+  --dock-navy: var(--brand-navy);
+  --dock-paper: var(--brand-paper);
+  --dock-cyan: var(--brand-route);
+  --dock-mint: var(--brand-mint);
+  --dock-border: var(--brand-border);
+  --dock-ink-muted: #5c6965;
+  --dock-sage: #e4ece4;
+  --dock-accent: var(--brand-green);
+  --landing-frame-inset: max(clamp(1rem, 4vw, 4.8rem), calc((100vw - 1920px) / 2 + 4.8rem));
   --landing-nav-height: calc(72px + env(safe-area-inset-top, 0px));
+  --landing-nav-action-gap: 0.75rem;
   background: var(--dock-paper);
   color: var(--dock-navy);
   font-family: var(--font-journal-sans), sans-serif;
@@ -17,16 +22,16 @@
   align-items: center;
   backdrop-filter: blur(16px);
   background: rgba(19, 34, 56, 0.94);
-  border-bottom: 1px solid rgba(247, 244, 236, 0.12);
+  border-bottom: 1px solid rgba(251, 250, 246, 0.12);
   box-shadow: 0 8px 30px rgba(9, 18, 31, 0.12);
   box-sizing: border-box;
-  color: #f7f4ec;
+  color: #fbfaf6;
   display: flex;
   height: var(--landing-nav-height);
   justify-content: space-between;
   left: 0;
   margin: auto;
-  padding: 0 clamp(1rem, 4vw, 4rem);
+  padding: 0 var(--landing-frame-inset);
   padding-top: env(safe-area-inset-top, 0px);
   position: fixed;
   right: 0;
@@ -35,21 +40,29 @@
 }
 
 .plandock-wordmark {
+  align-items: center;
+  display: inline-flex;
   font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -0.04em;
+  line-height: 1;
+  min-height: 44px;
   white-space: nowrap;
+}
+.plandock-brand-lockup {
+  align-items: center;
+  display: flex;
+  line-height: 1;
 }
 .plandock-nav-links,
 .plandock-nav-actions {
   align-items: center;
   display: flex;
-  gap: 0.25rem;
+  gap: var(--landing-nav-action-gap);
 }
 .plandock-nav-links {
-  gap: clamp(0.75rem, 2.5vw, 2rem);
   margin-left: auto;
-  margin-right: clamp(1rem, 3vw, 2.5rem);
+  margin-right: var(--landing-nav-action-gap);
 }
 .plandock-nav-links a {
   font-size: 0.82rem;
@@ -99,7 +112,7 @@
 
 .route-dock-hero {
   --route-dock-stage-height: 100svh;
-  --route-dock-track-height: 390svh;
+  --route-dock-track-height: 280svh;
   background: var(--dock-navy);
   position: relative;
 }
@@ -125,9 +138,10 @@
 .route-dock-viewport::after {
   background: linear-gradient(
     90deg,
-    rgba(19, 34, 56, 0.88) 0%,
-    rgba(19, 34, 56, 0.38) 42%,
-    transparent 68%
+    rgba(19, 34, 56, 0.9) 0%,
+    rgba(19, 34, 56, 0.48) 36%,
+    rgba(19, 34, 56, 0.05) 59%,
+    transparent 76%
   );
   content: "";
   inset: 0;
@@ -151,12 +165,22 @@
   inset: 0;
   position: absolute;
 }
+@media (max-width: 699px) {
+  .route-dock-canvas::before {
+    background:
+      radial-gradient(circle at 78% 54%, rgba(120, 183, 154, 0.11), transparent 30%),
+      linear-gradient(135deg, transparent 58%, rgba(251, 250, 246, 0.035) 58.2%, transparent 58.5%);
+    content: "";
+    inset: 0;
+    position: absolute;
+  }
+}
 
 .hero-copy {
-  left: clamp(1.25rem, 5vw, 5.5rem);
-  max-width: min(34rem, 34vw);
+  left: var(--landing-frame-inset);
+  max-width: min(40rem, 38vw);
   position: absolute;
-  top: clamp(7.5rem, 19vh, 12rem);
+  top: clamp(7.75rem, 19vh, 13rem);
   z-index: 30;
 }
 .landing-eyebrow {
@@ -165,20 +189,17 @@
   letter-spacing: 0.16em;
   line-height: 1.4;
 }
-.hero-copy .landing-eyebrow {
-  color: #99cec0;
-}
 .hero-copy h1 {
-  font-size: clamp(3.35rem, 5.8vw, 6.2rem);
+  font-size: clamp(3.7rem, 5.75vw, 6.6rem);
   font-weight: 700;
   letter-spacing: -0.07em;
-  line-height: 0.91;
+  line-height: 1.04;
   margin-top: 1.25rem;
   text-wrap: balance;
 }
 .hero-support {
-  color: rgba(247, 244, 236, 0.78);
-  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  color: rgba(251, 250, 246, 0.78);
+  font-size: clamp(1.05rem, 1.25vw, 1.28rem);
   line-height: 1.65;
   margin-top: 1.6rem;
   max-width: 35rem;
@@ -186,12 +207,12 @@
 }
 
 #features,
-#how-it-works {
+#share-demo {
   scroll-margin-top: calc(var(--landing-nav-height) + 1rem);
 }
 
 html[lang="zh-CN"] .hero-copy {
-  max-width: min(34rem, 34vw);
+  max-width: min(40rem, 38vw);
 }
 
 html[lang="zh-CN"] .hero-copy h1 {
@@ -205,17 +226,15 @@ html[lang="zh-CN"] .hero-copy h1 {
   gap: 0.75rem;
   margin-top: 1.75rem;
 }
-.hero-actions a:first-child {
+.hero-actions a {
   background: var(--dock-mint);
   color: var(--dock-navy);
 }
-.hero-actions a:last-child {
-  background: rgba(247, 244, 236, 0.04);
-  border-color: rgba(247, 244, 236, 0.32);
-  color: var(--dock-paper);
+.hero-actions a:hover {
+  background: var(--brand-mint-hover);
 }
 .hero-detail {
-  color: rgba(247, 244, 236, 0.55);
+  color: rgba(251, 250, 246, 0.55);
   font-size: 0.8rem;
   margin-top: 1.15rem;
 }

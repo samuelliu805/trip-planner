@@ -75,7 +75,7 @@
 
 .documents-section {
   background: #132238;
-  color: #f7f4ec;
+  color: #fbfaf6;
   max-width: none;
   padding-inline: max(1.25rem, calc((100vw - 1180px) / 2));
 }
@@ -83,7 +83,7 @@
   color: #91cdb9;
 }
 .documents-section .feature-heading > p:last-child {
-  color: rgba(247, 244, 236, 0.64);
+  color: rgba(251, 250, 246, 0.64);
 }
 .documents-demo {
   display: grid;

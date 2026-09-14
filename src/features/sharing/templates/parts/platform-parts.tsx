@@ -62,7 +62,8 @@ function ViewerShareDialogPart() {
 }
 
 function ActiveViewPart() {
-  const { itinerary, selectDay, selectItem, selection, view } = usePublicTemplateController();
+  const { itinerary, selectDay, selectItem, selection, template, view } =
+    usePublicTemplateController();
   return (
     <PublicItineraryViews
       itinerary={itinerary}
@@ -70,6 +71,7 @@ function ActiveViewPart() {
       onSelectItem={selectItem}
       selectedDayRef={selection.dayRef}
       selectedItemRef={selection.itemRef}
+      transportPlacement={template.id === "journal" ? "flow" : "header"}
       view={view}
     />
   );
@@ -81,7 +83,8 @@ function ViewSwitcherPart() {
 }
 
 function PublicViewPart({ option }: { option: "overview" | "table" | "timeline" }) {
-  const { itinerary, selectDay, selectItem, selection, view } = usePublicTemplateController();
+  const { itinerary, selectDay, selectItem, selection, template, view } =
+    usePublicTemplateController();
   return (
     <PublicItineraryViewPanel
       itinerary={itinerary}
@@ -90,6 +93,7 @@ function PublicViewPart({ option }: { option: "overview" | "table" | "timeline" 
       option={option}
       selectedDayRef={selection.dayRef}
       selectedItemRef={selection.itemRef}
+      transportPlacement={template.id === "journal" ? "flow" : "header"}
       view={view}
     />
   );

@@ -128,7 +128,7 @@
   padding: 28px clamp(1.25rem, 5vw, 4rem);
 }
 .plandock-footer p {
-  color: rgba(247, 244, 236, 0.55);
+  color: rgba(251, 250, 246, 0.55);
   text-align: center;
 }
 .plandock-footer nav {
@@ -137,7 +137,7 @@
   justify-content: flex-end;
 }
 .public-info-page {
-  background: var(--dock-paper, #f7f4ec);
+  background: var(--dock-paper, #fbfaf6);
   color: #132238;
   font-family: var(--font-journal-sans), sans-serif;
   min-height: 100svh;
@@ -203,7 +203,7 @@
   align-items: center;
   background: #132238;
   border-radius: 8px;
-  color: #f7f4ec;
+  color: #fbfaf6;
   display: inline-flex;
   font-size: 0.82rem;
   font-weight: 800;
@@ -218,9 +218,6 @@
 }
 
 @media (max-width: 760px) {
-  .landing-intro {
-    text-align: left;
-  }
   .feature-section,
   .options-section,
   .sample-trip {
@@ -228,6 +225,10 @@
   }
   .feature-section {
     padding-block: 5rem;
+  }
+  .matrix-section {
+    row-gap: 2.75rem;
+    padding-inline: 1.5rem;
   }
   .options-section .feature-heading {
     grid-row: 1;
@@ -243,22 +244,24 @@
   }
   .route-stops {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    padding: 18px 12px;
+    grid-template-columns: 1fr;
+    padding: 12px;
   }
   .route-stops li {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 10px;
-    min-height: 110px;
+    min-height: 62px;
+  }
+  .route-stops button {
+    min-height: 56px;
+    padding-block: 0.4rem;
   }
   .route-stops li:not(:last-child)::after {
-    border-left: 0;
-    border-top: 1px dashed #91a69e;
-    height: 0;
-    left: 33px;
-    top: 13px;
-    width: calc(100% - 34px);
+    border-left: 1px dashed #91a69e;
+    border-top: 0;
+    bottom: -7px;
+    height: 16px;
+    left: 26px;
+    top: auto;
+    width: 0;
   }
   .route-stops strong {
     font-size: 0.68rem;
@@ -277,12 +280,28 @@
     padding: 30px 12px;
   }
   .plandock-footer {
+    gap: 1rem;
     grid-template-columns: 1fr;
     text-align: center;
   }
+  .plandock-footer .plandock-wordmark {
+    justify-self: center;
+    min-height: 2rem;
+  }
+  .plandock-footer > p,
+  .plandock-footer > nav {
+    align-items: center;
+    min-height: 2rem;
+  }
+  .plandock-footer > p {
+    display: flex;
+    justify-content: center;
+  }
   .plandock-footer nav {
+    column-gap: 1.25rem;
     flex-wrap: wrap;
     justify-content: center;
+    row-gap: 0.5rem;
   }
   .public-info-page article section {
     gap: 8px;

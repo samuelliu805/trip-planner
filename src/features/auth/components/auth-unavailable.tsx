@@ -8,9 +8,6 @@ export function AuthUnavailable({ mode }: { mode: "login" | "signup" }) {
   return (
     <Card className="border-0 bg-transparent shadow-none sm:border sm:bg-card sm:shadow-sm">
       <CardHeader className="space-y-2 px-0 pt-2 sm:px-8 sm:pt-7 sm:text-center">
-        <Link className="mb-2 text-2xl font-bold text-primary" href="/">
-          <T message={" Trip Planner "} />
-        </Link>
         <CardTitle className="text-2xl sm:text-[28px]">
           <T message={mode === "login" ? "Sign-in unavailable" : "Create your account"} />
         </CardTitle>

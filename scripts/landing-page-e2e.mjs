@@ -169,10 +169,15 @@ async function waitFor(browser, expression, label) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-async function viewport(browser, width, height, mobile = false) {
+async function viewport(browser, width, height, mobile = false, coarsePointer = mobile) {
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height, mobile, width },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Emulation.setTouchEmulationEnabled",
+    { enabled: coarsePointer, maxTouchPoints: coarsePointer ? 5 : 1 },
     browser.sessionId,
   );
 }
@@ -220,6 +225,20 @@ async function screenshot(browser, directory, name) {
   await writeFile(join(directory, name), Buffer.from(data, "base64"));
 }
 
+async function visibleFragmentOverlaps(browser) {
+  return evaluate(
+    browser,
+    `(() => { const fragments = [...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none' && Number(getComputedStyle(node).opacity) > .05).map((node) => ({ kind: node.dataset.fragment, rect: node.getBoundingClientRect() })); const overlaps = []; for (let index = 0; index < fragments.length; index += 1) { for (let other = index + 1; other < fragments.length; other += 1) { const a = fragments[index]; const b = fragments[other]; const width = Math.min(a.rect.right, b.rect.right) - Math.max(a.rect.left, b.rect.left); const height = Math.min(a.rect.bottom, b.rect.bottom) - Math.max(a.rect.top, b.rect.top); if (width > 2 && height > 2) overlaps.push([a.kind, b.kind]); } } return overlaps; })()`,
+  );
+}
+
+async function overlapsBetween(browser, firstSelector, secondSelector) {
+  return evaluate(
+    browser,
+    `(() => { const visible = (selector) => [...document.querySelectorAll(selector)].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none' && Number(getComputedStyle(node).opacity) > .05); const first = visible(${JSON.stringify(firstSelector)}); const second = visible(${JSON.stringify(secondSelector)}); return first.flatMap((a) => second.flatMap((b) => { const aRect = a.getBoundingClientRect(); const bRect = b.getBoundingClientRect(); const width = Math.min(aRect.right, bRect.right) - Math.max(aRect.left, bRect.left); const height = Math.min(aRect.bottom, bRect.bottom) - Math.max(aRect.top, bRect.top); return width > 2 && height > 2 ? [[a.dataset.fragment ?? a.className, b.dataset.fragment ?? b.className]] : []; })); })()`,
+  );
+}
+
 const app = await startApp();
 const browser = await launchBrowser();
 const screenshotDirectory = process.env.LANDING_E2E_SCREENSHOT_DIR;
@@ -238,6 +257,30 @@ try {
     state: "scattered",
     webgl: true,
   });
+  assert.deepEqual(
+    await visibleFragmentOverlaps(browser),
+    [],
+    "Desktop item cards overlap in the scattered state.",
+  );
+  const navigation = await evaluate(
+    browser,
+    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); const features = document.querySelector('.plandock-nav-links a').getBoundingClientRect(); const actions = [...document.querySelector('.plandock-nav-actions').children].map((node) => node.getBoundingClientRect()); const gaps = [actions[0].left - features.right, ...actions.slice(1).map((rect, index) => rect.left - actions[index].right)]; return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(descriptor), gapDelta: Math.max(...gaps)-Math.min(...gaps), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
+  );
+  assert.equal(navigation.descriptorPresent, false);
+  assert.equal(navigation.howItWorks, false);
+  assert.ok(navigation.gapDelta <= 1, `Top navigation gaps diverged: ${navigation.gapDelta}px.`);
+  assert.ok(
+    navigation.brandCenterDelta <= 2,
+    `Brand wordmark is misaligned by ${navigation.brandCenterDelta}px.`,
+  );
+  const initialDesk = await evaluate(
+    browser,
+    `(() => { const workspace = document.querySelector('[data-testid="assembled-product"]'); const style = getComputedStyle(document.querySelector('.workspace-stage')); return { opacity: Number(style.opacity), transform: style.transform, visibleWorkspace: workspace.getBoundingClientRect().top < innerHeight, targets: [...document.querySelectorAll('.route-dock-viewport [data-dock-target]')].map((node) => node.dataset.dockTarget).sort() }; })()`,
+  );
+  assert.ok(initialDesk.opacity >= 0.3);
+  assert.notEqual(initialDesk.transform, "none");
+  assert.equal(initialDesk.visibleWorkspace, true);
+  assert.deepEqual(initialDesk.targets, ["activity", "document", "route", "stay"]);
   const seo = await evaluate(
     browser,
     `(() => { const canonical = document.querySelector('link[rel="canonical"]'); const data = JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent); return { canonicalPath: new URL(canonical.href).pathname, description: document.querySelector('meta[name="description"]').content, graphTypes: data['@graph'].map((entry) => entry['@type']), title: document.title }; })()`,
@@ -245,8 +288,33 @@ try {
   assert.equal(seo.canonicalPath, "/");
   assert.match(seo.description, /route/i);
   assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
-  assert.match(seo.title, /^Trip Planner/);
+  assert.equal(seo.title, "There we go — Travel plans, ready to go");
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
+
+  await viewport(browser, 2560, 1389);
+  await navigate(browser, app.baseUrl);
+  const ultraWide = await evaluate(
+    browser,
+    `(() => { const nav = document.querySelector('.plandock-wordmark').getBoundingClientRect(); const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const workspace = document.querySelector('.workspace-stage').getBoundingClientRect(); const rail = document.querySelector('.scene-state').getBoundingClientRect(); return { alignment: Math.abs(nav.left-copy.left), headingSize: parseFloat(getComputedStyle(document.querySelector('.hero-copy h1')).fontSize), railBottom: rail.bottom, viewport: innerHeight, workspaceWidth: workspace.width }; })()`,
+  );
+  assert.ok(
+    ultraWide.alignment <= 1,
+    `Ultra-wide brand alignment drifted: ${ultraWide.alignment}px.`,
+  );
+  assert.ok(
+    ultraWide.headingSize >= 100,
+    `Ultra-wide heading stayed too small: ${ultraWide.headingSize}px.`,
+  );
+  assert.ok(
+    ultraWide.workspaceWidth >= 900,
+    `Ultra-wide workspace stayed too small: ${ultraWide.workspaceWidth}px.`,
+  );
+  assert.ok(
+    ultraWide.railBottom <= ultraWide.viewport * 0.82,
+    "Ultra-wide state rail fell below the composed scene.",
+  );
+  await viewport(browser, 1440, 900);
+  await navigate(browser, app.baseUrl);
 
   for (const [progress, expected] of [
     [0.25, "routing"],
@@ -261,7 +329,28 @@ try {
       ),
       expected,
     );
-    if (progress === 0.49) await screenshot(browser, screenshotDirectory, "02-routing-desktop.png");
+    assert.deepEqual(
+      await visibleFragmentOverlaps(browser),
+      [],
+      `Desktop item cards overlap at ${progress} progress.`,
+    );
+    if (progress === 0.49) {
+      assert.deepEqual(
+        await overlapsBetween(browser, "[data-fragment]", ".workspace-header"),
+        [],
+        "A moving card covers the itinerary title while information is finding its place.",
+      );
+      assert.deepEqual(
+        await overlapsBetween(
+          browser,
+          '[data-fragment="route"]',
+          ".route-dock-viewport .workspace-map .map-route circle",
+        ),
+        [],
+        "The desktop place card covers a route dot while moving into place.",
+      );
+      await screenshot(browser, screenshotDirectory, "02-routing-desktop.png");
+    }
   }
   await setProgress(browser, 0.72);
   const alignment = await evaluate(
@@ -278,7 +367,7 @@ try {
     await setProgress(browser, progress);
     const assembled = await evaluate(
       browser,
-      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.2 >= innerHeight*.5, nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
+      `(() => { const hero = document.querySelector('[data-testid="route-dock-hero"]'); const product = document.querySelector('[data-testid="assembled-product"]'); const rect = product.getBoundingClientRect(); return { hold: (hero.offsetHeight-innerHeight)*.25 >= innerHeight*.4, nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, state: hero.dataset.dockState, viewport: innerHeight, visible: rect.bottom > 0 && rect.top < innerHeight && getComputedStyle(product).visibility !== 'hidden' }; })()`,
     );
     assert.equal(assembled.state, "assembled");
     assert.equal(assembled.visible, true);
@@ -288,27 +377,246 @@ try {
       await screenshot(browser, screenshotDirectory, "04-assembled-desktop.png");
   }
 
+  await evaluate(
+    browser,
+    `document.querySelector('.route-section').scrollIntoView({ block: 'center' }); true`,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.route-section')?.dataset.revealState === 'visible'`,
+    "route story reveal",
+  );
+  await new Promise((resolve) => setTimeout(resolve, 1_750));
+  const routeStory = await evaluate(
+    browser,
+    `(() => { const story = document.querySelector('[data-testid="landing-route-story"]'); const path = story.querySelector('path'); return { buttons: story.querySelectorAll('.route-stops button').length, disclosure: story.querySelector('.map-disclosure')?.textContent.trim(), labels: [...story.querySelectorAll('.route-stops strong')].map((node) => node.textContent.trim()), pathLength: path.getAttribute('pathLength'), points: story.querySelectorAll('.route-point').length, stops: story.querySelectorAll('.route-stops li').length }; })()`,
+  );
+  assert.deepEqual(routeStory, {
+    buttons: 3,
+    disclosure: "Illustrative map · no live map data",
+    labels: ["Louvre Museum", "Saint-Germain", "Rive Gauche"],
+    pathLength: "1",
+    points: 3,
+    stops: 3,
+  });
+  await evaluate(browser, `document.querySelectorAll('.route-stops button')[0].click(); true`);
+  await waitFor(
+    browser,
+    `document.querySelector('.route-demo').dataset.activeStop === '0' && document.querySelectorAll('.route-segment')[0].classList.contains('is-active')`,
+    "first route stop selection",
+  );
+  await screenshot(browser, screenshotDirectory, "05-route-stop-before-desktop.png");
+  await evaluate(browser, `document.querySelectorAll('.route-stops button')[0].focus(); true`);
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "ArrowRight", key: "ArrowRight", type: "keyDown" },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "ArrowRight", key: "ArrowRight", type: "keyUp" },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.route-demo').dataset.activeStop === '1'`,
+    "keyboard route stop selection",
+  );
+  await evaluate(browser, `document.querySelectorAll('.route-stops button')[2].click(); true`);
+  await waitFor(
+    browser,
+    `document.querySelector('.route-demo').dataset.activeStop === '2' && document.querySelectorAll('.route-segment')[2].classList.contains('is-active')`,
+    "third route stop selection",
+  );
+  await screenshot(browser, screenshotDirectory, "06-route-stop-after-desktop.png");
+
+  const chapterSeams = await evaluate(
+    browser,
+    `(() => { const docs=document.querySelector('.documents-section').getBoundingClientRect(); const departure=document.querySelector('.departure-story').getBoundingClientRect(); const share=document.querySelector('.share-section').getBoundingClientRect(); return [departure.top-docs.bottom,share.top-departure.bottom]; })()`,
+  );
+  for (const gap of chapterSeams)
+    assert.ok(Math.abs(gap) <= 1, `A background gap returned between chapters: ${gap}px`);
+  const visualChapters = await evaluate(
+    browser,
+    `(() => { const imageSource = (node) => { const url = new URL(node.currentSrc); return url.searchParams.get('url') ?? url.pathname; }; return { departureImage: imageSource(document.querySelector('.departure-story > img')), hasHeroPostcard: Boolean(document.querySelector('.hero-postcard')), hasIntro: Boolean(document.querySelector('.landing-intro')) }; })()`,
+  );
+  assert.equal(visualChapters.hasIntro, false);
+  assert.equal(visualChapters.hasHeroPostcard, false);
+  assert.match(visualChapters.departureImage, /travel-desk\.webp/);
+
+  await evaluate(
+    browser,
+    `document.querySelector('#share-demo').scrollIntoView({ block: 'center' }); true`,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.share-story')?.dataset.shareState === 'published' && Number(getComputedStyle(document.querySelector('.landing-public-sheet')).opacity) > .99`,
+    "read-only share sample",
+  );
+  const shareStory = await evaluate(
+    browser,
+    `(() => { const story = document.querySelector('.share-story'); const sheet = story.querySelector('.landing-public-sheet'); return { accessNotes: story.querySelectorAll('.share-access-note > span').length, brand: sheet.querySelector('.public-brand-wordmark')?.textContent.trim(), hasLocalLabel: Boolean(sheet.querySelector('.landing-public-ribbon small')), hasProductionOverview: Boolean(sheet.querySelector('.public-overview.overview-v4')), hasRoute: Boolean(sheet.querySelector('.landing-public-route svg')), hasSampleEntry: Boolean(story.querySelector('.share-sample-entry')), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signature: sheet.querySelector('.landing-public-signature strong')?.textContent.trim(), toggles: story.querySelectorAll('.share-view-toggle button').length, visible: getComputedStyle(sheet).visibility === 'visible' && Number(getComputedStyle(sheet).opacity) > .99 }; })()`,
+  );
+  assert.deepEqual(shareStory, {
+    accessNotes: 2,
+    brand: "There we go",
+    hasLocalLabel: false,
+    hasProductionOverview: true,
+    hasRoute: true,
+    hasSampleEntry: false,
+    overflow: 0,
+    signature: "There we go",
+    toggles: 2,
+    visible: true,
+  });
+  const shareRouteAlignment = await evaluate(
+    browser,
+    `(() => { const plot = document.querySelector('.landing-public-route-plot'); const circles = [...plot.querySelectorAll('circle')]; const labels = [...plot.querySelectorAll('.landing-public-route-labels small')]; const center = (node) => { const rect = node.getBoundingClientRect(); return rect.left + rect.width / 2; }; return { delta: Math.max(...circles.map((circle, index) => Math.abs(center(circle) - center(labels[index])))), labelCount: labels.length, plotWidth: plot.getBoundingClientRect().width }; })()`,
+  );
+  assert.equal(shareRouteAlignment.labelCount, 3);
+  assert.ok(
+    shareRouteAlignment.delta <= 1,
+    `Share route labels drifted from their dots: ${JSON.stringify(shareRouteAlignment)}.`,
+  );
+  assert.ok(shareRouteAlignment.plotWidth <= 361);
+  await screenshot(browser, screenshotDirectory, "08-share-after-desktop.png");
+  await evaluate(
+    browser,
+    `document.querySelector('.share-view-toggle button[aria-pressed="false"]').click(); true`,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.share-story').dataset.shareState === 'planning' && getComputedStyle(document.querySelector('.share-planner-source')).visibility === 'visible'`,
+    "planning share preview",
+  );
+  await new Promise((resolve) => setTimeout(resolve, 950));
+  await screenshot(browser, screenshotDirectory, "07-share-before-desktop.png");
+  assert.equal(await evaluate(browser, `document.querySelector('.share-replay')`), null);
+  await evaluate(
+    browser,
+    `document.querySelectorAll('.share-view-toggle button')[1].click(); true`,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('.share-story').dataset.shareState === 'published'`,
+    "share result selected",
+  );
+
   for (const [width, height] of [
+    [1280, 800],
     [1024, 768],
+    [1180, 820],
     [820, 1180],
     [768, 1024],
     [430, 932],
     [390, 844],
+    [360, 800],
   ]) {
-    await viewport(browser, width, height, width < 700);
+    const tablet = width >= 700 && width <= 1366;
+    await viewport(browser, width, height, width < 700, width < 700 || tablet);
     await navigate(browser, app.baseUrl);
+    if (tablet) {
+      assert.equal(
+        await evaluate(browser, `matchMedia('(pointer: coarse)').matches`),
+        true,
+        `${width}px tablet emulation did not expose a coarse pointer.`,
+      );
+      for (const cardProgress of [0, 0.25, 0.35, 0.4, 0.49]) {
+        await setProgress(browser, cardProgress);
+        assert.deepEqual(
+          await visibleFragmentOverlaps(browser),
+          [],
+          `${width}px item cards overlap at ${cardProgress} progress.`,
+        );
+      }
+      await setProgress(browser, 0);
+      if (height <= 900) {
+        const tabletScale = await evaluate(
+          browser,
+          `(() => { const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return Math.hypot(matrix.a, matrix.b); })()`,
+        );
+        assert.ok(
+          tabletScale <= 0.862,
+          `${width}px short tablet workspace grew to ${tabletScale}.`,
+        );
+      }
+      for (const layoutProgress of [0, 0.2, 0.35, 0.49, 0.6, 0.76, 0.9]) {
+        await setProgress(browser, layoutProgress);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const tabletGap = await evaluate(
+          browser,
+          `(() => { const rail = document.querySelector('.scene-state').getBoundingClientRect(); const product = document.querySelector('.workspace-stage').getBoundingClientRect(); return rail.top - product.bottom; })()`,
+        );
+        assert.ok(
+          tabletGap >= 24,
+          `${width}px tablet workspace overlaps its state rail at ${layoutProgress}: ${tabletGap}px.`,
+        );
+        if (width === 1280 && layoutProgress === 0.35) {
+          await screenshot(browser, screenshotDirectory, "31-tablet-routing-clearance.png");
+        }
+      }
+      const stateAlignment = await evaluate(
+        browser,
+        `Math.max(...[...document.querySelectorAll('.scene-state > div')].map((item) => { const dot = item.querySelector(':scope > span').getBoundingClientRect(); const label = item.querySelector('strong').getBoundingClientRect(); return Math.abs((dot.top + dot.bottom) / 2 - (label.top + label.bottom) / 2); }))`,
+      );
+      assert.ok(
+        stateAlignment <= 1,
+        `${width}px state dots and labels drifted by ${stateAlignment}px.`,
+      );
+      await setProgress(browser, 0);
+    }
     if (width < 700) {
       await waitFor(
         browser,
         `document.querySelector('.workspace-stage').style.getPropertyValue('--mobile-workspace-scale').length > 0`,
         `${width}px mobile workspace measurement`,
       );
+      const visibleFragments = await evaluate(
+        browser,
+        `[...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && getComputedStyle(node).display !== 'none').length`,
+      );
+      assert.equal(visibleFragments, 2, `${width}px should keep two readable loose cards.`);
+      assert.deepEqual(
+        await visibleFragmentOverlaps(browser),
+        [],
+        `${width}px loose mobile cards overlap.`,
+      );
+      assert.equal(
+        await evaluate(
+          browser,
+          `Boolean(document.querySelector('[data-testid="route-dock-canvas"]')?.getContext('webgl2'))`,
+        ),
+        true,
+        `${width}px should render the route circle with WebGL.`,
+      );
+      const initialClearance = await evaluate(
+        browser,
+        `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const workspace = document.querySelector('.workspace-stage').getBoundingClientRect(); const action = document.querySelector('.hero-actions').getBoundingClientRect(); const looseCards = [...document.querySelectorAll('[data-fragment]')].filter((node) => getComputedStyle(node).display !== 'none').map((node) => node.getBoundingClientRect()); return { cardGap: Math.min(...looseCards.map((card) => card.top-action.bottom)), workspaceGap: workspace.top-copy.bottom }; })()`,
+      );
+      assert.ok(
+        initialClearance.workspaceGap >= 28,
+        `${width}px workspace overlaps the hero copy: ${JSON.stringify(initialClearance)}`,
+      );
+      assert.ok(
+        initialClearance.cardGap >= 20,
+        `${width}px loose card overlaps Start planning: ${JSON.stringify(initialClearance)}`,
+      );
     }
+    const initialWorkspaceScale = await evaluate(
+      browser,
+      `(() => { const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return Math.hypot(matrix.a, matrix.b); })()`,
+    );
     await setProgress(browser, 0.9);
     const animationEndpoint = await evaluate(
       browser,
-      `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, viewport: innerHeight }; })()`,
+      `(() => { const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const product = document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect(); const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return { copyBottom: copy.bottom, productBottom: product.bottom, productTop: product.top, scale: Math.hypot(matrix.a, matrix.b), viewport: innerHeight }; })()`,
     );
+    if (width <= 1366) {
+      assert.ok(
+        Math.abs(animationEndpoint.scale - initialWorkspaceScale) <= 0.002,
+        `${width}px workspace changed scale while scrolling.`,
+      );
+    }
     if (width < 700) {
       assert.ok(
         animationEndpoint.productTop - animationEndpoint.copyBottom >= 23,
@@ -326,7 +634,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 120));
     const responsive = await evaluate(
       browser,
-      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const stage = hero.querySelector('.route-dock-viewport'); const canvas = hero.querySelector('.route-dock-canvas'); const fragments = hero.querySelector('.fragment-layer'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, canvasHeight: canvas.offsetHeight, fragmentHeight: fragments.offsetHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), stageHeight: stage.offsetHeight, state: track.dataset.dockState, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
+      `(() => { const track = document.querySelector('[data-testid="route-dock-hero"]'); const hero = track.closest('.route-dock-hero'); const stage = hero.querySelector('.route-dock-viewport'); const canvas = hero.querySelector('.route-dock-canvas'); const fragments = hero.querySelector('.fragment-layer'); const signIn = document.querySelector('.nav-sign-in'); return { assembled: document.querySelector('[data-testid="assembled-product"]').getBoundingClientRect().bottom <= innerHeight, canvasHeight: canvas.offsetHeight, fragmentHeight: fragments.offsetHeight, heroHeight: hero.offsetHeight, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signInHeight: signIn?.getBoundingClientRect().height ?? 0, signInVisible: Boolean(signIn?.getClientRects().length), stageHeight: stage.offsetHeight, state: track.dataset.dockState, trackHeight: track.offsetHeight, viewport: innerHeight }; })()`,
     );
     assert.equal(responsive.state, "assembled");
     assert.equal(responsive.assembled, true);
@@ -337,9 +645,8 @@ try {
       assert.equal(responsive.signInVisible, true, `Sign in was hidden at ${width}px.`);
       assert.ok(responsive.signInHeight >= 44, `Sign in was below 44px at ${width}px.`);
       assert.ok(
-        responsive.stageHeight - responsive.viewport >= 95 &&
-          responsive.stageHeight - responsive.viewport <= 129,
-        `The ${width}px hero stage extension fell outside its responsive bounds.`,
+        Math.abs(responsive.stageHeight - responsive.viewport) <= 1,
+        `The ${width}px hero stage no longer matches the visible viewport.`,
       );
       assert.ok(
         Math.abs(responsive.heroHeight - responsive.trackHeight) <= 1,
@@ -348,12 +655,100 @@ try {
       assert.ok(Math.abs(responsive.canvasHeight - responsive.stageHeight) <= 1);
       assert.ok(Math.abs(responsive.fragmentHeight - responsive.stageHeight) <= 1);
       assert.ok(
-        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 2.9) <
+        Math.abs((responsive.trackHeight - responsive.stageHeight) / responsive.viewport - 0.9) <
           0.02,
       );
       assert.ok(responsive.nextTop >= responsive.viewport - 1);
     }
-    if (width === 390) await screenshot(browser, screenshotDirectory, "05-assembled-mobile.png");
+    if (width === 390) await screenshot(browser, screenshotDirectory, "09-assembled-mobile.png");
+
+    // Regression: the state rail owns space below the product, including B on tablets.
+    await setProgress(browser, 0.6);
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    assert.deepEqual(
+      await visibleFragmentOverlaps(browser),
+      [],
+      `${width}px item cards overlap in the docking state.`,
+    );
+    const clearance = await evaluate(
+      browser,
+      `(() => { const rail = document.querySelector('.scene-state').getBoundingClientRect(); const product = document.querySelector('.workspace-stage').getBoundingClientRect(); const copy = document.querySelector('.hero-copy').getBoundingClientRect(); return { productGap: rail.top - product.bottom, copyGap: rail.top - copy.bottom }; })()`,
+    );
+    assert.ok(
+      clearance.productGap >= 16,
+      `${width}px B product overlaps its state rail: ${JSON.stringify(clearance)}`,
+    );
+    assert.ok(clearance.copyGap >= 8, `${width}px B copy overlaps its state rail`);
+
+    await evaluate(
+      browser,
+      `document.querySelector('.share-view-toggle button').click(); document.querySelector('#share-demo').scrollIntoView({block:'start'}); true`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    const planningFit = await evaluate(
+      browser,
+      `(() => { const stage = document.querySelector('.share-stage').getBoundingClientRect(); const source = document.querySelector('.share-planner-source').getBoundingClientRect(); const note = document.querySelector('.share-access-note').getBoundingClientRect(); const sourceContent = document.querySelector('.share-planner-source .plandock-workspace').getBoundingClientRect(); return { blank: stage.height-sourceContent.height, gap: note.top-source.bottom, overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth, state: document.querySelector('.share-story').dataset.shareState }; })()`,
+    );
+    assert.equal(planningFit.state, "planning");
+    assert.ok(
+      Math.abs(planningFit.blank) <= 3,
+      `${width}px planning view reserves unused space: ${JSON.stringify(planningFit)}`,
+    );
+    assert.ok(planningFit.gap >= 16 && planningFit.gap <= 40);
+    assert.ok(planningFit.overflow <= 1);
+    if (width === 1280) {
+      await evaluate(
+        browser,
+        `document.querySelectorAll('.share-view-toggle button')[1].click(); true`,
+      );
+      await waitFor(
+        browser,
+        `document.querySelector('.share-story').dataset.shareState === 'published' && Number(getComputedStyle(document.querySelector('.landing-public-sheet')).opacity) > .99 && getComputedStyle(document.querySelector('.landing-public-route')).transform === 'none'`,
+        "tablet share result",
+      );
+      const tabletRouteAlignment = await evaluate(
+        browser,
+        `(() => { const plot = document.querySelector('.landing-public-route-plot'); const route = document.querySelector('.landing-public-route'); const circles = [...plot.querySelectorAll('circle')]; const labels = [...plot.querySelectorAll('.landing-public-route-labels small')]; const center = (node) => { const rect = node.getBoundingClientRect(); return rect.left + rect.width / 2; }; const routeRect = route.getBoundingClientRect(); const plotRect = plot.getBoundingClientRect(); return { centerDelta: Math.abs(plotRect.left + plotRect.width / 2 - (routeRect.left + routeRect.width / 2)), dotLabelDelta: Math.max(...circles.map((circle, index) => Math.abs(center(circle) - center(labels[index])))), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth }; })()`,
+      );
+      assert.ok(
+        tabletRouteAlignment.centerDelta <= 1,
+        `Tablet share route plot is not centered with its label: ${JSON.stringify(tabletRouteAlignment)}.`,
+      );
+      assert.ok(
+        tabletRouteAlignment.dotLabelDelta <= 1,
+        `Tablet share route labels drifted from their dots: ${JSON.stringify(tabletRouteAlignment)}.`,
+      );
+      assert.ok(tabletRouteAlignment.overflow <= 1);
+      await screenshot(browser, screenshotDirectory, "33-tablet-share-route-alignment.png");
+    }
+    if (width === 390) {
+      await evaluate(
+        browser,
+        `document.querySelector('.share-story-actions').scrollIntoView({block:'start'}); scrollBy(0,-90); true`,
+      );
+      await screenshot(browser, screenshotDirectory, "11-planning-mobile.png");
+      await evaluate(
+        browser,
+        `document.querySelectorAll('.share-view-toggle button')[1].click(); true`,
+      );
+      await waitFor(
+        browser,
+        `document.querySelector('.share-story').dataset.shareState === 'published'`,
+        "compact mobile share result",
+      );
+      await new Promise((resolve) => setTimeout(resolve, 950));
+      const mobileShare = await evaluate(
+        browser,
+        `(() => { const days = [...document.querySelectorAll('.landing-public-sheet .overview-day-v4')]; const rects = days.map((day) => day.getBoundingClientRect()); return { days: days.length, height: document.querySelector('.landing-public-sheet').offsetHeight, oneColumn: rects.every((rect, index) => index === 0 || rect.top >= rects[index - 1].bottom - 1), overflow: document.documentElement.scrollWidth-document.documentElement.clientWidth }; })()`,
+      );
+      assert.equal(mobileShare.days, 3);
+      assert.equal(mobileShare.oneColumn, true);
+      assert.ok(
+        mobileShare.height <= 1900,
+        `390px share sample is too tall: ${mobileShare.height}px`,
+      );
+      assert.ok(mobileShare.overflow <= 1);
+    }
   }
 
   await evaluate(
@@ -363,7 +758,7 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 120));
   const canvasTailCoverage = await evaluate(
     browser,
-    `(() => { const canvas = document.querySelector('.route-dock-canvas').getBoundingClientRect(); const canvasTrack = document.querySelector('.route-dock-canvas-track').getBoundingClientRect(); const hero = document.querySelector('.route-dock-hero').getBoundingClientRect(); return { canvasBottom: canvas.bottom, canvasTop: canvas.top, canvasTrackBottom: canvasTrack.bottom, heroBottom: hero.bottom, nextTop: document.querySelector('#how-it-works').getBoundingClientRect().top, viewport: innerHeight }; })()`,
+    `(() => { const canvas = document.querySelector('.route-dock-canvas').getBoundingClientRect(); const canvasTrack = document.querySelector('.route-dock-canvas-track').getBoundingClientRect(); const hero = document.querySelector('.route-dock-hero').getBoundingClientRect(); return { canvasBottom: canvas.bottom, canvasTop: canvas.top, canvasTrackBottom: canvasTrack.bottom, heroBottom: hero.bottom, nextTop: document.querySelector('.matrix-section').getBoundingClientRect().top, viewport: innerHeight }; })()`,
   );
   assert.ok(canvasTailCoverage.canvasTop <= 1);
   assert.ok(canvasTailCoverage.canvasBottom >= canvasTailCoverage.viewport - 1);
@@ -391,7 +786,7 @@ try {
 
   await evaluate(
     browser,
-    `(() => { const account = document.querySelector('.nav-sign-in'); account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
+    `(() => { const nav = document.querySelector('.plandock-nav'); const account = document.querySelector('.nav-sign-in'); nav.dataset.authenticated = 'true'; account.classList.add('nav-account'); account.innerHTML = '<span class="nav-account-label" dir="ltr">liushu805@gmail.com</span>'; return true; })()`,
   );
   const accountTruncation = await evaluate(
     browser,
@@ -413,6 +808,28 @@ try {
     ),
     "Go to China site",
   );
+  const mobileEditorialLayout = await evaluate(
+    browser,
+    `(() => { const section = document.querySelector('.matrix-section'); section.scrollIntoView({block:'start'}); const photo = section.querySelector('.feature-matrix-photo'); const footer = document.querySelector('.plandock-footer'); const footerBrand = footer.querySelector('.plandock-wordmark').getBoundingClientRect(); const footerCopyright = footer.querySelector(':scope > p').getBoundingClientRect(); const footerNav = footer.querySelector(':scope > nav').getBoundingClientRect(); const footerCenters = [footerBrand, footerCopyright, footerNav].map((rect) => (rect.top + rect.bottom) / 2); const navActions = [...document.querySelector('.plandock-nav-actions').children].filter((node) => node.getClientRects().length).map((node) => node.getBoundingClientRect()); const transport = section.querySelector('.feature-matrix-transport'); const icon = transport.querySelector('svg').getBoundingClientRect(); const transportRect = transport.getBoundingClientRect(); const nowrap = [...section.querySelectorAll('.feature-matrix-row:not(.is-header)')].every((row) => [...row.children].slice(1).every((cell) => getComputedStyle(cell).whiteSpace === 'nowrap')); return { footerCenterDelta: Math.abs((footerBrand.left + footerBrand.right) / 2 - document.documentElement.clientWidth / 2), footerRhythmDelta: Math.abs((footerCenters[1] - footerCenters[0]) - (footerCenters[2] - footerCenters[1])), mobilePhotoHidden: getComputedStyle(photo).display === 'none', iconCenterDelta: Math.abs((icon.top + icon.bottom) / 2 - (transportRect.top + transportRect.bottom) / 2), navActionGap: navActions[1].left - navActions[0].right, nowrap, transportDirection: getComputedStyle(transport).flexDirection }; })()`,
+  );
+  assert.equal(mobileEditorialLayout.mobilePhotoHidden, true);
+  await waitFor(
+    browser,
+    `document.querySelector('.matrix-section')?.dataset.revealState === 'visible'`,
+    "mobile feature chapter reveal",
+  );
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  await screenshot(browser, screenshotDirectory, "28-mobile-feature-spacing.png");
+  assert.ok(mobileEditorialLayout.footerCenterDelta <= 1);
+  assert.ok(mobileEditorialLayout.footerRhythmDelta <= 1);
+  assert.ok(mobileEditorialLayout.iconCenterDelta <= 1);
+  assert.ok(Math.abs(mobileEditorialLayout.navActionGap - 8) <= 1);
+  assert.equal(mobileEditorialLayout.nowrap, true);
+  assert.equal(mobileEditorialLayout.transportDirection, "row");
+  await evaluate(browser, `scrollTo(0, document.documentElement.scrollHeight); true`);
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  await screenshot(browser, screenshotDirectory, "32-mobile-footer-rhythm.png");
+  await navigate(browser, app.baseUrl);
 
   const revealBefore = await evaluate(
     browser,
@@ -450,13 +867,10 @@ try {
   );
   const mobileRouteStops = await evaluate(
     browser,
-    `([...document.querySelectorAll('.route-stops li')].map((item, index, items) => { const number = item.querySelector(':scope > span').getBoundingClientRect(); const label = item.querySelector('strong').getBoundingClientRect(); const itemRect = item.getBoundingClientRect(); const line = getComputedStyle(item, '::after'); return { direction: getComputedStyle(item).flexDirection, labelTop: label.top, lineTop: index < items.length - 1 ? itemRect.top + parseFloat(line.top) : null, numberBottom: number.bottom }; }))`,
+    `(() => { const story = document.querySelector('.route-demo'); const stops = story.querySelector('.route-stops').getBoundingClientRect(); const map = story.querySelector('.route-map').getBoundingClientRect(); return { buttons: [...story.querySelectorAll('.route-stops button')].map((button) => button.getBoundingClientRect().height), mapTop: map.top, stopsBottom: stops.bottom }; })()`,
   );
-  for (const stop of mobileRouteStops) {
-    assert.equal(stop.direction, "column");
-    assert.ok(stop.labelTop > stop.numberBottom);
-    if (stop.lineTop !== null) assert.ok(stop.lineTop < stop.labelTop);
-  }
+  assert.ok(mobileRouteStops.stopsBottom <= mobileRouteStops.mapTop + 1);
+  for (const height of mobileRouteStops.buttons) assert.ok(height >= 44);
 
   await browser.cdp.send(
     "Emulation.setEmulatedMedia",
@@ -477,7 +891,19 @@ try {
     ),
     true,
   );
-  await screenshot(browser, screenshotDirectory, "06-reduced-motion.png");
+  await screenshot(browser, screenshotDirectory, "10-reduced-motion.png");
+
+  for (const index of [0, 1]) {
+    await evaluate(
+      browser,
+      `document.querySelectorAll('.share-view-toggle button')[${index}].click(); true`,
+    );
+    await waitFor(
+      browser,
+      `getComputedStyle(document.querySelector('${index === 0 ? ".share-planner-source" : ".landing-public-sheet"}')).visibility === 'visible'`,
+      "reduced-motion preview selection",
+    );
+  }
 
   await browser.cdp.send("Emulation.setEmulatedMedia", { features: [] }, browser.sessionId);
   await navigate(browser, app.baseUrl, "/?webgl=off", "fallback");
@@ -498,6 +924,14 @@ try {
     `Promise.all(['/guest','/login','/privacy','/terms','/support','/robots.txt','/sitemap.xml'].map(async (path) => [path, (await fetch(path)).status]))`,
   );
   for (const [path, status] of routes) assert.equal(status, 200, `${path} returned ${status}`);
+  const authBranding = await evaluate(
+    browser,
+    `Promise.all(['/login','/signup'].map(async (path) => { const html = await (await fetch(path)).text(); const page = new DOMParser().parseFromString(html, 'text/html'); return [path, { brand: page.querySelector('header a')?.textContent.trim(), oldBrand: /Trip Planner/i.test(page.body.textContent) }]; }))`,
+  );
+  for (const [path, branding] of authBranding) {
+    assert.equal(branding.brand, "There we go", `${path} lost the shared brand header.`);
+    assert.equal(branding.oldBrand, false, `${path} still exposes the old product name.`);
+  }
   const discoveryFiles = await evaluate(
     browser,
     `Promise.all(['/robots.txt','/sitemap.xml'].map(async (path) => [path, await (await fetch(path)).text()]))`,
@@ -516,26 +950,40 @@ try {
   }
   const landingCopy = await evaluate(
     browser,
-    `({ hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), tripPlannerMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'Trip Planner').length })`,
+    `({ cardLabels: [...document.querySelectorAll('.moving-fragment .dock-fragment-copy')].map((node) => node.textContent.trim()), hasHowItWorksLink: document.querySelector('a[href="#how-it-works"]') !== null, hasIntro: Boolean(document.querySelector('.landing-intro')), hasOptionsPanel: Boolean(document.querySelector('.workspace-options-panel')), hasPlannerDescriptor: Boolean(document.querySelector('.plandock-brand-lockup > span')), hasPreviewToggle: document.querySelectorAll('.share-view-toggle button').length === 2, hasSampleEntry: document.querySelector('a[href="#share-preview"]') !== null, hasSampleLink: document.querySelector('a[href="#sample-trip"]') !== null, heroActions: document.querySelectorAll('.hero-actions a').length, heroHeading: document.querySelector('.hero-copy h1')?.textContent.trim(), mentionsOldBrand: document.body.innerText.includes("Plandock"), mentionsOldProductName: /Trip Planner/i.test(document.body.innerText), mentionsSampleTrip: /sample trip/i.test(document.body.innerText), wordmarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length })`,
   );
   assert.deepEqual(landingCopy, {
-    hasHowItWorksLink: true,
+    cardLabels: [
+      "Louvre Museum",
+      "Marriott Rive Gauche",
+      "14:30 · Louvre Museum",
+      "Louvre timed ticket.pdf",
+    ],
+    hasHowItWorksLink: false,
+    hasIntro: false,
+    hasOptionsPanel: false,
+    hasPlannerDescriptor: false,
+    hasPreviewToggle: true,
+    hasSampleEntry: false,
     hasSampleLink: false,
+    heroActions: 1,
+    heroHeading: "Plan it. Ready to go.",
     mentionsOldBrand: false,
+    mentionsOldProductName: false,
     mentionsSampleTrip: false,
-    tripPlannerMarks: 2,
+    wordmarks: 2,
   });
   await evaluate(browser, `document.querySelector('button[aria-label^="Switch"]')?.click(); true`);
   await waitFor(
     browser,
-    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('一站搞定')`,
+    `document.documentElement.lang === 'zh-CN' && document.querySelector('h1')?.textContent.includes('规划好')`,
     "Simplified Chinese landing copy",
   );
   await viewport(browser, 390, 844, true);
   await navigate(browser, app.baseUrl);
   const chineseLanding = await evaluate(
     browser,
-    `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'Trip Planner').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,
+    `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Saint-Germain','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,
   );
   assert.equal(chineseLanding.brandMarks, 2);
   assert.ok(
@@ -545,6 +993,12 @@ try {
   assert.ok(chineseLanding.navClearance >= 12);
   assert.ok(chineseLanding.overflow <= 1);
   assert.deepEqual(chineseLanding.untranslatedFixture, []);
+  const chineseDocumentHeading = await evaluate(
+    browser,
+    `(() => { const heading = document.querySelector('.documents-section .feature-heading h2'); return { copy: heading.textContent, whiteSpace: getComputedStyle(heading).whiteSpace }; })()`,
+  );
+  assert.equal(chineseDocumentHeading.copy, "要用的票据，\n正好就在手边。");
+  assert.equal(chineseDocumentHeading.whiteSpace, "pre-line");
 
   assert.deepEqual(browser.cdp.errors, []);
   assert.deepEqual(browser.cdp.failedRequests, []);

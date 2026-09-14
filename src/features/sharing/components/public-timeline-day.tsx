@@ -74,18 +74,36 @@ export function PublicTimelineDay({
   onSelectItem,
   selected,
   selectedItemRef,
+  transportPlacement = "header",
 }: {
   day: PublicItineraryDay;
   onSelectDay: (dayRef: string) => void;
   onSelectItem: (itemRef: string, dayRef: string) => void;
   selected: boolean;
   selectedItemRef?: string;
+  transportPlacement?: "flow" | "header";
 }) {
   const locality = publicDayCityLabel(day);
   const { nodes, notes, transfers } = publicTimelineDayPresentation(day);
   const planCount = nodes.length + notes.length;
   const { railRef: timelineRailRef, sectionRef: timelineSectionRef } = useTimelineRailWheel();
   const { locale, t } = useI18n();
+  const transportBlock = transfers.length ? (
+    <section
+      aria-label="Major transport"
+      data-i18n-aria-label={"Major transport"}
+      className={`timeline-transport-list-v4 ${transportPlacement === "flow" ? "is-flow" : ""}`}
+    >
+      <span aria-hidden="true" className="timeline-transport-label-v4">
+        <T message={" Transport "} />
+      </span>
+      <div className="timeline-transport-items-v4">
+        {transfers.map(({ item, label }) => (
+          <PublicTimelineTransport item={item} key={item.ref} label={label} />
+        ))}
+      </div>
+    </section>
+  ) : null;
 
   return (
     <article
@@ -123,23 +141,10 @@ export function PublicTimelineDay({
             : `${planCount} ${planCount === 1 ? "plan" : "plans"}`}
         </span>
 
-        {transfers.length ? (
-          <section
-            aria-label="Major transport"
-            data-i18n-aria-label={"Major transport"}
-            className="timeline-transport-list-v4"
-          >
-            <span aria-hidden="true" className="timeline-transport-label-v4">
-              <T message={" Transport "} />
-            </span>
-            <div className="timeline-transport-items-v4">
-              {transfers.map(({ item, label }) => (
-                <PublicTimelineTransport item={item} key={item.ref} label={label} />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {transportPlacement === "header" ? transportBlock : null}
       </header>
+
+      {transportPlacement === "flow" ? transportBlock : null}
 
       {nodes.length ? (
         <ol className="public-timeline-rail timeline-node-list-v4" ref={timelineRailRef}>

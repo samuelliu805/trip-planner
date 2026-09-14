@@ -124,11 +124,26 @@
 }
 
 @media (max-width: 760px) {
+  .feature-matrix-stage {
+    padding-top: 0;
+  }
+
   .feature-matrix-photo {
-    right: 0.75rem;
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 6.75rem;
+    margin: 0 0.75rem 1rem auto;
+    transform: rotate(2deg);
   }
 
   .route-map::after {
     background: linear-gradient(145deg, rgb(223 231 225 / 70%), rgb(223 231 225 / 18%));
+  }
+}
+
+@media (max-width: 699px) {
+  .feature-matrix-photo {
+    display: none;
   }
 }

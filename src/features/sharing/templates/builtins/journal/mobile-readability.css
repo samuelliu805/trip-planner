@@ -10,14 +10,20 @@
     font-size: 0.8125rem;
   }
 
-  .public-template-journal .overview-transport-title-v4,
-  .public-template-journal .timeline-transport-title-v4 {
+  .public-template-journal .overview-transport-title-v4 {
     font-size: 0.875rem;
   }
 
-  .public-template-journal .overview-transport-meta-v4,
-  .public-template-journal .timeline-transport-meta-v4 {
+  .public-template-journal .overview-transport-meta-v4 {
     font-size: 0.75rem;
+  }
+
+  .public-template-journal .timeline-transport-title-v4 {
+    font-size: 0.75rem;
+  }
+
+  .public-template-journal .timeline-transport-meta-v4 {
+    font-size: 0.6875rem;
   }
 
   .public-template-journal .public-matrix [role="gridcell"],

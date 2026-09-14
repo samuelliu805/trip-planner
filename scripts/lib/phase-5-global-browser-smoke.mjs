@@ -142,10 +142,18 @@ async function launchBrowser() {
       cdp,
       sessionId,
       async close() {
+        let closeTimer;
         try {
-          await cdp.send("Browser.close");
+          await Promise.race([
+            cdp.send("Browser.close"),
+            new Promise((resolve) => {
+              closeTimer = setTimeout(resolve, 1_500);
+            }),
+          ]);
         } catch {
           // The process cleanup handles an already-closed browser.
+        } finally {
+          clearTimeout(closeTimer);
         }
         socket.close();
         await stopChild(child);

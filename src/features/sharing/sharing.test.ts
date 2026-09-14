@@ -1715,8 +1715,13 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   );
   assert.match(
     publicTripHeader,
-    /<Link aria-label=\{t\("Go to Trip Planner"\)\} className="public-brand-kicker" href="\/">/,
+    /aria-label=\{t\("Go to \{brand\}", \{ brand: tripPlannerBrandName \}\)\}[\s\S]*className="public-brand-kicker"[\s\S]*href="\/"/,
   );
+  assert.match(
+    publicTripHeader,
+    /<span className="public-brand-wordmark">\{tripPlannerWordmark\}<\/span>/,
+  );
+  assert.match(styles, /\.public-brand-wordmark \{[^}]*text-transform: none/);
   assert.match(tripAppBar, /onClick=\{\(\) => window\.location\.assign\("\/trips"\)\}/);
   assert.doesNotMatch(tripAppBar, /href="\/trips"/);
   assert.match(
@@ -2541,9 +2546,18 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
     new URL("./public-timeline-presentation.ts", import.meta.url),
     "utf8",
   );
+  const platformParts = await readFile(
+    new URL("./templates/parts/platform-parts.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(timeline, /aria-label="Major transport"/);
   assert.match(timeline, /timeline-transport-label-v4/);
   assert.match(timeline, /PublicTimelineTransport/);
+  assert.match(timeline, /transportPlacement === "flow" \? transportBlock : null/);
+  assert.match(
+    platformParts,
+    /transportPlacement=\{template\.id === "journal" \? "flow" : "header"\}/,
+  );
   assert.match(
     timeline,
     /addEventListener\("wheel", handleWheel, \{ capture: true, passive: false \}\)/,
@@ -2577,6 +2591,18 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   assert.match(
     styles,
     /\.timeline-transport-title-v4 \{[\s\S]*flex: 0 0 auto;[\s\S]*overflow: visible;[\s\S]*text-overflow: clip;[\s\S]*white-space: nowrap/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.timeline-transport-inline-v4 \{[^}]*min-height: 1\.5rem;[^}]*grid-template-columns: 1rem minmax\(0, 1fr\) auto/,
+  );
+  assert.match(
+    styles,
+    /\.public-template-journal \.timeline-transport-list-v4\.is-flow \{[^}]*grid-column: auto;[^}]*margin: 0\.875rem 4\.125rem 0/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 899px\)[\s\S]*\.public-template-journal \.timeline-transport-list-v4\.is-flow \{[^}]*grid-column: auto;[^}]*margin: 0\.75rem 0 0\.25rem 4\.1875rem/,
   );
   assert.match(
     styles,

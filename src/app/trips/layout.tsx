@@ -12,6 +12,7 @@ import { getRequestLocale } from "@/features/i18n/server";
 import { AuthenticatedTelemetryIdentity } from "@/lib/telemetry/authenticated-identity";
 import { getAuthProvider } from "@/platform/composition/server";
 import { appUserIdentityLabel } from "@/platform/contracts/auth";
+import { tripPlannerWordmark } from "@/features/landing/brand";
 
 export const metadata: Metadata = {
   robots: { follow: false, index: false, noarchive: true },
@@ -29,7 +30,7 @@ export default async function TripsLayout({ children }: { children: React.ReactN
       <header className="trips-global-header sticky top-0 z-[80] border-b bg-card/95 backdrop-blur">
         <div className="flex h-14 w-full items-center justify-between px-4 sm:h-16 lg:px-5">
           <Link className="font-semibold tracking-tight" href="/trips">
-            <T message={" Trip Planner "} />
+            {tripPlannerWordmark}
           </Link>
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
             <LanguageSwitcher />

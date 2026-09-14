@@ -1,0 +1,137 @@
+/* The landing's editorial layer. Product workspace styles remain scoped separately. */
+
+.feature-heading h2 {
+  line-height: 1.04;
+}
+html[lang="zh-CN"] .feature-heading h2 {
+  line-break: strict;
+  word-break: auto-phrase;
+}
+html[lang="zh-CN"] .documents-section .feature-heading h2 {
+  white-space: pre-line;
+}
+.feature-section {
+  padding-block: clamp(4rem, 7vw, 7rem);
+}
+.matrix-section {
+  background: #fbf7ed;
+  max-width: none;
+  padding-inline: max(1.25rem, calc((100vw - 1180px) / 2));
+}
+.documents-section {
+  padding-bottom: clamp(4rem, 7vw, 6rem);
+}
+.departure-story {
+  position: relative;
+  isolation: isolate;
+  min-height: clamp(300px, 32vw, 440px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(2.5rem, 5vw, 5rem) max(1.25rem, calc((100vw - 1180px) / 2));
+  color: var(--dock-paper);
+  background: var(--dock-navy);
+}
+.departure-story > img {
+  object-fit: cover;
+  object-position: 50% 44%;
+  z-index: -2;
+}
+.departure-story::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #132238f2, #1322389c 60%, #13223875);
+  z-index: -1;
+}
+.departure-copy h2 {
+  font-size: clamp(3.4rem, 8vw, 7rem);
+  font-weight: 750;
+  letter-spacing: -0.07em;
+  line-height: 1.1;
+  margin-block: 1rem;
+}
+.departure-copy h2 span {
+  color: #a8d6bb;
+}
+.departure-copy > p:last-child {
+  color: #fbfaf6c9;
+  font-size: 1rem;
+}
+.departure-story > a {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  align-self: flex-end;
+  padding-block: 14px;
+  border-bottom: 1px solid #fbfaf670;
+  font-size: 0.8rem;
+}
+.departure-story > a svg {
+  width: 22px;
+}
+.plandock-page a,
+.plandock-page button {
+  -webkit-tap-highlight-color: transparent;
+}
+.plandock-page :is(a, button):focus-visible {
+  outline: 3px solid var(--dock-mint);
+  outline-offset: 4px;
+}
+.plandock-wordmark {
+  letter-spacing: -0.055em;
+}
+.share-story .landing-public-sheet {
+  --journal-coral: var(--dock-accent);
+  --journal-plum: #527462;
+  --journal-sky: #5f9281;
+  --journal-sun: #829764;
+  --journal-sage: #78b79a;
+  --journal-sage-dark: #365c4a;
+}
+.share-story .public-brand-wordmark {
+  text-transform: none;
+}
+.share-story .overview-day-v4 + .overview-day-v4 {
+  padding-top: 0;
+}
+.share-story .overview-item-card-v4:is(.activity, .hotel, .rental, .meal) {
+  padding: 1rem 0.6rem;
+  border-color: #cbd4c6;
+}
+.share-story
+  .landing-public-sheet
+  .overview-item-card-v4:is(.activity, .hotel, .rental, .meal)
+  .overview-item-title-v4 {
+  background: linear-gradient(transparent 72%, #78b79a35 72%);
+}
+.share-story
+  .landing-public-sheet
+  .overview-item-card-v4:is(.activity, .hotel, .rental, .meal)
+  .overview-item-icon-v4 {
+  background: var(--dock-sage);
+  color: var(--dock-accent);
+  border-color: var(--dock-border);
+}
+.share-story .landing-public-sheet :is(.overview-transport-icon-v4, .overview-transport-kind-v4) {
+  color: var(--dock-accent);
+}
+.share-story .overview-item-card-v4.is-selected {
+  background: #78b79a18;
+}
+.share-story .overview-item-card-v4::before {
+  display: none;
+}
+.share-story .overview-transport-list-v4 {
+  background: #e4ece470;
+}
+@media (max-width: 699px) {
+  .departure-story {
+    display: block;
+    padding-block: 3.5rem;
+  }
+  .departure-story > a {
+    width: fit-content;
+    margin-top: 2rem;
+  }
+}

@@ -3,7 +3,9 @@ import type { DockKind } from "./paris-fixture";
 export type DockState = "scattered" | "routing" | "docking" | "assembled";
 export type DockRect = { height: number; width: number; x: number; y: number };
 export type FragmentTransform = DockRect & {
+  blur: number;
   borderRadius: number;
+  depth: number;
   opacity: number;
   rotation: number;
   scale: number;
@@ -13,6 +15,11 @@ export type MobileWorkspaceLayout = {
   scale: number;
   top: number;
   width: number;
+};
+
+export type TabletWorkspaceLayout = {
+  scale: number;
+  top: number;
 };
 
 export function clamp(value: number, min = 0, max = 1) {
@@ -37,19 +44,32 @@ export function mobileWorkspaceLayout(
   viewportWidth: number,
   viewportHeight: number,
   copyBottom: number,
-  workspaceHeight: number,
 ): MobileWorkspaceLayout {
-  const sideGutter = 10;
-  const bottomGutter = 24;
-  const copyGap = 24;
-  const top = Math.max(viewportHeight * 0.48, copyBottom + copyGap);
-  const availableHeight = Math.max(1, viewportHeight - top - bottomGutter);
-  const scale = clamp(availableHeight / Math.max(1, workspaceHeight), 0.32, 1);
+  const sideGutter = 16;
+  const copyGap = 36;
+  const preferredTop = Math.max(viewportHeight * 0.34, copyBottom + copyGap);
   return {
-    scale,
-    top,
-    width: Math.max(1, viewportWidth - sideGutter * 2) / scale,
+    scale: 1,
+    top: preferredTop,
+    width: Math.max(1, viewportWidth - sideGutter * 2),
   };
+}
+
+export function tabletWorkspaceLayout(
+  viewportWidth: number,
+  viewportHeight: number,
+  workspaceHeight: number,
+  coarsePointer = false,
+): TabletWorkspaceLayout {
+  const top = clamp(viewportHeight * 0.17, 112, 150);
+  const rotationAllowance = Math.min(32, viewportWidth * 0.035);
+  const maximumScale = coarsePointer && viewportHeight <= 900 ? 0.86 : 1;
+  const scale = clamp(
+    (viewportHeight - top - 120) / Math.max(1, workspaceHeight + rotationAllowance),
+    0.68,
+    maximumScale,
+  );
+  return { scale, top };
 }
 
 export function dockState(progress: number): DockState {
@@ -76,11 +96,11 @@ export function mix(from: number, to: number, amount: number) {
   return from + (to - from) * amount;
 }
 
-const routeOffsets: Record<DockKind, { x: number; y: number; rotation: number }> = {
-  route: { x: -46, y: -54, rotation: -2 },
-  stay: { x: 58, y: -34, rotation: 1.5 },
-  activity: { x: -38, y: 46, rotation: -1.2 },
-  document: { x: 48, y: 54, rotation: 2.2 },
+const routeOffsets: Record<DockKind, { depth: number; rotation: number; x: number; y: number }> = {
+  route: { depth: -50, x: 100, y: 100, rotation: -2 },
+  stay: { depth: 64, x: 20, y: 48, rotation: 1.5 },
+  activity: { depth: 28, x: 260, y: 100, rotation: -1.2 },
+  document: { depth: -24, x: -310, y: 122, rotation: 2.2 },
 };
 
 export function fragmentTransform(
@@ -88,26 +108,40 @@ export function fragmentTransform(
   progress: number,
   start: FragmentTransform,
   target: DockRect,
+  movementScale = 1,
 ): FragmentTransform {
   const routeT = easeInOutCubic((progress - 0.14) / 0.36);
   const dockT = easeInOutCubic((progress - 0.5) / 0.22);
   const snapT = clamp((progress - 0.64) / 0.08);
   const snapScale = Math.sin(snapT * Math.PI) * 0.025;
-  const offset = routeOffsets[kind];
+  const baseOffset = routeOffsets[kind];
+  const horizontalScale =
+    kind === "activity" && movementScale < 1 ? Math.max(0.85, movementScale) : movementScale;
+  const offset = {
+    ...baseOffset,
+    x: baseOffset.x * horizontalScale,
+    y: baseOffset.y * movementScale + (kind === "document" && movementScale < 1 ? 32 : 0),
+    depth: baseOffset.depth * movementScale,
+  };
   const approach = {
     x: target.x + offset.x,
     y: target.y + offset.y,
-    width: mix(start.width, target.width, 0.55),
-    height: mix(start.height, target.height, 0.55),
+    width: mix(start.width, target.width, 0.82),
+    height: mix(start.height, target.height, 0.82),
   };
   const routed = {
     x: mix(start.x, approach.x, routeT),
-    y: mix(start.y, approach.y, routeT) + Math.sin(routeT * Math.PI) * offset.y * 0.2,
+    y:
+      mix(start.y, approach.y, routeT) +
+      Math.sin(routeT * Math.PI) * offset.y * 0.2 -
+      (kind === "route" ? Math.sin(routeT * Math.PI * 2) * 45 * movementScale : 0),
     width: mix(start.width, approach.width, routeT),
     height: mix(start.height, approach.height, routeT),
+    depth: mix(start.depth, offset.depth, routeT),
   };
   const crossfade = clamp((progress - 0.72) / 0.03);
   return {
+    blur: mix(mix(start.blur, 0.35, routeT), 0, dockT),
     x: mix(routed.x, target.x, dockT),
     y: mix(routed.y, target.y, dockT),
     width: mix(routed.width, target.width, dockT),
@@ -115,6 +149,7 @@ export function fragmentTransform(
     scale: mix(mix(start.scale, 0.98, routeT), 1, dockT) + snapScale,
     rotation: mix(mix(start.rotation, offset.rotation, routeT), 0, dockT),
     borderRadius: mix(mix(start.borderRadius, 13, routeT), 8, dockT),
+    depth: mix(routed.depth, 0, dockT),
     opacity: 1 - crossfade,
   };
 }

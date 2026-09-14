@@ -1,28 +1,46 @@
-import { CalendarDays, Columns3, Lightbulb, ListOrdered, Map, Paperclip } from "lucide-react";
+import { CalendarDays, Columns3, FileCheck2, ListOrdered, Map, Paperclip } from "lucide-react";
+import { memo } from "react";
 
 import { T } from "@/features/i18n/i18n-provider";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { DockContent } from "./dock-content";
-import { parisLandingFixture } from "./paris-fixture";
-import type { DockKind } from "./paris-fixture";
+import { landingFixtureForRegion, type DockKind } from "./paris-fixture";
 
-function Target({ kind, opacity }: { kind: DockKind; opacity: number }) {
+function Target({
+  appRegion,
+  kind,
+  opacity,
+}: {
+  appRegion: AppRegion;
+  kind: DockKind;
+  opacity: number;
+}) {
   return (
     <div className={`plandock-target target-${kind}`} data-dock-target={kind}>
       <div className="plandock-target-content" style={{ opacity }}>
-        <DockContent compact kind={kind} />
+        <DockContent appRegion={appRegion} kind={kind} />
       </div>
     </div>
   );
 }
 
-export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number }) {
+export const AssembledWorkspace = memo(function AssembledWorkspace({
+  appRegion = "global",
+  targetOpacity,
+  testId = "assembled-product",
+}: {
+  appRegion?: AppRegion;
+  targetOpacity: number;
+  testId?: string;
+}) {
+  const fixture = landingFixtureForRegion(appRegion);
   return (
     <section
       aria-label="Trip itinerary workspace"
       className="plandock-workspace"
       data-i18n-aria-label="Trip itinerary workspace"
-      data-testid="assembled-product"
+      data-testid={testId}
     >
       <header className="workspace-header">
         <div>
@@ -30,10 +48,10 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
             <T message="TRIP WORKSPACE" />
           </p>
           <h2>
-            <T message={parisLandingFixture.title} />
+            <T message={fixture.title} />
           </h2>
           <p>
-            <CalendarDays aria-hidden="true" /> <T message={parisLandingFixture.dateRange} /> ·{" "}
+            <CalendarDays aria-hidden="true" /> <T message={fixture.dateRange} /> ·{" "}
             <T message="4 days" />
           </p>
         </div>
@@ -60,7 +78,7 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
           aria-label="Itinerary preview"
           data-i18n-aria-label="Itinerary preview"
         >
-          <div className="workspace-row workspace-labels" role="row">
+          <div className="workspace-row workspace-labels is-header" role="row">
             <span>
               <T message="Date" />
             </span>
@@ -74,7 +92,7 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
               <T message="Activities" />
             </span>
           </div>
-          {parisLandingFixture.days.map((day, index) => (
+          {fixture.days.map((day, index) => (
             <div className="workspace-row" role="row" key={day.day}>
               <span className="workspace-date">
                 <strong>
@@ -86,14 +104,17 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
                 <T message={day.city} />
               </span>
               {index === 0 ? (
-                <Target kind="stay" opacity={targetOpacity} />
+                <Target appRegion={appRegion} kind="stay" opacity={targetOpacity} />
               ) : (
                 <span>
                   <T message={day.stay} />
                 </span>
               )}
               {index === 0 ? (
-                <Target kind="activity" opacity={targetOpacity} />
+                <div className="workspace-activity-stack">
+                  <Target appRegion={appRegion} kind="activity" opacity={targetOpacity} />
+                  <Target appRegion={appRegion} kind="document" opacity={targetOpacity} />
+                </div>
               ) : (
                 <span>
                   <T message={day.activity} />
@@ -112,32 +133,45 @@ export function AssembledWorkspace({ targetOpacity }: { targetOpacity: number })
             <T message="Day route" />
           </div>
           <div className="map-paper" aria-hidden="true">
-            <i className="map-road road-one" />
-            <i className="map-road road-two" />
+            <svg className="map-route" preserveAspectRatio="none" viewBox="0 0 260 260">
+              <path
+                className="map-route-secondary"
+                d="M-12 70 C62 102 91 146 154 179 S238 221 278 216"
+              />
+              <path
+                className="map-route-secondary"
+                d="M-8 214 C54 184 92 113 153 84 S230 56 274 22"
+              />
+              <path
+                className="map-route-primary"
+                d="M44 190 C74 166 104 160 134 130 S191 89 224 67"
+              />
+              <circle cx="44" cy="190" r="8" />
+              <circle cx="134" cy="130" r="8" />
+              <circle cx="224" cy="67" r="8" />
+            </svg>
             <i className="map-river" />
-            <i className="map-dot dot-one" />
-            <i className="map-dot dot-two" />
-            <i className="map-dot dot-three" />
           </div>
-          <Target kind="route" opacity={targetOpacity} />
-          <div className="workspace-options">
-            <span>
-              <Lightbulb aria-hidden="true" />
-              <T message="Ideas & options" />
-            </span>
-            <small>
-              2 <T message="routes saved" />
-            </small>
-          </div>
+          <Target appRegion={appRegion} kind="route" opacity={targetOpacity} />
         </aside>
       </div>
       <footer className="workspace-resources">
         <span className="resources-label">
           <Paperclip aria-hidden="true" />
-          <T message="Trip documents" />
+          <T message="Trip files" />
         </span>
-        <Target kind="document" opacity={targetOpacity} />
+        <div className="workspace-file-summary">
+          <FileCheck2 aria-hidden="true" />
+          <span>
+            <strong>
+              1 <T message="activity attachment" />
+            </strong>
+            <small>
+              <T message="Files stay beside the itinerary item." />
+            </small>
+          </span>
+        </div>
       </footer>
     </section>
   );
-}
+});

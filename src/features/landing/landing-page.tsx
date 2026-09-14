@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
 import type { AppRegion } from "@/platform/config/provider-matrix";
 
-import { tripPlannerBrandName } from "./brand";
+import { tripPlannerBrandName, tripPlannerWordmark } from "./brand";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
 import { LandingRevealSection } from "./landing-reveal-section";
@@ -14,14 +14,22 @@ import { RouteDockHero } from "./route-dock-hero";
 
 import "./landing-hero-shell.css";
 import "./landing-workspace.css";
+import "./landing-workspace-destinations.css";
 import "./landing-hero-responsive.css";
 import "./landing-hero-mobile.css";
 import "./landing-features.css";
 import "./landing-options-documents.css";
 import "./landing-feature-atmosphere.css";
 import "./landing-feature-chapters.css";
+import "./landing-route-story.css";
+import "./landing-share-story.css";
+import "./landing-share-transform.css";
+import "./landing-share-responsive.css";
 import "./landing-section-reveal.css";
 import "./landing-conversion.css";
+import "./landing-hero-composition.css";
+import "./landing-hero-composition-responsive.css";
+import "./landing-brand-story.css";
 
 export function LandingPage({
   accountLabel,
@@ -37,14 +45,14 @@ export function LandingPage({
   return (
     <main className="plandock-page">
       <LandingNavigation accountLabel={accountLabel} />
-      <RouteDockHero startHref={startHref} />
-      <FeatureSections />
+      <RouteDockHero appRegion={appRegion} startHref={startHref} />
+      <FeatureSections appRegion={appRegion} />
       <LandingRevealSection className="landing-final-cta">
         <p className="landing-eyebrow">
           <T message="YOUR TRIP, READY TO USE" />
         </p>
         <h2>
-          <T message="Bring the pieces together." />
+          <T message="Ready when you are." />
         </h2>
         <p>
           <T message="Start locally. Create an account when you are ready to keep planning across devices." />
@@ -57,7 +65,7 @@ export function LandingPage({
       </LandingRevealSection>
       <footer className="plandock-footer">
         <Link className="plandock-wordmark" href="/">
-          {tripPlannerBrandName}
+          {tripPlannerWordmark}
         </Link>
         <p>
           © {year} {tripPlannerBrandName}

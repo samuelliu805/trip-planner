@@ -1,0 +1,148 @@
+@media (max-width: 760px) {
+  .share-story .overview-days-v4 {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  .share-story .overview-board-v4 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .share-story .landing-public-content .public-overview {
+    padding: 1.25rem;
+  }
+}
+@media (max-width: 540px) {
+  .share-section {
+    padding-inline: 1rem;
+    gap: 2rem;
+  }
+  .share-section .feature-heading {
+    text-align: left;
+  }
+  .share-story-actions {
+    gap: 0.5rem;
+  }
+  .share-story .overview-days-v4 {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .share-story .overview-day-v4,
+  .share-story .overview-day-v4 + .overview-day-v4 {
+    padding: 0.7rem 0 0.9rem;
+  }
+  .share-story .overview-board-v4 {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+  }
+  .share-story .landing-public-content .public-overview {
+    padding: 1rem;
+  }
+  .landing-public-sheet .public-template-region-brand-row {
+    padding: 1.1rem;
+  }
+  .landing-public-sheet .public-trip-title {
+    font-size: 2rem;
+  }
+  .share-story .overview-day-heading-v4 {
+    min-height: 0;
+  }
+  .share-story .overview-day-title-v4 strong {
+    font-size: 0.78rem;
+  }
+  .share-story .overview-day-title-v4 > span:last-child,
+  .share-story .overview-item-meta-v4,
+  .share-story .overview-item-notes-v4 {
+    font-size: 0.58rem;
+  }
+  .share-story .landing-public-sheet .overview-item-card-v4:is(.activity, .hotel, .rental, .meal) {
+    min-height: 0;
+    padding: 0.6rem 0.42rem;
+  }
+  .share-planner-source .workspace-header {
+    padding: 14px 12px;
+    min-height: 100px;
+    align-items: flex-start;
+  }
+  .share-planner-source .workspace-header h2 {
+    font-size: 1.3rem;
+  }
+  .share-planner-source .workspace-header p:last-child {
+    font-size: 0.57rem;
+  }
+  .share-planner-source .workspace-view-tabs span {
+    font-size: 0;
+    padding: 8px;
+  }
+  .share-planner-source .workspace-view-tabs svg {
+    width: 15px;
+    height: 15px;
+  }
+  .share-planner-source .workspace-main {
+    grid-template-columns: 1fr;
+  }
+  .share-planner-source .workspace-row {
+    grid-template-columns: 48px minmax(0, 0.85fr) minmax(0, 1.15fr);
+    min-height: 76px;
+  }
+  .share-planner-source .workspace-row > span:nth-child(2) {
+    display: none;
+  }
+  .share-planner-source .workspace-row > span {
+    font-size: 0.64rem;
+    padding: 8px 6px;
+  }
+  .share-planner-source .workspace-activity-stack {
+    padding: 5px;
+  }
+  .share-planner-source .workspace-map {
+    min-height: 160px;
+    border-top: 1px solid var(--dock-border);
+    border-left: 0;
+  }
+  .share-planner-source .target-route {
+    bottom: 15px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    height: 67px;
+  }
+  .share-planner-source .dock-fragment-copy {
+    gap: 4px;
+    padding: 5px;
+  }
+  .share-planner-source .dock-fragment-copy strong {
+    font-size: 0.58rem;
+    white-space: normal;
+  }
+  .share-planner-source .dock-fragment-copy > svg {
+    width: 23px;
+    height: 23px;
+    flex-shrink: 0;
+    padding: 5px;
+  }
+  .share-planner-source .target-document .dock-fragment-copy strong {
+    font-size: 0.45rem;
+  }
+  .share-planner-source .workspace-resources {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .share-planner-source .resources-label {
+    font-size: 0;
+    width: 16px;
+  }
+  .share-access-note {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .landing-public-signature {
+    justify-content: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .share-stage,
+  .share-planner-source,
+  .landing-public-sheet {
+    transition: none;
+  }
+}

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Trip Planner — plan every trip in one place";
+export const alt = "There we go — travel plans, ready when you are";
 export const size = { height: 630, width: 1200 };
 export const contentType = "image/png";
 
@@ -10,7 +10,7 @@ export default function OpenGraphImage() {
       style={{
         alignItems: "center",
         background: "#132238",
-        color: "#f7f4ec",
+        color: "#fbfaf6",
         display: "flex",
         height: "100%",
         justifyContent: "space-between",
@@ -20,7 +20,7 @@ export default function OpenGraphImage() {
     >
       <div style={{ display: "flex", flexDirection: "column", maxWidth: 650 }}>
         <span style={{ color: "#91cdb9", fontSize: 28, fontWeight: 700, letterSpacing: 4 }}>
-          {"TRIP PLANNER"}
+          {"THERE WE GO"}
         </span>
         <span
           style={{
@@ -31,7 +31,7 @@ export default function OpenGraphImage() {
             marginTop: 28,
           }}
         >
-          {"Plan every trip in one place."}
+          {"Know what’s next before you go."}
         </span>
       </div>
       <div

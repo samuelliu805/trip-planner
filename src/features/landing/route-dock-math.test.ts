@@ -10,6 +10,7 @@ import {
   mobileWorkspaceLayout,
   scrollProgress,
   shouldResetLandingScroll,
+  tabletWorkspaceLayout,
   targetContentOpacity,
   type FragmentTransform,
 } from "./route-dock-math.ts";
@@ -41,18 +42,34 @@ test("regional landing links always point to the other deployment", () => {
   assert.equal(translateMessage("zh-CN", "Go to Global site"), "前往全球站");
 });
 
-test("mobile workspace preserves its side and bottom gutters", () => {
-  const short = mobileWorkspaceLayout(375, 667, 331, 410);
-  assert.equal(short.top, 355);
-  assert.ok(Math.abs(short.scale - 288 / 410) < 1e-9);
-  assert.ok(Math.abs(short.width * short.scale - 355) < 1e-9);
-  assert.ok(Math.abs(short.top + 410 * short.scale - 643) < 1e-9);
+test("mobile workspace uses a native-size one-column viewport without scaling", () => {
+  const short = mobileWorkspaceLayout(375, 667, 306);
+  assert.equal(short.top, 342);
+  assert.equal(short.scale, 1);
+  assert.equal(short.width, 343);
+  assert.equal(short.top + 250, 592);
 
-  const tall = mobileWorkspaceLayout(375, 932, 365, 410);
-  assert.ok(Math.abs(tall.top - 447.36) < 1e-9);
+  const tall = mobileWorkspaceLayout(375, 932, 365);
+  assert.equal(tall.top, 401);
   assert.equal(tall.scale, 1);
-  assert.equal(tall.width, 355);
-  assert.ok(tall.top + 410 <= 932 - 24);
+  assert.equal(tall.width, 343);
+  assert.ok(tall.top + 250 <= 932 - 84);
+});
+
+test("tablet workspace keeps a stable rail below the transformed preview", () => {
+  const landscape = tabletWorkspaceLayout(1280, 807, 570);
+  assert.equal(landscape.top, 137.19);
+  assert.ok(landscape.scale < 1);
+  assert.ok(landscape.top + 570 * landscape.scale <= 807 - 120);
+
+  const portrait = tabletWorkspaceLayout(768, 1024, 570);
+  assert.equal(portrait.top, 150);
+  assert.equal(portrait.scale, 1);
+  assert.ok(portrait.top + 570 <= 1024 - 120);
+
+  const coarseLandscape = tabletWorkspaceLayout(1280, 800, 530, true);
+  assert.equal(coarseLandscape.scale, 0.86);
+  assert.ok(coarseLandscape.top + 530 * coarseLandscape.scale <= 800 - 190);
 });
 
 test("dock states follow the specified transition boundaries", () => {
@@ -64,7 +81,9 @@ test("dock states follow the specified transition boundaries", () => {
 
 test("every fragment reaches its measured target before crossfade", () => {
   const start: FragmentTransform = {
+    blur: 1.5,
     borderRadius: 16,
+    depth: 60,
     height: 80,
     opacity: 1,
     rotation: -4,
@@ -80,6 +99,8 @@ test("every fragment reaches its measured target before crossfade", () => {
     assert.ok(Math.abs(result.y - target.y) < 0.001);
     assert.ok(Math.abs(result.width - target.width) < 0.001);
     assert.ok(Math.abs(result.height - target.height) < 0.001);
+    assert.equal(result.depth, 0);
+    assert.equal(result.blur, 0);
     assert.equal(result.opacity, 1);
   }
   assert.ok(fragmentTransform("route", 0.68, start, target).scale > 1);

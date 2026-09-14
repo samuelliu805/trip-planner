@@ -49,7 +49,7 @@ export function LongImageSettingsFields({
             <T message={"This shareable page"} />
           </SelectItem>
           <SelectItem value="homepage">
-            <T message={"Trip Planner home — no itinerary shared"} />
+            <T message={"There we go home — no itinerary shared"} />
           </SelectItem>
           {sharePages.map((page) => (
             <SelectItem key={page.id} value={`share_page:${page.id}`}>

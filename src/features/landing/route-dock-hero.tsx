@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 
 import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 import Link from "next/link";
 
 import { AssembledWorkspace } from "./assembled-workspace";
@@ -17,69 +18,34 @@ import {
   fragmentTransform,
   mobileWorkspaceLayout,
   scrollProgress,
+  tabletWorkspaceLayout,
   targetContentOpacity,
   type FragmentTransform,
 } from "./route-dock-math";
 import { RouteDockCanvas } from "./route-dock-canvas";
+import { initialFragmentRect } from "./route-dock-fragment-layout";
 import { useLandingScrollReset, useRouteDockMeasurements } from "./route-dock-layout";
 
-const starts: Record<DockKind, FragmentTransform> = {
-  route: {
-    x: 0,
-    y: 0,
-    width: 238,
-    height: 88,
-    scale: 1,
-    rotation: -5,
-    borderRadius: 16,
-    opacity: 1,
-  },
-  stay: { x: 0, y: 0, width: 220, height: 78, scale: 1, rotation: 3, borderRadius: 16, opacity: 1 },
-  activity: {
-    x: 0,
-    y: 0,
-    width: 216,
-    height: 78,
-    scale: 1,
-    rotation: -2,
-    borderRadius: 16,
-    opacity: 1,
-  },
-  document: {
-    x: 0,
-    y: 0,
-    width: 226,
-    height: 82,
-    scale: 1,
-    rotation: 4,
-    borderRadius: 16,
-    opacity: 1,
-  },
-};
-
 type WorkspaceStyle = CSSProperties & {
-  "--mobile-workspace-rest-scale"?: number;
+  "--dock-target-opacity"?: number;
   "--mobile-workspace-scale"?: number;
 };
 
-function initialRect(kind: DockKind, width: number, height: number): FragmentTransform {
-  const mobile = width < 700;
-  const index = dockKinds.indexOf(kind);
-  const columns = mobile ? 2 : 1;
-  const row = Math.floor(index / columns);
-  const column = index % columns;
-  const base = starts[kind];
-  const fragmentWidth = mobile ? Math.min(base.width, width * 0.4) : base.width;
-  return {
-    ...base,
-    width: fragmentWidth,
-    height: mobile ? 70 : base.height,
-    x: mobile ? width * 0.08 + column * (width * 0.44) : width * 0.58 + (index % 2) * 44,
-    y: mobile ? height * 0.57 + row * 86 : height * 0.22 + index * 104,
-  };
-}
+type FragmentStyle = CSSProperties & {
+  "--fragment-index": number;
+};
 
-export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) {
+type ViewportStyle = CSSProperties & {
+  "--hero-workspace-bottom"?: string;
+};
+
+export function RouteDockHero({
+  appRegion,
+  startHref = "/guest",
+}: {
+  appRegion: AppRegion;
+  startHref?: string;
+}) {
   const trackRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const layerRef = useRef<HTMLDivElement>(null);
@@ -90,11 +56,14 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
   const [webglFailed, setWebglFailed] = useState(false);
   const [webglReady, setWebglReady] = useState(false);
   const [motionReady, setMotionReady] = useState(false);
-  const { targets, viewportSize } = useRouteDockMeasurements({
+  const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
+  const state = dockState(effectiveProgress);
+  const { hasMeasured, targets, viewportSize } = useRouteDockMeasurements({
     copyRef,
     layerRef,
     viewportRef,
     workspaceRef,
+    measureKey: state,
   });
   const handleWebglFailure = useCallback(() => setWebglFailed(true), []);
   const handleWebglReady = useCallback(() => setWebglReady(true), []);
@@ -141,46 +110,93 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
     };
   }, [reducedMotion]);
 
-  const effectiveProgress = effectiveDockProgress(progress, reducedMotion, webglFailed);
-  const state = dockState(effectiveProgress);
   const destinationOpacity = targetContentOpacity(effectiveProgress);
+  const deskProgress = clamp(effectiveProgress / 0.5);
   const workspaceOpacity =
-    reducedMotion || webglFailed ? 1 : clamp((effectiveProgress - 0.32) / 0.23);
+    reducedMotion || webglFailed
+      ? 1
+      : viewportSize.width < 700
+        ? 0.82 + clamp(effectiveProgress / 0.62) * 0.18
+        : 0.34 + clamp(effectiveProgress / 0.62) * 0.66;
   const mobileWorkspace =
     viewportSize.width < 700
       ? mobileWorkspaceLayout(
           viewportSize.width,
           viewportSize.visibleHeight,
           viewportSize.copyBottom,
-          viewportSize.workspaceHeight,
         )
       : null;
-  const workspaceStyle: WorkspaceStyle = mobileWorkspace
-    ? {
-        "--mobile-workspace-rest-scale": mobileWorkspace.scale * 0.985,
-        "--mobile-workspace-scale": mobileWorkspace.scale,
-        opacity: workspaceOpacity,
-        top: mobileWorkspace.top,
-        width: mobileWorkspace.width,
-      }
-    : { opacity: workspaceOpacity };
+  const tabletWorkspace =
+    viewportSize.width >= 700 && viewportSize.width <= 1366
+      ? tabletWorkspaceLayout(
+          viewportSize.width,
+          viewportSize.visibleHeight,
+          viewportSize.workspaceHeight,
+          viewportSize.coarsePointer,
+        )
+      : null;
+  // Leave a dedicated reading rail below the scene, including on short tablets.
+  const desktopScale =
+    tabletWorkspace?.scale ??
+    Math.min(1, (viewportSize.visibleHeight - 240) / Math.max(1, viewportSize.workspaceHeight));
+  const desktopTop =
+    tabletWorkspace?.top ??
+    Math.min(
+      viewportSize.width >= 1800 ? 350 : 260,
+      Math.max(
+        124,
+        (viewportSize.visibleHeight - viewportSize.workspaceHeight * desktopScale) / 2 + 8,
+      ),
+    );
+  const compactStage = viewportSize.width <= 1366;
+  const workspaceStyle: WorkspaceStyle = !hasMeasured
+    ? { opacity: 0 }
+    : mobileWorkspace
+      ? {
+          "--dock-target-opacity": destinationOpacity,
+          "--mobile-workspace-scale": mobileWorkspace.scale,
+          opacity: workspaceOpacity,
+          top: mobileWorkspace.top,
+          transform: "translateX(-50%)",
+          width: mobileWorkspace.width,
+        }
+      : {
+          "--dock-target-opacity": destinationOpacity,
+          opacity: workspaceOpacity,
+          top: desktopTop,
+          transform: `translate3d(0, ${compactStage ? 0 : (1 - deskProgress) * 14}px, 0) rotate(${(-(compactStage ? 2 : 4) * (1 - deskProgress)).toFixed(2)}deg) scale(${desktopScale})`,
+        };
+  const workspaceBottom = mobileWorkspace
+    ? mobileWorkspace.top + viewportSize.workspaceHeight
+    : desktopTop + viewportSize.workspaceHeight * desktopScale;
+  const viewportStyle: ViewportStyle = hasMeasured
+    ? { "--hero-workspace-bottom": `${workspaceBottom}px` }
+    : {};
   const transforms = useMemo(() => {
     const result: Partial<Record<DockKind, FragmentTransform>> = {};
     for (const kind of dockKinds) {
       const target = targets[kind];
       if (!target) continue;
-      result[kind] = fragmentTransform(
+      const transform = fragmentTransform(
         kind,
         effectiveProgress,
-        initialRect(kind, viewportSize.width, viewportSize.height),
+        initialFragmentRect(kind, viewportSize.width, viewportSize.height),
         target,
+        viewportSize.width < 700 ? 0.3 : viewportSize.width <= 1024 ? 0.65 : 1,
       );
+      if (effectiveProgress < 0.7) {
+        transform.x = clamp(transform.x, 8, viewportSize.width - transform.width - 12);
+      }
+      result[kind] = transform;
     }
     return result;
   }, [effectiveProgress, targets, viewportSize]);
 
   return (
-    <section className="route-dock-hero">
+    <section
+      className="route-dock-hero"
+      data-static={reducedMotion || webglFailed ? "true" : undefined}
+    >
       <div className="route-dock-canvas-track">
         <div
           className="route-dock-canvas"
@@ -195,21 +211,18 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
       </div>
       <div
         className="route-dock-track"
-        data-dock-ready={motionReady ? "true" : "false"}
+        data-dock-ready={motionReady && hasMeasured ? "true" : "false"}
         data-dock-state={state}
         data-testid="route-dock-hero"
         ref={trackRef}
       >
-        <div className="route-dock-viewport" ref={viewportRef}>
+        <div className="route-dock-viewport" ref={viewportRef} style={viewportStyle}>
           <div className="hero-copy" ref={copyRef}>
-            <p className="landing-eyebrow">
-              <T message="THE CALM WAY TO PLAN A TRIP" />
-            </p>
             <h1>
-              <T message="Plan every trip in one place." />
+              <T message="Plan it. Ready to go." />
             </h1>
             <p className="hero-support">
-              <T message="Build the route, compare your options, keep bookings and tickets close, and share a plan that works on the road." />
+              <T message="Route, stays, days and tickets—all in one plan." />
             </p>
             <div className="hero-actions">
               <Button asChild size="lg">
@@ -217,50 +230,69 @@ export function RouteDockHero({ startHref = "/guest" }: { startHref?: string }) 
                   <T message="Start planning" />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline">
-                <Link href="#how-it-works">
-                  <T message="See how it works" />
-                </Link>
-              </Button>
             </div>
-            <p className="hero-detail">
-              <T message="Timeline, table, map, options and travel documents—finally connected." />
-            </p>
           </div>
           <div className="workspace-stage" ref={workspaceRef} style={workspaceStyle}>
-            <AssembledWorkspace targetOpacity={destinationOpacity} />
+            <AssembledWorkspace appRegion={appRegion} targetOpacity={1} />
           </div>
           <div className="fragment-layer" ref={layerRef}>
-            {dockKinds.map((kind) => {
+            {dockKinds.map((kind, index) => {
               const transform =
-                transforms[kind] ?? initialRect(kind, viewportSize.width, viewportSize.height);
+                transforms[kind] ??
+                initialFragmentRect(kind, viewportSize.width, viewportSize.height);
               return (
                 <div
                   className={`moving-fragment fragment-${kind}`}
                   data-fragment={kind}
                   key={kind}
-                  style={{
-                    borderRadius: transform.borderRadius,
-                    height: transform.height,
-                    left: transform.x,
-                    opacity: reducedMotion || webglFailed ? 0 : transform.opacity,
-                    top: transform.y,
-                    transform: `rotate(${transform.rotation}deg) scale(${transform.scale})`,
-                    width: transform.width,
-                  }}
+                  style={
+                    {
+                      "--fragment-index": index,
+                      borderRadius: transform.borderRadius,
+                      filter: `blur(${transform.blur}px)`,
+                      height: transform.height,
+                      left: transform.x,
+                      opacity: !hasMeasured || reducedMotion || webglFailed ? 0 : transform.opacity,
+                      top: transform.y,
+                      transform: `translate3d(0, 0, ${transform.depth}px) rotate(${transform.rotation}deg) scale(${transform.scale})`,
+                      width: transform.width,
+                    } as FragmentStyle
+                  }
                 >
-                  <DockContent kind={kind} />
+                  <div className="fragment-card-face">
+                    <DockContent appRegion={appRegion} kind={kind} />
+                  </div>
                 </div>
               );
             })}
           </div>
-          <div className="completion-label" aria-hidden={state !== "assembled"}>
-            <span>
-              <T message="EVERYTHING IN ONE TRIP" />
-            </span>
-            <strong>
-              <T message="Timeline · Map · Options · Documents" />
-            </strong>
+          <div className="scene-state" aria-live="polite">
+            {(
+              [
+                ["Ideas scattered", "Ideas"],
+                ["Details in place", "In place"],
+                ["Ready to go", "Ready"],
+              ] as const
+            ).map(([label, shortLabel], index) => (
+              <div
+                key={label}
+                className={
+                  (state === "scattered" ? 0 : state === "assembled" ? 2 : 1) === index
+                    ? "is-current"
+                    : undefined
+                }
+              >
+                <span>{["A", "B", "C"][index]}</span>
+                <strong>
+                  <span className="state-label-full">
+                    <T message={label} />
+                  </span>
+                  <span className="state-label-short">
+                    <T message={shortLabel} />
+                  </span>
+                </strong>
+              </div>
+            ))}
           </div>
           <div className="scroll-cue" aria-hidden="true">
             <ArrowDown />

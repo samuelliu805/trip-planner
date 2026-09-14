@@ -20,7 +20,7 @@ export function PublicUnavailable() {
         </p>
         <Button asChild className="mt-6" variant="outline">
           <Link href="/">
-            <T message={"Go to Trip Planner"} />
+            <T message={"Go to There we go"} />
           </Link>
         </Button>
       </section>

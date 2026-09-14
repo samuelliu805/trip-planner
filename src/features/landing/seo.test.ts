@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { getLandingStructuredData, serializeStructuredData } from "./seo.ts";
+import { tripPlannerBrandName, tripPlannerWordmark } from "./brand.ts";
+import { parisPublicItinerary } from "./landing-public-fixture.ts";
+import { landingFixtureForRegion } from "./paris-fixture.ts";
+import { sichuanPublicItinerary } from "./sichuan-public-fixture.ts";
+import { publicItinerarySchema } from "../sharing/schema.ts";
 
 test("landing structured data describes the website and free web app", () => {
   const data = getLandingStructuredData("en", "https://trip-planner.example/path");
@@ -15,6 +20,18 @@ test("landing structured data describes the website and free web app", () => {
   assert.equal(data["@graph"][0].url, "https://trip-planner.example/");
   assert.equal(data["@graph"][1].isAccessibleForFree, true);
   assert.equal(data["@graph"][1].featureList.length, 4);
+  assert.equal(data["@graph"][0].name, "There we go");
+  assert.equal(tripPlannerBrandName, "There we go");
+  assert.equal(tripPlannerWordmark, "There we go");
+});
+
+test("landing public sample stays compatible with the production share schema", () => {
+  assert.equal(publicItinerarySchema.safeParse(parisPublicItinerary).success, true);
+  assert.equal(publicItinerarySchema.safeParse(sichuanPublicItinerary).success, true);
+  assert.equal(parisPublicItinerary.settings.allowRouteExplore, false);
+  assert.equal(sichuanPublicItinerary.settings.allowRouteExplore, false);
+  assert.equal(landingFixtureForRegion("global").title, "Paris Trip");
+  assert.equal(landingFixtureForRegion("cn").title, "Western Sichuan Loop");
 });
 
 test("landing structured data localizes Chinese search copy and escapes markup", () => {

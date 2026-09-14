@@ -1,30 +1,26 @@
-import { BedDouble, FileText, MapPin, Route } from "lucide-react";
-import { Fragment } from "react";
+import { BedDouble, CalendarClock, MapPin, Ticket } from "lucide-react";
 
 import { T } from "@/features/i18n/i18n-provider";
+import type { AppRegion } from "@/platform/config/provider-matrix";
 
-import { parisLandingFixture } from "./paris-fixture";
-import type { DockKind } from "./paris-fixture";
+import { landingFixtureForRegion, type DockKind } from "./paris-fixture";
 
-export function DockContent({ kind, compact = false }: { kind: DockKind; compact?: boolean }) {
+export function DockContent({
+  appRegion = "global",
+  kind,
+}: {
+  appRegion?: AppRegion;
+  kind: DockKind;
+}) {
+  const fixture = landingFixtureForRegion(appRegion);
   if (kind === "route") {
     return (
-      <div className="dock-fragment-copy dock-fragment-route">
-        <Route aria-hidden="true" />
+      <div className="dock-fragment-copy dock-fragment-place">
+        <MapPin aria-hidden="true" />
         <div>
           <strong>
-            <T message={parisLandingFixture.route.label} />
+            <T message={fixture.place.label} />
           </strong>
-          {!compact ? (
-            <span>
-              {parisLandingFixture.route.stops.map((stop, index) => (
-                <Fragment key={stop}>
-                  {index > 0 ? " · " : null}
-                  <T message={stop} />
-                </Fragment>
-              ))}
-            </span>
-          ) : null}
         </div>
       </div>
     );
@@ -34,11 +30,8 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
       <div className="dock-fragment-copy">
         <BedDouble aria-hidden="true" />
         <div>
-          <span>
-            <T message="Stay" />
-          </span>
           <strong>
-            <T message={parisLandingFixture.days[0].stay} />
+            <T message={fixture.days[0].stay} />
           </strong>
         </div>
       </div>
@@ -47,13 +40,10 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
   if (kind === "activity") {
     return (
       <div className="dock-fragment-copy">
-        <MapPin aria-hidden="true" />
+        <CalendarClock aria-hidden="true" />
         <div>
-          <span>
-            <T message="Activity" />
-          </span>
           <strong>
-            <T message={parisLandingFixture.days[0].activity} />
+            {fixture.activityTime} · <T message={fixture.days[0].activity} />
           </strong>
         </div>
       </div>
@@ -61,19 +51,11 @@ export function DockContent({ kind, compact = false }: { kind: DockKind; compact
   }
   return (
     <div className="dock-fragment-copy">
-      <FileText aria-hidden="true" />
+      <Ticket aria-hidden="true" />
       <div>
-        <span>
-          <T message="Document" />
-        </span>
         <strong>
-          <T message={parisLandingFixture.document.label} />
+          <T message={fixture.document.label} />
         </strong>
-        {!compact ? (
-          <span>
-            <T message={parisLandingFixture.document.meta} />
-          </span>
-        ) : null}
       </div>
     </div>
   );
