@@ -4,7 +4,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
-const runtimeExcludedPrefixes = ["docs/landing-evidence/"];
+const runtimeExcludedPrefixes = ["artifacts/", "docs/landing-evidence/"];
 
 export function listTrackedProjectFiles(projectRoot) {
   return execFileSync("git", ["ls-files", "-z"], {
