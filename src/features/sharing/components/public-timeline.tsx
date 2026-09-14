@@ -9,6 +9,7 @@ export function PublicTimeline({
   selectedDayRef,
   selectedItemRef,
   showIntro = true,
+  transportPlacement = "header",
 }: {
   itinerary: PublicItinerary;
   onSelectDay: (dayRef: string) => void;
@@ -16,6 +17,7 @@ export function PublicTimeline({
   selectedDayRef?: string;
   selectedItemRef?: string;
   showIntro?: boolean;
+  transportPlacement?: "flow" | "header";
 }) {
   return (
     <section
@@ -45,6 +47,7 @@ export function PublicTimeline({
               onSelectItem={onSelectItem}
               selected={selectedDayRef === day.ref}
               selectedItemRef={selectedItemRef}
+              transportPlacement={transportPlacement}
             />
           );
         })}

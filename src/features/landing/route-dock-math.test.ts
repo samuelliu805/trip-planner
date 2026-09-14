@@ -66,6 +66,10 @@ test("tablet workspace keeps a stable rail below the transformed preview", () =>
   assert.equal(portrait.top, 150);
   assert.equal(portrait.scale, 1);
   assert.ok(portrait.top + 570 <= 1024 - 120);
+
+  const coarseLandscape = tabletWorkspaceLayout(1280, 800, 530, true);
+  assert.equal(coarseLandscape.scale, 0.86);
+  assert.ok(coarseLandscape.top + 530 * coarseLandscape.scale <= 800 - 190);
 });
 
 test("dock states follow the specified transition boundaries", () => {

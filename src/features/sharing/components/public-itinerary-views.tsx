@@ -10,6 +10,7 @@ export function PublicItineraryViews({
   onSelectItem,
   selectedDayRef,
   selectedItemRef,
+  transportPlacement,
   view,
 }: {
   itinerary: PublicItinerary;
@@ -17,6 +18,7 @@ export function PublicItineraryViews({
   onSelectItem: (itemRef: string, dayRef: string) => void;
   selectedDayRef?: string;
   selectedItemRef?: string;
+  transportPlacement?: "flow" | "header";
   view: PublicView;
 }) {
   return canonicalPublicViews.map((option) => (
@@ -28,6 +30,7 @@ export function PublicItineraryViews({
       option={option}
       selectedDayRef={selectedDayRef}
       selectedItemRef={selectedItemRef}
+      transportPlacement={transportPlacement}
       view={view}
     />
   ));
@@ -40,6 +43,7 @@ export function PublicItineraryViewPanel({
   option,
   selectedDayRef,
   selectedItemRef,
+  transportPlacement,
   view,
 }: {
   itinerary: PublicItinerary;
@@ -48,6 +52,7 @@ export function PublicItineraryViewPanel({
   option: PublicView;
   selectedDayRef?: string;
   selectedItemRef?: string;
+  transportPlacement?: "flow" | "header";
   view: PublicView;
 }) {
   const viewProps = { itinerary, onSelectDay, onSelectItem, selectedDayRef, selectedItemRef };
@@ -67,7 +72,7 @@ export function PublicItineraryViewPanel({
         ) : option === "table" ? (
           <PublicTable {...viewProps} />
         ) : (
-          <PublicTimeline {...viewProps} />
+          <PublicTimeline {...viewProps} transportPlacement={transportPlacement} />
         )}
       </div>
     </section>

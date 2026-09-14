@@ -2546,9 +2546,18 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
     new URL("./public-timeline-presentation.ts", import.meta.url),
     "utf8",
   );
+  const platformParts = await readFile(
+    new URL("./templates/parts/platform-parts.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(timeline, /aria-label="Major transport"/);
   assert.match(timeline, /timeline-transport-label-v4/);
   assert.match(timeline, /PublicTimelineTransport/);
+  assert.match(timeline, /transportPlacement === "flow" \? transportBlock : null/);
+  assert.match(
+    platformParts,
+    /transportPlacement=\{template\.id === "journal" \? "flow" : "header"\}/,
+  );
   assert.match(
     timeline,
     /addEventListener\("wheel", handleWheel, \{ capture: true, passive: false \}\)/,
@@ -2585,11 +2594,15 @@ test("Timeline keeps transfers quiet and car rentals as ordered journey events",
   );
   assert.match(
     styles,
-    /\.public-template-journal \.timeline-transport-inline-v4 \{[^}]*min-height: 1\.75rem;[^}]*grid-template-columns: 1rem minmax\(0, 1fr\) auto/,
+    /\.public-template-journal \.timeline-transport-inline-v4 \{[^}]*min-height: 1\.5rem;[^}]*grid-template-columns: 1rem minmax\(0, 1fr\) auto/,
   );
   assert.match(
     styles,
-    /@media \(max-width: 899px\)[\s\S]*\.public-template-journal \.timeline-transport-list-v4 \{[^}]*grid-column: 2;[^}]*margin-top: 0\.125rem/,
+    /\.public-template-journal \.timeline-transport-list-v4\.is-flow \{[^}]*grid-column: auto;[^}]*margin: 0\.875rem 4\.125rem 0/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width: 899px\)[\s\S]*\.public-template-journal \.timeline-transport-list-v4\.is-flow \{[^}]*grid-column: auto;[^}]*margin: 0\.75rem 0 0\.25rem 4\.1875rem/,
   );
   assert.match(
     styles,

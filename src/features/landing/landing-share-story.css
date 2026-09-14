@@ -28,7 +28,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 1.25rem;
 }
 .share-story-actions svg {
@@ -108,10 +108,6 @@
 .landing-public-ribbon svg {
   height: 0.85rem;
   width: 0.85rem;
-}
-.landing-public-ribbon small {
-  color: var(--dock-ink-muted);
-  font-size: 0.6rem;
 }
 .landing-public-sheet .public-template-region-brand-row {
   min-height: 8rem;

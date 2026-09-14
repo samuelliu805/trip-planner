@@ -132,6 +132,7 @@ export function RouteDockHero({
           viewportSize.width,
           viewportSize.visibleHeight,
           viewportSize.workspaceHeight,
+          viewportSize.coarsePointer,
         )
       : null;
   // Leave a dedicated reading rail below the scene, including on short tablets.

@@ -7,8 +7,12 @@
   .plandock-nav {
     padding-inline: 1.4rem;
   }
+  .plandock-nav-actions {
+    --landing-nav-action-gap: 0.5rem;
+  }
   .plandock-nav .nav-sign-in {
     display: inline-flex;
+    margin: 0;
     padding-inline: 0.5rem;
   }
   .plandock-nav .nav-sign-in.nav-account {

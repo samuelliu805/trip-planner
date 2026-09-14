@@ -280,15 +280,28 @@
     padding: 30px 12px;
   }
   .plandock-footer {
+    gap: 1rem;
     grid-template-columns: 1fr;
     text-align: center;
   }
   .plandock-footer .plandock-wordmark {
     justify-self: center;
+    min-height: 2rem;
+  }
+  .plandock-footer > p,
+  .plandock-footer > nav {
+    align-items: center;
+    min-height: 2rem;
+  }
+  .plandock-footer > p {
+    display: flex;
+    justify-content: center;
   }
   .plandock-footer nav {
+    column-gap: 1.25rem;
     flex-wrap: wrap;
     justify-content: center;
+    row-gap: 0.5rem;
   }
   .public-info-page article section {
     gap: 8px;

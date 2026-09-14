@@ -59,13 +59,15 @@ export function tabletWorkspaceLayout(
   viewportWidth: number,
   viewportHeight: number,
   workspaceHeight: number,
+  coarsePointer = false,
 ): TabletWorkspaceLayout {
   const top = clamp(viewportHeight * 0.17, 112, 150);
   const rotationAllowance = Math.min(32, viewportWidth * 0.035);
+  const maximumScale = coarsePointer && viewportHeight <= 900 ? 0.86 : 1;
   const scale = clamp(
     (viewportHeight - top - 120) / Math.max(1, workspaceHeight + rotationAllowance),
     0.68,
-    1,
+    maximumScale,
   );
   return { scale, top };
 }

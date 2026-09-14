@@ -169,10 +169,15 @@ async function waitFor(browser, expression, label) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-async function viewport(browser, width, height, mobile = false) {
+async function viewport(browser, width, height, mobile = false, coarsePointer = mobile) {
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height, mobile, width },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Emulation.setTouchEmulationEnabled",
+    { enabled: coarsePointer, maxTouchPoints: coarsePointer ? 5 : 1 },
     browser.sessionId,
   );
 }
@@ -259,10 +264,11 @@ try {
   );
   const navigation = await evaluate(
     browser,
-    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(descriptor), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
+    `(() => { const center = (node) => { const rect = node.getBoundingClientRect(); return rect.top + rect.height / 2; }; const brand = document.querySelector('.plandock-wordmark'); const descriptor = document.querySelector('.plandock-brand-lockup > span'); const nav = document.querySelector('.plandock-nav'); const features = document.querySelector('.plandock-nav-links a').getBoundingClientRect(); const actions = [...document.querySelector('.plandock-nav-actions').children].map((node) => node.getBoundingClientRect()); const gaps = [actions[0].left - features.right, ...actions.slice(1).map((rect, index) => rect.left - actions[index].right)]; return { brandCenterDelta: Math.abs(center(brand)-center(nav)), descriptorPresent: Boolean(descriptor), gapDelta: Math.max(...gaps)-Math.min(...gaps), howItWorks: Boolean(document.querySelector('a[href="#how-it-works"]')) }; })()`,
   );
   assert.equal(navigation.descriptorPresent, false);
   assert.equal(navigation.howItWorks, false);
+  assert.ok(navigation.gapDelta <= 1, `Top navigation gaps diverged: ${navigation.gapDelta}px.`);
   assert.ok(
     navigation.brandCenterDelta <= 2,
     `Brand wordmark is misaligned by ${navigation.brandCenterDelta}px.`,
@@ -449,16 +455,16 @@ try {
   );
   const shareStory = await evaluate(
     browser,
-    `(() => { const story = document.querySelector('.share-story'); const sheet = story.querySelector('.landing-public-sheet'); return { accessNotes: story.querySelectorAll('.share-access-note > span').length, brand: sheet.querySelector('.public-brand-wordmark')?.textContent.trim(), hasProductionOverview: Boolean(sheet.querySelector('.public-overview.overview-v4')), hasRoute: Boolean(sheet.querySelector('.landing-public-route svg')), local: sheet.querySelector('.landing-public-ribbon small')?.textContent.trim(), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, sampleHref: story.querySelector('.share-sample-entry')?.getAttribute('href'), signature: sheet.querySelector('.landing-public-signature strong')?.textContent.trim(), toggles: story.querySelectorAll('.share-view-toggle button').length, visible: getComputedStyle(sheet).visibility === 'visible' && Number(getComputedStyle(sheet).opacity) > .99 }; })()`,
+    `(() => { const story = document.querySelector('.share-story'); const sheet = story.querySelector('.landing-public-sheet'); return { accessNotes: story.querySelectorAll('.share-access-note > span').length, brand: sheet.querySelector('.public-brand-wordmark')?.textContent.trim(), hasLocalLabel: Boolean(sheet.querySelector('.landing-public-ribbon small')), hasProductionOverview: Boolean(sheet.querySelector('.public-overview.overview-v4')), hasRoute: Boolean(sheet.querySelector('.landing-public-route svg')), hasSampleEntry: Boolean(story.querySelector('.share-sample-entry')), overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, signature: sheet.querySelector('.landing-public-signature strong')?.textContent.trim(), toggles: story.querySelectorAll('.share-view-toggle button').length, visible: getComputedStyle(sheet).visibility === 'visible' && Number(getComputedStyle(sheet).opacity) > .99 }; })()`,
   );
   assert.deepEqual(shareStory, {
     accessNotes: 2,
     brand: "There we go",
+    hasLocalLabel: false,
     hasProductionOverview: true,
     hasRoute: true,
-    local: "Local demonstration",
+    hasSampleEntry: false,
     overflow: 0,
-    sampleHref: "#share-preview",
     signature: "There we go",
     toggles: 2,
     visible: true,
@@ -496,9 +502,15 @@ try {
     [390, 844],
     [360, 800],
   ]) {
-    await viewport(browser, width, height, width < 700);
+    const tablet = width >= 700 && width <= 1366;
+    await viewport(browser, width, height, width < 700, width < 700 || tablet);
     await navigate(browser, app.baseUrl);
-    if (width >= 700 && width <= 1024) {
+    if (tablet) {
+      assert.equal(
+        await evaluate(browser, `matchMedia('(pointer: coarse)').matches`),
+        true,
+        `${width}px tablet emulation did not expose a coarse pointer.`,
+      );
       for (const cardProgress of [0, 0.25, 0.35, 0.4, 0.49]) {
         await setProgress(browser, cardProgress);
         assert.deepEqual(
@@ -507,6 +519,40 @@ try {
           `${width}px item cards overlap at ${cardProgress} progress.`,
         );
       }
+      await setProgress(browser, 0);
+      if (height <= 900) {
+        const tabletScale = await evaluate(
+          browser,
+          `(() => { const matrix = new DOMMatrix(getComputedStyle(document.querySelector('.workspace-stage')).transform); return Math.hypot(matrix.a, matrix.b); })()`,
+        );
+        assert.ok(
+          tabletScale <= 0.862,
+          `${width}px short tablet workspace grew to ${tabletScale}.`,
+        );
+      }
+      for (const layoutProgress of [0, 0.2, 0.35, 0.49, 0.6, 0.76, 0.9]) {
+        await setProgress(browser, layoutProgress);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const tabletGap = await evaluate(
+          browser,
+          `(() => { const rail = document.querySelector('.scene-state').getBoundingClientRect(); const product = document.querySelector('.workspace-stage').getBoundingClientRect(); return rail.top - product.bottom; })()`,
+        );
+        assert.ok(
+          tabletGap >= 24,
+          `${width}px tablet workspace overlaps its state rail at ${layoutProgress}: ${tabletGap}px.`,
+        );
+        if (width === 1280 && layoutProgress === 0.35) {
+          await screenshot(browser, screenshotDirectory, "31-tablet-routing-clearance.png");
+        }
+      }
+      const stateAlignment = await evaluate(
+        browser,
+        `Math.max(...[...document.querySelectorAll('.scene-state > div')].map((item) => { const dot = item.querySelector(':scope > span').getBoundingClientRect(); const label = item.querySelector('strong').getBoundingClientRect(); return Math.abs((dot.top + dot.bottom) / 2 - (label.top + label.bottom) / 2); }))`,
+      );
+      assert.ok(
+        stateAlignment <= 1,
+        `${width}px state dots and labels drifted by ${stateAlignment}px.`,
+      );
       await setProgress(browser, 0);
     }
     if (width < 700) {
@@ -729,16 +775,25 @@ try {
   );
   const mobileEditorialLayout = await evaluate(
     browser,
-    `(() => { const section = document.querySelector('.matrix-section'); section.scrollIntoView({block:'start'}); const heading = section.querySelector('.feature-heading').getBoundingClientRect(); const photo = section.querySelector('.feature-matrix-photo').getBoundingClientRect(); const footerBrand = document.querySelector('.plandock-footer .plandock-wordmark').getBoundingClientRect(); const transport = section.querySelector('.feature-matrix-transport'); const icon = transport.querySelector('svg').getBoundingClientRect(); const transportRect = transport.getBoundingClientRect(); const nowrap = [...section.querySelectorAll('.feature-matrix-row:not(.is-header)')].every((row) => [...row.children].slice(1).every((cell) => getComputedStyle(cell).whiteSpace === 'nowrap')); return { footerCenterDelta: Math.abs((footerBrand.left + footerBrand.right) / 2 - document.documentElement.clientWidth / 2), headingPhotoGap: photo.top - heading.bottom, iconCenterDelta: Math.abs((icon.top + icon.bottom) / 2 - (transportRect.top + transportRect.bottom) / 2), nowrap, transportDirection: getComputedStyle(transport).flexDirection }; })()`,
+    `(() => { const section = document.querySelector('.matrix-section'); section.scrollIntoView({block:'start'}); const photo = section.querySelector('.feature-matrix-photo'); const footer = document.querySelector('.plandock-footer'); const footerBrand = footer.querySelector('.plandock-wordmark').getBoundingClientRect(); const footerCopyright = footer.querySelector(':scope > p').getBoundingClientRect(); const footerNav = footer.querySelector(':scope > nav').getBoundingClientRect(); const footerCenters = [footerBrand, footerCopyright, footerNav].map((rect) => (rect.top + rect.bottom) / 2); const navActions = [...document.querySelector('.plandock-nav-actions').children].filter((node) => node.getClientRects().length).map((node) => node.getBoundingClientRect()); const transport = section.querySelector('.feature-matrix-transport'); const icon = transport.querySelector('svg').getBoundingClientRect(); const transportRect = transport.getBoundingClientRect(); const nowrap = [...section.querySelectorAll('.feature-matrix-row:not(.is-header)')].every((row) => [...row.children].slice(1).every((cell) => getComputedStyle(cell).whiteSpace === 'nowrap')); return { footerCenterDelta: Math.abs((footerBrand.left + footerBrand.right) / 2 - document.documentElement.clientWidth / 2), footerRhythmDelta: Math.abs((footerCenters[1] - footerCenters[0]) - (footerCenters[2] - footerCenters[1])), mobilePhotoHidden: getComputedStyle(photo).display === 'none', iconCenterDelta: Math.abs((icon.top + icon.bottom) / 2 - (transportRect.top + transportRect.bottom) / 2), navActionGap: navActions[1].left - navActions[0].right, nowrap, transportDirection: getComputedStyle(transport).flexDirection }; })()`,
   );
-  assert.ok(
-    mobileEditorialLayout.headingPhotoGap >= 24,
-    `The mobile editorial photo covers its heading: ${JSON.stringify(mobileEditorialLayout)}`,
+  assert.equal(mobileEditorialLayout.mobilePhotoHidden, true);
+  await waitFor(
+    browser,
+    `document.querySelector('.matrix-section')?.dataset.revealState === 'visible'`,
+    "mobile feature chapter reveal",
   );
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  await screenshot(browser, screenshotDirectory, "28-mobile-feature-spacing.png");
   assert.ok(mobileEditorialLayout.footerCenterDelta <= 1);
+  assert.ok(mobileEditorialLayout.footerRhythmDelta <= 1);
   assert.ok(mobileEditorialLayout.iconCenterDelta <= 1);
+  assert.ok(Math.abs(mobileEditorialLayout.navActionGap - 8) <= 1);
   assert.equal(mobileEditorialLayout.nowrap, true);
   assert.equal(mobileEditorialLayout.transportDirection, "row");
+  await evaluate(browser, `scrollTo(0, document.documentElement.scrollHeight); true`);
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  await screenshot(browser, screenshotDirectory, "32-mobile-footer-rhythm.png");
   await navigate(browser, app.baseUrl);
 
   const revealBefore = await evaluate(
@@ -874,7 +929,7 @@ try {
     hasOptionsPanel: false,
     hasPlannerDescriptor: false,
     hasPreviewToggle: true,
-    hasSampleEntry: true,
+    hasSampleEntry: false,
     hasSampleLink: false,
     heroActions: 1,
     heroHeading: "Plan it. Ready to go.",

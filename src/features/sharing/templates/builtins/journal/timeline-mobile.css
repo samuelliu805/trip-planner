@@ -35,6 +35,11 @@
     margin-top: 0.125rem;
   }
 
+  .public-template-journal .timeline-transport-list-v4.is-flow {
+    grid-column: auto;
+    margin: 0.75rem 0 0.25rem 4.1875rem;
+  }
+
   .public-template-journal .timeline-transport-inline-v4 {
     grid-template-columns: 1rem minmax(0, 1fr) auto;
   }

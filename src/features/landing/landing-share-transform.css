@@ -21,22 +21,6 @@
   box-shadow: 0 3px 8px #13223812;
   color: var(--dock-navy);
 }
-.share-sample-entry {
-  align-items: center;
-  border: 1px solid var(--dock-border);
-  border-radius: 10px;
-  color: var(--dock-navy);
-  display: inline-flex;
-  font-size: 0.72rem;
-  font-weight: 750;
-  gap: 0.4rem;
-  min-height: 44px;
-  padding: 0.55rem 0.75rem;
-}
-.share-sample-entry:hover {
-  background: var(--dock-sage);
-}
-
 .landing-public-route {
   background: var(--dock-sage);
   border-block: 1px solid rgba(84, 111, 89, 0.16);

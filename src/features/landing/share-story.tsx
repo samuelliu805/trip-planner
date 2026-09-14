@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ExternalLink, Eye, LayoutGrid, Route, Users } from "lucide-react";
+import { BookOpen, Eye, LayoutGrid, Route, Users } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
@@ -125,10 +125,6 @@ export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
             <T message="Share result" />
           </button>
         </div>
-        <a className="share-sample-entry" href="#share-preview" onClick={() => selectView(true)}>
-          <ExternalLink aria-hidden="true" />
-          <T message="Open sample preview" />
-        </a>
       </div>
 
       <div className="share-stage" id="share-preview" ref={stageRef}>
@@ -150,9 +146,6 @@ export function ShareStory({ appRegion }: { appRegion: AppRegion }) {
               <Eye aria-hidden="true" />
               <T message="Public · read only" />
             </span>
-            <small>
-              <T message="Local demonstration" />
-            </small>
           </div>
           <header className="public-itinerary-header">
             <div className="public-template-region-brand-row">

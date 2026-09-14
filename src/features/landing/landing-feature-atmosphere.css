@@ -141,3 +141,9 @@
     background: linear-gradient(145deg, rgb(223 231 225 / 70%), rgb(223 231 225 / 18%));
   }
 }
+
+@media (max-width: 699px) {
+  .feature-matrix-photo {
+    display: none;
+  }
+}

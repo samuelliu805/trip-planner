@@ -43,6 +43,7 @@ export function useRouteDockMeasurements({
   const [hasMeasured, setHasMeasured] = useState(false);
   const [targets, setTargets] = useState<Partial<Record<DockKind, DockRect>>>({});
   const [viewportSize, setViewportSize] = useState({
+    coarsePointer: false,
     copyBottom: 0,
     height: 900,
     visibleHeight: 900,
@@ -60,8 +61,9 @@ export function useRouteDockMeasurements({
       const layerRect = layer.getBoundingClientRect();
       const copyRect = copy.getBoundingClientRect();
       const rawVisibleHeight = window.visualViewport?.height ?? window.innerHeight;
+      const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
       let visibleHeight = rawVisibleHeight;
-      if (layerRect.width <= 1024 || window.matchMedia("(pointer: coarse)").matches) {
+      if (layerRect.width <= 1024 || coarsePointer) {
         const stable = stableViewportRef.current;
         if (!stable.height || Math.abs(stable.width - layerRect.width) > 2) {
           stableViewportRef.current = { height: rawVisibleHeight, width: layerRect.width };
@@ -83,6 +85,7 @@ export function useRouteDockMeasurements({
         };
       }
       setViewportSize({
+        coarsePointer,
         copyBottom: copyRect.bottom - layerRect.top,
         height: layerRect.height,
         visibleHeight,
