@@ -2,7 +2,7 @@ import type { AppRegion } from "@/platform/config/provider-matrix";
 
 export const regionalLandingSites = Object.freeze({
   cn: "https://trip-planner-cn-306129-11-1253819205.sh.run.tcloudbase.com/",
-  global: "https://trip-planner-ivory-one.vercel.app/",
+  global: "https://therewego.world/",
 }) satisfies Readonly<Record<AppRegion, string>>;
 
 export function alternateLandingSite(region: AppRegion) {
