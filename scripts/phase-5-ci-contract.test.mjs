@@ -276,6 +276,10 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   assert.match(smoke, /CN History account identity/);
   assert.match(smoke, /CN planner logout home/);
   assert.match(smoke, /share\/\$\{publicToken\}\?view=timeline/);
+  assert.match(
+    smoke,
+    /assert\.equal\(journalTimelineTransport\.rowsStatic, true\);[\s\S]*?deviceScaleFactor: 1, height: 900, mobile: false, width: 1280/,
+  );
   assert.match(smoke, /"B trip access denial"/);
   assert.match(smoke, /deniedTripBody\.includes\(updatedTitle\), false/);
   assert.match(smoke, /const response = await fetch\(\$\{JSON\.stringify\(path\)\}/);

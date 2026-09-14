@@ -4038,6 +4038,11 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
   assert.equal(journalTimelineTransport.headerTransportCount, 0);
   assert.equal(journalTimelineTransport.rowsOutsideHeaders, true);
   assert.equal(journalTimelineTransport.rowsStatic, true);
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
 }
 
 async function captureMutationForms(browser) {
