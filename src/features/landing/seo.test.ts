@@ -3,7 +3,12 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { getLandingStructuredData, serializeStructuredData } from "./seo.ts";
-import { tripPlannerBrandName, tripPlannerWordmark } from "./brand.ts";
+import {
+  tripPlannerBrandName,
+  tripPlannerBrandNameForRegion,
+  tripPlannerCnBrandName,
+  tripPlannerWordmark,
+} from "./brand.ts";
 import { parisPublicItinerary } from "./landing-public-fixture.ts";
 import { landingFixtureForRegion } from "./paris-fixture.ts";
 import { sichuanPublicItinerary } from "./sichuan-public-fixture.ts";
@@ -22,6 +27,9 @@ test("landing structured data describes the website and free web app", () => {
   assert.equal(data["@graph"][1].featureList.length, 4);
   assert.equal(data["@graph"][0].name, "There we go");
   assert.equal(tripPlannerBrandName, "There we go");
+  assert.equal(tripPlannerCnBrandName, "ThereWeGo行止");
+  assert.equal(tripPlannerBrandNameForRegion("cn"), "ThereWeGo行止");
+  assert.equal(tripPlannerBrandNameForRegion("global"), "There we go");
   assert.equal(tripPlannerWordmark, "There we go");
 });
 

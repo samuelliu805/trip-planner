@@ -7,7 +7,8 @@ import { I18nProvider } from "@/features/i18n/i18n-provider";
 import { getRequestLocale, getRequestLocaleState } from "@/features/i18n/server";
 import { getSiteUrl } from "@/features/sharing/site-url";
 import { TelemetryNavigation } from "@/lib/telemetry/navigation";
-import { tripPlannerBrandName } from "@/features/landing/brand";
+import { tripPlannerBrandNameForRegion } from "@/features/landing/brand";
+import { getServerProviderConfig } from "@/platform/config/server";
 
 import "./globals.css";
 
@@ -26,7 +27,7 @@ const journalHand = Mali({
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  const siteName = tripPlannerBrandName;
+  const siteName = tripPlannerBrandNameForRegion(getServerProviderConfig().appRegion);
   return {
     metadataBase: new URL(getSiteUrl()),
     title: { default: siteName, template: `%s | ${siteName}` },

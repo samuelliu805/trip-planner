@@ -4,6 +4,7 @@ import type { StorageProvider, UploadInput } from "@/platform/contracts/storage"
 
 import { createCloudBaseAdminClients } from "./client";
 import { normalizeCloudBaseError } from "./errors";
+import { retryCloudBaseStorageMutation } from "./storage-retry";
 import { normalizeCloudBaseStorageUrl } from "./storage-url";
 
 export class CloudBaseStorageProvider implements StorageProvider {
@@ -63,7 +64,7 @@ export class CloudBaseStorageProvider implements StorageProvider {
 
   async remove(paths: string[]) {
     if (!paths.length) return;
-    const result = await this.storage().remove(paths);
+    const result = await retryCloudBaseStorageMutation(() => this.storage().remove(paths));
     if (result.error) throw normalizeCloudBaseError(result.error, "Storage removal failed.");
   }
 }

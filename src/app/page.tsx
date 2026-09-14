@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { tripPlannerBrandName } from "@/features/landing/brand";
+import { tripPlannerBrandNameForRegion } from "@/features/landing/brand";
 import { LandingPage } from "@/features/landing/landing-page";
 import {
   getLandingStructuredData,
@@ -17,8 +17,12 @@ import { appUserIdentityLabel } from "@/platform/contracts/auth";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
-  const siteName = tripPlannerBrandName;
-  const title = translateMessage(locale, "There we go — Travel plans, ready to go");
+  const appRegion = getServerProviderConfig().appRegion;
+  const siteName = tripPlannerBrandNameForRegion(appRegion);
+  const title =
+    appRegion === "cn"
+      ? siteName
+      : translateMessage(locale, "There we go — Travel plans, ready to go");
   const description = translateMessage(locale, landingDescriptionMessage);
   return {
     alternates: { canonical: "/" },

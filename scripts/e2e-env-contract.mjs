@@ -168,6 +168,7 @@ export function createRegionEnvironment(region, inventory, ambient = process.env
     NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3100",
     NEXT_PUBLIC_TELEMETRY_ENABLED: "false",
     NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: "development",
+    NODE_OPTIONS: useEnvironmentProxy ? "--use-env-proxy" : "",
     TELEMETRY_SMOKE_TEST_ENABLED: "false",
   };
   const regional =
@@ -195,7 +196,6 @@ export function createRegionEnvironment(region, inventory, ambient = process.env
           NEXT_PUBLIC_CLOUDBASE_PUBLISHABLE_KEY: values.CLOUDBASE_PUBLISHABLE_KEY,
           NEXT_PUBLIC_CLOUDBASE_REGION: values.CLOUDBASE_REGION,
           NEXT_PUBLIC_MAPS_PROVIDER: "amap",
-          NODE_OPTIONS: useEnvironmentProxy ? "--use-env-proxy" : "",
           PHASE3_APP_BASE_URL: "http://127.0.0.1:3100",
           PHASE3_START_APP: "1",
           PHASE5_AMAP_ALLOWED_HOSTNAME: approvedAmapBrowserHostname,

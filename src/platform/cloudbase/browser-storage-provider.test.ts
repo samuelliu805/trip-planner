@@ -2,7 +2,39 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { CloudBaseBrowserStorageProvider } from "./browser-storage-provider.ts";
+import { retryCloudBaseStorageMutation } from "./storage-retry.ts";
 import { normalizeCloudBaseStorageUrl } from "./storage-url.ts";
+
+test("CloudBase server Storage mutations retry only transient failures", async () => {
+  const delays: number[] = [];
+  let calls = 0;
+  const recovered = await retryCloudBaseStorageMutation(
+    async () => {
+      calls += 1;
+      if (calls === 1) throw new TypeError("fetch failed");
+      return calls === 2 ? { error: new TypeError("fetch failed") } : { error: null };
+    },
+    {
+      waitForRetry: async (milliseconds) => {
+        delays.push(milliseconds);
+      },
+    },
+  );
+  assert.equal(recovered.error, null);
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [250, 500]);
+
+  calls = 0;
+  const denied = await retryCloudBaseStorageMutation(
+    async () => {
+      calls += 1;
+      return { error: { message: "permission denied", status: 403 } };
+    },
+    { waitForRetry: async () => assert.fail("persistent errors must not wait for retry") },
+  );
+  assert.equal(denied.error?.status, 403);
+  assert.equal(calls, 1);
+});
 
 test("CloudBase signed storage URLs collapse duplicated gateway prefixes", () => {
   assert.equal(

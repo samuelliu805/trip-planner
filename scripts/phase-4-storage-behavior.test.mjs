@@ -280,6 +280,16 @@ test("CloudBase live diagnostics redact multiline bearer credentials", () => {
   assert.match(diagnostic, /Bearer <redacted>/);
 });
 
+test("CloudBase admin Storage worker enables the sanitized environment proxy", async () => {
+  const liveSuite = await readFile(
+    new URL("./cloudbase-phase-4-storage-live.mjs", import.meta.url),
+    "utf8",
+  );
+  assert.match(liveSuite, /adminWorkerUsesEnvironmentProxy/);
+  assert.match(liveSuite, /NODE_OPTIONS: "--use-env-proxy"/);
+  assert.doesNotMatch(liveSuite, /NODE_OPTIONS:\s*process\.env\.NODE_OPTIONS/);
+});
+
 test("Phase 4 CI authenticates the CloudBase audit CLI before independent live suites", async () => {
   const workflow = await readFile(
     new URL("../.github/workflows/cloudbase-pg-ci.yml", import.meta.url),

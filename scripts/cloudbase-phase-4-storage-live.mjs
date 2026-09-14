@@ -31,17 +31,23 @@ const execFileAsync = promisify(execFile);
 const adminStorageWorker = fileURLToPath(
   new URL("./lib/cloudbase-phase-4-admin-storage-worker.mjs", import.meta.url),
 );
-const adminWorkerEnvironment = Object.fromEntries(
-  [
-    "CLOUDBASE_API_KEY",
-    "HTTP_PROXY",
-    "HTTPS_PROXY",
-    "NO_PROXY",
-    "http_proxy",
-    "https_proxy",
-    "no_proxy",
-  ].flatMap((name) => (process.env[name] ? [[name, process.env[name]]] : [])),
+const adminWorkerUsesEnvironmentProxy = Boolean(
+  process.env.HTTPS_PROXY?.trim() || process.env.HTTP_PROXY?.trim(),
 );
+const adminWorkerEnvironment = {
+  ...Object.fromEntries(
+    [
+      "CLOUDBASE_API_KEY",
+      "HTTP_PROXY",
+      "HTTPS_PROXY",
+      "NO_PROXY",
+      "http_proxy",
+      "https_proxy",
+      "no_proxy",
+    ].flatMap((name) => (process.env[name] ? [[name, process.env[name]]] : [])),
+  ),
+  ...(adminWorkerUsesEnvironmentProxy && { NODE_OPTIONS: "--use-env-proxy" }),
+};
 
 function appFor(config, accessKey) {
   cloudbase.useAdapters(nodeAdapter);
