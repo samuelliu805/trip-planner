@@ -3,8 +3,30 @@ import test from "node:test";
 
 import {
   approvedAmapBrowserHostname,
+  chromiumProxyArguments,
   resolveCnBrowserOrigin,
 } from "./lib/phase-5-cn-browser-origin.mjs";
+
+test("CN Chrome uses an ambient proxy while keeping the loopback origin direct", () => {
+  assert.deepEqual(
+    chromiumProxyArguments(
+      { HTTPS_PROXY: "http://proxy.example:8080" },
+      approvedAmapBrowserHostname,
+    ),
+    [
+      "--proxy-server=http://proxy.example:8080",
+      `--proxy-bypass-list=${approvedAmapBrowserHostname};localhost;127.0.0.1;[::1]`,
+    ],
+  );
+  assert.deepEqual(chromiumProxyArguments({}, approvedAmapBrowserHostname), ["--no-proxy-server"]);
+});
+
+test("CN Chrome rejects proxy URLs that would expose credentials in process arguments", () => {
+  assert.throws(
+    () => chromiumProxyArguments({ HTTPS_PROXY: "http://user:password@proxy.example" }),
+    /without credentials/,
+  );
+});
 
 test("CN AMap browser smoke maps only the approved hostname to loopback", () => {
   assert.deepEqual(

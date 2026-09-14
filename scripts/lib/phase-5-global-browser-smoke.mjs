@@ -1219,25 +1219,30 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
     `Boolean(document.querySelector('[data-guest-attachment-gate]'))`,
     "guest item Files step",
   );
-  await clickElementWhenAvailable(
+  await clickElementUntil(
     browser,
     `document.querySelector('[data-guest-attachment-gate] button')`,
+    `[...document.querySelectorAll('[role="alertdialog"]')].some((dialog) =>
+      dialog.innerText.includes('before adding files'))`,
     "guest attachment Save to account",
   );
   await waitFor(
     browser,
-    `document.querySelector('[role="alertdialog"]')?.innerText.includes('before adding files')`,
+    `[...document.querySelectorAll('[role="alertdialog"]')].some((dialog) =>
+      dialog.innerText.includes('before adding files'))`,
     "guest attachment account dialog",
   );
   await clickElementWhenAvailable(
     browser,
-    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
-      button.textContent.trim() === 'Keep planning')`,
+    `[...document.querySelectorAll('[role="alertdialog"]')]
+      .find((dialog) => dialog.innerText.includes('before adding files'))
+      ?.querySelector('button')`,
     "keep planning after attachment gate",
   );
   await waitFor(
     browser,
-    `!document.querySelector('[role="alertdialog"]')`,
+    `![...document.querySelectorAll('[role="alertdialog"]')].some((dialog) =>
+      dialog.innerText.includes('before adding files'))`,
     "closed guest attachment account dialog",
   );
   await clickElementWhenAvailable(

@@ -16,7 +16,10 @@ import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
-import { resolveCnBrowserOrigin } from "./lib/phase-5-cn-browser-origin.mjs";
+import {
+  chromiumProxyArguments,
+  resolveCnBrowserOrigin,
+} from "./lib/phase-5-cn-browser-origin.mjs";
 
 const requiredSelectors = {
   APP_REGION: "cn",
@@ -186,7 +189,7 @@ async function launchBrowser() {
       "--no-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
-      "--no-proxy-server",
+      ...chromiumProxyArguments(process.env, new URL(browserBaseUrl).hostname),
       "--remote-debugging-port=0",
       `--user-data-dir=${profile}`,
       ...(browserBaseUrl.startsWith("https:") ? ["--ignore-certificate-errors"] : []),

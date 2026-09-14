@@ -2,6 +2,25 @@ const approvedAmapBrowserHostname = "trip-planner-cn-306129-11-1253819205.sh.run
 
 const loopbackHostnames = new Set(["127.0.0.1", "::1", "localhost"]);
 
+export function chromiumProxyArguments(ambient = process.env, bypassHostname) {
+  const proxyValue = ambient.HTTPS_PROXY?.trim() || ambient.HTTP_PROXY?.trim();
+  if (!proxyValue) return ["--no-proxy-server"];
+
+  const proxy = new URL(proxyValue);
+  if (
+    !new Set(["http:", "https:"]).has(proxy.protocol) ||
+    proxy.username ||
+    proxy.password ||
+    proxy.pathname !== "/" ||
+    proxy.search ||
+    proxy.hash
+  ) {
+    throw new Error("The CN browser test requires a root HTTP(S) proxy URL without credentials.");
+  }
+  const bypass = [bypassHostname, "localhost", "127.0.0.1", "[::1]"].filter(Boolean);
+  return [`--proxy-server=${proxy.origin}`, `--proxy-bypass-list=${bypass.join(";")}`];
+}
+
 export function resolveCnBrowserOrigin(serverBaseUrl, allowedHostname, requireAmapSmoke) {
   const server = new URL(serverBaseUrl);
   if (!requireAmapSmoke) {
