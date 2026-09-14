@@ -1219,9 +1219,10 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
     `Boolean(document.querySelector('[data-guest-attachment-gate]'))`,
     "guest item Files step",
   );
-  await clickElementWhenAvailable(
+  await clickElementUntil(
     browser,
     `document.querySelector('[data-guest-attachment-gate] button')`,
+    `document.querySelector('[role="alertdialog"]')?.innerText.includes('before adding files')`,
     "guest attachment Save to account",
   );
   await waitFor(
