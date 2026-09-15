@@ -88,6 +88,7 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
     "node scripts/verify-vercel-preview-deployment.mjs",
     "npm run test:global-phase-5-live",
     "npm run test:supabase-phase-4-storage",
+    "PHASE5_EXPECT_SUPABASE_CAPTCHA",
     "npm run test:cloudbase-phase-3-live",
     "npm run test:amap-phase-5-live",
     "npm run test:cloudbase-phase-4-storage",
@@ -321,7 +322,11 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("key", browserKey\)/);
   assert.doesNotMatch(amapSmoke, /searchParams\.set\("jscode"/);
   assert.match(globalSmoke, /select\("source,provider_place_id,coordinate_system"\)/);
+  assert.match(globalSmoke, /Supabase accepted password login without a CAPTCHA token/);
+  assert.match(globalSmoke, /signInWithAdminMagicLink/);
   assert.match(globalBrowserSmoke, /async function submitGlobalLogin/);
+  assert.match(globalBrowserSmoke, /installBrowserAuthCookies/);
+  assert.match(globalBrowserSmoke, /verifyDeployedAuthCaptchaSurfaces/);
   assert.match(globalBrowserSmoke, /form\.requestSubmit\(\)/);
   assert.match(globalBrowserSmoke, /bounded login diagnostic/);
   assert.match(globalBrowserSmoke, /bounded click diagnostic/);

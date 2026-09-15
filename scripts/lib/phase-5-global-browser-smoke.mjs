@@ -873,6 +873,21 @@ async function establishPreviewBypass(browser, baseUrl, secret) {
   }
 }
 
+async function installBrowserAuthCookies(browser, baseUrl, createAuthCookies) {
+  const cookies = await createAuthCookies();
+  assert.ok(Array.isArray(cookies) && cookies.length > 0, "Controlled auth returned no cookies.");
+  for (const cookie of cookies) {
+    assert.match(cookie.name ?? "", /^sb-[A-Za-z0-9._-]+-auth-token(?:\.\d+)?$/);
+    assert.ok(cookie.value, "Controlled auth returned an empty cookie value.");
+    const result = await browser.cdp.send(
+      "Network.setCookie",
+      { name: cookie.name, url: new URL(baseUrl).origin, value: cookie.value },
+      browser.sessionId,
+    );
+    if (!result.success) throw new Error("Controlled Supabase auth cookie could not be installed.");
+  }
+}
+
 export async function clearBrowserSessionForPublicShare(browser, baseUrl, bypassSecret) {
   await browser.cdp.send("Network.clearBrowserCookies", {}, browser.sessionId);
   if (bypassSecret) await establishPreviewBypass(browser, baseUrl, bypassSecret);
@@ -886,6 +901,29 @@ async function navigate(browser, baseUrl, path) {
     'window.__phase5NavigationSentinel !== true && document.readyState === "complete"',
     `${path} load`,
   );
+}
+
+async function verifyDeployedAuthCaptchaSurfaces(browser, baseUrl) {
+  for (const { input, path } of [
+    { input: "#credential", path: "/login" },
+    { input: "#credential", path: "/signup" },
+    { input: "#recovery-email", path: "/forgot-password" },
+  ]) {
+    await navigate(browser, baseUrl, path);
+    await waitFor(
+      browser,
+      `(() => {
+        const field = document.querySelector(${JSON.stringify(input)});
+        const widget = document.querySelector('[data-testid="auth-turnstile"]');
+        const form = field?.closest('form');
+        const token = form?.querySelector('input[name="captcha_token"]');
+        const submit = form?.querySelector('button[type="submit"]');
+        return Boolean(widget) && token instanceof HTMLInputElement && token.value === '' &&
+          submit instanceof HTMLButtonElement && submit.disabled;
+      })()`,
+      `${path} deployed CAPTCHA surface`,
+    );
+  }
 }
 
 async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
@@ -1053,6 +1091,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
 
 async function submitGuestLogin(browser, baseUrl, options) {
   return submitGlobalLogin(browser, baseUrl, options, {
+    authenticatedPath: "/guest?claim=1",
     expected: `(() => {
       const match = location.pathname.match(/^\\/trips\\/([0-9a-f-]{36})$/);
       return match && document.querySelector('.public-share-settings-dialog') ? match[1] : '';
@@ -1508,8 +1547,9 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
 async function submitGlobalLogin(
   browser,
   baseUrl,
-  { email, password, requireCaptcha = false },
+  { createAuthCookies, email, password, requireCaptcha = false },
   target = {
+    authenticatedPath: "/trips",
     expected:
       'location.pathname === "/trips" && !location.search && window.__phase5PostLoginDocument !== true',
     label: "Global authenticated hard refresh",
@@ -1519,18 +1559,56 @@ async function submitGlobalLogin(
 ) {
   let lastDiagnostic = { category: "not-attempted" };
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    if (attempt > 0) {
+    if (attempt > 0 && !createAuthCookies) {
       await navigate(browser, baseUrl, target.loginPath);
       const recovered = await evaluate(browser, target.expected);
       if (recovered) return recovered;
     }
-    await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
-    if (requireCaptcha) {
+    if (attempt === 0 || !createAuthCookies) {
+      await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
+    }
+    if (requireCaptcha && (attempt === 0 || !createAuthCookies)) {
       await waitFor(
         browser,
         `Boolean(document.querySelector('[data-testid="auth-turnstile"]'))`,
         "Global login CAPTCHA widget",
       );
+    }
+    if (createAuthCookies) {
+      if (attempt === 0) {
+        const protectedUntilVerified = await evaluate(
+          browser,
+          `(() => {
+            const form = document.querySelector('#credential')?.closest('form');
+            const token = form?.querySelector('input[name="captcha_token"]');
+            const submit = form?.querySelector('button[type="submit"]');
+            return token instanceof HTMLInputElement && token.value === '' &&
+              submit instanceof HTMLButtonElement && submit.disabled;
+          })()`,
+        );
+        assert.equal(
+          protectedUntilVerified,
+          true,
+          "Global login was not gated while its CAPTCHA token was empty.",
+        );
+      }
+      await installBrowserAuthCookies(browser, baseUrl, createAuthCookies);
+      await navigate(browser, baseUrl, target.authenticatedPath);
+      try {
+        return await waitFor(browser, target.expected, target.label, target.timeoutMs);
+      } catch (error) {
+        lastDiagnostic = {
+          ...(await boundedPageDiagnostic(browser)),
+          attempt: attempt + 1,
+          controlledAuth: true,
+        };
+        if (attempt === 1) {
+          throw new Error(
+            `${error instanceof Error ? error.message : error}; bounded login diagnostic: ${JSON.stringify(lastDiagnostic)}`,
+          );
+        }
+        continue;
+      }
     }
     await waitFor(
       browser,
@@ -1654,6 +1732,7 @@ export async function runGlobalBrowserSmoke(options) {
     browser = await launchBrowser();
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
     const browserOptions = { ...options, requireCaptcha: remotePreview };
+    if (remotePreview) await verifyDeployedAuthCaptchaSurfaces(browser, baseUrl);
     const guestTripId = await verifyGuestTripFlow(browser, baseUrl, browserOptions);
     await navigate(browser, baseUrl, `/trips/${options.tripId}`);
     try {

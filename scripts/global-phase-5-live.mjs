@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { runGlobalBrowserSmoke } from "./lib/phase-5-global-browser-smoke.mjs";
+import { signInWithAdminMagicLink } from "./lib/supabase-test-auth.mjs";
 
 const runLabel = `phase5-global-${Date.now()}-${randomUUID()}`;
 const timeoutMilliseconds = 20_000;
@@ -46,16 +48,56 @@ async function bounded(label, operation) {
   }
 }
 
-async function signIn(entry, password) {
-  const data = ok(
-    await bounded(`${entry.label} sign-in`, () =>
-      entry.client.auth.signInWithPassword({ email: entry.email, password }),
-    ),
-    `${entry.label} sign-in`,
+async function signIn(admin, entry) {
+  return signInWithAdminMagicLink({
+    admin,
+    client: entry.client,
+    email: entry.email,
+    expectedUserId: entry.id,
+    label: entry.label,
+    run: bounded,
+  });
+}
+
+async function requirePasswordCaptcha(url, publishableKey, email, password) {
+  if (process.env.PHASE5_EXPECT_SUPABASE_CAPTCHA !== "1") return;
+  const probe = client(url, publishableKey);
+  const result = await bounded("Supabase password CAPTCHA policy", () =>
+    probe.auth.signInWithPassword({ email, password }),
   );
-  assert.equal(data.user?.id, entry.id);
-  assert.ok(data.session?.access_token && data.session.refresh_token);
-  return data.session;
+  assert.ok(result.error, "Supabase accepted password login without a CAPTCHA token.");
+  assert.match(
+    `${result.error.code ?? ""} ${result.error.message ?? ""}`,
+    /captcha/i,
+    "Supabase rejected password login for a reason other than CAPTCHA.",
+  );
+  assert.equal(result.data.session, null);
+}
+
+async function createBrowserAuthCookies({ admin, email, expectedUserId, publishableKey, url }) {
+  const cookieJar = new Map();
+  const browserClient = createServerClient(url, publishableKey, {
+    cookies: {
+      getAll: () => [...cookieJar].map(([name, value]) => ({ name, value })),
+      setAll(cookies) {
+        for (const { name, value } of cookies) {
+          if (value) cookieJar.set(name, value);
+          else cookieJar.delete(name);
+        }
+      },
+    },
+  });
+  await signInWithAdminMagicLink({
+    admin,
+    client: browserClient,
+    email,
+    expectedUserId,
+    label: "Global browser user A",
+    run: bounded,
+  });
+  const cookies = [...cookieJar].map(([name, value]) => ({ name, value }));
+  assert.ok(cookies.length > 0, "Global browser user A did not produce Supabase SSR cookies.");
+  return cookies;
 }
 
 async function createTrip(database, title) {
@@ -226,7 +268,8 @@ async function run() {
       entries.push({ client: client(url, publishableKey), email, id: user.id, label });
     }
     const [userA, userB, userC] = entries;
-    const firstSession = await signIn(userA, password);
+    await requirePasswordCaptcha(url, publishableKey, userA.email, password);
+    const firstSession = await signIn(admin, userA);
     const restored = ok(
       await userA.client.auth.setSession({
         access_token: firstSession.access_token,
@@ -313,7 +356,7 @@ async function run() {
     ok(await userA.client.auth.signOut(), "A logout");
     assert.equal((await userA.client.auth.getSession()).data.session, null);
 
-    await signIn(userB, password);
+    await signIn(admin, userB);
     const bTrip = await createTrip(userB.client, `${runLabel}-b`);
     tripIds.push(bTrip);
     const collaboratorTrip = rows(
@@ -349,7 +392,7 @@ async function run() {
       await userB.client.from("trips").select("version").eq("id", aTrip),
       "B optimistic-lock snapshot",
     )[0];
-    await signIn(userA, password);
+    await signIn(admin, userA);
     ok(
       await userA.client.rpc("update_trip_status", {
         expected_version: bConflictSnapshot.version,
@@ -642,9 +685,16 @@ async function run() {
       const guestTripId = await runGlobalBrowserSmoke({
         actorEmails: [userA.email, userB.email],
         authenticatedTitle: collaboratorTitle,
+        createAuthCookies: () =>
+          createBrowserAuthCookies({
+            admin,
+            email: userA.email,
+            expectedUserId: userA.id,
+            publishableKey,
+            url,
+          }),
         email: userA.email,
         intendedTitle: collaboratorTitle,
-        password,
         privateTitle,
         publicToken: collaboratorShare.publicToken,
         tripId: aTrip,
