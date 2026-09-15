@@ -1,8 +1,11 @@
 "use server";
 
+import { headers } from "next/headers";
+
 import { captchaTokenFromFormData, missingCaptchaToken } from "@/features/auth/captcha";
 import { passwordRecoverySchema, passwordResetRequestSchema } from "@/features/auth/schema";
 import type { AuthActionState } from "@/features/auth/types";
+import { siteUrlFromHeaders } from "@/features/sharing/site-url";
 import {
   getAuthProvider,
   getBackendCapabilities,
@@ -24,8 +27,7 @@ export async function requestPasswordReset(
   if (missingCaptchaToken(formData)) {
     return { error: "Complete the security check, then try again." };
   }
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  if (!siteUrl) return { error: "Password recovery is not configured." };
+  const siteUrl = siteUrlFromHeaders(await headers());
   const redirectTo = new URL("/auth/callback", siteUrl);
   redirectTo.searchParams.set("auth_flow", "recovery");
   redirectTo.searchParams.set("auth_method", "email_link");

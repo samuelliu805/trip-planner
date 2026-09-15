@@ -213,11 +213,11 @@ export async function signup(
     return { error: parsed.error.issues[0]?.message ?? "Invalid account details." };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  const confirmationUrl = siteUrl ? new URL("/auth/callback", siteUrl) : undefined;
-  confirmationUrl?.searchParams.set("auth_flow", "confirmation");
-  confirmationUrl?.searchParams.set("auth_method", "email_link");
-  if (metadata.operationId) confirmationUrl?.searchParams.set("operation_id", metadata.operationId);
+  const siteUrl = siteUrlFromHeaders(await headers());
+  const confirmationUrl = new URL("/auth/callback", siteUrl);
+  confirmationUrl.searchParams.set("auth_flow", "confirmation");
+  confirmationUrl.searchParams.set("auth_method", "email_link");
+  if (metadata.operationId) confirmationUrl.searchParams.set("operation_id", metadata.operationId);
   let sessionCreated = false;
   try {
     const result = await getPublicSelfRegistrationProvider().signUp({
@@ -225,7 +225,7 @@ export async function signup(
       email: parsed.data.credential,
       method: "email_password",
       password: parsed.data.password,
-      verificationRedirectTo: confirmationUrl?.toString(),
+      verificationRedirectTo: confirmationUrl.toString(),
     });
     await captureServerProductEvent(
       "auth_succeeded",

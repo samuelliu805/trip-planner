@@ -35,10 +35,12 @@ test("Global email auth keeps confirmation, CAPTCHA, and recovery wired through 
     readFile(new URL("./password-recovery-actions.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(actions, /verificationRedirectTo: confirmationUrl\?\.toString\(\)/);
+  assert.match(actions, /const siteUrl = siteUrlFromHeaders\(await headers\(\)\)/);
+  assert.match(actions, /verificationRedirectTo: confirmationUrl\.toString\(\)/);
   assert.match(actions, /captchaToken: captchaTokenFromFormData\(formData\)/);
   assert.match(provider, /signInWithPassword\(credentials\)/);
   assert.match(provider, /resetPasswordForEmail\(input\.email/);
+  assert.match(recovery, /const siteUrl = siteUrlFromHeaders\(await headers\(\)\)/);
   assert.match(
     provider,
     /completePasswordRecovery[\s\S]*updateUser\(\{ password: input\.newPassword \}\)/,
