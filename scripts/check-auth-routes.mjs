@@ -21,11 +21,26 @@ const routes =
         },
       ]
     : [
-        { forbidden: [], markers: ["Welcome back", "Continue with Google"], pathname: "/login" },
+        {
+          forbidden: [],
+          markers: ["Welcome back", "Continue with Google", "Forgot password?"],
+          pathname: "/login",
+        },
         {
           forbidden: [],
           markers: ["Create your account", "Continue with Google", "Email address"],
           pathname: "/signup",
+        },
+        {
+          forbidden: [],
+          markers: ["Reset password", "Email address", "Send recovery link"],
+          pathname: "/forgot-password",
+        },
+        {
+          forbidden: [],
+          markers: ["Choose a new password", "New password", "Confirm new password"],
+          pathname:
+            "/auth/verify?auth_flow=recovery&auth_method=email_link&token_hash=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&type=recovery",
         },
       ];
 

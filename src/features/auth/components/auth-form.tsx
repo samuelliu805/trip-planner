@@ -3,8 +3,8 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import Link from "next/link";
 import { AlertCircle, Eye, EyeOff, Info, LoaderCircle, MailCheck } from "lucide-react";
-import { useActionState, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { useActionState, useEffect, useRef, useState } from "react";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
 
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
@@ -14,6 +14,9 @@ import { Label } from "@/components/ui/label";
 import type { AuthActionState } from "@/features/auth/types";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
+
+import { AuthCaptcha } from "./auth-captcha";
+import { GoogleAuthButton } from "./google-auth-button";
 
 type AuthFormProps = {
   action: (state: AuthActionState, formData: FormData) => Promise<AuthActionState>;
@@ -25,54 +28,13 @@ type AuthFormProps = {
   heading: string;
   identifier: "email" | "username";
   mode: "login" | "signup";
+  passwordRecoveryHref?: string;
   oauthAction?: (formData: FormData) => Promise<void>;
   submitLabel: string;
+  turnstileSiteKey?: string;
 };
 
 const initialState: AuthActionState = {};
-
-function GoogleMark() {
-  return (
-    <svg aria-hidden="true" className="size-5" viewBox="0 0 24 24">
-      <path
-        d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.87h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.32 2.98-7.35Z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12 22c2.7 0 4.97-.9 6.62-2.42l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.04v2.59A10 10 0 0 0 12 22Z"
-        fill="#34A853"
-      />
-      <path
-        d="M6.39 13.9A6.02 6.02 0 0 1 6.08 12c0-.66.11-1.3.31-1.9V7.51H3.04A10 10 0 0 0 2 12c0 1.61.39 3.14 1.04 4.49l3.35-2.59Z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 5.97c1.47 0 2.79.5 3.82 1.5l2.87-2.87A9.62 9.62 0 0 0 12 2a10 10 0 0 0-8.96 5.51l3.35 2.59C7.18 7.73 9.39 5.97 12 5.97Z"
-        fill="#EA4335"
-      />
-    </svg>
-  );
-}
-
-function GoogleAuthButton() {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button
-      className="min-h-11 w-full text-base"
-      disabled={pending}
-      type="submit"
-      variant="outline"
-    >
-      {pending ? (
-        <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
-      ) : (
-        <GoogleMark />
-      )}
-      <T message={pending ? "Connecting to Google…" : "Continue with Google"} />
-    </Button>
-  );
-}
 
 export function AuthForm({
   action,
@@ -84,14 +46,24 @@ export function AuthForm({
   heading,
   identifier,
   mode,
+  passwordRecoveryHref,
   oauthAction,
   submitLabel,
+  turnstileSiteKey,
 }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [captchaToken, setCaptchaToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const captchaRef = useRef<TurnstileInstance>(null);
   const googleOperationRef = useRef<HTMLInputElement>(null);
   const passwordOperationRef = useRef<HTMLInputElement>(null);
   const { t } = useI18n();
+
+  useEffect(() => {
+    if (!state.error) return;
+    captchaRef.current?.reset();
+    queueMicrotask(() => setCaptchaToken(""));
+  }, [state]);
 
   function captureAuthStart(method: "google" | "password", target: HTMLInputElement | null) {
     const operationId = newTelemetryOperationId();
@@ -184,6 +156,7 @@ export function AuthForm({
         >
           <input name="auth_flow" type="hidden" value={mode} />
           <input name="operation_id" ref={passwordOperationRef} type="hidden" />
+          <input name="captcha_token" type="hidden" value={captchaToken} />
           {state.error ? (
             <AutoDismissAlert
               className="rounded-lg shadow-none"
@@ -249,7 +222,27 @@ export function AuthForm({
               </p>
             ) : null}
           </div>
-          <Button className="min-h-11 w-full text-base" disabled={pending} type="submit">
+          {passwordRecoveryHref ? (
+            <div className="-mt-2 flex justify-end">
+              <Link
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline"
+                href={passwordRecoveryHref}
+              >
+                <T message="Forgot password?" />
+              </Link>
+            </div>
+          ) : null}
+          <AuthCaptcha
+            action={mode}
+            onTokenChange={setCaptchaToken}
+            ref={captchaRef}
+            siteKey={turnstileSiteKey}
+          />
+          <Button
+            className="min-h-11 w-full text-base"
+            disabled={pending || Boolean(turnstileSiteKey && !captchaToken)}
+            type="submit"
+          >
             {pending ? (
               <>
                 <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />

@@ -9,6 +9,8 @@ export const authAccountZhCN: Record<string, string> = {
   "Choose a valid three-letter currency code.": "请选择有效的三字母币种代码。",
   "Choose your preferred language.": "请选择偏好的语言。",
   "Confirm your email": "请确认邮箱",
+  "Confirm your email before signing in. Use the link in your inbox.":
+    "请先使用收件箱中的链接确认邮箱，再登录。",
   "Could not save your preferences.": "无法保存偏好设置。",
   "Create account": "创建账户",
   "Create your account": "创建账户",
@@ -17,6 +19,7 @@ export const authAccountZhCN: Record<string, string> = {
   "Code sent to": "验证码已发送至",
   "Don’t have an account?": "还没有账户？",
   "Email address": "邮箱地址",
+  "Email confirmation is required.": "需要先确认邮箱。",
   "Email unavailable": "邮箱不可用",
   "Enter a valid mainland China mobile number.": "请输入有效的中国大陆手机号。",
   "Enter the 6-digit code.": "请输入 6 位验证码。",
@@ -90,6 +93,11 @@ export const authAccountZhCN: Record<string, string> = {
   "Password changes are not available.": "暂不支持修改密码。",
   "Password could not be changed.": "无法修改密码。",
   "Password could not be reset. Please try again.": "无法重置密码，请重试。",
+  "Password could not be reset. Request a new recovery link and try again.":
+    "无法重置密码，请重新获取恢复链接后再试。",
+  "Password recovery email could not be sent. Please try again.": "无法发送密码恢复邮件，请重试。",
+  "Password recovery is not available.": "暂不支持密码恢复。",
+  "Password recovery is not configured.": "密码恢复尚未配置。",
   "Password must be 32 characters or fewer.": "密码不能超过 32 个字符。",
   "Password must include a letter.": "密码必须包含字母。",
   "Password must include a number.": "密码必须包含数字。",
@@ -104,4 +112,23 @@ export const authAccountZhCN: Record<string, string> = {
   "Verify your mainland China mobile number, then choose a new password.":
     "验证中国大陆手机号后设置新密码。",
   "Your password has been reset.": "密码已重置。",
+  "Choose a new password": "设置新密码",
+  "Choose a password different from your current password, then request a new recovery link.":
+    "请选择与当前密码不同的新密码，然后重新获取恢复链接。",
+  "Choose a stronger password, then request a new recovery link.":
+    "请选择更强的新密码，然后重新获取恢复链接。",
+  "Continue password recovery": "继续恢复密码",
+  "Continue to reset password": "继续重置密码",
+  "Enter your email and we’ll send you a secure recovery link.":
+    "输入邮箱，我们会向你发送安全的密码恢复链接。",
+  "For your security, confirm that you want to use this email recovery link.":
+    "为保障账户安全，请确认要使用此邮件恢复链接。",
+  "If an account exists for that email, a password recovery link is on its way.":
+    "如果该邮箱对应账户，密码恢复链接正在发送中。",
+  "Security check could not load. Refresh and try again.": "安全验证无法加载，请刷新后重试。",
+  "Send recovery link": "发送恢复链接",
+  "Sending recovery link…": "正在发送恢复链接…",
+  "The recovery link is invalid or expired. Request a new one.":
+    "密码恢复链接无效或已过期，请重新获取。",
+  "Too many requests. Wait a moment, then try again.": "请求过于频繁，请稍后重试。",
 };

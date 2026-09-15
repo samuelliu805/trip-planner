@@ -1,10 +1,15 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "There we go — travel plans, ready when you are";
+import { tripPlannerSeoForRegion } from "@/features/landing/seo";
+import { getServerProviderConfig } from "@/platform/config/server";
+
+export const alt = "ThereWeGo collaborative trip planner preview";
 export const size = { height: 630, width: 1200 };
 export const contentType = "image/png";
 
 export default function OpenGraphImage() {
+  const seo = tripPlannerSeoForRegion(getServerProviderConfig().appRegion);
+
   return new ImageResponse(
     <div
       style={{
@@ -20,7 +25,7 @@ export default function OpenGraphImage() {
     >
       <div style={{ display: "flex", flexDirection: "column", maxWidth: 650 }}>
         <span style={{ color: "#91cdb9", fontSize: 28, fontWeight: 700, letterSpacing: 4 }}>
-          {"THERE WE GO"}
+          {seo.name}
         </span>
         <span
           style={{
@@ -31,7 +36,7 @@ export default function OpenGraphImage() {
             marginTop: 28,
           }}
         >
-          {"Know what’s next before you go."}
+          {seo.slogan}
         </span>
       </div>
       <div

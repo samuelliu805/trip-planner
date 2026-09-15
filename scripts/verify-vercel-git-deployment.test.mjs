@@ -87,8 +87,14 @@ test("uses only a configured production origin assigned to the exact deployment"
 
 test("Global environment validation inspects names without requiring values", () => {
   assert.doesNotThrow(() =>
-    assertGlobalEnvironmentKeys({ envs: [{ key: "SUPABASE_SECRET_KEY", target: ["production"] }] }),
+    assertGlobalEnvironmentKeys({
+      envs: [
+        { key: "SUPABASE_SECRET_KEY", target: ["production"] },
+        { key: "NEXT_PUBLIC_TURNSTILE_SITE_KEY", target: ["production"] },
+      ],
+    }),
   );
+  assert.throws(() => assertGlobalEnvironmentKeys({ envs: [] }), /requires NEXT_PUBLIC_TURNSTILE/);
   assert.throws(
     () =>
       assertGlobalEnvironmentKeys({

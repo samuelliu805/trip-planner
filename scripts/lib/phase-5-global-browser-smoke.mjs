@@ -32,17 +32,38 @@ function browserProxyArguments() {
   }
 }
 
+function boundedBrowserDiagnosticText(value) {
+  return String(value ?? "")
+    .replace(/https?:\/\/[^\s)]+/g, (candidate) => {
+      try {
+        const url = new URL(candidate);
+        return `${url.origin}${url.pathname}`;
+      } catch {
+        return "[redacted-url]";
+      }
+    })
+    .replace(/\b(?:eyJ|sb_(?:publishable|secret)_)[A-Za-z0-9._-]{16,}\b/g, "[redacted-token]")
+    .slice(0, 800);
+}
+
 class CdpClient {
   constructor(socket) {
+    this.clientErrors = [];
     this.nextId = 1;
+    this.networkFailures = [];
     this.pending = new Map();
     this.requests = [];
+    this.requestUrls = new Map();
     this.socket = socket;
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data));
       if (!message.id) {
         if (message.method === "Network.requestWillBeSent") {
           const request = message.params?.request;
+          this.requestUrls.set(
+            message.params?.requestId,
+            boundedBrowserDiagnosticText(request?.url),
+          );
           this.requests.push({
             hasNextAction: Object.keys(request?.headers ?? {}).some(
               (name) => name.toLowerCase() === "next-action",
@@ -50,6 +71,39 @@ class CdpClient {
             method: request?.method,
             url: request?.url,
           });
+        }
+        if (message.method === "Network.loadingFailed" && !message.params?.canceled) {
+          this.networkFailures.push({
+            error: boundedBrowserDiagnosticText(message.params?.errorText),
+            type: message.params?.type,
+            url: this.requestUrls.get(message.params?.requestId) ?? "unknown",
+          });
+          this.networkFailures = this.networkFailures.slice(-8);
+        }
+        if (
+          message.method === "Network.responseReceived" &&
+          message.params?.response?.status >= 400
+        ) {
+          this.networkFailures.push({
+            status: message.params.response.status,
+            type: message.params?.type,
+            url: boundedBrowserDiagnosticText(message.params.response.url),
+          });
+          this.networkFailures = this.networkFailures.slice(-8);
+        }
+        if (message.method === "Runtime.exceptionThrown") {
+          const details = message.params?.exceptionDetails;
+          this.clientErrors.push({
+            description: boundedBrowserDiagnosticText(
+              details?.exception?.description ?? details?.text,
+            ),
+            frames: (details?.stackTrace?.callFrames ?? []).slice(0, 4).map((frame) => ({
+              functionName: boundedBrowserDiagnosticText(frame.functionName),
+              line: frame.lineNumber,
+              url: boundedBrowserDiagnosticText(frame.url),
+            })),
+          });
+          this.clientErrors = this.clientErrors.slice(-8);
         }
         return;
       }
@@ -241,7 +295,10 @@ async function clickElementUntil(browser, elementExpression, targetExpression, l
     await clickElement(browser, elementExpression, label).catch(() => undefined);
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  throw new Error(`Timed out waiting for ${label}.`);
+  const diagnostic = await boundedPageDiagnostic(browser);
+  throw new Error(
+    `Timed out waiting for ${label}; bounded click diagnostic: ${JSON.stringify(diagnostic)}`,
+  );
 }
 
 async function setInputValue(browser, selector, value) {
@@ -708,13 +765,23 @@ async function verifyVariantNavigation(browser) {
 
 async function boundedPageDiagnostic(browser) {
   try {
-    return await evaluate(
+    const page = await evaluate(
       browser,
       `(() => {
         const body = document.body?.innerText ?? "";
         const error = body.match(/ERROR\\s+(\\d{1,16})/i);
         const heading = document.querySelector("h1,h2,[role=heading]")?.textContent?.trim() ?? "";
         return {
+          buttons: [...document.querySelectorAll("button")]
+            .filter((element) => element.getClientRects().length)
+            .slice(0, 12)
+            .map((element) =>
+              (element.textContent?.trim() || element.getAttribute("aria-label") || "").slice(0, 80),
+            ),
+          dialogs: [...document.querySelectorAll('[role="alertdialog"]')]
+            .filter((element) => element.getClientRects().length)
+            .slice(0, 2)
+            .map((element) => element.innerText.slice(0, 160)),
           errorDigest: error?.[1] ?? null,
           heading: heading.slice(0, 120),
           path: location.pathname.slice(0, 240),
@@ -722,8 +789,17 @@ async function boundedPageDiagnostic(browser) {
         };
       })()`,
     );
+    return {
+      ...page,
+      clientErrors: browser.cdp.clientErrors.slice(-4),
+      networkFailures: browser.cdp.networkFailures.slice(-4),
+    };
   } catch {
-    return { category: "diagnostic-unavailable" };
+    return {
+      category: "diagnostic-unavailable",
+      clientErrors: browser.cdp.clientErrors.slice(-4),
+      networkFailures: browser.cdp.networkFailures.slice(-4),
+    };
   }
 }
 
@@ -797,19 +873,110 @@ async function establishPreviewBypass(browser, baseUrl, secret) {
   }
 }
 
+async function installBrowserAuthCookies(browser, baseUrl, createAuthCookies) {
+  const cookies = await createAuthCookies();
+  assert.ok(Array.isArray(cookies) && cookies.length > 0, "Controlled auth returned no cookies.");
+  for (const cookie of cookies) {
+    assert.match(cookie.name ?? "", /^sb-[A-Za-z0-9._-]+-auth-token(?:\.\d+)?$/);
+    assert.ok(cookie.value, "Controlled auth returned an empty cookie value.");
+    const result = await browser.cdp.send(
+      "Network.setCookie",
+      { name: cookie.name, url: new URL(baseUrl).origin, value: cookie.value },
+      browser.sessionId,
+    );
+    if (!result.success) throw new Error("Controlled Supabase auth cookie could not be installed.");
+  }
+}
+
 export async function clearBrowserSessionForPublicShare(browser, baseUrl, bypassSecret) {
   await browser.cdp.send("Network.clearBrowserCookies", {}, browser.sessionId);
   if (bypassSecret) await establishPreviewBypass(browser, baseUrl, bypassSecret);
 }
 
-async function navigate(browser, baseUrl, path) {
+async function navigate(browser, baseUrl, path, diagnosticLabel = path) {
   await evaluate(browser, "window.__phase5NavigationSentinel = true");
   await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
   await waitFor(
     browser,
     'window.__phase5NavigationSentinel !== true && document.readyState === "complete"',
-    `${path} load`,
+    `${diagnosticLabel} load`,
   );
+}
+
+async function verifyPasswordRecovery(browser, baseUrl, options) {
+  const requestStart = browser.cdp.requests.length;
+  const query = new URLSearchParams({
+    auth_flow: "recovery",
+    auth_method: "email_link",
+    token_hash: options.recoveryTokenHash,
+    type: "recovery",
+  });
+  await navigate(browser, baseUrl, `/auth/verify?${query}`, "/auth/verify recovery");
+  await waitFor(
+    browser,
+    `(() => {
+      const password = document.querySelector('#recovery-password');
+      const confirmation = document.querySelector('#recovery-password-confirmation');
+      return password instanceof HTMLInputElement && password.getClientRects().length &&
+        confirmation instanceof HTMLInputElement && confirmation.getClientRects().length &&
+        !document.body.innerText.includes('Continue to reset password');
+    })()`,
+    "single-screen password recovery form",
+  );
+  assert.equal(
+    browser.cdp.requests
+      .slice(requestStart)
+      .some((entry) => entry.method === "POST" && entry.hasNextAction),
+    false,
+    "Recovery page GET consumed the token before form submission.",
+  );
+
+  await setInputValue(browser, "#recovery-password", options.recoveryPassword);
+  await setInputValue(browser, "#recovery-password-confirmation", options.recoveryPassword);
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const form = document.querySelector('#recovery-password')?.closest('form');
+        if (!(form instanceof HTMLFormElement)) return false;
+        form.requestSubmit();
+        return true;
+      })()`,
+    ),
+    true,
+    "Recovery form was not submit-ready.",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Your password has been reset.') &&
+      Boolean([...document.querySelectorAll('a')].find((link) =>
+        link.textContent.trim() === 'Return to log in'))`,
+    "completed single-screen password recovery",
+  );
+  assert.equal(await evaluate(browser, 'location.pathname === "/auth/verify"'), true);
+}
+
+async function verifyDeployedAuthCaptchaSurfaces(browser, baseUrl) {
+  for (const { input, path } of [
+    { input: "#credential", path: "/login" },
+    { input: "#credential", path: "/signup" },
+    { input: "#recovery-email", path: "/forgot-password" },
+  ]) {
+    await navigate(browser, baseUrl, path);
+    await waitFor(
+      browser,
+      `(() => {
+        const field = document.querySelector(${JSON.stringify(input)});
+        const widget = document.querySelector('[data-testid="auth-turnstile"]');
+        const form = field?.closest('form');
+        const token = form?.querySelector('input[name="captcha_token"]');
+        const submit = form?.querySelector('button[type="submit"]');
+        return Boolean(widget) && token instanceof HTMLInputElement && token.value === '' &&
+          submit instanceof HTMLButtonElement && submit.disabled;
+      })()`,
+      `${path} deployed CAPTCHA surface`,
+    );
+  }
 }
 
 async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
@@ -977,6 +1144,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
 
 async function submitGuestLogin(browser, baseUrl, options) {
   return submitGlobalLogin(browser, baseUrl, options, {
+    authenticatedPath: "/login?guest=1",
     expected: `(() => {
       const match = location.pathname.match(/^\\/trips\\/([0-9a-f-]{36})$/);
       return match && document.querySelector('.public-share-settings-dialog') ? match[1] : '';
@@ -1210,20 +1378,24 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   );
   await waitFor(
     browser,
-    `Boolean(document.querySelector('[data-step-id="files"]'))`,
+    `[...document.querySelectorAll('[data-step-id="files"]')].some((element) =>
+      element.getClientRects().length)`,
     "guest item editor",
   );
   await clickElementUntil(
     browser,
-    `document.querySelector('[data-step-id="files"]')`,
-    `Boolean(document.querySelector('[data-guest-attachment-gate]'))`,
+    `[...document.querySelectorAll('[data-step-id="files"]')].find((element) =>
+      element.getClientRects().length)`,
+    `[...document.querySelectorAll('[data-guest-attachment-gate]')].some((element) =>
+      element.getClientRects().length)`,
     "guest item Files step",
   );
   await clickElementUntil(
     browser,
-    `document.querySelector('[data-guest-attachment-gate] button')`,
+    `[...document.querySelectorAll('[data-guest-attachment-gate] button')].find((button) =>
+      button.getClientRects().length && button.textContent.trim() === 'Save to account')`,
     `[...document.querySelectorAll('[role="alertdialog"]')].some((dialog) =>
-      dialog.innerText.includes('before adding files'))`,
+      dialog.getClientRects().length && dialog.innerText.includes('before adding files'))`,
     "guest attachment Save to account",
   );
   await waitFor(
@@ -1247,12 +1419,14 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   );
   await clickElementWhenAvailable(
     browser,
-    `document.querySelector('[data-i18n-aria-label="Close editor"]')`,
+    `[...document.querySelectorAll('[data-i18n-aria-label="Close editor"]')].find((button) =>
+      button.getClientRects().length)`,
     "close guest item editor",
   );
   await waitFor(
     browser,
-    `!document.querySelector('[data-step-id="files"]')`,
+    `![...document.querySelectorAll('[data-step-id="files"]')].some((element) =>
+      element.getClientRects().length)`,
     "closed guest editor",
   );
 
@@ -1271,21 +1445,21 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   assert.deepEqual(remoteWrites, [], "Guest editing issued a remote Trip write.");
 
   async function openShareGate() {
-    await clickElementWhenAvailable(
+    await clickElementUntil(
       browser,
-      `document.querySelector('button[data-i18n-aria-label="Trip menu"]')`,
+      `[...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+        .find((button) => button.getClientRects().length)`,
+      `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
+        item.getClientRects().length && item.textContent.trim() === 'Share trip')`,
       "guest Trip menu",
     );
-    await clickElementWhenAvailable(
+    await clickElementUntil(
       browser,
       `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
         item.getClientRects().length && item.textContent.trim() === 'Share trip')`,
+      `[...document.querySelectorAll('[role="alertdialog"]')].some((dialog) =>
+        dialog.getClientRects().length && dialog.innerText.includes('before sharing'))`,
       "guest Share trip",
-    );
-    await waitFor(
-      browser,
-      `document.querySelector('[role="alertdialog"]')?.innerText.includes('before sharing')`,
-      "guest share account dialog",
     );
   }
 
@@ -1426,8 +1600,9 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
 async function submitGlobalLogin(
   browser,
   baseUrl,
-  { email, password },
+  { createAuthCookies, email, password, requireCaptcha = false },
   target = {
+    authenticatedPath: "/trips",
     expected:
       'location.pathname === "/trips" && !location.search && window.__phase5PostLoginDocument !== true',
     label: "Global authenticated hard refresh",
@@ -1437,12 +1612,72 @@ async function submitGlobalLogin(
 ) {
   let lastDiagnostic = { category: "not-attempted" };
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    if (attempt > 0) {
+    if (attempt > 0 && !createAuthCookies) {
       await navigate(browser, baseUrl, target.loginPath);
       const recovered = await evaluate(browser, target.expected);
       if (recovered) return recovered;
     }
-    await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
+    if (attempt === 0 || !createAuthCookies) {
+      await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
+    }
+    if (requireCaptcha && (attempt === 0 || !createAuthCookies)) {
+      await waitFor(
+        browser,
+        `Boolean(document.querySelector('[data-testid="auth-turnstile"]'))`,
+        "Global login CAPTCHA widget",
+      );
+    }
+    if (createAuthCookies) {
+      if (attempt === 0 && requireCaptcha) {
+        const protectedUntilVerified = await evaluate(
+          browser,
+          `(() => {
+            const form = document.querySelector('#credential')?.closest('form');
+            const token = form?.querySelector('input[name="captcha_token"]');
+            const submit = form?.querySelector('button[type="submit"]');
+            return token instanceof HTMLInputElement &&
+              submit instanceof HTMLButtonElement &&
+              (token.value.length > 0 || submit.disabled);
+          })()`,
+        );
+        assert.equal(
+          protectedUntilVerified,
+          true,
+          "Global login was neither CAPTCHA-verified nor gated while its token was empty.",
+        );
+      }
+      await installBrowserAuthCookies(browser, baseUrl, createAuthCookies);
+      await navigate(browser, baseUrl, target.authenticatedPath);
+      try {
+        return await waitFor(browser, target.expected, target.label, target.timeoutMs);
+      } catch (error) {
+        lastDiagnostic = {
+          ...(await boundedPageDiagnostic(browser)),
+          attempt: attempt + 1,
+          controlledAuth: true,
+        };
+        if (attempt === 1) {
+          throw new Error(
+            `${error instanceof Error ? error.message : error}; bounded login diagnostic: ${JSON.stringify(lastDiagnostic)}`,
+          );
+        }
+        continue;
+      }
+    }
+    await waitFor(
+      browser,
+      `(() => {
+        const widget = document.querySelector('[data-testid="auth-turnstile"]');
+        if (!widget) return true;
+        const form = widget.closest('form');
+        const token = form?.querySelector('input[name="captcha_token"]');
+        const submit = form?.querySelector('button[type="submit"]');
+        return token instanceof HTMLInputElement && token.value.length > 0 &&
+          submit instanceof HTMLButtonElement && !submit.disabled;
+      })()`,
+      "Global login CAPTCHA completion",
+      45_000,
+    );
     const submitted = await evaluate(
       browser,
       `(() => {
@@ -1550,7 +1785,11 @@ export async function runGlobalBrowserSmoke(options) {
     }
     browser = await launchBrowser();
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
-    const guestTripId = await verifyGuestTripFlow(browser, baseUrl, options);
+    const browserOptions = { ...options, requireCaptcha: remotePreview };
+    if (remotePreview) await verifyDeployedAuthCaptchaSurfaces(browser, baseUrl);
+    await verifyPasswordRecovery(browser, baseUrl, browserOptions);
+    await clearBrowserSessionForPublicShare(browser, baseUrl, bypassSecret);
+    const guestTripId = await verifyGuestTripFlow(browser, baseUrl, browserOptions);
     await navigate(browser, baseUrl, `/trips/${options.tripId}`);
     try {
       await waitFor(
@@ -1564,7 +1803,7 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
-    await verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options);
+    await verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, browserOptions);
     await waitFor(
       browser,
       `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,

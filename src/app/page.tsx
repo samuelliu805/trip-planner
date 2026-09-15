@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 
-import { tripPlannerBrandNameForRegion } from "@/features/landing/brand";
 import { LandingPage } from "@/features/landing/landing-page";
 import {
   getLandingStructuredData,
-  landingDescriptionMessage,
   serializeStructuredData,
+  tripPlannerSeoForRegion,
 } from "@/features/landing/seo";
 import { getRequestLocale } from "@/features/i18n/server";
-import { translateMessage } from "@/features/i18n/translate";
 import { AuthenticatedGuestStorageCleanup } from "@/features/guest/components/authenticated-guest-storage-cleanup";
 import { getSiteUrl } from "@/features/sharing/site-url";
 import { getAuthProvider } from "@/platform/composition/server";
@@ -18,41 +16,37 @@ import { appUserIdentityLabel } from "@/platform/contracts/auth";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
   const appRegion = getServerProviderConfig().appRegion;
-  const siteName = tripPlannerBrandNameForRegion(appRegion);
-  const title =
-    appRegion === "cn"
-      ? siteName
-      : translateMessage(locale, "There we go — Travel plans, ready to go");
-  const description = translateMessage(locale, landingDescriptionMessage);
+  const seo = tripPlannerSeoForRegion(appRegion);
   return {
     alternates: { canonical: "/" },
-    applicationName: siteName,
+    applicationName: seo.name,
     category: "travel",
-    description,
+    description: seo.description,
     icons: { icon: "/icon.svg" },
+    keywords: seo.keywords,
     openGraph: {
-      description,
+      description: seo.description,
       images: [
         {
-          alt: translateMessage(locale, "There we go itinerary workspace"),
+          alt: seo.shareImageAlt,
           height: 630,
           url: "/opengraph-image",
           width: 1200,
         },
       ],
       locale: locale === "zh-CN" ? "zh_CN" : "en_US",
-      siteName,
-      title,
+      siteName: seo.name,
+      title: seo.title,
       type: "website",
       url: "/",
     },
     robots: { follow: true, index: true },
-    title: { absolute: title },
+    title: { absolute: seo.title },
     twitter: {
       card: "summary_large_image",
-      description,
+      description: seo.description,
       images: ["/opengraph-image"],
-      title,
+      title: seo.title,
     },
   };
 }
@@ -63,7 +57,7 @@ export default async function Home() {
     getRequestLocale(),
     getAuthProvider().getCurrentUser(),
   ]);
-  const structuredData = getLandingStructuredData(locale, getSiteUrl());
+  const structuredData = getLandingStructuredData(locale, getSiteUrl(), appRegion);
   const accountLabel = user ? appUserIdentityLabel(user) : undefined;
 
   return (

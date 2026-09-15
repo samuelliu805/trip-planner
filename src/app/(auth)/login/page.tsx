@@ -6,6 +6,7 @@ import { AuthForm } from "@/features/auth/components/auth-form";
 import { AuthUnavailable } from "@/features/auth/components/auth-unavailable";
 import { PhoneAuthForm } from "@/features/auth/components/phone-auth-form";
 import { postLoginRefreshPath } from "@/features/auth/post-login";
+import { turnstileSiteKey } from "@/features/auth/captcha";
 import { phoneOtpAuth } from "@/features/auth/phone-actions";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
@@ -78,10 +79,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       heading="Welcome back"
       identifier={identifier}
       mode="login"
+      passwordRecoveryHref={capabilities.passwordRecovery ? "/forgot-password" : undefined}
       oauthAction={
         capabilities.publicAuthMethods.includes("google_oauth") ? continueWithGoogle : undefined
       }
       submitLabel="Log in"
+      turnstileSiteKey={identifier === "email" ? turnstileSiteKey() : undefined}
     />
   );
 }

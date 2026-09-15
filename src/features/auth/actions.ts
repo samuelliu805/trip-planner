@@ -3,11 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { z } from "zod";
 
 import type { AuthActionState } from "@/features/auth/types";
+import { captchaTokenFromFormData, missingCaptchaToken } from "@/features/auth/captcha";
 import { postLoginRefreshPath } from "@/features/auth/post-login";
 import { normalizeMainlandPhone } from "@/features/auth/phone";
+import {
+  emailCredentialSchema,
+  phoneCredentialSchema,
+  signupCredentialSchema,
+  usernameCredentialSchema,
+} from "@/features/auth/schema";
 import { siteUrlFromHeaders } from "@/features/sharing/site-url";
 import { safeAuthErrorCode } from "@/lib/telemetry/errors";
 import {
@@ -25,24 +31,12 @@ import {
 } from "@/platform/composition/server";
 import { PlatformOperationError } from "@/platform/contracts/errors";
 
-const emailCredentialSchema = z.object({
-  credential: z.email("Enter a valid email address."),
-  password: z.string().min(1, "Enter your password."),
-});
-
-const usernameCredentialSchema = z.object({
-  credential: z.string().trim().min(1, "Enter your username.").max(128, "Username is too long."),
-  password: z.string().min(1, "Enter your password."),
-});
-
-const phoneCredentialSchema = z.object({
-  credential: z.string().trim(),
-  password: z.string().min(1, "Enter your password."),
-});
-
 function loginError(error: unknown, identifier: "email" | "phone" | "username") {
   if (error instanceof PlatformOperationError) {
     if (error.code === "captcha_required") return error.message;
+    if (error.code === "email_not_confirmed") {
+      return "Confirm your email before signing in. Use the link in your inbox.";
+    }
     if (error.code === "invalid_credentials") {
       if (identifier === "phone") return "Phone number or password is incorrect.";
       if (identifier === "email") return "Email or password is incorrect.";
@@ -72,6 +66,9 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
           ? "username"
           : null;
   if (!passwordIdentifier) return { error: "This sign-in method is not available." };
+  if (passwordIdentifier === "email" && missingCaptchaToken(formData)) {
+    return { error: "Complete the security check, then try again." };
+  }
   const parsed = (
     passwordIdentifier === "username"
       ? usernameCredentialSchema
@@ -118,6 +115,7 @@ export async function login(_state: AuthActionState, formData: FormData): Promis
               phone: phone!,
             }
           : {
+              captchaToken: captchaTokenFromFormData(formData),
               email: parsed.data.credential,
               method: "email_password",
               password: parsed.data.password,
@@ -193,9 +191,13 @@ export async function signup(
   if (!getBackendCapabilities().publicAuthMethods.includes("email_password")) {
     return { error: "Account creation is managed by your organization." };
   }
-  const parsed = emailCredentialSchema
-    .extend({ password: z.string().min(8, "Password must be at least 8 characters.") })
-    .safeParse({ credential: formData.get("credential"), password: formData.get("password") });
+  if (missingCaptchaToken(formData)) {
+    return { error: "Complete the security check, then try again." };
+  }
+  const parsed = signupCredentialSchema.safeParse({
+    credential: formData.get("credential"),
+    password: formData.get("password"),
+  });
   if (!parsed.success) {
     await captureServerProductEvent(
       "auth_failed",
@@ -211,18 +213,19 @@ export async function signup(
     return { error: parsed.error.issues[0]?.message ?? "Invalid account details." };
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  const confirmationUrl = siteUrl ? new URL("/auth/callback", siteUrl) : undefined;
-  confirmationUrl?.searchParams.set("auth_flow", "confirmation");
-  confirmationUrl?.searchParams.set("auth_method", "email_link");
-  if (metadata.operationId) confirmationUrl?.searchParams.set("operation_id", metadata.operationId);
+  const siteUrl = siteUrlFromHeaders(await headers());
+  const confirmationUrl = new URL("/auth/callback", siteUrl);
+  confirmationUrl.searchParams.set("auth_flow", "confirmation");
+  confirmationUrl.searchParams.set("auth_method", "email_link");
+  if (metadata.operationId) confirmationUrl.searchParams.set("operation_id", metadata.operationId);
   let sessionCreated = false;
   try {
     const result = await getPublicSelfRegistrationProvider().signUp({
+      captchaToken: captchaTokenFromFormData(formData),
       email: parsed.data.credential,
       method: "email_password",
       password: parsed.data.password,
-      verificationRedirectTo: confirmationUrl?.toString(),
+      verificationRedirectTo: confirmationUrl.toString(),
     });
     await captureServerProductEvent(
       "auth_succeeded",

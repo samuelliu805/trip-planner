@@ -1,8 +1,10 @@
 "use client";
 
-import { AdvancedMarker, Pin } from "@vis.gl/react-google-maps";
+import { Pin } from "@vis.gl/react-google-maps";
 
 import type { MarkerKind, PlannerMapMarker } from "@/lib/providers/maps/contracts";
+
+import { GoogleStableAdvancedMarker } from "./google-stable-advanced-marker";
 
 const markerStyles: Record<MarkerKind, { background: string; glyph: string; label: string }> = {
   activity: { background: "#d97706", glyph: "A", label: "activity" },
@@ -45,10 +47,10 @@ export function GooglePlannerMapMarkerOverlay({
   const themedGlyph = marker.glyphColor ?? "#ffffff";
 
   return (
-    <AdvancedMarker
+    <GoogleStableAdvancedMarker
       anchorLeft={comparison ? "-50%" : undefined}
       anchorTop={comparison ? "-100%" : undefined}
-      aria-label={
+      accessibleLabel={
         marker.accessibleLabel ??
         `${style.label}: ${entry.title}, ${entry.dayLabel}${marker.address ? `, ${marker.address}` : ""}${marker.entries.length > 1 ? `, ${marker.entries.length} itinerary entries` : ""}`
       }
@@ -115,6 +117,6 @@ export function GooglePlannerMapMarkerOverlay({
           />
         </div>
       )}
-    </AdvancedMarker>
+    </GoogleStableAdvancedMarker>
   );
 }

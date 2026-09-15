@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -7,6 +8,28 @@ import {
   previewProtectionHeaders,
   requireAuthorizedCleanup,
 } from "./lib/phase-5-global-browser-smoke.mjs";
+
+const browserSmokeUrl = new URL("./lib/phase-5-global-browser-smoke.mjs", import.meta.url);
+
+test("verifies deployed CAPTCHA surfaces while using controlled browser auth", async () => {
+  const source = await readFile(browserSmokeUrl, "utf8");
+
+  assert.match(source, /requireCaptcha: remotePreview/);
+  assert.match(source, /verifyDeployedAuthCaptchaSurfaces/);
+  assert.match(source, /\/signup/);
+  assert.match(source, /\/forgot-password/);
+  assert.match(source, /input\[name="captcha_token"\]/);
+  assert.match(source, /attempt === 0 && requireCaptcha/);
+  assert.match(source, /token\.value\.length > 0 \|\| submit\.disabled/);
+  assert.match(source, /Global login was neither CAPTCHA-verified nor gated/);
+  assert.match(source, /installBrowserAuthCookies/);
+  assert.match(source, /authenticatedPath: "\/login\?guest=1"/);
+  assert.match(source, /verifyPasswordRecovery/);
+  assert.match(source, /#recovery-password/);
+  assert.match(source, /#recovery-password-confirmation/);
+  assert.match(source, /Your password has been reset\./);
+  assert.match(source, /Recovery page GET consumed the token before form submission/);
+});
 
 test("builds Vercel Preview protection headers without putting the secret in a URL", () => {
   assert.deepEqual(previewProtectionHeaders("  controlled-bypass  ", true), {

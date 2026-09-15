@@ -7,6 +7,7 @@ import type {
   PublicSelfRegistrationInput,
   PublicSelfRegistrationProvider,
   PasswordManagementProvider,
+  PasswordRecoveryProvider,
   RedirectOAuthProvider,
   RedirectOAuthSignInInput,
   SignInInput,
@@ -33,6 +34,51 @@ function appUser(user: SupabaseUserShape): AppUser {
 }
 
 function operationFailed(message: string, cause?: unknown) {
+  const code =
+    typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code) : undefined;
+  if (code === "email_not_confirmed") {
+    return new PlatformOperationError("email_not_confirmed", "Email confirmation is required.", {
+      cause,
+    });
+  }
+  if (code === "invalid_credentials") {
+    return new PlatformOperationError("invalid_credentials", "Invalid credentials.", { cause });
+  }
+  if (code === "captcha_failed" || code === "captcha_required") {
+    return new PlatformOperationError(
+      "captcha_required",
+      "Complete the security check, then try again.",
+      { cause },
+    );
+  }
+  if (code === "over_email_send_rate_limit" || code === "over_request_rate_limit") {
+    return new PlatformOperationError(
+      "rate_limited",
+      "Too many requests. Wait a moment, then try again.",
+      { cause },
+    );
+  }
+  if (code === "otp_expired") {
+    return new PlatformOperationError(
+      "otp_expired",
+      "The recovery link is invalid or expired. Request a new one.",
+      { cause },
+    );
+  }
+  if (code === "same_password") {
+    return new PlatformOperationError(
+      "validation_failed",
+      "Choose a password different from your current password, then request a new recovery link.",
+      { cause },
+    );
+  }
+  if (code === "weak_password") {
+    return new PlatformOperationError(
+      "validation_failed",
+      "Choose a stronger password, then request a new recovery link.",
+      { cause },
+    );
+  }
   return new PlatformOperationError("unexpected", message, { cause });
 }
 
@@ -42,6 +88,7 @@ export class SupabaseAuthProvider
     AuthorizationCodeExchangeProvider,
     PublicSelfRegistrationProvider,
     PasswordManagementProvider,
+    PasswordRecoveryProvider,
     RedirectOAuthProvider
 {
   async getCurrentUser() {
@@ -81,6 +128,50 @@ export class SupabaseAuthProvider
     if (error) throw operationFailed("Password could not be changed.", error);
   }
 
+  async completePasswordRecovery(input: Readonly<{ newPassword: string }>) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.updateUser({ password: input.newPassword });
+    if (error) throw operationFailed("Password could not be reset.", error);
+  }
+
+  async completePasswordRecoveryFromToken(
+    input: Readonly<{ newPassword: string; tokenHash: string }>,
+  ) {
+    const supabase = await createSupabaseServerClient();
+    const { data: verification, error: verificationError } = await supabase.auth.verifyOtp({
+      token_hash: input.tokenHash,
+      type: "recovery",
+    });
+    if (verificationError || !verification.session || !verification.user) {
+      throw operationFailed("Password recovery link is invalid.", verificationError);
+    }
+
+    try {
+      const { data, error } = await supabase.auth.updateUser({ password: input.newPassword });
+      if (error || !data.user) throw operationFailed("Password could not be reset.", error);
+      return appUser(data.user);
+    } finally {
+      // A recovery token creates a temporary authenticated session. Never retain it after this
+      // one-shot password update, including when the provider rejects the replacement password.
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // The password update remains authoritative if local session cleanup is unavailable.
+      }
+    }
+  }
+
+  async requestPasswordRecovery(
+    input: Readonly<{ captchaToken?: string; email: string; redirectTo: string }>,
+  ) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(input.email, {
+      captchaToken: input.captchaToken,
+      redirectTo: input.redirectTo,
+    });
+    if (error) throw operationFailed("Password recovery email could not be sent.", error);
+  }
+
   async exchangeAuthorizationCode(code: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -93,9 +184,13 @@ export class SupabaseAuthProvider
     const { data, error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
-      options: input.verificationRedirectTo
-        ? { emailRedirectTo: input.verificationRedirectTo }
-        : undefined,
+      options:
+        input.verificationRedirectTo || input.captchaToken
+          ? {
+              captchaToken: input.captchaToken,
+              emailRedirectTo: input.verificationRedirectTo,
+            }
+          : undefined,
     });
     if (error) throw operationFailed("Account creation failed.", error);
     return {

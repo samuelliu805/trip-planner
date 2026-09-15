@@ -4034,8 +4034,17 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
     new URL("../../lib/providers/google/maps/google-planner-map-marker.tsx", import.meta.url),
     "utf8",
   );
-  map += await readFile(
+  const stableMarker = await readFile(
+    new URL("../../lib/providers/google/maps/google-stable-advanced-marker.tsx", import.meta.url),
+    "utf8",
+  );
+  const googleCanvas = await readFile(
     new URL("../../lib/providers/google/maps/google-planner-map-canvas.tsx", import.meta.url),
+    "utf8",
+  );
+  map += googleCanvas;
+  const googleProvider = await readFile(
+    new URL("../../lib/providers/google/maps/google-maps-provider.tsx", import.meta.url),
     "utf8",
   );
   let mapShell = await readFile(
@@ -4064,7 +4073,17 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   assert.match(mapShell, /\? formatMoney\(item\.price_amount, item\.price_currency\)/);
   assert.doesNotMatch(mapShell, /`\$\{item\.price_currency\}/);
   assert.doesNotMatch(workspace, /Map preview · P3|P4/);
-  assert.match(map, /AdvancedMarker/);
+  assert.match(map, /GoogleStableAdvancedMarker/);
+  assert.match(stableMarker, /useLayoutEffect/);
+  assert.match(
+    stableMarker,
+    /new markerLibrary\.AdvancedMarkerElement\(\{[\s\S]*content,[\s\S]*map,[\s\S]*position/,
+  );
+  assert.match(stableMarker, /return \(\) => \{[\s\S]*nextMarker\.map = null/);
+  assert.doesNotMatch(stableMarker, /useEffect\(/);
+  assert.match(googleCanvas, /map\.addListener\("tilesloaded"/);
+  assert.match(googleCanvas, /readyMap === map \? children : null/);
+  assert.match(googleProvider, /gm_authFailure/);
   assert.match(map, /anchorLeft=\{comparison \? "-50%" : undefined\}/);
   assert.match(map, /anchorTop=\{comparison \? "-100%" : undefined\}/);
   assert.match(map, /comparison \? \([\s\S]*<Pin/);

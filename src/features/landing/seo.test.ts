@@ -2,11 +2,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { getLandingStructuredData, serializeStructuredData } from "./seo.ts";
+import {
+  getLandingStructuredData,
+  serializeStructuredData,
+  tripPlannerSeoForRegion,
+} from "./seo.ts";
 import {
   tripPlannerBrandName,
   tripPlannerBrandNameForRegion,
   tripPlannerCnBrandName,
+  tripPlannerSiteTitleForRegion,
   tripPlannerWordmark,
 } from "./brand.ts";
 import { parisPublicItinerary } from "./landing-public-fixture.ts";
@@ -27,9 +32,11 @@ test("landing structured data describes the website and free web app", () => {
   assert.equal(data["@graph"][1].featureList.length, 4);
   assert.equal(data["@graph"][0].name, "There we go");
   assert.equal(tripPlannerBrandName, "There we go");
-  assert.equal(tripPlannerCnBrandName, "ThereWeGo行止");
-  assert.equal(tripPlannerBrandNameForRegion("cn"), "ThereWeGo行止");
+  assert.equal(tripPlannerCnBrandName, "ThereWeGo行至");
+  assert.equal(tripPlannerBrandNameForRegion("cn"), "ThereWeGo行至");
   assert.equal(tripPlannerBrandNameForRegion("global"), "There we go");
+  assert.equal(tripPlannerSiteTitleForRegion("cn"), "ThereWeGo行至 - 协作旅行规划");
+  assert.equal(tripPlannerSiteTitleForRegion("global"), "There we go - Collaborative trip planner");
   assert.equal(tripPlannerWordmark, "There we go");
 });
 
@@ -43,9 +50,10 @@ test("landing public sample stays compatible with the production share schema", 
 });
 
 test("landing structured data localizes Chinese search copy and escapes markup", () => {
-  const data = getLandingStructuredData("zh-CN", "https://trip-planner.example");
+  const data = getLandingStructuredData("zh-CN", "https://trip-planner.example", "cn");
 
-  assert.match(data["@graph"][0].description, /每天的行程/);
+  assert.equal(data["@graph"][0].name, "ThereWeGo行至");
+  assert.match(data["@graph"][0].description, /一起规划每一天/);
   assert.deepEqual(data["@graph"][1].featureList, [
     "用行程表直观看全程",
     "按天规划路线",
@@ -54,6 +62,20 @@ test("landing structured data localizes Chinese search copy and escapes markup",
   ]);
   data["@graph"][0].name = "<Trip Planner>";
   assert.doesNotMatch(serializeStructuredData(data), /</);
+});
+
+test("regional SEO copy is complete for search and social metadata", () => {
+  const global = tripPlannerSeoForRegion("global");
+  const cn = tripPlannerSeoForRegion("cn");
+
+  assert.match(global.title, /trip planner/i);
+  assert.match(global.description, /shareable itineraries/i);
+  assert.match(global.shareImageAlt, /trip planner/i);
+  assert.match(cn.title, /旅行规划/);
+  assert.match(cn.description, /路线/);
+  assert.match(cn.shareImageAlt, /ThereWeGo行至/);
+  assert.equal(global.keywords.length, 5);
+  assert.equal(cn.keywords.length, 5);
 });
 
 test("mobile landing navigation keeps the sign-in action visible", async () => {

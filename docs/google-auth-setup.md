@@ -23,13 +23,24 @@ Only request the `openid`, `email`, and `profile` scopes for sign-in.
 3. Under **Authentication → URL Configuration**, set:
    - Site URL: `https://trip-planner-ivory-one.vercel.app`
    - Redirect URLs:
-     - `https://trip-planner-ivory-one.vercel.app/auth/callback`
+     - `https://trip-planner-ivory-one.vercel.app/**`
      - `http://localhost:3000/**`
      - `https://*-shus-projects-f7d1dcd0.vercel.app/**`
 4. Leave **OAuth Server** disabled. It is for making Trip Planner an identity provider for other apps.
-5. Under **Authentication → Sign In / Providers → Email**, keep email signup enabled and turn off
-   **Confirm Email** while email verification is deferred. Supabase then implicitly confirms new
-   email users and returns a session immediately, so signup can continue directly to `/trips`.
+5. Under **Authentication → Sign In / Providers → Email**, keep email signup and **Confirm Email**
+   enabled. Keep unverified email sign-ins disabled. Email/password signup must return no session;
+   the user confirms the emailed link before Supabase will accept a password login.
+6. Configure custom SMTP with Resend using `smtp.resend.com`, port `465`, username `resend`, a
+   Resend API key as the password, and a sender on the verified `mail.therewego.world` domain. Never
+   put the API key in Vercel or this repository.
+7. Under **Authentication → Bot and Abuse Protection**, enable Cloudflare Turnstile with the widget
+   secret. The widget must allow the production hostname. Keep the secret only in Supabase.
+
+The matching public Turnstile site key is required as `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in the
+Vercel Production environment and as a `global-production` GitHub environment variable. Preview or
+local automated tests may use Cloudflare's documented test keys only while the backing Supabase
+project is configured with the matching test secret; never mix a test site key with a production
+secret.
 
 The Vercel wildcard belongs only in Supabase. Google does not accept wildcards for OAuth redirect
 URIs, and it does not need every Preview URL: Google always returns to the one fixed Supabase
@@ -48,9 +59,9 @@ Google accounts. Switching accounts is: log out of Trip Planner, select **Contin
 choose another account. Different Google email addresses remain different Trip Planner users;
 identical verified email addresses are linked automatically.
 
-Custom SMTP can remain off while confirmation email is disabled. A production SMTP provider will
-still be needed later for password recovery, magic links, and email verification when those flows are
-enabled.
+Email confirmation and password recovery share the Resend SMTP configuration. The recovery email
+returns through `/auth/callback?auth_flow=recovery`, establishes the bounded recovery session, and
+then opens `/reset-password`.
 
 ## Verification
 
@@ -58,9 +69,28 @@ enabled.
 2. Confirm that Google shows the Trip Planner consent screen and only basic identity scopes.
 3. Complete login and confirm that `/auth/callback` redirects to `/trips`.
 4. In Supabase **Authentication → Users**, confirm one user exists and its identities include Google.
-5. Sign out, register a new email/password account, and confirm signup redirects directly to `/trips`
-   without asking for email confirmation.
-6. Sign out and repeat from `/signup`; the same Google account must return to the same user.
-7. For a password account with the same email, Google login must add a Google identity to that
+5. Register a new email/password account and confirm signup asks the user to check their inbox and
+   does not create a browser session.
+6. Confirm password login is rejected before email verification, then follow the confirmation link
+   and verify the account can sign in.
+7. From `/forgot-password`, request a recovery email, follow the link, set a new password, and verify
+   the recovery session is signed out after completion.
+8. Sign out and repeat from `/signup`; the same Google account must return to the same user.
+9. For a password account with the same email, Google login must add a Google identity to that
    existing user rather than create another user.
-8. Sign out, select **Continue with Google** again, and confirm Google displays its account chooser.
+10. Sign out, select **Continue with Google** again, and confirm Google displays its account chooser.
+
+## Temporary ICP-filing DNS layout
+
+While the Global web domain is offline for ICP filing, use
+`https://trip-planner-ivory-one.vercel.app` for the application and all authentication redirects.
+Do not publish `A`, `AAAA`, `CNAME`, or URL-forwarding records for `@` or `www`.
+
+Email can continue using the `mail.therewego.world` subdomain. Keep the DNS zone active and keep only
+the Resend verification records for that mail subdomain: the SPF `TXT`, DKIM `TXT`, and the MX record
+shown in Resend. Keep the `_dmarc` record if present. Pausing the entire DNSPod zone removes those
+records from public DNS and therefore stops reliable email delivery.
+
+Before restoring the website after filing, change the Vercel, GitHub, Supabase Auth, Google OAuth,
+Google Maps, and regional landing-link origins together, then run the full Global and CN release
+matrix.

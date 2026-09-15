@@ -3,7 +3,11 @@ import { PlatformOperationError } from "../contracts/errors.ts";
 
 export function supabasePasswordCredentials(input: SignInInput) {
   if (input.method === "email_password") {
-    return { email: input.email, password: input.password };
+    return {
+      email: input.email,
+      password: input.password,
+      ...(input.captchaToken ? { options: { captchaToken: input.captchaToken } } : {}),
+    };
   }
 
   throw new PlatformOperationError(

@@ -93,7 +93,7 @@ export type ServerProductEventName = (typeof serverProductEventNames)[number];
 export type ProductEventName = BrowserProductEventName | ServerProductEventName;
 export type TelemetryActorType = "anonymous" | "authenticated" | "system";
 export type AuthMethod = "email_link" | "google" | "password" | "sms";
-export type AuthFlow = "confirmation" | "login" | "signup";
+export type AuthFlow = "confirmation" | "login" | "recovery" | "signup";
 export type DurationBucket = "under_30s" | "30s_2m" | "2m_5m" | "over_5m";
 export type ItemEditorCloseReason =
   | "saved"

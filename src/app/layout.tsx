@@ -4,10 +4,14 @@ import { Mali, Nunito } from "next/font/google";
 import { QueryProvider } from "@/components/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { I18nProvider } from "@/features/i18n/i18n-provider";
-import { getRequestLocale, getRequestLocaleState } from "@/features/i18n/server";
+import { getRequestLocaleState } from "@/features/i18n/server";
+import {
+  tripPlannerBrandNameForRegion,
+  tripPlannerSiteTitleForRegion,
+} from "@/features/landing/brand";
+import { tripPlannerSeoForRegion } from "@/features/landing/seo";
 import { getSiteUrl } from "@/features/sharing/site-url";
 import { TelemetryNavigation } from "@/lib/telemetry/navigation";
-import { tripPlannerBrandNameForRegion } from "@/features/landing/brand";
 import { getServerProviderConfig } from "@/platform/config/server";
 
 import "./globals.css";
@@ -26,15 +30,25 @@ const journalHand = Mali({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getRequestLocale();
-  const siteName = tripPlannerBrandNameForRegion(getServerProviderConfig().appRegion);
+  const appRegion = getServerProviderConfig().appRegion;
+  const siteName = tripPlannerBrandNameForRegion(appRegion);
+  const seo = tripPlannerSeoForRegion(appRegion);
   return {
+    applicationName: siteName,
+    category: "travel",
+    creator: siteName,
+    description: seo.description,
+    formatDetection: { address: false, email: false, telephone: false },
+    icons: { icon: "/icon.svg" },
+    keywords: seo.keywords,
+    manifest: "/manifest.webmanifest",
     metadataBase: new URL(getSiteUrl()),
-    title: { default: siteName, template: `%s | ${siteName}` },
-    description:
-      locale === "zh-CN"
-        ? "一个清晰高效的复杂行程规划空间。"
-        : "A modern workspace for planning complex trips.",
+    publisher: siteName,
+    referrer: "strict-origin",
+    title: {
+      default: tripPlannerSiteTitleForRegion(appRegion),
+      template: `%s | ${siteName}`,
+    },
   };
 }
 
