@@ -235,6 +235,8 @@ export const landingZhCN: Record<string, string> = {
   "Legal and support": "法律信息与支持",
   "Build the route, compare options, keep travel documents close, and share one usable trip plan.":
     "把每天的行程、路线备选、住宿、预订和票据放在一起，随时调整并分享一份路上真正用得上的旅行计划。",
+  "Plan days, routes, stays, options, bookings, and shareable itineraries together in one collaborative trip planner.":
+    "一起规划每一天、每段路线与每个旅行选择，把住宿、预订、票据和分享整理在同一份行程中。",
   "There we go — Plan routes, stays and travel details":
     "There we go：路线、住宿和旅行资料一处整理",
   "There we go itinerary workspace": "There we go 行程规划区",
