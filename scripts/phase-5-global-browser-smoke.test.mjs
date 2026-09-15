@@ -21,6 +21,7 @@ test("verifies deployed CAPTCHA surfaces while using controlled browser auth", a
   assert.match(source, /input\[name="captcha_token"\]/);
   assert.match(source, /Global login was not gated while its CAPTCHA token was empty/);
   assert.match(source, /installBrowserAuthCookies/);
+  assert.match(source, /authenticatedPath: "\/login\?guest=1"/);
 });
 
 test("builds Vercel Preview protection headers without putting the secret in a URL", () => {

@@ -1091,7 +1091,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
 
 async function submitGuestLogin(browser, baseUrl, options) {
   return submitGlobalLogin(browser, baseUrl, options, {
-    authenticatedPath: "/guest?claim=1",
+    authenticatedPath: "/login?guest=1",
     expected: `(() => {
       const match = location.pathname.match(/^\\/trips\\/([0-9a-f-]{36})$/);
       return match && document.querySelector('.public-share-settings-dialog') ? match[1] : '';
