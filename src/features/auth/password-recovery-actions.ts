@@ -1,11 +1,15 @@
 "use server";
 
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { captchaTokenFromFormData, missingCaptchaToken } from "@/features/auth/captcha";
 import { passwordRecoverySchema, passwordResetRequestSchema } from "@/features/auth/schema";
 import type { AuthActionState } from "@/features/auth/types";
 import { siteUrlFromHeaders } from "@/features/sharing/site-url";
+import { safeAuthErrorCode } from "@/lib/telemetry/errors";
+import { telemetryOperationId } from "@/lib/telemetry/product";
+import { captureServerProductEvent } from "@/lib/telemetry/product-server";
 import {
   getAuthProvider,
   getBackendCapabilities,
@@ -28,7 +32,7 @@ export async function requestPasswordReset(
     return { error: "Complete the security check, then try again." };
   }
   const siteUrl = siteUrlFromHeaders(await headers());
-  const redirectTo = new URL("/auth/callback", siteUrl);
+  const redirectTo = new URL("/auth/verify", siteUrl);
   redirectTo.searchParams.set("auth_flow", "recovery");
   redirectTo.searchParams.set("auth_method", "email_link");
   try {
@@ -44,6 +48,52 @@ export async function requestPasswordReset(
   return {
     success: "If an account exists for that email, a password recovery link is on its way.",
   };
+}
+
+export async function verifyPasswordRecoveryToken(
+  _state: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  if (!getBackendCapabilities().passwordRecovery) {
+    return { error: "Password recovery is not available." };
+  }
+  const tokenHash = formData.get("token_hash");
+  const operationId = telemetryOperationId(formData.get("operation_id"));
+  if (
+    typeof tokenHash !== "string" ||
+    tokenHash.length < 16 ||
+    tokenHash.length > 512 ||
+    !/^[A-Za-z0-9_-]+$/.test(tokenHash)
+  ) {
+    return { error: "The recovery link is invalid or expired. Request a new one." };
+  }
+  try {
+    const user = await getPasswordRecoveryProvider().verifyPasswordRecoveryToken(tokenHash);
+    await captureServerProductEvent(
+      "auth_succeeded",
+      {
+        auth_flow: "recovery",
+        auth_method: "email_link",
+        operation_id: operationId,
+        surface: "auth_form",
+      },
+      { actorType: "authenticated", appUserId: user.id, route: "/auth/verify" },
+    );
+  } catch (error) {
+    await captureServerProductEvent(
+      "auth_failed",
+      {
+        auth_flow: "recovery",
+        auth_method: "email_link",
+        error_code: safeAuthErrorCode(error),
+        operation_id: operationId,
+        surface: "auth_form",
+      },
+      { actorType: "anonymous", route: "/auth/verify" },
+    );
+    return { error: "The recovery link is invalid or expired. Request a new one." };
+  }
+  redirect("/reset-password?recovery=1");
 }
 
 export async function completePasswordReset(

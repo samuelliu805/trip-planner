@@ -97,6 +97,7 @@ export interface PasswordRecoveryProvider {
       redirectTo: string;
     }>,
   ): Promise<void>;
+  verifyPasswordRecoveryToken(tokenHash: string): Promise<AppUser>;
 }
 
 export interface PublicSelfRegistrationProvider {

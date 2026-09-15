@@ -124,6 +124,16 @@ export class SupabaseAuthProvider
     if (error) throw operationFailed("Password recovery email could not be sent.", error);
   }
 
+  async verifyPasswordRecoveryToken(tokenHash: string) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: "recovery",
+    });
+    if (error || !data.user) throw operationFailed("Password recovery link is invalid.", error);
+    return appUser(data.user);
+  }
+
   async exchangeAuthorizationCode(code: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);

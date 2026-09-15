@@ -36,6 +36,12 @@ const routes =
           markers: ["Reset password", "Email address", "Send recovery link"],
           pathname: "/forgot-password",
         },
+        {
+          forbidden: [],
+          markers: ["Continue password recovery", "Continue to reset password"],
+          pathname:
+            "/auth/verify?auth_flow=recovery&auth_method=email_link&token_hash=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&type=recovery",
+        },
       ];
 
 const failures = [];
