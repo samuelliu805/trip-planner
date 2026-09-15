@@ -2,6 +2,7 @@ export type PlatformErrorCode =
   | "authentication_required"
   | "captcha_required"
   | "conflict"
+  | "email_not_confirmed"
   | "forbidden"
   | "invalid_credentials"
   | "not_found"

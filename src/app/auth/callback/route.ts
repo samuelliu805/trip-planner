@@ -37,7 +37,12 @@ export async function GET(request: NextRequest) {
           appUserId: user.id,
         },
       );
-      return NextResponse.redirect(new URL(postLoginRefreshPath, siteUrl));
+      return NextResponse.redirect(
+        new URL(
+          authFlow === "recovery" ? "/reset-password?recovery=1" : postLoginRefreshPath,
+          siteUrl,
+        ),
+      );
     } catch (error) {
       await captureServerProductEvent(
         "auth_failed",
@@ -65,6 +70,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  if (authFlow === "recovery") {
+    return NextResponse.redirect(new URL("/forgot-password?error=recovery", siteUrl));
+  }
   const source = authMethod === "google" ? "google" : "confirmation";
   return NextResponse.redirect(new URL(`/login?error=${source}`, siteUrl));
 }

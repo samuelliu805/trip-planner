@@ -18,7 +18,7 @@ export const backendCapabilitiesByRegion = Object.freeze({
   global: Object.freeze({
     itineraryItemLinks: true,
     passwordManagement: true,
-    passwordRecovery: false,
+    passwordRecovery: true,
     protectedAuthMethods: Object.freeze([] as const),
     publicAuthMethods: Object.freeze(["email_password", "google_oauth"] as const),
     realtime: true,

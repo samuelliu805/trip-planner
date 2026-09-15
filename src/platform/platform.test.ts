@@ -141,7 +141,7 @@ test("backend capabilities are immutable deployment constants", () => {
   assert.equal(backendCapabilitiesByRegion.cn.passwordManagement, true);
   assert.equal(backendCapabilitiesByRegion.cn.passwordRecovery, true);
   assert.equal(backendCapabilitiesByRegion.global.passwordManagement, true);
-  assert.equal(backendCapabilitiesByRegion.global.passwordRecovery, false);
+  assert.equal(backendCapabilitiesByRegion.global.passwordRecovery, true);
   assert.equal(backendCapabilitiesByRegion.cn.signedUrls, true);
   assert.equal(backendCapabilitiesByRegion.cn.itineraryItemLinks, false);
   assert.equal(backendCapabilitiesByRegion.global.itineraryItemLinks, true);
@@ -203,6 +203,14 @@ test("shared sign-in inputs distinguish email, phone, and username credentials",
     email: "traveler@example.com",
     password: "secret",
   });
+  assert.deepEqual(
+    supabasePasswordCredentials({ ...emailPassword, captchaToken: "turnstile-token" }),
+    {
+      email: "traveler@example.com",
+      options: { captchaToken: "turnstile-token" },
+      password: "secret",
+    },
+  );
   assert.throws(
     () => supabasePasswordCredentials(usernamePassword),
     (error) => error instanceof PlatformOperationError && error.code === "unsupported_operation",
@@ -273,6 +281,8 @@ test("Global Supabase auth adapter and proxy retain the existing auth operations
   assert.match(adapter, /signInWithPassword\(credentials\)/);
   assert.match(adapter, /signInWithOAuth\(\{[\s\S]*provider: "google"/);
   assert.match(adapter, /auth\.signUp/);
+  assert.match(adapter, /resetPasswordForEmail/);
+  assert.match(adapter, /completePasswordRecovery/);
   assert.match(adapter, /exchangeCodeForSession\(code\)/);
   assert.match(proxy, /getAll: \(\) => request\.cookies\.getAll\(\)/);
   assert.match(proxy, /setAll\(cookiesToSet\)/);

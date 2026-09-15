@@ -7,6 +7,7 @@ import { AuthUnavailable } from "@/features/auth/components/auth-unavailable";
 import { PhoneAuthForm } from "@/features/auth/components/phone-auth-form";
 import { phoneOtpAuth } from "@/features/auth/phone-actions";
 import { postLoginRefreshPath } from "@/features/auth/post-login";
+import { turnstileSiteKey } from "@/features/auth/captcha";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
@@ -48,6 +49,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         capabilities.publicAuthMethods.includes("google_oauth") ? continueWithGoogle : undefined
       }
       submitLabel="Create account"
+      turnstileSiteKey={turnstileSiteKey()}
     />
   );
 }

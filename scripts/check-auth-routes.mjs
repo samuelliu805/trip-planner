@@ -21,11 +21,20 @@ const routes =
         },
       ]
     : [
-        { forbidden: [], markers: ["Welcome back", "Continue with Google"], pathname: "/login" },
+        {
+          forbidden: [],
+          markers: ["Welcome back", "Continue with Google", "Forgot password?"],
+          pathname: "/login",
+        },
         {
           forbidden: [],
           markers: ["Create your account", "Continue with Google", "Email address"],
           pathname: "/signup",
+        },
+        {
+          forbidden: [],
+          markers: ["Reset password", "Email address", "Send recovery link"],
+          pathname: "/forgot-password",
         },
       ];
 

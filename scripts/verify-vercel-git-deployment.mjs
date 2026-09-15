@@ -88,6 +88,18 @@ export function assertGlobalEnvironmentKeys(payload) {
   if (forbidden.length) {
     throw new Error(`Global production has forbidden environment keys: ${forbidden.join(", ")}.`);
   }
+  const productionKeys = new Set(
+    payload.envs
+      .filter((entry) =>
+        Array.isArray(entry?.target)
+          ? entry.target.includes("production")
+          : entry?.target === "production",
+      )
+      .map((entry) => entry?.key),
+  );
+  if (!productionKeys.has("NEXT_PUBLIC_TURNSTILE_SITE_KEY")) {
+    throw new Error("Global production requires NEXT_PUBLIC_TURNSTILE_SITE_KEY.");
+  }
 }
 
 export function assertExactHealth(payload) {
@@ -129,8 +141,9 @@ async function verifyRoutes(origin) {
   if (health.status !== 200) throw new Error(`Global health route returned ${health.status}.`);
   assertExactHealth(await health.json());
   for (const [path, markers] of [
-    ["/login", ["Welcome back", "Continue with Google"]],
+    ["/login", ["Welcome back", "Continue with Google", "Forgot password?"]],
     ["/signup", ["Create your account", "Email address"]],
+    ["/forgot-password", ["Reset password", "Send recovery link"]],
   ]) {
     const response = await fetch(new URL(path, origin), {
       redirect: "manual",

@@ -22,6 +22,7 @@ export function appUserIdentityLabel(user: AppUser, fallback = "Account") {
 
 export type SignInInput =
   | Readonly<{
+      captchaToken?: string;
       email: string;
       method: "email_password";
       password: string;
@@ -38,6 +39,7 @@ export type SignInInput =
     }>;
 
 export type PublicSelfRegistrationInput = Readonly<{
+  captchaToken?: string;
   email: string;
   method: "email_password";
   password: string;
@@ -84,6 +86,17 @@ export interface BrowserPhoneOtpProvider {
 
 export interface PasswordManagementProvider {
   changePassword(input: Readonly<{ currentPassword: string; newPassword: string }>): Promise<void>;
+}
+
+export interface PasswordRecoveryProvider {
+  completePasswordRecovery(input: Readonly<{ newPassword: string }>): Promise<void>;
+  requestPasswordRecovery(
+    input: Readonly<{
+      captchaToken?: string;
+      email: string;
+      redirectTo: string;
+    }>,
+  ): Promise<void>;
 }
 
 export interface PublicSelfRegistrationProvider {

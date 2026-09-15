@@ -7,6 +7,7 @@ import type {
   PublicSelfRegistrationInput,
   PublicSelfRegistrationProvider,
   PasswordManagementProvider,
+  PasswordRecoveryProvider,
   RedirectOAuthProvider,
   RedirectOAuthSignInInput,
   SignInInput,
@@ -33,6 +34,30 @@ function appUser(user: SupabaseUserShape): AppUser {
 }
 
 function operationFailed(message: string, cause?: unknown) {
+  const code =
+    typeof cause === "object" && cause !== null && "code" in cause ? String(cause.code) : undefined;
+  if (code === "email_not_confirmed") {
+    return new PlatformOperationError("email_not_confirmed", "Email confirmation is required.", {
+      cause,
+    });
+  }
+  if (code === "invalid_credentials") {
+    return new PlatformOperationError("invalid_credentials", "Invalid credentials.", { cause });
+  }
+  if (code === "captcha_failed" || code === "captcha_required") {
+    return new PlatformOperationError(
+      "captcha_required",
+      "Complete the security check, then try again.",
+      { cause },
+    );
+  }
+  if (code === "over_email_send_rate_limit" || code === "over_request_rate_limit") {
+    return new PlatformOperationError(
+      "rate_limited",
+      "Too many requests. Wait a moment, then try again.",
+      { cause },
+    );
+  }
   return new PlatformOperationError("unexpected", message, { cause });
 }
 
@@ -42,6 +67,7 @@ export class SupabaseAuthProvider
     AuthorizationCodeExchangeProvider,
     PublicSelfRegistrationProvider,
     PasswordManagementProvider,
+    PasswordRecoveryProvider,
     RedirectOAuthProvider
 {
   async getCurrentUser() {
@@ -81,6 +107,23 @@ export class SupabaseAuthProvider
     if (error) throw operationFailed("Password could not be changed.", error);
   }
 
+  async completePasswordRecovery(input: Readonly<{ newPassword: string }>) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.updateUser({ password: input.newPassword });
+    if (error) throw operationFailed("Password could not be reset.", error);
+  }
+
+  async requestPasswordRecovery(
+    input: Readonly<{ captchaToken?: string; email: string; redirectTo: string }>,
+  ) {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(input.email, {
+      captchaToken: input.captchaToken,
+      redirectTo: input.redirectTo,
+    });
+    if (error) throw operationFailed("Password recovery email could not be sent.", error);
+  }
+
   async exchangeAuthorizationCode(code: string) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -93,9 +136,13 @@ export class SupabaseAuthProvider
     const { data, error } = await supabase.auth.signUp({
       email: input.email,
       password: input.password,
-      options: input.verificationRedirectTo
-        ? { emailRedirectTo: input.verificationRedirectTo }
-        : undefined,
+      options:
+        input.verificationRedirectTo || input.captchaToken
+          ? {
+              captchaToken: input.captchaToken,
+              emailRedirectTo: input.verificationRedirectTo,
+            }
+          : undefined,
     });
     if (error) throw operationFailed("Account creation failed.", error);
     return {
