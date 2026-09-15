@@ -237,7 +237,6 @@ export const landingZhCN: Record<string, string> = {
     "把每天的行程、路线备选、住宿、预订和票据放在一起，随时调整并分享一份路上真正用得上的旅行计划。",
   "There we go — Plan routes, stays and travel details":
     "There we go：路线、住宿和旅行资料一处整理",
-  "There we go — Travel plans, ready to go": "There we go：旅行计划，准备好再出发",
   "There we go itinerary workspace": "There we go 行程规划区",
   "Visual itinerary planning": "用行程表直观看全程",
   "Day-by-day route planning": "按天规划路线",

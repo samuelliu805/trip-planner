@@ -6,6 +6,7 @@ import { z } from "zod";
 import { PublicItineraryShell } from "@/features/sharing/components/public-itinerary-shell";
 import { PublicUnavailable } from "@/features/sharing/components/public-unavailable";
 import { getRequestLocale } from "@/features/i18n/server";
+import { tripPlannerBrandNameForRegion } from "@/features/landing/brand";
 import { translateMessage } from "@/features/i18n/translate";
 import { getPublicItinerary, getPublicShareImage } from "@/features/sharing/data";
 import { localizeGeneratedPublicDescription } from "@/features/sharing/public-copy";
@@ -15,6 +16,7 @@ import { publicTemplateResolutionWarningFields } from "@/features/sharing/templa
 import { resolvePublicTemplate } from "@/features/sharing/templates/resolver";
 import { publicTemplateRuntimeConfig } from "@/features/sharing/templates/runtime/config.server";
 import { logger } from "@/lib/telemetry/logger";
+import { getServerProviderConfig } from "@/platform/config/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -48,15 +50,17 @@ export async function generateMetadata({ params }: PublicSharePageProps): Promis
   const description = localizeGeneratedPublicDescription(itinerary.metadata.description, locale);
   const canonicalUrl = `${siteUrl}/share/${token}`;
   const imageUrl = `${canonicalUrl}/opengraph-image`;
+  const siteName = tripPlannerBrandNameForRegion(getServerProviderConfig().appRegion);
   return {
     alternates: { canonical: canonicalUrl },
+    applicationName: siteName,
     description,
     icons: { icon: "/icon.svg" },
     openGraph: {
       description,
       images: [{ alt: itinerary.metadata.title, height: 630, url: imageUrl, width: 1200 }],
       locale: locale === "zh-CN" ? "zh_CN" : "en_US",
-      siteName: "There we go",
+      siteName,
       title: itinerary.metadata.title,
       type: "website",
       url: canonicalUrl,

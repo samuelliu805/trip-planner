@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -7,6 +8,17 @@ import {
   previewProtectionHeaders,
   requireAuthorizedCleanup,
 } from "./lib/phase-5-global-browser-smoke.mjs";
+
+const browserSmokeUrl = new URL("./lib/phase-5-global-browser-smoke.mjs", import.meta.url);
+
+test("waits for the deployed Turnstile token before submitting Global login", async () => {
+  const source = await readFile(browserSmokeUrl, "utf8");
+
+  assert.match(source, /requireCaptcha: remotePreview/);
+  assert.match(source, /Global login CAPTCHA widget/);
+  assert.match(source, /input\[name="captcha_token"\]/);
+  assert.match(source, /Global login CAPTCHA completion/);
+});
 
 test("builds Vercel Preview protection headers without putting the secret in a URL", () => {
   assert.deepEqual(previewProtectionHeaders("  controlled-bypass  ", true), {

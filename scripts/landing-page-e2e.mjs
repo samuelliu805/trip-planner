@@ -288,7 +288,7 @@ try {
   assert.equal(seo.canonicalPath, "/");
   assert.match(seo.description, /route/i);
   assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
-  assert.equal(seo.title, "There we go — Travel plans, ready to go");
+  assert.equal(seo.title, "There we go - Collaborative trip planner");
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
 
   await viewport(browser, 2560, 1389);

@@ -35,7 +35,7 @@ test("regional landing links always point to the other deployment", () => {
     message: "Go to China site",
   });
   assert.deepEqual(alternateLandingSite("cn"), {
-    href: "https://therewego.world/",
+    href: "https://trip-planner-ivory-one.vercel.app/",
     message: "Go to Global site",
   });
   assert.equal(translateMessage("zh-CN", "Go to China site"), "前往中国站");

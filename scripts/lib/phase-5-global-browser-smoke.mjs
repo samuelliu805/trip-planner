@@ -1508,7 +1508,7 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
 async function submitGlobalLogin(
   browser,
   baseUrl,
-  { email, password },
+  { email, password, requireCaptcha = false },
   target = {
     expected:
       'location.pathname === "/trips" && !location.search && window.__phase5PostLoginDocument !== true',
@@ -1525,6 +1525,27 @@ async function submitGlobalLogin(
       if (recovered) return recovered;
     }
     await waitFor(browser, 'Boolean(document.querySelector("#credential"))', "Global login form");
+    if (requireCaptcha) {
+      await waitFor(
+        browser,
+        `Boolean(document.querySelector('[data-testid="auth-turnstile"]'))`,
+        "Global login CAPTCHA widget",
+      );
+    }
+    await waitFor(
+      browser,
+      `(() => {
+        const widget = document.querySelector('[data-testid="auth-turnstile"]');
+        if (!widget) return true;
+        const form = widget.closest('form');
+        const token = form?.querySelector('input[name="captcha_token"]');
+        const submit = form?.querySelector('button[type="submit"]');
+        return token instanceof HTMLInputElement && token.value.length > 0 &&
+          submit instanceof HTMLButtonElement && !submit.disabled;
+      })()`,
+      "Global login CAPTCHA completion",
+      45_000,
+    );
     const submitted = await evaluate(
       browser,
       `(() => {
@@ -1632,7 +1653,8 @@ export async function runGlobalBrowserSmoke(options) {
     }
     browser = await launchBrowser();
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
-    const guestTripId = await verifyGuestTripFlow(browser, baseUrl, options);
+    const browserOptions = { ...options, requireCaptcha: remotePreview };
+    const guestTripId = await verifyGuestTripFlow(browser, baseUrl, browserOptions);
     await navigate(browser, baseUrl, `/trips/${options.tripId}`);
     try {
       await waitFor(
@@ -1646,7 +1668,7 @@ export async function runGlobalBrowserSmoke(options) {
         `${error instanceof Error ? error.message : error}; bounded page diagnostic: ${JSON.stringify(diagnostic)}`,
       );
     }
-    await verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options);
+    await verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, browserOptions);
     await waitFor(
       browser,
       `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,
