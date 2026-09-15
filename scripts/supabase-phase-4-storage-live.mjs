@@ -5,10 +5,19 @@ import { createClient } from "@supabase/supabase-js";
 
 import { runCleanupJobs } from "../cloudbase/functions/shared/admin-cleanup.mjs";
 import { isShareImageCleanupCronAuthorized } from "../src/app/api/cron/share-image-cleanup/authorization.mjs";
+import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
 
 const jpegA = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0xff, 0xd9]);
 const jpegB = new Uint8Array([0xff, 0xd8, 0xff, 0xe1, 0x00, 0x10, 0xff, 0xd9]);
 const timeoutMilliseconds = 20_000;
+
+function liveSupabaseFetch(input, init = {}) {
+  return boundedRetryFetch(input, init, {
+    attempts: 2,
+    retryDelayMs: 250,
+    timeoutMs: 9_000,
+  });
+}
 
 function required(name) {
   const value = process.env[name]?.trim();
@@ -35,6 +44,7 @@ function success(result, label) {
 function userClient(url, publishableKey) {
   return createClient(url, publishableKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: liveSupabaseFetch },
   });
 }
 
@@ -103,6 +113,7 @@ async function run() {
   const cronSecret = required("CRON_SECRET");
   const admin = createClient(url, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: liveSupabaseFetch },
   });
   const suffix = randomUUID();
   const password = `${randomBytes(24).toString("base64url")}aA1!`;

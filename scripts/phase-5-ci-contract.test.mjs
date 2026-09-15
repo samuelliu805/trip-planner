@@ -19,6 +19,7 @@ const cnApplicationSmokeUrl = new URL("./cloudbase-phase-3-app-e2e.mjs", import.
 const amapLiveSmokeUrl = new URL("./amap-phase-5-live.mjs", import.meta.url);
 const globalLiveSmokeUrl = new URL("./global-phase-5-live.mjs", import.meta.url);
 const globalBrowserSmokeUrl = new URL("./lib/phase-5-global-browser-smoke.mjs", import.meta.url);
+const supabaseStorageSmokeUrl = new URL("./supabase-phase-4-storage-live.mjs", import.meta.url);
 const cnBrowserOriginUrl = new URL("./lib/phase-5-cn-browser-origin.mjs", import.meta.url);
 const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const cloudBaseRunSubmitterUrl = new URL("./cloudbase-run-source-submitter.mjs", import.meta.url);
@@ -63,7 +64,10 @@ test("Phase 6 verification accepts only an exact source SHA and stays protected"
 });
 
 test("Phase 6 static, isolated builds, and live inventory stay executable", async () => {
-  const workflow = await readFile(workflowUrl, "utf8");
+  const [workflow, supabaseStorageSmoke] = await Promise.all([
+    readFile(workflowUrl, "utf8"),
+    readFile(supabaseStorageSmokeUrl, "utf8"),
+  ]);
   for (const command of [
     "npm run lint",
     "npm run typecheck",
@@ -113,6 +117,9 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
   assert.doesNotMatch(workflow, /VERCEL_(?:TOKEN|ORG_ID|PROJECT_ID)/);
   assert.match(workflow, /version: 2\.116\.0/);
   assert.doesNotMatch(workflow, /supabase db reset/);
+  assert.match(supabaseStorageSmoke, /boundedRetryFetch\(input, init, \{/);
+  assert.match(supabaseStorageSmoke, /attempts: 2,[\s\S]*timeoutMs: 9_000/);
+  assert.equal(supabaseStorageSmoke.match(/global: \{ fetch: liveSupabaseFetch \}/g)?.length, 2);
   assert.match(workflow, /migration up[\s\\]*\n[\s\S]{0,100}--dry-run --json/);
   assert.match(
     workflow,
