@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 
 const githubApiOrigin = "https://api.github.com";
 const terminalFailureStates = new Set(["error", "failure", "inactive"]);
+const releaseHeader = "x-trip-planner-release";
 
 function required(name, environment = process.env) {
   const value = environment[name]?.trim();
@@ -40,6 +41,64 @@ export function classifyPreviewStatuses(payload) {
   }
   if (terminalFailureStates.has(latest.state)) return { state: "failed" };
   return { state: "pending" };
+}
+
+function approvedVercelOrigin(value, label) {
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${label} was not an approved Vercel HTTPS origin.`);
+  }
+  if (
+    url.protocol !== "https:" ||
+    !(url.hostname === "vercel.app" || url.hostname.endsWith(".vercel.app")) ||
+    url.username ||
+    url.password ||
+    url.port ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error(`${label} was not an approved Vercel HTTPS origin.`);
+  }
+  return url.origin;
+}
+
+export function previewBrowserOrigin(environment, deploymentOrigin) {
+  const configured = environment.PHASE5_GLOBAL_PREVIEW_URL?.trim();
+  return configured
+    ? approvedVercelOrigin(configured, "Configured Global Preview URL")
+    : approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL");
+}
+
+export async function previewOriginMatchesExactSha(
+  origin,
+  expectedSha,
+  environment = process.env,
+  fetchImpl = fetch,
+) {
+  const bypassSecret = environment.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+  const headers = bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : undefined;
+  try {
+    const response = await fetchImpl(new URL("/api/health", origin), {
+      cache: "no-store",
+      headers,
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (response.status !== 200 || response.headers.get(releaseHeader) !== expectedSha)
+      return false;
+    const payload = await response.json();
+    return (
+      payload &&
+      typeof payload === "object" &&
+      !Array.isArray(payload) &&
+      Object.keys(payload).length === 1 &&
+      payload.status === "ok"
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function exactPreviewSha(environment = process.env) {
@@ -91,13 +150,21 @@ export async function verifyVercelPreview(environment = process.env) {
       );
       const result = classifyPreviewStatuses(statuses);
       if (result.state === "ready") {
+        const browserOrigin = previewBrowserOrigin(environment, result.url);
+        if (!(await previewOriginMatchesExactSha(browserOrigin, expectedSha, environment))) {
+          process.stdout.write(
+            `Waiting for the controlled Global Preview origin to serve ${expectedSha}.\n`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 15_000));
+          continue;
+        }
         process.stdout.write(
           `Verified GitHub Vercel Preview deployment ${deployment.id} for ${expectedSha}.\n`,
         );
         if (environment.GITHUB_OUTPUT) {
-          await appendFile(environment.GITHUB_OUTPUT, `url=${result.url}\n`);
+          await appendFile(environment.GITHUB_OUTPUT, `url=${browserOrigin}\n`);
         }
-        return result.url;
+        return browserOrigin;
       }
       if (result.state === "failed") {
         throw new Error(`GitHub Vercel Preview deployment ${deployment.id} failed.`);

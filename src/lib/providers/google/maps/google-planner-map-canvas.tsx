@@ -2,7 +2,7 @@
 
 import { Map, useApiLoadingStatus, useMap } from "@vis.gl/react-google-maps";
 import { AlertTriangle, MapPinned } from "lucide-react";
-import { useEffect, useId, useRef } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Localized, T } from "@/features/i18n/i18n-provider";
@@ -15,6 +15,25 @@ import type {
 import { useGoogleMapConfiguration } from "./google-maps-provider";
 import { GooglePlannerMapPolyline } from "./google-planner-map-line";
 import { GooglePlannerMapMarkerOverlay } from "./google-planner-map-marker";
+
+function GoogleMapReadyContent({
+  children,
+  mapInstanceId,
+}: {
+  children: ReactNode;
+  mapInstanceId: string;
+}) {
+  const map = useMap(mapInstanceId);
+  const [readyMap, setReadyMap] = useState<google.maps.Map | null>(null);
+
+  useLayoutEffect(() => {
+    if (!map) return;
+    const listener = map.addListener("tilesloaded", () => setReadyMap(map));
+    return () => listener.remove();
+  }, [map]);
+
+  return readyMap === map ? children : null;
+}
 
 function GoogleMapViewport({
   fitKey,
@@ -159,24 +178,26 @@ export function GooglePlannerMapCanvas({
         mapTypeControl={false}
         streetViewControl={false}
       >
-        <GoogleMapViewport
-          fitKey={viewportKey}
-          lines={lines}
-          mapInstanceId={mapInstanceId}
-          markers={markers}
-          selectedId={selectedId}
-        />
-        {lines.map((line) => (
-          <GooglePlannerMapPolyline key={line.id} line={line} />
-        ))}
-        {markers.map((marker) => (
-          <GooglePlannerMapMarkerOverlay
-            key={marker.id}
-            marker={marker}
-            onMarkerClick={onMarkerClick}
+        <GoogleMapReadyContent mapInstanceId={mapInstanceId}>
+          <GoogleMapViewport
+            fitKey={viewportKey}
+            lines={lines}
+            mapInstanceId={mapInstanceId}
+            markers={markers}
             selectedId={selectedId}
           />
-        ))}
+          {lines.map((line) => (
+            <GooglePlannerMapPolyline key={line.id} line={line} />
+          ))}
+          {markers.map((marker) => (
+            <GooglePlannerMapMarkerOverlay
+              key={marker.id}
+              marker={marker}
+              onMarkerClick={onMarkerClick}
+              selectedId={selectedId}
+            />
+          ))}
+        </GoogleMapReadyContent>
       </Map>
       {emptyState && markers.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5">

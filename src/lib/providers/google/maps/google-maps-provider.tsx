@@ -1,7 +1,7 @@
 "use client";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useLayoutEffect, useState } from "react";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
 import { useGooglePlacesProvider } from "@/lib/providers/google/places/use-google-places-provider";
@@ -29,6 +29,21 @@ export function GoogleMapsProvider({ children }: { children: React.ReactNode }) 
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const [apiError, setApiError] = useState<string>();
   const value = { apiError, apiKey, mapId };
+
+  useLayoutEffect(() => {
+    const mapsWindow = window as Window & { gm_authFailure?: () => void };
+    const previousHandler = mapsWindow.gm_authFailure;
+    const handleAuthFailure = () => {
+      setApiError("Google Maps authentication failed. Check the browser key restrictions.");
+      previousHandler?.();
+    };
+    mapsWindow.gm_authFailure = handleAuthFailure;
+    return () => {
+      if (mapsWindow.gm_authFailure === handleAuthFailure) {
+        mapsWindow.gm_authFailure = previousHandler;
+      }
+    };
+  }, []);
 
   if (!apiKey || !mapId)
     return (

@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   classifyPreviewStatuses,
   exactPreviewSha,
+  previewBrowserOrigin,
+  previewOriginMatchesExactSha,
   selectExactPreviewDeployment,
   verifyVercelPreview,
 } from "./verify-vercel-preview-deployment.mjs";
@@ -45,6 +47,65 @@ test("keeps pending states separate from terminal deployment failures", () => {
   assert.deepEqual(classifyPreviewStatuses([]), { state: "pending" });
   assert.deepEqual(classifyPreviewStatuses([{ state: "in_progress" }]), { state: "pending" });
   assert.deepEqual(classifyPreviewStatuses([{ state: "failure" }]), { state: "failed" });
+});
+
+test("uses only an approved configured stable Vercel Preview origin", () => {
+  assert.equal(
+    previewBrowserOrigin(
+      { PHASE5_GLOBAL_PREVIEW_URL: " https://trip-planner-git-feature.example.vercel.app/ " },
+      "https://random.example.vercel.app",
+    ),
+    "https://trip-planner-git-feature.example.vercel.app",
+  );
+  assert.equal(
+    previewBrowserOrigin({}, "https://random.example.vercel.app"),
+    "https://random.example.vercel.app",
+  );
+  for (const configured of [
+    "http://trip-planner.example.vercel.app",
+    "https://trip-planner.example.vercel.app/path",
+    "https://vercel.app.attacker.invalid",
+  ]) {
+    assert.throws(
+      () =>
+        previewBrowserOrigin(
+          { PHASE5_GLOBAL_PREVIEW_URL: configured },
+          "https://random.example.vercel.app",
+        ),
+      /approved Vercel HTTPS origin/,
+    );
+  }
+});
+
+test("requires the controlled Preview origin to report the exact candidate SHA", async () => {
+  const fetchOptions = [];
+  const exact = await previewOriginMatchesExactSha(
+    "https://trip-planner-git-feature.example.vercel.app",
+    sha,
+    { VERCEL_AUTOMATION_BYPASS_SECRET: "test-bypass" },
+    async (_url, options) => {
+      fetchOptions.push(options);
+      return Response.json(
+        { status: "ok" },
+        { headers: { "X-Trip-Planner-Release": sha }, status: 200 },
+      );
+    },
+  );
+  assert.equal(exact, true);
+  assert.equal(fetchOptions[0].headers["x-vercel-protection-bypass"], "test-bypass");
+  assert.equal(
+    await previewOriginMatchesExactSha(
+      "https://trip-planner-git-feature.example.vercel.app",
+      sha,
+      {},
+      async () =>
+        Response.json(
+          { status: "ok" },
+          { headers: { "X-Trip-Planner-Release": "b".repeat(40) }, status: 200 },
+        ),
+    ),
+    false,
+  );
 });
 
 test("uses the immutable source SHA even when a pull request workflow SHA differs", () => {

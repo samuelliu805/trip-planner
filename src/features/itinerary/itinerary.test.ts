@@ -4038,8 +4038,13 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
     new URL("../../lib/providers/google/maps/google-stable-advanced-marker.tsx", import.meta.url),
     "utf8",
   );
-  map += await readFile(
+  const googleCanvas = await readFile(
     new URL("../../lib/providers/google/maps/google-planner-map-canvas.tsx", import.meta.url),
+    "utf8",
+  );
+  map += googleCanvas;
+  const googleProvider = await readFile(
+    new URL("../../lib/providers/google/maps/google-maps-provider.tsx", import.meta.url),
     "utf8",
   );
   let mapShell = await readFile(
@@ -4076,6 +4081,9 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   );
   assert.match(stableMarker, /return \(\) => \{[\s\S]*nextMarker\.map = null/);
   assert.doesNotMatch(stableMarker, /useEffect\(/);
+  assert.match(googleCanvas, /map\.addListener\("tilesloaded"/);
+  assert.match(googleCanvas, /readyMap === map \? children : null/);
+  assert.match(googleProvider, /gm_authFailure/);
   assert.match(map, /anchorLeft=\{comparison \? "-50%" : undefined\}/);
   assert.match(map, /anchorTop=\{comparison \? "-100%" : undefined\}/);
   assert.match(map, /comparison \? \([\s\S]*<Pin/);
