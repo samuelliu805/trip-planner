@@ -241,7 +241,10 @@ async function clickElementUntil(browser, elementExpression, targetExpression, l
     await clickElement(browser, elementExpression, label).catch(() => undefined);
     await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  throw new Error(`Timed out waiting for ${label}.`);
+  const diagnostic = await boundedPageDiagnostic(browser);
+  throw new Error(
+    `Timed out waiting for ${label}; bounded click diagnostic: ${JSON.stringify(diagnostic)}`,
+  );
 }
 
 async function setInputValue(browser, selector, value) {
@@ -715,6 +718,16 @@ async function boundedPageDiagnostic(browser) {
         const error = body.match(/ERROR\\s+(\\d{1,16})/i);
         const heading = document.querySelector("h1,h2,[role=heading]")?.textContent?.trim() ?? "";
         return {
+          buttons: [...document.querySelectorAll("button")]
+            .filter((element) => element.getClientRects().length)
+            .slice(0, 12)
+            .map((element) =>
+              (element.textContent?.trim() || element.getAttribute("aria-label") || "").slice(0, 80),
+            ),
+          dialogs: [...document.querySelectorAll('[role="alertdialog"]')]
+            .filter((element) => element.getClientRects().length)
+            .slice(0, 2)
+            .map((element) => element.innerText.slice(0, 160)),
           errorDigest: error?.[1] ?? null,
           heading: heading.slice(0, 120),
           path: location.pathname.slice(0, 240),
@@ -1210,20 +1223,24 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   );
   await waitFor(
     browser,
-    `Boolean(document.querySelector('[data-step-id="files"]'))`,
+    `[...document.querySelectorAll('[data-step-id="files"]')].some((element) =>
+      element.getClientRects().length)`,
     "guest item editor",
   );
   await clickElementUntil(
     browser,
-    `document.querySelector('[data-step-id="files"]')`,
-    `Boolean(document.querySelector('[data-guest-attachment-gate]'))`,
+    `[...document.querySelectorAll('[data-step-id="files"]')].find((element) =>
+      element.getClientRects().length)`,
+    `[...document.querySelectorAll('[data-guest-attachment-gate]')].some((element) =>
+      element.getClientRects().length)`,
     "guest item Files step",
   );
   await clickElementUntil(
     browser,
-    `document.querySelector('[data-guest-attachment-gate] button')`,
+    `[...document.querySelectorAll('[data-guest-attachment-gate] button')].find((button) =>
+      button.getClientRects().length && button.textContent.trim() === 'Save to account')`,
     `[...document.querySelectorAll('[role="alertdialog"]')].some((dialog) =>
-      dialog.innerText.includes('before adding files'))`,
+      dialog.getClientRects().length && dialog.innerText.includes('before adding files'))`,
     "guest attachment Save to account",
   );
   await waitFor(
@@ -1247,12 +1264,14 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   );
   await clickElementWhenAvailable(
     browser,
-    `document.querySelector('[data-i18n-aria-label="Close editor"]')`,
+    `[...document.querySelectorAll('[data-i18n-aria-label="Close editor"]')].find((button) =>
+      button.getClientRects().length)`,
     "close guest item editor",
   );
   await waitFor(
     browser,
-    `!document.querySelector('[data-step-id="files"]')`,
+    `![...document.querySelectorAll('[data-step-id="files"]')].some((element) =>
+      element.getClientRects().length)`,
     "closed guest editor",
   );
 
@@ -1271,21 +1290,21 @@ async function verifyGuestTripFlow(browser, baseUrl, options) {
   assert.deepEqual(remoteWrites, [], "Guest editing issued a remote Trip write.");
 
   async function openShareGate() {
-    await clickElementWhenAvailable(
+    await clickElementUntil(
       browser,
-      `document.querySelector('button[data-i18n-aria-label="Trip menu"]')`,
+      `[...document.querySelectorAll('button[data-i18n-aria-label="Trip menu"]')]
+        .find((button) => button.getClientRects().length)`,
+      `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
+        item.getClientRects().length && item.textContent.trim() === 'Share trip')`,
       "guest Trip menu",
     );
-    await clickElementWhenAvailable(
+    await clickElementUntil(
       browser,
       `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
         item.getClientRects().length && item.textContent.trim() === 'Share trip')`,
+      `[...document.querySelectorAll('[role="alertdialog"]')].some((dialog) =>
+        dialog.getClientRects().length && dialog.innerText.includes('before sharing'))`,
       "guest Share trip",
-    );
-    await waitFor(
-      browser,
-      `document.querySelector('[role="alertdialog"]')?.innerText.includes('before sharing')`,
-      "guest share account dialog",
     );
   }
 

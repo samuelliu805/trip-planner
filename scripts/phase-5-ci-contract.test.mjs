@@ -316,6 +316,15 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(globalBrowserSmoke, /async function submitGlobalLogin/);
   assert.match(globalBrowserSmoke, /form\.requestSubmit\(\)/);
   assert.match(globalBrowserSmoke, /bounded login diagnostic/);
+  assert.match(globalBrowserSmoke, /bounded click diagnostic/);
+  assert.match(
+    globalBrowserSmoke,
+    /data-guest-attachment-gate[\s\S]*?getClientRects\(\)\.length[\s\S]*?Save to account/,
+  );
+  assert.match(
+    globalBrowserSmoke,
+    /async function openShareGate\(\)[\s\S]*?clickElementUntil[\s\S]*?guest Trip menu[\s\S]*?clickElementUntil[\s\S]*?before sharing/,
+  );
   assert.match(globalBrowserSmoke, /authenticated guest redirect and storage cleanup/);
   assert.match(globalBrowserSmoke, /authenticated landing account link/);
   assert.match(globalBrowserSmoke, /Global People account identity/);
