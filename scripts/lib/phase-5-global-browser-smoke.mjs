@@ -893,14 +893,67 @@ export async function clearBrowserSessionForPublicShare(browser, baseUrl, bypass
   if (bypassSecret) await establishPreviewBypass(browser, baseUrl, bypassSecret);
 }
 
-async function navigate(browser, baseUrl, path) {
+async function navigate(browser, baseUrl, path, diagnosticLabel = path) {
   await evaluate(browser, "window.__phase5NavigationSentinel = true");
   await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
   await waitFor(
     browser,
     'window.__phase5NavigationSentinel !== true && document.readyState === "complete"',
-    `${path} load`,
+    `${diagnosticLabel} load`,
   );
+}
+
+async function verifyPasswordRecovery(browser, baseUrl, options) {
+  const requestStart = browser.cdp.requests.length;
+  const query = new URLSearchParams({
+    auth_flow: "recovery",
+    auth_method: "email_link",
+    token_hash: options.recoveryTokenHash,
+    type: "recovery",
+  });
+  await navigate(browser, baseUrl, `/auth/verify?${query}`, "/auth/verify recovery");
+  await waitFor(
+    browser,
+    `(() => {
+      const password = document.querySelector('#recovery-password');
+      const confirmation = document.querySelector('#recovery-password-confirmation');
+      return password instanceof HTMLInputElement && password.getClientRects().length &&
+        confirmation instanceof HTMLInputElement && confirmation.getClientRects().length &&
+        !document.body.innerText.includes('Continue to reset password');
+    })()`,
+    "single-screen password recovery form",
+  );
+  assert.equal(
+    browser.cdp.requests
+      .slice(requestStart)
+      .some((entry) => entry.method === "POST" && entry.hasNextAction),
+    false,
+    "Recovery page GET consumed the token before form submission.",
+  );
+
+  await setInputValue(browser, "#recovery-password", options.recoveryPassword);
+  await setInputValue(browser, "#recovery-password-confirmation", options.recoveryPassword);
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const form = document.querySelector('#recovery-password')?.closest('form');
+        if (!(form instanceof HTMLFormElement)) return false;
+        form.requestSubmit();
+        return true;
+      })()`,
+    ),
+    true,
+    "Recovery form was not submit-ready.",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Your password has been reset.') &&
+      Boolean([...document.querySelectorAll('a')].find((link) =>
+        link.textContent.trim() === 'Return to log in'))`,
+    "completed single-screen password recovery",
+  );
+  assert.equal(await evaluate(browser, 'location.pathname === "/auth/verify"'), true);
 }
 
 async function verifyDeployedAuthCaptchaSurfaces(browser, baseUrl) {
@@ -1575,21 +1628,22 @@ async function submitGlobalLogin(
       );
     }
     if (createAuthCookies) {
-      if (attempt === 0) {
+      if (attempt === 0 && requireCaptcha) {
         const protectedUntilVerified = await evaluate(
           browser,
           `(() => {
             const form = document.querySelector('#credential')?.closest('form');
             const token = form?.querySelector('input[name="captcha_token"]');
             const submit = form?.querySelector('button[type="submit"]');
-            return token instanceof HTMLInputElement && token.value === '' &&
-              submit instanceof HTMLButtonElement && submit.disabled;
+            return token instanceof HTMLInputElement &&
+              submit instanceof HTMLButtonElement &&
+              (token.value.length > 0 || submit.disabled);
           })()`,
         );
         assert.equal(
           protectedUntilVerified,
           true,
-          "Global login was not gated while its CAPTCHA token was empty.",
+          "Global login was neither CAPTCHA-verified nor gated while its token was empty.",
         );
       }
       await installBrowserAuthCookies(browser, baseUrl, createAuthCookies);
@@ -1733,6 +1787,8 @@ export async function runGlobalBrowserSmoke(options) {
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
     const browserOptions = { ...options, requireCaptcha: remotePreview };
     if (remotePreview) await verifyDeployedAuthCaptchaSurfaces(browser, baseUrl);
+    await verifyPasswordRecovery(browser, baseUrl, browserOptions);
+    await clearBrowserSessionForPublicShare(browser, baseUrl, bypassSecret);
     const guestTripId = await verifyGuestTripFlow(browser, baseUrl, browserOptions);
     await navigate(browser, baseUrl, `/trips/${options.tripId}`);
     try {

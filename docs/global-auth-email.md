@@ -27,10 +27,9 @@ authentication mail and can rewrite one-time authentication URLs.
 1. Confirm signup requires email verification and an unconfirmed account cannot sign in.
 2. Open the newest confirmation email and confirm it reaches `/trips?post_login=1`.
 3. Request password recovery after completing Turnstile.
-4. Open the newest recovery email. It must show `/auth/verify` without immediately consuming the
-   recovery token.
-5. Press **Continue to reset password**, choose a new password, and confirm the old password fails
-   while the new password succeeds.
+4. Open the newest recovery email. It must show the new-password and confirmation fields on
+   `/auth/verify` without consuming the recovery token until the form is submitted.
+5. Choose a new password and confirm the old password fails while the new password succeeds.
 6. Confirm no raw email address, token, or password appears in application telemetry or CI output.
 
 Old recovery emails generated before a template change remain single-use and must not be used as

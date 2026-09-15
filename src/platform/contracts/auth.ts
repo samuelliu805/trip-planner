@@ -90,6 +90,9 @@ export interface PasswordManagementProvider {
 
 export interface PasswordRecoveryProvider {
   completePasswordRecovery(input: Readonly<{ newPassword: string }>): Promise<void>;
+  completePasswordRecoveryFromToken(
+    input: Readonly<{ newPassword: string; tokenHash: string }>,
+  ): Promise<AppUser>;
   requestPasswordRecovery(
     input: Readonly<{
       captchaToken?: string;
@@ -97,7 +100,6 @@ export interface PasswordRecoveryProvider {
       redirectTo: string;
     }>,
   ): Promise<void>;
-  verifyPasswordRecoveryToken(tokenHash: string): Promise<AppUser>;
 }
 
 export interface PublicSelfRegistrationProvider {

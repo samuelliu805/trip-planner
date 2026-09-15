@@ -38,7 +38,7 @@ const routes =
         },
         {
           forbidden: [],
-          markers: ["Continue password recovery", "Continue to reset password"],
+          markers: ["Choose a new password", "New password", "Confirm new password"],
           pathname:
             "/auth/verify?auth_flow=recovery&auth_method=email_link&token_hash=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&type=recovery",
         },

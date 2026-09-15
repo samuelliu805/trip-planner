@@ -35,10 +35,7 @@ test("Global email auth keeps confirmation, CAPTCHA, and recovery wired through 
       readFile(new URL("../../platform/supabase/auth-provider.ts", import.meta.url), "utf8"),
       readFile(new URL("./password-recovery-actions.ts", import.meta.url), "utf8"),
       readFile(new URL("../../app/(auth)/auth/verify/page.tsx", import.meta.url), "utf8"),
-      readFile(
-        new URL("./components/email-password-recovery-verification.tsx", import.meta.url),
-        "utf8",
-      ),
+      readFile(new URL("./components/email-password-recovery-form.tsx", import.meta.url), "utf8"),
       readFile(new URL("../../../docs/global-auth-email.md", import.meta.url), "utf8"),
     ]);
 
@@ -47,13 +44,16 @@ test("Global email auth keeps confirmation, CAPTCHA, and recovery wired through 
   assert.match(actions, /captchaToken: captchaTokenFromFormData\(formData\)/);
   assert.match(provider, /signInWithPassword\(credentials\)/);
   assert.match(provider, /resetPasswordForEmail\(input\.email/);
-  assert.match(provider, /verifyOtp\(\{[\s\S]*token_hash: tokenHash,[\s\S]*type: "recovery"/);
   assert.match(recovery, /const siteUrl = siteUrlFromHeaders\(await headers\(\)\)/);
   assert.match(recovery, /new URL\("\/auth\/verify", siteUrl\)/);
-  assert.match(recovery, /verifyPasswordRecoveryToken\(tokenHash\)/);
+  assert.match(recovery, /completePasswordRecoveryFromToken\(\{/);
   assert.match(
     provider,
     /completePasswordRecovery[\s\S]*updateUser\(\{ password: input\.newPassword \}\)/,
+  );
+  assert.match(
+    provider,
+    /completePasswordRecoveryFromToken[\s\S]*verifyOtp\(\{[\s\S]*token_hash: input\.tokenHash,[\s\S]*type: "recovery"[\s\S]*updateUser\(\{ password: input\.newPassword \}\)[\s\S]*signOut\(\)/,
   );
   assert.match(recovery, /auth_flow", "recovery"/);
   assert.match(callback, /authFlow === "recovery" \? "\/reset-password\?recovery=1"/);
@@ -61,6 +61,9 @@ test("Global email auth keeps confirmation, CAPTCHA, and recovery wired through 
   assert.match(verificationPage, /parameters\.type === "recovery"/);
   assert.match(verificationUi, /form action=\{action\}/);
   assert.match(verificationUi, /name="token_hash"/);
+  assert.match(verificationUi, /name="password"/);
+  assert.match(verificationUi, /name="password_confirmation"/);
+  assert.doesNotMatch(verificationUi, /Continue to reset password/);
   assert.match(
     runbook,
     /\{\{ \.RedirectTo \}\}&amp;token_hash=\{\{ \.TokenHash \}\}&amp;type=recovery/,

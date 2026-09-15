@@ -682,6 +682,13 @@ async function run() {
     );
     assertPublicProjection(projection, intendedTitle, privateTitle, userA.id);
     if (process.env.PHASE5_REQUIRE_BROWSER_SMOKE === "1") {
+      const recoveryPassword = `${randomBytes(18).toString("base64url")}aA1!`;
+      const recoveryLink = ok(
+        await admin.auth.admin.generateLink({ email: userC.email, type: "recovery" }),
+        "create controlled recovery link",
+      );
+      const recoveryTokenHash = recoveryLink.properties?.hashed_token;
+      assert.ok(recoveryTokenHash, "Controlled recovery link did not return a token hash.");
       const guestTripId = await runGlobalBrowserSmoke({
         actorEmails: [userA.email, userB.email],
         authenticatedTitle: collaboratorTitle,
@@ -697,6 +704,8 @@ async function run() {
         intendedTitle: collaboratorTitle,
         privateTitle,
         publicToken: collaboratorShare.publicToken,
+        recoveryPassword,
+        recoveryTokenHash,
         tripId: aTrip,
       });
       if (guestTripId) tripIds.push(guestTripId);

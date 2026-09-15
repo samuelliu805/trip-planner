@@ -1,7 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 
 import { captchaTokenFromFormData, missingCaptchaToken } from "@/features/auth/captcha";
 import { passwordRecoverySchema, passwordResetRequestSchema } from "@/features/auth/schema";
@@ -50,7 +49,7 @@ export async function requestPasswordReset(
   };
 }
 
-export async function verifyPasswordRecoveryToken(
+export async function completePasswordRecoveryFromEmailLink(
   _state: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
@@ -67,8 +66,18 @@ export async function verifyPasswordRecoveryToken(
   ) {
     return { error: "The recovery link is invalid or expired. Request a new one." };
   }
+  const parsed = passwordRecoverySchema.safeParse({
+    confirmation: formData.get("password_confirmation"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  }
   try {
-    const user = await getPasswordRecoveryProvider().verifyPasswordRecoveryToken(tokenHash);
+    const user = await getPasswordRecoveryProvider().completePasswordRecoveryFromToken({
+      newPassword: parsed.data.password,
+      tokenHash,
+    });
     await captureServerProductEvent(
       "auth_succeeded",
       {
@@ -85,15 +94,24 @@ export async function verifyPasswordRecoveryToken(
       {
         auth_flow: "recovery",
         auth_method: "email_link",
-        error_code: safeAuthErrorCode(error),
+        error_code:
+          error instanceof PlatformOperationError && error.code === "validation_failed"
+            ? "invalid_input"
+            : safeAuthErrorCode(error),
         operation_id: operationId,
         surface: "auth_form",
       },
       { actorType: "anonymous", route: "/auth/verify" },
     );
-    return { error: "The recovery link is invalid or expired. Request a new one." };
+    if (error instanceof PlatformOperationError && error.code === "validation_failed") {
+      return { error: error.message };
+    }
+    if (error instanceof PlatformOperationError && error.code === "otp_expired") {
+      return { error: "The recovery link is invalid or expired. Request a new one." };
+    }
+    return { error: "Password could not be reset. Request a new recovery link and try again." };
   }
-  redirect("/reset-password?recovery=1");
+  return { success: "Your password has been reset." };
 }
 
 export async function completePasswordReset(

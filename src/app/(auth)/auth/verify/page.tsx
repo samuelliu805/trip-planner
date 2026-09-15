@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AuthUnavailable } from "@/features/auth/components/auth-unavailable";
-import { EmailPasswordRecoveryVerification } from "@/features/auth/components/email-password-recovery-verification";
+import { EmailPasswordRecoveryForm } from "@/features/auth/components/email-password-recovery-form";
 import { getRequestLocale } from "@/features/i18n/server";
 import { translateMessage } from "@/features/i18n/translate";
 import { siteUrlFromHeaders } from "@/features/sharing/site-url";
@@ -11,7 +11,7 @@ import { telemetryOperationId } from "@/lib/telemetry/product";
 import { getBackendCapabilities } from "@/platform/composition/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: translateMessage(await getRequestLocale(), "Continue password recovery") };
+  return { title: translateMessage(await getRequestLocale(), "Choose a new password") };
 }
 
 export default async function VerifyEmailLinkPage({
@@ -40,7 +40,7 @@ export default async function VerifyEmailLinkPage({
   }
 
   return (
-    <EmailPasswordRecoveryVerification
+    <EmailPasswordRecoveryForm
       operationId={operationId}
       tokenHash={parameters.type === "recovery" ? parameters.token_hash : undefined}
     />

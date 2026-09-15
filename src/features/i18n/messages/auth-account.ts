@@ -113,6 +113,10 @@ export const authAccountZhCN: Record<string, string> = {
     "验证中国大陆手机号后设置新密码。",
   "Your password has been reset.": "密码已重置。",
   "Choose a new password": "设置新密码",
+  "Choose a password different from your current password, then request a new recovery link.":
+    "请选择与当前密码不同的新密码，然后重新获取恢复链接。",
+  "Choose a stronger password, then request a new recovery link.":
+    "请选择更强的新密码，然后重新获取恢复链接。",
   "Continue password recovery": "继续恢复密码",
   "Continue to reset password": "继续重置密码",
   "Enter your email and we’ll send you a secure recovery link.":
