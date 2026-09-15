@@ -32,17 +32,38 @@ function browserProxyArguments() {
   }
 }
 
+function boundedBrowserDiagnosticText(value) {
+  return String(value ?? "")
+    .replace(/https?:\/\/[^\s)]+/g, (candidate) => {
+      try {
+        const url = new URL(candidate);
+        return `${url.origin}${url.pathname}`;
+      } catch {
+        return "[redacted-url]";
+      }
+    })
+    .replace(/\b(?:eyJ|sb_(?:publishable|secret)_)[A-Za-z0-9._-]{16,}\b/g, "[redacted-token]")
+    .slice(0, 800);
+}
+
 class CdpClient {
   constructor(socket) {
+    this.clientErrors = [];
     this.nextId = 1;
+    this.networkFailures = [];
     this.pending = new Map();
     this.requests = [];
+    this.requestUrls = new Map();
     this.socket = socket;
     socket.addEventListener("message", (event) => {
       const message = JSON.parse(String(event.data));
       if (!message.id) {
         if (message.method === "Network.requestWillBeSent") {
           const request = message.params?.request;
+          this.requestUrls.set(
+            message.params?.requestId,
+            boundedBrowserDiagnosticText(request?.url),
+          );
           this.requests.push({
             hasNextAction: Object.keys(request?.headers ?? {}).some(
               (name) => name.toLowerCase() === "next-action",
@@ -50,6 +71,39 @@ class CdpClient {
             method: request?.method,
             url: request?.url,
           });
+        }
+        if (message.method === "Network.loadingFailed" && !message.params?.canceled) {
+          this.networkFailures.push({
+            error: boundedBrowserDiagnosticText(message.params?.errorText),
+            type: message.params?.type,
+            url: this.requestUrls.get(message.params?.requestId) ?? "unknown",
+          });
+          this.networkFailures = this.networkFailures.slice(-8);
+        }
+        if (
+          message.method === "Network.responseReceived" &&
+          message.params?.response?.status >= 400
+        ) {
+          this.networkFailures.push({
+            status: message.params.response.status,
+            type: message.params?.type,
+            url: boundedBrowserDiagnosticText(message.params.response.url),
+          });
+          this.networkFailures = this.networkFailures.slice(-8);
+        }
+        if (message.method === "Runtime.exceptionThrown") {
+          const details = message.params?.exceptionDetails;
+          this.clientErrors.push({
+            description: boundedBrowserDiagnosticText(
+              details?.exception?.description ?? details?.text,
+            ),
+            frames: (details?.stackTrace?.callFrames ?? []).slice(0, 4).map((frame) => ({
+              functionName: boundedBrowserDiagnosticText(frame.functionName),
+              line: frame.lineNumber,
+              url: boundedBrowserDiagnosticText(frame.url),
+            })),
+          });
+          this.clientErrors = this.clientErrors.slice(-8);
         }
         return;
       }
@@ -711,7 +765,7 @@ async function verifyVariantNavigation(browser) {
 
 async function boundedPageDiagnostic(browser) {
   try {
-    return await evaluate(
+    const page = await evaluate(
       browser,
       `(() => {
         const body = document.body?.innerText ?? "";
@@ -735,8 +789,17 @@ async function boundedPageDiagnostic(browser) {
         };
       })()`,
     );
+    return {
+      ...page,
+      clientErrors: browser.cdp.clientErrors.slice(-4),
+      networkFailures: browser.cdp.networkFailures.slice(-4),
+    };
   } catch {
-    return { category: "diagnostic-unavailable" };
+    return {
+      category: "diagnostic-unavailable",
+      clientErrors: browser.cdp.clientErrors.slice(-4),
+      networkFailures: browser.cdp.networkFailures.slice(-4),
+    };
   }
 }
 

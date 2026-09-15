@@ -317,6 +317,9 @@ test("live preflights distinguish provider schema and AMap key contracts", async
   assert.match(globalBrowserSmoke, /form\.requestSubmit\(\)/);
   assert.match(globalBrowserSmoke, /bounded login diagnostic/);
   assert.match(globalBrowserSmoke, /bounded click diagnostic/);
+  assert.match(globalBrowserSmoke, /Runtime\.exceptionThrown/);
+  assert.match(globalBrowserSmoke, /Network\.loadingFailed/);
+  assert.match(globalBrowserSmoke, /clientErrors: browser\.cdp\.clientErrors\.slice/);
   assert.match(
     globalBrowserSmoke,
     /data-guest-attachment-gate[\s\S]*?getClientRects\(\)\.length[\s\S]*?Save to account/,
