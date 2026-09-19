@@ -196,6 +196,7 @@ export function PlannerMapControls({
             <button
               aria-label={t(routeUpdatePending ? "Updating route…" : "Update route")}
               className="map-route-refresh absolute left-16 z-20 flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-primary/25 bg-background/95 px-3 text-xs font-medium text-primary shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              data-route-update=""
               disabled={routeUpdatePending}
               onClick={onRouteUpdate}
               title={t(routeUpdatePending ? "Updating route…" : "Update route")}

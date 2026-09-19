@@ -2862,7 +2862,7 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
   }
   await waitFor(
     browser,
-    `Boolean(document.querySelector('button[aria-label="Update route"]'))`,
+    `Boolean(document.querySelector('button[data-route-update]'))`,
     "route refresh control after adding an activity",
     45_000,
   );
@@ -2875,12 +2875,12 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
   );
   await clickElement(
     browser,
-    `document.querySelector('button[aria-label="Update route"]')`,
+    `document.querySelector('button[data-route-update]')`,
     "Update route after adding an activity",
   );
   await waitFor(
     browser,
-    `!document.querySelector('button[aria-label="Update route"]') &&
+    `!document.querySelector('button[data-route-update]') &&
       Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
     "updated AMap route after adding an activity",
     60_000,

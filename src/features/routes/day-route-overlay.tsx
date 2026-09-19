@@ -82,6 +82,7 @@ function DayRouteSummary({
       {route.status && route.status !== "current" ? (
         <button
           className="mx-3 mb-2 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-60"
+          data-route-update=""
           disabled={route.pending}
           onClick={() => void route.recalculate()}
           type="button"
