@@ -90,7 +90,7 @@ export function usePlannerInteractions({
     if (!extend) {
       const category = categories[coordinate.column];
       if (category?.id === "city") setMapMode("day_route");
-      if (["activities", "hotel", "meals"].includes(category?.id ?? "")) {
+      if (["activities", "car_rental", "hotel", "meals"].includes(category?.id ?? "")) {
         setMapMode("day_route");
       }
     }
@@ -130,7 +130,7 @@ export function usePlannerInteractions({
       setSelectedMapItemId(item.place ? item.id : undefined);
       return;
     }
-    if (["activity", "hotel", "meal"].includes(item.type)) {
+    if (["activity", "car_rental", "hotel", "meal"].includes(item.type)) {
       setMapMode("day_route");
       setSelectedMapItemId(item.place ? item.id : undefined);
       return;

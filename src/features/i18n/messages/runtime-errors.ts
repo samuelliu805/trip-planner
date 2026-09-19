@@ -50,8 +50,8 @@ export const runtimeErrorsZhCN: Record<string, string> = {
   "Meal time": "用餐时间",
   "MOV Video": "MOV 视频",
   "MP4 Video": "MP4 视频",
-  "Only Activity, Meal, and Hotel items can be route stops.":
-    "只有活动、用餐和住宿项目可以作为路线停靠点。",
+  "Only Activity, Meal, Car rental, and Hotel items can be route stops.":
+    "只有活动、用餐、租车和住宿项目可以作为路线停靠点。",
   "Only one Hotel may be repeated as the first and final stop.":
     "只有同一住宿可以同时作为起点和终点重复出现。",
   "Only the Share Page owner can generate images.": "只有分享页面的所有者可以生成长图。",

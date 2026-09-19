@@ -172,7 +172,10 @@ export function PlannerMapShell({
           else if (mapMode === "day_route") setDayPanelOpen(true);
           else setComparisonPanelOpen(true);
         }}
+        onRouteUpdate={() => void dayRoute.recalculate()}
         panelDismissed={panelDismissed && !selectedId}
+        routeUpdateAvailable={Boolean(dayRoute.status && dayRoute.status !== "current")}
+        routeUpdatePending={dayRoute.pending}
       />
       {!compact && selectedPlace ? (
         <section className="map-bottom-panel map-place-panel absolute bottom-3 left-3 right-3 z-20 flex max-h-[min(52dvh,28rem)] flex-col overflow-hidden rounded-xl border bg-background/95 shadow-lg backdrop-blur">

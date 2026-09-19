@@ -29,7 +29,12 @@ const canonicalLocalityTypes = new Set<ComparisonCityRow["type"]>([
   "car_rental",
   "hotel",
 ]);
-const dayRouteStopTypes = new Set<ComparisonCityRow["type"]>(["activity", "meal", "hotel"]);
+const dayRouteStopTypes = new Set<ComparisonCityRow["type"]>([
+  "activity",
+  "meal",
+  "car_rental",
+  "hotel",
+]);
 
 function localityKey(city: ComparisonCityRow) {
   const label =

@@ -75,7 +75,8 @@ export async function calculateRouteConfiguration(
     const cached = previousBySignature.get(legSignature);
     if (cached) {
       reused += 1;
-      return async () => cached;
+      return async () =>
+        cached.position === index + 1 ? cached : { ...cached, position: index + 1 };
     }
     return () =>
       provider.calculateLeg({

@@ -88,39 +88,43 @@ export function PlaceAutocomplete({
 
   useEffect(() => {
     const input = query.trim();
-    if (optionsDismissed || !provider || !input) return;
+    const minimumInputLength = providerId === "amap" ? 2 : 1;
+    if (optionsDismissed || !provider || input.length < minimumInputLength) return;
     const generation = requestGeneration.current;
     let cancelled = false;
-    const timer = setTimeout(async () => {
-      if (generation !== requestGeneration.current) return;
-      setSearching(true);
-      const controller = new AbortController();
-      requestAbort.current?.abort();
-      requestAbort.current = controller;
-      try {
-        session.current ??= provider.createSession();
-        const results = await session.current.fetchSuggestions({
-          input,
-          signal: controller.signal,
-          ...(typesKey ? { includedPrimaryTypes: typesKey.split(",") } : null),
-        });
-        if (cancelled || generation !== requestGeneration.current) return;
-        setError(undefined);
-        setActiveIndex(-1);
-        setSuggestions(results);
-      } catch (cause) {
-        if (cause instanceof PlaceProviderError && cause.code === "cancelled") return;
-        if (!cancelled && generation === requestGeneration.current)
-          setError("Places search is unavailable right now.");
-      } finally {
-        if (!cancelled && generation === requestGeneration.current) setSearching(false);
-      }
-    }, 250);
+    const timer = setTimeout(
+      async () => {
+        if (generation !== requestGeneration.current) return;
+        setSearching(true);
+        const controller = new AbortController();
+        requestAbort.current?.abort();
+        requestAbort.current = controller;
+        try {
+          session.current ??= provider.createSession();
+          const results = await session.current.fetchSuggestions({
+            input,
+            signal: controller.signal,
+            ...(typesKey ? { includedPrimaryTypes: typesKey.split(",") } : null),
+          });
+          if (cancelled || generation !== requestGeneration.current) return;
+          setError(undefined);
+          setActiveIndex(-1);
+          setSuggestions(results);
+        } catch (cause) {
+          if (cause instanceof PlaceProviderError && cause.code === "cancelled") return;
+          if (!cancelled && generation === requestGeneration.current)
+            setError("Places search is unavailable right now.");
+        } finally {
+          if (!cancelled && generation === requestGeneration.current) setSearching(false);
+        }
+      },
+      providerId === "amap" ? 450 : 250,
+    );
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [optionsDismissed, provider, query, typesKey]);
+  }, [optionsDismissed, provider, providerId, query, typesKey]);
 
   async function choose(suggestion: PlaceSuggestion) {
     if (resolving) return;

@@ -31,7 +31,7 @@ export type VariantComparisonRouteStop = {
   placeId: string;
   sortOrder: number;
   title: string;
-  type: "activity" | "hotel" | "meal";
+  type: "activity" | "car_rental" | "hotel" | "meal";
 };
 
 export type VariantComparisonDayRoute = {

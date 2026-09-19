@@ -156,8 +156,16 @@ export function deriveVariantComparisonPresentation(
   };
 }
 
-function routeStopKind(type: VariantComparisonRouteStop["type"]): "activity" | "hotel" | "meal" {
-  return type === "hotel" ? "hotel" : type === "meal" ? "meal" : "activity";
+function routeStopKind(
+  type: VariantComparisonRouteStop["type"],
+): "activity" | "carRental" | "hotel" | "meal" {
+  return type === "hotel"
+    ? "hotel"
+    : type === "meal"
+      ? "meal"
+      : type === "car_rental"
+        ? "carRental"
+        : "activity";
 }
 
 function dayRouteComparisonMarkers(

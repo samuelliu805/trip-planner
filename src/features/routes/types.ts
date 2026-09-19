@@ -46,7 +46,7 @@ export function canonicalRouteLegMode(mode: RouteLegMode): RouteLegMode {
 export const overviewRouteModes = ["self_driving", "flight", "train", "bus", "bike"] as const;
 export type OverviewRouteMode = (typeof overviewRouteModes)[number];
 
-export const eligibleRouteStopTypes = ["activity", "meal", "hotel"] as const;
+export const eligibleRouteStopTypes = ["activity", "meal", "car_rental", "hotel"] as const;
 export type EligibleRouteStopType = (typeof eligibleRouteStopTypes)[number];
 
 export type RouteStopCandidate = {

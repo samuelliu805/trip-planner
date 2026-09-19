@@ -14,7 +14,7 @@ import { wgs84Coordinates } from "../maps/types.ts";
 import { gcj02ToWgs84, wgs84ToGcj02 } from "./coordinates.ts";
 import { createAmapJsApiLoader } from "./maps/amap-loader.ts";
 import { createAmapOverlays } from "./maps/amap-map-overlays.ts";
-import { handleAmapPlacesRequest } from "./places/amap-places-api.ts";
+import { createAmapPlacesCache, handleAmapPlacesRequest } from "./places/amap-places-api.ts";
 import { createAmapPlacesProvider } from "./places/amap-places-provider.ts";
 import { amapRoutesEndpoints, createAmapRoutesProvider } from "./routes/amap-routes-core.ts";
 import { amapRouteMode } from "./routes/mode-mapping.ts";
@@ -84,7 +84,7 @@ test("AMap loader survives a Strict Mode release/remount without a duplicate scr
   assert.equal(scripts[0].removed, false);
 });
 
-test("AMap Places retries a typed no-data query once without weakening stale protection", async () => {
+test("AMap Places does not double a typed no-data query and preserves stale protection", async () => {
   const calls: URL[] = [];
   const responses = [
     { suggestions: [] },
@@ -103,17 +103,48 @@ test("AMap Places retries a typed no-data query once without weakening stale pro
       includedPrimaryTypes: ["tourist_attraction"],
       input: "上海外滩",
     }),
-    [{ id: "bund", primary: "外滩", secondary: "黄浦区 · 中山东一路" }],
+    [],
   );
   assert.equal(calls[0].searchParams.get("types"), "110000");
-  assert.equal(calls[1].searchParams.has("types"), false);
+  assert.equal(calls.length, 1);
 
+  await session.fetchSuggestions({ input: "上海外滩" });
   await session.fetchSuggestions({ input: "上海人民广场" });
   await assert.rejects(
     session.resolveSuggestion("bund"),
     (error) => error instanceof PlaceProviderError && error.code === "invalid_response",
   );
   session.close();
+});
+
+test("AMap Places reuses bounded suggestion and detail caches across sessions", async () => {
+  let requests = 0;
+  const provider = createAmapPlacesProvider({
+    fetchImplementation: (async (input) => {
+      requests += 1;
+      const operation = new URL(String(input), "https://app.example").searchParams.get("operation");
+      return operation === "suggest"
+        ? Response.json({ suggestions: [{ id: "bund", primary: "外滩" }] })
+        : Response.json({
+            place: {
+              coordinateSystem: "wgs84",
+              displayName: "外滩",
+              formattedAddress: "上海市黄浦区中山东一路",
+              latitude: 31.241701,
+              longitude: 121.490317,
+              provider: "amap",
+              providerPlaceId: "bund",
+            },
+          });
+    }) as typeof fetch,
+  });
+  const first = provider.createSession();
+  await first.fetchSuggestions({ input: "上海外滩" });
+  await first.resolveSuggestion("bund");
+  const second = provider.createSession();
+  await second.fetchSuggestions({ input: "上海外滩" });
+  await second.resolveSuggestion("bund");
+  assert.equal(requests, 2);
 });
 
 test("AMap Places drops stale results and closes each completed session", async () => {
@@ -286,6 +317,30 @@ test("AMap Places API fixes upstreams and returns only normalized WGS-84 data", 
   assert.notEqual(resolved.place.longitude, 121.490317);
   assert.equal(JSON.stringify(resolved).includes("server-web-key"), false);
   assert.equal("location" in resolved.place, false);
+});
+
+test("AMap Places API caches normalized successful responses without caching failures", async () => {
+  let requests = 0;
+  const cache = createAmapPlacesCache();
+  const options = {
+    apiKey: "server-web-key",
+    cache,
+    fetchImplementation: (async () => {
+      requests += 1;
+      return Response.json({
+        pois: [{ address: "中山东一路", id: "BUND1", name: "外滩" }],
+        status: "1",
+      });
+    }) as typeof fetch,
+  };
+  const request = () =>
+    new Request("https://app.example/api/maps/amap/places?operation=suggest&input=上海外滩");
+  const first = await handleAmapPlacesRequest(request(), options);
+  const second = await handleAmapPlacesRequest(request(), options);
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.match(first.headers.get("cache-control") ?? "", /s-maxage=86400/);
+  assert.equal(requests, 1);
 });
 
 test("AMap Places API rejects SSRF inputs and bounds provider failures", async () => {

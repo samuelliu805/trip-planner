@@ -1052,6 +1052,13 @@ test("public day route defaults to all shared stops between previous and current
     title: "Lunch",
     type: "meal" as const,
   };
+  const rental = {
+    place: { displayName: "Rental counter", latitude: 35.035, longitude: 135.785 },
+    ref: ref("q"),
+    sortOrder: 25,
+    title: "Rental pickup",
+    type: "car_rental" as const,
+  };
   const currentHotel = {
     place: { displayName: "Hotel Two", latitude: 35.04, longitude: 135.79 },
     ref: ref("p"),
@@ -1073,7 +1080,7 @@ test("public day route defaults to all shared stops between previous and current
       {
         ...itinerary.days[0],
         dayNumber: 2,
-        items: [activity, meal, unmappedActivity, currentHotel],
+        items: [activity, meal, rental, unmappedActivity, currentHotel],
         ref: secondDayRef,
       },
     ],
@@ -1084,7 +1091,7 @@ test("public day route defaults to all shared stops between previous and current
   assert.equal(plan.endRef, currentHotel.ref);
   assert.deepEqual(
     plan.items.map(({ title }) => title),
-    ["Hotel One", "Temple", "Lunch", "Hotel Two"],
+    ["Hotel One", "Temple", "Lunch", "Rental pickup", "Hotel Two"],
   );
   assert.deepEqual(
     plan.unmappedActivities.map(({ title }) => title),

@@ -8,6 +8,7 @@ const maximumResponseBytes = 512 * 1024;
 
 type AmapPlacesApiOptions = {
   apiKey: string;
+  cache?: AmapPlacesCache;
   fetchImplementation?: typeof fetch;
   retryDelayMs?: number;
   timeoutMs?: number;
@@ -15,13 +16,44 @@ type AmapPlacesApiOptions = {
 
 const maximumAttempts = 3;
 
-function responseHeaders() {
+type CachedPayload = { expiresAt: number; value: Record<string, unknown> };
+export type AmapPlacesCache = ReturnType<typeof createAmapPlacesCache>;
+
+export function createAmapPlacesCache(limit = 500) {
+  const entries = new Map<string, CachedPayload>();
   return {
-    "Cache-Control": "private, no-store, max-age=0",
+    get(key: string) {
+      const entry = entries.get(key);
+      if (!entry || entry.expiresAt <= Date.now()) {
+        entries.delete(key);
+        return undefined;
+      }
+      entries.delete(key);
+      entries.set(key, entry);
+      return entry.value;
+    },
+    set(key: string, value: Record<string, unknown>, ttlMs: number) {
+      entries.delete(key);
+      entries.set(key, { expiresAt: Date.now() + ttlMs, value });
+      while (entries.size > limit) entries.delete(entries.keys().next().value!);
+    },
+  };
+}
+
+function responseHeaders(cacheControl = "private, no-store, max-age=0") {
+  return {
+    "Cache-Control": cacheControl,
     "Content-Type": "application/json; charset=utf-8",
     "X-Content-Type-Options": "nosniff",
   };
 }
+
+const successfulResponseHeaders = (operation: "resolve" | "suggest") =>
+  responseHeaders(
+    operation === "resolve"
+      ? "public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000"
+      : "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800",
+  );
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { headers: responseHeaders(), status });
@@ -29,6 +61,10 @@ function errorResponse(message: string, status: number) {
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizedSearchInput(value: string) {
+  return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase();
 }
 
 async function waitForRetry(signal: AbortSignal, delayMs: number) {
@@ -136,6 +172,9 @@ export async function handleAmapPlacesRequest(request: Request, options: AmapPla
       if (!input || input.length > 80 || (types && !/^\d{6}(?:\|\d{6})*$/.test(types))) {
         return errorResponse("Invalid AMap places request.", 400);
       }
+      const cacheKey = `suggest:${normalizedSearchInput(input)}:${types}`;
+      const cached = options.cache?.get(cacheKey);
+      if (cached) return Response.json(cached, { headers: successfulResponseHeaders("suggest") });
       const parameters = new URLSearchParams({
         citylimit: "false",
         children: "1",
@@ -161,13 +200,18 @@ export async function handleAmapPlacesRequest(request: Request, options: AmapPla
         const secondary = [locality, address].filter(Boolean).join(" · ");
         return [{ id, primary, ...(secondary && { secondary }) }];
       });
-      return Response.json({ suggestions }, { headers: responseHeaders() });
+      const result = { suggestions };
+      options.cache?.set(cacheKey, result, 24 * 60 * 60_000);
+      return Response.json(result, { headers: successfulResponseHeaders("suggest") });
     }
 
     const id = url.searchParams.get("id")?.trim() ?? "";
     if (!/^[A-Za-z0-9]{1,64}$/.test(id)) {
       return errorResponse("Invalid AMap places request.", 400);
     }
+    const cacheKey = `resolve:${id}`;
+    const cached = options.cache?.get(cacheKey);
+    if (cached) return Response.json(cached, { headers: successfulResponseHeaders("resolve") });
     const payload = await readAmapPayload(
       "resolve",
       new URLSearchParams({ extensions: "all", id }),
@@ -180,7 +224,9 @@ export async function handleAmapPlacesRequest(request: Request, options: AmapPla
     }
     const place = normalizeAmapPlace(candidate);
     if (place.providerPlaceId !== id) return errorResponse("AMap returned an invalid place.", 502);
-    return Response.json({ place }, { headers: responseHeaders() });
+    const result = { place };
+    options.cache?.set(cacheKey, result, 7 * 24 * 60 * 60_000);
+    return Response.json(result, { headers: successfulResponseHeaders("resolve") });
   } catch (error) {
     const category = error instanceof Error ? error.message : "upstream";
     if (category === "configuration") return errorResponse("AMap places are not configured.", 503);

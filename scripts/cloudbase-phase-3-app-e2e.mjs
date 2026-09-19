@@ -2847,6 +2847,57 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
   }
 }
 
+async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEvidence) {
+  await addAmapActivityThroughUi(browser, "上海人民广场", 4);
+  const selectedPlaceOpen = await evaluate(
+    browser,
+    `Boolean(document.querySelector('button[aria-label="Close place details"]'))`,
+  );
+  if (selectedPlaceOpen) {
+    await clickElement(
+      browser,
+      `document.querySelector('button[aria-label="Close place details"]')`,
+      "close newly-added route place details",
+    );
+  }
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('button[data-route-update]'))`,
+    "route refresh control after adding an activity",
+    45_000,
+  );
+  const pendingEvidence = await loadPersistedAmapEvidence(tripId);
+  assert.equal(pendingEvidence.items.length, 4);
+  assert.equal(
+    pendingEvidence.stops.length,
+    previousEvidence.stops.length,
+    "The new activity should remain a straight-line preview until the user updates the route.",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('button[data-route-update]')`,
+    "Update route after adding an activity",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('button[data-route-update]') &&
+      Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
+    "updated AMap route after adding an activity",
+    60_000,
+  );
+  const refreshed = await loadPersistedAmapEvidence(tripId);
+  assert.equal(refreshed.stops.length, previousEvidence.stops.length + 1);
+  assert.ok(
+    refreshed.items.every((item) => refreshed.stops.some((stop) => stop.item_id === item.id)),
+    "The refreshed route did not include every saved activity.",
+  );
+  assert.equal(
+    refreshed.calculations[0]?.calculated_legs?.length,
+    refreshed.stops.length - 1,
+    "The refreshed route calculation did not cover every adjacent stop.",
+  );
+}
+
 async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
   const before = await evaluate(
     browser,
@@ -4344,10 +4395,22 @@ async function loadPersistedAmapEvidence(tripId) {
         "application E2E calculated AMap route",
       )
     : [];
+  const stops = planIds.length
+    ? await controlledData(
+        () =>
+          db
+            .from("day_route_stops")
+            .select("plan_id,item_id,position")
+            .in("plan_id", planIds)
+            .order("position", { ascending: true }),
+        "application E2E persisted AMap route stops",
+      )
+    : [];
   return {
     calculations: Array.isArray(calculations) ? calculations : [calculations],
     items: Array.isArray(items) ? items : [items],
     places: Array.isArray(places) ? places : [places],
+    stops: Array.isArray(stops) ? stops : [stops],
   };
 }
 
@@ -4633,6 +4696,7 @@ async function run() {
     const routeEvidence = await loadPersistedAmapEvidence(tripId);
     assertPersistedAmapRoute(routeEvidence);
     await assertRealAmapBrowserAdapter(browser);
+    await verifyAddedActivityRefreshesAmapRoute(browser, tripId, routeEvidence);
     await verifyDeletedActivityLeavesMapAndRoute(browser, tripId);
     const publicToken = await publishThroughUi(browser, tripId);
     const publishedTitle = updatedTitle;

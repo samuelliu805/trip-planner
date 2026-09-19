@@ -102,6 +102,7 @@ import {
 } from "../routes/day-route-map.ts";
 import { fixedDayRouteDraft } from "../routes/day-route-order.ts";
 import { defaultDayRouteDraft } from "../routes/day-route-default-draft.ts";
+import { synchronizeSavedDayRouteDraft } from "../routes/day-route-synchronization.ts";
 import { buildDayCityMarkers, buildDayCityRouteLines } from "../routes/day-city-map.ts";
 import { validateDayRouteDraft } from "../routes/route-config.ts";
 import { calculateRouteConfiguration } from "../routes/calculator.ts";
@@ -882,7 +883,11 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     "utf8",
   );
   const mapHook = await readFile(new URL("./hooks/use-planner-map.ts", import.meta.url), "utf8");
-  const dayRoute = await readFile(new URL("../routes/use-day-route.ts", import.meta.url), "utf8");
+  let dayRoute = await readFile(new URL("../routes/use-day-route.ts", import.meta.url), "utf8");
+  dayRoute += await readFile(
+    new URL("../routes/use-day-route-actions.ts", import.meta.url),
+    "utf8",
+  );
   const variantActions = await readFile(new URL("../variants/actions.ts", import.meta.url), "utf8");
   const controls = await readFile(
     new URL("../variants/components/route-variant-controls.tsx", import.meta.url),
@@ -961,7 +966,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(routeQueries, /plannerQueryKey\(tripId, variantId\)/);
   assert.match(workspace, /key=\{props\.initialWorkspace\.variant\.id\}/);
   assert.match(dayRoute, /useSaveDayRoutePlan\(tripId, variantId\)/);
-  assert.match(dayRoute, /variantId: workspace\.variant\.id/);
+  assert.match(dayRoute, /const variantId = workspace\.variant\.id/);
   assert.match(mapHook, /overview:\$\{variantId\}/);
 
   assert.doesNotMatch(controls, /router\.push\(tripSectionHref/);
@@ -1185,6 +1190,30 @@ test("route calculation uses full cache hits and only recalculates changed legs"
   );
   assert.equal(partial.cache, "partial");
   assert.equal(calls, 1);
+
+  calls = 0;
+  const inserted: RouteCalculationConfig = {
+    ...config,
+    legModes: ["walk", "walk", "taxi"],
+    stops: [
+      config.stops[0],
+      { coordinates: wgs84Coordinates(37.7799, -122.4144), itemId: "new-stop" },
+      config.stops[1],
+      config.stops[2],
+    ],
+  };
+  const shifted = await calculateRouteConfiguration(
+    inserted,
+    previous,
+    routeProviderResolver(async (request) => {
+      calls += 1;
+      return calculatedLeg(request);
+    }),
+  );
+  assert.equal(shifted.cache, "partial");
+  assert.equal(calls, 2, "the unchanged museum-to-restaurant leg should survive insertion");
+  assert.equal(shifted.legs[2].legSignature, previous.calculatedLegs[1].legSignature);
+  assert.equal(shifted.legs[2].position, 3);
 });
 
 test("failed recalculation leaves the prior snapshot untouched and caps concurrency", async () => {
@@ -1566,9 +1595,20 @@ test("provider errors are actionable, safe, and never silently become fallback",
   assert.throws(() => parseGoogleDurationSeconds("soon"), RouteProviderError);
 });
 
-test("route configuration accepts only eligible same-day places and synchronized modes", () => {
+test("route configuration accepts all eligible same-day places and synchronized modes", () => {
   assert.equal(validateDayRouteDraft(routeDraft()), null);
-  for (const type of ["location", "transport", "car_rental", "note", "flight", "train"]) {
+  assert.equal(
+    validateDayRouteDraft(
+      routeDraft({
+        stops: [
+          routeStop("00000000-0000-4000-8000-000000000010", "car_rental", 37.7749, -122.4194),
+          routeStop("00000000-0000-4000-8000-000000000011", "meal", 37.7849, -122.4094),
+        ],
+      }),
+    ),
+    null,
+  );
+  for (const type of ["location", "transport", "note", "flight", "train"]) {
     assert.match(
       validateDayRouteDraft(
         routeDraft({
@@ -1578,7 +1618,7 @@ test("route configuration accepts only eligible same-day places and synchronized
           ],
         }),
       ) ?? "",
-      /Activity, Meal, and Hotel/,
+      /Activity, Meal, Car rental, and Hotel/,
     );
   }
   assert.match(
@@ -2206,16 +2246,17 @@ test("Day route markers include only eligible places and combine repeated Hotel 
       item("hotel", "hotel", "hotel-place", 1),
       item("activity", "activity", "activity-place", 2),
       item("meal-no-place", "meal", null, 3),
-      item("transport", "transport", "transport-place", 4),
+      item("rental", "car_rental", "rental-place", 4),
+      item("transport", "transport", "transport-place", 5),
     ],
   } as unknown as PlannerDay;
 
   assert.deepEqual(
     eligibleDayRouteItems(day).map(({ id }) => id),
-    ["hotel", "activity"],
+    ["hotel", "activity", "rental"],
   );
   const markers = buildDayRouteMarkers(day, ["hotel", "activity", "hotel"]);
-  assert.equal(markers.length, 2);
+  assert.equal(markers.length, 3);
   assert.equal(markers.find(({ itemIds }) => itemIds.includes("hotel"))?.label, "1 · 3");
   assert.equal(
     markers.find(({ itemIds }) => itemIds.includes("activity"))?.appearance,
@@ -2280,11 +2321,36 @@ test("new Day routes include all eligible stops and anchor available Hotels", ()
   const previousHotel = routeItem("previous-hotel", "hotel", 1);
   const activity = routeItem("activity", "activity", 1);
   const meal = routeItem("meal", "meal", 2);
+  const rental = routeItem("rental", "car_rental", 2.5);
   const currentHotel = routeItem("current-hotel", "hotel", 3);
 
-  assert.deepEqual(defaultDayRouteDraft([activity, currentHotel, meal], "walk", previousHotel), {
-    itemIds: ["previous-hotel", "activity", "meal", "current-hotel"],
-    legModes: ["walk", "walk", "walk"],
+  assert.deepEqual(
+    defaultDayRouteDraft([activity, currentHotel, meal, rental], "walk", previousHotel),
+    {
+      itemIds: ["previous-hotel", "activity", "meal", "rental", "current-hotel"],
+      legModes: ["walk", "walk", "walk", "walk"],
+    },
+  );
+});
+
+test("saved Day routes include newly-created stops without restoring explicit omissions", () => {
+  const item = (id: string, type: ItineraryItem["type"], createdAt: string, sortOrder: number) =>
+    ({ created_at: createdAt, id, sort_order: sortOrder, type }) as ItineraryItem;
+  const planUpdatedAt = "2026-09-18T10:00:00.000Z";
+  const existing = item("existing", "activity", "2026-09-18T09:00:00.000Z", 1);
+  const omitted = item("omitted", "meal", "2026-09-18T09:30:00.000Z", 2);
+  const added = item("added", "activity", "2026-09-18T10:01:00.000Z", 3);
+  const rental = item("rental", "car_rental", "2026-09-18T10:02:00.000Z", 4);
+  const synchronized = synchronizeSavedDayRouteDraft(
+    { itemIds: [existing.id], legModes: [] },
+    [existing, omitted, added, rental],
+    "walk",
+    planUpdatedAt,
+  );
+  assert.deepEqual(synchronized.addedItemIds, [added.id, rental.id]);
+  assert.deepEqual(synchronized.draft, {
+    itemIds: [existing.id, added.id, rental.id],
+    legModes: ["walk", "walk"],
   });
 });
 
@@ -2315,6 +2381,48 @@ test("Day route renders Google legs solid and straight fallbacks dashed", () => 
     { lat: 37, lng: -122 },
     { lat: 38, lng: -121 },
   ]);
+});
+
+test("Day route keeps unchanged calculated connections and previews inserted connections", () => {
+  const calculation = {
+    calculatedLegs: [
+      {
+        geometry: {
+          destination: { latitude: 2, longitude: 2 },
+          origin: { latitude: 1, longitude: 1 },
+          source: "straight",
+        },
+        legSignature: "a-b",
+        mode: "walk",
+        position: 1,
+      },
+      {
+        geometry: {
+          destination: { latitude: 3, longitude: 3 },
+          origin: { latitude: 2, longitude: 2 },
+          source: "straight",
+        },
+        legSignature: "b-c",
+        mode: "walk",
+        position: 2,
+      },
+    ],
+  } as unknown as DayRouteCalculation;
+  const lines = buildDayRouteLines(
+    calculation,
+    ["a", "b", "c"],
+    [
+      { itemId: "a", latitude: 1, longitude: 1 },
+      { itemId: "new", latitude: 1.5, longitude: 1.5 },
+      { itemId: "b", latitude: 2, longitude: 2 },
+      { itemId: "c", latitude: 3, longitude: 3 },
+    ],
+    ["walk", "walk", "walk"],
+  );
+  assert.deepEqual(
+    lines.map(({ id }) => id),
+    ["route-preview:1:a:new", "route-preview:2:new:b", "route-leg:3:b-c"],
+  );
 });
 
 test("route status ignores display changes and detects coordinate, deletion, and place changes", () => {
@@ -2480,11 +2588,14 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(mapHook, /day-route:\$\{variantId\}:\$\{dayRoute\.activeDay\?\.id/);
   assert.doesNotMatch(mapHook, /firstCity|type === "location"/);
   assert.match(mapHook, /Activity city\/town stage/);
-  assert.match(interactions, /\["activities", "hotel", "meals"\][\s\S]*setMapMode\("day_route"\)/);
+  assert.match(
+    interactions,
+    /\["activities", "car_rental", "hotel", "meals"\][\s\S]*setMapMode\("day_route"\)/,
+  );
   assert.match(interactions, /category\?\.id === "city"\) setMapMode\("day_route"\)/);
   assert.match(
     interactions,
-    /\["activity", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedMapItemId\(item\.place \? item\.id : undefined\)/,
+    /\["activity", "car_rental", "hotel", "meal"\][\s\S]*setMapMode\("day_route"\)[\s\S]*setSelectedMapItemId\(item\.place \? item\.id : undefined\)/,
   );
   assert.doesNotMatch(interactions, /hasDayRoute|routeExists/);
   assert.match(interactions, /setMapMode\("overview"\)/);
@@ -2501,6 +2612,10 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(mapShell, /title="Edit item"/);
   assert.doesNotMatch(mapShell, /Show Route A panel/);
   assert.match(mapShell, /DayRouteOverlay[\s\S]*onClose=\{closeDayPanel\}/);
+  assert.match(
+    mapShell,
+    /panelDismissed[\s\S]*mapMode === "day_route" && routeUpdateAvailable[\s\S]*onRouteUpdate/,
+  );
   assert.doesNotMatch(mapShell, /day-route-place-card/);
   assert.match(routeUi, /Discard changes and collapse route editor/);
   assert.match(routeUi, /Discard changes and return to route summary/);
@@ -2546,6 +2661,7 @@ test("Routes server key stays in the server-only provider and out of client modu
     [
       "../routes/day-route-overlay.tsx",
       "../routes/use-day-route.ts",
+      "../routes/use-day-route-actions.ts",
       "../routes/overview-route-overlay.tsx",
       "../routes/use-overview-route.ts",
       "./hooks/use-planner-map.ts",
@@ -3392,7 +3508,7 @@ test("mobile and tablet workspaces contain scrolling and keep frozen Matrix laye
   assert.doesNotMatch(styles, /planner-mobile-map-fab/);
   assert.match(
     styles,
-    /\.map-panel-reopen \{\s*bottom: max\(2\.75rem, calc\(env\(safe-area-inset-bottom\)/,
+    /\.map-panel-reopen,[\s\S]*\.map-route-refresh \{\s*bottom: max\(2\.75rem, calc\(env\(safe-area-inset-bottom\)/,
   );
   assert.match(workspace, /selectedMapItem/);
   assert.match(workspace, /selectedId=\{selectedMapItem\?\.id\}/);

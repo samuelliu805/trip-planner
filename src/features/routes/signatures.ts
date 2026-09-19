@@ -20,27 +20,24 @@ export function normalizedCoordinateSignature(coordinates: Coordinates): string 
 
 export function buildRouteLegSignature(
   config: Pick<RouteCalculationConfig, "dayId" | "tripId" | "variantId">,
-  position: number,
+  _position: number,
   from: RouteCalculationConfig["stops"][number],
   to: RouteCalculationConfig["stops"][number],
   mode: RouteLegMode,
   providerId: MapsProviderId,
 ): string {
-  return `leg-v2-${stableHash(
+  return `leg-v3-${stableHash(
     JSON.stringify({
       dayId: config.dayId,
       from: {
         coordinates: normalizedCoordinateSignature(from.coordinates),
         itemId: from.itemId,
-        occurrence: position,
       },
       mode,
-      position,
       providerId,
       to: {
         coordinates: normalizedCoordinateSignature(to.coordinates),
         itemId: to.itemId,
-        occurrence: position + 1,
       },
       tripId: config.tripId,
       variantId: config.variantId,

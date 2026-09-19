@@ -1,7 +1,14 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ChevronDown, GitCompareArrows, Maximize2, PanelBottomOpen } from "lucide-react";
+import {
+  ChevronDown,
+  GitCompareArrows,
+  LoaderCircle,
+  Maximize2,
+  PanelBottomOpen,
+  RefreshCw,
+} from "lucide-react";
 import { useId } from "react";
 
 import {
@@ -27,7 +34,10 @@ export function PlannerMapControls({
   onExpand,
   onMapModeChange,
   onPanelOpen,
+  onRouteUpdate,
   panelDismissed,
+  routeUpdateAvailable,
+  routeUpdatePending,
 }: {
   activeDayNumber?: number;
   compact: boolean;
@@ -39,7 +49,10 @@ export function PlannerMapControls({
   onExpand?: () => void;
   onMapModeChange: PlannerMapModeChange;
   onPanelOpen: () => void;
+  onRouteUpdate: () => void;
   panelDismissed: boolean;
+  routeUpdateAvailable: boolean;
+  routeUpdatePending: boolean;
 }) {
   const { t } = useI18n();
   const comparisonReasonId = useId();
@@ -167,17 +180,37 @@ export function PlannerMapControls({
         </div>
       ) : null}
       {!compact && panelDismissed ? (
-        <button
-          aria-label="Open map details"
-          data-i18n-aria-label={"Open map details"}
-          className="map-panel-reopen absolute left-3 z-20 flex size-11 items-center justify-center rounded-full border bg-background/95 p-0 text-foreground shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onClick={onPanelOpen}
-          title="Open map details"
-          data-i18n-title={"Open map details"}
-          type="button"
-        >
-          <PanelBottomOpen className="size-5 text-primary" />
-        </button>
+        <>
+          <button
+            aria-label="Open map details"
+            data-i18n-aria-label={"Open map details"}
+            className="map-panel-reopen absolute left-3 z-20 flex size-11 items-center justify-center rounded-full border bg-background/95 p-0 text-foreground shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={onPanelOpen}
+            title="Open map details"
+            data-i18n-title={"Open map details"}
+            type="button"
+          >
+            <PanelBottomOpen className="size-5 text-primary" />
+          </button>
+          {mapMode === "day_route" && routeUpdateAvailable ? (
+            <button
+              aria-label={t(routeUpdatePending ? "Updating route…" : "Update route")}
+              className="map-route-refresh absolute left-16 z-20 flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-primary/25 bg-background/95 px-3 text-xs font-medium text-primary shadow-lg backdrop-blur hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              data-route-update=""
+              disabled={routeUpdatePending}
+              onClick={onRouteUpdate}
+              title={t(routeUpdatePending ? "Updating route…" : "Update route")}
+              type="button"
+            >
+              {routeUpdatePending ? (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw aria-hidden="true" className="size-4" />
+              )}
+              <Localized value={routeUpdatePending ? "Updating route…" : "Update route"} />
+            </button>
+          ) : null}
+        </>
       ) : null}
     </>
   );

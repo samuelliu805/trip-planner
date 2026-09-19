@@ -5,14 +5,26 @@ import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model
 import { routeGeometryCoordinates } from "../../lib/providers/routes/geometry.ts";
 
 import { isEligibleRouteStopType } from "./route-config.ts";
-import type { DayRouteCalculation } from "./types.ts";
+import { canonicalRouteLegMode, type DayRouteCalculation, type RouteLegMode } from "./types.ts";
 
-const markerKind = (item: ItineraryItem): "activity" | "hotel" | "meal" =>
-  item.type === "hotel" ? "hotel" : item.type === "meal" ? "meal" : "activity";
+export type DayRouteLineStop = {
+  itemId: string;
+  latitude: number;
+  longitude: number;
+};
+
+const markerKind = (item: ItineraryItem): "activity" | "carRental" | "hotel" | "meal" =>
+  item.type === "hotel"
+    ? "hotel"
+    : item.type === "meal"
+      ? "meal"
+      : item.type === "car_rental"
+        ? "carRental"
+        : "activity";
 
 const markerGlyph = {
-  en: { activity: "A", hotel: "H", meal: "M" },
-  "zh-CN": { activity: "活", hotel: "住", meal: "餐" },
+  en: { activity: "A", carRental: "R", hotel: "H", meal: "M" },
+  "zh-CN": { activity: "活", carRental: "租", hotel: "住", meal: "餐" },
 } as const;
 
 export function eligibleDayRouteItems(day?: PlannerDay): ItineraryItem[] {
@@ -84,24 +96,74 @@ export function buildDayRouteMarkers(
   return [...grouped.values()];
 }
 
-export function buildDayRouteLines(calculation: DayRouteCalculation | null): PlannerMapLine[] {
-  if (!calculation) return [];
-  return calculation.calculatedLegs.flatMap((leg) => {
-    try {
-      const coordinates = routeGeometryCoordinates(leg.geometry);
-      if (coordinates.length < 2) return [];
-      return [
-        {
-          color: "#166534",
-          dashed: leg.geometry.source === "straight",
-          id: `route-leg:${leg.position}:${leg.legSignature}`,
-          path: coordinates.map(({ latitude, longitude }) => ({ lat: latitude, lng: longitude })),
-          position: leg.position,
-          routeLayer: "places",
-        },
-      ];
-    } catch {
-      return [];
+function calculatedRouteLine(
+  leg: DayRouteCalculation["calculatedLegs"][number],
+  position = leg.position,
+): PlannerMapLine[] {
+  try {
+    const coordinates = routeGeometryCoordinates(leg.geometry);
+    if (coordinates.length < 2) return [];
+    return [
+      {
+        color: "#166534",
+        dashed: leg.geometry.source === "straight",
+        id: `route-leg:${position}:${leg.legSignature}`,
+        path: coordinates.map(({ latitude, longitude }) => ({ lat: latitude, lng: longitude })),
+        position,
+        routeLayer: "places",
+      },
+    ];
+  } catch {
+    return [];
+  }
+}
+
+const connectionKey = (from: string, to: string, mode: RouteLegMode) =>
+  `${from}\u0000${to}\u0000${canonicalRouteLegMode(mode)}`;
+
+export function buildDayRouteLines(
+  calculation: DayRouteCalculation | null,
+  calculatedStopItemIds?: string[],
+  displayedStops?: DayRouteLineStop[],
+  displayedLegModes?: RouteLegMode[],
+): PlannerMapLine[] {
+  if (!displayedStops) {
+    if (!calculation) return [];
+    return calculation.calculatedLegs.flatMap((leg) => calculatedRouteLine(leg));
+  }
+
+  const calculatedByConnection = new Map(
+    (calculation?.calculatedLegs ?? []).flatMap((leg) => {
+      const from = calculatedStopItemIds?.[leg.position - 1];
+      const to = calculatedStopItemIds?.[leg.position];
+      return from && to ? [[connectionKey(from, to, leg.mode), leg] as const] : [];
+    }),
+  );
+  return displayedStops.slice(0, -1).flatMap((from, index) => {
+    const to = displayedStops[index + 1];
+    const position = index + 1;
+    const displayedMode = displayedLegModes?.[index];
+    const cached = displayedMode
+      ? calculatedByConnection.get(connectionKey(from.itemId, to.itemId, displayedMode))
+      : undefined;
+    if (cached) {
+      const line = calculatedRouteLine(cached, position);
+      if (line.length) return line;
     }
+    if (from.latitude === to.latitude && from.longitude === to.longitude) return [];
+    return [
+      {
+        color: "#166534",
+        dashed: true,
+        geodesic: false,
+        id: `route-preview:${position}:${from.itemId}:${to.itemId}`,
+        path: [
+          { lat: from.latitude, lng: from.longitude },
+          { lat: to.latitude, lng: to.longitude },
+        ],
+        position,
+        routeLayer: "places" as const,
+      },
+    ];
   });
 }

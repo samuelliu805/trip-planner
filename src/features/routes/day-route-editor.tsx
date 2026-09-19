@@ -3,6 +3,7 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import {
   BedDouble,
+  CarFront,
   ChevronDown,
   Footprints,
   MapPin,
@@ -33,6 +34,7 @@ import type { DayRouteUi } from "./use-day-route";
 function StopIcon({ item }: { item?: ItineraryItem }) {
   if (item?.type === "hotel") return <BedDouble className="size-4" />;
   if (item?.type === "meal") return <Utensils className="size-4" />;
+  if (item?.type === "car_rental") return <CarFront className="size-4" />;
   return <MapPin className="size-4" />;
 }
 

@@ -24,6 +24,29 @@ type AmapPlacesProviderOptions = {
   fetchImplementation?: typeof fetch;
 };
 
+type CacheEntry<T> = { expiresAt: number; value: T };
+
+function boundedCache<T>(limit: number, ttlMs: number) {
+  const entries = new Map<string, CacheEntry<T>>();
+  return {
+    get(key: string) {
+      const entry = entries.get(key);
+      if (!entry || entry.expiresAt <= Date.now()) {
+        entries.delete(key);
+        return undefined;
+      }
+      entries.delete(key);
+      entries.set(key, entry);
+      return entry.value;
+    },
+    set(key: string, value: T) {
+      entries.delete(key);
+      entries.set(key, { expiresAt: Date.now() + ttlMs, value });
+      while (entries.size > limit) entries.delete(entries.keys().next().value!);
+    },
+  };
+}
+
 function ensureActive(
   closed: boolean,
   generation: number,
@@ -93,6 +116,8 @@ function combinedSignal(sessionSignal: AbortSignal, requestSignal?: AbortSignal)
 export function createAmapPlacesProvider(options: AmapPlacesProviderOptions = {}): PlacesProvider {
   const endpoint = options.endpoint ?? defaultEndpoint;
   const fetchImplementation = options.fetchImplementation ?? fetch;
+  const suggestionCache = boundedCache<PlaceSuggestion[]>(100, 5 * 60_000);
+  const placeCache = boundedCache<PlaceSnapshot>(100, 24 * 60 * 60_000);
   return {
     createSession(): PlaceSearchSession {
       const suggestions = new Set<string>();
@@ -133,6 +158,7 @@ export function createAmapPlacesProvider(options: AmapPlacesProviderOptions = {}
           suggestions.clear();
           ensureActive(closed, requestGeneration, generation, input.signal);
           const requestedTypes = typeFilter(input.includedPrimaryTypes);
+          const cacheKey = `${input.input.normalize("NFKC").trim().toLocaleLowerCase()}\u0000${requestedTypes}`;
           const search = async (types: string) => {
             const parameters = new URLSearchParams({ operation: "suggest", input: input.input });
             if (types) parameters.set("types", types);
@@ -148,8 +174,9 @@ export function createAmapPlacesProvider(options: AmapPlacesProviderOptions = {}
             return values;
           };
           try {
-            let values = await search(requestedTypes);
-            if (!values.length && requestedTypes) values = await search("");
+            const cached = suggestionCache.get(cacheKey);
+            const values = cached ?? (await search(requestedTypes));
+            if (!cached) suggestionCache.set(cacheKey, values);
             ensureActive(closed, requestGeneration, generation, input.signal);
             for (const suggestion of values) suggestions.add(suggestion.id);
             return values;
@@ -166,6 +193,8 @@ export function createAmapPlacesProvider(options: AmapPlacesProviderOptions = {}
           if (!suggestions.has(id)) throw new PlaceProviderError("invalid_response");
           const requestGeneration = generation;
           try {
+            const cached = placeCache.get(id);
+            if (cached) return cached;
             const payload = await request(
               new URLSearchParams({ id, operation: "resolve" }),
               signal,
@@ -181,6 +210,7 @@ export function createAmapPlacesProvider(options: AmapPlacesProviderOptions = {}
             }
             const place = validatedPlace(payload.place);
             if (place.providerPlaceId !== id) throw new PlaceProviderError("invalid_response");
+            placeCache.set(id, place);
             return place;
           } catch (error) {
             if (error instanceof PlaceProviderError) {

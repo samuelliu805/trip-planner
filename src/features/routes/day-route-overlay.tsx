@@ -1,13 +1,14 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import { Pencil, Plus, Route, X } from "lucide-react";
+import { LoaderCircle, Pencil, Plus, RefreshCw, Route, X } from "lucide-react";
 
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { DayRouteEditor } from "./day-route-editor";
 import { SelectedPlaceSlot } from "./day-route-panel-ui";
 import { RouteIconButton } from "./route-icon-button";
 import { RouteLegDetails } from "./route-leg-details";
+import { canonicalRouteLegMode } from "./types";
 import type { DayRouteUi } from "./use-day-route";
 
 function DayRouteSummary({
@@ -24,12 +25,33 @@ function DayRouteSummary({
   const orderedStops = route.plan?.stops
     .slice()
     .sort((left, right) => left.position - right.position);
+  const savedItemIds = orderedStops?.map(({ item_id }) => item_id) ?? [];
+  const calculatedByConnection = new Map(
+    (calculation?.calculatedLegs ?? []).flatMap((leg) => {
+      const from = savedItemIds[leg.position - 1];
+      const to = savedItemIds[leg.position];
+      return from && to
+        ? [[`${from}\u0000${to}\u0000${canonicalRouteLegMode(leg.mode)}`, leg] as const]
+        : [];
+    }),
+  );
+  const displayed = route.displayDraft;
   const legDetails =
-    calculation?.calculatedLegs.map((leg) => ({
-      ...leg,
-      fromLabel: itemTitles.get(orderedStops?.[leg.position - 1]?.item_id ?? ""),
-      toLabel: itemTitles.get(orderedStops?.[leg.position]?.item_id ?? ""),
-    })) ?? [];
+    displayed?.itemIds.slice(0, -1).flatMap((from, index) => {
+      const to = displayed.itemIds[index + 1];
+      const mode = displayed.legModes[index];
+      const leg = calculatedByConnection.get(`${from}\u0000${to}\u0000${mode}`);
+      return leg
+        ? [
+            {
+              ...leg,
+              fromLabel: itemTitles.get(from),
+              position: index + 1,
+              toLabel: itemTitles.get(to),
+            },
+          ]
+        : [];
+    }) ?? [];
 
   return (
     <section className="map-bottom-panel day-route-summary absolute bottom-3 left-3 right-3 z-20 flex max-h-[62dvh] flex-col overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
@@ -57,6 +79,22 @@ function DayRouteSummary({
           <X className="size-4" />
         </RouteIconButton>
       </div>
+      {route.status && route.status !== "current" ? (
+        <button
+          className="mx-3 mb-2 flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-60"
+          data-route-update=""
+          disabled={route.pending}
+          onClick={() => void route.recalculate()}
+          type="button"
+        >
+          {route.pending ? (
+            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+          ) : (
+            <RefreshCw aria-hidden="true" className="size-4" />
+          )}
+          <Localized value={route.pending ? "Updating route…" : "Route changed · Update route"} />
+        </button>
+      ) : null}
       <RouteLegDetails legs={legDetails} />
       <AutoDismissAlert
         className="m-3 mt-2 rounded-md text-xs shadow-none"
