@@ -51,7 +51,7 @@ export function validateDayRouteDraft(draft: DayRouteDraft): string | null {
   }
 
   if (draft.stops.some((stop) => !isEligibleRouteStopType(stop.type))) {
-    return "Only Activity, Meal, and Hotel items can be route stops.";
+    return "Only Activity, Meal, Car rental, and Hotel items can be route stops.";
   }
 
   if (draft.stops.some((stop) => !stop.coordinates || !hasValidCoordinates(stop.coordinates))) {

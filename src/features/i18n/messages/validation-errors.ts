@@ -3,8 +3,8 @@ export const validationErrorsZhCN: Record<string, string> = {
   "Add a link label.": "请填写链接名称。",
   "Add a name, link, or note.": "请填写名称、链接或备注。",
   "Add a reminder or detail": "添加提醒或详情",
-  "Add a saved place to an Activity, Meal, or Hotel on this day.":
-    "请为当天的活动、用餐或住宿添加已保存地点。",
+  "Add a saved place to an Activity, Meal, Car rental, or Hotel on this day.":
+    "请为当天的活动、用餐、租车或住宿添加已保存地点。",
   "Add a saved place with city/town data to an Activity to map the trip overview.":
     "请为活动添加包含城市或城镇信息的已保存地点，以便绘制全程地图。",
   "Add at least two city/town stages before calculating.":

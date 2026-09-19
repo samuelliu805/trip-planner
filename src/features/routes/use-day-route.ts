@@ -1,31 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
-import type { RouteMode } from "@/lib/telemetry/events";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
-import { isItineraryConflict } from "@/features/itinerary/query-cache";
-import { plannerQueryKey } from "@/features/itinerary/planner-query";
-import { wgs84Coordinates } from "@/lib/providers/maps/types";
 
 import { eligibleDayRouteItems } from "./day-route-map";
 import { defaultDayRouteDraft } from "./day-route-default-draft";
 import { fixedDayRouteDraft } from "./day-route-order";
+import { synchronizeSavedDayRouteDraft } from "./day-route-synchronization";
 import { resolveRouteCalculationConfig } from "./plan-config";
-import { useCalculateDayRoute, useClearDayRoutePlan, useSaveDayRoutePlan } from "./queries";
-import { validateDayRouteDraft } from "./route-config";
 import { dayRouteStatus, type DayRouteStatus } from "./status";
 import { suggestedDraftLegMode } from "./transport-suggestion";
-import {
-  canonicalRouteLegMode,
-  type DayRouteDraft,
-  type DayRoutePlan,
-  type RouteLegMode,
-} from "./types";
+import { useDayRouteActions } from "./use-day-route-actions";
+import { canonicalRouteLegMode, type DayRoutePlan, type RouteLegMode } from "./types";
 
 export type DayRouteEditorDraft = { itemIds: string[]; legModes: RouteLegMode[] };
 
@@ -34,6 +24,7 @@ export type DayRouteUi = {
   addStop: (itemId: string) => void;
   cancelEditing: () => void;
   clearRoute: () => Promise<void>;
+  displayDraft: DayRouteEditorDraft | null;
   draft: DayRouteEditorDraft | null;
   editing: boolean;
   eligibleItems: ItineraryItem[];
@@ -45,6 +36,7 @@ export type DayRouteUi = {
   pending: boolean;
   plan?: DayRoutePlan;
   previousDay?: PlannerDay;
+  recalculate: () => Promise<void>;
   removeItem: (itemId: string) => void;
   removeStop: (index: number) => void;
   reloadLatest: () => Promise<void>;
@@ -61,17 +53,11 @@ const savedDraft = (plan: DayRoutePlan): DayRouteEditorDraft => ({
     .map(({ mode }) => canonicalRouteLegMode(mode)),
 });
 
-const telemetryRouteMode = (modes: RouteLegMode[]): RouteMode => {
-  const values = new Set(modes.map(canonicalRouteLegMode));
-  return values.size === 0 ? "unset" : values.size === 1 ? ([...values][0] as RouteMode) : "mixed";
-};
-
 export function useDayRoute(
   workspace: PlannerWorkspace,
   activeDay: PlannerDay | undefined,
   tripId: string,
 ): DayRouteUi {
-  const queryClient = useQueryClient();
   const persistence = usePlannerPersistence();
   const [draftState, setDraftState] = useState<{
     dayId: string;
@@ -116,24 +102,23 @@ export function useDayRoute(
         : null,
     [currentHotel?.id, eligibleItems, previousHotel?.id, rawDraft, suggestedMode],
   );
+  const synchronized = useMemo(
+    () =>
+      plan
+        ? synchronizeSavedDayRouteDraft(
+            savedDraft(plan),
+            eligibleItems,
+            suggestedMode,
+            plan.updated_at,
+            previousHotel,
+          )
+        : null,
+    [eligibleItems, plan, previousHotel, suggestedMode],
+  );
+  const displayDraft = draft ?? synchronized?.draft ?? null;
   const variantId = workspace.variant.id;
-  const saveMutation = useSaveDayRoutePlan(tripId, variantId);
-  const calculateMutation = useCalculateDayRoute(tripId, variantId);
-  const clearMutation = useClearDayRoutePlan(tripId, variantId);
-  const pending = saveMutation.isPending || calculateMutation.isPending || clearMutation.isPending;
-
   function setError(value?: string) {
     setErrorState(value && activeDay ? { dayId: activeDay.id, value } : null);
-  }
-
-  async function reloadLatest() {
-    if (!activeDay) return;
-    await queryClient.refetchQueries({
-      queryKey: plannerQueryKey(tripId, variantId),
-      type: "active",
-    });
-    setConflictDayId(undefined);
-    setError(undefined);
   }
 
   function setDraft(value: DayRouteEditorDraft | null) {
@@ -225,93 +210,33 @@ export function useDayRoute(
     }));
   }
 
+  const { clearRoute, pending, persistAndCalculate, reloadLatest } = useDayRouteActions({
+    activeDay,
+    actorType: persistence?.actorType ?? "authenticated",
+    plan,
+    previousDay,
+    setConflictDayId,
+    setDraft,
+    setError,
+    stopItems,
+    tripId,
+    variantId,
+  });
+
   async function saveAndCalculate() {
-    if (!activeDay || !draft) return;
-    const itemsById = new Map(stopItems.map((item) => [item.id, item]));
-    const routeDraft: DayRouteDraft = {
-      dayId: activeDay.id,
-      legModes: draft.legModes,
-      previousDayId: previousDay?.id,
-      stops: draft.itemIds.map((itemId) => {
-        const item = itemsById.get(itemId);
-        return {
-          coordinates: item?.place
-            ? wgs84Coordinates(item.place.latitude, item.place.longitude)
-            : null,
-          dayId: item?.day_id ?? "",
-          itemId,
-          tripId: item?.trip_id ?? "",
-          type: item?.type ?? "deleted",
-          variantId: item?.variant_id ?? "",
-        };
-      }),
-      tripId,
-      variantId: workspace.variant.id,
-    };
-    const validationError = validateDayRouteDraft(routeDraft);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setError(undefined);
-    const operationId = newTelemetryOperationId();
-    const routeMode = telemetryRouteMode(draft.legModes);
-    captureBrowserProductEvent(
-      "route_calculation_started",
-      {
-        operation_id: operationId,
-        route_mode: routeMode,
-        route_view: "day",
-        surface: "route_panel",
-      },
-      { actorType: persistence?.actorType ?? "authenticated" },
-    );
-    try {
-      const saved = await saveMutation.mutateAsync({
-        dayId: activeDay.id,
-        expectedVersion: plan?.version ?? 0,
-        itemIds: draft.itemIds,
-        legModes: draft.legModes,
-        tripId,
-        variantId: workspace.variant.id,
-        operationId,
-        telemetryRouteMode: routeMode,
-      });
-      await calculateMutation.mutateAsync({
-        expectedPlanVersion: saved.version,
-        expectedVersion: saved.calculation?.version ?? 0,
-        operationId: newTelemetryOperationId(),
-        planId: saved.id,
-        telemetryRouteMode: routeMode,
-        tripId,
-        variantId,
-      });
-      setDraft(null);
-    } catch (caught) {
-      setConflictDayId(isItineraryConflict(caught) ? activeDay.id : undefined);
-      setError(caught instanceof Error ? caught.message : "The day route could not be calculated.");
-    }
+    await persistAndCalculate(draft);
   }
 
-  async function clearRoute() {
-    if (!activeDay || !plan) return;
-    setError(undefined);
-    try {
-      await clearMutation.mutateAsync({
-        dayId: activeDay.id,
-        expectedVersion: plan.version,
-        operationId: newTelemetryOperationId(),
-        tripId,
-        variantId: workspace.variant.id,
-      });
-      setDraft(null);
-    } catch (caught) {
-      setConflictDayId(isItineraryConflict(caught) ? activeDay.id : undefined);
-      setError(caught instanceof Error ? caught.message : "The day route could not be cleared.");
-    }
-  }
-
-  const status = plan ? dayRouteStatus(workspace, plan) : undefined;
+  const baseStatus = plan ? dayRouteStatus(workspace, plan) : undefined;
+  const saved = plan ? savedDraft(plan) : null;
+  const synchronizedChanged = Boolean(
+    saved &&
+    synchronized &&
+    (saved.itemIds.join("\u0000") !== synchronized.draft.itemIds.join("\u0000") ||
+      saved.legModes.join("\u0000") !== synchronized.draft.legModes.join("\u0000")),
+  );
+  const status =
+    baseStatus === "needs_edit" ? baseStatus : synchronizedChanged ? "stale" : baseStatus;
   const resolved = plan ? resolveRouteCalculationConfig(workspace, plan) : undefined;
   const calculatedFitKey = plan?.calculation?.computed_at;
   const defaultDraft = () => defaultDayRouteDraft(eligibleItems, suggestedMode, previousHotel);
@@ -325,6 +250,7 @@ export function useDayRoute(
     },
     clearRoute,
     conflict,
+    displayDraft,
     draft,
     editing: draft !== null,
     eligibleItems,
@@ -343,22 +269,14 @@ export function useDayRoute(
         persistence.requestAccountFeature("route");
         return;
       }
-      if (plan)
-        setDraft(
-          fixedDayRouteDraft(
-            savedDraft(plan),
-            eligibleItems.map(({ id }) => id),
-            suggestedMode,
-            previousHotel?.id,
-            currentHotel?.id,
-          ),
-        );
+      if (plan) setDraft(synchronized?.draft ?? savedDraft(plan));
       else setDraft(defaultDraft());
       setError(undefined);
     },
     pending,
     plan,
     previousDay,
+    recalculate: () => persistAndCalculate(synchronized?.draft ?? null),
     removeItem,
     removeStop,
     reloadLatest,

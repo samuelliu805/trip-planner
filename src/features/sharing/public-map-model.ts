@@ -135,7 +135,7 @@ export function buildPublicRouteLines(
 export function publicRouteCandidates(day?: PublicItineraryDay) {
   return (day?.items ?? []).filter(
     (item) =>
-      ["activity", "meal", "hotel"].includes(item.type) &&
+      ["activity", "meal", "car_rental", "hotel"].includes(item.type) &&
       typeof item.place?.latitude === "number" &&
       typeof item.place.longitude === "number",
   );
@@ -158,7 +158,9 @@ export function publicDayRoutePlan(itinerary: PublicItinerary, dayRef?: string) 
     : undefined;
   const currentItems = (day?.items ?? [])
     .filter(
-      (item) => ["activity", "meal", "hotel"].includes(item.type) && hasPublicCoordinates(item),
+      (item) =>
+        ["activity", "meal", "car_rental", "hotel"].includes(item.type) &&
+        hasPublicCoordinates(item),
     )
     .sort((left, right) => left.sortOrder - right.sortOrder);
   const unmappedActivities = (day?.items ?? [])

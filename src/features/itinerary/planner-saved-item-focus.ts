@@ -44,7 +44,7 @@ export function focusPlannerSavedItem(
   if (item.type === "location") {
     setMapMode("overview");
     setSelectedMapItemId(item.place ? item.id : undefined);
-  } else if (["activity", "hotel", "meal"].includes(item.type)) {
+  } else if (["activity", "car_rental", "hotel", "meal"].includes(item.type)) {
     setMapMode("day_route");
     setSelectedMapItemId(item.place ? item.id : undefined);
   } else setSelectedMapItemId(undefined);

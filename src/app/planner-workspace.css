@@ -169,7 +169,8 @@ body:has(.planner-map-sheet) {
   display: none;
 }
 
-.map-panel-reopen {
+.map-panel-reopen,
+.map-route-refresh {
   bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 0.75rem));
 }
 
@@ -303,7 +304,8 @@ body:has(.planner-map-sheet) {
   .day-route-summary button,
   .day-route-editor button,
   .overview-route-panel button,
-  .map-panel-reopen {
+  .map-panel-reopen,
+  .map-route-refresh {
     min-height: 44px;
   }
 

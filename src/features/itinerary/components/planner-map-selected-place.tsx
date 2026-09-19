@@ -141,7 +141,7 @@ export function PlannerMapSelectedPlace({
     : item?.booking_url
       ? [{ id: item.id, label: "Booking", url: item.booking_url }]
       : [];
-  const eligibleDayStop = ["activity", "hotel", "meal"].includes(entry.kind);
+  const eligibleDayStop = ["activity", "carRental", "hotel", "meal"].includes(entry.kind);
   const repeatedLabel =
     entry.kind === "city"
       ? t("{count} day(s) in this city", { count: dayCount })

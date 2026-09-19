@@ -12,7 +12,11 @@ import type { GridCoordinate } from "@/features/itinerary/grid-interactions";
 import type { PlannerVariant, PlannerWorkspace } from "@/features/itinerary/types";
 import type { PlannerMapLine, PlannerMapMarker } from "@/features/maps/planner-map-model";
 import { buildOverviewRouteLines, deriveOverviewStages } from "@/features/routes/overview";
-import { buildDayRouteLines, buildDayRouteMarkers } from "@/features/routes/day-route-map";
+import {
+  buildDayRouteLines,
+  buildDayRouteMarkers,
+  type DayRouteLineStop,
+} from "@/features/routes/day-route-map";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
 import { useOverviewRoute } from "@/features/routes/use-overview-route";
 import { deriveOverviewDefaultModes } from "@/features/routes/overview-transport";
@@ -103,22 +107,50 @@ export function usePlannerMap(
     [overviewRoute.calculatedLegs, overviewStages],
   );
   const routeStopIds = useMemo(
-    () =>
-      dayRoute.editing
-        ? (dayRoute.draft?.itemIds ?? [])
-        : (dayRoute.plan?.stops
-            .slice()
-            .sort((a, b) => a.position - b.position)
-            .map(({ item_id }) => item_id) ?? []),
-    [dayRoute.draft?.itemIds, dayRoute.editing, dayRoute.plan?.stops],
+    () => dayRoute.displayDraft?.itemIds ?? [],
+    [dayRoute.displayDraft?.itemIds],
   );
+  const calculatedStopItemIds = useMemo(
+    () =>
+      dayRoute.plan?.stops
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .map(({ item_id }) => item_id) ?? [],
+    [dayRoute.plan?.stops],
+  );
+  const routeLineStops = useMemo(() => {
+    const itemsById = new Map(dayRoute.stopItems.map((item) => [item.id, item]));
+    return routeStopIds.flatMap((itemId): DayRouteLineStop[] => {
+      const item = itemsById.get(itemId);
+      return item?.place
+        ? [
+            {
+              itemId,
+              latitude: item.place.latitude,
+              longitude: item.place.longitude,
+            },
+          ]
+        : [];
+    });
+  }, [dayRoute.stopItems, routeStopIds]);
   const dayRouteMarkers = useMemo(
     () => buildDayRouteMarkers(dayRoute.activeDay, routeStopIds, dayRoute.previousDay, locale),
     [dayRoute.activeDay, dayRoute.previousDay, locale, routeStopIds],
   );
   const dayRouteLines = useMemo(
-    () => buildDayRouteLines(dayRoute.plan?.calculation ?? null),
-    [dayRoute.plan?.calculation],
+    () =>
+      buildDayRouteLines(
+        dayRoute.plan?.calculation ?? null,
+        calculatedStopItemIds,
+        routeLineStops,
+        dayRoute.displayDraft?.legModes,
+      ),
+    [
+      calculatedStopItemIds,
+      dayRoute.displayDraft?.legModes,
+      dayRoute.plan?.calculation,
+      routeLineStops,
+    ],
   );
   const dayMapLayer =
     dayLayerState && dayLayerState.dayId === dayRoute.activeDay?.id ? dayLayerState.layer : "all";
@@ -225,7 +257,7 @@ export function usePlannerMap(
         ? !comparison.isLoading && !comparison.error && !mapMarkers.length
           ? {
               message: comparison.dayNumber
-                ? `Visible route variants do not contain mappable Activity, Meal, or Hotel stops for Day ${comparison.dayNumber}.`
+                ? `Visible route variants do not contain mappable Activity, Meal, Car rental, or Hotel stops for Day ${comparison.dayNumber}.`
                 : "Visible route variants do not contain a mappable Activity city/town stage.",
               title: comparison.dayNumber
                 ? `No Day ${comparison.dayNumber} routes to compare`
@@ -240,7 +272,8 @@ export function usePlannerMap(
             }
           : !mapMarkers.length
             ? {
-                message: "Add a saved place to an Activity, Meal, or Hotel on this day.",
+                message:
+                  "Add a saved place to an Activity, Meal, Car rental, or Hotel on this day.",
                 title: "No eligible places",
               }
             : undefined,
@@ -253,7 +286,7 @@ export function usePlannerMap(
       !compactMapMarkers.length
         ? {
             message: comparison.dayNumber
-              ? `Visible route variants do not contain mappable Activity, Meal, or Hotel stops for Day ${comparison.dayNumber}.`
+              ? `Visible route variants do not contain mappable Activity, Meal, Car rental, or Hotel stops for Day ${comparison.dayNumber}.`
               : "Visible route variants do not contain a mappable Activity city/town stage.",
             title: comparison.dayNumber
               ? `No Day ${comparison.dayNumber} routes to compare`
