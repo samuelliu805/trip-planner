@@ -982,21 +982,43 @@ async function verifyDeployedAuthCaptchaSurfaces(browser, baseUrl) {
 
 async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
-  await waitFor(
-    browser,
-    `(() => {
-      const text = document.body.innerText;
-      if (text.includes('PVG → HND') && text.includes('NH 972 · NH 967') &&
-        text.includes('2026-11-20')) return true;
-      const input = document.querySelector('textarea');
-      if (!(input instanceof HTMLTextAreaElement)) return false;
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-      setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      return false;
-    })()`,
-    "Google Flights booking preview",
-  );
+  try {
+    await waitFor(
+      browser,
+      `(() => {
+        const text = document.body.innerText;
+        if (text.includes('PVG → HND') && text.includes('NH 972 · NH 967') &&
+          text.includes('2026-11-20')) return true;
+        const input = document.querySelector('textarea');
+        if (!(input instanceof HTMLTextAreaElement)) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return false;
+      })()`,
+      "Google Flights booking preview",
+    );
+  } catch (error) {
+    const page = await evaluate(
+      browser,
+      `(() => {
+        const input = document.querySelector('textarea');
+        const section = document.querySelector('[aria-label="Save an idea"]');
+        return {
+          path: location.pathname,
+          inputLength: input?.value.length ?? null,
+          bookingInput: input?.value.includes('/travel/flights/booking') ?? false,
+          section: section?.innerText.slice(0, 700) ?? null,
+          nextError: Boolean(document.querySelector('[data-nextjs-dialog]')),
+        };
+      })()`,
+    ).catch(() => null);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; preview diagnostic: ${JSON.stringify(page)}; ` +
+        `client errors: ${JSON.stringify(browser.cdp.clientErrors.slice(-3))}; ` +
+        `network failures: ${JSON.stringify(browser.cdp.networkFailures.slice(-3))}`,
+    );
+  }
   await clickElement(
     browser,
     `[...document.querySelectorAll('button')].find((button) =>

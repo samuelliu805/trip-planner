@@ -1237,7 +1237,8 @@ async function saveWalkingTransportThroughUi(browser) {
   try {
     await waitFor(
       browser,
-      `document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length === 1`,
+      `[...document.querySelectorAll('[data-cell="0-2"] [data-edit-item]')]
+        .filter((item) => item.textContent.trim() === 'Walking').length === 1`,
       "saved Walking transport",
       75_000,
     );
