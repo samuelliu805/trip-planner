@@ -99,7 +99,8 @@ function mapLocation(url: URL) {
   if (
     url.pathname.startsWith("/maps/search") ||
     url.pathname === "/maps" ||
-    url.hostname.toLowerCase().endsWith("maps.google.com")
+    (hostIs(url.hostname.toLowerCase(), "google.com") &&
+      url.hostname.toLowerCase().startsWith("maps."))
   ) {
     const query = place(value(url.searchParams, "query", "q"));
     if (query) return query;
@@ -123,7 +124,10 @@ export function parseIdeaUrlFields(url: URL | null): IdeaUrlFields {
     hostIs(host, "flights.google.com")
   )
     return { ...empty, ...parseGoogleFlightUrl(url) };
-  if ((hostIs(host, "google.com") && path.startsWith("/maps")) || hostIs(host, "maps.google.com"))
+  if (
+    (hostIs(host, "google.com") && path.startsWith("/maps")) ||
+    (hostIs(host, "google.com") && host.startsWith("maps."))
+  )
     return { ...empty, locationText: mapLocation(url) };
   if (hostIs(host, "trip.com") || hostIs(host, "ctrip.com")) {
     if (/\/flight/.test(path) || (params.has("dcity") && params.has("acity")))

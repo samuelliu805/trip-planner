@@ -58,7 +58,7 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
   if (
     hostIs(host, "maps.app.goo.gl") ||
     (hostIs(host, "google.com") && path.startsWith("/maps")) ||
-    hostIs(host, "maps.google.com")
+    (hostIs(host, "google.com") && host.startsWith("maps."))
   )
     return { kind: "activity", provider: "Google Maps" };
   if (hostIs(host, "google.com") && path.startsWith("/travel/flights"))
