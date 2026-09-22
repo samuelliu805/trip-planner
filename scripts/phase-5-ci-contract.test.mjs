@@ -179,11 +179,9 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cnDeploy, /head_branch == 'master'/);
   assert.match(cnDeploy, /group: deploy-cn-dev-trip-planner-cn/);
   assert.match(cnDeploy, /CN_PUBLIC_PHONE_AUTH_ENABLED: "true"/);
-  assert.match(
-    cnDeploy,
-    /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment[\s\\]*\n[\s\S]*20260903180000 20260903193000 20260905010000 20260905020000 20260905030000/,
-  );
-  assert.match(cnDeploy, /20260908103000 20260909011000 20260909034815/);
+  assert.match(cnDeploy, /find cloudbase\/migrations -maxdepth 1 -type f -name '\*\.sql'/);
+  assert.match(cnDeploy, /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment/);
+  assert.equal(cnDeploy.split('"${migration_versions[@]}"').length - 1, 2);
   assert.match(cnDeploy, /deploy-cloudbase-run-with-evidence\.mjs/);
   assert.doesNotMatch(cnDeploy, /sleep 10|deploy_cloudbase_run/);
   assert.match(cloudBaseRunSubmitter, /DescribeCloudBaseBuildService/);

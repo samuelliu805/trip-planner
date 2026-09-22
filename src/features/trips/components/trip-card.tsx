@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import {
   CalendarDays,
+  ChevronRight,
   CircleCheck,
   History,
   MoreVertical,
@@ -260,18 +261,16 @@ export function TripCard({
             <PrimaryRouteSummary trip={trip} />
           </div>
         </CardContent>
-        <div className="relative z-10 border-t px-6 py-2">
-          <Button
-            asChild
-            className="min-h-11 border-primary/40 text-primary"
-            size="sm"
-            variant="outline"
-          >
-            <Link href={researchCategoryHref(trip.id, "flight", { newIdea: true })}>
-              <Plus aria-hidden="true" className="size-4" /> <T message="Add idea" />
-            </Link>
-          </Button>
-        </div>
+        <Link
+          className="relative z-10 flex min-h-14 w-full items-center gap-3 border-t bg-primary/5 px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+          href={researchCategoryHref(trip.id, "flight", { newIdea: true })}
+        >
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-card">
+            <Plus aria-hidden="true" className="size-4" />
+          </span>
+          <T message="Add idea" />
+          <ChevronRight aria-hidden="true" className="ml-auto size-4" />
+        </Link>
         <AutoDismissAlert
           className="rounded-none border-x-0 border-b-0 px-6 py-3 shadow-none"
           onDismiss={() => setStatusError(null)}

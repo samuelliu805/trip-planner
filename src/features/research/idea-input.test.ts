@@ -21,6 +21,7 @@ test("classifies known booking URLs without inventing itinerary fields", () => {
     ["https://i.meituan.com/awp/h5/hotel-fe-oshotel/home/index.html", "stay"],
     ["https://www.booking.com/searchresults.html?ss=Paris", "stay"],
     ["https://www.airbnb.com/s/Paris--France/homes", "stay"],
+    ["https://abnb.me/example", "stay"],
     ["https://www.agoda.com/search?textToSearch=Paris", "stay"],
     ["https://www.marriott.com/search/findHotels.mi", "stay"],
     ["https://www.ihg.com/hotels/us/en/find-hotels/hotel-search", "stay"],
@@ -172,6 +173,35 @@ test("Google Flights links expose only encoded search route and dates", () => {
     locationText: null,
     startDate: null,
     endDate: null,
+  });
+});
+
+test("Google Flights booking links expose selected flights from nested tfs fields", () => {
+  const booking =
+    "https://www.google.com/travel/flights/booking?tfs=CBwQAhpJEgoyMDI2LTExLTIwIh8KA1BWRxIKMjAyNi0xMS0yMBoDSE5EKgJOSDIDOTcyagwIAhIIL20vMDZ3amZyDAgCEggvbS8wN2RmaxpJEgoyMDI2LTExLTI1Ih8KA0hORBIKMjAyNi0xMS0yNRoDUFZHKgJOSDIDOTY3agwIAhIIL20vMDdkZmtyDAgCEggvbS8wNndqZkABSAFwAYIBCwj___________8BmAEB&tfu=CmxDalJJUzJoMU1GazFaVGRZVVhkQlExaGFaMEZDUnkwdExTMHRMUzB0TFhCbVlteDFNMEZCUVVGQlIzRjVWSEpWUVd0WVVsVkJFZ1ZPU0RrMk54b0xDSW5PQWhBQ0dnTlZVMFE0SEhDSnpnST0SAggAIgMKATE";
+  assert.deepEqual(parseReliableIdeaFields(booking), {
+    originText: "PVG",
+    destinationText: "HND",
+    locationText: null,
+    startDate: "2026-11-20",
+    endDate: "2026-11-25",
+    journeyType: "round_trip",
+    segments: [
+      {
+        origin: "PVG",
+        destination: "HND",
+        departureDate: "2026-11-20",
+        carrier: "NH",
+        serviceNumber: "972",
+      },
+      {
+        origin: "HND",
+        destination: "PVG",
+        departureDate: "2026-11-25",
+        carrier: "NH",
+        serviceNumber: "967",
+      },
+    ],
   });
 });
 

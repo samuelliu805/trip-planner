@@ -120,6 +120,10 @@ test("uploads with curl before registering the exact package release", async () 
   assert.ok(calls[1][1].includes("--upload-file"));
   assert.ok(calls[1][1].includes(uploadPayload.Response.UploadUrl));
   assert.equal(calls[1][1][calls[1][1].indexOf("--max-time") + 1], "600");
+  assert.equal(
+    calls[1][1][calls[1][1].indexOf("--write-out") + 1],
+    "http=%{http_code} uploaded=%{size_upload} total=%{time_total}",
+  );
   assert.equal(calls[1][2].timeoutMs, 630_000);
   assert.equal(calls[2][0], "npx");
   assert.ok(calls[2][1].includes("UpdateCloudRunServer"));
@@ -131,4 +135,28 @@ test("uploads with curl before registering the exact package release", async () 
     "Uploading the bounded CloudBase source archive with curl.",
     "Registering the uploaded package as a full CloudBase Run release.",
   ]);
+});
+
+test("reports bounded upload failure metrics without exposing signed URLs", async () => {
+  const responses = [
+    { code: 0, output: JSON.stringify({ data: uploadPayload.Response }), timedOut: false },
+    {
+      code: 22,
+      output: "http=403 uploaded=3680694 total=280.123456",
+      errorOutput: `curl: (22) ${uploadPayload.Response.UploadUrl}`,
+      timedOut: false,
+    },
+  ];
+  await assert.rejects(
+    submitCloudBaseRunSource({
+      archivePath: "/tmp/source.zip",
+      cli: ["--yes", "--package", "@cloudbase/cli@3.8.1", "tcb"],
+      envId: "env-id",
+      run: async () => responses.shift(),
+      serviceName: "service-name",
+    }),
+    (error) =>
+      error.message ===
+      "CloudBase source archive upload failed (curl exit 22, HTTP 403, uploaded 3680694 bytes in 280.123456s, process timeout false).",
+  );
 });

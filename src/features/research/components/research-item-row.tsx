@@ -115,6 +115,19 @@ export function ResearchItemRow({
   const title =
     item.title ?? route ?? (item.source_url ? t(sourceLabel(item.source_url)) : item.note);
   const dates = dateSummary(item, locale);
+  const flights = Array.isArray(item.segments)
+    ? item.segments
+        .map((segment) => {
+          if (!segment || typeof segment !== "object" || Array.isArray(segment)) return null;
+          const carrier = segment.carrier;
+          const number = segment.serviceNumber;
+          return typeof carrier === "string" && typeof number === "string"
+            ? `${carrier} ${number}`
+            : null;
+        })
+        .filter(Boolean)
+        .join(" · ")
+    : null;
   const links = researchLinksWithSource(item.links, item.source_url);
 
   return (
@@ -173,6 +186,7 @@ export function ResearchItemRow({
       <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
         {route && route !== title ? <span>{route}</span> : null}
         {dates ? <span>{dates}</span> : null}
+        {flights ? <span>{flights}</span> : null}
         <span>{freshness(item.observed_at, t)}</span>
       </div>
       {item.note && item.note !== title && item.note.trim() !== item.source_url?.trim() ? (

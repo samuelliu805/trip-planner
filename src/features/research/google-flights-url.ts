@@ -3,6 +3,14 @@ export type GoogleFlightFields = {
   destinationText: string | null;
   startDate: string | null;
   endDate: string | null;
+  journeyType?: "one_way" | "round_trip" | "multi_city";
+  segments?: Array<{
+    origin: string;
+    destination: string;
+    departureDate: string;
+    carrier?: string;
+    serviceNumber?: string;
+  }>;
 };
 
 const empty: GoogleFlightFields = {
@@ -67,33 +75,81 @@ function airport(bytes: Uint8Array | undefined): string | null {
   return /^[A-Z]{3}$/.test(value) ? value : null;
 }
 
+function shortText(bytes: Uint8Array | undefined, pattern: RegExp): string | null {
+  if (!bytes) return null;
+  const value = new TextDecoder().decode(bytes);
+  return pattern.test(value) ? value : null;
+}
+
+function bookedFlights(fields: WireField[] | null, fallbackDate: string | null) {
+  if (!fields) return [];
+  return fields
+    .filter((field) => field.number === 4 && field.bytes)
+    .map((field) => {
+      const flight = wireFields(field.bytes!);
+      const origin = shortText(flight?.find((part) => part.number === 1)?.bytes, /^[A-Z]{3}$/);
+      const destination = shortText(flight?.find((part) => part.number === 3)?.bytes, /^[A-Z]{3}$/);
+      const departureDate =
+        date(shortText(flight?.find((part) => part.number === 2)?.bytes, /^\d{4}-\d{2}-\d{2}$/)) ??
+        fallbackDate;
+      const carrier = shortText(
+        flight?.find((part) => part.number === 5)?.bytes,
+        /^[A-Z0-9]{2,3}$/,
+      );
+      const serviceNumber = shortText(
+        flight?.find((part) => part.number === 6)?.bytes,
+        /^\d{1,4}[A-Z]?$/,
+      );
+      return origin && destination && departureDate
+        ? {
+            origin,
+            destination,
+            departureDate,
+            ...(carrier ? { carrier } : {}),
+            ...(serviceNumber ? { serviceNumber } : {}),
+          }
+        : null;
+    })
+    .filter((flight): flight is NonNullable<typeof flight> => flight !== null);
+}
+
 function fromTfs(value: string): GoogleFlightFields | null {
   if (!/^[A-Za-z0-9_-]{8,4096}$/.test(value)) return null;
   try {
     const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
     const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-    const segments = wireFields(bytes)
+    const groups = wireFields(bytes)
       ?.filter((field) => field.number === 3 && field.bytes)
       .map((field) => {
         const parts = wireFields(field.bytes!);
         const rawDate = parts?.find((part) => part.number === 2)?.bytes;
+        const groupDate = rawDate ? date(new TextDecoder().decode(rawDate)) : null;
+        const flights = bookedFlights(parts, groupDate);
         return {
-          origin: airport(parts?.find((part) => part.number === 13)?.bytes),
-          destination: airport(parts?.find((part) => part.number === 14)?.bytes),
-          date: rawDate ? date(new TextDecoder().decode(rawDate)) : null,
+          origin: airport(parts?.find((part) => part.number === 13)?.bytes) ?? flights[0]?.origin,
+          destination:
+            airport(parts?.find((part) => part.number === 14)?.bytes) ??
+            flights.at(-1)?.destination,
+          date: groupDate ?? flights[0]?.departureDate ?? null,
+          flights,
         };
       });
-    const first = segments?.[0];
+    const first = groups?.[0];
     if (!first?.origin || !first.destination) return null;
-    const second = segments?.[1];
+    const second = groups?.[1];
+    const flights = groups?.flatMap((group) => group.flights) ?? [];
+    const roundTrip = second?.origin === first.destination && second.destination === first.origin;
     return {
       originText: first.origin,
       destinationText: first.destination,
       startDate: first.date,
-      endDate:
-        second?.origin === first.destination && second.destination === first.origin
-          ? second.date
-          : null,
+      endDate: roundTrip ? second.date : null,
+      ...(flights.length
+        ? {
+            journeyType: groups?.length === 1 ? "one_way" : roundTrip ? "round_trip" : "multi_city",
+            segments: flights,
+          }
+        : {}),
     };
   } catch {
     return null;

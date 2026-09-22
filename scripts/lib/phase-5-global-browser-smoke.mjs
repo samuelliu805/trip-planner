@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { stopChild } from "./child-process.mjs";
+import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 
 function chromeExecutable() {
   const candidates = [
@@ -980,6 +981,79 @@ async function verifyDeployedAuthCaptchaSurfaces(browser, baseUrl) {
 }
 
 async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
+  await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
+  try {
+    await waitFor(
+      browser,
+      `(() => {
+        const text = document.body.innerText;
+        if (text.includes('PVG → HND') && text.includes('NH 972 · NH 967') &&
+          text.includes('2026-11-20')) return true;
+        const input = document.querySelector('textarea');
+        if (!(input instanceof HTMLTextAreaElement)) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return false;
+      })()`,
+      "Google Flights booking preview",
+    );
+  } catch (error) {
+    const page = await evaluate(
+      browser,
+      `(() => {
+        const input = document.querySelector('textarea');
+        const section = document.querySelector('[aria-label="Save an idea"]');
+        return {
+          path: location.pathname,
+          inputLength: input?.value.length ?? null,
+          bookingInput: input?.value.includes('/travel/flights/booking') ?? false,
+          section: section?.innerText.slice(0, 700) ?? null,
+          nextError: Boolean(document.querySelector('[data-nextjs-dialog]')),
+        };
+      })()`,
+    ).catch(() => null);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; preview diagnostic: ${JSON.stringify(page)}; ` +
+        `client errors: ${JSON.stringify(browser.cdp.clientErrors.slice(-3))}; ` +
+        `network failures: ${JSON.stringify(browser.cdp.networkFailures.slice(-3))}`,
+    );
+  }
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Flight') && !button.disabled)`,
+    "save Google Flights booking idea",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967')))`,
+    "saved Google Flights booking idea",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `(() => {
+    const card = [...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+    return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
+      button.textContent.includes('Add to Plan'));
+  })()`,
+    "add Google Flights booking idea to Plan",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Added to Plan')`,
+    "Google Flights booking idea applied",
+  );
+  await navigate(browser, baseUrl, `/trips/${tripId}`);
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('PVG – HND') &&
+      document.body.innerText.includes('NH 972 / NH 967')`,
+    "Google Flights booking idea visible in Plan",
+  );
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
   await waitFor(
     browser,

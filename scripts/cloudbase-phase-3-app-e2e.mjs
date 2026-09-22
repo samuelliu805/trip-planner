@@ -15,6 +15,7 @@ import {
 import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
+import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import {
   chromiumProxyArguments,
@@ -735,6 +736,50 @@ async function verifyTripSectionNavigation(browser, tripId) {
     45_000,
   );
 
+  await waitFor(
+    browser,
+    `(() => {
+      const text = document.body.innerText;
+      if (text.includes('PVG → HND') && text.includes('NH 972 · NH 967') &&
+        text.includes('2026-11-20')) return true;
+      const input = document.querySelector('textarea');
+      if (!(input instanceof HTMLTextAreaElement)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return false;
+    })()`,
+    "Google Flights booking link preview",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Flight') && !button.disabled)`,
+    "save Google Flights booking link",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967')))`,
+    "saved Google Flights booking details",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `(() => {
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+      return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Add to Plan'));
+    })()`,
+    "add parsed Google flight to Plan",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Added to Plan')`,
+    "Google flight applied to Plan",
+  );
+
   const bookingUrl =
     "https://www.booking.com/searchresults.html?ss=Paris&checkin=2026-10-23&checkout=2026-10-25";
   assert.equal(
@@ -772,6 +817,39 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const bookedFlight = await controlledData(
+    () =>
+      db
+        .from("research_items")
+        .select("id,origin_text,destination_text,start_date,end_date,journey_type,segments")
+        .eq("trip_id", tripId)
+        .eq("source_url", googleFlightsBookingSample),
+    "saved Google Flights booking fields",
+  );
+  assert.equal(bookedFlight.length, 1);
+  assert.equal(bookedFlight[0].origin_text, "PVG");
+  assert.equal(bookedFlight[0].destination_text, "HND");
+  assert.equal(bookedFlight[0].start_date, "2026-11-20");
+  assert.equal(bookedFlight[0].end_date, "2026-11-25");
+  assert.equal(bookedFlight[0].journey_type, "round_trip");
+  assert.deepEqual(
+    bookedFlight[0].segments.map((leg) => leg.serviceNumber),
+    ["972", "967"],
+  );
+  const appliedFlight = await controlledData(
+    () =>
+      db
+        .from("itinerary_items")
+        .select("id,booking_url,details")
+        .eq("trip_id", tripId)
+        .eq("booking_url", googleFlightsBookingSample),
+    "applied Google Flights booking item",
+  );
+  assert.equal(appliedFlight.length, 1);
+  assert.equal(appliedFlight[0].details.ideaResearchItemId, bookedFlight[0].id);
+  assert.equal(appliedFlight[0].details.origin, "PVG");
+  assert.equal(appliedFlight[0].details.destination, "HND");
+  assert.equal(appliedFlight[0].details.serviceNumber, "NH 972 / NH 967");
   const savedBooking = await controlledData(
     () =>
       db
@@ -1156,12 +1234,31 @@ async function saveWalkingTransportThroughUi(browser) {
     false,
   );
   await saveOpenItemEditor(browser, "transport");
-  await waitFor(
-    browser,
-    `document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length === 1`,
-    "saved Walking transport",
-    75_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      `[...document.querySelectorAll('[data-cell="0-2"] [data-edit-item]')]
+        .filter((item) => item.textContent.trim() === 'Walking').length === 1`,
+      "saved Walking transport",
+      75_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        dialog: document.querySelector('[role="dialog"]')?.textContent.slice(0, 500),
+        notices: [...document.querySelectorAll('[role="alert"], [role="status"]')]
+          .map((node) => node.textContent.trim()).filter(Boolean).slice(0, 4),
+        transportCell: document.querySelector('[data-cell="0-2"]')?.textContent.slice(0, 500),
+        transportItems: document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length,
+        visibleItems: [...document.querySelectorAll('[data-edit-item]')]
+          .slice(0, 8).map((node) => node.textContent.trim().slice(0, 80)),
+      })`,
+    ).catch(() => null);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; walking diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
 }
 
 async function openSavedItemEditor(browser, cell, itemIndex = 0) {
@@ -1220,7 +1317,7 @@ async function verifyMobileTransportEditorScroll(browser) {
       { deviceScaleFactor: 2, height, mobile: true, width },
       browser.sessionId,
     );
-    await openSavedItemEditor(browser, "0-2");
+    await openSavedItemEditor(browser, "0-2", 1);
     await clickElement(
       browser,
       `document.querySelector('button[id^="transport-mode-"]')`,
@@ -1315,7 +1412,7 @@ async function verifyMobileTransportEditorScroll(browser) {
     { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
     browser.sessionId,
   );
-  await openSavedItemEditor(browser, "0-2");
+  await openSavedItemEditor(browser, "0-2", 1);
   await clickElement(
     browser,
     `document.querySelector('button[id^="transport-mode-"]')`,
@@ -1330,16 +1427,18 @@ async function verifyMobileTransportEditorScroll(browser) {
   await saveOpenItemEditor(browser, "390px Subway / metro transport edit");
   await waitFor(
     browser,
-    `document.querySelector('[data-cell="0-2"] .matrix-transport-mode-label')?.textContent.trim() === "Subway / metro"`,
+    `[...document.querySelectorAll('[data-cell="0-2"] .matrix-transport-mode-label')]
+      .some((label) => label.textContent.trim() === "Subway / metro")`,
     "390px Subway / metro Matrix summary",
   );
   const transportSummary = await evaluate(
     browser,
     `(() => {
       const cell = document.querySelector('[data-cell="0-2"]');
-      const summary = cell?.querySelector('.matrix-transport-summary');
+      const label = [...(cell?.querySelectorAll('.matrix-transport-mode-label') ?? [])]
+        .find((node) => node.textContent.trim() === 'Subway / metro');
+      const summary = label?.closest('.matrix-transport-summary');
       const icon = summary?.querySelector('svg');
-      const label = summary?.querySelector('.matrix-transport-mode-label');
       const iconRect = icon?.getBoundingClientRect();
       const labelRect = label?.getBoundingClientRect();
       return {

@@ -17,6 +17,7 @@ import {
 } from "../idea-input";
 import type { ResearchItem } from "../types";
 import { QuickIdeaIntro } from "./quick-idea-intro";
+import { IdeaLinkPreview } from "./idea-link-preview";
 
 const kinds = ["flight", "stay", "car", "activity"] as const;
 const labels: Record<Exclude<IdeaKind, "unknown">, string> = {
@@ -123,7 +124,7 @@ export function QuickIdeaInput({
       operationId,
       shareText,
       sourceUrl: classification.sourceUrl,
-      title: textOnly ? textOnly.slice(0, 300) : (previewRoute ?? preview.locationText),
+      title: textOnly ? textOnly.slice(0, 300) : previewRoute,
       tripId,
     });
     setPending(false);
@@ -225,6 +226,20 @@ export function QuickIdeaInput({
                   {preview.endDate ? ` – ${preview.endDate}` : ""}
                 </p>
               ) : null}
+              {preview.segments?.length ? (
+                <p className="mt-1 text-sm font-medium text-primary">
+                  {preview.segments
+                    .map((segment) =>
+                      [segment.carrier, segment.serviceNumber].filter(Boolean).join(" "),
+                    )
+                    .join(" · ")}
+                </p>
+              ) : null}
+              <IdeaLinkPreview
+                hasReliableFields={Boolean(previewRoute && preview.startDate)}
+                key={classification.sourceUrl ?? ""}
+                sourceUrl={classification.sourceUrl}
+              />
               <div className="mt-2 flex flex-wrap gap-2" aria-label={t("Choose idea type")}>
                 {kinds.map((kind) => (
                   <Button
