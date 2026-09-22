@@ -32,6 +32,18 @@ test("classifies known booking URLs without inventing itinerary fields", () => {
     ["https://www.hertz.com/rentacar/reservation/", "car"],
     ["https://www.avis.com/en/reservation", "car"],
     ["https://www.sixt.com/rent", "car"],
+    [
+      "https://www.united.com/en/us/flights?origin=SFO&destination=JFK&departureDate=2026-10-23",
+      "flight",
+    ],
+    [
+      "https://hotel.example/hotels/search?destination=Paris&checkin=2026-10-23&checkout=2026-10-25",
+      "stay",
+    ],
+    [
+      "https://rental.example/car-rental/search?pickupLocation=SFO&pickupDate=2026-10-23&returnDate=2026-10-25",
+      "car",
+    ],
   ] as const;
   for (const [input, kind] of cases) {
     const result = classifyIdeaInput(input);
@@ -50,6 +62,16 @@ test("natural language, unknown links, invalid links, and overrides", () => {
   assert.equal(classifyIdeaInput("想去西湖骑行").kind, "activity");
   assert.equal(classifyIdeaInput("北京到上海的机票").kind, "flight");
   assert.equal(classifyIdeaInput("https://example.com/something").kind, "unknown");
+  assert.equal(
+    classifyIdeaInput("https://airline.example/flights?origin=SFO&destination=JFK").kind,
+    "unknown",
+  );
+  assert.equal(
+    classifyIdeaInput(
+      "https://airline.example/flights?origin=123&destination=456&departureDate=2026-10-23",
+    ).kind,
+    "unknown",
+  );
   assert.equal(classifyIdeaInput("https://").error, "invalid_url");
   assert.equal(classifyIdeaInput("ftp://example.com/file").error, "invalid_url");
   const overridden = overrideIdeaClassification(
@@ -234,6 +256,18 @@ test("provider links recover only explicit place, route, and date fields", () =>
     [
       "https://www.skyscanner.com/transport/flights/sfo/jfk/261023",
       { originText: "SFO", destinationText: "JFK" },
+    ],
+    [
+      "https://www.united.com/en/us/flights?origin=SFO&destination=JFK&departureDate=2026-10-23",
+      { originText: "SFO", destinationText: "JFK", startDate: "2026-10-23" },
+    ],
+    [
+      "https://hotel.example/hotels/search?destination=Paris&checkin=2026-10-23&checkout=2026-10-25",
+      { locationText: "Paris", startDate: "2026-10-23", endDate: "2026-10-25" },
+    ],
+    [
+      "https://rental.example/car-rental/search?pickupLocation=SFO&pickupDate=2026-10-23&returnDate=2026-10-25",
+      { originText: "SFO", startDate: "2026-10-23", endDate: "2026-10-25" },
     ],
     [
       "https://i.meituan.com/awp/h5/hotel-fe-oshotel/home/index.html?cityName=杭州&checkIn=2026-10-23&checkOut=2026-10-25",

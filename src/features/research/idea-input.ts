@@ -1,4 +1,5 @@
 import { parseIdeaUrlFields } from "./idea-url-fields.ts";
+import { parseGenericIdeaUrlFields } from "./idea-generic-url-fields.ts";
 
 export type IdeaKind = "flight" | "stay" | "car" | "activity" | "unknown";
 export type IdeaClassification = {
@@ -134,6 +135,8 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
     if (/shop|deal|meishi|restaurant|poi|food/.test(path))
       return { kind: "activity", provider: "Meituan" };
   }
+  const generic = parseGenericIdeaUrlFields(url);
+  if (generic) return { kind: generic.kind, provider: "Travel website" };
   return null;
 }
 

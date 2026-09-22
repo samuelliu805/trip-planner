@@ -1,4 +1,5 @@
 import { parseGoogleFlightUrl } from "./google-flights-url.ts";
+import { parseGenericIdeaUrlFields } from "./idea-generic-url-fields.ts";
 
 export type IdeaUrlFields = {
   originText: string | null;
@@ -250,7 +251,7 @@ export function parseIdeaUrlFields(url: URL | null): IdeaUrlFields {
   }
   if (hostIs(host, "dianping.com"))
     return { ...empty, locationText: place(value(params, "q", "keyword")) };
-  return empty;
+  return parseGenericIdeaUrlFields(url)?.fields ?? empty;
 }
 
 function dateFromIhg(params: URLSearchParams, dayKey: string, monthYearKey: string) {
