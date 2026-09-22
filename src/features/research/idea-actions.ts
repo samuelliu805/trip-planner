@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { getRelationalDatabase } from "@/platform/composition/server";
+import { getAuthProvider, getRelationalDatabase } from "@/platform/composition/server";
 import type { Json } from "@/types/database";
 
 import { loadResearchItem } from "./actions";
 import { canonicalIdeaUrl, classifyIdeaInput, parseReliableIdeaFields } from "./idea-input";
+import { fetchIdeaPageMetadata } from "./idea-page-metadata";
 import type { ResearchItem, ResearchMutationResult } from "./types";
 
 const captureSchema = z
@@ -35,18 +36,33 @@ export async function captureIdea(
     parsed.data.sourceUrl && classifyIdeaInput(parsed.data.sourceUrl).kind === parsed.data.kind
       ? parseReliableIdeaFields(parsed.data.sourceUrl)
       : parseReliableIdeaFields(null);
+  const metadata = parsed.data.sourceUrl
+    ? await fetchIdeaPageMetadata(parsed.data.sourceUrl)
+    : null;
   const { data, error } = await database.rpc("capture_idea_v1", {
     target_trip_id: parsed.data.tripId,
     target_operation_id: parsed.data.operationId,
     requested_kind: parsed.data.kind,
-    requested_title: parsed.data.title,
+    requested_title: parsed.data.title ?? metadata?.title ?? fields.locationText,
     requested_source_url: parsed.data.sourceUrl,
     requested_share_text: parsed.data.shareText,
-    requested_fields: fields,
+    requested_fields: {
+      ...fields,
+      locationText: fields.locationText ?? metadata?.locationText ?? null,
+    },
   });
   if (error || !data) return { error: error?.message ?? "The idea could not be saved." };
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return loadResearchItem(parsed.data.tripId, parsed.data.operationId);
+}
+
+export async function previewIdeaLink(sourceUrl: string) {
+  if (
+    !z.url().max(2048).safeParse(sourceUrl).success ||
+    !(await getAuthProvider().getCurrentUser())
+  )
+    return { title: null, locationText: null, status: "unsupported" as const };
+  return fetchIdeaPageMetadata(sourceUrl);
 }
 
 const mergeSchema = z.object({

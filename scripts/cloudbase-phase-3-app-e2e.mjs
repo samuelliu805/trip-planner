@@ -15,6 +15,7 @@ import {
 import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
+import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./lib/loopback-tls-proxy.mjs";
 import {
   chromiumProxyArguments,
@@ -735,6 +736,57 @@ async function verifyTripSectionNavigation(browser, tripId) {
     45_000,
   );
 
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+      const input = document.querySelector('textarea');
+      if (!input) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+    ),
+    true,
+    "Google Flights booking link could not be entered.",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('PVG → HND') &&
+      document.body.innerText.includes('NH 972 · NH 967') &&
+      document.body.innerText.includes('2026-11-20')`,
+    "Google Flights booking link preview",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Flight') && !button.disabled)`,
+    "save Google Flights booking link",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967')))`,
+    "saved Google Flights booking details",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `(() => {
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+      return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Add to Plan'));
+    })()`,
+    "add parsed Google flight to Plan",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Added to Plan')`,
+    "Google flight applied to Plan",
+  );
+
   const bookingUrl =
     "https://www.booking.com/searchresults.html?ss=Paris&checkin=2026-10-23&checkout=2026-10-25";
   assert.equal(
@@ -772,6 +824,36 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const bookedFlight = await controlledData(
+    () =>
+      db
+        .from("research_items")
+        .select("id,origin_text,destination_text,start_date,end_date,journey_type,segments")
+        .eq("trip_id", tripId)
+        .eq("source_url", googleFlightsBookingSample),
+    "saved Google Flights booking fields",
+  );
+  assert.equal(bookedFlight.length, 1);
+  assert.equal(bookedFlight[0].origin_text, "PVG");
+  assert.equal(bookedFlight[0].destination_text, "HND");
+  assert.equal(bookedFlight[0].start_date, "2026-11-20");
+  assert.equal(bookedFlight[0].end_date, "2026-11-25");
+  assert.equal(bookedFlight[0].journey_type, "round_trip");
+  assert.deepEqual(
+    bookedFlight[0].segments.map((leg) => leg.serviceNumber),
+    ["972", "967"],
+  );
+  const appliedFlight = await controlledData(
+    () =>
+      db
+        .from("itinerary_items")
+        .select("id,booking_url,details")
+        .eq("trip_id", tripId)
+        .eq("booking_url", googleFlightsBookingSample),
+    "applied Google Flights booking item",
+  );
+  assert.equal(appliedFlight.length, 1);
+  assert.equal(appliedFlight[0].details.ideaResearchItemId, bookedFlight[0].id);
   const savedBooking = await controlledData(
     () =>
       db

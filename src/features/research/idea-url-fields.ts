@@ -1,5 +1,6 @@
 import { parseGoogleFlightUrl } from "./google-flights-url.ts";
 import { parseGenericIdeaUrlFields } from "./idea-generic-url-fields.ts";
+import type { ResearchSegment } from "./types";
 
 export type IdeaUrlFields = {
   originText: string | null;
@@ -7,6 +8,8 @@ export type IdeaUrlFields = {
   locationText: string | null;
   startDate: string | null;
   endDate: string | null;
+  journeyType?: "one_way" | "round_trip" | "multi_city";
+  segments?: ResearchSegment[];
 };
 
 const empty: IdeaUrlFields = {

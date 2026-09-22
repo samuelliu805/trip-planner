@@ -1382,7 +1382,8 @@ test("Ideas shows all saved content before optional comparisons and detailed ent
   assert.match(workspace, /: items;/);
   assert.match(workspace, /onSortChange=\{setSort\}/);
   assert.match(route, /\{appBar\}/);
-  assert.match(sortMenu, /className="min-h-11"/);
+  assert.match(sortMenu, /aria-pressed=\{value === sort\}/);
+  assert.match(sortMenu, /min-h-11/);
   assert.match(dialog, /size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-4/);
   assert.match(dialog, /hidden sm:inline[\s\S]*Add price or idea/);
 });

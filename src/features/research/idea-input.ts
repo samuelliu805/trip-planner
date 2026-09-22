@@ -69,6 +69,7 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
     return { kind: "stay", provider: "Booking.com" };
   if (hostIs(host, "airbnb.com") && (/\/(rooms|s)\//.test(path) || path.startsWith("/homes")))
     return { kind: "stay", provider: "Airbnb" };
+  if (host === "abnb.me") return { kind: "stay", provider: "Airbnb" };
   if (
     (hostIs(host, "hilton.com") || hostIs(host, "hilton.com.cn")) &&
     /\/(hotel|search)/.test(path)

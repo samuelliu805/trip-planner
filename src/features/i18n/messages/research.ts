@@ -14,6 +14,10 @@ export const researchZhCN: Record<string, string> = {
   "Paste a link or write one sentence": "粘贴一个链接，或写下一句话",
   "Idea link or sentence": "链接或一句话",
   "Save an idea": "保存想法",
+  "Reading link…": "正在读取链接…",
+  "Page details unavailable. The link can still be saved.":
+    "暂时读不到页面详情，仍可保存这条链接。",
+  "Sort saved ideas": "排列已保存的内容",
   "Recognized as": "识别为",
   "Not sure yet. Choose a type.": "还不能确定，请选择类型",
   "Choose idea type": "选择类型",

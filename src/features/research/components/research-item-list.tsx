@@ -46,7 +46,7 @@ export function ResearchItemList({
 
   return (
     <section aria-label={t("Saved ideas")} className="min-w-0 space-y-3">
-      <header className="flex min-w-0 items-center justify-between gap-3">
+      <header className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">
             <T message="Saved ideas" />

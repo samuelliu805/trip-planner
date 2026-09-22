@@ -1,21 +1,12 @@
 "use client";
 
-import { Localized, useI18n } from "@/features/i18n/i18n-provider";
-import { ArrowUpDown, Check } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/features/i18n/i18n-provider";
 
 import type { ResearchSort } from "../types";
 
 const labels: Record<ResearchSort, string> = {
-  price: "Price",
-  recent: "Recent",
+  price: "Sort by price",
+  recent: "Most recent",
 };
 
 export function ResearchSortMenu({
@@ -27,31 +18,26 @@ export function ResearchSortMenu({
 }) {
   const { t } = useI18n();
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          aria-label={t("Sort candidates: {sort}", { sort: t(labels[value]) })}
-          className="size-11 shrink-0 p-0 xl:w-auto xl:px-3"
-          title={t("Sort candidates: {sort}", { sort: t(labels[value]) })}
-          variant="outline"
+    <div
+      aria-label={t("Sort saved ideas")}
+      className="flex min-w-0 w-full rounded-xl border border-border bg-card p-1 shadow-sm sm:w-auto sm:shrink-0"
+      role="group"
+    >
+      {(["recent", "price"] as const).map((sort) => (
+        <button
+          aria-pressed={value === sort}
+          className={`min-h-11 flex-1 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-primary sm:flex-none ${
+            value === sort
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          }`}
+          key={sort}
+          onClick={() => onChange(sort)}
+          type="button"
         >
-          <ArrowUpDown aria-hidden="true" className="size-4" />
-          <span className="hidden xl:inline">
-            <Localized value={labels[value]} />
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {(["price", "recent"] as const).map((sort) => (
-          <DropdownMenuItem className="min-h-11" key={sort} onSelect={() => onChange(sort)}>
-            <Check
-              aria-hidden="true"
-              className={`size-4 ${value === sort ? "opacity-100" : "opacity-0"}`}
-            />
-            <Localized value={sort === "price" ? "Sort by price" : "Most recent"} />
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {t(labels[sort])}
+        </button>
+      ))}
+    </div>
   );
 }

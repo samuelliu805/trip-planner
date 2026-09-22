@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { stopChild } from "./child-process.mjs";
+import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 
 function chromeExecutable() {
   const candidates = [
@@ -980,6 +981,63 @@ async function verifyDeployedAuthCaptchaSurfaces(browser, baseUrl) {
 }
 
 async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
+  await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+    const input = document.querySelector('textarea');
+    if (!input) return false;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+    setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  })()`,
+    ),
+    true,
+    "Google Flights booking input was unavailable.",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('PVG → HND') &&
+      document.body.innerText.includes('NH 972 · NH 967') &&
+      document.body.innerText.includes('2026-11-20')`,
+    "Google Flights booking preview",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Flight') && !button.disabled)`,
+    "save Google Flights booking idea",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967')))`,
+    "saved Google Flights booking idea",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `(() => {
+    const card = [...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+    return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
+      button.textContent.includes('Add to Plan'));
+  })()`,
+    "add Google Flights booking idea to Plan",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Added to Plan')`,
+    "Google Flights booking idea applied",
+  );
+  await navigate(browser, baseUrl, `/trips/${tripId}`);
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('PVG → HND')`,
+    "Google Flights booking idea visible in Plan",
+  );
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
   await waitFor(
     browser,
