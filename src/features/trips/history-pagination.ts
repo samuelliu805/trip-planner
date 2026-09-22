@@ -8,7 +8,7 @@ export const historyFilterOptions = [
   { label: "Itinerary", value: "itinerary" },
   { label: "People", value: "people" },
   { label: "Sharing", value: "sharing" },
-  { label: "Ideas & Options", value: "ideas" },
+  { label: "Ideas", value: "ideas" },
 ] as const;
 
 export type HistoryFilter = (typeof historyFilterOptions)[number]["value"];

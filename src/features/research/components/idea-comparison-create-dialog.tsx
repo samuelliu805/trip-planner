@@ -44,32 +44,22 @@ export function IdeaComparisonCreateDialog({
   const { t } = useI18n();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>
-            <T message="New comparison" />
+            <T message="Compare ideas" />
           </DialogTitle>
           <DialogDescription>
-            <T message="Each choice can have one or more saved ideas. For example, A can be a direct flight and B can be two flights." />
+            <T message="Put ideas into A and B, then choose one." />
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 px-5 py-4 sm:px-6">
-          <label className="block text-sm font-medium">
-            <T message="What are you deciding? (optional)" />
-            <input
-              className="mt-1 min-h-11 w-full min-w-0 rounded-md border bg-background px-3"
-              maxLength={160}
-              onChange={(event) => onTitleChange(event.target.value)}
-              placeholder={t("How should we travel from Beijing to East China?")}
-              value={title}
-            />
-          </label>
-          <p className="text-sm text-muted-foreground">
-            <T message="Tap A or B to add an idea to that choice. Tap again to remove it." />
-          </p>
           <div className="flex flex-wrap gap-2">
             {choices.map((ids, index) => (
-              <div className="rounded-lg border px-3 py-2 text-sm" key={index}>
+              <div
+                className="flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm"
+                key={index}
+              >
                 <div className="flex items-center gap-2 font-semibold">
                   {t("Choice {letter}", { letter: choiceLabel(index) })}
                   {index > 1 ? (
@@ -87,21 +77,15 @@ export function IdeaComparisonCreateDialog({
                     </Button>
                   ) : null}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {ids.length
-                    ? ids.length === 1
-                      ? t("1 idea")
-                      : t("{count} ideas", { count: ids.length })
-                    : t("Add at least one idea")}
-                </p>
+                <span className="text-muted-foreground">{ids.length}</span>
               </div>
             ))}
           </div>
           <Button
-            className="min-h-11"
+            className="min-h-11 px-2"
             onClick={() => setChoices((current) => [...current, []])}
             type="button"
-            variant="outline"
+            variant="ghost"
           >
             <T message="Add another choice" />
           </Button>
@@ -131,6 +115,15 @@ export function IdeaComparisonCreateDialog({
               </div>
             ))}
           </div>
+          <label className="block text-sm font-medium text-muted-foreground">
+            <T message="Name (optional)" />
+            <input
+              className="mt-1 min-h-11 w-full min-w-0 rounded-md border bg-background px-3 text-foreground"
+              maxLength={160}
+              onChange={(event) => onTitleChange(event.target.value)}
+              value={title}
+            />
+          </label>
           {error ? (
             <p className="text-sm text-destructive" role="alert">
               {error}

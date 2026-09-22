@@ -1,4 +1,4 @@
-import { parseIdeaUrlFields } from "./idea-url-fields.ts";
+import { parseIdeaUrlFields, parseIdeaUrlPrice } from "./idea-url-fields.ts";
 import { parseGenericIdeaUrlFields } from "./idea-generic-url-fields.ts";
 
 export type IdeaKind = "flight" | "stay" | "car" | "activity" | "unknown";
@@ -188,5 +188,9 @@ export function overrideIdeaClassification(
 
 export function parseReliableIdeaFields(sourceUrl: string | null) {
   if (!sourceUrl || !canonicalIdeaUrl(sourceUrl)) return parseIdeaUrlFields(null);
-  return parseIdeaUrlFields(new URL(sourceUrl));
+  const url = new URL(sourceUrl);
+  const fields = parseIdeaUrlFields(url);
+  return fields.priceAmount === undefined
+    ? { ...fields, ...parseIdeaUrlPrice(url.searchParams) }
+    : fields;
 }

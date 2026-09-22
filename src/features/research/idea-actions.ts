@@ -5,8 +5,9 @@ import { z } from "zod";
 
 import { getAuthProvider, getRelationalDatabase } from "@/platform/composition/server";
 import type { Json } from "@/types/database";
+import { placeSnapshotSchema } from "@/features/itinerary/item-schema";
 
-import { loadResearchItem } from "./actions";
+import { createResearchItem, loadResearchItem } from "./actions";
 import { canonicalIdeaUrl, classifyIdeaInput, parseReliableIdeaFields } from "./idea-input";
 import { fetchIdeaPageMetadata } from "./idea-page-metadata";
 import type { ResearchItem, ResearchMutationResult } from "./types";
@@ -19,6 +20,8 @@ const captureSchema = z
     title: z.string().trim().max(300).nullable(),
     sourceUrl: z.url().max(2048).nullable(),
     shareText: z.string().trim().max(5000).nullable(),
+    locationText: z.string().trim().max(200).nullable().optional(),
+    locationPlaceSnapshot: placeSnapshotSchema.nullable().optional(),
   })
   .refine((value) => value.title || value.sourceUrl, "Add a link or a name.")
   .refine(
@@ -31,29 +34,56 @@ export async function captureIdea(
 ): Promise<ResearchMutationResult<ResearchItem>> {
   const parsed = captureSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid idea." };
-  const database = await getRelationalDatabase();
   const fields =
     parsed.data.sourceUrl && classifyIdeaInput(parsed.data.sourceUrl).kind === parsed.data.kind
       ? parseReliableIdeaFields(parsed.data.sourceUrl)
       : parseReliableIdeaFields(null);
-  const metadata = parsed.data.sourceUrl
-    ? await fetchIdeaPageMetadata(parsed.data.sourceUrl)
-    : null;
-  const { data, error } = await database.rpc("capture_idea_v1", {
-    target_trip_id: parsed.data.tripId,
-    target_operation_id: parsed.data.operationId,
-    requested_kind: parsed.data.kind,
-    requested_title: parsed.data.title ?? metadata?.title ?? fields.locationText,
-    requested_source_url: parsed.data.sourceUrl,
-    requested_share_text: parsed.data.shareText,
-    requested_fields: {
-      ...fields,
-      locationText: fields.locationText ?? metadata?.locationText ?? null,
-    },
+  const sourceIsCompleteGoogleFlight =
+    parsed.data.sourceUrl &&
+    fields.priceAmount !== undefined &&
+    /https:\/\/(?:[^/]+\.)?google\.com\/travel\/flights/i.test(parsed.data.sourceUrl);
+  const metadata =
+    parsed.data.sourceUrl && !sourceIsCompleteGoogleFlight
+      ? await fetchIdeaPageMetadata(parsed.data.sourceUrl)
+      : null;
+  const textWithoutUrl = parsed.data.sourceUrl
+    ? parsed.data.shareText?.replace(parsed.data.sourceUrl, "").trim() || null
+    : parsed.data.shareText;
+  const locationText =
+    parsed.data.locationPlaceSnapshot?.displayName ??
+    parsed.data.locationText ??
+    fields.locationText ??
+    metadata?.locationText ??
+    null;
+  const priceAmount = fields.priceAmount ?? metadata?.priceAmount ?? null;
+  const priceCurrency = fields.priceCurrency ?? metadata?.priceCurrency ?? null;
+  return createResearchItem({
+    category: parsed.data.kind === "car" ? "rental" : parsed.data.kind,
+    currency: priceAmount === null ? null : priceCurrency,
+    destinationText: fields.destinationText,
+    endDate: fields.endDate,
+    journeyType: fields.journeyType ?? null,
+    links: [],
+    locationPlaceSnapshot: parsed.data.locationPlaceSnapshot ?? null,
+    locationText,
+    note:
+      textWithoutUrl && textWithoutUrl !== parsed.data.title && textWithoutUrl !== metadata?.title
+        ? textWithoutUrl
+        : null,
+    operationId: parsed.data.operationId,
+    originText: fields.originText,
+    segments: fields.segments ?? [],
+    sourceUrl: parsed.data.sourceUrl,
+    startDate: fields.startDate,
+    title:
+      parsed.data.title ??
+      metadata?.title ??
+      (fields.originText && fields.destinationText
+        ? `${fields.originText} → ${fields.destinationText}`
+        : locationText),
+    totalPriceAmount: priceAmount,
+    tripId: parsed.data.tripId,
   });
-  if (error || !data) return { error: error?.message ?? "The idea could not be saved." };
-  revalidatePath(`/trips/${parsed.data.tripId}`);
-  return loadResearchItem(parsed.data.tripId, parsed.data.operationId);
 }
 
 export async function previewIdeaLink(sourceUrl: string) {
@@ -61,7 +91,13 @@ export async function previewIdeaLink(sourceUrl: string) {
     !z.url().max(2048).safeParse(sourceUrl).success ||
     !(await getAuthProvider().getCurrentUser())
   )
-    return { title: null, locationText: null, status: "unsupported" as const };
+    return {
+      title: null,
+      locationText: null,
+      priceAmount: null,
+      priceCurrency: null,
+      status: "unsupported" as const,
+    };
   return fetchIdeaPageMetadata(sourceUrl);
 }
 

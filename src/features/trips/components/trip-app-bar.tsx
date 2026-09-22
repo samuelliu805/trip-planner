@@ -67,7 +67,7 @@ export function TripMobileTabBar({
       activeId={active}
       ariaLabel="Trip sections"
       className="trip-mobile-tab-bar z-[70] grid-cols-2 shrink-0 rounded-none border-x-0 border-b-0 pb-[max(0.35rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-1 shadow-none sm:hidden"
-      itemClassName="min-h-14 flex-col gap-0.5 px-2 text-[11px] leading-none"
+      itemClassName="min-h-14 flex-col gap-0.5 px-2 text-sm leading-none"
       items={items}
       documentNavigation
     />
@@ -189,7 +189,7 @@ export function TripAppBar({
                 return (
                   <Button
                     asChild
-                    className="h-9 min-h-9 gap-1.5 px-3 text-xs"
+                    className="h-9 min-h-9 gap-1.5 px-3 text-sm"
                     key={section.id}
                     size="sm"
                     variant={section.id === active ? "default" : "ghost"}

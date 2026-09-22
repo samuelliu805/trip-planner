@@ -8,11 +8,7 @@ import {
   bookingSitesForCategory,
   bookingSitesForItem,
 } from "./booking-sites.ts";
-import {
-  isBookingAppDevice,
-  openManagedAppWindow,
-  prepareCustomSchemeLaunch,
-} from "./components/open-app-deep-link.ts";
+import { customSchemeFallbackDelay, isBookingAppDevice } from "./components/open-app-deep-link.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import { initialResearchSegments } from "./journey.ts";
 import { researchDecisionSlotKey } from "./decision-slot.ts";
@@ -27,6 +23,7 @@ import { parseEcbReferenceRates } from "./exchange-rate-parser.ts";
 import { addIsoDateDays, firstPresentIsoDate } from "./date-range.ts";
 import { rentalReturnsToPickup } from "./rental-return.ts";
 import { deriveOptionImpact } from "./option-impact.ts";
+import { researchItemInputFromForm } from "./research-item-form-values.ts";
 import {
   isReadyToCompare,
   missingComparisonFields,
@@ -450,39 +447,8 @@ test("app launching is limited to mobile and tablet devices, not narrow desktop 
   );
 });
 
-test("custom schemes stay in the current tab and universal links close an uncommitted popup", () => {
-  const anchor = { href: "https://m.ctrip.com/", target: "_blank" };
-  prepareCustomSchemeLaunch(anchor, "ctrip://wireless/InquireHotel");
-  assert.deepEqual(anchor, { href: "ctrip://wireless/InquireHotel", target: "_self" });
-
-  let closePopup = () => {};
-  let closed = false;
-  let opened: string[] = [];
-  let replaced = "";
-  const launched = openManagedAppWindow((url, target) => {
-    opened = [url, target];
-    return {
-      close() {
-        closed = true;
-      },
-      location: {
-        replace(destination) {
-          replaced = destination;
-        },
-      },
-      opener: {},
-      setTimeout(handler, timeout) {
-        assert.equal(timeout, 1_500);
-        closePopup = handler;
-        return 1;
-      },
-    };
-  }, "https://www.kayak.com/flights/SFO-LAX/2026-10-04");
-  assert.equal(launched, true);
-  assert.deepEqual(opened, ["about:blank", "_blank"]);
-  assert.equal(replaced, "https://www.kayak.com/flights/SFO-LAX/2026-10-04");
-  closePopup();
-  assert.equal(closed, true);
+test("custom scheme launches retain a short website fallback window", () => {
+  assert.equal(customSchemeFallbackDelay(), 1_200);
 });
 
 test("booking site dialog has one app-or-web action and no download-app control", async () => {
@@ -495,10 +461,55 @@ test("booking site dialog has one app-or-web action and no download-app control"
   assert.match(dialog, /href=\{site\.url\}/);
   assert.match(dialog, /target="_blank"/);
   assert.match(opener, /max-width: 1199px/);
-  assert.match(opener, /anchor\.target = "_self"/);
-  assert.match(opener, /openWindow\("about:blank", "_blank"\)/);
-  assert.match(opener, /popup\.setTimeout\(\(\) => popup\.close\(\), 1_500\)/);
-  assert.doesNotMatch(opener, /fallbackUrl|visibilitychange/);
+  assert.match(opener, /window\.location\.assign\(appUrl\)/);
+  assert.match(opener, /window\.location\.assign\(webUrl\)/);
+  assert.match(opener, /visibilitychange/);
+  assert.doesNotMatch(opener, /about:blank/);
+});
+
+test("connecting flight edits keep the journey endpoints instead of promoting a stopover", () => {
+  const form = new FormData();
+  form.set("title", "Connecting flight");
+  form.set("journeyType", "round_trip");
+  form.set("originText", "PVG");
+  form.set("destinationText", "LHR");
+  form.set(
+    "segments",
+    JSON.stringify([
+      { departureDate: "2026-11-20", destination: "HND", origin: "PVG" },
+      { departureDate: "2026-11-20", destination: "LHR", origin: "HND" },
+      { departureDate: "2026-11-25", destination: "HND", origin: "LHR" },
+      { departureDate: "2026-11-25", destination: "PVG", origin: "HND" },
+    ]),
+  );
+  const values = researchItemInputFromForm({
+    category: "flight",
+    form,
+    tripId: "00000000-0000-4000-8000-000000000001",
+  });
+  assert.equal(values.originText, "PVG");
+  assert.equal(values.destinationText, "LHR");
+  assert.equal(values.segments.length, 4);
+});
+
+test("Ideas apply preserves source dates in the Plan item and prefers a matching Plan day", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../database/shared/migrations/20260922160000_idea_plan_dates.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  assert.match(migration, /day\.date = source\.start_date/);
+  assert.match(migration, /'ideaStartDate', source\.start_date/);
+  assert.match(
+    migration,
+    /'departureDate', CASE WHEN source\.category IN \('flight', 'train'\) THEN source\.start_date END/,
+  );
+  assert.match(
+    migration,
+    /'arrivalDate', CASE WHEN source\.category IN \('flight', 'train'\) THEN source\.end_date END/,
+  );
 });
 
 function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
@@ -1211,7 +1222,8 @@ test("Trip detail keeps Ideas capture inline and uses one mobile destination tab
   assert.doesNotMatch(appBar, /TripSectionNav/);
   assert.doesNotMatch(`${planPage}\n${comparePage}`, /TripSectionNav/);
   assert.doesNotMatch(planToolbar, /PlannerEditingToolbar/);
-  assert.match(compareWorkspace, /<h1[\s\S]*Save ideas before you plan/);
+  assert.match(compareWorkspace, /<h1[\s\S]*value="Ideas"/);
+  assert.doesNotMatch(compareWorkspace, /Save ideas before you plan/);
   assert.doesNotMatch(compareWorkspace, /trip\.title/);
   assert.match(menuAccountActions, /\{accountEmail\}/);
   assert.match(menuAccountActions, /Log out/);
@@ -1339,7 +1351,7 @@ test("Trip detail shell contains document scrolling separately from Matrix rules
   );
 });
 
-test("Ideas shows all saved content before optional comparisons and detailed entry", async () => {
+test("Ideas keeps sorting, comparison, and manual entry in one compact top toolbar", async () => {
   const categorySelector = await readFile(
     new URL("./components/category-selector.tsx", import.meta.url),
     "utf8",
@@ -1364,6 +1376,14 @@ test("Ideas shows all saved content before optional comparisons and detailed ent
     new URL("./components/research-sort-menu.tsx", import.meta.url),
     "utf8",
   );
+  const toolbar = await readFile(
+    new URL("./components/ideas-toolbar.tsx", import.meta.url),
+    "utf8",
+  );
+  const quickPlace = await readFile(
+    new URL("./components/quick-idea-place-confirmation.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(categorySelector, /aria-label="Price category"/);
   assert.match(categorySelector, /hidden w-28 min-w-0 sm:block lg:hidden/);
   assert.match(categorySelector, /hidden grid-cols-5 gap-1 rounded-xl bg-muted\/70 p-1 lg:grid/);
@@ -1372,17 +1392,17 @@ test("Ideas shows all saved content before optional comparisons and detailed ent
   assert.match(mobileCategoryPicker, /min-h-16/);
   assert.match(mobileCategoryPicker, /Mobile price categories/);
   assert.match(mobileCategoryPicker, /safe-area-inset-bottom/);
-  assert.match(
-    workspace,
-    /<QuickIdeaInput[\s\S]*<ResearchItemList[\s\S]*<IdeaComparisons[\s\S]*<IdeaDetailsEntry/,
-  );
+  assert.match(workspace, /<QuickIdeaInput[\s\S]*<IdeaComparisons[\s\S]*<ResearchItemList/);
+  assert.match(toolbar, /<ResearchSortMenu[\s\S]*<IdeaDetailsEntry/);
+  assert.match(quickPlace, /PlaceAutocomplete/);
+  assert.match(quickPlace, /Confirm location/);
   assert.doesNotMatch(workspace, /aria-label="Ideas filters"/);
   assert.doesNotMatch(workspace, /saved in Ideas &amp; Options|research-context-bar/);
   assert.match(workspace, /TripMobileTabBar/);
   assert.match(workspace, /: items;/);
   assert.match(workspace, /onSortChange=\{setSort\}/);
   assert.match(route, /\{appBar\}/);
-  assert.match(sortMenu, /aria-pressed=\{value === sort\}/);
+  assert.match(sortMenu, /DropdownMenuContent/);
   assert.match(sortMenu, /min-h-11/);
   assert.match(dialog, /size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-4/);
   assert.match(dialog, /hidden sm:inline[\s\S]*Add price or idea/);

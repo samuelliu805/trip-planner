@@ -55,10 +55,22 @@ export function PlannerItemRow({
     item.price_amount !== null && item.price_currency
       ? formatMoney(item.price_amount, item.price_currency)
       : "";
+  const ideaDateSummary = details.ideaStartDate
+    ? details.ideaEndDate && details.ideaEndDate !== details.ideaStartDate
+      ? `${details.ideaStartDate} – ${details.ideaEndDate}`
+      : details.ideaStartDate
+    : "";
   const subtitle =
     item.type === "activity"
-      ? ""
-      : [routeSummary, details.serviceNumber, carSummary, placeSummary, priceSummary]
+      ? [ideaDateSummary, priceSummary].filter(Boolean).join(" · ")
+      : [
+          routeSummary,
+          details.serviceNumber,
+          ideaDateSummary,
+          carSummary,
+          placeSummary,
+          priceSummary,
+        ]
           .filter(Boolean)
           .join(" · ");
   const title = item.title;

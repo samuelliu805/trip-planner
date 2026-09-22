@@ -9,15 +9,6 @@ type BookingAppDevice = {
   viewportMatches: boolean;
 };
 
-type ManagedPopup = {
-  close(): void;
-  location: { replace(url: string): void };
-  opener: unknown;
-  setTimeout(handler: () => void, timeout: number): number;
-};
-
-type OpenWindow = (url: string, target: string) => ManagedPopup | null;
-
 export function isBookingAppDevice(device: BookingAppDevice) {
   if (!device.viewportMatches) return false;
   return (
@@ -26,27 +17,41 @@ export function isBookingAppDevice(device: BookingAppDevice) {
   );
 }
 
-export function prepareCustomSchemeLaunch(
-  anchor: Pick<HTMLAnchorElement, "href" | "target">,
+export function customSchemeFallbackDelay() {
+  return 1_200;
+}
+
+function launchCustomScheme(appUrl: string, webUrl: string) {
+  let completed = false;
+  const cleanup = () => {
+    if (completed) return;
+    completed = true;
+    window.clearTimeout(timer);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.removeEventListener("pagehide", cleanup);
+  };
+  const onVisibilityChange = () => {
+    if (document.hidden) cleanup();
+  };
+  const timer = window.setTimeout(() => {
+    cleanup();
+    window.location.assign(webUrl);
+  }, customSchemeFallbackDelay());
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("pagehide", cleanup, { once: true });
+  try {
+    window.location.assign(appUrl);
+  } catch {
+    cleanup();
+    window.location.assign(webUrl);
+  }
+}
+
+export function openAppDeepLink(
+  event: ReactMouseEvent<HTMLAnchorElement>,
   appUrl: string,
+  webUrl: string,
 ) {
-  // Keep the launch on the trusted anchor activation; custom schemes do not commit a web document.
-  anchor.href = appUrl;
-  anchor.target = "_self";
-}
-
-export function openManagedAppWindow(openWindow: OpenWindow, webUrl: string) {
-  const popup = openWindow("about:blank", "_blank");
-  if (!popup) return false;
-  popup.opener = null;
-  // A committed web fallback replaces this document and cancels its timer. An app handoff leaves
-  // the blank document uncommitted, so it can close itself when the browser becomes active again.
-  popup.setTimeout(() => popup.close(), 1_500);
-  popup.location.replace(webUrl);
-  return true;
-}
-
-export function openAppDeepLink(event: ReactMouseEvent<HTMLAnchorElement>, appUrl: string) {
   if (
     event.defaultPrevented ||
     event.button !== 0 ||
@@ -67,10 +72,7 @@ export function openAppDeepLink(event: ReactMouseEvent<HTMLAnchorElement>, appUr
     return;
 
   const destination = new URL(appUrl);
-  if (destination.protocol !== "http:" && destination.protocol !== "https:") {
-    prepareCustomSchemeLaunch(event.currentTarget, appUrl);
-    return;
-  }
-
-  if (openManagedAppWindow(window.open.bind(window), destination.href)) event.preventDefault();
+  if (destination.protocol === "http:" || destination.protocol === "https:") return;
+  event.preventDefault();
+  launchCustomScheme(appUrl, webUrl);
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
-import { T, useI18n } from "@/features/i18n/i18n-provider";
+import { useI18n } from "@/features/i18n/i18n-provider";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
@@ -17,11 +17,12 @@ import {
   loadIdeaComparisons,
   type IdeaComparison,
 } from "../idea-actions";
-import type { ResearchItem, ResearchPlanSnapshot } from "../types";
+import type { ResearchItem, ResearchPlanSnapshot, ResearchSort } from "../types";
 import { activityNeedsDay } from "./idea-comparison-labels";
 import { IdeaComparisonCreateDialog } from "./idea-comparison-create-dialog";
 import { IdeaComparisonViewDialog } from "./idea-comparison-view-dialog";
 import { IdeaComparisonDeleteDialog } from "./idea-comparison-delete-dialog";
+import { IdeasToolbar } from "./ideas-toolbar";
 
 function defaultTitle(choices: string[][], items: ResearchItem[], t: (value: string) => string) {
   const selected = new Set(choices.flat());
@@ -37,12 +38,22 @@ function defaultTitle(choices: string[][], items: ResearchItem[], t: (value: str
 }
 
 export function IdeaComparisons({
+  context,
+  defaultCurrency,
   items,
+  onSaved,
+  onSortChange,
   plan,
+  sort,
   tripId,
 }: {
+  context?: { dayId?: string; itemId?: string };
+  defaultCurrency: string;
   items: ResearchItem[];
+  onSaved: (item: ResearchItem) => void;
+  onSortChange: (sort: ResearchSort) => void;
   plan: ResearchPlanSnapshot;
+  sort: ResearchSort;
   tripId: string;
 }) {
   const { t } = useI18n();
@@ -130,7 +141,7 @@ export function IdeaComparisons({
       return item ? activityNeedsDay(item, plan) : false;
     });
     if (needsDay && !dayId) {
-      setError(t("Choose a day for the activity."));
+      setError(t("Choose a Plan day."));
       return;
     }
     setPending(true);
@@ -182,57 +193,46 @@ export function IdeaComparisons({
   }
 
   return (
-    <section
-      aria-label={t("Comparisons")}
-      className="space-y-3 rounded-2xl border bg-card p-4 sm:p-5"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-base font-semibold">
-            <T message="Comparisons" />
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            <T message="When you're undecided, put saved ideas into choices." />
-          </p>
-        </div>
-        <Button
-          className="min-h-11"
-          onClick={() => {
-            setCreateOpen(true);
-            setError(undefined);
-            captureBrowserProductEvent(
-              "comparison_creation_started",
-              {
-                operation_id: newTelemetryOperationId(),
-                surface: "ideas_comparison",
-              },
-              { actorType: "authenticated" },
-            );
-          }}
-          type="button"
-          variant="default"
-        >
-          <Plus aria-hidden="true" className="size-4" /> <T message="New comparison" />
-        </Button>
-      </div>
+    <section aria-label={t("Saved ideas")} className="min-w-0 space-y-3">
+      <IdeasToolbar
+        context={context}
+        defaultCurrency={defaultCurrency}
+        itemCount={items.length}
+        onCompare={() => {
+          setCreateOpen(true);
+          setError(undefined);
+          captureBrowserProductEvent(
+            "comparison_creation_started",
+            {
+              operation_id: newTelemetryOperationId(),
+              surface: "ideas_comparison",
+            },
+            { actorType: "authenticated" },
+          );
+        }}
+        onSaved={onSaved}
+        onSortChange={onSortChange}
+        sort={sort}
+        tripId={tripId}
+      />
       {comparisons.length ? (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="overflow-hidden rounded-xl border bg-card">
           {comparisons.map((comparison) => (
-            <div className="flex min-w-0 items-center gap-1" key={comparison.id}>
+            <div
+              className="flex min-w-0 items-center border-b p-1 last:border-b-0"
+              key={comparison.id}
+            >
               <Button
-                className="min-h-14 h-auto min-w-0 flex-1 justify-start text-left"
+                className="min-h-11 min-w-0 flex-1 justify-start text-left"
                 onClick={() => {
                   setError(undefined);
                   setDayId("");
                   setView(comparison);
                 }}
                 type="button"
-                variant="outline"
+                variant="ghost"
               >
                 <span className="min-w-0 truncate">{comparison.title}</span>
-                <span className="ml-auto text-xs text-muted-foreground">
-                  {t("{count} choices", { count: comparison.choices.length })}
-                </span>
               </Button>
               <Button
                 aria-label={t("Delete comparison {title}", { title: comparison.title })}
@@ -242,18 +242,14 @@ export function IdeaComparisons({
                   setDeleting(comparison);
                 }}
                 type="button"
-                variant="outline"
+                variant="ghost"
               >
                 <Trash2 aria-hidden="true" className="size-4" />
               </Button>
             </div>
           ))}
         </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          <T message="No comparisons yet." />
-        </p>
-      )}
+      ) : null}
       {notice ? (
         <p className="text-sm text-emerald-700" role="status">
           {notice}

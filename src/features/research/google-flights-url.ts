@@ -4,6 +4,8 @@ export type GoogleFlightFields = {
   startDate: string | null;
   endDate: string | null;
   journeyType?: "one_way" | "round_trip" | "multi_city";
+  priceAmount?: number;
+  priceCurrency?: string;
   segments?: Array<{
     origin: string;
     destination: string;
@@ -28,7 +30,7 @@ function date(value: string | null): string | null {
     : null;
 }
 
-type WireField = { number: number; bytes?: Uint8Array };
+type WireField = { number: number; bytes?: Uint8Array; value?: number };
 
 function wireFields(bytes: Uint8Array): WireField[] | null {
   const fields: WireField[] = [];
@@ -51,8 +53,9 @@ function wireFields(bytes: Uint8Array): WireField[] | null {
     const kind = tag % 8;
     if (!number) return null;
     if (kind === 0) {
-      if (varint() === null) return null;
-      fields.push({ number });
+      const value = varint();
+      if (value === null) return null;
+      fields.push({ number, value });
     } else if (kind === 2) {
       const length = varint();
       if (length === null || length > bytes.length - offset) return null;
@@ -65,6 +68,43 @@ function wireFields(bytes: Uint8Array): WireField[] | null {
     } else return null;
   }
   return fields;
+}
+
+function decodedBase64(value: string): Uint8Array | null {
+  if (!/^[A-Za-z0-9_+/=-]{4,8192}$/.test(value)) return null;
+  try {
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const binary = atob(padded);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+function priceFromTfu(value: string | null) {
+  const outer = value ? decodedBase64(value) : null;
+  const encoded = outer
+    ? wireFields(outer)?.find((field) => field.number === 1 && field.bytes)?.bytes
+    : null;
+  const booking = encoded ? decodedBase64(new TextDecoder().decode(encoded)) : null;
+  const priceMessage = booking
+    ? wireFields(booking)?.find((field) => field.number === 3 && field.bytes)?.bytes
+    : null;
+  const fields = priceMessage ? wireFields(priceMessage) : null;
+  const minorAmount = fields?.find((field) => field.number === 1)?.value;
+  const decimalPlaces = fields?.find((field) => field.number === 2)?.value;
+  const currencyBytes = fields?.find((field) => field.number === 3)?.bytes;
+  const priceCurrency = currencyBytes ? new TextDecoder().decode(currencyBytes) : "";
+  if (
+    minorAmount === undefined ||
+    decimalPlaces === undefined ||
+    decimalPlaces > 4 ||
+    !/^[A-Z]{3}$/.test(priceCurrency)
+  )
+    return {};
+  const priceAmount = minorAmount / 10 ** decimalPlaces;
+  return Number.isFinite(priceAmount) && priceAmount >= 0 ? { priceAmount, priceCurrency } : {};
 }
 
 function airport(bytes: Uint8Array | undefined): string | null {
@@ -116,8 +156,8 @@ function bookedFlights(fields: WireField[] | null, fallbackDate: string | null) 
 function fromTfs(value: string): GoogleFlightFields | null {
   if (!/^[A-Za-z0-9_-]{8,4096}$/.test(value)) return null;
   try {
-    const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
-    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const bytes = decodedBase64(value);
+    if (!bytes) return null;
     const groups = wireFields(bytes)
       ?.filter((field) => field.number === 3 && field.bytes)
       .map((field) => {
@@ -181,5 +221,8 @@ export function parseGoogleFlightUrl(url: URL): GoogleFlightFields {
     return empty;
   const tfs = url.searchParams.get("tfs");
   const decoded = tfs ? fromTfs(tfs) : null;
-  return decoded ?? fromQuery(url.searchParams.get("q") ?? "") ?? empty;
+  return {
+    ...(decoded ?? fromQuery(url.searchParams.get("q") ?? "") ?? empty),
+    ...priceFromTfu(url.searchParams.get("tfu")),
+  };
 }

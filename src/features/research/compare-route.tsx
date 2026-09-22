@@ -6,7 +6,6 @@ import { listPublicItineraryLinks } from "@/features/sharing/data";
 import { getRequestSiteUrl } from "@/features/sharing/request-site-url";
 import { TripForm } from "@/features/trips/components/trip-form";
 import { TripSettingsAppBar } from "@/features/trips/components/trip-settings-app-bar";
-import { RouteVariantControls } from "@/features/variants/components/route-variant-controls";
 import { getPlannerVariants } from "@/features/itinerary/data";
 import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
@@ -87,14 +86,9 @@ export async function ResearchCompareRoute({
           tripRole={trip.role}
           tripVersion={trip.version}
           variantControls={
-            <RouteVariantControls
-              activeSection="compare"
-              activeVariantId={resolution.activeVariant.id}
-              researchCategory={category}
-              title={trip.title}
-              tripId={trip.id}
-              variants={variantsResult.data}
-            />
+            <span className="block truncate text-sm font-semibold" title={trip.title}>
+              {trip.title}
+            </span>
           }
           variantId={resolution.activeVariant.id}
           settings={<TripForm trip={trip} />}
@@ -113,7 +107,6 @@ export async function ResearchCompareRoute({
           key={`${resolution.activeVariant.id}:${planState.currentApplicationIds.join(",")}`}
           plan={planResult.data}
           tripId={trip.id}
-          variantName={resolution.activeVariant.name}
         />
       </PlannerMapProvider>
     </TripDetailRoute>

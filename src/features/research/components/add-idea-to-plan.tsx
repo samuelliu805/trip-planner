@@ -28,7 +28,10 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
-  const needsSchedule = item.category === "activity";
+  const matchingDay = item.start_date
+    ? plan.days.find((entry) => entry.date === item.start_date)
+    : undefined;
+  const needsSchedule = item.category === "activity" || Boolean(item.start_date && !matchingDay);
   const day = plan.days.find((entry) => entry.id === dayId);
 
   async function apply() {
@@ -71,12 +74,12 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
         <T message="Add to Plan" />
       </Button>
       {error && !open ? (
-        <span className="text-xs text-destructive" role="alert">
+        <span className="text-sm text-destructive" role="alert">
           {error}
         </span>
       ) : null}
       {notice ? (
-        <span className="text-xs text-emerald-700" role="status">
+        <span className="text-sm text-emerald-700" role="status">
           {notice}
         </span>
       ) : null}
@@ -84,10 +87,19 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              <T message="Add activity to Plan" />
+              <T message="Add to Plan" />
             </DialogTitle>
             <DialogDescription>
-              <T message="Choose a day and where it should appear. The saved idea will remain in Ideas." />
+              {item.start_date ? (
+                <T
+                  message="This idea is dated {date}. Choose where it belongs in this Plan."
+                  values={{
+                    date: item.end_date ? `${item.start_date} – ${item.end_date}` : item.start_date,
+                  }}
+                />
+              ) : (
+                <T message="Choose where this belongs in your Plan." />
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-5 py-4 sm:px-6">

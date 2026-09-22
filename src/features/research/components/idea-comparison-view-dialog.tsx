@@ -50,10 +50,11 @@ export function IdeaComparisonViewDialog({
             const selectedItems = choice.itemIds
               .map((id) => byId.get(id))
               .filter((item): item is ResearchItem => !!item);
-            const needsDay = selectedItems.some((item) => activityNeedsDay(item, plan));
             const dateMismatch = selectedItems.some(
               (item) => item.start_date && !plan.days.some((day) => day.date === item.start_date),
             );
+            const needsDay =
+              dateMismatch || selectedItems.some((item) => activityNeedsDay(item, plan));
             return (
               <article className="rounded-xl border p-3" key={choice.id}>
                 <h3 className="font-semibold">
@@ -63,7 +64,7 @@ export function IdeaComparisonViewDialog({
                   {selectedItems.map((item) => (
                     <li className="text-sm" key={item.id}>
                       <strong className="break-words">{itemLabel(item)}</strong>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-sm text-muted-foreground">
                         {[
                           item.start_date,
                           item.end_date,
@@ -80,14 +81,9 @@ export function IdeaComparisonViewDialog({
                     </li>
                   ))}
                 </ul>
-                {dateMismatch ? (
-                  <p className="mt-2 text-xs text-amber-700">
-                    <T message="Some dates do not match a Plan day. Those ideas will be placed on the selected day or the first day." />
-                  </p>
-                ) : null}
                 {needsDay ? (
                   <label className="mt-3 block text-sm">
-                    <T message="Day for undated activities" />
+                    <T message="Plan day" />
                     <select
                       className="mt-1 min-h-11 w-full rounded-md border bg-background px-3"
                       onChange={(event) => onDayChange(event.target.value)}

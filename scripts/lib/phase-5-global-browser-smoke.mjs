@@ -1049,8 +1049,44 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `document.body.innerText.includes('Added to Plan')`,
-    "Google Flights booking idea applied",
+    `Boolean(document.querySelector('[role="dialog"] select'))`,
+    "dated Google flight Plan day choice",
+  );
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const select = document.querySelector('[role="dialog"] select');
+        const option = [...(select?.options ?? [])].find((entry) => entry.value);
+        if (!(select instanceof HTMLSelectElement) || !option) return false;
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`,
+    ),
+    true,
+    "A Plan day was unavailable for the dated Google flight.",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    "confirm dated Google flight Plan day",
+  );
+  const datedApplyResult = await waitFor(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      if (!dialog) return { status: 'closed' };
+      const alert = dialog.querySelector('[role="alert"]');
+      return alert ? { status: 'error', text: alert.textContent.trim() } : null;
+    })()`,
+    "dated Google flight submitted to Plan",
+  );
+  assert.equal(
+    datedApplyResult.status,
+    "closed",
+    `Dated Google flight was not added to Plan: ${datedApplyResult.text ?? "unknown error"}`,
   );
   await navigate(browser, baseUrl, `/trips/${tripId}`);
   await waitFor(
@@ -1062,10 +1098,30 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
   await waitFor(
     browser,
-    `Boolean(document.querySelector('details summary'))`,
-    "manual Ideas details",
+    `Boolean(document.querySelector('button[aria-label="More idea actions"]'))`,
+    "manual Ideas menu",
   );
-  await clickElement(browser, `document.querySelector('details summary')`, "manual Ideas details");
+  await clickElement(
+    browser,
+    `document.querySelector('button[aria-label="More idea actions"]')`,
+    "manual Ideas menu",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((item) =>
+      item.textContent.includes('Add flight manually'))`,
+    "manual Ideas flight entry",
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
   await waitFor(
     browser,
     `Boolean([...document.querySelectorAll('button[aria-label="Search booking sites"]')]

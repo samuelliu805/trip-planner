@@ -50,7 +50,7 @@ export async function loadResearchWorkspace(input: {
     getResearchPlanState(parsed.data.tripId, parsed.data.variantId),
   ]);
   const error = items.error ?? plan.error ?? state.error;
-  if (error || !plan.data) return { error: error ?? "Ideas & Options could not be refreshed." };
+  if (error || !plan.data) return { error: error ?? "Ideas could not be refreshed." };
   return {
     data: {
       applications: state.applications,

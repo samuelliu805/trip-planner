@@ -186,6 +186,8 @@ test("Google Flights booking links expose selected flights from nested tfs field
     startDate: "2026-11-20",
     endDate: "2026-11-25",
     journeyType: "round_trip",
+    priceAmount: 427.61,
+    priceCurrency: "USD",
     segments: [
       {
         origin: "PVG",
@@ -203,6 +205,14 @@ test("Google Flights booking links expose selected flights from nested tfs field
       },
     ],
   });
+});
+
+test("explicit provider URL price and currency parameters are preserved", () => {
+  const parsed = parseReliableIdeaFields(
+    "https://www.booking.com/hotel/fr/example.html?checkin=2026-11-20&checkout=2026-11-25&price=1,234.50&currency=EUR",
+  );
+  assert.equal(parsed.priceAmount, 1234.5);
+  assert.equal(parsed.priceCurrency, "EUR");
 });
 
 test("provider links recover only explicit place, route, and date fields", () => {

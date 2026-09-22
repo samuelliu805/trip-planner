@@ -263,7 +263,7 @@ export function PlaceAutocomplete({
       {resolving ? (
         <p
           aria-live="polite"
-          className="flex items-center gap-2 text-xs font-medium text-muted-foreground"
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground"
           role="status"
         >
           <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
@@ -278,7 +278,7 @@ export function PlaceAutocomplete({
         />
       ) : null}
       {!provider && showAvailabilityMessage ? (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           {providerError
             ? t(providerError.message)
             : onCustomValue
@@ -292,7 +292,7 @@ export function PlaceAutocomplete({
         </p>
       ) : null}
       {error ? (
-        <p className="mt-1 text-xs text-destructive" role="alert">
+        <p className="mt-1 text-sm text-destructive" role="alert">
           {t(error)}
         </p>
       ) : null}
