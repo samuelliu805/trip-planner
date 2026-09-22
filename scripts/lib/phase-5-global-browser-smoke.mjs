@@ -989,11 +989,16 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
         const text = document.body.innerText;
         if (text.includes('PVG → HND') && text.includes('NH 972 · NH 967') &&
           text.includes('2026-11-20')) return true;
-        const input = document.querySelector('textarea');
+        const input = document.querySelector('[aria-label="Save an idea"] textarea');
         if (!(input instanceof HTMLTextAreaElement)) return false;
         const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        // A pre-hydration write can initialize React's value tracker to the sample.
+        // Clear it first so a later poll still produces a real change event.
+        setter.call(input, '');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
         setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
         input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
         return false;
       })()`,
       "Google Flights booking preview",

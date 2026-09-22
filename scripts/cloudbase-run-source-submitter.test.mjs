@@ -122,7 +122,7 @@ test("uploads with curl before registering the exact package release", async () 
   assert.equal(calls[1][1][calls[1][1].indexOf("--max-time") + 1], "600");
   assert.equal(
     calls[1][1][calls[1][1].indexOf("--write-out") + 1],
-    "http=%{http_code} uploaded=%{size_upload} total=%{time_total}",
+    "\nhttp=%{http_code} uploaded=%{size_upload} total=%{time_total}",
   );
   assert.equal(calls[1][2].timeoutMs, 630_000);
   assert.equal(calls[2][0], "npx");
@@ -142,7 +142,8 @@ test("reports bounded upload failure metrics without exposing signed URLs", asyn
     { code: 0, output: JSON.stringify({ data: uploadPayload.Response }), timedOut: false },
     {
       code: 22,
-      output: "http=403 uploaded=3680694 total=280.123456",
+      output:
+        "<Error><Code>RequestTimeTooSkewed</Code></Error>\nhttp=403 uploaded=3680694 total=280.123456",
       errorOutput: `curl: (22) ${uploadPayload.Response.UploadUrl}`,
       timedOut: false,
     },
@@ -157,6 +158,6 @@ test("reports bounded upload failure metrics without exposing signed URLs", asyn
     }),
     (error) =>
       error.message ===
-      "CloudBase source archive upload failed (curl exit 22, HTTP 403, uploaded 3680694 bytes in 280.123456s, process timeout false).",
+      "CloudBase source archive upload failed (curl exit 22, HTTP 403, COS RequestTimeTooSkewed, uploaded 3680694 bytes in 280.123456s, process timeout false).",
   );
 });

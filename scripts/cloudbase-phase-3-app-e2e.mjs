@@ -708,18 +708,33 @@ async function verifyTripSectionNavigation(browser, tripId) {
   const entered = await evaluate(
     browser,
     `(() => {
-      const input = document.querySelector('textarea');
+      const input = document.querySelector('[aria-label="Save an idea"] textarea');
       if (!input) return false;
       const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(input, '');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
       setter.call(input, ${JSON.stringify(googleFlightUrl)});
       input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
       return true;
     })()`,
   );
   assert.equal(entered, true, "Google Flights capture input was unavailable.");
   await waitFor(
     browser,
-    `document.body.innerText.includes('ORD → LAX') && document.body.innerText.includes('2026-10-23')`,
+    `(() => {
+      if (document.body.innerText.includes('ORD → LAX') &&
+          document.body.innerText.includes('2026-10-23')) return true;
+      const input = document.querySelector('[aria-label="Save an idea"] textarea');
+      if (!(input instanceof HTMLTextAreaElement)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(input, '');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      setter.call(input, ${JSON.stringify(googleFlightUrl)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      return false;
+    })()`,
     "Google Flights parsed preview",
   );
   await clickElement(

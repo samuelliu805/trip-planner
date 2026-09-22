@@ -178,9 +178,9 @@ export async function submitCloudBaseRunSource({
       "--max-time",
       "600",
       "--output",
-      "/dev/null",
+      "-",
       "--write-out",
-      "http=%{http_code} uploaded=%{size_upload} total=%{time_total}",
+      "\nhttp=%{http_code} uploaded=%{size_upload} total=%{time_total}",
       "--request",
       "PUT",
       ...upload.headers.flatMap(({ key, value }) => ["--header", `${key}: ${value}`]),
@@ -191,15 +191,17 @@ export async function submitCloudBaseRunSource({
     { capture: true, timeoutMs: 630_000 },
   );
   if (uploadResult.code !== 0 || uploadResult.timedOut) {
-    const metrics = /^http=(\d{3}) uploaded=(\d+(?:\.\d+)?) total=(\d+(?:\.\d+)?)$/.exec(
+    const metrics = /(?:^|\n)http=(\d{3}) uploaded=(\d+(?:\.\d+)?) total=(\d+(?:\.\d+)?)$/.exec(
       uploadResult.output.trim(),
     );
+    const responseCode =
+      /<Code>([A-Za-z][A-Za-z0-9]{0,63})<\/Code>/.exec(uploadResult.output)?.[1] ?? "unknown";
     const status = metrics ? metrics[1] : "unknown";
     const uploaded = metrics ? metrics[2] : "unknown";
     const total = metrics ? metrics[3] : "unknown";
     const exitCode = Number.isInteger(uploadResult.code) ? uploadResult.code : "unknown";
     throw new Error(
-      `CloudBase source archive upload failed (curl exit ${exitCode}, HTTP ${status}, ` +
+      `CloudBase source archive upload failed (curl exit ${exitCode}, HTTP ${status}, COS ${responseCode}, ` +
         `uploaded ${uploaded} bytes in ${total}s, process timeout ${uploadResult.timedOut === true}).`,
     );
   }
