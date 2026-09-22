@@ -177,6 +177,10 @@ export async function submitCloudBaseRunSource({
       "30",
       "--max-time",
       "600",
+      "--output",
+      "/dev/null",
+      "--write-out",
+      "http=%{http_code} uploaded=%{size_upload} total=%{time_total}",
       "--request",
       "PUT",
       ...upload.headers.flatMap(({ key, value }) => ["--header", `${key}: ${value}`]),
@@ -187,7 +191,17 @@ export async function submitCloudBaseRunSource({
     { capture: true, timeoutMs: 630_000 },
   );
   if (uploadResult.code !== 0 || uploadResult.timedOut) {
-    throw new Error("CloudBase source archive upload failed.");
+    const metrics = /^http=(\d{3}) uploaded=(\d+(?:\.\d+)?) total=(\d+(?:\.\d+)?)$/.exec(
+      uploadResult.output.trim(),
+    );
+    const status = metrics ? metrics[1] : "unknown";
+    const uploaded = metrics ? metrics[2] : "unknown";
+    const total = metrics ? metrics[3] : "unknown";
+    const exitCode = Number.isInteger(uploadResult.code) ? uploadResult.code : "unknown";
+    throw new Error(
+      `CloudBase source archive upload failed (curl exit ${exitCode}, HTTP ${status}, ` +
+        `uploaded ${uploaded} bytes in ${total}s, process timeout ${uploadResult.timedOut === true}).`,
+    );
   }
   log("Registering the uploaded package as a full CloudBase Run release.");
   await callCloudBaseApi({
