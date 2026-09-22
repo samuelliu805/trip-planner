@@ -1067,6 +1067,12 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     true,
     "A Plan day was unavailable for the dated Google flight.",
   );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    "dated Google flight Plan confirmation readiness",
+  );
   await clickElement(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
