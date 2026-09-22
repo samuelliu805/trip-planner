@@ -236,6 +236,7 @@ export function QuickIdeaInput({
                 </p>
               ) : null}
               <IdeaLinkPreview
+                hasReliableFields={Boolean(previewRoute && preview.startDate)}
                 key={classification.sourceUrl ?? ""}
                 sourceUrl={classification.sourceUrl}
               />

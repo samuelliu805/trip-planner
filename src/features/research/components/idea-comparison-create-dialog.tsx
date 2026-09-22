@@ -89,7 +89,9 @@ export function IdeaComparisonCreateDialog({
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {ids.length
-                    ? t("{count} ideas", { count: ids.length })
+                    ? ids.length === 1
+                      ? t("1 idea")
+                      : t("{count} ideas", { count: ids.length })
                     : t("Add at least one idea")}
                 </p>
               </div>

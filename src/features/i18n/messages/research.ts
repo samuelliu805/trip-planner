@@ -50,6 +50,7 @@ export const researchZhCN: Record<string, string> = {
   "Choice {letter}": "选择 {letter}",
   "Remove choice {letter}": "移除选择 {letter}",
   "{count} ideas": "{count} 条内容",
+  "1 idea": "1 条内容",
   "Add at least one idea": "请放入至少一条内容",
   "Add another choice": "再加一个选择",
   "Assign to choice {letter}": "放进选择 {letter}",

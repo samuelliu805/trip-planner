@@ -982,26 +982,19 @@ async function verifyDeployedAuthCaptchaSurfaces(browser, baseUrl) {
 
 async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
-  assert.equal(
-    await evaluate(
-      browser,
-      `(() => {
-    const input = document.querySelector('textarea');
-    if (!input) return false;
-    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
-    setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    return true;
-  })()`,
-    ),
-    true,
-    "Google Flights booking input was unavailable.",
-  );
   await waitFor(
     browser,
-    `document.body.innerText.includes('PVG → HND') &&
-      document.body.innerText.includes('NH 972 · NH 967') &&
-      document.body.innerText.includes('2026-11-20')`,
+    `(() => {
+      const text = document.body.innerText;
+      if (text.includes('PVG → HND') && text.includes('NH 972 · NH 967') &&
+        text.includes('2026-11-20')) return true;
+      const input = document.querySelector('textarea');
+      if (!(input instanceof HTMLTextAreaElement)) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return false;
+    })()`,
     "Google Flights booking preview",
   );
   await clickElement(
@@ -1035,7 +1028,8 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await navigate(browser, baseUrl, `/trips/${tripId}`);
   await waitFor(
     browser,
-    `document.body.innerText.includes('PVG → HND')`,
+    `document.body.innerText.includes('PVG – HND') &&
+      document.body.innerText.includes('NH 972 / NH 967')`,
     "Google Flights booking idea visible in Plan",
   );
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);

@@ -736,26 +736,19 @@ async function verifyTripSectionNavigation(browser, tripId) {
     45_000,
   );
 
-  assert.equal(
-    await evaluate(
-      browser,
-      `(() => {
+  await waitFor(
+    browser,
+    `(() => {
+      const text = document.body.innerText;
+      if (text.includes('PVG → HND') && text.includes('NH 972 · NH 967') &&
+        text.includes('2026-11-20')) return true;
       const input = document.querySelector('textarea');
-      if (!input) return false;
+      if (!(input instanceof HTMLTextAreaElement)) return false;
       const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
       setter.call(input, ${JSON.stringify(googleFlightsBookingSample)});
       input.dispatchEvent(new Event('input', { bubbles: true }));
-      return true;
+      return false;
     })()`,
-    ),
-    true,
-    "Google Flights booking link could not be entered.",
-  );
-  await waitFor(
-    browser,
-    `document.body.innerText.includes('PVG → HND') &&
-      document.body.innerText.includes('NH 972 · NH 967') &&
-      document.body.innerText.includes('2026-11-20')`,
     "Google Flights booking link preview",
   );
   await clickElement(
@@ -854,6 +847,9 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   assert.equal(appliedFlight.length, 1);
   assert.equal(appliedFlight[0].details.ideaResearchItemId, bookedFlight[0].id);
+  assert.equal(appliedFlight[0].details.origin, "PVG");
+  assert.equal(appliedFlight[0].details.destination, "HND");
+  assert.equal(appliedFlight[0].details.serviceNumber, "NH 972 / NH 967");
   const savedBooking = await controlledData(
     () =>
       db

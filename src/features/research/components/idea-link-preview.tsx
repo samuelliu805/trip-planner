@@ -7,7 +7,13 @@ import { T } from "@/features/i18n/i18n-provider";
 import { previewIdeaLink } from "../idea-actions";
 import type { IdeaPageMetadata } from "../idea-page-metadata";
 
-export function IdeaLinkPreview({ sourceUrl }: { sourceUrl: string | null }) {
+export function IdeaLinkPreview({
+  hasReliableFields,
+  sourceUrl,
+}: {
+  hasReliableFields: boolean;
+  sourceUrl: string | null;
+}) {
   const [result, setResult] = useState<IdeaPageMetadata | null>(null);
 
   useEffect(() => {
@@ -29,7 +35,7 @@ export function IdeaLinkPreview({ sourceUrl }: { sourceUrl: string | null }) {
     };
   }, [sourceUrl]);
 
-  if (!sourceUrl) return null;
+  if (!sourceUrl || (hasReliableFields && result?.status !== "readable")) return null;
   return (
     <div
       aria-live="polite"
