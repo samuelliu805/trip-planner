@@ -12,10 +12,15 @@ const requiredFiles = [
   "package-lock.json",
   "src/app.ts",
   "scripts/cloudbase-runtime-entrypoint.mjs",
+  "scripts/public-template-build-lib.mjs",
+  "scripts/validate-public-templates.mjs",
+  "cloudbase/functions/shared/admin-cleanup.d.mts",
 ];
 const deploymentEvidence = "docs/landing-evidence/assembled.png";
 const artifactEvidence = "artifacts/landing-final/assembled.png";
 const retainedDocumentation = "docs/operations-runbook.md";
+const runtimeImport = "cloudbase/functions/shared/admin-cleanup.mjs";
+const sourceTest = "src/app.test.ts";
 
 function createFixture() {
   const root = mkdtempSync(join(tmpdir(), "prepare-cloudbase-run-"));
@@ -24,7 +29,13 @@ function createFixture() {
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, `tracked:${path}`);
   }
-  for (const path of [artifactEvidence, deploymentEvidence, retainedDocumentation]) {
+  for (const path of [
+    artifactEvidence,
+    deploymentEvidence,
+    retainedDocumentation,
+    runtimeImport,
+    sourceTest,
+  ]) {
     const fullPath = join(root, path);
     mkdirSync(dirname(fullPath), { recursive: true });
     writeFileSync(fullPath, `tracked:${path}`);
@@ -41,7 +52,14 @@ test("copies only the supplied tracked source snapshot", (t) => {
   t.after(() => rmSync(root, { force: true, recursive: true }));
 
   const output = prepareCloudBaseRun(root, {
-    trackedFiles: [...requiredFiles, artifactEvidence, deploymentEvidence, retainedDocumentation],
+    trackedFiles: [
+      ...requiredFiles,
+      artifactEvidence,
+      deploymentEvidence,
+      retainedDocumentation,
+      runtimeImport,
+      sourceTest,
+    ],
   });
 
   for (const path of requiredFiles) {
@@ -52,10 +70,9 @@ test("copies only the supplied tracked source snapshot", (t) => {
   assert.equal(existsSync(join(output, "stale.txt")), false);
   assert.equal(existsSync(join(output, artifactEvidence)), false);
   assert.equal(existsSync(join(output, deploymentEvidence)), false);
-  assert.equal(
-    readFileSync(join(output, retainedDocumentation), "utf8"),
-    `tracked:${retainedDocumentation}`,
-  );
+  assert.equal(existsSync(join(output, retainedDocumentation)), false);
+  assert.equal(existsSync(join(output, sourceTest)), false);
+  assert.equal(readFileSync(join(output, runtimeImport), "utf8"), `tracked:${runtimeImport}`);
 });
 
 test("rejects a tracked path outside the project root", (t) => {

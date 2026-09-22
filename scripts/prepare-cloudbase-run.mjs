@@ -4,7 +4,27 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const root = resolve(import.meta.dirname, "..");
-const runtimeExcludedPrefixes = ["artifacts/", "docs/landing-evidence/"];
+const runtimeRootFiles = new Set([
+  "Dockerfile",
+  "package.json",
+  "package-lock.json",
+  "next.config.ts",
+  "postcss.config.mjs",
+  "tsconfig.json",
+  ".prettierrc.json",
+  "scripts/cloudbase-runtime-entrypoint.mjs",
+  "scripts/public-template-build-lib.mjs",
+  "scripts/validate-public-templates.mjs",
+  "cloudbase/functions/shared/admin-cleanup.mjs",
+  "cloudbase/functions/shared/admin-cleanup.d.mts",
+]);
+
+function isRuntimeSource(path) {
+  if (runtimeRootFiles.has(path)) return true;
+  if (path.startsWith("public/")) return true;
+  if (!path.startsWith("src/")) return false;
+  return !/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(path);
+}
 
 export function listTrackedProjectFiles(projectRoot) {
   return execFileSync("git", ["ls-files", "-z"], {
@@ -51,7 +71,7 @@ export function prepareCloudBaseRun(
   mkdirSync(output, { recursive: true });
   for (const trackedPath of trackedFiles) {
     const source = checkedSourcePath(projectRoot, trackedPath);
-    if (runtimeExcludedPrefixes.some((prefix) => trackedPath.startsWith(prefix))) continue;
+    if (!isRuntimeSource(trackedPath)) continue;
     const destination = join(output, trackedPath);
     mkdirSync(dirname(destination), { recursive: true });
     cpSync(source, destination, { recursive: true });
