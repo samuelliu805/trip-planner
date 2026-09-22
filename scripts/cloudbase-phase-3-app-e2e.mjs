@@ -1317,7 +1317,7 @@ async function verifyMobileTransportEditorScroll(browser) {
       { deviceScaleFactor: 2, height, mobile: true, width },
       browser.sessionId,
     );
-    await openSavedItemEditor(browser, "0-2");
+    await openSavedItemEditor(browser, "0-2", 1);
     await clickElement(
       browser,
       `document.querySelector('button[id^="transport-mode-"]')`,
@@ -1412,7 +1412,7 @@ async function verifyMobileTransportEditorScroll(browser) {
     { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
     browser.sessionId,
   );
-  await openSavedItemEditor(browser, "0-2");
+  await openSavedItemEditor(browser, "0-2", 1);
   await clickElement(
     browser,
     `document.querySelector('button[id^="transport-mode-"]')`,
@@ -1427,16 +1427,18 @@ async function verifyMobileTransportEditorScroll(browser) {
   await saveOpenItemEditor(browser, "390px Subway / metro transport edit");
   await waitFor(
     browser,
-    `document.querySelector('[data-cell="0-2"] .matrix-transport-mode-label')?.textContent.trim() === "Subway / metro"`,
+    `[...document.querySelectorAll('[data-cell="0-2"] .matrix-transport-mode-label')]
+      .some((label) => label.textContent.trim() === "Subway / metro")`,
     "390px Subway / metro Matrix summary",
   );
   const transportSummary = await evaluate(
     browser,
     `(() => {
       const cell = document.querySelector('[data-cell="0-2"]');
-      const summary = cell?.querySelector('.matrix-transport-summary');
+      const label = [...(cell?.querySelectorAll('.matrix-transport-mode-label') ?? [])]
+        .find((node) => node.textContent.trim() === 'Subway / metro');
+      const summary = label?.closest('.matrix-transport-summary');
       const icon = summary?.querySelector('svg');
-      const label = summary?.querySelector('.matrix-transport-mode-label');
       const iconRect = icon?.getBoundingClientRect();
       const labelRect = label?.getBoundingClientRect();
       return {
