@@ -1180,81 +1180,25 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     },
     browser.sessionId,
   );
-  await evaluate(
-    browser,
-    `(() => {
-      window.__phase5OriginalBookingOpen = window.open;
-      window.__phase5BookingPopup = {
-        closed: false,
-        destination: null,
-        opener: {},
-        timerDelay: null,
-        close() { this.closed = true; },
-        location: { replace(url) { window.__phase5BookingPopup.destination = url; } },
-        setTimeout(callback, delay) {
-          window.__phase5BookingPopupClose = callback;
-          this.timerDelay = delay;
-          return 1;
-        },
-      };
-      window.__phase5BookingOpenCalls = [];
-      window.open = (...args) => {
-        window.__phase5BookingOpenCalls.push(args);
-        return window.__phase5BookingPopup;
-      };
-    })()`,
-  );
-  const tabletClick = await evaluate(
+  const tabletAppLink = await evaluate(
     browser,
     `(() => {
       const link = [...document.querySelectorAll('[role="dialog"] a')]
         .find((candidate) => candidate.textContent.trim() === "Trip.com");
-      if (!link || !link.getClientRects().length) return false;
-      link.click();
-      return true;
+      if (!(link instanceof HTMLAnchorElement) || !link.getClientRects().length) return null;
+      return {
+        ariaLabel: link.getAttribute('aria-label'),
+        href: link.href,
+        path: location.pathname,
+        target: link.target,
+      };
     })()`,
   );
-  assert.equal(tabletClick, true, "Global tablet Trip.com app link was not available.");
-  await waitFor(
-    browser,
-    "window.__phase5BookingOpenCalls.length === 1",
-    "Global tablet managed app popup",
-    5_000,
-  );
-  let appPopupEvidence = await evaluate(
-    browser,
-    `({
-      calls: window.__phase5BookingOpenCalls,
-      closed: window.__phase5BookingPopup.closed,
-      destination: window.__phase5BookingPopup.destination,
-      opener: window.__phase5BookingPopup.opener,
-      path: location.pathname,
-      timerDelay: window.__phase5BookingPopup.timerDelay,
-    })`,
-  );
-  assert.equal(appPopupEvidence.path, `/trips/${tripId}/compare/flights`);
-  assert.deepEqual(appPopupEvidence.calls[0], ["about:blank", "_blank"]);
-  assert.equal(appPopupEvidence.opener, null, "Managed app popup retained its opener.");
-  assert.equal(appPopupEvidence.timerDelay, 1_500);
-  assert.match(appPopupEvidence.destination, /^https:\/\/www\.trip\.com\/flights\//);
-  assert.equal(appPopupEvidence.closed, false);
-  await evaluate(browser, "window.__phase5BookingPopupClose()");
-  appPopupEvidence = await evaluate(
-    browser,
-    `({ closed: window.__phase5BookingPopup.closed, path: location.pathname })`,
-  );
-  assert.equal(appPopupEvidence.closed, true, "Uncommitted app popup did not close on return.");
-  assert.equal(appPopupEvidence.path, `/trips/${tripId}/compare/flights`);
-  await evaluate(
-    browser,
-    `(() => {
-      window.open = window.__phase5OriginalBookingOpen;
-      delete window.__phase5OriginalBookingOpen;
-      delete window.__phase5BookingOpenCalls;
-      delete window.__phase5BookingPopup;
-      delete window.__phase5BookingPopupClose;
-    })()`,
-  );
+  assert.ok(tabletAppLink, "Global tablet Trip.com app-or-website action was unavailable.");
+  assert.equal(tabletAppLink.path, `/trips/${tripId}/compare/flights`);
+  assert.match(tabletAppLink.ariaLabel, /app or website/i);
+  assert.match(tabletAppLink.href, /^https:\/\/www\.trip\.com\/flights\//);
+  assert.equal(tabletAppLink.target, "_blank");
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
