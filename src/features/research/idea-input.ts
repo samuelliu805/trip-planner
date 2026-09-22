@@ -1,4 +1,4 @@
-import { parseGoogleFlightUrl } from "./google-flights-url.ts";
+import { parseIdeaUrlFields } from "./idea-url-fields.ts";
 
 export type IdeaKind = "flight" | "stay" | "car" | "activity" | "unknown";
 export type IdeaClassification = {
@@ -54,24 +54,61 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
   const path = url.pathname.toLowerCase();
   if (hostIs(host, "xiaohongshu.com") || hostIs(host, "xhslink.com"))
     return { kind: "activity", provider: "Xiaohongshu" };
+  if (hostIs(host, "dianping.com")) return { kind: "activity", provider: "Dianping" };
+  if (
+    hostIs(host, "maps.app.goo.gl") ||
+    (hostIs(host, "google.com") && path.startsWith("/maps")) ||
+    hostIs(host, "maps.google.com")
+  )
+    return { kind: "activity", provider: "Google Maps" };
   if (hostIs(host, "google.com") && path.startsWith("/travel/flights"))
     return { kind: "flight", provider: "Google Flights" };
   if (hostIs(host, "flights.google.com")) return { kind: "flight", provider: "Google Flights" };
-  if (hostIs(host, "booking.com") && path.includes("/hotel/"))
+  if (hostIs(host, "booking.com") && (path.includes("/hotel/") || path.includes("searchresults")))
     return { kind: "stay", provider: "Booking.com" };
-  if (hostIs(host, "airbnb.com") && /\/(rooms|s)\//.test(path))
+  if (hostIs(host, "airbnb.com") && (/\/(rooms|s)\//.test(path) || path.startsWith("/homes")))
     return { kind: "stay", provider: "Airbnb" };
-  if (hostIs(host, "hilton.com") && /\/(hotel|search)/.test(path))
+  if (
+    (hostIs(host, "hilton.com") || hostIs(host, "hilton.com.cn")) &&
+    /\/(hotel|search)/.test(path)
+  )
     return { kind: "stay", provider: "Hilton" };
+  if (hostIs(host, "agoda.com") && /\/(search|hotel|.*\.html)/.test(path))
+    return { kind: "stay", provider: "Agoda" };
+  if (
+    (hostIs(host, "marriott.com") || hostIs(host, "marriott.com.cn")) &&
+    /\/(search|hotels|hotel-search)/.test(path)
+  )
+    return { kind: "stay", provider: "Marriott" };
+  if (
+    (hostIs(host, "ihg.com") || hostIs(host, "ihg.com.cn")) &&
+    /\/(hotels|hotel-search)/.test(path)
+  )
+    return { kind: "stay", provider: "IHG" };
+  if (hostIs(host, "hyatt.com") && /\/(shop|hotels)/.test(path))
+    return { kind: "stay", provider: "Hyatt" };
+  if (hostIs(host, "tujia.com") && /\/hotel/.test(path)) return { kind: "stay", provider: "Tujia" };
   if (hostIs(host, "enterprise.com") && /\/(car-rental|reservation)/.test(path))
     return { kind: "car", provider: "Enterprise" };
   if (hostIs(host, "hertz.com") && /\/(rent|reservation|booking)/.test(path))
     return { kind: "car", provider: "Hertz" };
+  for (const [domain, provider] of [
+    ["avis.com", "Avis"],
+    ["budget.com", "Budget"],
+    ["sixt.com", "SIXT"],
+    ["europcar.com", "Europcar"],
+    ["zuzuche.com", "Zuzuche"],
+    ["zuche.com", "Zuche"],
+  ] as const)
+    if (hostIs(host, domain) && /\/(rent|reservation|booking|car|search)/.test(path))
+      return { kind: "car", provider };
   if (hostIs(host, "kayak.com")) {
     if (path.startsWith("/flights/")) return { kind: "flight", provider: "KAYAK" };
     if (path.startsWith("/cars/")) return { kind: "car", provider: "KAYAK" };
     if (path.startsWith("/hotels/")) return { kind: "stay", provider: "KAYAK" };
   }
+  if (hostIs(host, "skyscanner.com") && /\/(transport\/flights|flights)/.test(path))
+    return { kind: "flight", provider: "Skyscanner" };
   if (hostIs(host, "trip.com") || hostIs(host, "ctrip.com")) {
     const params = url.searchParams;
     if (params.has("dcity") && params.has("acity")) return { kind: "flight", provider: "Trip.com" };
@@ -89,6 +126,13 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
       return { kind: "flight", provider: "Fliggy" };
     if (host.startsWith("hotel.") || /hotel/.test(path))
       return { kind: "stay", provider: "Fliggy" };
+  }
+  if (hostIs(host, "meituan.com")) {
+    if (/hotel/.test(path)) return { kind: "stay", provider: "Meituan" };
+    if (/flight|airline/.test(path)) return { kind: "flight", provider: "Meituan" };
+    if (/rental|rentcar/.test(path)) return { kind: "car", provider: "Meituan" };
+    if (/shop|deal|meishi|restaurant|poi|food/.test(path))
+      return { kind: "activity", provider: "Meituan" };
   }
   return null;
 }
@@ -138,60 +182,7 @@ export function overrideIdeaClassification(
   return { ...classification, kind, method: "user", confidence: "high" };
 }
 
-function reliableDate(value: string | null): string | null {
-  if (!value) return null;
-  const normalized = /^\d{8}$/.test(value)
-    ? `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6)}`
-    : value;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return null;
-  const date = new Date(`${normalized}T00:00:00Z`);
-  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === normalized
-    ? normalized
-    : null;
-}
-
-export function parseReliableIdeaFields(sourceUrl: string | null): {
-  originText: string | null;
-  destinationText: string | null;
-  startDate: string | null;
-  endDate: string | null;
-} {
-  const empty = { originText: null, destinationText: null, startDate: null, endDate: null };
-  if (!sourceUrl || !canonicalIdeaUrl(sourceUrl)) return empty;
-  const url = new URL(sourceUrl);
-  const host = url.hostname.toLowerCase();
-  const params = url.searchParams;
-  if (
-    (hostIs(host, "google.com") && url.pathname.toLowerCase().startsWith("/travel/flights")) ||
-    hostIs(host, "flights.google.com")
-  )
-    return parseGoogleFlightUrl(url);
-  if (hostIs(host, "trip.com") || hostIs(host, "ctrip.com")) {
-    if (params.has("dcity") && params.has("acity"))
-      return {
-        originText: params.get("dcity")?.trim().slice(0, 200) || null,
-        destinationText: params.get("acity")?.trim().slice(0, 200) || null,
-        startDate: reliableDate(params.get("ddate")),
-        endDate: reliableDate(params.get("rdate")),
-      };
-    if (params.has("checkIn") && params.has("checkOut"))
-      return {
-        ...empty,
-        startDate: reliableDate(params.get("checkIn")),
-        endDate: reliableDate(params.get("checkOut")),
-      };
-  }
-  if (hostIs(host, "booking.com"))
-    return {
-      ...empty,
-      startDate: reliableDate(params.get("checkin")),
-      endDate: reliableDate(params.get("checkout")),
-    };
-  if (hostIs(host, "enterprise.com"))
-    return {
-      ...empty,
-      startDate: reliableDate(params.get("pickUpDate")),
-      endDate: reliableDate(params.get("dropOffDate")),
-    };
-  return empty;
+export function parseReliableIdeaFields(sourceUrl: string | null) {
+  if (!sourceUrl || !canonicalIdeaUrl(sourceUrl)) return parseIdeaUrlFields(null);
+  return parseIdeaUrlFields(new URL(sourceUrl));
 }

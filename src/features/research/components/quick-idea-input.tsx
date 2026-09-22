@@ -45,10 +45,13 @@ export function QuickIdeaInput({
   const inferred = useMemo(() => classifyIdeaInput(input), [input]);
   const classification = override ? overrideIdeaClassification(inferred, override) : inferred;
   const preview = useMemo(
-    () =>
-      parseReliableIdeaFields(classification.kind === "flight" ? classification.sourceUrl : null),
-    [classification.kind, classification.sourceUrl],
+    () => parseReliableIdeaFields(classification.sourceUrl),
+    [classification.sourceUrl],
   );
+  const previewRoute =
+    preview.originText && preview.destinationText
+      ? `${preview.originText} → ${preview.destinationText}`
+      : preview.originText;
   const lastReported = useRef("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -120,11 +123,7 @@ export function QuickIdeaInput({
       operationId,
       shareText,
       sourceUrl: classification.sourceUrl,
-      title: textOnly
-        ? textOnly.slice(0, 300)
-        : preview.originText && preview.destinationText
-          ? `${preview.originText} → ${preview.destinationText}`
-          : null,
+      title: textOnly ? textOnly.slice(0, 300) : (previewRoute ?? preview.locationText),
       tripId,
     });
     setPending(false);
@@ -217,10 +216,12 @@ export function QuickIdeaInput({
                   <T message="Enter a complete http or https link." />
                 </p>
               ) : null}
-              {preview.originText && preview.destinationText ? (
+              {previewRoute || preview.locationText || preview.startDate || preview.endDate ? (
                 <p className="mt-1 text-sm text-muted-foreground">
-                  <T message="Flight route" />: {preview.originText} → {preview.destinationText}
-                  {preview.startDate ? ` · ${preview.startDate}` : ""}
+                  {previewRoute || preview.locationText}
+                  {preview.startDate
+                    ? `${previewRoute || preview.locationText ? " · " : ""}${preview.startDate}`
+                    : ""}
                   {preview.endDate ? ` – ${preview.endDate}` : ""}
                 </p>
               ) : null}

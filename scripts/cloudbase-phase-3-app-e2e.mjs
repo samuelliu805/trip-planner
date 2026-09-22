@@ -735,6 +735,56 @@ async function verifyTripSectionNavigation(browser, tripId) {
     45_000,
   );
 
+  const bookingUrl =
+    "https://www.booking.com/searchresults.html?ss=Paris&checkin=2026-10-23&checkout=2026-10-25";
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const input = document.querySelector('textarea');
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(input, ${JSON.stringify(bookingUrl)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      })()`,
+    ),
+    true,
+    "Booking.com capture input was unavailable.",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Paris · 2026-10-23 – 2026-10-25')`,
+    "Booking.com parsed place and dates",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Stay') && !button.disabled)`,
+    "save Booking.com idea",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('Paris') && item.innerText.includes('Oct 23')))`,
+    "saved Booking.com place and dates",
+    45_000,
+  );
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const savedBooking = await controlledData(
+    () =>
+      db
+        .from("research_items")
+        .select("location_text,start_date,end_date")
+        .eq("trip_id", tripId)
+        .eq("source_url", bookingUrl),
+    "saved Booking.com parsed fields",
+  );
+  assert.deepEqual(savedBooking, [
+    { location_text: "Paris", start_date: "2026-10-23", end_date: "2026-10-25" },
+  ]);
+
   await clickElement(browser, `document.querySelector('details summary')`, "manual idea details");
   const selectedStay = await evaluate(
     browser,
