@@ -6,12 +6,15 @@ import { T } from "@/features/i18n/i18n-provider";
 
 import { previewIdeaLink } from "../idea-actions";
 import type { IdeaPageMetadata } from "../idea-page-metadata";
+import { formatMoney } from "../money";
 
 export function IdeaLinkPreview({
   hasReliableFields,
+  onResult,
   sourceUrl,
 }: {
   hasReliableFields: boolean;
+  onResult?: (metadata: IdeaPageMetadata | null) => void;
   sourceUrl: string | null;
 }) {
   const [result, setResult] = useState<IdeaPageMetadata | null>(null);
@@ -24,16 +27,27 @@ export function IdeaLinkPreview({
         .then((metadata) => {
           if (!current) return;
           setResult(metadata);
+          onResult?.(metadata);
         })
         .catch(() => {
-          if (current) setResult({ title: null, locationText: null, status: "unavailable" });
+          if (current) {
+            const unavailable: IdeaPageMetadata = {
+              title: null,
+              locationText: null,
+              priceAmount: null,
+              priceCurrency: null,
+              status: "unavailable",
+            };
+            setResult(unavailable);
+            onResult?.(unavailable);
+          }
         });
     }, 450);
     return () => {
       current = false;
       window.clearTimeout(timer);
     };
-  }, [sourceUrl]);
+  }, [onResult, sourceUrl]);
 
   if (!sourceUrl || (hasReliableFields && result?.status !== "readable")) return null;
   return (
@@ -46,10 +60,13 @@ export function IdeaLinkPreview({
           <T message="Reading link…" />
         </span>
       ) : result.status === "readable" ? (
-        <p className="research-safe-wrap">
-          <span className="font-medium">{result.title}</span>
+        <p className="research-safe-wrap flex flex-wrap gap-x-2 gap-y-1">
+          {result.title ? <span className="font-medium">{result.title}</span> : null}
           {result.locationText ? (
-            <span className="text-muted-foreground"> · {result.locationText}</span>
+            <span className="text-muted-foreground">{result.locationText}</span>
+          ) : null}
+          {result.priceAmount !== null && result.priceCurrency ? (
+            <strong>{formatMoney(result.priceAmount, result.priceCurrency)}</strong>
           ) : null}
         </p>
       ) : (

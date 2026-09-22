@@ -1,12 +1,10 @@
-import type { z } from "zod";
+import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
-import { placeSnapshotSchema } from "@/features/itinerary/item-schema";
+import { firstPresentIsoDate } from "./date-range.ts";
+import { parseResearchLinks } from "./links.ts";
+import type { ResearchCategory, ResearchItem } from "./types.ts";
 
-import { parseResearchLinks } from "./links";
-import { firstPresentIsoDate } from "./date-range";
-import type { ResearchCategory, ResearchItem } from "./types";
-
-type ProviderPlaceSnapshot = z.input<typeof placeSnapshotSchema>;
+type ProviderPlaceSnapshot = PlaceSnapshot;
 
 function optional(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim() || null;
@@ -80,13 +78,14 @@ export function researchItemInputFromForm({
   const lastJourneyDate = firstPresentIsoDate(lastSegment?.arrivalDate, lastSegment?.departureDate);
   const journeyType = optional(form, "journeyType") as
     "one_way" | "round_trip" | "multi_city" | null;
-  const originText = firstSegment?.origin ?? optional(form, "originText");
+  const originText = optional(form, "originText") ?? firstSegment?.origin;
   const returnToPickup = category === "rental" && optional(form, "returnToPickup") === "true";
   const originPlaceId = optional(form, "originPlaceId");
   const originPlaceSnapshot = optionalJson<ProviderPlaceSnapshot>(form, "originPlaceSnapshot");
   const destinationText = returnToPickup
     ? originText
-    : (firstSegment?.destination ?? optional(form, "destinationText"));
+    : (optional(form, "destinationText") ??
+      (journeyType === "multi_city" ? lastSegment?.destination : firstSegment?.destination));
   const destinationPlaceId = returnToPickup ? originPlaceId : optional(form, "destinationPlaceId");
   const destinationPlaceSnapshot = returnToPickup
     ? originPlaceSnapshot

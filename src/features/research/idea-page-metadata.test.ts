@@ -13,17 +13,54 @@ test("reads a public Airbnb listing title and locality from provider metadata", 
   assert.deepEqual(parseIdeaPageMetadata(html, "airbnb.com"), {
     title: "Private SF Suite w/ Bath | Steps to Muni/BART",
     locationText: "San Francisco",
+    priceAmount: null,
+    priceCurrency: null,
     status: "readable",
   });
 });
 
-test("uses public page metadata for booking sites without inventing dates or prices", () => {
+test("reads a public booking price when the page declares its currency", () => {
   assert.deepEqual(
     parseIdeaPageMetadata(
       '<meta property="og:title" content="Hotel Example &amp; Spa"><meta name="description" content="Rooms from $150">',
       "booking.com",
     ),
-    { title: "Hotel Example & Spa", locationText: null, status: "readable" },
+    {
+      title: "Hotel Example & Spa",
+      locationText: null,
+      priceAmount: 150,
+      priceCurrency: "USD",
+      status: "readable",
+    },
+  );
+});
+
+test("reads JSON-LD and embedded provider prices without confusing separators", () => {
+  assert.deepEqual(
+    parseIdeaPageMetadata(
+      `<script type="application/ld+json">{"@type":"Hotel","name":"Alpine House","offers":{"@type":"Offer","price":"1.234,50","priceCurrency":"EUR"}}</script>`,
+      "booking.com",
+    ),
+    {
+      title: "Alpine House",
+      locationText: null,
+      priceAmount: 1234.5,
+      priceCurrency: "EUR",
+      status: "readable",
+    },
+  );
+  assert.deepEqual(
+    parseIdeaPageMetadata(
+      `<meta property="og:title" content="Room"><script>window.data={"totalPrice":"7000","priceCurrency":"CNY"}</script>`,
+      "trip.com",
+    ),
+    {
+      title: "Room",
+      locationText: null,
+      priceAmount: 7000,
+      priceCurrency: "CNY",
+      status: "readable",
+    },
   );
 });
 
@@ -37,7 +74,13 @@ test("fetches only approved HTTPS providers and blocks cross-provider redirects"
   };
   assert.deepEqual(
     await fetchIdeaPageMetadata("https://www.booking.com/hotel/us/example.html", fetchPage),
-    { title: "Public room", locationText: null, status: "readable" },
+    {
+      title: "Public room",
+      locationText: null,
+      priceAmount: null,
+      priceCurrency: null,
+      status: "readable",
+    },
   );
   assert.equal(requests.length, 1);
   assert.equal(

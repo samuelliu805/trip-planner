@@ -15,18 +15,29 @@ export function ResearchItemDialog({
   context,
   defaultCurrency,
   item,
+  hideTrigger = false,
+  onOpenChange,
   onSaved,
+  open: controlledOpen,
   tripId,
 }: {
   category: ResearchCategory;
   context?: { dayId?: string; itemId?: string };
   defaultCurrency: string;
   item?: ResearchItem;
+  hideTrigger?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onSaved: (item: ResearchItem) => void;
+  open?: boolean;
   tripId: string;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  function setOpen(next: boolean) {
+    if (controlledOpen === undefined) setInternalOpen(next);
+    onOpenChange?.(next);
+  }
   const closeRequest = useRef(() => setOpen(false));
   const label = researchCategorySingularLabels[category];
   const addLabel =
@@ -34,7 +45,7 @@ export function ResearchItemDialog({
 
   return (
     <>
-      {item ? (
+      {!hideTrigger && item ? (
         <Button
           aria-label={t("Edit {item}", { item: item.title ?? t(label) })}
           className="size-11 p-0 xl:size-9"
@@ -44,7 +55,7 @@ export function ResearchItemDialog({
         >
           <Pencil aria-hidden="true" className="size-4" />
         </Button>
-      ) : (
+      ) : !hideTrigger ? (
         <Button
           aria-label={addLabel}
           className="size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-4"
@@ -60,7 +71,7 @@ export function ResearchItemDialog({
             )}
           </span>
         </Button>
-      )}
+      ) : null}
       <PlannerEditorScreen
         editorKind="research"
         onOpenChange={(nextOpen) => !nextOpen && closeRequest.current()}

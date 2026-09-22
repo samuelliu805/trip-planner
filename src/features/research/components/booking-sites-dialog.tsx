@@ -39,10 +39,10 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          aria-label={toolbar ? t("Search booking sites") : undefined}
+          aria-label={t("Search booking sites")}
           className={toolbar ? "size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-3" : "min-h-11 px-2.5"}
           size="sm"
-          title={toolbar ? t("Search booking sites") : undefined}
+          title={t("Search booking sites")}
           variant="outline"
         >
           <Search aria-hidden="true" className="size-4" />
@@ -84,7 +84,7 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
                     href={site.url}
                     onClick={
                       site.appUrl || site.opensApp
-                        ? (event) => openAppDeepLink(event, site.appUrl ?? site.url)
+                        ? (event) => openAppDeepLink(event, site.appUrl ?? site.url, site.url)
                         : undefined
                     }
                     rel="noopener noreferrer"

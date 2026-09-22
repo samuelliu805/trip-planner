@@ -9,8 +9,28 @@ export type IdeaUrlFields = {
   startDate: string | null;
   endDate: string | null;
   journeyType?: "one_way" | "round_trip" | "multi_city";
+  priceAmount?: number;
+  priceCurrency?: string;
   segments?: ResearchSegment[];
 };
+
+export function parseIdeaUrlPrice(params: URLSearchParams) {
+  const rawAmount = value(params, "totalPrice", "total_price", "displayPrice", "price", "amount");
+  const priceCurrency = value(
+    params,
+    "currency",
+    "currencyCode",
+    "selected_currency",
+    "curr",
+  )?.toUpperCase();
+  if (!rawAmount || !priceCurrency || !/^[A-Z]{3}$/.test(priceCurrency)) return {};
+  const normalized = rawAmount.replace(/,/g, "");
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return {};
+  const priceAmount = Number(normalized);
+  return Number.isFinite(priceAmount) && priceAmount >= 0 && priceAmount <= 9_999_999_999.99
+    ? { priceAmount, priceCurrency }
+    : {};
+}
 
 const empty: IdeaUrlFields = {
   originText: null,

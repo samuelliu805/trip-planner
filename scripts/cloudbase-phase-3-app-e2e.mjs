@@ -469,6 +469,7 @@ async function verifyNewTripMobileGuidanceAndCityRoute(browser, tripId) {
     { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
     browser.sessionId,
   );
+  await waitFor(browser, `innerWidth === 390`, "Ideas comparison 390px viewport");
   await navigate(browser, `/trips/${tripId}`);
   await waitFor(browser, `Boolean(document.querySelector('[data-add-day]'))`, "mobile Add day");
   const initial = await evaluate(
@@ -791,9 +792,54 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   await waitFor(
     browser,
-    `document.body.innerText.includes('Added to Plan')`,
-    "Google flight applied to Plan",
+    `Boolean(document.querySelector('[role="dialog"] select'))`,
+    "dated Google flight Plan day choice",
   );
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const select = document.querySelector('[role="dialog"] select');
+        const option = [...(select?.options ?? [])].find((entry) => entry.value);
+        if (!(select instanceof HTMLSelectElement) || !option) return false;
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      })()`,
+    ),
+    true,
+    "A Plan day was unavailable for the dated Google flight.",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    "confirm dated Google flight Plan day",
+  );
+  const datedApplyResult = await waitFor(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      if (!dialog) return { status: 'closed' };
+      const alert = dialog.querySelector('[role="alert"]');
+      return alert ? { status: 'error', text: alert.textContent.trim() } : null;
+    })()`,
+    "dated Google flight submitted to Plan",
+  );
+  assert.equal(
+    datedApplyResult.status,
+    "closed",
+    `Dated Google flight was not added to Plan: ${datedApplyResult.text ?? "unknown error"}`,
+  );
+  await navigate(browser, `/trips/${tripId}`);
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('PVG – HND') &&
+      document.body.innerText.includes('NH 972 / NH 967')`,
+    "dated Google flight visible in CN Plan",
+  );
+  await navigate(browser, `/trips/${tripId}/compare/flights`);
+  await waitFor(browser, `Boolean(document.querySelector('textarea'))`, "Ideas capture input");
 
   const bookingUrl =
     "https://www.booking.com/searchresults.html?ss=Paris&checkin=2026-10-23&checkout=2026-10-25";
@@ -814,7 +860,8 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   await waitFor(
     browser,
-    `document.body.innerText.includes('Paris · 2026-10-23 – 2026-10-25')`,
+    `document.body.innerText.includes('Paris') &&
+      document.body.innerText.includes('2026-10-23 – 2026-10-25')`,
     "Booking.com parsed place and dates",
   );
   await clickElement(
@@ -829,6 +876,105 @@ async function verifyTripSectionNavigation(browser, tripId) {
       item.innerText.includes('Paris') && item.innerText.includes('Oct 23')))`,
     "saved Booking.com place and dates",
     45_000,
+  );
+  for (const { height, width } of [
+    { height: 844, width: 390 },
+    { height: 932, width: 430 },
+    { height: 1024, width: 768 },
+    { height: 768, width: 1024 },
+  ]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: width < 600 ? 2 : 1, height, mobile: width < 600, width },
+      browser.sessionId,
+    );
+    await waitFor(browser, `innerWidth === ${width}`, `Ideas ${width}px viewport`);
+    const layout = await evaluate(
+      browser,
+      `(() => {
+        const capture = document.querySelector('section textarea')?.closest('section');
+        const saved = document.querySelector('article');
+        const visibleText = [...document.querySelectorAll('.trip-detail-scroller *')]
+          .filter((element) => element.getClientRects().length &&
+            !element.classList.contains('sr-only') &&
+            [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()));
+        const minimumFont = Math.min(...visibleText.map((element) =>
+          Number.parseFloat(getComputedStyle(element).fontSize)));
+        return {
+          captureFits: Boolean(capture) && capture.getBoundingClientRect().left >= 0 &&
+            capture.getBoundingClientRect().right <= innerWidth,
+          documentFits: document.documentElement.scrollWidth <= innerWidth,
+          minimumFont,
+          savedFits: Boolean(saved) && saved.getBoundingClientRect().left >= 0 &&
+            saved.getBoundingClientRect().right <= innerWidth,
+        };
+      })()`,
+    );
+    assert.equal(layout.documentFits, true, `Ideas overflowed at ${width}px.`);
+    assert.equal(layout.captureFits, true, `Ideas capture escaped the ${width}px viewport.`);
+    assert.equal(layout.savedFits, true, `Saved Ideas escaped the ${width}px viewport.`);
+    assert.ok(
+      layout.minimumFont >= 14,
+      `Ideas rendered ${layout.minimumFont}px text at ${width}px.`,
+    );
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      ['Compare ideas', '比较想法'].includes(button.getAttribute('aria-label')))`,
+    "Ideas comparison control",
+  );
+  await waitFor(browser, `Boolean(document.querySelector('[role="dialog"]'))`, "Ideas comparison");
+  await waitFor(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+      const rect = dialog?.getBoundingClientRect();
+      return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+        rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+    })()`,
+    "settled Ideas comparison viewport",
+  );
+  const comparisonLayout = await evaluate(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      const rect = dialog?.getBoundingClientRect();
+      const assignmentButtons = [...(dialog?.querySelectorAll('button[aria-pressed]') ?? [])];
+      return {
+        activeInput: document.activeElement?.tagName === 'INPUT',
+        assignmentTouchTargets: assignmentButtons.every((button) =>
+          button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44),
+        documentFits: document.documentElement.scrollWidth <= innerWidth,
+        fits: Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+          rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5,
+      };
+    })()`,
+  );
+  assert.equal(comparisonLayout.activeInput, false, "Comparison focused its optional name.");
+  assert.equal(comparisonLayout.assignmentTouchTargets, true);
+  assert.equal(comparisonLayout.documentFits, true);
+  assert.equal(comparisonLayout.fits, true, "Comparison escaped the 390px viewport.");
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(browser, `!document.querySelector('[role="dialog"]')`, "Ideas comparison close");
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
   );
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
@@ -878,28 +1024,33 @@ async function verifyTripSectionNavigation(browser, tripId) {
     { location_text: "Paris", start_date: "2026-10-23", end_date: "2026-10-25" },
   ]);
 
-  await clickElement(browser, `document.querySelector('details summary')`, "manual idea details");
-  const selectedStay = await evaluate(
+  await clickElement(
     browser,
-    `(() => {
-      const select = document.querySelector('details select');
-      if (!select) return false;
-      select.value = 'stay';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      return true;
-    })()`,
+    `[...document.querySelectorAll('button')].find((button) =>
+      ['More idea actions', '更多想法操作'].includes(button.getAttribute('aria-label')))`,
+    "manual Ideas menu",
   );
-  assert.equal(selectedStay, true, "Manual idea type was unavailable.");
   await waitFor(
     browser,
-    `document.querySelector('details select')?.value === 'stay'`,
-    "manual stay idea type",
+    `document.querySelectorAll('[role="menuitem"]').length === 5`,
+    "manual Ideas menu entries",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')][1]`,
+    "manual stay idea entry",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-editor-kind="research"]'))`,
+    "manual stay idea editor",
   );
   assert.equal(
     await evaluate(browser, "location.pathname"),
     `/trips/${tripId}/compare/flights`,
     "Choosing a manual idea type changed the Ideas page.",
   );
+  await closePlannerEditor(browser, "manual stay idea editor");
 
   await waitFor(
     browser,
@@ -932,13 +1083,17 @@ async function verifyTripSectionNavigation(browser, tripId) {
     false,
     "CN booking sites still rendered an app-download action.",
   );
-  assert.equal(
-    bookingSites.find(({ text }) => text === "携程旅行")?.href,
-    "https://m.ctrip.com/webapp/hotel/",
+  assert.ok(
+    bookingSites
+      .find(({ text }) => text === "携程旅行")
+      ?.href.startsWith("https://m.ctrip.com/webapp/hotels/hotelsearch/listPage"),
+    "Ctrip did not expose its safe hotel web fallback.",
   );
-  assert.equal(
-    bookingSites.find(({ text }) => text === "飞猪旅行")?.href,
-    "https://www.fliggy.com/",
+  assert.ok(
+    bookingSites
+      .find(({ text }) => text === "飞猪旅行")
+      ?.href.startsWith("https://hotel.fliggy.com/hotel_list.htm"),
+    "Fliggy did not expose its safe hotel web fallback.",
   );
   for (const site of bookingSites) {
     assert.match(site.href, /^https:\/\//, `${site.text} did not expose a normal web link.`);
@@ -966,107 +1121,30 @@ async function verifyTripSectionNavigation(browser, tripId) {
     `innerWidth === 820 && matchMedia(${JSON.stringify("(max-width: 1199px)")}).matches`,
     "CN tablet booking-link viewport",
   );
-  await evaluate(
+  const tabletBookingLinks = await evaluate(
     browser,
-    `(() => {
-      window.__phase3BookingClicks = [];
-      document.addEventListener("click", (event) => {
-        const link = event.target.closest?.('[role="dialog"] a');
-        if (link?.textContent.trim() === "携程旅行") {
-          event.preventDefault();
-          queueMicrotask(() => window.__phase3BookingClicks.push({
-            defaultPrevented: event.defaultPrevented,
-            href: link.getAttribute("href"),
-            target: link.getAttribute("target"),
-            width: innerWidth,
-          }));
-        }
-      }, { once: true });
-    })()`,
+    `[...document.querySelectorAll('[role="dialog"] a')]
+      .filter((link) => ['携程旅行', '飞猪旅行'].includes(link.textContent.trim()))
+      .map((link) => ({
+        href: link.getAttribute('href'),
+        target: link.getAttribute('target'),
+        visible: Boolean(link.getClientRects().length),
+      }))`,
   );
-  const ctripClickDispatched = await evaluate(
-    browser,
-    `(() => {
-      const link = [...document.querySelectorAll('[role="dialog"] a')]
-        .find((candidate) => candidate.textContent.trim() === "携程旅行");
-      if (!link?.getClientRects().length) return false;
-      link.click();
-      return true;
-    })()`,
-  );
-  assert.equal(ctripClickDispatched, true, "CN tablet Ctrip app link was not available.");
-  await waitFor(
-    browser,
-    "window.__phase3BookingClicks.length === 1",
-    "CN tablet Ctrip click dispatch",
-    5_000,
-  );
-  const appOpenEvidence = await evaluate(
-    browser,
-    `({
-      clicks: window.__phase3BookingClicks,
-      path: location.pathname,
-    })`,
-  );
-  assert.equal(appOpenEvidence.path, ideasPath, "Ctrip app launch replaced the Ideas edit page.");
+  assert.equal(tabletBookingLinks.length, 2);
   assert.equal(
-    appOpenEvidence.clicks[0].href,
-    "ctrip://wireless/InquireHotel",
-    `Ctrip app launch did not use the current-tab custom scheme: ${JSON.stringify(appOpenEvidence.clicks)}`,
+    tabletBookingLinks.every(({ href }) => href.startsWith("https://")),
+    true,
   );
-  assert.equal(appOpenEvidence.clicks[0].target, "_self");
-  assert.equal(appOpenEvidence.clicks[0].defaultPrevented, true);
-  await evaluate(
-    browser,
-    `(() => {
-      window.__phase3BookingClicks = [];
-      document.addEventListener("click", (event) => {
-        const link = event.target.closest?.('[role="dialog"] a');
-        if (link?.textContent.trim() === "飞猪旅行") {
-          event.preventDefault();
-          queueMicrotask(() => window.__phase3BookingClicks.push({
-            defaultPrevented: event.defaultPrevented,
-            href: link.getAttribute("href"),
-            target: link.getAttribute("target"),
-          }));
-        }
-      }, { once: true });
-    })()`,
-  );
-  const fliggyClickDispatched = await evaluate(
-    browser,
-    `(() => {
-      const link = [...document.querySelectorAll('[role="dialog"] a')]
-        .find((candidate) => candidate.textContent.trim() === "飞猪旅行");
-      if (!link?.getClientRects().length) return false;
-      link.click();
-      return true;
-    })()`,
-  );
-  assert.equal(fliggyClickDispatched, true, "CN tablet Fliggy app link was not available.");
-  await waitFor(
-    browser,
-    "window.__phase3BookingClicks.length === 1",
-    "CN tablet Fliggy click dispatch",
-    5_000,
-  );
-  const fliggyOpenEvidence = await evaluate(
-    browser,
-    `({ clicks: window.__phase3BookingClicks, path: location.pathname })`,
-  );
-  assert.equal(fliggyOpenEvidence.path, ideasPath, "Fliggy app launch replaced the Ideas page.");
   assert.equal(
-    fliggyOpenEvidence.clicks[0].href,
-    "taobaotravel://h5?url=https%3A%2F%2Fhotel.fliggy.com%2Fhotel_list.htm",
+    tabletBookingLinks.every(({ target }) => target === "_blank"),
+    true,
   );
-  assert.equal(fliggyOpenEvidence.clicks[0].target, "_self");
-  assert.equal(fliggyOpenEvidence.clicks[0].defaultPrevented, true);
-  await evaluate(
-    browser,
-    `(() => {
-      delete window.__phase3BookingClicks;
-    })()`,
+  assert.equal(
+    tabletBookingLinks.every(({ visible }) => visible),
+    true,
   );
+  assert.equal(await evaluate(browser, "location.pathname"), ideasPath);
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },

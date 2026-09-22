@@ -25,8 +25,10 @@ export function ResearchJourneyFields({
   category,
   initialDestinationPlace,
   initialDestinationPlaceId,
+  initialDestinationText,
   initialOriginPlace,
   initialOriginPlaceId,
+  initialOriginText,
   journeyType,
   onJourneyTypeChange,
   onSegmentsChange,
@@ -35,8 +37,10 @@ export function ResearchJourneyFields({
   category: "flight" | "train";
   initialDestinationPlace?: ResearchItem["destination_place"];
   initialDestinationPlaceId?: string | null;
+  initialDestinationText?: string | null;
   initialOriginPlace?: ResearchItem["origin_place"];
   initialOriginPlaceId?: string | null;
+  initialOriginText?: string | null;
   journeyType: ResearchJourneyType;
   onJourneyTypeChange: (value: ResearchJourneyType) => void;
   onSegmentsChange: (segments: ResearchSegment[]) => void;
@@ -50,7 +54,7 @@ export function ResearchJourneyFields({
     const next = segments.map((segment, position) =>
       position === index ? { ...segment, ...values } : segment,
     );
-    if (journeyType === "round_trip" && index === 0) {
+    if (journeyType === "round_trip" && index === 0 && segments.length <= 2) {
       const returnSegment = next[1] ?? blankSegment();
       next[1] = {
         ...returnSegment,
@@ -103,9 +107,9 @@ export function ResearchJourneyFields({
               }
               initialPlace={initialOriginPlace}
               initialPlaceId={initialOriginPlaceId}
-              initialText={first.origin}
+              initialText={initialOriginText ?? first.origin}
               label="From"
-              onTextChange={(origin) => update(0, { origin })}
+              onTextChange={(origin) => segments.length <= 2 && update(0, { origin })}
               placeIdName="originPlaceId"
               placeholder={category === "flight" ? "Airport or city" : undefined}
               snapshotName="originPlaceSnapshot"
@@ -117,9 +121,9 @@ export function ResearchJourneyFields({
               }
               initialPlace={initialDestinationPlace}
               initialPlaceId={initialDestinationPlaceId}
-              initialText={first.destination}
+              initialText={initialDestinationText ?? first.destination}
               label="To"
-              onTextChange={(destination) => update(0, { destination })}
+              onTextChange={(destination) => segments.length <= 2 && update(0, { destination })}
               placeIdName="destinationPlaceId"
               placeholder={category === "flight" ? "Airport or city" : undefined}
               snapshotName="destinationPlaceSnapshot"

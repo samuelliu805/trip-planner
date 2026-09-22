@@ -187,8 +187,10 @@ function JourneyFieldPages({
           category={category}
           initialDestinationPlace={item?.destination_place}
           initialDestinationPlaceId={item?.destination_place_id}
+          initialDestinationText={item?.destination_text}
           initialOriginPlace={item?.origin_place}
           initialOriginPlaceId={item?.origin_place_id}
+          initialOriginText={item?.origin_text}
           journeyType={journeyType}
           onJourneyTypeChange={setJourneyType}
           onSegmentsChange={setSegments}

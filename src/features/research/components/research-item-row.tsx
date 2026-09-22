@@ -1,7 +1,6 @@
 "use client";
 
-import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { ExternalLink, MapPin, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -15,257 +14,208 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-
-import { BookingSitesDialog } from "./booking-sites-dialog";
-import { ResearchItemDialog } from "./research-item-dialog";
-import { ResearchPlanActions } from "./research-plan-actions";
-import { AddIdeaToPlan } from "./add-idea-to-plan";
-import { deleteResearchItem } from "../actions";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
+
+import { deleteResearchItem } from "../actions";
 import { researchLinksWithSource } from "../links";
 import { formatMoney } from "../money";
-import { isReadyToCompare, stayNightCount, stayPerNightPrice } from "../readiness";
-import type {
-  ResearchCategory,
-  ResearchItem,
-  ResearchPlanApplication,
-  ResearchPlanSnapshot,
-  RevertRpcResult,
-  VariantResearchSelection,
-} from "../types";
+import type { ResearchCategory, ResearchItem, ResearchPlanSnapshot } from "../types";
+import { AddIdeaToPlan } from "./add-idea-to-plan";
+import { BookingSitesDialog } from "./booking-sites-dialog";
+import { ResearchItemDialog } from "./research-item-dialog";
 
 function sourceLabel(sourceUrl: string) {
   try {
     const url = new URL(sourceUrl);
     const host = url.hostname.replace(/^www\./, "");
     return host === "google.com" && url.pathname.startsWith("/travel/flights")
-      ? "google.com/travel/flights"
+      ? "Google Flights"
       : host;
   } catch {
     return "Source";
   }
 }
 
-function freshness(
-  observedAt: string,
-  t: (message: string, values?: Record<string, number | string>) => string,
-) {
-  const days = Math.max(0, Math.floor((Date.now() - Date.parse(observedAt)) / 86_400_000));
-  return days === 0
-    ? t("Saved today")
-    : days === 1
-      ? t("Checked yesterday")
-      : t("Checked {count} days ago", { count: days });
-}
-
 function dateSummary(item: ResearchItem, locale: "en" | "zh-CN") {
   if (!item.start_date) return null;
   const dateLocale = locale === "zh-CN" ? "zh-CN" : "en-US";
-  const start = new Date(`${item.start_date}T00:00:00Z`).toLocaleDateString(dateLocale, {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-  if (!item.end_date) return start;
-  const end = new Date(`${item.end_date}T00:00:00Z`).toLocaleDateString(dateLocale, {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-  return `${start}–${end}`;
+  const display = (value: string) =>
+    new Date(`${value}T00:00:00Z`).toLocaleDateString(dateLocale, {
+      day: "numeric",
+      month: "short",
+      timeZone: "UTC",
+    });
+  return item.end_date
+    ? `${display(item.start_date)}–${display(item.end_date)}`
+    : display(item.start_date);
+}
+
+function categoryLabel(category: string) {
+  if (category === "rental") return "Car";
+  if (category === "stay") return "Stay";
+  if (category === "train") return "Train";
+  if (category === "activity") return "Activity";
+  return "Flight";
 }
 
 export function ResearchItemRow({
   defaultCurrency,
-  application,
   item,
-  onApplied,
   onDeleted,
-  onReverted,
-  onReloadLatest,
   onSaved,
-  onSelected,
   plan,
-  selection,
-  variantName,
 }: {
-  application?: ResearchPlanApplication;
   defaultCurrency: string;
   item: ResearchItem;
-  onApplied: (application: ResearchPlanApplication) => void;
   onDeleted: (id: string) => void;
-  onReverted: (applicationId: string, result: RevertRpcResult) => void;
-  onReloadLatest: (itemId: string) => Promise<void>;
   onSaved: (item: ResearchItem) => void;
-  onSelected: (selection: VariantResearchSelection) => void;
   plan: ResearchPlanSnapshot;
-  selection?: VariantResearchSelection;
-  variantName: string;
 }) {
   const { locale, t } = useI18n();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [error, setError] = useState<string>();
-  const ready = isReadyToCompare(item);
-  const nights = stayNightCount(item);
-  const perNight = stayPerNightPrice(item);
   const route =
     item.origin_text && item.destination_text
       ? `${item.origin_text} → ${item.destination_text}`
       : null;
   const title =
-    item.title ?? route ?? (item.source_url ? t(sourceLabel(item.source_url)) : item.note);
+    item.title ??
+    route ??
+    item.location_text ??
+    (item.source_url ? sourceLabel(item.source_url) : item.note);
   const dates = dateSummary(item, locale);
   const flights = Array.isArray(item.segments)
     ? item.segments
         .map((segment) => {
           if (!segment || typeof segment !== "object" || Array.isArray(segment)) return null;
-          const carrier = segment.carrier;
-          const number = segment.serviceNumber;
-          return typeof carrier === "string" && typeof number === "string"
-            ? `${carrier} ${number}`
-            : null;
+          return [segment.carrier, segment.serviceNumber].filter(Boolean).join(" ") || null;
         })
         .filter(Boolean)
         .join(" · ")
     : null;
-  const links = researchLinksWithSource(item.links, item.source_url);
+  const source = researchLinksWithSource(item.links, item.source_url)[0];
+  const needsPlaceConfirmation =
+    (item.category === "stay" || item.category === "activity") &&
+    Boolean(item.location_text) &&
+    !item.location_place_id;
 
   return (
-    <article className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+    <article className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
         <div className="min-w-0">
-          <h3 className="research-safe-wrap text-sm font-semibold">{title}</h3>
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-            <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-semibold text-primary">
-              <T
-                message={
-                  item.category === "rental"
-                    ? "Car"
-                    : item.category === "stay"
-                      ? "Stay"
-                      : item.category === "train"
-                        ? "Train"
-                        : item.category === "activity"
-                          ? "Activity"
-                          : "Flight"
-                }
-              />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="research-safe-wrap text-base font-semibold">{title}</h3>
+            <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-sm font-semibold text-primary">
+              <T message={categoryLabel(item.category)} />
             </span>
-            {selection ? (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
-                <T message={" Selected "} />
-              </span>
-            ) : null}
           </div>
+          <p className="mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {route && route !== title ? <span>{route}</span> : null}
+            {item.location_text && item.location_text !== title ? (
+              <span>{item.location_text}</span>
+            ) : null}
+            {dates ? <span>{dates}</span> : null}
+            {flights ? <span>{flights}</span> : null}
+          </p>
         </div>
-        <div className="min-w-0 text-right">
-          {item.total_price_amount !== null && item.currency ? (
-            <>
-              <p className="whitespace-nowrap text-base font-semibold tabular-nums sm:text-lg">
-                {formatMoney(item.total_price_amount, item.currency)}
-              </p>
-              {nights && perNight !== null ? (
-                <p className="text-xs text-muted-foreground">
-                  {formatMoney(perNight, item.currency)}
-                  <T message={"/night · "} />
-                  {nights} <T message={" nights "} />
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  <T message={"Total price"} />
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="text-xs font-medium text-muted-foreground sm:text-sm">
-              <T message={"No price"} />
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
-        {route && route !== title ? <span>{route}</span> : null}
-        {dates ? <span>{dates}</span> : null}
-        {flights ? <span>{flights}</span> : null}
-        <span>{freshness(item.observed_at, t)}</span>
+        {item.total_price_amount !== null && item.currency ? (
+          <p className="whitespace-nowrap text-base font-semibold tabular-nums sm:text-lg">
+            {formatMoney(item.total_price_amount, item.currency)}
+          </p>
+        ) : null}
       </div>
       {item.note && item.note !== title && item.note.trim() !== item.source_url?.trim() ? (
-        <p className="research-safe-wrap mt-2 line-clamp-2 text-xs text-muted-foreground">
+        <p className="research-safe-wrap mt-2 line-clamp-2 text-sm text-muted-foreground">
           {item.note}
         </p>
       ) : null}
-      <div className="mt-3 flex min-w-0 flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-1">
-          {item.category !== "activity" ? <BookingSitesDialog item={item} /> : null}
-          {links.slice(0, 3).map((link) => (
+          {needsPlaceConfirmation ? (
             <Button
-              asChild
-              className="min-h-11 min-w-0 max-w-32 px-2.5 sm:max-w-40"
-              key={link.url}
+              className="min-h-11"
+              onClick={() => setEditOpen(true)}
               size="sm"
+              type="button"
               variant="outline"
             >
-              <a href={link.url} rel="noreferrer" target="_blank">
-                <span className="truncate">
-                  {link.url === item.source_url
-                    ? sourceLabel(link.url)
-                    : link.label || sourceLabel(link.url)}
-                </span>
+              <MapPin aria-hidden="true" className="size-4" />
+              <T message="Confirm location" />
+            </Button>
+          ) : null}
+          {item.category !== "activity" ? <BookingSitesDialog item={item} /> : null}
+          {source ? (
+            <Button asChild className="min-h-11 min-w-0 max-w-40 px-2.5" size="sm" variant="ghost">
+              <a href={source.url} rel="noreferrer" target="_blank">
+                <span className="truncate">{sourceLabel(source.url)}</span>
                 <ExternalLink aria-hidden="true" className="size-3.5 shrink-0" />
               </a>
             </Button>
-          ))}
-          <ResearchItemDialog
-            category={item.category as ResearchCategory}
-            defaultCurrency={defaultCurrency}
-            item={item}
-            onSaved={onSaved}
-            tripId={item.trip_id}
-          />
-          <Button
-            aria-label={t("Delete {item}", { item: title ?? t("idea") })}
-            className="size-11 p-0"
-            onClick={() => setConfirmOpen(true)}
-            size="sm"
-            variant="outline"
-          >
-            <Trash2 aria-hidden="true" className="size-4" />
-          </Button>
+          ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                aria-label={t("More actions for {item}", { item: title ?? t("idea") })}
+                className="size-11 p-0"
+                type="button"
+                variant="ghost"
+              >
+                <MoreHorizontal aria-hidden="true" className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onSelect={() => window.setTimeout(() => setEditOpen(true), 0)}>
+                <Pencil aria-hidden="true" className="size-4" /> <T message="Edit" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => setConfirmOpen(true)}
+              >
+                <Trash2 aria-hidden="true" className="size-4" /> <T message="Delete" />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <AddIdeaToPlan item={item} plan={plan} />
-        {ready && item.category !== "activity" && application ? (
-          <ResearchPlanActions
-            application={application}
-            item={item}
-            onApplied={onApplied}
-            onReverted={onReverted}
-            onReloadLatest={() => onReloadLatest(item.id)}
-            onSelected={onSelected}
-            plan={plan}
-            variantName={variantName}
-          />
-        ) : null}
       </div>
       {error ? (
-        <p className="mt-2 text-xs text-destructive" role="alert">
+        <p className="mt-2 text-sm text-destructive" role="alert">
           <Localized value={error} />
         </p>
       ) : null}
+      <ResearchItemDialog
+        category={item.category as ResearchCategory}
+        defaultCurrency={defaultCurrency}
+        hideTrigger
+        item={item}
+        onOpenChange={setEditOpen}
+        onSaved={onSaved}
+        open={editOpen}
+        tripId={item.trip_id}
+      />
       <AlertDialog onOpenChange={setConfirmOpen} open={confirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              <T message={"Delete this saved candidate?"} />
+              <T message="Delete this idea?" />
             </AlertDialogTitle>
             <AlertDialogDescription>
-              <T
-                message={" This removes it only from Ideas & Options. Your Plan stays unchanged. "}
-              />
+              <T message="This removes it from Ideas. Your Plan stays unchanged." />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>
-              <T message={"Keep it"} />
+              <T message="Keep it" />
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
@@ -280,7 +230,7 @@ export function ResearchItemRow({
                 else onDeleted(item.id);
               }}
             >
-              <T message={" Delete "} />
+              <T message="Delete" />
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

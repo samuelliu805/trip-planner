@@ -1,16 +1,30 @@
 import { isIP } from "node:net";
 
+import {
+  decodeHtml,
+  embeddedPrice,
+  inlinePrice,
+  parsedPrice,
+  structuredPrice,
+  type ParsedPrice,
+} from "./idea-page-price.ts";
+
 export type IdeaPageMetadata = {
   title: string | null;
   locationText: string | null;
+  priceAmount: number | null;
+  priceCurrency: string | null;
   status: "readable" | "unavailable" | "unsupported";
 };
 
 const unavailable: IdeaPageMetadata = {
   title: null,
   locationText: null,
+  priceAmount: null,
+  priceCurrency: null,
   status: "unavailable",
 };
+const maximumPageBytes = 1_048_576;
 
 const providerDomains = [
   "airbnb.com",
@@ -78,30 +92,6 @@ function approvedUrl(value: string, provider?: string): { url: URL; provider: st
   }
 }
 
-function decodeHtml(value: string): string {
-  return value
-    .replace(/&(?:amp|quot|apos|lt|gt|nbsp);|&#(?:x[0-9a-f]+|\d+);/gi, (entity) => {
-      const named: Record<string, string> = {
-        "&amp;": "&",
-        "&quot;": '"',
-        "&apos;": "'",
-        "&lt;": "<",
-        "&gt;": ">",
-        "&nbsp;": " ",
-      };
-      const normalized = entity.toLowerCase();
-      if (named[normalized]) return named[normalized];
-      const radix = normalized.startsWith("&#x") ? 16 : 10;
-      const digits = normalized.slice(radix === 16 ? 3 : 2, -1);
-      const code = Number.parseInt(digits, radix);
-      return Number.isFinite(code) && code > 0 && code <= 0x10ffff
-        ? String.fromCodePoint(code)
-        : entity;
-    })
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function clean(value: unknown, maximum = 300): string | null {
   if (typeof value !== "string") return null;
   const text = decodeHtml(value);
@@ -134,6 +124,7 @@ export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageM
   const documentTitle = clean(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1]);
   let structuredName: string | null = null;
   let locationText: string | null = null;
+  let price: ParsedPrice | null = null;
   for (const match of html.matchAll(
     /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
   )) {
@@ -141,6 +132,7 @@ export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageM
     try {
       const nodes = structuredNodes(JSON.parse(match[1]));
       for (const node of nodes) {
+        price ??= structuredPrice(node);
         const type = Array.isArray(node["@type"])
           ? node["@type"].join(" ")
           : String(node["@type"] ?? "");
@@ -172,7 +164,22 @@ export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageM
         meta.get("twitter:title") ??
         documentTitle ??
         null);
-  return { title, locationText, status: title || locationText ? "readable" : "unavailable" };
+  price ??=
+    parsedPrice(
+      meta.get("product:price:amount") ?? meta.get("og:price:amount"),
+      meta.get("product:price:currency") ?? meta.get("og:price:currency"),
+    ) ??
+    inlinePrice(meta.get("twitter:data1")) ??
+    inlinePrice(meta.get("description")) ??
+    inlinePrice(meta.get("og:description")) ??
+    embeddedPrice(html);
+  return {
+    title,
+    locationText,
+    priceAmount: price?.priceAmount ?? null,
+    priceCurrency: price?.priceCurrency ?? null,
+    status: title || locationText || price ? "readable" : "unavailable",
+  };
 }
 
 export async function fetchIdeaPageMetadata(
@@ -185,7 +192,12 @@ export async function fetchIdeaPageMetadata(
   try {
     for (let redirect = 0; redirect <= 2; redirect++) {
       const response = await fetchPage(current, {
-        headers: { Accept: "text/html" },
+        headers: {
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.8",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/128 Safari/537.36",
+        },
         redirect: "manual",
         signal: AbortSignal.timeout(6_000),
       });
@@ -205,16 +217,16 @@ export async function fetchIdeaPageMetadata(
       const chunks: Uint8Array[] = [];
       let bytes = 0;
       try {
-        while (bytes < 262_144) {
+        while (bytes < maximumPageBytes) {
           const result = await reader.read();
           if (result.done) break;
-          chunks.push(result.value.subarray(0, 262_144 - bytes));
+          chunks.push(result.value.subarray(0, maximumPageBytes - bytes));
           bytes += result.value.byteLength;
         }
       } finally {
         await reader.cancel().catch(() => undefined);
       }
-      const buffer = new Uint8Array(Math.min(bytes, 262_144));
+      const buffer = new Uint8Array(Math.min(bytes, maximumPageBytes));
       let offset = 0;
       for (const chunk of chunks) {
         buffer.set(chunk, offset);

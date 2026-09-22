@@ -7,7 +7,7 @@ export default function CompareError({ reset }: { error: Error; reset: () => voi
     <TripDetailRouteState
       description="Saved prices could not be loaded. Your Plan is unchanged."
       onRetry={reset}
-      title="Ideas & Options"
+      title="Ideas"
     />
   );
 }
