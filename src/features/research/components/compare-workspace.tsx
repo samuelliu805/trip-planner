@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { CategorySelector } from "./category-selector";
-import { BookingSitesDialog } from "./booking-sites-dialog";
-import { ResearchItemDialog } from "./research-item-dialog";
+import { IdeaDetailsEntry } from "./idea-details-entry";
 import { ResearchItemList } from "./research-item-list";
 import { QuickIdeaInput } from "./quick-idea-input";
 import { IdeaComparisons } from "./idea-comparisons";
-import { ResearchSortMenu } from "./research-sort-menu";
 import { TripMobileTabBar } from "@/features/trips/components/trip-app-bar";
 import { Localized } from "@/features/i18n/i18n-provider";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
@@ -33,7 +30,6 @@ import type {
 
 export function CompareWorkspace({
   activeCategory,
-  categoryHrefs,
   context,
   defaultCurrency,
   initialApplications,
@@ -45,7 +41,6 @@ export function CompareWorkspace({
   variantName,
 }: {
   activeCategory: ResearchCategory;
-  categoryHrefs: Record<ResearchCategory, string>;
   context?: { dayId?: string; itemId?: string };
   defaultCurrency: string;
   initialApplications: ResearchPlanApplication[];
@@ -56,7 +51,7 @@ export function CompareWorkspace({
   tripId: string;
   variantName: string;
 }) {
-  const [sort, setSort] = useState<ResearchSort>("price");
+  const [sort, setSort] = useState<ResearchSort>("recent");
   const [reloadNotice, setReloadNotice] = useState<string>();
   const queryClient = useQueryClient();
   const initialData = useMemo<ResearchWorkspaceSnapshot>(
@@ -74,7 +69,6 @@ export function CompareWorkspace({
   const { applications, currentApplicationIds, items, plan: currentPlan, selections } = workspace;
   const queryKey = researchWorkspaceQueryKey(tripId, plan.variantId);
   const pathname = usePathname();
-  const router = useRouter();
   const category = parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? activeCategory;
   const exposureReported = useRef(false);
   useEffect(() => {
@@ -98,7 +92,7 @@ export function CompareWorkspace({
           itemId: context.itemId,
           variantId: currentPlan.variantId,
         })
-      : items.filter((item) => item.category === category);
+      : items;
   const defaultCurrencyForTrip = defaultCurrency;
   const selectionsByItem = useMemo(
     () => new Map(selections.map((selection) => [selection.research_item_id, selection])),
@@ -149,53 +143,18 @@ export function CompareWorkspace({
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="trip-detail-scroller min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
-          <div
-            aria-label="Ideas filters"
-            data-i18n-aria-label={"Ideas filters"}
-            className="flex min-w-0 items-center justify-between gap-3"
-            role="region"
-          >
-            <div className="min-w-0">
-              <CategorySelector
-                active={category}
-                hrefs={categoryHrefs}
-                onNavigate={(nextCategory) => {
-                  if (nextCategory === category) return;
-                  captureBrowserProductEvent(
-                    "ideas_category_changed",
-                    {
-                      ideas_category: nextCategory,
-                      operation_id: newTelemetryOperationId(),
-                      surface: "ideas_options",
-                    },
-                    { actorType: "authenticated" },
-                  );
-                  router.push(categoryHrefs[nextCategory], { scroll: false });
-                }}
-              />
-            </div>
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
-              {category !== "activity" ? <BookingSitesDialog category={category} toolbar /> : null}
-              <ResearchSortMenu onChange={setSort} value={sort} />
-              <ResearchItemDialog
-                category={category}
-                context={context}
-                defaultCurrency={defaultCurrencyForTrip}
-                onSaved={saveItem}
-                tripId={tripId}
-              />
-            </div>
-          </div>
-          <QuickIdeaInput
-            items={items}
-            onSaved={(saved) => {
-              saveItem(saved);
-              if (saved.category !== category)
-                router.push(categoryHrefs[saved.category as ResearchCategory], { scroll: false });
-            }}
-            tripId={tripId}
-          />
-          <IdeaComparisons items={items} plan={currentPlan} tripId={tripId} />
+          <header className="min-w-0 py-2 sm:py-3">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+              <Localized value="Ideas" />
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+              <Localized value="Save ideas before you plan" />
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <Localized value="Keep flights, stays, cars and activities here. Add one to Plan when you're ready." />
+            </p>
+          </header>
+          <QuickIdeaInput items={items} onSaved={saveItem} tripId={tripId} />
           <ResearchItemList
             applicationsByItem={applicationsByItem}
             defaultCurrency={defaultCurrencyForTrip}
@@ -301,7 +260,15 @@ export function CompareWorkspace({
             plan={currentPlan}
             selectionsByItem={selectionsByItem}
             sort={sort}
+            onSortChange={setSort}
             variantName={variantName}
+          />
+          <IdeaComparisons items={items} plan={currentPlan} tripId={tripId} />
+          <IdeaDetailsEntry
+            context={context}
+            defaultCurrency={defaultCurrencyForTrip}
+            onSaved={saveItem}
+            tripId={tripId}
           />
           {reloadNotice ? (
             <p

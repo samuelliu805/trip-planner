@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import { Copy, Lightbulb, LoaderCircle, Map, Pencil, Plus } from "lucide-react";
+import { Copy, LoaderCircle, Map, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -69,15 +69,21 @@ export function PlannerContextActions(props: PlannerContextProps) {
       {!props.guestExperience ? (
         <Button
           asChild
-          className="hidden h-11 px-2.5 min-[900px]:inline-flex"
+          aria-label="Add idea"
+          className="size-11 shrink-0 p-0 min-[900px]:h-11 min-[900px]:w-auto min-[900px]:px-3"
           size="sm"
-          variant="ghost"
+          variant="outline"
         >
           <Link
-            href={researchCategoryHref(props.trip.id, "flight", { variantId: props.variantId })}
+            href={researchCategoryHref(props.trip.id, "flight", {
+              variantId: props.variantId,
+              newIdea: true,
+            })}
           >
-            <Lightbulb aria-hidden="true" className="size-4" />
-            <T message="Ideas {count}" values={{ count: props.researchItems.length }} />
+            <Plus aria-hidden="true" className="size-4" />
+            <span className="hidden min-[900px]:inline">
+              <T message="Add idea" />
+            </span>
           </Link>
         </Button>
       ) : null}

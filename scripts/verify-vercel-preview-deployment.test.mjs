@@ -5,6 +5,7 @@ import {
   classifyPreviewStatuses,
   exactPreviewSha,
   previewBrowserOrigin,
+  previewCandidateOrigins,
   previewOriginMatchesExactSha,
   selectExactPreviewDeployment,
   verifyVercelPreview,
@@ -75,6 +76,19 @@ test("uses only an approved configured stable Vercel Preview origin", () => {
       /approved Vercel HTTPS origin/,
     );
   }
+});
+
+test("falls back to the exact deployment when a configured branch origin is stale", () => {
+  assert.deepEqual(
+    previewCandidateOrigins(
+      { PHASE5_GLOBAL_PREVIEW_URL: "https://old-branch.vercel.app" },
+      "https://exact-commit.vercel.app",
+    ),
+    ["https://old-branch.vercel.app", "https://exact-commit.vercel.app"],
+  );
+  assert.deepEqual(previewCandidateOrigins({}, "https://exact-commit.vercel.app"), [
+    "https://exact-commit.vercel.app",
+  ]);
 });
 
 test("requires the controlled Preview origin to report the exact candidate SHA", async () => {

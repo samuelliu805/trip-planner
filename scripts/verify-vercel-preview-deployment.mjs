@@ -72,6 +72,12 @@ export function previewBrowserOrigin(environment, deploymentOrigin) {
     : approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL");
 }
 
+export function previewCandidateOrigins(environment, deploymentOrigin) {
+  const exactDeployment = approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL");
+  const configured = previewBrowserOrigin(environment, exactDeployment);
+  return configured === exactDeployment ? [exactDeployment] : [configured, exactDeployment];
+}
+
 export async function previewOriginMatchesExactSha(
   origin,
   expectedSha,
@@ -150,10 +156,16 @@ export async function verifyVercelPreview(environment = process.env) {
       );
       const result = classifyPreviewStatuses(statuses);
       if (result.state === "ready") {
-        const browserOrigin = previewBrowserOrigin(environment, result.url);
-        if (!(await previewOriginMatchesExactSha(browserOrigin, expectedSha, environment))) {
+        let browserOrigin;
+        for (const origin of previewCandidateOrigins(environment, result.url)) {
+          if (await previewOriginMatchesExactSha(origin, expectedSha, environment)) {
+            browserOrigin = origin;
+            break;
+          }
+        }
+        if (!browserOrigin) {
           process.stdout.write(
-            `Waiting for the controlled Global Preview origin to serve ${expectedSha}.\n`,
+            `Waiting for a verified Global Preview origin to serve ${expectedSha}.\n`,
           );
           await new Promise((resolve) => setTimeout(resolve, 15_000));
           continue;

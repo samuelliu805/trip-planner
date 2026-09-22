@@ -696,30 +696,116 @@ async function verifyTripSectionNavigation(browser, tripId) {
     /This page couldn.t load|This Plan could not be loaded/i,
   );
 
-  await evaluate(browser, "window.__phase3CategoryNavigationSentinel = true");
+  await waitFor(browser, `Boolean(document.querySelector('textarea'))`, "Ideas capture input");
+  assert.equal(
+    await evaluate(browser, `Boolean(document.querySelector('[aria-label="Ideas filters"]'))`),
+    false,
+    "The old category filter returned above Ideas capture.",
+  );
+  const googleFlightUrl =
+    "https://www.google.com/travel/flights?tfs=CBwQARoeEgoyMDI2LTEwLTIzagcIARIDT1JEcgcIARIDTEFYGh4SCjIwMjYtMTAtMzBqBwgBEgNMQVhyBwgBEgNPUkRAAUgBcAGCAQsI____________AZgBAQ&tfu=KgIIAw";
+  const entered = await evaluate(
+    browser,
+    `(() => {
+      const input = document.querySelector('textarea');
+      if (!input) return false;
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(input, ${JSON.stringify(googleFlightUrl)});
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return true;
+    })()`,
+  );
+  assert.equal(entered, true, "Google Flights capture input was unavailable.");
   await waitFor(
     browser,
-    `Boolean([...document.querySelectorAll('a[href*="/compare/stays"]')]
-      .find((link) => link.getClientRects().length))`,
-    "Ideas category navigation control",
-    45_000,
+    `document.body.innerText.includes('ORD → LAX') && document.body.innerText.includes('2026-10-23')`,
+    "Google Flights parsed preview",
   );
   await clickElement(
     browser,
-    `[...document.querySelectorAll('a[href*="/compare/stays"]')]
-      .find((link) => link.getClientRects().length)`,
-    "Ideas category navigation",
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Flight') && !button.disabled)`,
+    "save Google Flights idea",
   );
   await waitFor(
     browser,
-    `location.pathname === ${JSON.stringify(`/trips/${tripId}/compare/stays`)}`,
-    "Ideas category route",
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('ORD → LAX') && item.innerText.includes('Oct 23')))`,
+    "saved Google Flights route and dates",
     45_000,
   );
+
+  const bookingUrl =
+    "https://www.booking.com/searchresults.html?ss=Paris&checkin=2026-10-23&checkout=2026-10-25";
   assert.equal(
-    await evaluate(browser, "window.__phase3CategoryNavigationSentinel"),
+    await evaluate(
+      browser,
+      `(() => {
+        const input = document.querySelector('textarea');
+        if (!input) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(input, ${JSON.stringify(bookingUrl)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      })()`,
+    ),
     true,
-    "Ideas category navigation unexpectedly discarded the browser state.",
+    "Booking.com capture input was unavailable.",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Paris · 2026-10-23 – 2026-10-25')`,
+    "Booking.com parsed place and dates",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Stay') && !button.disabled)`,
+    "save Booking.com idea",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('Paris') && item.innerText.includes('Oct 23')))`,
+    "saved Booking.com place and dates",
+    45_000,
+  );
+  const config = loadLiveConfig();
+  const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+  const savedBooking = await controlledData(
+    () =>
+      db
+        .from("research_items")
+        .select("location_text,start_date,end_date")
+        .eq("trip_id", tripId)
+        .eq("source_url", bookingUrl),
+    "saved Booking.com parsed fields",
+  );
+  assert.deepEqual(savedBooking, [
+    { location_text: "Paris", start_date: "2026-10-23", end_date: "2026-10-25" },
+  ]);
+
+  await clickElement(browser, `document.querySelector('details summary')`, "manual idea details");
+  const selectedStay = await evaluate(
+    browser,
+    `(() => {
+      const select = document.querySelector('details select');
+      if (!select) return false;
+      select.value = 'stay';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    })()`,
+  );
+  assert.equal(selectedStay, true, "Manual idea type was unavailable.");
+  await waitFor(
+    browser,
+    `document.querySelector('details select')?.value === 'stay'`,
+    "manual stay idea type",
+  );
+  assert.equal(
+    await evaluate(browser, "location.pathname"),
+    `/trips/${tripId}/compare/flights`,
+    "Choosing a manual idea type changed the Ideas page.",
   );
 
   await waitFor(
@@ -766,7 +852,7 @@ async function verifyTripSectionNavigation(browser, tripId) {
     assert.equal(site.target, "_blank", `${site.text} could replace the Ideas page.`);
   }
 
-  const ideasPath = `/trips/${tripId}/compare/stays`;
+  const ideasPath = `/trips/${tripId}/compare/flights`;
   const desktopUserAgent = await evaluate(browser, "navigator.userAgent");
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",

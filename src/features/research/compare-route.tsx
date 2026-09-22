@@ -17,8 +17,7 @@ import { appUserIdentityLabel } from "@/platform/contracts/auth";
 import { CompareWorkspace } from "./components/compare-workspace";
 import { TripDetailRoute } from "./components/trip-detail-route";
 import { getCompareItems, getResearchPlanSnapshot, getResearchPlanState } from "./data";
-import { researchCategories, type ResearchCategory } from "./types";
-import { researchCategoryHref } from "./urls";
+import type { ResearchCategory } from "./types";
 
 export type ResearchCompareQuery = {
   dayId?: string;
@@ -63,16 +62,6 @@ export async function ResearchCompareRoute({
     ...(tripIdSchema.safeParse(query.dayId).success && { dayId: query.dayId }),
     ...(tripIdSchema.safeParse(query.itemId).success && { itemId: query.itemId }),
   };
-  const categoryHrefs = Object.fromEntries(
-    researchCategories.map((value) => [
-      value,
-      researchCategoryHref(trip.id, value, {
-        ...context,
-        variantId: resolution.activeVariant!.id,
-      }),
-    ]),
-  ) as Record<ResearchCategory, string>;
-
   return (
     <TripDetailRoute
       appBar={
@@ -115,7 +104,6 @@ export async function ResearchCompareRoute({
       <PlannerMapProvider>
         <CompareWorkspace
           activeCategory={category}
-          categoryHrefs={categoryHrefs}
           context={context}
           defaultCurrency={trip.currency}
           initialApplications={planState.applications}

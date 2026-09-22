@@ -40,7 +40,7 @@ export function ResearchItemDialog({
           className="size-11 p-0 xl:size-9"
           onClick={() => setOpen(true)}
           size="sm"
-          variant="ghost"
+          variant="outline"
         >
           <Pencil aria-hidden="true" className="size-4" />
         </Button>

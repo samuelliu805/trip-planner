@@ -66,7 +66,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
         }}
         size="sm"
         type="button"
-        variant="outline"
+        variant="default"
       >
         <T message="Add to Plan" />
       </Button>

@@ -17,12 +17,13 @@ export function parseResearchCategoryRouteSegment(value?: string): ResearchCateg
 export function researchCategoryHref(
   tripId: string,
   category: ResearchCategory,
-  options: { dayId?: string; itemId?: string; variantId?: string } = {},
+  options: { dayId?: string; itemId?: string; variantId?: string; newIdea?: boolean } = {},
 ) {
   const params = new URLSearchParams();
   if (options.variantId) params.set("variant", options.variantId);
   if (options.dayId) params.set("dayId", options.dayId);
   if (options.itemId) params.set("itemId", options.itemId);
+  if (options.newIdea) params.set("new", "1");
   const query = params.size ? `?${params.toString()}` : "";
   return `/trips/${tripId}/compare/${researchCategoryRouteSegments[category]}${query}`;
 }

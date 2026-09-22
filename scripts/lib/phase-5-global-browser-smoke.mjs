@@ -983,6 +983,12 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
   await waitFor(
     browser,
+    `Boolean(document.querySelector('details summary'))`,
+    "manual Ideas details",
+  );
+  await clickElement(browser, `document.querySelector('details summary')`, "manual Ideas details");
+  await waitFor(
+    browser,
     `Boolean([...document.querySelectorAll('button[aria-label="Search booking sites"]')]
       .find((button) => button.getClientRects().length && !button.disabled))`,
     "Global booking sites control",
