@@ -6,6 +6,7 @@ export type ResearchItemFormStep = {
 };
 
 const primaryTitles: Record<ResearchCategory, string> = {
+  activity: "Activity",
   flight: "Flight",
   rental: "Rental car",
   stay: "Hotel",
@@ -13,6 +14,7 @@ const primaryTitles: Record<ResearchCategory, string> = {
 };
 
 const priceSteps: Record<ResearchCategory, ResearchItemFormStep["id"]> = {
+  activity: "primary",
   flight: "primary",
   rental: "primary",
   stay: "primary",
@@ -20,6 +22,10 @@ const priceSteps: Record<ResearchCategory, ResearchItemFormStep["id"]> = {
 };
 
 const stepDescriptions: Record<ResearchCategory, Record<ResearchItemFormStep["id"], string>> = {
+  activity: {
+    primary: "Save a place or activity. You can choose a day later.",
+    details: "Add a source link or notes if useful.",
+  },
   flight: {
     primary: "Add the price, route, departure, and arrival for each flight.",
     details: "Add airline and flight numbers and any booking records.",

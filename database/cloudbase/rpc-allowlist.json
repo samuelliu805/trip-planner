@@ -1,7 +1,10 @@
 {
   "version": 1,
   "authenticated": [
+    ["apply_idea_choice_v1(uuid,uuid,uuid,uuid,uuid,uuid)", "member_guard"],
+    ["apply_single_idea_v1(uuid,uuid,uuid,uuid,uuid,uuid)", "member_guard"],
     ["apply_research_item_to_variant_v3(uuid,uuid,uuid,text,uuid,bigint,uuid)", "member_guard"],
+    ["capture_idea_v1(uuid,uuid,text,text,text,text,jsonb)", "member_guard"],
     ["clear_day_route_plan_v2(uuid,uuid,uuid,bigint,uuid)", "member_guard"],
     ["clear_route_variant_items_v3(uuid,uuid,uuid[],bigint[],bigint,uuid)", "member_guard"],
     [
@@ -12,6 +15,8 @@
       "create_route_variant_v3(uuid,uuid,text,text,uuid,boolean,bigint,bigint,bigint,bigint)",
       "member_guard"
     ],
+    ["create_idea_comparison_v1(uuid,text,jsonb)", "member_guard"],
+    ["create_idea_comparison_v2(uuid,text,jsonb)", "member_guard"],
     [
       "create_share_page_v4(uuid,bigint,uuid,public_itinerary_view,boolean,boolean,boolean,boolean,boolean,boolean,boolean,text,text,text,integer,boolean,text,uuid,integer,integer,boolean)",
       "member_guard"
@@ -19,6 +24,7 @@
     ["create_trip_v3(text,text,text,text,integer,date,date,uuid)", "claim_bound_create"],
     ["current_research_plan_application_ids(uuid,uuid)", "member_guard"],
     ["delete_itinerary_item_v2(uuid,uuid,uuid,bigint,bigint,uuid)", "member_guard"],
+    ["delete_idea_comparison_v1(uuid,uuid,uuid)", "member_guard"],
     ["delete_research_item_v2(uuid,uuid,bigint,uuid)", "member_guard"],
     ["delete_route_variant_v3(uuid,uuid,bigint,bigint,bigint,bigint,uuid)", "member_guard"],
     ["delete_trip_v3(uuid,bigint,bigint,uuid)", "owner_guard"],
@@ -43,6 +49,8 @@
     ["is_actual_trip_owner(uuid)", "claim_bound_owner_check"],
     ["is_trip_owner(uuid)", "claim_bound_owner_check"],
     ["list_share_pages_v2(uuid)", "member_guard"],
+    ["list_idea_comparisons_v1(uuid)", "member_guard"],
+    ["merge_idea_source_v1(uuid,uuid,bigint,text,uuid)", "member_guard"],
     ["list_trip_history_filter_options_v1(uuid)", "member_guard"],
     ["list_trip_history(uuid,timestamptz,uuid,integer)", "member_guard"],
     ["list_trip_history_v2(uuid,timestamptz,uuid,integer,text,text,text)", "member_guard"],

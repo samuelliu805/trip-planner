@@ -9,6 +9,15 @@ export const browserProductEventNames = [
   "item_create_started",
   "ideas_viewed",
   "ideas_category_changed",
+  "idea_input_classified",
+  "idea_classification_overridden",
+  "idea_saved",
+  "idea_duplicate_merged",
+  "comparison_creation_started",
+  "comparison_created",
+  "comparison_choice_applied",
+  "comparison_choice_switched",
+  "idea_parser_failed",
   "research_create_started",
   "research_apply_started",
   "research_revert_started",
@@ -107,7 +116,8 @@ export type ItemEditorCloseReason =
 export type ItemKind = "activity" | "car_rental" | "hotel" | "meal" | "note" | "transport";
 export type PlannerView = "map" | "matrix" | "split";
 export type FeatureArea = "ideas" | "research" | "routes" | "variants" | "sharing" | "attachments";
-export type IdeasCategory = "flight" | "rental" | "stay" | "train";
+export type IdeasCategory = "activity" | "flight" | "rental" | "stay" | "train";
+export type IdeaKind = "flight" | "stay" | "car" | "activity" | "unknown";
 export type RouteView = "day" | "overview";
 export type RouteMode =
   | "walk"
@@ -144,6 +154,8 @@ export type ProductSurface =
   | "planner_app_bar"
   | "trip_list"
   | "ideas_options"
+  | "ideas_input"
+  | "ideas_comparison"
   | "research_editor"
   | "route_panel"
   | "variant_controls"
@@ -176,6 +188,7 @@ type ItemEditorProperties = ItemProperties & {
   surface: "item_editor";
 };
 type ResearchProperties = RequiredOperationContext & { ideas_category: IdeasCategory };
+type IdeaProperties = RequiredOperationContext & { idea_kind: IdeaKind };
 type RouteProperties = RequiredOperationContext & { route_mode: RouteMode; route_view: RouteView };
 type AttachmentProperties = RequiredOperationContext & { attachment_target: AttachmentTarget };
 type GuestProperties = OperationContext & { guest_action?: GuestAction };
@@ -221,6 +234,17 @@ export type ProductTelemetryEventProperties = {
   };
   ideas_viewed: RequiredOperationContext & { ideas_category: IdeasCategory };
   ideas_category_changed: RequiredOperationContext & { ideas_category: IdeasCategory };
+  idea_input_classified: IdeaProperties & {
+    classification_method: "url_rule" | "keyword_rule" | "user";
+  };
+  idea_classification_overridden: IdeaProperties & { classification_method: "user" };
+  idea_saved: IdeaProperties;
+  idea_duplicate_merged: IdeaProperties;
+  idea_parser_failed: IdeaProperties & { error_code: ErrorCode };
+  comparison_creation_started: RequiredOperationContext;
+  comparison_created: RequiredOperationContext;
+  comparison_choice_applied: RequiredOperationContext;
+  comparison_choice_switched: RequiredOperationContext;
   research_create_started: ResearchProperties;
   research_apply_started: ResearchProperties;
   research_revert_started: ResearchProperties;

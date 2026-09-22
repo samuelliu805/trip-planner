@@ -291,6 +291,8 @@ jobs:
         run: npm run test:amap-phase-5-live
       - name: Run CN repaired mutation and Ideas workflow smoke
         run: npm run test:cloudbase-cn-feature-repair
+      - name: Run CN Ideas comparison, permissions, and Plan switching checks
+        run: npm run test:ideas-comparisons-live
       - name: Run CN Auth, CRUD, RPC, RLS, share, cookie, header, and browser suite
         run: npm run test:cloudbase-phase-3-live
       - name: Run private Storage, signed URL, and zero-residue suite

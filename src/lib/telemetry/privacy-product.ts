@@ -56,6 +56,8 @@ const surfaces = new Set<ProductSurface>([
   "planner_app_bar",
   "trip_list",
   "ideas_options",
+  "ideas_input",
+  "ideas_comparison",
   "research_editor",
   "route_panel",
   "variant_controls",
@@ -144,8 +146,14 @@ function hasRequiredProperties(eventName: ProductEventName, safe: Record<string,
   if (isAdvancedProductEvent(eventName)) {
     if (!safe.operation_id || !safe.surface) return false;
     if (safe.feature_area !== featureAreaForProductEvent(eventName)) return false;
-    if ((safe.feature_area === "ideas" || safe.feature_area === "research") && !safe.ideas_category)
+    if (
+      (safe.feature_area === "research" ||
+        eventName === "ideas_viewed" ||
+        eventName === "ideas_category_changed") &&
+      !safe.ideas_category
+    )
       return false;
+    if (eventName.startsWith("idea_") && !safe.idea_kind) return false;
     if (safe.feature_area === "routes" && (!safe.route_mode || !safe.route_view)) return false;
     if (
       (eventName === "variant_created" || eventName === "variant_create_failed") &&

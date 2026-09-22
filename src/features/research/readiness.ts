@@ -6,6 +6,7 @@ import type { ResearchCategory, ResearchItem } from "./types";
 const commonRequired: Array<keyof ResearchItem> = ["total_price_amount", "currency"];
 
 const categoryRequired: Record<ResearchCategory, Array<keyof ResearchItem>> = {
+  activity: [],
   flight: ["origin_text", "destination_text", "start_date"],
   rental: ["origin_text", "start_date", "end_date"],
   stay: ["location_text", "start_date", "end_date"],
@@ -23,7 +24,10 @@ const fieldLabels: Partial<Record<keyof ResearchItem, string>> = {
 };
 
 export function missingComparisonFields(item: ResearchItem) {
-  const fields = [...commonRequired, ...categoryRequired[item.category as ResearchCategory]];
+  const fields = [
+    ...(item.category === "activity" ? [] : commonRequired),
+    ...(categoryRequired[item.category as ResearchCategory] ?? []),
+  ];
   const missing = [
     ...new Set(fields.filter((field) => item[field] === null).map((field) => fieldLabels[field])),
   ].filter((label): label is string => Boolean(label));

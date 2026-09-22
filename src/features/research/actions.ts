@@ -165,7 +165,7 @@ export async function updateResearchItem(
 }
 
 export async function deleteResearchItem(input: {
-  category: "flight" | "rental" | "stay" | "train";
+  category: "flight" | "rental" | "stay" | "train" | "activity";
   id: string;
   expectedVersion: number;
   operationId: string;

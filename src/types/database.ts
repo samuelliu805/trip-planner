@@ -912,6 +912,7 @@ export type Database = {
           observed_at: string;
           origin_place_id: string | null;
           origin_text: string | null;
+          raw_share_text: string | null;
           room_count: number | null;
           segments: Json;
           source_url: string | null;
@@ -944,6 +945,7 @@ export type Database = {
           observed_at?: string;
           origin_place_id?: string | null;
           origin_text?: string | null;
+          raw_share_text?: string | null;
           room_count?: number | null;
           segments?: Json;
           source_url?: string | null;
@@ -976,6 +978,7 @@ export type Database = {
           observed_at?: string;
           origin_place_id?: string | null;
           origin_text?: string | null;
+          raw_share_text?: string | null;
           room_count?: number | null;
           segments?: Json;
           source_url?: string | null;
@@ -1879,6 +1882,67 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      apply_idea_choice_v1: {
+        Args: {
+          target_trip_id: string;
+          target_variant_id: string;
+          target_comparison_id: string;
+          target_choice_id: string;
+          requested_day_id: string | null;
+          target_operation_id: string;
+        };
+        Returns: Json;
+      };
+      apply_single_idea_v1: {
+        Args: {
+          target_trip_id: string;
+          target_variant_id: string;
+          target_research_item_id: string;
+          requested_day_id: string | null;
+          requested_before_item_id: string | null;
+          target_operation_id: string;
+        };
+        Returns: Json;
+      };
+      capture_idea_v1: {
+        Args: {
+          target_trip_id: string;
+          target_operation_id: string;
+          requested_kind: string;
+          requested_title: string | null;
+          requested_source_url: string | null;
+          requested_share_text: string | null;
+          requested_fields: Json;
+        };
+        Returns: Json;
+      };
+      create_idea_comparison_v1: {
+        Args: { target_trip_id: string; requested_title: string; requested_choices: Json };
+        Returns: string;
+      };
+      create_idea_comparison_v2: {
+        Args: { target_trip_id: string; requested_title: string; requested_choices: Json };
+        Returns: Json;
+      };
+      delete_idea_comparison_v1: {
+        Args: {
+          target_trip_id: string;
+          target_comparison_id: string;
+          target_operation_id: string;
+        };
+        Returns: Json;
+      };
+      list_idea_comparisons_v1: { Args: { target_trip_id: string }; Returns: Json };
+      merge_idea_source_v1: {
+        Args: {
+          target_trip_id: string;
+          target_research_item_id: string;
+          expected_version: number;
+          requested_share_text: string;
+          target_operation_id: string;
+        };
+        Returns: Json;
+      };
       apply_research_item_to_variant: {
         Args: {
           target_research_item_id: string;

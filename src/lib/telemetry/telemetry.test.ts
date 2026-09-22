@@ -290,6 +290,9 @@ function validProductProperties(eventName: ProductEventName): Record<string, unk
                 : "attachment_editor";
   }
   if (featureArea === "ideas" || featureArea === "research") properties.ideas_category = "stay";
+  if (eventName.startsWith("idea_")) properties.idea_kind = "activity";
+  if (eventName === "idea_input_classified") properties.classification_method = "url_rule";
+  if (eventName === "idea_classification_overridden") properties.classification_method = "user";
   if (featureArea === "routes") {
     properties.route_mode = "walk";
     properties.route_view = "day";
@@ -549,6 +552,15 @@ test("advanced intent events and authoritative outcome events keep exact ownersh
   const expectedBrowser = [
     "ideas_viewed",
     "ideas_category_changed",
+    "idea_input_classified",
+    "idea_classification_overridden",
+    "idea_saved",
+    "idea_duplicate_merged",
+    "comparison_creation_started",
+    "comparison_created",
+    "comparison_choice_applied",
+    "comparison_choice_switched",
+    "idea_parser_failed",
     "research_create_started",
     "research_apply_started",
     "research_revert_started",

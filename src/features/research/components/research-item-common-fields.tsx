@@ -13,6 +13,7 @@ import { BookingPriceFields } from "@/features/itinerary/components/booking-pric
 import type { ResearchCategory, ResearchItem } from "../types";
 
 const nameLabels: Record<ResearchCategory, string> = {
+  activity: "Activity name",
   flight: "Option name",
   rental: "Rental company",
   stay: "Stay name",
