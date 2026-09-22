@@ -83,3 +83,37 @@ test("URL parsing keeps only explicit reliable route and date parameters", () =>
     endDate: null,
   });
 });
+
+test("Google Flights links expose only encoded search route and dates", () => {
+  const officialRoundTrip =
+    "https://www.google.com/travel/flights?tfs=CBwQARoeEgoyMDI2LTEwLTIzagcIARIDT1JEcgcIARIDTEFYGh4SCjIwMjYtMTAtMzBqBwgBEgNMQVhyBwgBEgNPUkRAAUgBcAGCAQsI____________AZgBAQ&tfu=KgIIAw";
+  assert.deepEqual(parseReliableIdeaFields(officialRoundTrip), {
+    originText: "ORD",
+    destinationText: "LAX",
+    startDate: "2026-10-23",
+    endDate: "2026-10-30",
+  });
+  assert.deepEqual(
+    parseReliableIdeaFields(
+      "https://www.google.com/travel/flights?q=Flights%20from%20SFO%20to%20JFK%20on%202026-11-03%20returning%202026-11-10",
+    ),
+    {
+      originText: "SFO",
+      destinationText: "JFK",
+      startDate: "2026-11-03",
+      endDate: "2026-11-10",
+    },
+  );
+  assert.deepEqual(parseReliableIdeaFields("https://www.google.com/travel/flights?hl=en"), {
+    originText: null,
+    destinationText: null,
+    startDate: null,
+    endDate: null,
+  });
+  assert.deepEqual(parseReliableIdeaFields("https://www.google.com/travel/flights?tfs=invalid"), {
+    originText: null,
+    destinationText: null,
+    startDate: null,
+    endDate: null,
+  });
+});

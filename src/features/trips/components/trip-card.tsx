@@ -261,9 +261,14 @@ export function TripCard({
           </div>
         </CardContent>
         <div className="relative z-10 border-t px-6 py-2">
-          <Button asChild className="min-h-11" size="sm" variant="ghost">
-            <Link href={researchCategoryHref(trip.id, "flight")}>
-              <Plus aria-hidden="true" className="size-4" /> <T message="Idea" />
+          <Button
+            asChild
+            className="min-h-11 border-primary/40 text-primary"
+            size="sm"
+            variant="outline"
+          >
+            <Link href={researchCategoryHref(trip.id, "flight", { newIdea: true })}>
+              <Plus aria-hidden="true" className="size-4" /> <T message="Add idea" />
             </Link>
           </Button>
         </div>

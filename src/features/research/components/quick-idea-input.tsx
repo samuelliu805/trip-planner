@@ -12,9 +12,11 @@ import {
   classifyIdeaInput,
   findDuplicateIdea,
   overrideIdeaClassification,
+  parseReliableIdeaFields,
   type IdeaKind,
 } from "../idea-input";
 import type { ResearchItem } from "../types";
+import { QuickIdeaIntro } from "./quick-idea-intro";
 
 const kinds = ["flight", "stay", "car", "activity"] as const;
 const labels: Record<Exclude<IdeaKind, "unknown">, string> = {
@@ -42,7 +44,19 @@ export function QuickIdeaInput({
   const [notice, setNotice] = useState<string>();
   const inferred = useMemo(() => classifyIdeaInput(input), [input]);
   const classification = override ? overrideIdeaClassification(inferred, override) : inferred;
+  const preview = useMemo(
+    () =>
+      parseReliableIdeaFields(classification.kind === "flight" ? classification.sourceUrl : null),
+    [classification.kind, classification.sourceUrl],
+  );
   const lastReported = useRef("");
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("new") !== "1") return;
+    inputRef.current?.focus();
+    inputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, []);
 
   useEffect(() => {
     const signature = `${inferred.kind}:${inferred.method}:${inferred.error ?? ""}`;
@@ -106,7 +120,11 @@ export function QuickIdeaInput({
       operationId,
       shareText,
       sourceUrl: classification.sourceUrl,
-      title: textOnly ? textOnly.slice(0, 300) : null,
+      title: textOnly
+        ? textOnly.slice(0, 300)
+        : preview.originText && preview.destinationText
+          ? `${preview.originText} → ${preview.destinationText}`
+          : null,
       tripId,
     });
     setPending(false);
@@ -162,115 +180,122 @@ export function QuickIdeaInput({
 
   return (
     <section
-      className="min-w-0 rounded-2xl border bg-card p-4 sm:p-5"
+      className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm sm:p-5"
       aria-label={t("Save an idea")}
     >
-      <h2 className="text-base font-semibold">
-        <T message="Put something you want to keep here" />
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        <T message="Paste a link or write one sentence. This saves it; it does not search the web." />
-      </p>
-      <label className="mt-3 block">
-        <span className="sr-only">
-          <T message="Idea link or sentence" />
-        </span>
-        <textarea
-          className="min-h-24 w-full min-w-0 resize-y rounded-xl border bg-background px-3 py-3 text-base"
-          maxLength={5000}
-          onChange={(event) => {
-            setInput(event.target.value);
-            setOverride(null);
-            setDuplicate(undefined);
-            setError(undefined);
-            setNotice(undefined);
-          }}
-          placeholder={t("Paste a link or write one sentence")}
-          value={input}
-        />
-      </label>
-      {input.trim() ? (
-        <>
-          <p className="mt-2 text-sm font-medium" aria-live="polite">
-            {classification.kind === "unknown"
-              ? t("Not sure yet. Choose a type.")
-              : `${t("Recognized as")}: ${t(labels[classification.kind])}`}
-          </p>
-          {classification.error ? (
-            <p className="text-sm text-destructive" role="alert">
-              <T message="Enter a complete http or https link." />
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-6">
+        <QuickIdeaIntro />
+        <div className="min-w-0">
+          <label className="block">
+            <span className="sr-only">
+              <T message="Idea link or sentence" />
+            </span>
+            <textarea
+              className="min-h-24 w-full min-w-0 resize-y rounded-xl border bg-background px-3 py-3 text-base"
+              maxLength={5000}
+              onChange={(event) => {
+                setInput(event.target.value);
+                setOverride(null);
+                setDuplicate(undefined);
+                setError(undefined);
+                setNotice(undefined);
+              }}
+              placeholder={t("Paste a link or write one sentence")}
+              ref={inputRef}
+              value={input}
+            />
+          </label>
+          {input.trim() ? (
+            <>
+              <p className="mt-2 text-sm font-medium" aria-live="polite">
+                {classification.kind === "unknown"
+                  ? t("Not sure yet. Choose a type.")
+                  : `${t("Recognized as")}: ${t(labels[classification.kind])}`}
+              </p>
+              {classification.error ? (
+                <p className="text-sm text-destructive" role="alert">
+                  <T message="Enter a complete http or https link." />
+                </p>
+              ) : null}
+              {preview.originText && preview.destinationText ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  <T message="Flight route" />: {preview.originText} → {preview.destinationText}
+                  {preview.startDate ? ` · ${preview.startDate}` : ""}
+                  {preview.endDate ? ` – ${preview.endDate}` : ""}
+                </p>
+              ) : null}
+              <div className="mt-2 flex flex-wrap gap-2" aria-label={t("Choose idea type")}>
+                {kinds.map((kind) => (
+                  <Button
+                    aria-pressed={classification.kind === kind}
+                    className="min-h-11"
+                    key={kind}
+                    onClick={() => choose(kind)}
+                    type="button"
+                    variant={classification.kind === kind ? "default" : "outline"}
+                  >
+                    {t(labels[kind])}
+                  </Button>
+                ))}
+              </div>
+            </>
+          ) : null}
+          {duplicate ? (
+            <div className="mt-3 rounded-xl border p-3" role="alert">
+              <p className="text-sm">
+                <T message="This link is already saved." />
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  className="min-h-11"
+                  disabled={pending}
+                  onClick={() => void merge()}
+                  type="button"
+                  variant="outline"
+                >
+                  <T message="Merge source" />
+                </Button>
+                <Button
+                  className="min-h-11"
+                  onClick={() => void save(true)}
+                  type="button"
+                  variant="outline"
+                >
+                  <T message="Save separately" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-sm text-destructive" role="alert">
+              {error}
+            </span>
+            <Button
+              className="min-h-11 shrink-0"
+              disabled={
+                !input.trim() ||
+                !!classification.error ||
+                classification.kind === "unknown" ||
+                pending ||
+                !!duplicate
+              }
+              onClick={() => void save()}
+              type="button"
+            >
+              {pending
+                ? t("Saving…")
+                : classification.kind === "unknown"
+                  ? t("Choose a type")
+                  : `${t("Save")} ${t(labels[classification.kind])}`}
+            </Button>
+          </div>
+          {notice ? (
+            <p className="mt-2 text-sm text-emerald-700" role="status">
+              {notice}
             </p>
           ) : null}
-          <div className="mt-2 flex flex-wrap gap-2" aria-label={t("Choose idea type")}>
-            {kinds.map((kind) => (
-              <Button
-                aria-pressed={classification.kind === kind}
-                className="min-h-11"
-                key={kind}
-                onClick={() => choose(kind)}
-                type="button"
-                variant={classification.kind === kind ? "default" : "outline"}
-              >
-                {t(labels[kind])}
-              </Button>
-            ))}
-          </div>
-        </>
-      ) : null}
-      {duplicate ? (
-        <div className="mt-3 rounded-xl border p-3" role="alert">
-          <p className="text-sm">
-            <T message="This link is already saved." />
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button
-              className="min-h-11"
-              disabled={pending}
-              onClick={() => void merge()}
-              type="button"
-              variant="outline"
-            >
-              <T message="Merge source" />
-            </Button>
-            <Button
-              className="min-h-11"
-              onClick={() => void save(true)}
-              type="button"
-              variant="outline"
-            >
-              <T message="Save separately" />
-            </Button>
-          </div>
         </div>
-      ) : null}
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <span className="text-sm text-destructive" role="alert">
-          {error}
-        </span>
-        <Button
-          className="min-h-11 shrink-0"
-          disabled={
-            !input.trim() ||
-            !!classification.error ||
-            classification.kind === "unknown" ||
-            pending ||
-            !!duplicate
-          }
-          onClick={() => void save()}
-          type="button"
-        >
-          {pending
-            ? t("Saving…")
-            : classification.kind === "unknown"
-              ? t("Choose a type")
-              : `${t("Save")} ${t(labels[classification.kind])}`}
-        </Button>
       </div>
-      {notice ? (
-        <p className="mt-2 text-sm text-emerald-700" role="status">
-          {notice}
-        </p>
-      ) : null}
     </section>
   );
 }

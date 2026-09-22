@@ -1,3 +1,5 @@
+import { parseGoogleFlightUrl } from "./google-flights-url.ts";
+
 export type IdeaKind = "flight" | "stay" | "car" | "activity" | "unknown";
 export type IdeaClassification = {
   kind: IdeaKind;
@@ -159,6 +161,11 @@ export function parseReliableIdeaFields(sourceUrl: string | null): {
   const url = new URL(sourceUrl);
   const host = url.hostname.toLowerCase();
   const params = url.searchParams;
+  if (
+    (hostIs(host, "google.com") && url.pathname.toLowerCase().startsWith("/travel/flights")) ||
+    hostIs(host, "flights.google.com")
+  )
+    return parseGoogleFlightUrl(url);
   if (hostIs(host, "trip.com") || hostIs(host, "ctrip.com")) {
     if (params.has("dcity") && params.has("acity"))
       return {

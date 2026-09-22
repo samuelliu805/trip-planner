@@ -1135,7 +1135,7 @@ test("Plan context maps only relevant price-comparison categories", () => {
   assert.equal(plannerResearchCategory({ id: "activities" } as never), undefined);
 });
 
-test("Ideas & Options has direct category routes and instant in-workspace switching", async () => {
+test("Ideas keeps stable category URLs while showing a unified saved list", async () => {
   const [legacyPage, categoryPage, route, workspace] = await Promise.all(
     [
       "../../app/trips/[tripId]/compare/page.tsx",
@@ -1152,7 +1152,8 @@ test("Ideas & Options has direct category routes and instant in-workspace switch
   assert.match(categoryPage, /parseResearchCategoryRouteSegment/);
   assert.match(categoryPage, /ResearchCompareRoute/);
   assert.match(route, /getResearchPlanSnapshot/);
-  assert.match(workspace, /router\.push\(categoryHrefs\[nextCategory\]/);
+  assert.match(workspace, /: items;/);
+  assert.doesNotMatch(workspace, /<CategorySelector|categoryHrefs/);
   assert.doesNotMatch(workspace, /window\.history\.pushState\(null/);
   assert.match(nav, /label: "Ideas"/);
   assert.match(nav, /next\/link/);
@@ -1164,7 +1165,7 @@ test("Ideas & Options has direct category routes and instant in-workspace switch
   );
 });
 
-test("Trip detail keeps Ideas filters inline and uses one mobile destination tab bar", async () => {
+test("Trip detail keeps Ideas capture inline and uses one mobile destination tab bar", async () => {
   const [
     planPage,
     comparePage,
@@ -1199,7 +1200,8 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
   assert.match(planToolbar, /<TripAppBar[\s\S]*actions=\{<PlannerContextActions/);
   assert.match(planToolbar, /menuItems=\{[\s\S]*<PlannerContextMenuItems/);
   assert.match(planToolbar, /onRequestRemoveDay/);
-  assert.match(compareWorkspace, /aria-label="Ideas filters"/);
+  assert.match(compareWorkspace, /<QuickIdeaInput/);
+  assert.doesNotMatch(compareWorkspace, /aria-label="Ideas filters"/);
   assert.doesNotMatch(compareWorkspace, /research-context-bar/);
   assert.doesNotMatch(routeState, /research-context-bar/);
   assert.match(compareWorkspace, /<TripMobileTabBar/);
@@ -1209,7 +1211,8 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
   assert.doesNotMatch(appBar, /TripSectionNav/);
   assert.doesNotMatch(`${planPage}\n${comparePage}`, /TripSectionNav/);
   assert.doesNotMatch(planToolbar, /PlannerEditingToolbar/);
-  assert.doesNotMatch(compareWorkspace, /<h1|trip\.title/);
+  assert.match(compareWorkspace, /<h1[\s\S]*Save ideas before you plan/);
+  assert.doesNotMatch(compareWorkspace, /trip\.title/);
   assert.match(menuAccountActions, /\{accountEmail\}/);
   assert.match(menuAccountActions, /Log out/);
   assert.match(barMenu, /Trip settings/);
@@ -1336,7 +1339,7 @@ test("Trip detail shell contains document scrolling separately from Matrix rules
   );
 });
 
-test("Compare keeps one responsive inline filter row below the Trip App Bar", async () => {
+test("Ideas shows all saved content before optional comparisons and detailed entry", async () => {
   const categorySelector = await readFile(
     new URL("./components/category-selector.tsx", import.meta.url),
     "utf8",
@@ -1369,11 +1372,15 @@ test("Compare keeps one responsive inline filter row below the Trip App Bar", as
   assert.match(mobileCategoryPicker, /min-h-16/);
   assert.match(mobileCategoryPicker, /Mobile price categories/);
   assert.match(mobileCategoryPicker, /safe-area-inset-bottom/);
-  assert.match(workspace, /aria-label="Ideas filters"/);
+  assert.match(
+    workspace,
+    /<QuickIdeaInput[\s\S]*<ResearchItemList[\s\S]*<IdeaComparisons[\s\S]*<IdeaDetailsEntry/,
+  );
+  assert.doesNotMatch(workspace, /aria-label="Ideas filters"/);
   assert.doesNotMatch(workspace, /saved in Ideas &amp; Options|research-context-bar/);
   assert.match(workspace, /TripMobileTabBar/);
-  assert.match(workspace, /BookingSitesDialog category=\{category\} toolbar/);
-  assert.match(workspace, /CategorySelector[\s\S]*ResearchSortMenu[\s\S]*ResearchItemDialog/);
+  assert.match(workspace, /: items;/);
+  assert.match(workspace, /onSortChange=\{setSort\}/);
   assert.match(route, /\{appBar\}/);
   assert.match(sortMenu, /className="min-h-11"/);
   assert.match(dialog, /size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-4/);
@@ -1425,7 +1432,7 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
       "utf8",
     ),
   ]);
-  assert.match(workspace, /items-center justify-between gap-3/);
+  assert.match(workspace, /<QuickIdeaInput[\s\S]*<ResearchItemList/);
   assert.doesNotMatch(workspace, /KnownCost|PlanCostBreakdown/);
   assert.doesNotMatch(planContext, /Known Cost ·/);
   assert.match(planContext, /PlanCostMenu/);

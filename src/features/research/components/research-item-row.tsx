@@ -108,21 +108,35 @@ export function ResearchItemRow({
   const ready = isReadyToCompare(item);
   const nights = stayNightCount(item);
   const perNight = stayPerNightPrice(item);
-  const title = item.title ?? (item.source_url ? t(sourceLabel(item.source_url)) : item.note);
+  const route =
+    item.origin_text && item.destination_text
+      ? `${item.origin_text} → ${item.destination_text}`
+      : null;
+  const title =
+    item.title ?? route ?? (item.source_url ? t(sourceLabel(item.source_url)) : item.note);
   const dates = dateSummary(item, locale);
   const links = researchLinksWithSource(item.links, item.source_url);
 
   return (
-    <article className="min-w-0 border-t py-4 first:border-t-0">
+    <article className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
         <div className="min-w-0">
           <h3 className="research-safe-wrap text-sm font-semibold">{title}</h3>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              <T message={" Saved "} />
-            </span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              <T message="Idea" />
+            <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[11px] font-semibold text-primary">
+              <T
+                message={
+                  item.category === "rental"
+                    ? "Car"
+                    : item.category === "stay"
+                      ? "Stay"
+                      : item.category === "train"
+                        ? "Train"
+                        : item.category === "activity"
+                          ? "Activity"
+                          : "Flight"
+                }
+              />
             </span>
             {selection ? (
               <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
@@ -157,10 +171,11 @@ export function ResearchItemRow({
         </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        {route && route !== title ? <span>{route}</span> : null}
         {dates ? <span>{dates}</span> : null}
         <span>{freshness(item.observed_at, t)}</span>
       </div>
-      {item.note && item.note !== title ? (
+      {item.note && item.note !== title && item.note.trim() !== item.source_url?.trim() ? (
         <p className="research-safe-wrap mt-2 line-clamp-2 text-xs text-muted-foreground">
           {item.note}
         </p>
@@ -174,10 +189,14 @@ export function ResearchItemRow({
               className="min-h-11 min-w-0 max-w-32 px-2.5 sm:max-w-40"
               key={link.url}
               size="sm"
-              variant="ghost"
+              variant="outline"
             >
               <a href={link.url} rel="noreferrer" target="_blank">
-                <span className="truncate">{link.label || sourceLabel(link.url)}</span>
+                <span className="truncate">
+                  {link.url === item.source_url
+                    ? sourceLabel(link.url)
+                    : link.label || sourceLabel(link.url)}
+                </span>
                 <ExternalLink aria-hidden="true" className="size-3.5 shrink-0" />
               </a>
             </Button>
@@ -194,7 +213,7 @@ export function ResearchItemRow({
             className="size-11 p-0"
             onClick={() => setConfirmOpen(true)}
             size="sm"
-            variant="ghost"
+            variant="outline"
           >
             <Trash2 aria-hidden="true" className="size-4" />
           </Button>

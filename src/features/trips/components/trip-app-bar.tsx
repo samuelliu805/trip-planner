@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
-import { ArrowLeft, CloudUpload, Lightbulb, LoaderCircle, Table2 } from "lucide-react";
+import { ArrowLeft, CloudUpload, Lightbulb, LoaderCircle, Plus, Table2 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { useState, type ReactNode } from "react";
 
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { OPEN_SHARE_SETTINGS_EVENT } from "@/features/sharing/events";
 import type { ResearchCategory } from "@/features/research/types";
 import { countActiveSharePages } from "@/features/trips/actions";
-import { tripSectionHref, type TripSection } from "@/features/research/urls";
+import { researchCategoryHref, tripSectionHref, type TripSection } from "@/features/research/urls";
 
 import { TripBarMenu, type TripMobileQuickAction } from "./trip-app-bar-menu";
 import { TripAppBarOverlays } from "./trip-app-bar-overlays";
@@ -54,9 +54,13 @@ export function TripMobileTabBar({
   researchCategory?: ResearchCategory;
 }) {
   const items = sections.map((section) => ({
-    href: tripSectionHref(tripId, section.id, variantId, researchCategory),
-    Icon: section.id === "plan" ? Table2 : Lightbulb,
     ...section,
+    href:
+      section.id === "compare" && active === "plan"
+        ? researchCategoryHref(tripId, researchCategory ?? "flight", { variantId, newIdea: true })
+        : tripSectionHref(tripId, section.id, variantId, researchCategory),
+    Icon: section.id === "plan" ? Table2 : active === "plan" ? Plus : Lightbulb,
+    label: section.id === "compare" && active === "plan" ? "Add idea" : section.label,
   }));
   return (
     <AppBottomNavigation

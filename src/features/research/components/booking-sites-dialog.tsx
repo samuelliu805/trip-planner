@@ -43,7 +43,7 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
           className={toolbar ? "size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-3" : "min-h-11 px-2.5"}
           size="sm"
           title={toolbar ? t("Search booking sites") : undefined}
-          variant={toolbar ? "outline" : "ghost"}
+          variant="outline"
         >
           <Search aria-hidden="true" className="size-4" />
           <span className={toolbar ? "hidden sm:inline" : undefined}>

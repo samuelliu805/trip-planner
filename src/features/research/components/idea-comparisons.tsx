@@ -210,7 +210,7 @@ export function IdeaComparisons({
             );
           }}
           type="button"
-          variant="outline"
+          variant="default"
         >
           <Plus aria-hidden="true" className="size-4" /> <T message="New comparison" />
         </Button>
@@ -242,7 +242,7 @@ export function IdeaComparisons({
                   setDeleting(comparison);
                 }}
                 type="button"
-                variant="ghost"
+                variant="outline"
               >
                 <Trash2 aria-hidden="true" className="size-4" />
               </Button>

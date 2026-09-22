@@ -1,5 +1,13 @@
 export const researchZhCN: Record<string, string> = {
   Car: "租车",
+  "Add idea": "添加想法",
+  "Save ideas before you plan": "先收藏想法，再安排行程",
+  "Keep flights, stays, cars and activities here. Add one to Plan when you're ready.":
+    "把航班、住宿、租车和活动放在这里。确定后，再放进行程。",
+  "Add details manually": "手动填写详细内容",
+  "Type of idea": "想法类型",
+  "Flight route": "航线",
+  "Save first, decide later": "先收藏，后决定",
   "Put something you want to keep here": "看到想留的，放这里",
   "Paste a link or write one sentence. This saves it; it does not search the web.":
     "粘贴一个链接，或写下一句话。这里只负责保存，不会像搜索框一样查网页。",
