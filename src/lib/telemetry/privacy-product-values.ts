@@ -4,6 +4,7 @@ import type {
   ExportMode,
   FeatureArea,
   IdeasCategory,
+  IdeaKind,
   PublicShareView,
   RouteMode,
   RouteView,
@@ -20,7 +21,8 @@ const featureAreas = new Set<FeatureArea>([
   "sharing",
   "attachments",
 ]);
-const ideasCategories = new Set<IdeasCategory>(["flight", "rental", "stay", "train"]);
+const ideasCategories = new Set<IdeasCategory>(["activity", "flight", "rental", "stay", "train"]);
+const ideaKinds = new Set<IdeaKind>(["flight", "stay", "car", "activity", "unknown"]);
 const routeModes = new Set<RouteMode>([
   "walk",
   "self_driving",
@@ -63,6 +65,14 @@ export function addAdvancedProductValues(
   };
   add("feature_area", member(properties.feature_area, featureAreas));
   add("ideas_category", member(properties.ideas_category, ideasCategories));
+  add("idea_kind", member(properties.idea_kind, ideaKinds));
+  add(
+    "classification_method",
+    member(
+      properties.classification_method,
+      new Set(["url_rule", "keyword_rule", "user"] as const),
+    ),
+  );
   add("route_mode", member(properties.route_mode, routeModes));
   add("route_view", member(properties.route_view, routeViews));
   add("comparison_scope", member(properties.comparison_scope, comparisonScopes));

@@ -1,7 +1,24 @@
 {
   "version": 1,
-  "publicFunctionCount": 203,
+  "publicFunctionCount": 211,
   "catalog": [
+    {
+      "schema": "public",
+      "signature": "apply_idea_choice_v1(uuid,uuid,uuid,uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_comparison_id", "type": "uuid" },
+        { "name": "target_choice_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
     {
       "schema": "public",
       "signature": "apply_research_item_to_variant_phase_6b_p0(uuid,uuid,uuid)",
@@ -218,6 +235,23 @@
     },
     {
       "schema": "public",
+      "signature": "apply_single_idea_v1(uuid,uuid,uuid,uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "requested_before_item_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "asset_cleanup_batch_v1(integer)",
       "arguments": [{ "name": "requested_limit", "type": "integer" }],
       "returns": "jsonb",
@@ -265,6 +299,24 @@
       "safeSearchPath": true,
       "category": "policy_helper",
       "authorization": "rls_policy_helper"
+    },
+    {
+      "schema": "public",
+      "signature": "capture_idea_v1(uuid,uuid,text,text,text,text,jsonb)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" },
+        { "name": "requested_kind", "type": "text" },
+        { "name": "requested_title", "type": "text" },
+        { "name": "requested_source_url", "type": "text" },
+        { "name": "requested_share_text", "type": "text" },
+        { "name": "requested_fields", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -461,6 +513,34 @@
       "safeSearchPath": true,
       "category": "phase_4",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "create_idea_comparison_v1(uuid,text,jsonb)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "requested_title", "type": "text" },
+        { "name": "requested_choices", "type": "jsonb" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "create_idea_comparison_v2(uuid,text,jsonb)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "requested_title", "type": "text" },
+        { "name": "requested_choices", "type": "jsonb" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -821,6 +901,20 @@
         { "name": "target_variant_id", "type": "uuid" }
       ],
       "returns": "uuid[]",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "delete_idea_comparison_v1(uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_comparison_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",
@@ -1504,6 +1598,16 @@
     },
     {
       "schema": "public",
+      "signature": "list_idea_comparisons_v1(uuid)",
+      "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
       "signature": "list_public_itinerary_links_v2(uuid)",
       "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
       "returns": "jsonb",
@@ -1600,6 +1704,22 @@
       "signature": "list_trip_members(uuid)",
       "arguments": [{ "name": "target_trip_id", "type": "uuid" }],
       "returns": "table (member_id uuid, member_key text, role text, display_label text, joined_at timestamptz)",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "merge_idea_source_v1(uuid,uuid,bigint,text,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "expected_version", "type": "bigint" },
+        { "name": "requested_share_text", "type": "text" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
       "securityDefiner": true,
       "safeSearchPath": true,
       "category": "external_authenticated",

@@ -4,6 +4,12 @@ import { T } from "@/features/i18n/i18n-provider";
 import { useState, type ReactNode } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  PlannerEditorField,
+  PlannerEditorTextField,
+} from "@/features/itinerary/components/planner-editor-fields";
 
 import { DateRangeFields } from "./date-range-fields";
 import {
@@ -220,6 +226,47 @@ export function ResearchItemFields({
   defaultCurrency: string;
   item?: ResearchItem;
 }) {
+  if (category === "activity")
+    return (
+      <div className="min-w-0 space-y-6">
+        <div className="space-y-5" hidden={activeStepId !== "primary"}>
+          <PlannerEditorTextField
+            defaultValue={item?.title ?? ""}
+            id="activity-title"
+            label="Activity name"
+            maxLength={300}
+            name="title"
+          />
+          <PlannerEditorTextField
+            defaultValue={item?.location_text ?? ""}
+            id="activity-location"
+            label="Location (optional)"
+            maxLength={200}
+            name="locationText"
+          />
+        </div>
+        <div className="space-y-5" hidden={activeStepId !== "details"}>
+          <PlannerEditorField id="activity-source" label="Source link (optional)">
+            <Input
+              defaultValue={item?.source_url ?? ""}
+              id="activity-source"
+              maxLength={2048}
+              name="sourceUrl"
+              type="url"
+            />
+          </PlannerEditorField>
+          <PlannerEditorField id="activity-notes" label="Notes (optional)">
+            <Textarea
+              defaultValue={item?.note ?? ""}
+              id="activity-notes"
+              maxLength={5000}
+              name="note"
+            />
+          </PlannerEditorField>
+          {attachments}
+        </div>
+      </div>
+    );
   const priceStep = researchItemPriceStep(category);
   const journey = category === "flight" || category === "train";
   return (

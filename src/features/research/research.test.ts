@@ -526,6 +526,7 @@ function item(overrides: Partial<ResearchItem> = {}): ResearchItem {
     room_count: null,
     segments: [],
     source_url: null,
+    raw_share_text: null,
     start_date: null,
     start_time: null,
     title: "Hilton Tokyo",
@@ -1095,11 +1096,11 @@ test("Plan comparison URLs carry stable category, day, item, and variant context
   assert.equal(url.searchParams.get("variant"), ids.variant);
 });
 
-test("category query parsing accepts only the four price categories", () => {
+test("category query parsing includes Activities alongside the price categories", () => {
   assert.equal(parseResearchCategory("flight"), "flight");
-  assert.equal(parseResearchCategory("activity"), undefined);
+  assert.equal(parseResearchCategory("activity"), "activity");
   assert.equal(parseResearchCategoryRouteSegment("trains"), "train");
-  assert.equal(parseResearchCategoryRouteSegment("activities"), undefined);
+  assert.equal(parseResearchCategoryRouteSegment("activities"), "activity");
 });
 
 test("contextual comparisons include exact and same-Day alternatives", () => {
@@ -1153,7 +1154,7 @@ test("Ideas & Options has direct category routes and instant in-workspace switch
   assert.match(route, /getResearchPlanSnapshot/);
   assert.match(workspace, /router\.push\(categoryHrefs\[nextCategory\]/);
   assert.doesNotMatch(workspace, /window\.history\.pushState\(null/);
-  assert.match(nav, /label: "Ideas & Options"/);
+  assert.match(nav, /label: "Ideas"/);
   assert.match(nav, /next\/link/);
   assert.match(nav, /window\.location\.assign/);
   assert.match(nav, /documentNavigation/);
@@ -1192,7 +1193,7 @@ test("Trip detail keeps Ideas filters inline and uses one mobile destination tab
   assert.match(appBar, /ariaLabel="Trip sections"/);
   assert.match(appBar, /aria-current/);
   assert.match(appBar, /label: "Plan"/);
-  assert.match(appBar, /label: "Ideas & Options"/);
+  assert.match(appBar, /label: "Ideas"/);
   assert.match(appBar, /useLinkStatus/);
   assert.match(appBar, /Opening \{label\}/);
   assert.match(planToolbar, /<TripAppBar[\s\S]*actions=\{<PlannerContextActions/);
@@ -1362,7 +1363,7 @@ test("Compare keeps one responsive inline filter row below the Trip App Bar", as
   );
   assert.match(categorySelector, /aria-label="Price category"/);
   assert.match(categorySelector, /hidden w-28 min-w-0 sm:block lg:hidden/);
-  assert.match(categorySelector, /hidden grid-cols-4 gap-1 rounded-xl bg-muted\/70 p-1 lg:grid/);
+  assert.match(categorySelector, /hidden grid-cols-5 gap-1 rounded-xl bg-muted\/70 p-1 lg:grid/);
   assert.doesNotMatch(categorySelector, /grid-cols-2/);
   assert.match(mobileCategoryPicker, /SheetContent[\s\S]*side="bottom"/);
   assert.match(mobileCategoryPicker, /min-h-16/);

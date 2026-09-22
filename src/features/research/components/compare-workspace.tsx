@@ -8,6 +8,8 @@ import { CategorySelector } from "./category-selector";
 import { BookingSitesDialog } from "./booking-sites-dialog";
 import { ResearchItemDialog } from "./research-item-dialog";
 import { ResearchItemList } from "./research-item-list";
+import { QuickIdeaInput } from "./quick-idea-input";
+import { IdeaComparisons } from "./idea-comparisons";
 import { ResearchSortMenu } from "./research-sort-menu";
 import { TripMobileTabBar } from "@/features/trips/components/trip-app-bar";
 import { Localized } from "@/features/i18n/i18n-provider";
@@ -173,7 +175,7 @@ export function CompareWorkspace({
               />
             </div>
             <div className="flex min-w-0 shrink-0 items-center gap-2">
-              <BookingSitesDialog category={category} toolbar />
+              {category !== "activity" ? <BookingSitesDialog category={category} toolbar /> : null}
               <ResearchSortMenu onChange={setSort} value={sort} />
               <ResearchItemDialog
                 category={category}
@@ -184,6 +186,16 @@ export function CompareWorkspace({
               />
             </div>
           </div>
+          <QuickIdeaInput
+            items={items}
+            onSaved={(saved) => {
+              saveItem(saved);
+              if (saved.category !== category)
+                router.push(categoryHrefs[saved.category as ResearchCategory], { scroll: false });
+            }}
+            tripId={tripId}
+          />
+          <IdeaComparisons items={items} plan={currentPlan} tripId={tripId} />
           <ResearchItemList
             applicationsByItem={applicationsByItem}
             defaultCurrency={defaultCurrencyForTrip}

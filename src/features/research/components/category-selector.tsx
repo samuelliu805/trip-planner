@@ -40,7 +40,7 @@ export function CategorySelector({
       <nav
         aria-label="Price categories"
         data-i18n-aria-label={"Price categories"}
-        className="hidden grid-cols-4 gap-1 rounded-xl bg-muted/70 p-1 lg:grid"
+        className="hidden grid-cols-5 gap-1 rounded-xl bg-muted/70 p-1 lg:grid"
       >
         {researchCategories.map((category) => (
           <Link

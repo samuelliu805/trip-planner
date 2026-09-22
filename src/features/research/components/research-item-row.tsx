@@ -19,16 +19,12 @@ import { Button } from "@/components/ui/button";
 import { BookingSitesDialog } from "./booking-sites-dialog";
 import { ResearchItemDialog } from "./research-item-dialog";
 import { ResearchPlanActions } from "./research-plan-actions";
+import { AddIdeaToPlan } from "./add-idea-to-plan";
 import { deleteResearchItem } from "../actions";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { researchLinksWithSource } from "../links";
 import { formatMoney } from "../money";
-import {
-  isReadyToCompare,
-  missingComparisonFields,
-  stayNightCount,
-  stayPerNightPrice,
-} from "../readiness";
+import { isReadyToCompare, stayNightCount, stayPerNightPrice } from "../readiness";
 import type {
   ResearchCategory,
   ResearchItem,
@@ -110,7 +106,6 @@ export function ResearchItemRow({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string>();
   const ready = isReadyToCompare(item);
-  const missing = missingComparisonFields(item);
   const nights = stayNightCount(item);
   const perNight = stayPerNightPrice(item);
   const title = item.title ?? (item.source_url ? t(sourceLabel(item.source_url)) : item.note);
@@ -126,10 +121,8 @@ export function ResearchItemRow({
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
               <T message={" Saved "} />
             </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${ready ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}
-            >
-              <Localized value={ready ? "Ready to compare" : "Idea"} />
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              <T message="Idea" />
             </span>
             {selection ? (
               <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">
@@ -165,12 +158,6 @@ export function ResearchItemRow({
       </div>
       <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
         {dates ? <span>{dates}</span> : null}
-        {!ready ? (
-          <span>
-            <T message={"Missing "} />
-            {missing.map((field) => t(field)).join(" · ")}
-          </span>
-        ) : null}
         <span>{freshness(item.observed_at, t)}</span>
       </div>
       {item.note && item.note !== title ? (
@@ -180,7 +167,7 @@ export function ResearchItemRow({
       ) : null}
       <div className="mt-3 flex min-w-0 flex-col gap-2 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-1">
-          <BookingSitesDialog item={item} />
+          {item.category !== "activity" ? <BookingSitesDialog item={item} /> : null}
           {links.slice(0, 3).map((link) => (
             <Button
               asChild
@@ -212,7 +199,8 @@ export function ResearchItemRow({
             <Trash2 aria-hidden="true" className="size-4" />
           </Button>
         </div>
-        {ready ? (
+        <AddIdeaToPlan item={item} plan={plan} />
+        {ready && item.category !== "activity" && application ? (
           <ResearchPlanActions
             application={application}
             item={item}
@@ -249,7 +237,7 @@ export function ResearchItemRow({
             <AlertDialogAction
               onClick={async () => {
                 const result = await deleteResearchItem({
-                  category: item.category as "flight" | "rental" | "stay" | "train",
+                  category: item.category as ResearchCategory,
                   expectedVersion: item.version,
                   id: item.id,
                   operationId: newTelemetryOperationId(),

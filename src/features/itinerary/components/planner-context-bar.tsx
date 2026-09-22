@@ -1,17 +1,20 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import { Copy, LoaderCircle, Map, Pencil, Plus } from "lucide-react";
+import { Copy, Lightbulb, LoaderCircle, Map, Pencil, Plus } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import type { PlannerToolbarProps } from "@/features/itinerary/components/planner-toolbar-types";
 import { PlanCostMenu } from "@/features/research/components/plan-cost-menu";
+import { researchCategoryHref } from "@/features/research/urls";
 
 export type PlannerContextProps = Pick<
   PlannerToolbarProps,
   | "activeCategory"
   | "activeCellAtCapacity"
   | "activeDay"
+  | "guestExperience"
   | "clearItemCount"
   | "clearPending"
   | "copyPreviousDay"
@@ -34,6 +37,7 @@ export type PlannerContextProps = Pick<
   | "setCopyDaysOpen"
   | "setEditor"
   | "trip"
+  | "variantId"
   | "workspaceDayCount"
 >;
 
@@ -62,6 +66,21 @@ export function PlannerContextActions(props: PlannerContextProps) {
   return (
     <>
       <PlanCostMenu lines={props.planCostLines} summary={props.planCostSummary} />
+      {!props.guestExperience ? (
+        <Button
+          asChild
+          className="hidden h-11 px-2.5 min-[900px]:inline-flex"
+          size="sm"
+          variant="ghost"
+        >
+          <Link
+            href={researchCategoryHref(props.trip.id, "flight", { variantId: props.variantId })}
+          >
+            <Lightbulb aria-hidden="true" className="size-4" />
+            <T message="Ideas {count}" values={{ count: props.researchItems.length }} />
+          </Link>
+        </Button>
+      ) : null}
       <Button
         aria-label="Open map and route tools"
         className="size-11 shrink-0 p-0 min-[900px]:hidden"

@@ -9,6 +9,7 @@ import {
   History,
   MoreVertical,
   Pencil,
+  Plus,
   RotateCcw,
   Share2,
   SquareArrowOutUpRight,
@@ -42,6 +43,7 @@ import { useTripListLoading } from "@/features/trips/components/trip-status-filt
 import { tripStatusOf, tripStatusToggle } from "@/features/trips/status";
 import type { TripListEntry } from "@/features/trips/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { researchCategoryHref } from "@/features/research/urls";
 
 function tripDateSummary(trip: TripListEntry, locale: "en" | "zh-CN") {
   if (trip.start_date && trip.end_date) {
@@ -258,6 +260,13 @@ export function TripCard({
             <PrimaryRouteSummary trip={trip} />
           </div>
         </CardContent>
+        <div className="relative z-10 border-t px-6 py-2">
+          <Button asChild className="min-h-11" size="sm" variant="ghost">
+            <Link href={researchCategoryHref(trip.id, "flight")}>
+              <Plus aria-hidden="true" className="size-4" /> <T message="Idea" />
+            </Link>
+          </Button>
+        </div>
         <AutoDismissAlert
           className="rounded-none border-x-0 border-b-0 px-6 py-3 shadow-none"
           onDismiss={() => setStatusError(null)}

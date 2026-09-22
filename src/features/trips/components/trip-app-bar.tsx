@@ -18,7 +18,7 @@ import type { TripRole } from "@/platform/contracts/trips";
 
 const sections: Array<{ id: TripSection; label: string }> = [
   { id: "plan", label: "Plan" },
-  { id: "compare", label: "Ideas & Options" },
+  { id: "compare", label: "Ideas" },
 ];
 
 function TripSectionLinkContent({ Icon, label }: { Icon: typeof Table2; label: string }) {

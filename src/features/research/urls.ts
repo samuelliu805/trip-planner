@@ -7,6 +7,7 @@ export const researchCategoryRouteSegments: Record<ResearchCategory, string> = {
   rental: "rentals",
   stay: "stays",
   train: "trains",
+  activity: "activities",
 };
 
 export function parseResearchCategoryRouteSegment(value?: string): ResearchCategory | undefined {

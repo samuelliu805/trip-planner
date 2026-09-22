@@ -8,6 +8,7 @@ import {
   Hotel,
   Plane,
   TrainFront,
+  MapPin,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -26,6 +27,7 @@ import {
 import { researchCategories, researchCategoryLabels, type ResearchCategory } from "../types";
 
 const categoryDetails: Record<ResearchCategory, { description: string; Icon: LucideIcon }> = {
+  activity: { description: "Places and things to do", Icon: MapPin },
   flight: { description: "Airfares and flight ideas", Icon: Plane },
   rental: { description: "Rental car prices", Icon: CarFront },
   stay: { description: "Hotels and other stays", Icon: Hotel },

@@ -29,6 +29,8 @@ export function ResearchItemDialog({
   const [open, setOpen] = useState(false);
   const closeRequest = useRef(() => setOpen(false));
   const label = researchCategorySingularLabels[category];
+  const addLabel =
+    category === "activity" ? t("Add activity") : t("Add {item} price or idea", { item: t(label) });
 
   return (
     <>
@@ -44,14 +46,18 @@ export function ResearchItemDialog({
         </Button>
       ) : (
         <Button
-          aria-label={t("Add {item} price or idea", { item: t(label) })}
+          aria-label={addLabel}
           className="size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-4"
           onClick={() => setOpen(true)}
-          title={t("Add {item} price or idea", { item: t(label) })}
+          title={addLabel}
         >
           <Plus aria-hidden="true" className="size-4" />
           <span className="hidden sm:inline">
-            <T message={"Add price or idea"} />
+            {category === "activity" ? (
+              <T message="Add activity" />
+            ) : (
+              <T message="Add price or idea" />
+            )}
           </span>
         </Button>
       )}

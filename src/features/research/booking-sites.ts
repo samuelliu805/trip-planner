@@ -29,6 +29,7 @@ type SearchItem = Pick<
 >;
 
 const globalProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
+  activity: [],
   flight: [
     { name: "Google Flights", url: "https://www.google.com/travel/flights" },
     { name: "Trip.com", opensApp: true, url: "https://www.trip.com/flights/" },
@@ -75,6 +76,7 @@ const globalProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
 };
 
 const chinaProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
+  activity: [],
   flight: [
     {
       appUrl: ctripDeepLink("flight")!,

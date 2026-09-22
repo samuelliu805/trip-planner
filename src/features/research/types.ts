@@ -2,7 +2,7 @@ import type { AppRow } from "@/platform/contracts/database";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import type { OwnerAttachment } from "@/features/attachments/schema";
 
-export const researchCategories = ["flight", "stay", "train", "rental"] as const;
+export const researchCategories = ["flight", "stay", "train", "rental", "activity"] as const;
 
 export type ResearchCategory = (typeof researchCategories)[number];
 export type StoredResearchPlace = Pick<
@@ -49,6 +49,7 @@ export const researchCategoryLabels: Record<ResearchCategory, string> = {
   rental: "Rentals",
   stay: "Stays",
   train: "Trains",
+  activity: "Activities",
 };
 
 export const researchCategorySingularLabels: Record<ResearchCategory, string> = {
@@ -56,6 +57,7 @@ export const researchCategorySingularLabels: Record<ResearchCategory, string> = 
   rental: "Rental",
   stay: "Stay",
   train: "Train",
+  activity: "Activity",
 };
 
 export type PlanResearchItem = ResearchItem;
