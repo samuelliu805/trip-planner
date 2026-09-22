@@ -1234,12 +1234,30 @@ async function saveWalkingTransportThroughUi(browser) {
     false,
   );
   await saveOpenItemEditor(browser, "transport");
-  await waitFor(
-    browser,
-    `document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length === 1`,
-    "saved Walking transport",
-    75_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      `document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length === 1`,
+      "saved Walking transport",
+      75_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        dialog: document.querySelector('[role="dialog"]')?.textContent.slice(0, 500),
+        notices: [...document.querySelectorAll('[role="alert"], [role="status"]')]
+          .map((node) => node.textContent.trim()).filter(Boolean).slice(0, 4),
+        transportCell: document.querySelector('[data-cell="0-2"]')?.textContent.slice(0, 500),
+        transportItems: document.querySelectorAll('[data-cell="0-2"] [data-edit-item]').length,
+        visibleItems: [...document.querySelectorAll('[data-edit-item]')]
+          .slice(0, 8).map((node) => node.textContent.trim().slice(0, 80)),
+      })`,
+    ).catch(() => null);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; walking diagnostic: ${JSON.stringify(diagnostic)}`,
+    );
+  }
 }
 
 async function openSavedItemEditor(browser, cell, itemIndex = 0) {
