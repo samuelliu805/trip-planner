@@ -58,7 +58,7 @@ BEGIN
     LOOP
       IF mapped.current_snapshot IS NOT NULL
         AND mapped.current_snapshot IS DISTINCT FROM mapped.item_snapshot THEN
-        RAISE EXCEPTION 'COMPARISON_ITEM_EDITED' USING errcode = '40001';
+        PERFORM app_private.raise_app_conflict('COMPARISON_ITEM_EDITED', NULL);
       END IF;
     END LOOP;
     DELETE FROM public.itinerary_items item USING public.idea_comparison_plan_items link
