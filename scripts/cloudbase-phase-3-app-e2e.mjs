@@ -680,7 +680,7 @@ async function verifyTripSectionNavigation(browser, tripId) {
   await clickElement(
     browser,
     `[...document.querySelectorAll('a')].find((link) =>
-      link.getClientRects().length && link.textContent.includes('Ideas & Options')
+      link.getClientRects().length && link.textContent.trim() === 'Ideas'
     )`,
     "Plan to Ideas",
   );
