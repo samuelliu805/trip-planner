@@ -2292,7 +2292,7 @@ async function verifyVariantNavigationThroughUi(browser) {
     await evaluate(browser, 'Boolean(document.querySelector("[data-nextjs-dialog]"))'),
     false,
   );
-  return { createdVariantId, planName, priorVariantId };
+  return { createdVariantId, planName, priorPlanName: priorPlan, priorVariantId };
 }
 
 async function openVariantDeleteConfirmation(browser, planName) {
@@ -2403,27 +2403,85 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
   );
   assert.equal(before.length, 1, "The Set Primary target was unavailable at V1.");
   const v2Name = `${createdVariant.planName}-primary-v2`;
-  await controlledData(
-    () =>
-      db.rpc("update_route_variant_v2", {
-        expected_version: before[0].version,
-        target_operation_id: randomUUID(),
-        target_trip_id: tripId,
-        target_variant_id: createdVariant.createdVariantId,
-        variant_color: before[0].color,
-        variant_name: v2Name,
-      }),
-    "Set Primary conflict V2 update",
+  const primaryAction = (name) => `(() => {
+    const edit = document.querySelector(${JSON.stringify(`button[aria-label="Edit ${name}"]`)});
+    const card = edit?.closest('.rounded-lg.border');
+    return [...(card?.querySelectorAll('button') ?? [])]
+      .find((button) => button.textContent.trim() === 'Set as primary' && !button.disabled);
+  })()`;
+  await browser.cdp.send(
+    "Fetch.enable",
+    { patterns: [{ requestStage: "Request", urlPattern: `*trips/${tripId}*` }] },
+    browser.sessionId,
   );
+  let pausedRequest;
+  let continued = false;
+  try {
+    const pendingServerAction = (async () => {
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const paused = await browser.cdp.waitForEvent("Fetch.requestPaused", () => true, 15_000);
+        const headers = Object.keys(paused.request?.headers ?? {}).map((name) =>
+          name.toLowerCase(),
+        );
+        if (paused.request?.method === "POST" && headers.includes("next-action")) return paused;
+        await browser.cdp.send(
+          "Fetch.continueRequest",
+          { requestId: paused.requestId },
+          browser.sessionId,
+        );
+      }
+      throw new Error("The Set Primary server action request was not observed.");
+    })();
+    await clickElement(
+      browser,
+      primaryAction(createdVariant.planName),
+      `Set ${createdVariant.planName} as primary`,
+    );
+    pausedRequest = await pendingServerAction;
+    await controlledData(
+      () =>
+        db.rpc("update_route_variant_v2", {
+          expected_version: before[0].version,
+          target_operation_id: randomUUID(),
+          target_trip_id: tripId,
+          target_variant_id: createdVariant.createdVariantId,
+          variant_color: before[0].color,
+          variant_name: v2Name,
+        }),
+      "Set Primary conflict V2 update",
+    );
+    await browser.cdp.send(
+      "Fetch.continueRequest",
+      { requestId: pausedRequest.requestId },
+      browser.sessionId,
+    );
+    continued = true;
+  } finally {
+    if (pausedRequest && !continued) {
+      await browser.cdp
+        .send("Fetch.continueRequest", { requestId: pausedRequest.requestId }, browser.sessionId)
+        .catch(() => undefined);
+    }
+    await browser.cdp.send("Fetch.disable", {}, browser.sessionId).catch(() => undefined);
+  }
 
-  await clickButtonText(browser, "Set as primary");
-  await waitFor(
+  const conflictResult = await waitFor(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] button')]
-      .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"]')]
+        .find((node) => node.textContent.includes('Manage Plans'));
+      const reload = [...(dialog?.querySelectorAll('button') ?? [])]
+        .find((button) => button.textContent.trim() === 'Reload latest' && !button.disabled);
+      if (reload) return { kind: 'conflict' };
+      const alert = dialog?.querySelector('[role="alert"]');
+      if (alert?.textContent.trim()) return { kind: 'error', text: alert.textContent.trim() };
+      const status = dialog?.querySelector('[role="status"]');
+      return status?.textContent.trim() ? { kind: 'status', text: status.textContent.trim() } : null;
+    })()`,
     "Set Primary structured conflict",
     45_000,
   );
+  assert.deepEqual(conflictResult, { kind: "conflict" });
   for (const width of [390, 430]) {
     await browser.cdp.send(
       "Emulation.setDeviceMetricsOverride",
@@ -2455,7 +2513,7 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
     "Manage Plans closed after Set Primary reload.",
   );
 
-  await clickButtonText(browser, "Set as primary");
+  await clickElement(browser, primaryAction(v2Name), `Set ${v2Name} as primary`);
   await waitFor(
     browser,
     `[...document.querySelectorAll('[role="dialog"] [role="status"]')]
@@ -2477,7 +2535,11 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
     "Set Primary success notice dismissed before restoring the original",
     15_000,
   );
-  await clickButtonText(browser, "Set as primary");
+  await clickElement(
+    browser,
+    primaryAction(createdVariant.priorPlanName),
+    `Restore ${createdVariant.priorPlanName} as primary`,
+  );
   await waitFor(
     browser,
     `[...document.querySelectorAll('[role="dialog"] [role="status"]')]

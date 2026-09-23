@@ -115,6 +115,7 @@ jobs:
       NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: development
       PHASE3_GLOBAL_BASE_URL: http://127.0.0.1:3100
       PHASE5_EXPECT_SUPABASE_CAPTCHA: ${{ vars.PHASE5_EXPECT_SUPABASE_CAPTCHA }}
+      PHASE5_GOOGLE_ALLOWED_HOSTNAME: trip-planner-ivory-one.vercel.app
       PHASE5_REQUIRE_BROWSER_SMOKE: "1"
       STORAGE_PROVIDER: supabase
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_DEV_SECRET_KEY }}
@@ -161,8 +162,9 @@ jobs:
         run: node scripts/verify-vercel-preview-deployment.mjs
       - name: Run Global Auth, CRUD, RPC, RLS, share, browser, and residue suite
         env:
-          PHASE5_GLOBAL_BASE_URL: ${{ steps.preview.outputs.url }}
-          PHASE5_START_APP: "0"
+          PHASE5_GLOBAL_BASE_URL: http://127.0.0.1:3100
+          PHASE5_GLOBAL_DEPLOYMENT_URL: ${{ steps.preview.outputs.url }}
+          PHASE5_START_APP: "1"
         run: npm run test:global-phase-5-live
       - name: Prove Global rejects CN cookies
         run: npm run test:global-cookie-isolation

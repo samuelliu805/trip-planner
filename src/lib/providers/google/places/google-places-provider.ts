@@ -22,14 +22,21 @@ function ensureActive(signal?: AbortSignal) {
   if (signal?.aborted) throw new PlaceProviderError("cancelled");
 }
 
-export function createGooglePlacesProvider(places: google.maps.PlacesLibrary): PlacesProvider {
+export function createGooglePlacesProvider(
+  places: google.maps.PlacesLibrary,
+  options: { fallbackProvider?: PlacesProvider } = {},
+): PlacesProvider {
   return {
     createSession(): PlaceSearchSession {
+      const fallbackSession = options.fallbackProvider?.createSession();
+      const fallbackSuggestions = new Set<string>();
       let sessionToken: google.maps.places.AutocompleteSessionToken | null = null;
       const predictions = new Map<string, google.maps.places.PlacePrediction>();
       const close = () => {
         sessionToken = null;
         predictions.clear();
+        fallbackSuggestions.clear();
+        fallbackSession?.close();
       };
       return {
         close,
@@ -59,12 +66,22 @@ export function createGooglePlacesProvider(places: google.maps.PlacesLibrary): P
             });
           } catch (error) {
             if (error instanceof PlaceProviderError) throw error;
-            throw new PlaceProviderError("search_failed", { cause: error });
+            if (!fallbackSession) throw new PlaceProviderError("search_failed", { cause: error });
+            const suggestions = await fallbackSession.fetchSuggestions(request);
+            for (const suggestion of suggestions) fallbackSuggestions.add(suggestion.id);
+            return suggestions;
           }
         },
         async resolveSuggestion(id, signal) {
           ensureActive(signal);
           const prediction = predictions.get(id);
+          if (!prediction && fallbackSuggestions.has(id) && fallbackSession) {
+            try {
+              return await fallbackSession.resolveSuggestion(id, signal);
+            } finally {
+              close();
+            }
+          }
           if (!prediction) throw new PlaceProviderError("invalid_response");
           try {
             const place = prediction.toPlace();

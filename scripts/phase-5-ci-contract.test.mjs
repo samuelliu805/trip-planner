@@ -135,6 +135,9 @@ test("Phase 6 static, isolated builds, and live inventory stay executable", asyn
   assert.doesNotMatch(workflow, /tcb fn invoke|CLOUDBASE_CAM_SECRET_/);
   assert.equal(workflow.match(/--cloudbase-api-key "\$CLOUDBASE_API_KEY"/g)?.length, 1);
   assert.match(workflow, /PHASE5_AMAP_ALLOWED_HOSTNAME:/);
+  assert.match(workflow, /PHASE5_GOOGLE_ALLOWED_HOSTNAME: trip-planner-ivory-one\.vercel\.app/);
+  assert.match(workflow, /PHASE5_GLOBAL_DEPLOYMENT_URL: \$\{\{ steps\.preview\.outputs\.url \}\}/);
+  assert.match(workflow, /PHASE5_GLOBAL_BASE_URL: http:\/\/127\.0\.0\.1:3100/);
   assert.match(workflow, /printf '%s restapi\.amap\.com\\n%s webapi\.amap\.com\\n'/);
   assert.match(workflow, /sudo --non-interactive tee -a \/etc\/hosts/);
   assert.ok(

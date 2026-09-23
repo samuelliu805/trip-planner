@@ -5,6 +5,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
+import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
 import { runGlobalBrowserSmoke } from "./lib/phase-5-global-browser-smoke.mjs";
 import { signInWithAdminMagicLink } from "./lib/supabase-test-auth.mjs";
 
@@ -18,7 +19,18 @@ function required(name) {
 }
 
 function client(url, key) {
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+  const retrySafeFetch = (input, init = {}) => {
+    const method = (init.method ?? "GET").toUpperCase();
+    return boundedRetryFetch(input, init, {
+      attempts: new Set(["DELETE", "GET", "HEAD"]).has(method) ? 3 : 1,
+      retryDelayMs: 250,
+      timeoutMs: 12_000,
+    });
+  };
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { fetch: retrySafeFetch },
+  });
 }
 
 function ok(result, label) {
