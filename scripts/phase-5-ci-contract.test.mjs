@@ -224,7 +224,7 @@ test("Next builds carry an exact deployment identifier for version-skew recovery
   const nextConfig = await readFile(nextConfigUrl, "utf8");
   assert.match(nextConfig, /process\.env\.APP_DEPLOYMENT_ID/);
   assert.match(nextConfig, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
-  assert.match(nextConfig, /deploymentId: deploymentIdCandidate \|\| undefined/);
+  assert.match(nextConfig, /deploymentId: deploymentIdCandidate\?\.slice\(0, 32\) \|\| undefined/);
 });
 
 test("the i18n check has no runner-specific file discovery dependency", async () => {

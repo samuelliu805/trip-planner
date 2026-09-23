@@ -23,7 +23,7 @@ const selectedAliases = {
 } as const;
 
 const nextConfig: NextConfig = {
-  deploymentId: deploymentIdCandidate || undefined,
+  deploymentId: deploymentIdCandidate?.slice(0, 32) || undefined,
   output: "standalone",
   poweredByHeader: false,
   turbopack: { resolveAlias: selectedAliases },
