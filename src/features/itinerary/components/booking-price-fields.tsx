@@ -45,6 +45,7 @@ export function BookingPriceFields({
           <T message={"Price"} />
         </Label>
         <Input
+          className="h-[3.75rem] rounded-xl"
           disabled={disabled}
           id={`${idPrefix}-amount`}
           inputMode="decimal"
@@ -62,7 +63,7 @@ export function BookingPriceFields({
           <T message={"Currency"} />
         </Label>
         <select
-          className="planner-native-currency-select box-border flex h-[3.75rem] min-h-[3.75rem] w-full min-w-0 max-w-full rounded-md border border-input bg-background px-3 py-2 text-base shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
+          className="planner-native-currency-select box-border flex h-[3.75rem] min-h-[3.75rem] w-full min-w-0 max-w-full rounded-xl border border-input bg-background px-3 py-2 text-base shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
           disabled={disabled}
           id={`${idPrefix}-currency`}
           name={currencyName}

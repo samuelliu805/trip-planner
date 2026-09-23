@@ -3,6 +3,37 @@ import test from "node:test";
 
 import { fetchIdeaPageMetadata, parseIdeaPageMetadata } from "./idea-page-metadata.ts";
 import { propertyTitleFromIdeaSourceUrl } from "./idea-provider-url.ts";
+import { enrichFlightTimes } from "./idea-page-flight.ts";
+
+test("uses declared Flight times only for the matching booked leg", () => {
+  const html = `<script type="application/ld+json">{"@graph":[
+    {"@type":"Flight","flightNumber":"388","airline":{"iataCode":"DL"},
+      "departureAirport":{"iataCode":"PVG"},"arrivalAirport":{"iataCode":"DTW"},
+      "departureTime":"2026-12-22T08:35:00+08:00",
+      "arrivalTime":"2026-12-22T09:40:00-05:00"}
+  ]}</script>`;
+  const page = parseIdeaPageMetadata(html, "google.com");
+  const selected = [
+    {
+      origin: "PVG",
+      destination: "DTW",
+      departureDate: "2026-12-22",
+      carrier: "DL",
+      serviceNumber: "388",
+    },
+    {
+      origin: "DTW",
+      destination: "EWR",
+      departureDate: "2026-12-22",
+      carrier: "DL",
+      serviceNumber: "2573",
+    },
+  ];
+  const enriched = enrichFlightTimes(selected, page.segments);
+  assert.equal(enriched?.[0].departureTime, "08:35");
+  assert.equal(enriched?.[0].arrivalTime, "09:40");
+  assert.equal(enriched?.[1].departureTime, undefined);
+});
 
 test("derives Booking and Hilton property titles synchronously from their URLs", () => {
   assert.equal(

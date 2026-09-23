@@ -12,6 +12,7 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 
 import type { IdeaComparison } from "../idea-actions";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
+import { missingJourneyDates } from "../idea-plan-dates";
 import { activityNeedsDay, choiceLabel, itemLabel } from "./idea-comparison-labels";
 import { PlanDaySelect } from "./plan-day-select";
 
@@ -29,7 +30,7 @@ export function IdeaComparisonViewDialog({
   byId: ReadonlyMap<string, ResearchItem>;
   dayIds: Record<string, string>;
   error?: string;
-  onApply: (comparison: IdeaComparison, choiceId: string) => void;
+  onApply: (comparison: IdeaComparison, choiceId: string, destination?: "current" | "new") => void;
   onClose: () => void;
   onDayChange: (choiceId: string, dayId: string) => void;
   pending: boolean;
@@ -51,8 +52,15 @@ export function IdeaComparisonViewDialog({
             const selectedItems = choice.itemIds
               .map((id) => byId.get(id))
               .filter((item): item is ResearchItem => !!item);
+            const flightDates = [
+              ...new Set(selectedItems.flatMap((item) => missingJourneyDates(item, plan))),
+            ].sort();
             const dateMismatch = selectedItems.some(
-              (item) => item.start_date && !plan.days.some((day) => day.date === item.start_date),
+              (item) =>
+                item.category !== "flight" &&
+                item.category !== "train" &&
+                item.start_date &&
+                !plan.days.some((day) => day.date === item.start_date),
             );
             const needsDay =
               dateMismatch || selectedItems.some((item) => activityNeedsDay(item, plan));
@@ -92,6 +100,24 @@ export function IdeaComparisonViewDialog({
                     />
                   </label>
                 ) : null}
+                {flightDates.length ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {t("This journey needs Plan days for {dates}. Choose where to add them.", {
+                      dates: flightDates.join(", "),
+                    })}
+                  </p>
+                ) : null}
+                {flightDates.length && !needsDay ? (
+                  <Button
+                    className="mt-3 min-h-11 w-full sm:w-auto"
+                    disabled={pending}
+                    onClick={() => view && onApply(view, choice.id, "new")}
+                    type="button"
+                    variant="outline"
+                  >
+                    <T message="Create another Plan" />
+                  </Button>
+                ) : null}
                 <Button
                   className="mt-3 min-h-11 w-full sm:w-auto"
                   disabled={
@@ -99,10 +125,10 @@ export function IdeaComparisonViewDialog({
                     selectedItems.length !== choice.itemIds.length ||
                     (needsDay && !dayIds[choice.id])
                   }
-                  onClick={() => view && onApply(view, choice.id)}
+                  onClick={() => view && onApply(view, choice.id, "current")}
                   type="button"
                 >
-                  <T message="Use this" />
+                  <T message={flightDates.length ? "Update this Plan" : "Use this"} />
                 </Button>
               </article>
             );

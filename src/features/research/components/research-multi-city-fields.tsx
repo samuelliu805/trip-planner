@@ -39,19 +39,21 @@ export function ResearchMultiCityFields({
     <div className="space-y-6">
       {segments.map((segment, index) => (
         <fieldset className="min-w-0 space-y-3" key={index}>
-          <legend className="text-sm font-semibold text-muted-foreground">
+          <legend className="text-base font-semibold leading-6">
             <T message={" Flight "} />
             {index + 1}
           </legend>
           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             <ResearchField label="From">
               <Input
+                className="h-[3.75rem] rounded-xl text-base"
                 onChange={(event) => update(index, { origin: event.target.value })}
                 value={segment.origin}
               />
             </ResearchField>
             <ResearchField label="To">
               <Input
+                className="h-[3.75rem] rounded-xl text-base"
                 onChange={(event) => update(index, { destination: event.target.value })}
                 value={segment.destination}
               />
@@ -78,7 +80,7 @@ export function ResearchMultiCityFields({
             <div className="flex justify-end">
               <Button
                 aria-label={t("Remove flight {number}", { number: index + 1 })}
-                className="size-11 p-0"
+                className="size-[3.75rem] p-0"
                 onClick={() =>
                   onSegmentsChange(segments.filter((_, position) => position !== index))
                 }
@@ -92,7 +94,7 @@ export function ResearchMultiCityFields({
         </fieldset>
       ))}
       <Button
-        className="min-h-11 w-full"
+        className="min-h-[3.75rem] w-full"
         onClick={() => onSegmentsChange([...segments, blankSegment()])}
         type="button"
         variant="outline"

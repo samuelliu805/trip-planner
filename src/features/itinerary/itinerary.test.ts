@@ -4414,14 +4414,14 @@ test("the item editor groups every type into short steps and gates required fiel
         typeSteps.some(({ blocks }) => blocks.includes("place")),
         `${type} keeps its place field`,
       );
-    if (["activity", "car_rental", "meal"].includes(type))
+    if (["activity", "meal"].includes(type))
       assert.deepEqual(typeSteps.at(-1), { blocks: ["order"], id: "order", title: "Order" });
     else
       assert.equal(
         typeSteps.some(({ id }) => id === "order"),
         false,
       );
-    if (["activity", "car_rental", "meal"].includes(type))
+    if (["activity", "meal"].includes(type))
       assert.equal(typeSteps.at(-2)?.id, "files", `${type} keeps Links directly before Order`);
   }
 
@@ -4546,12 +4546,14 @@ test("the Order step responds to legal slots and entered times", () => {
   const base = { availableSlots: 2, endTime: "", startTime: "" };
   assert.equal(plannerItemNeedsOrderStep({ ...base, type: "activity" }), true);
   assert.equal(plannerItemNeedsOrderStep({ ...base, type: "meal" }), true);
-  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "car_rental" }), true);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "car_rental" }), false);
   assert.equal(plannerItemNeedsOrderStep({ ...base, availableSlots: 1, type: "activity" }), false);
   assert.equal(plannerItemNeedsOrderStep({ ...base, startTime: "09:00", type: "activity" }), false);
   assert.equal(plannerItemNeedsOrderStep({ ...base, endTime: "10:00", type: "meal" }), false);
   assert.equal(plannerItemNeedsOrderStep({ ...base, type: "hotel" }), false);
   assert.equal(plannerItemNeedsOrderStep({ ...base, type: "transport" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "flight" }), false);
+  assert.equal(plannerItemNeedsOrderStep({ ...base, type: "train" }), false);
 });
 
 test("creating routes through Order while final saves persist directly", () => {

@@ -45,7 +45,7 @@ export function DateRangeFields({
     <div className="grid min-w-0 gap-4 sm:grid-cols-2">
       <ResearchField label={startLabel}>
         <Input
-          className="planner-native-datetime-input block min-w-0 max-w-full"
+          className="planner-native-datetime-input block h-[3.75rem] min-w-0 max-w-full rounded-xl text-base"
           name={startName}
           onChange={(event) => {
             const value = event.target.value;
@@ -61,7 +61,7 @@ export function DateRangeFields({
       </ResearchField>
       <ResearchField label={endLabel}>
         <Input
-          className="planner-native-datetime-input block min-w-0 max-w-full"
+          className="planner-native-datetime-input block h-[3.75rem] min-w-0 max-w-full rounded-xl text-base"
           min={minimumEnd || undefined}
           name={endName}
           onChange={(event) => onEndChange(event.target.value)}

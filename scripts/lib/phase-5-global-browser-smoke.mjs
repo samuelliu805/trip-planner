@@ -1131,15 +1131,31 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     '[data-editor-kind="research"] input[role="combobox"]',
     "Shanghai Pudong International Airport",
   );
-  try {
-    await waitFor(
-      browser,
-      `Boolean([...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
-        .find((option) => option.getClientRects().length && option.textContent.trim()))`,
-      "protected Google place suggestions",
-      45_000,
-    );
-  } catch (error) {
+  let suggestionError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt) {
+      await setInputValue(browser, '[data-editor-kind="research"] input[role="combobox"]', "");
+      await setInputValue(
+        browser,
+        '[data-editor-kind="research"] input[role="combobox"]',
+        "Shanghai Pudong International Airport",
+      );
+    }
+    try {
+      await waitFor(
+        browser,
+        `Boolean([...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
+          .find((option) => option.getClientRects().length && option.textContent.trim()))`,
+        "protected Google place suggestions",
+        20_000,
+      );
+      suggestionError = undefined;
+      break;
+    } catch (error) {
+      suggestionError = error;
+    }
+  }
+  if (suggestionError) {
     const diagnostic = await evaluate(
       browser,
       `(() => ({
@@ -1150,7 +1166,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       }))()`,
     ).catch(() => null);
     throw new Error(
-      `${error instanceof Error ? error.message : error}; place diagnostic: ${JSON.stringify(diagnostic)}; ` +
+      `${suggestionError instanceof Error ? suggestionError.message : suggestionError}; place diagnostic: ${JSON.stringify(diagnostic)}; ` +
         `client errors: ${JSON.stringify(browser.cdp.clientErrors.slice(-4))}; ` +
         `network failures: ${JSON.stringify(browser.cdp.networkFailures.slice(-4))}`,
     );

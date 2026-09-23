@@ -9,12 +9,15 @@ import {
   type ParsedPrice,
 } from "./idea-page-price.ts";
 import { propertyTitleFromIdeaUrl, usableProviderPageTitle } from "./idea-provider-url.ts";
+import { flightPageSegments } from "./idea-page-flight.ts";
+import type { ResearchSegment } from "./types.ts";
 
 export type IdeaPageMetadata = {
   title: string | null;
   locationText: string | null;
   priceAmount: number | null;
   priceCurrency: string | null;
+  segments?: ResearchSegment[];
   status: "readable" | "unavailable" | "unsupported";
 };
 
@@ -48,11 +51,13 @@ function withFallback(
   const locationText = parsed.locationText ?? fallback.locationText;
   const priceAmount = parsed.priceAmount ?? fallback.priceAmount;
   const priceCurrency = parsed.priceCurrency ?? fallback.priceCurrency;
+  const segments = parsed.segments ?? fallback.segments;
   return {
     title,
     locationText,
     priceAmount,
     priceCurrency,
+    ...(segments?.length ? { segments } : {}),
     status: title || locationText || priceAmount !== null ? "readable" : parsed.status,
   };
 }
@@ -156,12 +161,14 @@ export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageM
   let structuredName: string | null = null;
   let locationText: string | null = null;
   let price: ParsedPrice | null = null;
+  const flights: ResearchSegment[] = [];
   for (const match of html.matchAll(
     /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
   )) {
     if (match[1].length > 65_536) continue;
     try {
       const nodes = structuredNodes(JSON.parse(match[1]));
+      flights.push(...flightPageSegments(nodes));
       for (const node of nodes) {
         price ??= structuredPrice(node);
         const type = Array.isArray(node["@type"])
@@ -209,6 +216,7 @@ export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageM
     locationText,
     priceAmount: price?.priceAmount ?? null,
     priceCurrency: price?.priceCurrency ?? null,
+    ...(flights.length ? { segments: flights } : {}),
     status: title || locationText || price ? "readable" : "unavailable",
   };
 }
