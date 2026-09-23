@@ -564,6 +564,17 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       `${error instanceof Error ? error.message : error}; bounded History diagnostic: ${JSON.stringify(diagnostic)}`,
     );
   }
+  await waitFor(
+    browser,
+    `(() => {
+      const visibleFilter = [...document.querySelectorAll('#history-filter')]
+        .find((node) => node.getClientRects().length > 0);
+      const visiblePagination = [...document.querySelectorAll('[data-history-pagination]')]
+        .find((node) => node.getClientRects().length > 0);
+      return visibleFilter?.getBoundingClientRect().height === 44 && Boolean(visiblePagination);
+    })()`,
+    "Global History visible controls",
+  );
   const historyActors = await evaluate(
     browser,
     `[...document.querySelectorAll('[data-history-actor]')].map((node) => node.textContent.trim())`,
@@ -582,7 +593,10 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
     await evaluate(
       browser,
       `(() => {
-        const filter = document.querySelector('#history-filter');
+        const filter = [...document.querySelectorAll('#history-filter')]
+          .find((node) => node.getClientRects().length > 0);
+        const pagination = [...document.querySelectorAll('[data-history-pagination]')]
+          .find((node) => node.getClientRects().length > 0);
         const options = [...(filter?.options ?? [])].map((option) => option.value);
         return {
           filterHeight: filter?.getBoundingClientRect().height ?? 0,
@@ -592,8 +606,8 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
             document.querySelector('#history-detail-field, #history-filter-value')),
           hasStaticCategories: ['all', 'plans', 'itinerary', 'people', 'sharing', 'ideas']
             .every((value) => options.includes(value)),
-          pagination: Boolean(document.querySelector('[data-history-pagination]')),
-          paginationText: document.querySelector('[data-history-pagination]')?.innerText.trim(),
+          pagination: Boolean(pagination),
+          paginationText: pagination?.textContent.replace(/\\s+/g, ' ').trim(),
           showsPerPageCopy: document.body.innerText.includes('per page'),
         };
       })()`,
@@ -605,14 +619,15 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       hasManualDetailControls: false,
       hasStaticCategories: true,
       pagination: true,
-      paginationText: "Older\nPage 1\nNewer",
+      paginationText: "Older Page 1 Newer",
       showsPerPageCopy: false,
     },
   );
   await evaluate(
     browser,
     `(() => {
-      const filter = document.querySelector('#history-filter');
+      const filter = [...document.querySelectorAll('#history-filter')]
+        .find((node) => node.getClientRects().length > 0);
       filter.value = [...filter.options].find((option) =>
         option.value.startsWith('email:') &&
         decodeURIComponent(option.value.slice('email:'.length)) === ${JSON.stringify(targetHistoryActor)}

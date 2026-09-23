@@ -984,22 +984,38 @@ async function verifyTripSectionNavigation(browser, tripId) {
   await waitFor(
     browser,
     `(() => {
-      const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((node) => node.getClientRects().length > 0);
       const rect = dialog?.getBoundingClientRect();
       return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
         rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
     })()`,
     "settled Ideas comparison viewport",
   );
+  await waitFor(
+    browser,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((node) => node.getClientRects().length > 0);
+      const assignmentButtons = [...(dialog?.querySelectorAll('button[aria-pressed]') ?? [])]
+        .filter((button) => button.getClientRects().length > 0);
+      return assignmentButtons.length > 0 && assignmentButtons.every((button) =>
+        button.getBoundingClientRect().height >= 44 &&
+        button.getBoundingClientRect().width >= 44);
+    })()`,
+    "settled Ideas comparison assignment controls",
+  );
   const comparisonLayout = await evaluate(
     browser,
     `(() => {
-      const dialog = document.querySelector('[role="dialog"]');
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((node) => node.getClientRects().length > 0);
       const rect = dialog?.getBoundingClientRect();
-      const assignmentButtons = [...(dialog?.querySelectorAll('button[aria-pressed]') ?? [])];
+      const assignmentButtons = [...(dialog?.querySelectorAll('button[aria-pressed]') ?? [])]
+        .filter((button) => button.getClientRects().length > 0);
       return {
         activeInput: document.activeElement?.tagName === 'INPUT',
-        assignmentTouchTargets: assignmentButtons.every((button) =>
+        assignmentTouchTargets: assignmentButtons.length > 0 && assignmentButtons.every((button) =>
           button.getBoundingClientRect().height >= 44 && button.getBoundingClientRect().width >= 44),
         documentFits: document.documentElement.scrollWidth <= innerWidth,
         fits: Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
@@ -4020,6 +4036,17 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
       document.body.innerText.includes(${JSON.stringify(userA)})`,
     "CN History account identity",
   );
+  await waitFor(
+    browser,
+    `(() => {
+      const visibleFilter = [...document.querySelectorAll('#history-filter')]
+        .find((node) => node.getClientRects().length > 0);
+      const visiblePagination = [...document.querySelectorAll('[data-history-pagination]')]
+        .find((node) => node.getClientRects().length > 0);
+      return visibleFilter?.getBoundingClientRect().height === 44 && Boolean(visiblePagination);
+    })()`,
+    "CN History visible controls",
+  );
   const historyBody = await evaluate(browser, "document.body.innerText");
   assert.equal(historyBody.includes("Traveler"), false);
   assert.equal(historyBody.includes("Storage usage"), false);
@@ -4028,7 +4055,10 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
     await evaluate(
       browser,
       `(() => {
-        const filter = document.querySelector('#history-filter');
+        const filter = [...document.querySelectorAll('#history-filter')]
+          .find((node) => node.getClientRects().length > 0);
+        const pagination = [...document.querySelectorAll('[data-history-pagination]')]
+          .find((node) => node.getClientRects().length > 0);
         const options = [...(filter?.options ?? [])].map((option) => option.value);
         return {
           filterHeight: filter?.getBoundingClientRect().height ?? 0,
@@ -4038,8 +4068,8 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
             document.querySelector('#history-detail-field, #history-filter-value')),
           hasStaticCategories: ['all', 'plans', 'itinerary', 'people', 'sharing', 'ideas']
             .every((value) => options.includes(value)),
-          pagination: Boolean(document.querySelector('[data-history-pagination]')),
-          paginationText: document.querySelector('[data-history-pagination]')?.innerText.trim(),
+          pagination: Boolean(pagination),
+          paginationText: pagination?.textContent.replace(/\\s+/g, ' ').trim(),
           showsPerPageCopy: document.body.innerText.includes('per page'),
         };
       })()`,
@@ -4051,14 +4081,15 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
       hasManualDetailControls: false,
       hasStaticCategories: true,
       pagination: true,
-      paginationText: "Older\nPage 1\nNewer",
+      paginationText: "Older Page 1 Newer",
       showsPerPageCopy: false,
     },
   );
   await evaluate(
     browser,
     `(() => {
-      const filter = document.querySelector('#history-filter');
+      const filter = [...document.querySelectorAll('#history-filter')]
+        .find((node) => node.getClientRects().length > 0);
       filter.value = [...filter.options].find((option) =>
         option.value.startsWith('email:') &&
         decodeURIComponent(option.value.slice('email:'.length)) === ${JSON.stringify(userA)}
