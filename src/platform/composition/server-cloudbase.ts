@@ -26,6 +26,7 @@ import type { StorageProvider } from "@/platform/contracts/storage";
 import type { TripRepository } from "@/platform/contracts/trips";
 
 import { providerOperationUnavailable } from "./unavailable";
+export { runSequentialServerReads as runServerReads } from "@/platform/server-read-scheduling";
 
 export function getBackendCapabilities() {
   return capabilitiesForEnvironment("cn", {

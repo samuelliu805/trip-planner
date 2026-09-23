@@ -13,10 +13,11 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import type { IdeaComparison } from "../idea-actions";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { activityNeedsDay, choiceLabel, itemLabel } from "./idea-comparison-labels";
+import { PlanDaySelect } from "./plan-day-select";
 
 export function IdeaComparisonViewDialog({
   byId,
-  dayId,
+  dayIds,
   error,
   onApply,
   onClose,
@@ -26,11 +27,11 @@ export function IdeaComparisonViewDialog({
   view,
 }: {
   byId: ReadonlyMap<string, ResearchItem>;
-  dayId: string;
+  dayIds: Record<string, string>;
   error?: string;
   onApply: (comparison: IdeaComparison, choiceId: string) => void;
   onClose: () => void;
-  onDayChange: (dayId: string) => void;
+  onDayChange: (choiceId: string, dayId: string) => void;
   pending: boolean;
   plan: ResearchPlanSnapshot;
   view?: IdeaComparison;
@@ -56,8 +57,8 @@ export function IdeaComparisonViewDialog({
             const needsDay =
               dateMismatch || selectedItems.some((item) => activityNeedsDay(item, plan));
             return (
-              <article className="rounded-xl border p-3" key={choice.id}>
-                <h3 className="font-semibold">
+              <article className="rounded-xl bg-muted/35 p-4" key={choice.id}>
+                <h3 className="text-base font-semibold">
                   {t("Choice {letter}", { letter: choiceLabel(choice.position) })}
                 </h3>
                 <ul className="mt-2 space-y-2">
@@ -82,21 +83,13 @@ export function IdeaComparisonViewDialog({
                   ))}
                 </ul>
                 {needsDay ? (
-                  <label className="mt-3 block text-sm">
+                  <label className="mt-3 block text-sm font-medium">
                     <T message="Plan day" />
-                    <select
-                      className="mt-1 min-h-11 w-full rounded-md border bg-background px-3"
-                      onChange={(event) => onDayChange(event.target.value)}
-                      value={dayId}
-                    >
-                      <option value="">{t("Choose a day")}</option>
-                      {plan.days.map((day) => (
-                        <option key={day.id} value={day.id}>
-                          {t("Day {number}", { number: day.dayNumber })}
-                          {day.date ? ` · ${day.date}` : ""}
-                        </option>
-                      ))}
-                    </select>
+                    <PlanDaySelect
+                      days={plan.days}
+                      onChange={(dayId) => onDayChange(choice.id, dayId)}
+                      value={dayIds[choice.id] ?? ""}
+                    />
                   </label>
                 ) : null}
                 <Button
@@ -104,7 +97,7 @@ export function IdeaComparisonViewDialog({
                   disabled={
                     pending ||
                     selectedItems.length !== choice.itemIds.length ||
-                    (needsDay && !dayId)
+                    (needsDay && !dayIds[choice.id])
                   }
                   onClick={() => view && onApply(view, choice.id)}
                   type="button"

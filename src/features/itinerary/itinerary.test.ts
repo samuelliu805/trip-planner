@@ -953,8 +953,12 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     "utf8",
   );
 
-  assert.match(page, /resolveActiveVariant\(variantsResult\.data, query\.variant\)/);
-  assert.match(page, /getPlannerWorkspace\(\s*tripId,\s*resolution\.activeVariant\.id/);
+  assert.match(page, /resolveActiveVariant\(variants, query\.variant\)/);
+  assert.match(page, /getPlannerWorkspace\(tripId, activeVariantId\)/);
+  assert.match(
+    page,
+    /workspaceResult\.error === "The selected route variant was not found\."[\s\S]*getPlannerVariants\(tripId\)[\s\S]*resolveActiveVariant\(latestVariants\.data, query\.variant\)/,
+  );
   assert.match(data, /getPlannerVariants/);
   assert.match(
     data,

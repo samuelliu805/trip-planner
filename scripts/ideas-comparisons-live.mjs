@@ -159,12 +159,53 @@ async function run() {
     });
     const car = await capture(first.db, tripId, "car", "Rental car");
     const activity = await capture(first.db, tripId, "activity", "Ride by West Lake");
+    const roundTrip = await capture(first.db, tripId, "flight", "Shanghai to Milan return", {
+      destinationText: "MXP",
+      endDate: "2026-10-03",
+      journeyType: "round_trip",
+      originText: "PVG",
+      segments: [
+        {
+          carrier: "TK",
+          departureDate: "2026-10-01",
+          destination: "IST",
+          journeyIndex: 0,
+          origin: "PVG",
+          serviceNumber: "27",
+        },
+        {
+          carrier: "TK",
+          departureDate: "2026-10-01",
+          destination: "MXP",
+          journeyIndex: 0,
+          origin: "IST",
+          serviceNumber: "1873",
+        },
+        {
+          carrier: "TK",
+          departureDate: "2026-10-03",
+          destination: "IST",
+          journeyIndex: 1,
+          origin: "MXP",
+          serviceNumber: "1874",
+        },
+        {
+          carrier: "TK",
+          departureDate: "2026-10-03",
+          destination: "PVG",
+          journeyIndex: 1,
+          origin: "IST",
+          serviceNumber: "26",
+        },
+      ],
+      startDate: "2026-10-01",
+    });
     const foreignIdea = await capture(first.db, otherTripId, "flight", "Other Trip flight");
     const saved = rows(
       await first.db.from("research_items").select("id,category").eq("trip_id", tripId),
       "Ideas lookup",
     );
-    assert.equal(saved.length, 6);
+    assert.equal(saved.length, 7);
     assert.deepEqual(
       new Set(saved.map((item) => item.category)),
       new Set(["flight", "stay", "rental", "activity"]),
@@ -231,6 +272,31 @@ async function run() {
       "direct Activity apply",
     );
     assert.equal(activityResult.status, "applied");
+    const roundTripResult = dataOrThrow(
+      await first.db.rpc("apply_single_idea_v1", {
+        target_trip_id: tripId,
+        target_variant_id: variant.id,
+        target_research_item_id: roundTrip,
+        requested_day_id: null,
+        requested_before_item_id: null,
+        target_operation_id: randomUUID(),
+      }),
+      "direct round-trip apply",
+    );
+    assert.equal(roundTripResult.status, "applied");
+    assert.equal(roundTripResult.itemIds.length, 2);
+    const roundTripItems = rows(
+      await first.db
+        .from("itinerary_items")
+        .select("title,details,price_amount")
+        .eq("variant_id", variant.id),
+      "round-trip Plan lookup",
+    ).filter((item) => item.details?.ideaResearchItemId === roundTrip);
+    assert.deepEqual(roundTripItems.map((item) => item.title).sort(), ["MXP → PVG", "PVG → MXP"]);
+    assert.equal(
+      roundTripItems.reduce((sum, item) => sum + Number(item.price_amount ?? 0), 0),
+      0,
+    );
     const firstUse = await apply(first.db, tripId, variant.id, comparisonId, group.choices[0].id);
     assert.equal(firstUse.status, "applied");
     const repeated = await apply(first.db, tripId, variant.id, comparisonId, group.choices[0].id);
@@ -324,7 +390,7 @@ async function run() {
         await first.db.from("research_items").select("id").eq("trip_id", tripId),
         "Ideas after comparison delete",
       ).length,
-      6,
+      7,
     );
     assert.equal(
       rows(

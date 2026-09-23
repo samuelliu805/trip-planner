@@ -51,10 +51,7 @@ export function IdeaLinkPreview({
 
   if (!sourceUrl || (hasReliableFields && result?.status !== "readable")) return null;
   return (
-    <div
-      aria-live="polite"
-      className="mt-2 min-w-0 rounded-xl border bg-muted/30 px-3 py-2 text-sm"
-    >
+    <div aria-live="polite" className="mt-2 min-w-0 rounded-xl bg-muted/45 px-3 py-2 text-sm">
       {!result ? (
         <span className="text-muted-foreground">
           <T message="Reading link…" />

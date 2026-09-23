@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { parseEnv } from "node:util";
 
@@ -39,6 +40,7 @@ const controlledNames = new Set([
   ...requiredCredentials.global,
   ...requiredCredentials.cn,
   "APP_REGION",
+  "APP_DEPLOYMENT_ID",
   "APP_URL",
   "AUTH_PROVIDER",
   "CLOUDBASE_APIKEY",
@@ -53,6 +55,7 @@ const controlledNames = new Set([
   "NEXT_PUBLIC_POSTHOG_HOST",
   "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN",
   "NEXT_PUBLIC_SITE_URL",
+  "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY",
   "NEXT_PUBLIC_TELEMETRY_ENABLED",
   "NEXT_PUBLIC_TELEMETRY_ENVIRONMENT",
   "NEXT_PUBLIC_TELEMETRY_PROVIDER",
@@ -62,6 +65,8 @@ const controlledNames = new Set([
   "PHASE3_START_APP",
   "PHASE5_AMAP_ALLOWED_HOSTNAME",
   "PHASE5_GLOBAL_BASE_URL",
+  "PHASE5_GLOBAL_DEPLOYMENT_URL",
+  "PHASE5_GOOGLE_ALLOWED_HOSTNAME",
   "PHASE5_REQUIRE_AMAP_SMOKE",
   "PHASE5_REQUIRE_BROWSER_SMOKE",
   "PHASE5_START_APP",
@@ -164,11 +169,15 @@ export function createRegionEnvironment(region, inventory, ambient = process.env
   for (const name of requiredCredentials[region]) result[name] = values[name];
 
   const common = {
+    APP_DEPLOYMENT_ID: `e2e-${region}`,
     APP_URL: "http://127.0.0.1:3100",
     NEXT_PUBLIC_SITE_URL: "http://127.0.0.1:3100",
     NEXT_PUBLIC_TELEMETRY_ENABLED: "false",
     NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: "development",
     NODE_OPTIONS: useEnvironmentProxy ? "--use-env-proxy" : "",
+    NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: createHash("sha256")
+      .update(`trip-planner-${region}-e2e-server-actions`)
+      .digest("base64"),
     TELEMETRY_SMOKE_TEST_ENABLED: "false",
   };
   const regional =
@@ -181,6 +190,7 @@ export function createRegionEnvironment(region, inventory, ambient = process.env
           NEXT_PUBLIC_MAPS_PROVIDER: "google",
           PHASE3_GLOBAL_BASE_URL: "http://127.0.0.1:3100",
           PHASE5_GLOBAL_BASE_URL: "http://127.0.0.1:3100",
+          PHASE5_GOOGLE_ALLOWED_HOSTNAME: "trip-planner-ivory-one.vercel.app",
           PHASE5_REQUIRE_BROWSER_SMOKE: "1",
           PHASE5_START_APP: "1",
           STORAGE_PROVIDER: "supabase",

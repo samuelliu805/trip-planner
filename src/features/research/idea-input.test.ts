@@ -194,6 +194,7 @@ test("Google Flights booking links expose selected flights from nested tfs field
         destination: "HND",
         departureDate: "2026-11-20",
         carrier: "NH",
+        journeyIndex: 0,
         serviceNumber: "972",
       },
       {
@@ -201,6 +202,7 @@ test("Google Flights booking links expose selected flights from nested tfs field
         destination: "PVG",
         departureDate: "2026-11-25",
         carrier: "NH",
+        journeyIndex: 1,
         serviceNumber: "967",
       },
     ],

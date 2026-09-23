@@ -1,6 +1,7 @@
 "use server";
 
-import { getRelationalDatabase } from "@/platform/composition/server";
+import { getRelationalDatabase, runServerReads } from "@/platform/composition/server";
+import { retryTransientRead } from "@/platform/transient-read";
 
 import { firstIssue, revalidateResearch } from "./action-helpers";
 import {
@@ -44,10 +45,11 @@ export async function loadResearchWorkspace(input: {
 }): Promise<ResearchMutationResult<ResearchWorkspaceSnapshot>> {
   const parsed = researchWorkspaceSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const [items, plan, state] = await Promise.all([
-    getCompareItems(parsed.data.tripId),
-    getResearchPlanSnapshot(parsed.data.tripId, parsed.data.variantId),
-    getResearchPlanState(parsed.data.tripId, parsed.data.variantId),
+  const [items, plan, state] = await runServerReads([
+    () => retryTransientRead(() => getCompareItems(parsed.data.tripId)),
+    () =>
+      retryTransientRead(() => getResearchPlanSnapshot(parsed.data.tripId, parsed.data.variantId)),
+    () => retryTransientRead(() => getResearchPlanState(parsed.data.tripId, parsed.data.variantId)),
   ]);
   const error = items.error ?? plan.error ?? state.error;
   if (error || !plan.data) return { error: error ?? "Ideas could not be refreshed." };
@@ -83,14 +85,16 @@ export async function createResearchItem(
   const parsed = createResearchItemSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const database = await getRelationalDatabase();
-  const { data: saved, error } = await database.rpc("save_research_item_v3", {
-    expected_version: null as unknown as number,
-    requested_draft_session_id: parsed.data.draftSessionId ?? parsed.data.operationId,
-    requested_item: JSON.parse(JSON.stringify(parsed.data)) as Json,
-    target_operation_id: parsed.data.operationId,
-    target_research_item_id: parsed.data.operationId,
-    target_trip_id: parsed.data.tripId,
-  });
+  const { data: saved, error } = await retryTransientRead(async () =>
+    database.rpc("save_research_item_v3", {
+      expected_version: null as unknown as number,
+      requested_draft_session_id: parsed.data.draftSessionId ?? parsed.data.operationId,
+      requested_item: JSON.parse(JSON.stringify(parsed.data)) as Json,
+      target_operation_id: parsed.data.operationId,
+      target_research_item_id: parsed.data.operationId,
+      target_trip_id: parsed.data.tripId,
+    }),
+  );
   if (error || !saved)
     return reportResearchMutation({
       category: parsed.data.category,
@@ -98,12 +102,14 @@ export async function createResearchItem(
       operationId: parsed.data.operationId,
       result: error ? researchWriteError(error) : { error: "The candidate could not be saved." },
     });
-  const { data, error: reloadError } = await database
-    .from("research_items")
-    .select<ResearchItemRow>(getResearchItemSelection())
-    .eq("id", parsed.data.operationId)
-    .eq("trip_id", parsed.data.tripId)
-    .maybeSingle();
+  const { data, error: reloadError } = await retryTransientRead(async () =>
+    database
+      .from("research_items")
+      .select<ResearchItemRow>(getResearchItemSelection())
+      .eq("id", parsed.data.operationId)
+      .eq("trip_id", parsed.data.tripId)
+      .maybeSingle(),
+  );
   if (reloadError || !data)
     return reportResearchMutation({
       category: parsed.data.category,
@@ -127,14 +133,16 @@ export async function updateResearchItem(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const { id, expectedVersion, ...values } = parsed.data;
   const database = await getRelationalDatabase();
-  const { data: saved, error } = await database.rpc("save_research_item_v3", {
-    expected_version: expectedVersion,
-    requested_draft_session_id: parsed.data.draftSessionId ?? parsed.data.operationId,
-    requested_item: JSON.parse(JSON.stringify(values)) as Json,
-    target_operation_id: parsed.data.operationId,
-    target_research_item_id: id,
-    target_trip_id: values.tripId,
-  });
+  const { data: saved, error } = await retryTransientRead(async () =>
+    database.rpc("save_research_item_v3", {
+      expected_version: expectedVersion,
+      requested_draft_session_id: parsed.data.draftSessionId ?? parsed.data.operationId,
+      requested_item: JSON.parse(JSON.stringify(values)) as Json,
+      target_operation_id: parsed.data.operationId,
+      target_research_item_id: id,
+      target_trip_id: values.tripId,
+    }),
+  );
   if (error || !saved)
     return reportResearchMutation({
       category: parsed.data.category,
@@ -142,12 +150,14 @@ export async function updateResearchItem(
       operationId: parsed.data.operationId,
       result: error ? researchWriteError(error) : { error: "The candidate could not be updated." },
     });
-  const { data, error: reloadError } = await database
-    .from("research_items")
-    .select<ResearchItemRow>(getResearchItemSelection())
-    .eq("id", id)
-    .eq("trip_id", values.tripId)
-    .maybeSingle();
+  const { data, error: reloadError } = await retryTransientRead(async () =>
+    database
+      .from("research_items")
+      .select<ResearchItemRow>(getResearchItemSelection())
+      .eq("id", id)
+      .eq("trip_id", values.tripId)
+      .maybeSingle(),
+  );
   if (reloadError || !data)
     return reportResearchMutation({
       category: parsed.data.category,

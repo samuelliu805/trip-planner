@@ -1,4 +1,5 @@
 import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
+import { runServerReads } from "@/platform/composition/server";
 import {
   ownerAttachmentsFromRows,
   type OwnerAttachmentRow,
@@ -41,19 +42,21 @@ export function researchItemFromRow(row: ResearchItemRow): ResearchItem {
 
 export async function getResearchPlanSnapshot(tripId: string, variantId: string) {
   const database = await getRelationalDatabase();
-  const [daysResult, itemsResult] = await Promise.all([
-    database
-      .from("trip_days")
-      .select("id, date, day_number")
-      .eq("variant_id", variantId)
-      .order("day_number", { ascending: true }),
-    database
-      .from("itinerary_items")
-      .select("id, day_id, details, place_id, price_amount, price_currency, title, type")
-      .eq("trip_id", tripId)
-      .eq("variant_id", variantId)
-      .order("day_id", { ascending: true })
-      .order("sort_order", { ascending: true }),
+  const [daysResult, itemsResult] = await runServerReads([
+    () =>
+      database
+        .from("trip_days")
+        .select("id, date, day_number")
+        .eq("variant_id", variantId)
+        .order("day_number", { ascending: true }),
+    () =>
+      database
+        .from("itinerary_items")
+        .select("id, day_id, details, place_id, price_amount, price_currency, title, type")
+        .eq("trip_id", tripId)
+        .eq("variant_id", variantId)
+        .order("day_id", { ascending: true })
+        .order("sort_order", { ascending: true }),
   ]);
   if (daysResult.error || itemsResult.error)
     return {
@@ -106,24 +109,27 @@ export async function getPlanResearchItems(tripId: string) {
 
 export async function getResearchPlanState(tripId: string, variantId: string) {
   const database = await getRelationalDatabase();
-  const [selectionsResult, applicationsResult, currentApplicationsResult] = await Promise.all([
-    database
-      .from("variant_research_selections")
-      .select("*")
-      .eq("trip_id", tripId)
-      .eq("route_variant_id", variantId)
-      .order("updated_at", { ascending: false }),
-    database
-      .from("research_plan_applications")
-      .select("*")
-      .eq("trip_id", tripId)
-      .eq("route_variant_id", variantId)
-      .order("applied_at", { ascending: false })
-      .limit(100),
-    database.rpc("current_research_plan_application_ids", {
-      target_trip_id: tripId,
-      target_variant_id: variantId,
-    }),
+  const [selectionsResult, applicationsResult, currentApplicationsResult] = await runServerReads([
+    () =>
+      database
+        .from("variant_research_selections")
+        .select("*")
+        .eq("trip_id", tripId)
+        .eq("route_variant_id", variantId)
+        .order("updated_at", { ascending: false }),
+    () =>
+      database
+        .from("research_plan_applications")
+        .select("*")
+        .eq("trip_id", tripId)
+        .eq("route_variant_id", variantId)
+        .order("applied_at", { ascending: false })
+        .limit(100),
+    () =>
+      database.rpc("current_research_plan_application_ids", {
+        target_trip_id: tripId,
+        target_variant_id: variantId,
+      }),
   ]);
   return {
     applications: (applicationsResult.data ?? []) as ResearchPlanApplication[],

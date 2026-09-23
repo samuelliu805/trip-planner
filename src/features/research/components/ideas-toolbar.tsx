@@ -30,7 +30,7 @@ export function IdeasToolbar({
 }) {
   const { t } = useI18n();
   return (
-    <div className="flex min-w-0 items-center gap-1 border-b pb-2">
+    <div className="flex min-w-0 items-center gap-1 pb-1">
       <h2 className="mr-auto text-lg font-semibold">
         <T message="Saved ideas" />
       </h2>

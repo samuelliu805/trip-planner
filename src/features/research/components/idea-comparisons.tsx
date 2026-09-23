@@ -64,7 +64,7 @@ export function IdeaComparisons({
   const [deleting, setDeleting] = useState<IdeaComparison>();
   const [title, setTitle] = useState("");
   const [choices, setChoices] = useState<string[][]>([[], []]);
-  const [dayId, setDayId] = useState("");
+  const [dayIds, setDayIds] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -140,7 +140,8 @@ export function IdeaComparisons({
       const item = byId.get(id);
       return item ? activityNeedsDay(item, plan) : false;
     });
-    if (needsDay && !dayId) {
+    const selectedDayId = dayIds[choiceId] ?? "";
+    if (needsDay && !selectedDayId) {
       setError(t("Choose a Plan day."));
       return;
     }
@@ -150,7 +151,7 @@ export function IdeaComparisons({
     const result = await applyIdeaChoice({
       comparisonId: comparison.id,
       choiceId,
-      dayId: dayId || null,
+      dayId: selectedDayId || null,
       operationId,
       tripId,
       variantId: plan.variantId,
@@ -226,7 +227,7 @@ export function IdeaComparisons({
                 className="min-h-11 min-w-0 flex-1 justify-start text-left"
                 onClick={() => {
                   setError(undefined);
-                  setDayId("");
+                  setDayIds({});
                   setView(comparison);
                 }}
                 type="button"
@@ -276,11 +277,13 @@ export function IdeaComparisons({
       />
       <IdeaComparisonViewDialog
         byId={byId}
-        dayId={dayId}
+        dayIds={dayIds}
         error={view ? error : undefined}
         onApply={(comparison, choiceId) => void apply(comparison, choiceId)}
         onClose={() => setView(undefined)}
-        onDayChange={setDayId}
+        onDayChange={(choiceId, dayId) =>
+          setDayIds((current) => ({ ...current, [choiceId]: dayId }))
+        }
         pending={pending}
         plan={plan}
         view={view}

@@ -5,14 +5,18 @@ export function normalizeCloudBaseRpcResult(name, result) {
     const codeText = [shape.code, shape.errorCode, shape.category]
       .filter((value) => typeof value === "string")
       .join(" ");
-    const sqlState = codeText.match(/(?:^|_)([0-9A-Z]{5})(?:$|_)/)?.[1];
+    const message = typeof shape.message === "string" ? shape.message : "";
+    const sqlState =
+      codeText.match(/(?:^|_)([0-9A-Z]{5})(?:$|_)/)?.[1] ??
+      message.match(/\b(?:SQLSTATE|code|errcode)\s*[:=_-]?\s*([0-9A-Z]{5})\b/i)?.[1] ??
+      message.match(/\b(22023|23505|23514|40001|42501)\b/)?.[1];
     if (sqlState) {
       return {
         ...result,
         error: {
           ...shape,
           code: sqlState,
-          message: typeof shape.message === "string" ? shape.message : "Database operation failed.",
+          message: message || "Database operation failed.",
         },
       };
     }

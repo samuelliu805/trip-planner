@@ -86,3 +86,22 @@ test("a signed expired CloudBase access token enters the refresh path", async ()
     CloudBaseAccessTokenExpiredError,
   );
 });
+
+test("CloudBase certificate reads recover from a transient provider response", async () => {
+  const now = Date.now();
+  const fixture = await signedToken({
+    exp: Math.floor(now / 1000) + 600,
+    iat: Math.floor(now / 1000),
+    iss: issuer,
+    sub: "user-a",
+  });
+  let attempts = 0;
+  const fetcher = (async (...args: Parameters<typeof fetch>) => {
+    attempts += 1;
+    if (attempts === 1) return new Response(null, { status: 503 });
+    return fixture.fetcher(...args);
+  }) as typeof fetch;
+  const claims = await verifyCloudBaseAccessToken(fixture.token, environment, { fetcher, now });
+  assert.equal(claims.sub, "user-a");
+  assert.equal(attempts, 2);
+});

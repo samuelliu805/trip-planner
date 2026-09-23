@@ -1,4 +1,5 @@
 import { PlatformOperationError } from "../contracts/errors.ts";
+import { retryTransientRead } from "../transient-read.ts";
 
 type CloudBaseAccessClaims = Readonly<{
   email?: unknown;
@@ -37,20 +38,32 @@ function expectedIssuer(env: string) {
 }
 
 async function loadKeySet(uri: string, fetcher: typeof fetch, force = false) {
+  const read = () =>
+    retryTransientRead(
+      async () => {
+        const response = await fetcher(uri, { signal: AbortSignal.timeout(5_000) });
+        if (!response.ok) {
+          const transient =
+            response.status === 408 ||
+            response.status === 425 ||
+            response.status === 429 ||
+            response.status >= 500;
+          throw new Error(
+            transient
+              ? `Network request failed at CloudBase key endpoint with ${response.status}.`
+              : `CloudBase key endpoint returned ${response.status}.`,
+          );
+        }
+        return (await response.json()) as JsonWebKeySet;
+      },
+      { attempts: 3 },
+    );
   if (fetcher !== fetch) {
-    const response = await fetcher(uri);
-    if (!response.ok) throw new Error(`CloudBase key endpoint returned ${response.status}.`);
-    return (await response.json()) as JsonWebKeySet;
+    return read();
   }
   if (force) keySets.delete(uri);
   let pending = keySets.get(uri);
-  if (!pending) {
-    pending = fetcher(uri).then(async (response) => {
-      if (!response.ok) throw new Error(`CloudBase key endpoint returned ${response.status}.`);
-      return (await response.json()) as JsonWebKeySet;
-    });
-    keySets.set(uri, pending);
-  }
+  if (!pending) keySets.set(uri, (pending = read()));
   try {
     return await pending;
   } catch (error) {

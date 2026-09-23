@@ -32,16 +32,18 @@ export function ResearchItemList({
           </p>
         </div>
       ) : (
-        sortResearchItems(items, sort, defaultCurrency).map((item) => (
-          <ResearchItemRow
-            defaultCurrency={defaultCurrency}
-            item={item}
-            key={item.id}
-            onDeleted={onDeleted}
-            onSaved={onSaved}
-            plan={plan}
-          />
-        ))
+        <div className="divide-y overflow-hidden rounded-2xl bg-card shadow-sm ring-1 ring-border/60">
+          {sortResearchItems(items, sort, defaultCurrency).map((item) => (
+            <ResearchItemRow
+              defaultCurrency={defaultCurrency}
+              item={item}
+              key={item.id}
+              onDeleted={onDeleted}
+              onSaved={onSaved}
+              plan={plan}
+            />
+          ))}
+        </div>
       )}
     </section>
   );

@@ -7,6 +7,8 @@ import { join } from "node:path";
 
 import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
+import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
+import { resolveGlobalBrowserOrigin } from "./phase-5-global-browser-origin.mjs";
 
 function chromeExecutable() {
   const candidates = [
@@ -20,14 +22,19 @@ function chromeExecutable() {
   return executable;
 }
 
-function browserProxyArguments() {
+function browserProxyArguments(bypassHostname) {
   const candidate = process.env.HTTPS_PROXY ?? process.env.https_proxy;
   if (!candidate) return [];
   try {
     const proxy = new URL(candidate);
     if (!["http:", "https:"].includes(proxy.protocol) || proxy.username || proxy.password)
       return [];
-    return [`--proxy-server=${proxy.origin}`, "--proxy-bypass-list=localhost;127.0.0.1;[::1]"];
+    return [
+      `--proxy-server=${proxy.origin}`,
+      `--proxy-bypass-list=${[bypassHostname, "localhost", "127.0.0.1", "[::1]"]
+        .filter(Boolean)
+        .join(";")}`,
+    ];
   } catch {
     return [];
   }
@@ -124,7 +131,7 @@ class CdpClient {
   }
 }
 
-async function launchBrowser() {
+async function launchBrowser({ browserBaseUrl, hostResolverArgument }) {
   const profile = await mkdtemp(join(tmpdir(), "trip-phase5-global-"));
   const child = spawn(
     chromeExecutable(),
@@ -133,9 +140,11 @@ async function launchBrowser() {
       "--no-sandbox",
       "--disable-dev-shm-usage",
       "--disable-gpu",
-      ...browserProxyArguments(),
+      ...browserProxyArguments(new URL(browserBaseUrl).hostname),
       "--remote-debugging-port=0",
       `--user-data-dir=${profile}`,
+      ...(browserBaseUrl.startsWith("https:") ? ["--ignore-certificate-errors"] : []),
+      ...(hostResolverArgument ? [hostResolverArgument] : []),
       "about:blank",
     ],
     { stdio: ["ignore", "ignore", "pipe"] },
@@ -544,12 +553,13 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
   await closePlannerEditor(browser, "Global Trip settings");
 
   await openTripMenu(browser);
-  await clickElement(
+  const historyHref = await evaluate(
     browser,
-    `[...document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')]
-      .find((item) => item.getClientRects().length && item.textContent.trim() === 'History')`,
-    "Global History menu item",
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] a[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === 'History')?.href`,
   );
+  assert.equal(new URL(historyHref).pathname, `/trips/${options.tripId}/history`);
+  await navigate(browser, baseUrl, historyHref, "Global History");
   try {
     await waitFor(
       browser,
@@ -563,6 +573,17 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       `${error instanceof Error ? error.message : error}; bounded History diagnostic: ${JSON.stringify(diagnostic)}`,
     );
   }
+  await waitFor(
+    browser,
+    `(() => {
+      const visibleFilter = [...document.querySelectorAll('#history-filter')]
+        .find((node) => node.getClientRects().length > 0);
+      const visiblePagination = [...document.querySelectorAll('[data-history-pagination]')]
+        .find((node) => node.getClientRects().length > 0);
+      return visibleFilter?.getBoundingClientRect().height === 44 && Boolean(visiblePagination);
+    })()`,
+    "Global History visible controls",
+  );
   const historyActors = await evaluate(
     browser,
     `[...document.querySelectorAll('[data-history-actor]')].map((node) => node.textContent.trim())`,
@@ -581,7 +602,10 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
     await evaluate(
       browser,
       `(() => {
-        const filter = document.querySelector('#history-filter');
+        const filter = [...document.querySelectorAll('#history-filter')]
+          .find((node) => node.getClientRects().length > 0);
+        const pagination = [...document.querySelectorAll('[data-history-pagination]')]
+          .find((node) => node.getClientRects().length > 0);
         const options = [...(filter?.options ?? [])].map((option) => option.value);
         return {
           filterHeight: filter?.getBoundingClientRect().height ?? 0,
@@ -591,8 +615,9 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
             document.querySelector('#history-detail-field, #history-filter-value')),
           hasStaticCategories: ['all', 'plans', 'itinerary', 'people', 'sharing', 'ideas']
             .every((value) => options.includes(value)),
-          pagination: Boolean(document.querySelector('[data-history-pagination]')),
-          paginationText: document.querySelector('[data-history-pagination]')?.innerText.trim(),
+          pagination: Boolean(pagination),
+          paginationLabels: [...(pagination?.children ?? [])]
+            .map((node) => node.textContent.trim()),
           showsPerPageCopy: document.body.innerText.includes('per page'),
         };
       })()`,
@@ -604,14 +629,15 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       hasManualDetailControls: false,
       hasStaticCategories: true,
       pagination: true,
-      paginationText: "Older\nPage 1\nNewer",
+      paginationLabels: ["Older", "Page 1", "Newer"],
       showsPerPageCopy: false,
     },
   );
   await evaluate(
     browser,
     `(() => {
-      const filter = document.querySelector('#history-filter');
+      const filter = [...document.querySelectorAll('#history-filter')]
+        .find((node) => node.getClientRects().length > 0);
       filter.value = [...filter.options].find((option) =>
         option.value.startsWith('email:') &&
         decodeURIComponent(option.value.slice('email:'.length)) === ${JSON.stringify(targetHistoryActor)}
@@ -802,6 +828,49 @@ async function boundedPageDiagnostic(browser) {
       networkFailures: browser.cdp.networkFailures.slice(-4),
     };
   }
+}
+
+async function waitForRealGoogleMap(browser, baseUrl, tripId) {
+  const ready = `Boolean(window.google?.maps &&
+    [...document.querySelectorAll('.gm-style')]
+      .some((element) => element.getClientRects().length > 0))`;
+  let lastDiagnostic;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+      browser.sessionId,
+    );
+    await evaluate(browser, `window.dispatchEvent(new Event('resize')); true`);
+    try {
+      await waitFor(browser, ready, `real Google map attempt ${attempt}`, 30_000);
+      return;
+    } catch {
+      lastDiagnostic = await evaluate(
+        browser,
+        `(() => {
+          const map = [...document.querySelectorAll('[aria-label="Itinerary map"]')]
+            .find((element) => element.getClientRects().length > 0);
+          return {
+            googleMapsAvailable: Boolean(window.google?.maps),
+            innerWidth,
+            mapRect: map?.getBoundingClientRect().toJSON() ?? null,
+            mapStatus: map?.innerText.slice(0, 240) ?? null,
+            mapsScripts: [...document.querySelectorAll('script[src*="maps.googleapis.com"]')]
+              .map((script) => script.src.slice(0, 240)),
+          };
+        })()`,
+      ).catch(() => ({ category: "map-diagnostic-unavailable" }));
+      if (attempt < 3) {
+        await navigate(browser, baseUrl, `/trips/${tripId}`, `Google map retry ${attempt}`);
+      }
+    }
+  }
+  const page = await boundedPageDiagnostic(browser);
+  throw new Error(
+    `Timed out waiting for real Google map after reload recovery; map diagnostic: ${JSON.stringify(lastDiagnostic)}; ` +
+      `bounded page diagnostic: ${JSON.stringify(page)}`,
+  );
 }
 
 export function previewProtectionHeaders(secret, setCookie = false) {
@@ -1040,6 +1109,79 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await clickElement(
     browser,
     `(() => {
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+      return card?.querySelector('button[aria-label^="Edit "]');
+    })()`,
+    "saved Google flight title",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-editor-kind="research"]'))`,
+    "Google flight editor opened from its title",
+  );
+  await clickElementUntil(
+    browser,
+    `document.querySelector('[data-editor-kind="research"] button[aria-label="Search Maps for From"]')`,
+    `Boolean(document.querySelector('[data-editor-kind="research"] input[role="combobox"]'))`,
+    "Google flight origin map search",
+  );
+  await setInputValue(
+    browser,
+    '[data-editor-kind="research"] input[role="combobox"]',
+    "Shanghai Pudong International Airport",
+  );
+  try {
+    await waitFor(
+      browser,
+      `Boolean([...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
+        .find((option) => option.getClientRects().length && option.textContent.trim()))`,
+      "protected Google place suggestions",
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `(() => ({
+        editor: document.querySelector('[data-editor-kind="research"]')?.innerText.slice(0, 900),
+        legacyAutocomplete: typeof window.google?.maps?.places?.AutocompleteService,
+        legacyDetails: typeof window.google?.maps?.places?.PlacesService,
+        modernAutocomplete: typeof window.google?.maps?.places?.AutocompleteSuggestion,
+      }))()`,
+    ).catch(() => null);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; place diagnostic: ${JSON.stringify(diagnostic)}; ` +
+        `client errors: ${JSON.stringify(browser.cdp.clientErrors.slice(-4))}; ` +
+        `network failures: ${JSON.stringify(browser.cdp.networkFailures.slice(-4))}`,
+    );
+  }
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
+      .find((option) => option.getClientRects().length && option.textContent.trim())`,
+    "Google flight origin place suggestion",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[data-editor-kind="research"]')?.innerText.includes('Shanghai Pudong')`,
+    "resolved Google flight origin",
+    45_000,
+  );
+  await clickElementWhenAvailable(
+    browser,
+    `[...document.querySelectorAll('[data-editor-kind="research"] button[type="submit"]')]
+      .find((button) => button.textContent.trim() === 'Save' && !button.disabled)`,
+    "save Google place on flight idea",
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[data-editor-kind="research"]')`,
+    "saved Google place editor close",
+    45_000,
+  );
+  await clickElement(
+    browser,
+    `(() => {
     const card = [...document.querySelectorAll('article')].find((item) =>
       item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
     return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
@@ -1049,40 +1191,72 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `Boolean(document.querySelector('[role="dialog"] select'))`,
+    `Boolean([...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
+      .find((element) => element.getClientRects().length > 0))`,
     "dated Google flight Plan day choice",
+  );
+  await clickElementUntil(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
+      .find((element) => element.getClientRects().length > 0)`,
+    `Boolean([...document.querySelectorAll('[role="option"]')]
+      .find((element) => element.getClientRects().length > 0))`,
+    "open dated Google flight Plan day choices",
   );
   assert.equal(
     await evaluate(
       browser,
       `(() => {
-        const select = document.querySelector('[role="dialog"] select');
-        const option = [...(select?.options ?? [])].find((entry) => entry.value);
-        if (!(select instanceof HTMLSelectElement) || !option) return false;
-        select.value = option.value;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
+        const option = [...document.querySelectorAll('[role="option"]')]
+          .find((entry) => entry.getClientRects().length);
+        option?.focus();
+        return document.activeElement === option;
       })()`,
     ),
     true,
-    "A Plan day was unavailable for the dated Google flight.",
+    "A Plan day option could not receive focus.",
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Enter", key: "Enter", type: "keyUp", windowsVirtualKeyCode: 13 },
+    browser.sessionId,
   );
   await waitFor(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
-      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    `![...document.querySelectorAll('[role="option"]')]
+      .some((element) => element.getClientRects().length > 0)`,
+    "selected dated Google flight Plan day",
+  );
+  await waitFor(
+    browser,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
+      return [...(dialog?.querySelectorAll('button') ?? [])].some((button) =>
+        button.textContent.includes('Add to Plan') && !button.disabled);
+    })()`,
     "dated Google flight Plan confirmation readiness",
   );
   await clickElement(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
-      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
+      return [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Add to Plan') && !button.disabled);
+    })()`,
     "confirm dated Google flight Plan day",
   );
   const datedApplyResult = await waitFor(
     browser,
     `(() => {
-      const dialog = document.querySelector('[role="dialog"]');
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
       if (!dialog) return { status: 'closed' };
       const alert = dialog.querySelector('[role="alert"]');
       return alert ? { status: 'error', text: alert.textContent.trim() } : null;
@@ -1097,11 +1271,53 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await navigate(browser, baseUrl, `/trips/${tripId}`);
   await waitFor(
     browser,
-    `document.body.innerText.includes('PVG – HND') &&
-      document.body.innerText.includes('NH 972 / NH 967')`,
-    "Google Flights booking idea visible in Plan",
+    `(() => {
+      const items = [...document.querySelectorAll('[data-edit-item]')];
+      const outbound = items.find((item) =>
+        item.innerText.includes('Shanghai Pudong – HND') && item.innerText.includes('NH 972'));
+      const inbound = items.find((item) =>
+        item.innerText.includes('HND – Shanghai Pudong') && item.innerText.includes('NH 967'));
+      return Boolean(outbound && inbound && outbound !== inbound);
+    })()`,
+    "both Google Flights directions visible in Plan",
   );
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
+  await waitFor(browser, `Boolean(document.querySelector('textarea'))`, "Ideas capture input");
+  const hiltonUrl =
+    "https://www.hilton.com/en/hotels/lasflgv-hilton-grand-vacations-club-flamingo-las-vegas/";
+  await waitFor(
+    browser,
+    `(() => {
+        if (document.body.innerText.includes('Hilton Grand Vacations Club Flamingo Las Vegas') &&
+          [...document.querySelectorAll('button')].some((button) =>
+            button.textContent.includes('Save Stay') && !button.disabled)) return true;
+        const input = document.querySelector('textarea');
+        if (!(input instanceof HTMLTextAreaElement)) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        // A pre-hydration write can initialize React's value tracker. Clear it so
+        // the next poll always creates a real controlled-input change.
+        setter.call(input, '');
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        setter.call(input, ${JSON.stringify(hiltonUrl)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return false;
+      })()`,
+    "Hilton property path fallback",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('button')].find((button) =>
+      button.textContent.includes('Save Stay') && !button.disabled)`,
+    "save Hilton property idea",
+  );
+  await waitFor(
+    browser,
+    `Boolean([...document.querySelectorAll('article')].find((item) =>
+      item.innerText.includes('Hilton Grand Vacations Club Flamingo Las Vegas')))`,
+    "saved Hilton property path fallback",
+    45_000,
+  );
   await waitFor(
     browser,
     `Boolean(document.querySelector('button[aria-label="More idea actions"]'))`,
@@ -1130,14 +1346,16 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `Boolean([...document.querySelectorAll('button[aria-label="Search booking sites"]')]
-      .find((button) => button.getClientRects().length && !button.disabled))`,
+    `Boolean([...document.querySelectorAll('article')]
+      .find((item) => item.innerText.includes('NH 972'))
+      ?.querySelector('button[aria-label="Search booking sites"]'))`,
     "Global booking sites control",
   );
   await clickElement(
     browser,
-    `[...document.querySelectorAll('button[aria-label="Search booking sites"]')]
-      .find((button) => button.getClientRects().length && !button.disabled)`,
+    `[...document.querySelectorAll('article')]
+      .find((item) => item.innerText.includes('NH 972'))
+      ?.querySelector('button[aria-label="Search booking sites"]')`,
     "Global booking sites",
   );
   await waitFor(
@@ -1817,7 +2035,7 @@ async function submitGlobalLogin(
 
 async function startApplication(baseUrl) {
   const environment = { ...process.env, PORT: new URL(baseUrl).port || "3100" };
-  for (const name of ["GOOGLE_PLACES_API_KEY", "GOOGLE_ROUTES_API_KEY"]) delete environment[name];
+  delete environment.GOOGLE_ROUTES_API_KEY;
   const child = spawn("npm", ["run", "start"], {
     detached: true,
     env: environment,
@@ -1856,28 +2074,55 @@ async function verifyAuthRoutes(baseUrl) {
 }
 
 export async function runGlobalBrowserSmoke(options) {
-  const baseUrl = process.env.PHASE5_GLOBAL_BASE_URL ?? "http://127.0.0.1:3100";
+  const applicationBaseUrl = process.env.PHASE5_GLOBAL_BASE_URL ?? "http://127.0.0.1:3100";
   const remotePreview = process.env.PHASE5_START_APP === "0";
+  const deploymentBaseUrl =
+    process.env.PHASE5_GLOBAL_DEPLOYMENT_URL?.trim() || (remotePreview ? applicationBaseUrl : null);
   const bypassSecret = remotePreview
     ? process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()
     : undefined;
+  let baseUrl = applicationBaseUrl;
   let browser;
+  let browserTlsProxy;
+  let hostResolverArgument = null;
   let server;
   try {
     if (remotePreview) {
-      const response = await fetch(new URL("/login", baseUrl), {
+      const response = await fetch(new URL("/login", applicationBaseUrl), {
         headers: previewProtectionHeaders(bypassSecret),
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) throw new Error(`Global Preview returned ${response.status} for /login.`);
     } else {
-      server = await startApplication(baseUrl);
-      await verifyAuthRoutes(baseUrl);
+      server = await startApplication(applicationBaseUrl);
+      await verifyAuthRoutes(applicationBaseUrl);
+      const resolvedBrowserOrigin = resolveGlobalBrowserOrigin(
+        applicationBaseUrl,
+        process.env.PHASE5_GOOGLE_ALLOWED_HOSTNAME,
+        true,
+      );
+      browserTlsProxy = await startLoopbackTlsProxy({
+        browserHostname: new URL(resolvedBrowserOrigin.browserBaseUrl).hostname,
+        upstreamBaseUrl: applicationBaseUrl,
+      });
+      baseUrl = browserTlsProxy.browserBaseUrl;
+      hostResolverArgument = resolvedBrowserOrigin.hostResolverArgument;
     }
-    browser = await launchBrowser();
+    browser = await launchBrowser({
+      browserBaseUrl: baseUrl,
+      hostResolverArgument,
+    });
     if (remotePreview) await establishPreviewBypass(browser, baseUrl, bypassSecret);
     const browserOptions = { ...options, requireCaptcha: remotePreview };
-    if (remotePreview) await verifyDeployedAuthCaptchaSurfaces(browser, baseUrl);
+    if (deploymentBaseUrl) {
+      const deploymentBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
+      if (!remotePreview) {
+        await establishPreviewBypass(browser, deploymentBaseUrl, deploymentBypassSecret);
+      }
+      await verifyDeployedAuthCaptchaSurfaces(browser, deploymentBaseUrl);
+      if (!remotePreview)
+        await browser.cdp.send("Network.clearBrowserCookies", {}, browser.sessionId);
+    }
     await verifyPasswordRecovery(browser, baseUrl, browserOptions);
     await clearBrowserSessionForPublicShare(browser, baseUrl, bypassSecret);
     const guestTripId = await verifyGuestTripFlow(browser, baseUrl, browserOptions);
@@ -1900,19 +2145,28 @@ export async function runGlobalBrowserSmoke(options) {
       `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,
       "reauthenticated Global trip",
     );
-    await verifyGlobalBookingSites(browser, baseUrl, options.tripId);
-    try {
+    const bookingSitesBaseUrl = deploymentBaseUrl ?? baseUrl;
+    if (bookingSitesBaseUrl !== baseUrl) {
+      if (!options.createAuthCookies) {
+        throw new Error("Controlled auth cookies are required for deployed Ideas verification.");
+      }
+      await establishPreviewBypass(
+        browser,
+        bookingSitesBaseUrl,
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+      );
+      await installBrowserAuthCookies(browser, bookingSitesBaseUrl, options.createAuthCookies);
+    }
+    await verifyGlobalBookingSites(browser, bookingSitesBaseUrl, options.tripId);
+    if (bookingSitesBaseUrl !== baseUrl) {
+      await navigate(browser, baseUrl, `/trips/${options.tripId}`, "return to local trip");
       await waitFor(
         browser,
-        'Boolean(window.google?.maps && document.querySelector(".gm-style"))',
-        "real Google map",
-      );
-    } catch (error) {
-      const diagnostic = await boundedPageDiagnostic(browser);
-      throw new Error(
-        `${error instanceof Error ? error.message : error}; bounded map diagnostic: ${JSON.stringify(diagnostic)}`,
+        `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,
+        "local trip after deployed Ideas verification",
       );
     }
+    await waitForRealGoogleMap(browser, baseUrl, options.tripId);
     await verifyVariantAffordance(browser);
     await verifyHardNewTabShare(browser, options.publicToken);
     await verifyVariantNavigation(browser);
@@ -1922,25 +2176,6 @@ export async function runGlobalBrowserSmoke(options) {
       "Google Places after variant navigation",
       45_000,
     );
-    const place = await evaluate(
-      browser,
-      `(async () => {
-        const maps = window.google?.maps;
-        if (!maps) throw new Error("Google Maps is unavailable after variant navigation");
-        const places = await maps.importLibrary("places");
-        const sessionToken = new places.AutocompleteSessionToken();
-        const { suggestions } = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-          input: "Golden Gate Bridge",
-          sessionToken,
-        });
-        const prediction = suggestions.find((entry) => entry.placePrediction)?.placePrediction;
-        if (!prediction) throw new Error("Google Places returned no prediction");
-        const place = prediction.toPlace();
-        await place.fetchFields({ fields: ["id", "displayName", "location"] });
-        return { id: place.id, latitude: place.location?.lat(), longitude: place.location?.lng() };
-      })()`,
-    );
-    assert.ok(place?.id && Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
     const authenticatedResources = await evaluate(
       browser,
       'performance.getEntriesByType("resource").map((entry) => entry.name)',
@@ -2001,19 +2236,37 @@ export async function runGlobalBrowserSmoke(options) {
     );
 
     const protectionHeaders = remotePreview ? previewProtectionHeaders(bypassSecret) : {};
-    const unauthorizedCleanup = await fetch(new URL("/api/cron/share-image-cleanup", baseUrl), {
-      headers: { ...protectionHeaders, authorization: "Bearer wrong" },
-    });
+    const unauthorizedCleanup = await fetch(
+      new URL("/api/cron/share-image-cleanup", applicationBaseUrl),
+      {
+        headers: { ...protectionHeaders, authorization: "Bearer wrong" },
+      },
+    );
     assert.equal(unauthorizedCleanup.status, 401);
     const cronSecret = process.env.CRON_SECRET?.trim();
     if (!cronSecret) throw new Error("CRON_SECRET is required for the cleanup route smoke.");
-    const authorizedCleanup = await fetch(new URL("/api/cron/share-image-cleanup", baseUrl), {
-      headers: { ...protectionHeaders, authorization: `Bearer ${cronSecret}` },
-    });
+    const authorizedCleanup = await fetch(
+      new URL("/api/cron/share-image-cleanup", applicationBaseUrl),
+      { headers: { ...protectionHeaders, authorization: `Bearer ${cronSecret}` } },
+    );
     await requireAuthorizedCleanup(authorizedCleanup);
+    if (deploymentBaseUrl && deploymentBaseUrl !== applicationBaseUrl) {
+      const deployedHeaders = previewProtectionHeaders(process.env.VERCEL_AUTOMATION_BYPASS_SECRET);
+      const deployedUnauthorized = await fetch(
+        new URL("/api/cron/share-image-cleanup", deploymentBaseUrl),
+        { headers: { ...deployedHeaders, authorization: "Bearer wrong" } },
+      );
+      assert.equal(deployedUnauthorized.status, 401);
+      await requireAuthorizedCleanup(
+        await fetch(new URL("/api/cron/share-image-cleanup", deploymentBaseUrl), {
+          headers: { ...deployedHeaders, authorization: `Bearer ${cronSecret}` },
+        }),
+      );
+    }
     return guestTripId;
   } finally {
     if (browser) await browser.close();
+    if (browserTlsProxy) await browserTlsProxy.close();
     if (server) await stopChild(server, { processGroup: true });
   }
   process.stdout.write(

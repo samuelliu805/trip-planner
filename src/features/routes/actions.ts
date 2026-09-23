@@ -7,6 +7,7 @@ import { serializeRoutesV1CalculatedLegs } from "@/lib/providers/routes/persiste
 import { resolveRouteProvider } from "@/lib/providers/routes/resolver.server";
 import type { CalculatedRouteLeg } from "@/lib/providers/routes/types";
 import { getRelationalDatabase } from "@/platform/composition/server";
+import { retryTransientRead } from "@/platform/transient-read";
 import type { Json } from "@/types/database";
 
 import { loadRouteWorkspace, routeActionError, withCalculatedRoute } from "./action-support";
@@ -137,9 +138,9 @@ export async function calculateDayRoute(
 
   try {
     const database = await getRelationalDatabase();
-    const { data: owner, error: ownerError } = await database.rpc("can_edit_trip", {
-      target_trip_id: parsed.data.tripId,
-    });
+    const { data: owner, error: ownerError } = await retryTransientRead(async () =>
+      database.rpc("can_edit_trip", { target_trip_id: parsed.data.tripId }),
+    );
     if (ownerError || !owner) throw new Error("Trip edit access required.");
 
     const workspace = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);
@@ -218,9 +219,9 @@ export async function calculateOverviewRoute(
 
   try {
     const database = await getRelationalDatabase();
-    const { data: owner, error: ownerError } = await database.rpc("can_edit_trip", {
-      target_trip_id: parsed.data.tripId,
-    });
+    const { data: owner, error: ownerError } = await retryTransientRead(async () =>
+      database.rpc("can_edit_trip", { target_trip_id: parsed.data.tripId }),
+    );
     if (ownerError || !owner) throw new Error("Trip edit access required.");
 
     const workspace = await loadRouteWorkspace(parsed.data.tripId, parsed.data.variantId);

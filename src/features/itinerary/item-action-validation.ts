@@ -8,7 +8,7 @@ import {
   neighboringCityError,
   prospectiveNeighboringCityConflict,
 } from "@/features/routes/city-order";
-import { getRelationalDatabase } from "@/platform/composition/server";
+import { getRelationalDatabase, runServerReads } from "@/platform/composition/server";
 
 export function prospectiveCityError(
   workspace: PlannerWorkspace,
@@ -49,19 +49,21 @@ export function prospectiveCityError(
 export async function validateVariantDay(tripId: string, variantId: string, dayId: string) {
   const database = await getRelationalDatabase();
   const [{ data: variant, error: variantError }, { data: day, error: dayError }] =
-    await Promise.all([
-      database
-        .from("route_variants")
-        .select("id")
-        .eq("id", variantId)
-        .eq("trip_id", tripId)
-        .maybeSingle(),
-      database
-        .from("trip_days")
-        .select("id")
-        .eq("id", dayId)
-        .eq("variant_id", variantId)
-        .maybeSingle(),
+    await runServerReads([
+      () =>
+        database
+          .from("route_variants")
+          .select("id")
+          .eq("id", variantId)
+          .eq("trip_id", tripId)
+          .maybeSingle(),
+      () =>
+        database
+          .from("trip_days")
+          .select("id")
+          .eq("id", dayId)
+          .eq("variant_id", variantId)
+          .maybeSingle(),
     ]);
   if (variantError || dayError || !variant || !day)
     return mutationError(

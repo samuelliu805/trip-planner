@@ -68,6 +68,11 @@ test("regional environments do not expose opposite-provider credentials", () => 
   }
   assert.equal(global.NEXT_PUBLIC_MAPS_PROVIDER, "google");
   assert.equal(cn.NEXT_PUBLIC_MAPS_PROVIDER, "amap");
+  assert.equal(global.APP_DEPLOYMENT_ID, "e2e-global");
+  assert.equal(cn.APP_DEPLOYMENT_ID, "e2e-cn");
+  assert.equal(Buffer.from(global.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY, "base64").length, 32);
+  assert.equal(Buffer.from(cn.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY, "base64").length, 32);
+  assert.notEqual(global.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY, cn.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY);
   assert.equal(cn.NEXT_PUBLIC_CLOUDBASE_ENV_ID, approvedCloudBaseTarget.CLOUDBASE_ENV_ID);
   assert.equal(global.HOME, "/tmp/test-home");
 });

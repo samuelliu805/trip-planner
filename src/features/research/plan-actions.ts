@@ -1,6 +1,6 @@
 "use server";
 
-import { getRelationalDatabase } from "@/platform/composition/server";
+import { getRelationalDatabase, runServerReads } from "@/platform/composition/server";
 
 import { firstIssue, researchDomainError, revalidateResearch } from "./action-helpers";
 import { researchApplicationSchema, researchApplySchema } from "./schema";
@@ -56,20 +56,22 @@ export async function applyResearchItem(input: {
     operationId: parsed.data.operationId,
     result: { data: result },
   });
-  const [application, selection] = await Promise.all([
-    database
-      .from("research_plan_applications")
-      .select("*")
-      .eq("id", result.applicationId)
-      .eq("trip_id", parsed.data.tripId)
-      .maybeSingle(),
-    database
-      .from("variant_research_selections")
-      .select("*")
-      .eq("trip_id", parsed.data.tripId)
-      .eq("route_variant_id", parsed.data.variantId)
-      .eq("research_item_id", parsed.data.researchItemId)
-      .maybeSingle(),
+  const [application, selection] = await runServerReads([
+    () =>
+      database
+        .from("research_plan_applications")
+        .select("*")
+        .eq("id", result.applicationId)
+        .eq("trip_id", parsed.data.tripId)
+        .maybeSingle(),
+    () =>
+      database
+        .from("variant_research_selections")
+        .select("*")
+        .eq("trip_id", parsed.data.tripId)
+        .eq("route_variant_id", parsed.data.variantId)
+        .eq("research_item_id", parsed.data.researchItemId)
+        .maybeSingle(),
   ]);
   if (application.error || !application.data || selection.error || !selection.data)
     return { error: "The Plan changed, but its saved change record could not be refreshed." };

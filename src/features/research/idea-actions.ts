@@ -255,7 +255,7 @@ const applySingleSchema = z.object({
 
 export async function applySingleIdea(
   input: z.input<typeof applySingleSchema>,
-): Promise<ResearchMutationResult<{ status: string; itemId?: string }>> {
+): Promise<ResearchMutationResult<{ status: string; itemId?: string; itemIds?: string[] }>> {
   const parsed = applySingleSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid idea." };
   const database = await getRelationalDatabase();
@@ -268,7 +268,13 @@ export async function applySingleIdea(
     target_operation_id: parsed.data.operationId,
   });
   if (error || !data) return { error: error?.message ?? "The idea could not be added to Plan." };
-  const result = z.object({ status: z.string(), itemId: z.uuid().optional() }).safeParse(data);
+  const result = z
+    .object({
+      status: z.string(),
+      itemId: z.uuid().optional(),
+      itemIds: z.array(z.uuid()).optional(),
+    })
+    .safeParse(data);
   if (!result.success) return { error: "The Plan changed, but its result could not be read." };
   revalidatePath(`/trips/${parsed.data.tripId}`);
   return { data: result.data };

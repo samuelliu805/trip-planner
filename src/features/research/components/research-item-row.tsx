@@ -92,6 +92,7 @@ export function ResearchItemRow({
     route ??
     item.location_text ??
     (item.source_url ? sourceLabel(item.source_url) : item.note);
+  const displayTitle = title || t("idea");
   const dates = dateSummary(item, locale);
   const flights = Array.isArray(item.segments)
     ? item.segments
@@ -109,12 +110,19 @@ export function ResearchItemRow({
     !item.location_place_id;
 
   return (
-    <article className="min-w-0 rounded-2xl border bg-card p-4 shadow-sm">
+    <article className="min-w-0 bg-card px-4 py-4">
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h3 className="research-safe-wrap text-base font-semibold">{title}</h3>
-            <span className="rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-sm font-semibold text-primary">
+            <button
+              aria-label={t("Edit {item}", { item: displayTitle })}
+              className="research-safe-wrap rounded-sm text-left text-base font-semibold outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={() => setEditOpen(true)}
+              type="button"
+            >
+              {displayTitle}
+            </button>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-sm font-semibold text-primary">
               <T message={categoryLabel(item.category)} />
             </span>
           </div>

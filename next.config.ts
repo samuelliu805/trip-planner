@@ -9,6 +9,11 @@ import { resolveDeploymentProviderConfig } from "./src/platform/config/provider-
 const deploymentProviders = resolveDeploymentProviderConfig(process.env);
 const providerSuffix = deploymentProviders.appRegion === "cn" ? "cloudbase" : "supabase";
 const mapSuffix = deploymentProviders.appRegion === "cn" ? "amap" : "google";
+const deploymentIdCandidate =
+  process.env.APP_DEPLOYMENT_ID?.trim() || process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+if (deploymentIdCandidate && !/^[A-Za-z0-9._-]{1,100}$/.test(deploymentIdCandidate)) {
+  throw new Error("APP_DEPLOYMENT_ID must be 1-100 URL-safe characters.");
+}
 const selectedAliases = {
   "@/lib/providers/maps/planner-map-canvas-selected": `./src/lib/providers/maps/planner-map-canvas-${mapSuffix}.tsx`,
   "@/lib/providers/maps/planner-map-provider-selected": `./src/lib/providers/maps/planner-map-provider-${mapSuffix}.tsx`,
@@ -18,6 +23,7 @@ const selectedAliases = {
 } as const;
 
 const nextConfig: NextConfig = {
+  deploymentId: deploymentIdCandidate?.slice(0, 32) || undefined,
   output: "standalone",
   poweredByHeader: false,
   turbopack: { resolveAlias: selectedAliases },

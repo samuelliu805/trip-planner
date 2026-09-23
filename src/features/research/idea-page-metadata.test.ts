@@ -2,6 +2,23 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { fetchIdeaPageMetadata, parseIdeaPageMetadata } from "./idea-page-metadata.ts";
+import { propertyTitleFromIdeaSourceUrl } from "./idea-provider-url.ts";
+
+test("derives Booking and Hilton property titles synchronously from their URLs", () => {
+  assert.equal(
+    propertyTitleFromIdeaSourceUrl(
+      "https://www.booking.com/hotel/jp/kobe-bay-sheraton-hotel-and-towers.zh-cn.html?checkin=2026-12-24&checkout=2026-12-26",
+    ),
+    "Kobe Bay Sheraton Hotel and Towers",
+  );
+  assert.equal(
+    propertyTitleFromIdeaSourceUrl(
+      "https://www.hilton.com/en/hotels/lasflgv-hilton-grand-vacations-club-flamingo-las-vegas/",
+    ),
+    "Hilton Grand Vacations Club Flamingo Las Vegas",
+  );
+  assert.equal(propertyTitleFromIdeaSourceUrl("https://example.com/hotel/example"), null);
+});
 
 test("reads a public Airbnb listing title and locality from provider metadata", () => {
   const html = `<html><head>
@@ -130,5 +147,67 @@ test("stops reading after 256 KiB and ignores unavailable pages", async () => {
   assert.equal(
     (await fetchIdeaPageMetadata("https://www.airbnb.com/rooms/38158914", blocked)).status,
     "unavailable",
+  );
+});
+
+test("recovers Booking and Hilton property names from their canonical paths when blocked", async () => {
+  const blocked: typeof fetch = async () => new Response("Access denied", { status: 403 });
+  assert.deepEqual(
+    await fetchIdeaPageMetadata(
+      "https://www.booking.com/hotel/jp/kobe-bay-sheraton-hotel-and-towers.zh-cn.html?checkin=2026-12-24&checkout=2026-12-26",
+      blocked,
+    ),
+    {
+      title: "Kobe Bay Sheraton Hotel and Towers",
+      locationText: null,
+      priceAmount: null,
+      priceCurrency: null,
+      status: "readable",
+    },
+  );
+  assert.deepEqual(
+    await fetchIdeaPageMetadata(
+      "https://www.hilton.com/en/hotels/lasflgv-hilton-grand-vacations-club-flamingo-las-vegas/",
+      async () =>
+        new Response("<title>Hilton Page Reference Code</title>", {
+          headers: { "content-type": "text/html" },
+        }),
+    ),
+    {
+      title: "Hilton Grand Vacations Club Flamingo Las Vegas",
+      locationText: null,
+      priceAmount: null,
+      priceCurrency: null,
+      status: "readable",
+    },
+  );
+});
+
+test("provider shell titles cannot replace a property name recovered from the URL", async () => {
+  const providerShell: typeof fetch = async (input) =>
+    new Response(
+      String(input).includes("booking.com")
+        ? '<meta property="og:title" content="Booking.com: Hotels and more">'
+        : '<meta property="og:title" content="Hilton Hotels official site">',
+      { headers: { "content-type": "text/html" } },
+    );
+
+  assert.equal(
+    (
+      await fetchIdeaPageMetadata(
+        "https://www.booking.com/hotel/jp/kobe-bay-sheraton-hotel-and-towers.zh-cn.html",
+        providerShell,
+      )
+    ).title,
+    "Kobe Bay Sheraton Hotel and Towers",
+  );
+  assert.equal(
+    (
+      await fetchIdeaPageMetadata(
+        "https://www.hilton.com/en/hotels/lasflgv-hilton-grand-vacations-club-flamingo-las-vegas/",
+        providerShell,
+      )
+    ).title,
+    "Hilton Grand Vacations Club Flamingo Las Vegas",
   );
 });
