@@ -12,8 +12,13 @@ import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
 import { getPlanResearchItems, getResearchPlanState } from "@/features/research/data";
 import { getExchangeRateTable } from "@/features/research/exchange-rates.server";
-import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
+import {
+  getAuthProvider,
+  getBackendCapabilities,
+  runServerReads,
+} from "@/platform/composition/server";
 import { appUserIdentityLabel } from "@/platform/contracts/auth";
+import { retryTransientRead } from "@/platform/transient-read";
 
 type TripPageProps = {
   params: Promise<{ tripId: string }>;
@@ -31,16 +36,16 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   if (!tripIdSchema.safeParse(tripId).success) notFound();
 
   const [
-    { data: trip, error },
-    variantsResult,
-    researchItemsResult,
+    [{ data: trip, error }, variantsResult, researchItemsResult],
     query,
     exchangeRates,
     siteUrl,
   ] = await Promise.all([
-    getTrip(tripId),
-    getPlannerVariants(tripId),
-    getPlanResearchItems(tripId),
+    runServerReads([
+      () => retryTransientRead(() => getTrip(tripId)),
+      () => retryTransientRead(() => getPlannerVariants(tripId)),
+      () => retryTransientRead(() => getPlanResearchItems(tripId)),
+    ]),
     searchParams,
     getExchangeRateTable(),
     getRequestSiteUrl(),
@@ -52,12 +57,30 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
   if (researchItemsResult.error || !researchItemsResult.data)
     throw new Error(researchItemsResult.error ?? "Research items could not be loaded.");
 
-  const resolution = resolveActiveVariant(variantsResult.data, query.variant);
+  let variants = variantsResult.data;
+  const resolution = resolveActiveVariant(variants, query.variant);
   if (!resolution.activeVariant) throw new Error(resolution.error);
-  const [workspaceResult, planState] = await Promise.all([
-    getPlannerWorkspace(tripId, resolution.activeVariant.id),
-    getResearchPlanState(tripId, resolution.activeVariant.id),
+  let activeVariantId = resolution.activeVariant.id;
+  let [workspaceResult, planState] = await runServerReads([
+    () => retryTransientRead(() => getPlannerWorkspace(tripId, activeVariantId)),
+    () => retryTransientRead(() => getResearchPlanState(tripId, activeVariantId)),
   ]);
+  if (
+    !workspaceResult.data &&
+    workspaceResult.error === "The selected route variant was not found."
+  ) {
+    const latestVariants = await retryTransientRead(() => getPlannerVariants(tripId));
+    if (latestVariants.error || !latestVariants.data)
+      throw new Error(latestVariants.error ?? "The route variants could not be loaded.");
+    const latestResolution = resolveActiveVariant(latestVariants.data, query.variant);
+    if (!latestResolution.activeVariant) throw new Error(latestResolution.error);
+    variants = latestVariants.data;
+    activeVariantId = latestResolution.activeVariant.id;
+    [workspaceResult, planState] = await runServerReads([
+      () => retryTransientRead(() => getPlannerWorkspace(tripId, activeVariantId)),
+      () => retryTransientRead(() => getResearchPlanState(tripId, activeVariantId)),
+    ]);
+  }
   const { data: workspace, error: workspaceError } = workspaceResult;
   if (workspaceError || !workspace)
     throw new Error(workspaceError ?? "The selected route variant could not be loaded.");
@@ -79,7 +102,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
             initialResearchSelections={planState.selections}
             initialEditorItemId={query.item}
             initialSettingsOpen={query.settings === "1"}
-            initialVariants={variantsResult.data}
+            initialVariants={variants}
             initialWorkspace={workspace}
             trip={trip}
             deleteError={query.error === "delete"}
@@ -93,7 +116,7 @@ export default async function TripPage({ params, searchParams }: TripPageProps) 
                   renderTrigger={false}
                   siteUrl={siteUrl}
                   trip={trip}
-                  variants={variantsResult.data}
+                  variants={variants}
                 />
               ) : null
             }

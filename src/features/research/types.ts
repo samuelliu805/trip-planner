@@ -37,6 +37,7 @@ export type ResearchSegment = {
   departureTime?: string | null;
   destination: string;
   origin: string;
+  journeyIndex?: number;
   serviceNumber?: string | null;
 };
 export type ResearchPlace = PlaceSnapshot & { id: string };

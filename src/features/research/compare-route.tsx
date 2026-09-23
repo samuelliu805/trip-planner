@@ -10,8 +10,13 @@ import { getPlannerVariants } from "@/features/itinerary/data";
 import { getTrip } from "@/features/trips/data";
 import { tripIdSchema } from "@/features/trips/schema";
 import { resolveActiveVariant } from "@/features/variants/active";
-import { getAuthProvider, getBackendCapabilities } from "@/platform/composition/server";
+import {
+  getAuthProvider,
+  getBackendCapabilities,
+  runServerReads,
+} from "@/platform/composition/server";
 import { appUserIdentityLabel } from "@/platform/contracts/auth";
+import { retryTransientRead } from "@/platform/transient-read";
 
 import { CompareWorkspace } from "./components/compare-workspace";
 import { TripDetailRoute } from "./components/trip-detail-route";
@@ -33,11 +38,13 @@ export async function ResearchCompareRoute({
   query: ResearchCompareQuery;
   tripId: string;
 }) {
-  const [{ data: trip, error }, variantsResult, itemsResult, user, siteUrl] = await Promise.all([
-    getTrip(tripId),
-    getPlannerVariants(tripId),
-    getCompareItems(tripId),
-    getAuthProvider().getCurrentUser(),
+  const [[{ data: trip, error }, variantsResult, itemsResult], user, siteUrl] = await Promise.all([
+    runServerReads([
+      () => retryTransientRead(() => getTrip(tripId)),
+      () => retryTransientRead(() => getPlannerVariants(tripId)),
+      () => retryTransientRead(() => getCompareItems(tripId)),
+    ]),
+    retryTransientRead(() => getAuthProvider().getCurrentUser()),
     getRequestSiteUrl(),
   ]);
   if (error || !trip) notFound();
@@ -49,10 +56,13 @@ export async function ResearchCompareRoute({
   const resolution = resolveActiveVariant(variantsResult.data, query.variant);
   if (!resolution.activeVariant) throw new Error(resolution.error);
   const sharingEnabled = getBackendCapabilities().signedUrls;
-  const [planResult, planState, shareLinks] = await Promise.all([
-    getResearchPlanSnapshot(trip.id, resolution.activeVariant.id),
-    getResearchPlanState(trip.id, resolution.activeVariant.id),
-    sharingEnabled ? listPublicItineraryLinks(trip.id) : Promise.resolve({ data: [], error: null }),
+  const [planResult, planState, shareLinks] = await runServerReads([
+    () => retryTransientRead(() => getResearchPlanSnapshot(trip.id, resolution.activeVariant.id)),
+    () => retryTransientRead(() => getResearchPlanState(trip.id, resolution.activeVariant.id)),
+    () =>
+      sharingEnabled
+        ? retryTransientRead(() => listPublicItineraryLinks(trip.id))
+        : Promise.resolve({ data: [], error: null }),
   ]);
   if (planResult.error || !planResult.data)
     throw new Error(planResult.error ?? "The selected Plan could not be loaded.");

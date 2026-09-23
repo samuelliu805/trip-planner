@@ -25,6 +25,7 @@ import {
 import { SupabaseTripRepository } from "@/platform/supabase/trip-repository";
 
 import { providerOperationUnavailable } from "./unavailable";
+export { runParallelServerReads as runServerReads } from "@/platform/server-read-scheduling";
 
 export function getBackendCapabilities() {
   return capabilitiesForRegion("global");

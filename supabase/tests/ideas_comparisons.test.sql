@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 grant insert on public.research_items to authenticated;
 grant execute on function public.create_trip(text,date,date,text,text,integer) to authenticated;
-select plan(13);
+select plan(18);
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -97,6 +97,46 @@ select is((select count(*)::int from public.idea_comparison_plan_items), 2,
 select is((select count(*)::int from public.itinerary_items
   where variant_id = (select id from ideas_state where key = 'variant')), 3,
   'switch retains unrelated Activity Plan item');
+
+insert into public.research_items (
+  id, trip_id, category, title, start_date, end_date, origin_text, destination_text,
+  journey_type, segments, total_price_amount, currency
+) values (
+  '7d100000-0000-4000-8000-000000000005',
+  (select id from ideas_state where key = 'trip'),
+  'flight', 'Shanghai to Milan return', '2026-10-01', '2026-10-03', 'PVG', 'MXP',
+  'round_trip',
+  '[{"origin":"PVG","destination":"IST","departureDate":"2026-10-01","carrier":"TK","serviceNumber":"27","journeyIndex":0},
+    {"origin":"IST","destination":"MXP","departureDate":"2026-10-01","carrier":"TK","serviceNumber":"1873","journeyIndex":0},
+    {"origin":"MXP","destination":"IST","departureDate":"2026-10-03","carrier":"TK","serviceNumber":"1874","journeyIndex":1},
+    {"origin":"IST","destination":"PVG","departureDate":"2026-10-03","carrier":"TK","serviceNumber":"26","journeyIndex":1}]'::jsonb,
+  900, 'USD'
+);
+select is((public.apply_single_idea_v1(
+  (select id from ideas_state where key = 'trip'),
+  (select id from ideas_state where key = 'variant'),
+  '7d100000-0000-4000-8000-000000000005', null, null, gen_random_uuid()
+)->>'status'), 'applied', 'a round trip enters Plan');
+select is((select count(*)::int from public.idea_single_plan_items
+  where research_item_id = '7d100000-0000-4000-8000-000000000005'), 2,
+  'one source tracks both direction items');
+select results_eq(
+  $$select title from public.itinerary_items
+    where details ->> 'ideaResearchItemId' = '7d100000-0000-4000-8000-000000000005'
+    order by details ->> 'ideaJourneyIndex'$$,
+  $$values ('PVG → MXP'::text), ('MXP → PVG'::text)$$,
+  'round trip directions are separate Plan items while stopovers stay grouped'
+);
+select is((select sum(price_amount) from public.itinerary_items
+  where details ->> 'ideaResearchItemId' = '7d100000-0000-4000-8000-000000000005'),
+  900::numeric, 'the total fare is counted once');
+select results_eq(
+  $$select details ->> 'serviceNumber' from public.itinerary_items
+    where details ->> 'ideaResearchItemId' = '7d100000-0000-4000-8000-000000000005'
+    order by details ->> 'ideaJourneyIndex'$$,
+  $$values ('TK 27 / TK 1873'::text), ('TK 1874 / TK 26'::text)$$,
+  'each direction retains every connecting flight'
+);
 
 select set_config(
   'request.jwt.claims',

@@ -281,16 +281,28 @@ async function startApplicationIfRequested() {
   child.stderr.on("data", capture);
   const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
-    if (child.exitCode !== null) {
+    if (child.exitCode !== null || child.signalCode !== null) {
       throw new Error(
-        `Next.js exited before becoming ready (${child.exitCode}). ${safeApplicationDiagnostics(applicationServerDiagnostics)}`,
+        `Next.js exited before becoming ready (${child.exitCode ?? child.signalCode}). ${safeApplicationDiagnostics(applicationServerDiagnostics)}`,
       );
     }
+    let response;
     try {
-      const response = await fetch(new URL("/login", baseUrl));
-      if (response.ok) return child;
+      response = await fetch(new URL("/login", baseUrl));
     } catch {
       // The production server is still starting.
+    }
+    if (response?.ok) {
+      // A stale server can answer this request while the process we just spawned is
+      // still reporting EADDRINUSE. Give the owned child one event-loop window to
+      // prove that it is the server accepting requests before creating fixtures.
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      if (child.exitCode !== null || child.signalCode !== null) {
+        throw new Error(
+          `Next.js exited after the readiness probe (${child.exitCode ?? child.signalCode}). ${safeApplicationDiagnostics(applicationServerDiagnostics)}`,
+        );
+      }
+      return child;
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
@@ -792,23 +804,48 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   await waitFor(
     browser,
-    `Boolean(document.querySelector('[role="dialog"] select'))`,
+    `Boolean(document.querySelector('[role="dialog"] [role="combobox"]'))`,
     "dated Google flight Plan day choice",
   );
+  await clickElement(
+    browser,
+    `document.querySelector('[role="dialog"] [role="combobox"]')`,
+    "open dated Google flight Plan day choices",
+  );
+  await waitFor(browser, `Boolean(document.querySelector('[role="option"]'))`, "Plan day options");
   assert.equal(
     await evaluate(
       browser,
       `(() => {
-        const select = document.querySelector('[role="dialog"] select');
-        const option = [...(select?.options ?? [])].find((entry) => entry.value);
-        if (!(select instanceof HTMLSelectElement) || !option) return false;
-        select.value = option.value;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
+        const option = [...document.querySelectorAll('[role="option"]')]
+          .find((entry) => entry.getClientRects().length);
+        option?.focus();
+        return document.activeElement === option;
       })()`,
     ),
     true,
-    "A Plan day was unavailable for the dated Google flight.",
+    "A Plan day option could not receive focus.",
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Enter", key: "Enter", type: "keyUp", windowsVirtualKeyCode: 13 },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[role="option"]')`,
+    "selected dated Google flight Plan day",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    "dated Google flight Plan confirmation readiness",
   );
   await clickElement(
     browser,
@@ -835,14 +872,21 @@ async function verifyTripSectionNavigation(browser, tripId) {
   await waitFor(
     browser,
     `document.body.innerText.includes('PVG – HND') &&
-      document.body.innerText.includes('NH 972 / NH 967')`,
-    "dated Google flight visible in CN Plan",
+      document.body.innerText.includes('HND – PVG') &&
+      document.body.innerText.includes('NH 972') &&
+      document.body.innerText.includes('NH 967')`,
+    "both dated Google flight directions visible in CN Plan",
   );
   await navigate(browser, `/trips/${tripId}/compare/flights`);
   await waitFor(browser, `Boolean(document.querySelector('textarea'))`, "Ideas capture input");
+  await waitForReactHydration(
+    browser,
+    `document.querySelector('textarea')`,
+    "hydrated Ideas capture input",
+  );
 
   const bookingUrl =
-    "https://www.booking.com/searchresults.html?ss=Paris&checkin=2026-10-23&checkout=2026-10-25";
+    "https://www.booking.com/hotel/jp/kobe-bay-sheraton-hotel-and-towers.zh-cn.html?checkin=2026-12-24&checkout=2026-12-26";
   assert.equal(
     await evaluate(
       browser,
@@ -860,9 +904,15 @@ async function verifyTripSectionNavigation(browser, tripId) {
   );
   await waitFor(
     browser,
-    `document.body.innerText.includes('Paris') &&
-      document.body.innerText.includes('2026-10-23 – 2026-10-25')`,
-    "Booking.com parsed place and dates",
+    `document.querySelector('textarea')?.value === ${JSON.stringify(bookingUrl)} &&
+      [...document.querySelectorAll('button')].some((button) => button.textContent.includes('Save Stay'))`,
+    "hydrated Booking.com classification",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Kobe Bay Sheraton Hotel and Towers') &&
+      document.body.innerText.includes('2026-12-24 – 2026-12-26')`,
+    "Booking.com property path and dates",
   );
   await clickElement(
     browser,
@@ -873,8 +923,9 @@ async function verifyTripSectionNavigation(browser, tripId) {
   await waitFor(
     browser,
     `Boolean([...document.querySelectorAll('article')].find((item) =>
-      item.innerText.includes('Paris') && item.innerText.includes('Oct 23')))`,
-    "saved Booking.com place and dates",
+      item.innerText.includes('Kobe Bay Sheraton Hotel and Towers') &&
+      item.innerText.includes('Dec 24')))`,
+    "saved Booking.com property and dates",
     45_000,
   );
   for (const { height, width } of [
@@ -957,8 +1008,12 @@ async function verifyTripSectionNavigation(browser, tripId) {
     })()`,
   );
   assert.equal(comparisonLayout.activeInput, false, "Comparison focused its optional name.");
-  assert.equal(comparisonLayout.assignmentTouchTargets, true);
-  assert.equal(comparisonLayout.documentFits, true);
+  assert.equal(
+    comparisonLayout.assignmentTouchTargets,
+    true,
+    "Comparison assignment controls were below the 44px touch target.",
+  );
+  assert.equal(comparisonLayout.documentFits, true, "Comparison caused horizontal page overflow.");
   assert.equal(comparisonLayout.fits, true, "Comparison escaped the 390px viewport.");
   await browser.cdp.send(
     "Input.dispatchKeyEvent",
@@ -1006,11 +1061,20 @@ async function verifyTripSectionNavigation(browser, tripId) {
         .eq("booking_url", googleFlightsBookingSample),
     "applied Google Flights booking item",
   );
-  assert.equal(appliedFlight.length, 1);
-  assert.equal(appliedFlight[0].details.ideaResearchItemId, bookedFlight[0].id);
-  assert.equal(appliedFlight[0].details.origin, "PVG");
-  assert.equal(appliedFlight[0].details.destination, "HND");
-  assert.equal(appliedFlight[0].details.serviceNumber, "NH 972 / NH 967");
+  assert.equal(appliedFlight.length, 2);
+  assert.equal(
+    appliedFlight.every((item) => item.details.ideaResearchItemId === bookedFlight[0].id),
+    true,
+    "A split Google Flights direction lost its source Idea reference.",
+  );
+  assert.deepEqual(
+    appliedFlight.map((item) => `${item.details.origin} → ${item.details.destination}`).sort(),
+    ["HND → PVG", "PVG → HND"],
+  );
+  assert.deepEqual(appliedFlight.map((item) => item.details.serviceNumber).sort(), [
+    "NH 967",
+    "NH 972",
+  ]);
   const savedBooking = await controlledData(
     () =>
       db
@@ -1021,7 +1085,11 @@ async function verifyTripSectionNavigation(browser, tripId) {
     "saved Booking.com parsed fields",
   );
   assert.deepEqual(savedBooking, [
-    { location_text: "Paris", start_date: "2026-10-23", end_date: "2026-10-25" },
+    {
+      end_date: "2026-12-26",
+      location_text: "Kobe Bay Sheraton Hotel and Towers",
+      start_date: "2026-12-24",
+    },
   ]);
 
   await clickElement(
@@ -1354,14 +1422,20 @@ async function saveWalkingTransportThroughUi(browser) {
   }
 }
 
-async function openSavedItemEditor(browser, cell, itemIndex = 0) {
-  const rowExpression = `[...document.querySelectorAll('[data-cell="${cell}"] [data-edit-item]')]
-    .filter((item) => item.getClientRects().length)[${itemIndex}]`;
-  await clickElement(browser, rowExpression, `saved item ${cell}:${itemIndex}`);
+async function openSavedItemEditor(browser, cell, item = 0) {
+  const itemLabel = typeof item === "string" ? item : String(item);
+  const rowExpression =
+    typeof item === "string"
+      ? `[...document.querySelectorAll('[data-cell="${cell}"] [data-edit-item]')]
+        .find((candidate) => candidate.getClientRects().length &&
+          candidate.textContent.includes(${JSON.stringify(item)}))`
+      : `[...document.querySelectorAll('[data-cell="${cell}"] [data-edit-item]')]
+        .filter((candidate) => candidate.getClientRects().length)[${item}]`;
+  await clickElement(browser, rowExpression, `saved item ${cell}:${itemLabel}`);
   await clickElement(
     browser,
     `(${rowExpression})?.parentElement?.querySelector('button[aria-label^="Actions for"]')`,
-    `saved item actions ${cell}:${itemIndex}`,
+    `saved item actions ${cell}:${itemLabel}`,
   );
   await waitFor(
     browser,
@@ -1401,6 +1475,7 @@ async function chooseVisiblePlaceSuggestion(browser, inputSelector, query, label
 }
 
 async function verifyMobileTransportEditorScroll(browser) {
+  let currentMode = "Walking";
   for (const { height, width } of [
     { height: 844, width: 390 },
     { height: 932, width: 430 },
@@ -1410,7 +1485,7 @@ async function verifyMobileTransportEditorScroll(browser) {
       { deviceScaleFactor: 2, height, mobile: true, width },
       browser.sessionId,
     );
-    await openSavedItemEditor(browser, "0-2", 1);
+    await openSavedItemEditor(browser, "0-2", currentMode);
     await clickElement(
       browser,
       `document.querySelector('button[id^="transport-mode-"]')`,
@@ -1499,13 +1574,14 @@ async function verifyMobileTransportEditorScroll(browser) {
       `${width}px mobile transport Save action was obstructed: ${JSON.stringify(actionEvidence)}.`,
     );
     await saveOpenItemEditor(browser, `${width}px mobile transport edit`);
+    currentMode = "Bus";
   }
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
     browser.sessionId,
   );
-  await openSavedItemEditor(browser, "0-2", 1);
+  await openSavedItemEditor(browser, "0-2", currentMode);
   await clickElement(
     browser,
     `document.querySelector('button[id^="transport-mode-"]')`,
@@ -2365,13 +2441,44 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
   );
   assert.deepEqual(primary, [{ id: createdVariant.createdVariantId, is_primary: true }]);
 
+  await waitFor(
+    browser,
+    `![...document.querySelectorAll('[role="dialog"] [role="status"]')]
+      .some((node) => node.textContent.includes('is now the primary Plan.'))`,
+    "Set Primary success notice dismissed before restoring the original",
+    15_000,
+  );
   await clickButtonText(browser, "Set as primary");
   await waitFor(
     browser,
     `[...document.querySelectorAll('[role="dialog"] [role="status"]')]
-      .some((node) => node.textContent.includes('is now the primary Plan.')) &&
-      Boolean(document.querySelector(${JSON.stringify(`button[aria-label="Delete ${v2Name}"]`)}))`,
-    "restore original primary Plan",
+      .some((node) => node.textContent.includes('is now the primary Plan.'))`,
+    "restore original primary Plan result",
+    45_000,
+  );
+  const restoredPrimary = await controlledData(
+    () =>
+      db
+        .from("route_variants")
+        .select("id,is_primary")
+        .in("id", [createdVariant.priorVariantId, createdVariant.createdVariantId])
+        .order("id"),
+    "restore original primary Plan evidence",
+  );
+  assert.equal(
+    restoredPrimary.find(({ id }) => id === createdVariant.priorVariantId)?.is_primary,
+    true,
+    "The original Plan was not restored as primary.",
+  );
+  assert.equal(
+    restoredPrimary.find(({ id }) => id === createdVariant.createdVariantId)?.is_primary,
+    false,
+    "The temporary Plan remained primary after restoration.",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector(${JSON.stringify(`button[aria-label="Delete ${v2Name}"]`)}))`,
+    "restored primary Plan controls",
     45_000,
   );
   await clickButtonText(browser, "Done");
@@ -2456,6 +2563,17 @@ async function verifyVariantDeleteConflictReloadThroughUi(browser, tripId, creat
         variant_name: v2Name,
       }),
     "Plan delete conflict V2 update",
+  );
+  const after = await controlledData(
+    () =>
+      db.from("route_variants").select("id,name,version").eq("id", createdVariant.createdVariantId),
+    "Plan delete conflict V2 evidence",
+  );
+  assert.equal(after.length, 1, "The conflict Plan disappeared during its V2 update.");
+  assert.equal(after[0].name, v2Name, "The conflict Plan V2 name was not persisted.");
+  assert.ok(
+    after[0].version > before[0].version,
+    "The conflict Plan V2 update did not advance its version.",
   );
 
   await clickButtonText(browser, "Delete Plan");
@@ -2542,21 +2660,42 @@ function browserSessionIdentityLabel(username) {
 }
 
 async function login(browser, username, password) {
-  await setCookie(browser, "trip-planner-locale", "en");
-  let session = browserSessions.get(username);
-  if (!session) {
-    const config = loadLiveConfig();
-    const { auth } = initializeLiveClient(config);
-    session = await signInSession(auth, username, password);
-    browserSessions.set(username, session);
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await clearCookies(browser);
+      await setCookie(browser, "trip-planner-locale", "en");
+      let session = browserSessions.get(username);
+      if (!session) {
+        const config = loadLiveConfig();
+        const { auth } = initializeLiveClient(config);
+        session = await signInSession(auth, username, password);
+        browserSessions.set(username, session);
+      }
+      assert.equal(
+        typeof session?.access_token,
+        "string",
+        "Controlled login lacks an access token.",
+      );
+      assert.equal(
+        typeof session?.refresh_token,
+        "string",
+        "Controlled login lacks a refresh token.",
+      );
+      const cookieOptions = { httpOnly: true, sameSite: "Lax" };
+      await setCookie(browser, "tp-cn-access-token", session.access_token, cookieOptions);
+      await setCookie(browser, "tp-cn-refresh-token", session.refresh_token, cookieOptions);
+      await navigate(browser, "/trips");
+      await waitFor(browser, 'location.pathname === "/trips"', `${username} login`, 20_000);
+      return;
+    } catch (error) {
+      lastError = error;
+      browserSessions.delete(username);
+      await clearCookies(browser);
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
   }
-  assert.equal(typeof session?.access_token, "string", "Controlled login lacks an access token.");
-  assert.equal(typeof session?.refresh_token, "string", "Controlled login lacks a refresh token.");
-  const cookieOptions = { httpOnly: true, sameSite: "Lax" };
-  await setCookie(browser, "tp-cn-access-token", session.access_token, cookieOptions);
-  await setCookie(browser, "tp-cn-refresh-token", session.refresh_token, cookieOptions);
-  await navigate(browser, "/trips");
-  await waitFor(browser, 'location.pathname === "/trips"', `${username} login`, 45_000);
+  throw lastError;
 }
 
 async function controlledDataClient(username, password) {
@@ -3156,13 +3295,51 @@ async function verifyAddedActivityRefreshesAmapRoute(browser, tripId, previousEv
     `document.querySelector('button[data-route-update]')`,
     "Update route after adding an activity",
   );
-  await waitFor(
-    browser,
-    `!document.querySelector('button[data-route-update]') &&
-      Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
-    "updated AMap route after adding an activity",
-    60_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      `!document.querySelector('button[data-route-update]') &&
+        Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
+      "updated AMap route after adding an activity",
+      60_000,
+    );
+  } catch (error) {
+    const browserDiagnostic = await evaluate(
+      browser,
+      `({
+        alerts: [...document.querySelectorAll('[role="alert"]')]
+          .filter((element) => element.getClientRects().length)
+          .map((element) => element.textContent?.trim().slice(0, 200))
+          .filter(Boolean)
+          .slice(-3),
+        lineCount: Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount ?? -1),
+        updateAction: (() => {
+          const button = document.querySelector('button[data-route-update]');
+          return button ? {
+            disabled: button.disabled,
+            label: button.getAttribute('aria-label'),
+            text: button.textContent.trim(),
+          } : null;
+        })(),
+      })`,
+    );
+    const persisted = await loadPersistedAmapEvidence(tripId);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; bounded route-refresh diagnostic: ${JSON.stringify(
+        {
+          browser: browserDiagnostic,
+          persisted: {
+            calculationCount: persisted.calculations.length,
+            itemCount: persisted.items.length,
+            legCounts: persisted.calculations.map(({ calculated_legs: legs }) =>
+              Array.isArray(legs) ? legs.length : 0,
+            ),
+            stopCount: persisted.stops.length,
+          },
+        },
+      )}`,
+    );
+  }
   const refreshed = await loadPersistedAmapEvidence(tripId);
   assert.equal(refreshed.stops.length, previousEvidence.stops.length + 1);
   assert.ok(
@@ -3830,7 +4007,13 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, tripId) {
   await closePlannerEditor(browser, "CN Trip settings");
 
   await openTripMenu(browser);
-  await clickButtonText(browser, "History");
+  const historyHref = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] a[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === 'History')?.href`,
+  );
+  assert.equal(new URL(historyHref).pathname, `/trips/${tripId}/history`);
+  await navigate(browser, historyHref);
   await waitFor(
     browser,
     `location.pathname === ${JSON.stringify(`/trips/${tripId}/history`)} &&
@@ -5149,7 +5332,9 @@ async function run() {
     assert.equal(await evaluate(browser, "location.pathname"), "/login");
   } catch (error) {
     const diagnostics = safeApplicationDiagnostics(applicationServerDiagnostics);
-    const message = safeApplicationDiagnostics(error instanceof Error ? error.message : error);
+    const message = safeApplicationDiagnostics(
+      error instanceof Error ? (error.stack ?? error.message) : error,
+    );
     assertionError = diagnostics
       ? new Error(`${message}\nNext.js diagnostics:\n${diagnostics}`, { cause: error })
       : new Error(message, { cause: error });

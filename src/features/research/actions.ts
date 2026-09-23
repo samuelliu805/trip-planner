@@ -1,6 +1,7 @@
 "use server";
 
-import { getRelationalDatabase } from "@/platform/composition/server";
+import { getRelationalDatabase, runServerReads } from "@/platform/composition/server";
+import { retryTransientRead } from "@/platform/transient-read";
 
 import { firstIssue, revalidateResearch } from "./action-helpers";
 import {
@@ -44,10 +45,11 @@ export async function loadResearchWorkspace(input: {
 }): Promise<ResearchMutationResult<ResearchWorkspaceSnapshot>> {
   const parsed = researchWorkspaceSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const [items, plan, state] = await Promise.all([
-    getCompareItems(parsed.data.tripId),
-    getResearchPlanSnapshot(parsed.data.tripId, parsed.data.variantId),
-    getResearchPlanState(parsed.data.tripId, parsed.data.variantId),
+  const [items, plan, state] = await runServerReads([
+    () => retryTransientRead(() => getCompareItems(parsed.data.tripId)),
+    () =>
+      retryTransientRead(() => getResearchPlanSnapshot(parsed.data.tripId, parsed.data.variantId)),
+    () => retryTransientRead(() => getResearchPlanState(parsed.data.tripId, parsed.data.variantId)),
   ]);
   const error = items.error ?? plan.error ?? state.error;
   if (error || !plan.data) return { error: error ?? "Ideas could not be refreshed." };

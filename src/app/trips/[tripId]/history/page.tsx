@@ -21,8 +21,9 @@ import {
   parseHistoryTrail,
 } from "@/features/trips/history-pagination";
 import { tripIdSchema } from "@/features/trips/schema";
-import { getTripRepository } from "@/platform/composition/server";
+import { getTripRepository, runServerReads } from "@/platform/composition/server";
 import type { TripHistoryFilterField } from "@/platform/contracts/trips";
+import { retryTransientRead } from "@/platform/transient-read";
 
 const detailFilterGroups: ReadonlyArray<{
   field: TripHistoryFilterField;
@@ -62,16 +63,19 @@ export default async function TripHistoryPage({
   const selection = historyFilterSelection(query.filter, query.field, query.value);
   const trail = parseHistoryTrail(query.trail);
   const repository = getTripRepository();
-  const [trip, history, filterOptions] = await Promise.all([
-    repository.getById(tripId),
-    repository.listHistory(tripId, {
-      category: selection.category,
-      cursor,
-      filterField: selection.detail.field,
-      filterValue: selection.detail.value || undefined,
-      pageSize: HISTORY_PAGE_SIZE,
-    }),
-    repository.listHistoryFilterOptions(tripId),
+  const [trip, history, filterOptions] = await runServerReads([
+    () => retryTransientRead(() => repository.getById(tripId)),
+    () =>
+      retryTransientRead(() =>
+        repository.listHistory(tripId, {
+          category: selection.category,
+          cursor,
+          filterField: selection.detail.field,
+          filterValue: selection.detail.value || undefined,
+          pageSize: HISTORY_PAGE_SIZE,
+        }),
+      ),
+    () => retryTransientRead(() => repository.listHistoryFilterOptions(tripId)),
   ]);
   if (!trip) notFound();
   const pageNumber = cursor ? trail.length + 2 : 1;

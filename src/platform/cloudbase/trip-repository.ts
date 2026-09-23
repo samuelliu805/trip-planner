@@ -15,6 +15,7 @@ import {
   normalizeTrips,
 } from "@/platform/trips/normalization";
 import { normalizeTripStorageStats } from "@/platform/trips/storage-stats";
+import { retryTransientRead } from "@/platform/transient-read";
 
 import type { CloudBaseDatabase } from "./client";
 import { createCloudBaseUserContext } from "./database";
@@ -22,13 +23,13 @@ import { cloudBaseData } from "./errors";
 import { cloudBaseScalarUuidRpc } from "./rpc-compat";
 import { explicitCloudBaseCurrency } from "./profile-currency";
 
-async function rows(query: PromiseLike<{ data: unknown; error: unknown }>, message: string) {
-  return cloudBaseData(await query, message);
+async function rows(read: () => PromiseLike<{ data: unknown; error: unknown }>, message: string) {
+  return cloudBaseData(await retryTransientRead(async () => read()), message);
 }
 
 async function tripById(db: CloudBaseDatabase, id: string, currentUserId: string) {
   const data = await rows(
-    db.from("trips").select("*").eq("id", id),
+    () => db.from("trips").select("*").eq("id", id),
     "The trip could not be loaded.",
   );
   const trips = normalizeTrips(data, currentUserId);
@@ -40,11 +41,12 @@ async function tripById(db: CloudBaseDatabase, id: string, currentUserId: string
 
 async function attachPrimaryVariant(db: CloudBaseDatabase, trip: Trip) {
   const data = await rows(
-    db
-      .from("route_variants")
-      .select("id, name, color, is_primary")
-      .eq("trip_id", trip.id)
-      .eq("is_primary", true),
+    () =>
+      db
+        .from("route_variants")
+        .select("id, name, color, is_primary")
+        .eq("trip_id", trip.id)
+        .eq("is_primary", true),
     "The trip route could not be loaded.",
   );
   return normalizeTrip({ ...trip, route_variants: normalizeRouteVariants(data) });
@@ -53,10 +55,16 @@ async function attachPrimaryVariant(db: CloudBaseDatabase, trip: Trip) {
 export class CloudBaseTripRepository implements TripRepository {
   async listForCurrentUser(input: { status?: TripStatus } = {}) {
     const { db, user } = await createCloudBaseUserContext();
-    let query = db.from("trips").select("*");
-    if (input.status) query = query.eq("status", input.status);
-    const trips = normalizeTrips(await rows(query, "Trips could not be loaded."), user.id);
-    const withVariants = await Promise.all(trips.map((trip) => attachPrimaryVariant(db, trip)));
+    const trips = normalizeTrips(
+      await rows(() => {
+        let query = db.from("trips").select("*");
+        if (input.status) query = query.eq("status", input.status);
+        return query;
+      }, "Trips could not be loaded."),
+      user.id,
+    );
+    const withVariants = [];
+    for (const trip of trips) withVariants.push(await attachPrimaryVariant(db, trip));
     return withVariants.sort((left, right) =>
       (left.start_date ?? "9999-12-31").localeCompare(right.start_date ?? "9999-12-31"),
     );
@@ -70,7 +78,7 @@ export class CloudBaseTripRepository implements TripRepository {
   async getDefaultCurrencyForCurrentUser() {
     const { db } = await createCloudBaseUserContext();
     const data = await rows(
-      db.from("profiles").select("default_currency, default_currency_is_explicit"),
+      () => db.from("profiles").select("default_currency, default_currency_is_explicit"),
       "Account preferences could not be loaded.",
     );
     if (!Array.isArray(data) || !data.length) return null;
@@ -123,7 +131,7 @@ export class CloudBaseTripRepository implements TripRepository {
         }),
       recover: async () => {
         const data = await rows(
-          db.from("trips").select("id").eq("guest_draft_id", input.draftId),
+          () => db.from("trips").select("id").eq("guest_draft_id", input.draftId),
           "The imported trip could not be recovered.",
         );
         return Array.isArray(data) && data.length === 1 ? data[0] : null;
@@ -216,7 +224,7 @@ export class CloudBaseTripRepository implements TripRepository {
   async listMembers(id: string) {
     const { db } = await createCloudBaseUserContext();
     const data = await rows(
-      db.rpc("list_trip_members", { target_trip_id: id }),
+      () => db.rpc("list_trip_members", { target_trip_id: id }),
       "Trip members could not be loaded.",
     );
     if (!Array.isArray(data))
@@ -260,15 +268,16 @@ export class CloudBaseTripRepository implements TripRepository {
   async listHistory(id: string, query: TripHistoryQuery) {
     const { db } = await createCloudBaseUserContext();
     const data = await rows(
-      db.rpc("list_trip_history_v2", {
-        target_trip_id: id,
-        before_created_at: query.cursor?.createdAt ?? null,
-        before_id: query.cursor?.id ?? null,
-        requested_limit: Math.min(query.pageSize + 1, 51),
-        target_category: query.category,
-        target_filter_field: query.filterField,
-        target_filter_value: query.filterValue ?? null,
-      }),
+      () =>
+        db.rpc("list_trip_history_v2", {
+          target_trip_id: id,
+          before_created_at: query.cursor?.createdAt ?? null,
+          before_id: query.cursor?.id ?? null,
+          requested_limit: Math.min(query.pageSize + 1, 51),
+          target_category: query.category,
+          target_filter_field: query.filterField,
+          target_filter_value: query.filterValue ?? null,
+        }),
       "Trip history could not be loaded.",
     );
     if (!Array.isArray(data))
@@ -296,7 +305,7 @@ export class CloudBaseTripRepository implements TripRepository {
   async listHistoryFilterOptions(id: string) {
     const { db } = await createCloudBaseUserContext();
     const data = await rows(
-      db.rpc("list_trip_history_filter_options_v1", { target_trip_id: id }),
+      () => db.rpc("list_trip_history_filter_options_v1", { target_trip_id: id }),
       "History filters could not be loaded.",
     );
     if (!Array.isArray(data))

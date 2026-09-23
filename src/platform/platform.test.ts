@@ -464,6 +464,16 @@ test("CloudBase committed mutation recovery covers CN scalar and empty JSON resp
     }),
     { data: null, error: { code: "40001", message: "APP_CONFLICT" } },
   );
+  assert.deepEqual(
+    normalizeCloudBaseRpcResult("delete_route_variant_v3", {
+      data: null,
+      error: { code: "UNKNOWN", message: "Database request failed with SQLSTATE 40001." },
+    }),
+    {
+      data: null,
+      error: { code: "40001", message: "Database request failed with SQLSTATE 40001." },
+    },
+  );
   assert.equal(
     isCloudBaseScalarUuidParseError({ message: "Syntax error: Unexpected end of JSON input" }),
     true,

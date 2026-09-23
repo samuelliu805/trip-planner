@@ -25,6 +25,7 @@ const i18nCheckUrl = new URL("./check-i18n.mjs", import.meta.url);
 const cloudBaseRunSubmitterUrl = new URL("./cloudbase-run-source-submitter.mjs", import.meta.url);
 const cloudBaseRunPreparationUrl = new URL("./prepare-cloudbase-run.mjs", import.meta.url);
 const rootDockerfileUrl = new URL("../Dockerfile", import.meta.url);
+const nextConfigUrl = new URL("../next.config.ts", import.meta.url);
 const providerNeutralMigrationUrl = new URL(
   "../database/shared/migrations/20260901181000_provider_neutral_places_and_amap_public_routes.sql",
   import.meta.url,
@@ -166,6 +167,7 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
 
   assert.match(globalDeploy, /group: deploy-global-production/);
   assert.match(globalDeploy, /workflow_run:/);
+  assert.match(globalDeploy, /branches: \[master\]/);
   assert.match(globalDeploy, /workflow_run\.conclusion == 'success'/);
   assert.match(globalDeploy, /workflow_run\.head_branch == 'master'/);
   assert.match(globalDeploy, /github\.event\.workflow_run\.head_sha \|\| github\.sha/);
@@ -176,9 +178,13 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(globalDeploy, /check:build-provider-isolation/);
 
   assert.match(cnDeploy, /workflow_run:/);
+  assert.match(cnDeploy, /branches: \[master\]/);
   assert.match(cnDeploy, /head_branch == 'master'/);
   assert.match(cnDeploy, /group: deploy-cn-dev-trip-planner-cn/);
   assert.match(cnDeploy, /CN_PUBLIC_PHONE_AUTH_ENABLED: "true"/);
+  assert.match(cnDeploy, /APP_DEPLOYMENT_ID:.*head_sha/);
+  assert.match(cnDeploy, /NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:.*secrets\./);
+  assert.match(cnDeploy, /test "\$APP_DEPLOYMENT_ID" = "\$DEPLOY_SHA"/);
   assert.match(cnDeploy, /find cloudbase\/migrations -maxdepth 1 -type f -name '\*\.sql'/);
   assert.match(cnDeploy, /verify-cloudbase-migration-plan\.mjs[\s\S]*--deployment/);
   assert.equal(cnDeploy.split('"${migration_versions[@]}"').length - 1, 2);
@@ -203,6 +209,8 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(cnProductionDeploy, /RESTORE_DRILL_EVIDENCE/);
   assert.match(cnProductionDeploy, /SMS_READINESS_EVIDENCE/);
   assert.match(cnProductionDeploy, /CLOUDBASE_ROLLBACK_VERSION/);
+  assert.match(cnProductionDeploy, /APP_DEPLOYMENT_ID:.*candidate_sha/);
+  assert.match(cnProductionDeploy, /NEXT_SERVER_ACTIONS_ENCRYPTION_KEY:.*secrets\./);
   assert.match(cnProductionDeploy, /git merge-base --is-ancestor HEAD origin\/master/);
   assert.match(cnProductionDeploy, /deploy-cloudbase-run-with-evidence\.mjs/);
   assert.match(cnProductionDeploy, /cloudrun logs process/);
@@ -210,6 +218,13 @@ test("Phase 6 deployment workflows are isolated, serialized, and evidence-backed
   assert.match(observability, /npm run test:telemetry/);
   assert.match(observability, /npm run check:auth-routes/);
   assert.doesNotMatch(observability, /npm run (?:lint|typecheck|build|test$)/m);
+});
+
+test("Next builds carry an exact deployment identifier for version-skew recovery", async () => {
+  const nextConfig = await readFile(nextConfigUrl, "utf8");
+  assert.match(nextConfig, /process\.env\.APP_DEPLOYMENT_ID/);
+  assert.match(nextConfig, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
+  assert.match(nextConfig, /deploymentId: deploymentIdCandidate \|\| undefined/);
 });
 
 test("the i18n check has no runner-specific file discovery dependency", async () => {
@@ -289,6 +304,10 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   );
   assert.match(smoke, /"B trip access denial"/);
   assert.match(smoke, /deniedTripBody\.includes\(updatedTitle\), false/);
+  assert.match(
+    smoke,
+    /response\?\.ok[\s\S]*setTimeout\(resolve, 500\)[\s\S]*child\.exitCode !== null \|\| child\.signalCode !== null[\s\S]*Next\.js exited after the readiness probe/,
+  );
   assert.match(smoke, /const response = await fetch\(\$\{JSON\.stringify\(path\)\}/);
   assert.doesNotMatch(smoke, /new URL\(path, baseUrl\)\.href/);
   assert.match(smoke, /visibleFrozenTop = Math\.max\(frozenRect\.top, headerRect\.bottom \+ 1\)/);

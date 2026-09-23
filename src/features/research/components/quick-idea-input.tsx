@@ -18,6 +18,7 @@ import {
   type IdeaKind,
 } from "../idea-input";
 import type { IdeaPageMetadata } from "../idea-page-metadata";
+import { propertyTitleFromIdeaSourceUrl } from "../idea-provider-url";
 import { formatMoney } from "../money";
 import type { ResearchItem } from "../types";
 import { IdeaLinkPreview } from "./idea-link-preview";
@@ -50,6 +51,10 @@ export function QuickIdeaInput({
     () => parseReliableIdeaFields(classification.sourceUrl),
     [classification.sourceUrl],
   );
+  const providerTitle = useMemo(
+    () => propertyTitleFromIdeaSourceUrl(classification.sourceUrl),
+    [classification.sourceUrl],
+  );
   const route =
     preview.originText && preview.destinationText
       ? `${preview.originText} → ${preview.destinationText}`
@@ -59,6 +64,7 @@ export function QuickIdeaInput({
     : input.trim();
   const candidateLocation =
     preview.locationText ??
+    providerTitle ??
     metadata?.locationText ??
     (classification.kind === "stay" || classification.kind === "activity"
       ? (metadata?.title ?? textCandidate) || null

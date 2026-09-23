@@ -8,6 +8,7 @@ import {
   structuredPrice,
   type ParsedPrice,
 } from "./idea-page-price.ts";
+import { propertyTitleFromIdeaUrl, usableProviderPageTitle } from "./idea-provider-url.ts";
 
 export type IdeaPageMetadata = {
   title: string | null;
@@ -25,6 +26,36 @@ const unavailable: IdeaPageMetadata = {
   status: "unavailable",
 };
 const maximumPageBytes = 1_048_576;
+
+function urlFallback(url: URL, provider: string): IdeaPageMetadata {
+  const title = propertyTitleFromIdeaUrl(url, provider);
+  return {
+    title,
+    locationText: null,
+    priceAmount: null,
+    priceCurrency: null,
+    status: title ? "readable" : "unavailable",
+  };
+}
+
+function withFallback(
+  parsed: IdeaPageMetadata,
+  fallback: IdeaPageMetadata,
+  provider: string,
+): IdeaPageMetadata {
+  const parsedTitle = usableProviderPageTitle(parsed.title, fallback.title, provider);
+  const title = parsedTitle ?? fallback.title;
+  const locationText = parsed.locationText ?? fallback.locationText;
+  const priceAmount = parsed.priceAmount ?? fallback.priceAmount;
+  const priceCurrency = parsed.priceCurrency ?? fallback.priceCurrency;
+  return {
+    title,
+    locationText,
+    priceAmount,
+    priceCurrency,
+    status: title || locationText || priceAmount !== null ? "readable" : parsed.status,
+  };
+}
 
 const providerDomains = [
   "airbnb.com",
@@ -189,6 +220,7 @@ export async function fetchIdeaPageMetadata(
   const approved = approvedUrl(sourceUrl);
   if (!approved) return { ...unavailable, status: "unsupported" };
   let current = approved.url;
+  let fallback = urlFallback(current, approved.provider);
   try {
     for (let redirect = 0; redirect <= 2; redirect++) {
       const response = await fetchPage(current, {
@@ -208,12 +240,17 @@ export async function fetchIdeaPageMetadata(
         );
         if (!next) return unavailable;
         current = next.url;
+        fallback = withFallback(
+          urlFallback(current, approved.provider),
+          fallback,
+          approved.provider,
+        );
         continue;
       }
       if (!response.ok || !/^text\/html\b/i.test(response.headers.get("content-type") ?? ""))
-        return unavailable;
+        return fallback;
       const reader = response.body?.getReader();
-      if (!reader) return unavailable;
+      if (!reader) return fallback;
       const chunks: Uint8Array[] = [];
       let bytes = 0;
       try {
@@ -232,10 +269,14 @@ export async function fetchIdeaPageMetadata(
         buffer.set(chunk, offset);
         offset += chunk.byteLength;
       }
-      return parseIdeaPageMetadata(new TextDecoder().decode(buffer), approved.provider);
+      return withFallback(
+        parseIdeaPageMetadata(new TextDecoder().decode(buffer), approved.provider),
+        fallback,
+        approved.provider,
+      );
     }
   } catch {
-    return unavailable;
+    return fallback;
   }
-  return unavailable;
+  return fallback;
 }

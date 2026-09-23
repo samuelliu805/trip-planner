@@ -35,6 +35,7 @@ jobs:
       AMAP_JS_SECURITY_CODE: ${{ secrets.AMAP_JS_SECURITY_CODE }}
       AMAP_WEB_SERVICE_KEY: ${{ secrets.AMAP_WEB_SERVICE_KEY }}
       ALERT_EVIDENCE: ${{ vars.ALERT_EVIDENCE }}
+      APP_DEPLOYMENT_ID: ${{ inputs.candidate_sha }}
       APP_REGION: cn
       AUTH_PROVIDER: cloudbase
       CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
@@ -55,6 +56,7 @@ jobs:
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
       NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
       NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: production
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
       RESTORE_DRILL_EVIDENCE: ${{ vars.RESTORE_DRILL_EVIDENCE }}
       SMS_READINESS_EVIDENCE: ${{ vars.SMS_READINESS_EVIDENCE }}
       STORAGE_PROVIDER: cloudbase
@@ -70,6 +72,8 @@ jobs:
       - name: Verify the exact reviewed production target and SHA
         run: |
           test "$(git rev-parse HEAD)" = "${{ inputs.candidate_sha }}"
+          test "$APP_DEPLOYMENT_ID" = "${{ inputs.candidate_sha }}"
+          test "${#NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}" -gt 0
           test "${#CLOUDBASE_ENV_ID}" -gt 0
           test "${#CLOUDBASE_PG_INSTANCE_ID}" -gt 0
           test "${#CLOUDBASE_RUN_SERVICE}" -gt 0

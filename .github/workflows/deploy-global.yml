@@ -3,6 +3,7 @@ name: Deploy Global
 on:
   workflow_run:
     workflows: [CloudBase PG schema security]
+    branches: [master]
     types: [completed]
   workflow_dispatch:
 

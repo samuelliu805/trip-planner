@@ -1,6 +1,7 @@
 import { getPlannerWorkspace } from "@/features/itinerary/data";
 import { MapsProviderConfigurationError } from "@/lib/providers/maps/provider";
 import { RouteProviderError } from "@/lib/providers/routes/errors";
+import { retryTransientRead } from "@/platform/transient-read";
 
 import type { CalculationResult } from "./calculator";
 import type { DayRoutePlan } from "./types";
@@ -17,7 +18,7 @@ export function routeActionError(error: unknown) {
 }
 
 export async function loadRouteWorkspace(tripId: string, variantId: string) {
-  const result = await getPlannerWorkspace(tripId, variantId);
+  const result = await retryTransientRead(() => getPlannerWorkspace(tripId, variantId));
   if (!result.data) throw new Error(result.error ?? "The planner could not be loaded.");
   return result.data;
 }

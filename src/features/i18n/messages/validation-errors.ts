@@ -210,6 +210,7 @@ export const validationErrorsZhCN: Record<string, string> = {
   "The selected item position changed. Choose its position again.":
     "所选项目的位置已变化，请重新选择位置。",
   "The Share Page could not be read.": "无法读取分享页面。",
+  "The Share Page could not be read. Try again.": "无法读取分享页面，请重试。",
   "The shared route changed. Refresh and try again.": "公开路线已变化，请刷新后重试。",
   "The shared stage route changed. Refresh and try again.": "公开的阶段路线已变化，请刷新后重试。",
   "The stored image could not be deleted. Try again.": "无法删除已存储的长图，请重试。",

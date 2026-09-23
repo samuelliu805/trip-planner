@@ -3,6 +3,7 @@ name: Deploy CN
 on:
   workflow_run:
     workflows: [CloudBase PG schema security]
+    branches: [master]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -31,6 +32,7 @@ jobs:
     env:
       AMAP_JS_SECURITY_CODE: ${{ secrets.AMAP_JS_SECURITY_CODE }}
       AMAP_WEB_SERVICE_KEY: ${{ secrets.AMAP_WEB_SERVICE_KEY }}
+      APP_DEPLOYMENT_ID: ${{ github.event.workflow_run.head_sha || github.sha }}
       APP_REGION: cn
       AUTH_PROVIDER: cloudbase
       CLOUDBASE_API_KEY: ${{ secrets.CLOUDBASE_API_KEY }}
@@ -49,6 +51,7 @@ jobs:
       NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
       NEXT_PUBLIC_TELEMETRY_ENABLED: "false"
       NEXT_PUBLIC_TELEMETRY_ENVIRONMENT: production
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
       STORAGE_PROVIDER: cloudbase
     steps:
       - uses: actions/checkout@v5
@@ -61,7 +64,10 @@ jobs:
       - name: Verify exact workflow head
         env:
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-        run: test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+        run: |
+          test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+          test "$APP_DEPLOYMENT_ID" = "$DEPLOY_SHA"
+          test "${#NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}" -gt 0
       - run: npm ci
       - name: Validate the approved CN target
         run: >-

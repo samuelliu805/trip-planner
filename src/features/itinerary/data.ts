@@ -1,4 +1,8 @@
-import { getBackendCapabilities, getRelationalDatabase } from "@/platform/composition/server";
+import {
+  getBackendCapabilities,
+  getRelationalDatabase,
+  runServerReads,
+} from "@/platform/composition/server";
 import { isRouteLegMode } from "@/features/routes/route-config";
 import { parseCalculatedRouteLegs } from "@/features/routes/results";
 import type { DayRouteCalculation, DayRouteLeg, DayRoutePlan } from "@/features/routes/types";
@@ -138,34 +142,37 @@ export async function getPlannerWorkspace(
     { data: days, error: daysError },
     { data: items, error: itemsError },
     { data: routePlans, error: routePlansError },
-  ] = await Promise.all([
-    database
-      .from("trip_days")
-      .select(
-        "id, variant_id, day_number, date, title, notes, version, items_version, content_version",
-      )
-      .eq("variant_id", variant.id)
-      .order("day_number", { ascending: true }),
-    database
-      .from("itinerary_items")
-      .select<WorkspaceItemRow>(
-        [
-          "*",
-          placeSelection,
-          ...(capabilities.itineraryItemLinks ? [linkSelection] : []),
-          ...(capabilities.signedUrls ? [attachmentSelection] : []),
-        ].join(", "),
-      )
-      .eq("trip_id", tripId)
-      .eq("variant_id", variant.id)
-      .order("day_id", { ascending: true })
-      .order("sort_order", { ascending: true }),
-    database
-      .from("day_route_plans")
-      .select("*")
-      .eq("trip_id", tripId)
-      .eq("variant_id", variant.id)
-      .order("day_id", { ascending: true }),
+  ] = await runServerReads([
+    () =>
+      database
+        .from("trip_days")
+        .select(
+          "id, variant_id, day_number, date, title, notes, version, items_version, content_version",
+        )
+        .eq("variant_id", variant.id)
+        .order("day_number", { ascending: true }),
+    () =>
+      database
+        .from("itinerary_items")
+        .select<WorkspaceItemRow>(
+          [
+            "*",
+            placeSelection,
+            ...(capabilities.itineraryItemLinks ? [linkSelection] : []),
+            ...(capabilities.signedUrls ? [attachmentSelection] : []),
+          ].join(", "),
+        )
+        .eq("trip_id", tripId)
+        .eq("variant_id", variant.id)
+        .order("day_id", { ascending: true })
+        .order("sort_order", { ascending: true }),
+    () =>
+      database
+        .from("day_route_plans")
+        .select("*")
+        .eq("trip_id", tripId)
+        .eq("variant_id", variant.id)
+        .order("day_id", { ascending: true }),
   ]);
 
   if (daysError || itemsError || routePlansError)
@@ -183,18 +190,20 @@ export async function getPlannerWorkspace(
   let routeLegs: AppRow<"day_route_legs">[] = [];
   let routeCalculations: AppRow<"day_route_calculations">[] = [];
   if (planIds.length) {
-    const [stopsResult, legsResult, calculationsResult] = await Promise.all([
-      database
-        .from("day_route_stops")
-        .select("*")
-        .in("plan_id", planIds)
-        .order("position", { ascending: true }),
-      database
-        .from("day_route_legs")
-        .select("*")
-        .in("plan_id", planIds)
-        .order("position", { ascending: true }),
-      database.from("day_route_calculations").select("*").in("plan_id", planIds),
+    const [stopsResult, legsResult, calculationsResult] = await runServerReads([
+      () =>
+        database
+          .from("day_route_stops")
+          .select("*")
+          .in("plan_id", planIds)
+          .order("position", { ascending: true }),
+      () =>
+        database
+          .from("day_route_legs")
+          .select("*")
+          .in("plan_id", planIds)
+          .order("position", { ascending: true }),
+      () => database.from("day_route_calculations").select("*").in("plan_id", planIds),
     ]);
     if (stopsResult.error || legsResult.error || calculationsResult.error) {
       return {

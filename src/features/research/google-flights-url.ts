@@ -160,11 +160,14 @@ function fromTfs(value: string): GoogleFlightFields | null {
     if (!bytes) return null;
     const groups = wireFields(bytes)
       ?.filter((field) => field.number === 3 && field.bytes)
-      .map((field) => {
+      .map((field, journeyIndex) => {
         const parts = wireFields(field.bytes!);
         const rawDate = parts?.find((part) => part.number === 2)?.bytes;
         const groupDate = rawDate ? date(new TextDecoder().decode(rawDate)) : null;
-        const flights = bookedFlights(parts, groupDate);
+        const flights = bookedFlights(parts, groupDate).map((flight) => ({
+          ...flight,
+          journeyIndex,
+        }));
         return {
           origin: airport(parts?.find((part) => part.number === 13)?.bytes) ?? flights[0]?.origin,
           destination:

@@ -544,12 +544,13 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
   await closePlannerEditor(browser, "Global Trip settings");
 
   await openTripMenu(browser);
-  await clickElement(
+  const historyHref = await evaluate(
     browser,
-    `[...document.querySelectorAll('[role="menu"][data-state="open"] [role="menuitem"]')]
-      .find((item) => item.getClientRects().length && item.textContent.trim() === 'History')`,
-    "Global History menu item",
+    `[...document.querySelectorAll('[role="menu"][data-state="open"] a[role="menuitem"]')]
+      .find((item) => item.getClientRects().length && item.textContent.trim() === 'History')?.href`,
   );
+  assert.equal(new URL(historyHref).pathname, `/trips/${options.tripId}/history`);
+  await navigate(browser, baseUrl, historyHref, "Global History");
   try {
     await waitFor(
       browser,
@@ -1049,23 +1050,42 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `Boolean(document.querySelector('[role="dialog"] select'))`,
+    `Boolean(document.querySelector('[role="dialog"] [role="combobox"]'))`,
     "dated Google flight Plan day choice",
   );
+  await clickElement(
+    browser,
+    `document.querySelector('[role="dialog"] [role="combobox"]')`,
+    "open dated Google flight Plan day choices",
+  );
+  await waitFor(browser, `Boolean(document.querySelector('[role="option"]'))`, "Plan day options");
   assert.equal(
     await evaluate(
       browser,
       `(() => {
-        const select = document.querySelector('[role="dialog"] select');
-        const option = [...(select?.options ?? [])].find((entry) => entry.value);
-        if (!(select instanceof HTMLSelectElement) || !option) return false;
-        select.value = option.value;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        return true;
+        const option = [...document.querySelectorAll('[role="option"]')]
+          .find((entry) => entry.getClientRects().length);
+        option?.focus();
+        return document.activeElement === option;
       })()`,
     ),
     true,
-    "A Plan day was unavailable for the dated Google flight.",
+    "A Plan day option could not receive focus.",
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Enter", key: "Enter", type: "keyUp", windowsVirtualKeyCode: 13 },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `!document.querySelector('[role="option"]')`,
+    "selected dated Google flight Plan day",
   );
   await waitFor(
     browser,
@@ -1098,10 +1118,44 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await waitFor(
     browser,
     `document.body.innerText.includes('PVG – HND') &&
-      document.body.innerText.includes('NH 972 / NH 967')`,
-    "Google Flights booking idea visible in Plan",
+      document.body.innerText.includes('HND – PVG') &&
+      document.body.innerText.includes('NH 972') &&
+      document.body.innerText.includes('NH 967')`,
+    "both Google Flights directions visible in Plan",
   );
   await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
+  await waitFor(browser, `Boolean(document.querySelector('textarea'))`, "Ideas capture input");
+  const hiltonUrl =
+    "https://www.hilton.com/en/hotels/lasflgv-hilton-grand-vacations-club-flamingo-las-vegas/";
+  assert.equal(
+    await evaluate(
+      browser,
+      `(() => {
+        const input = document.querySelector('textarea');
+        if (!(input instanceof HTMLTextAreaElement)) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+        setter.call(input, ${JSON.stringify(hiltonUrl)});
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+      })()`,
+    ),
+    true,
+    "Hilton capture input was unavailable.",
+  );
+  await waitFor(
+    browser,
+    `document.body.innerText.includes('Hilton Grand Vacations Club Flamingo Las Vegas')`,
+    "Hilton property path fallback",
+  );
+  await evaluate(
+    browser,
+    `(() => {
+      const input = document.querySelector('textarea');
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set;
+      setter.call(input, '');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`,
+  );
   await waitFor(
     browser,
     `Boolean(document.querySelector('button[aria-label="More idea actions"]'))`,

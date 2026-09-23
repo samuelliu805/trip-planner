@@ -6,6 +6,7 @@ import {
   getRelationalDatabase,
 } from "@/platform/composition/server";
 import { PlatformOperationError } from "@/platform/contracts/errors";
+import { retryTransientRead } from "@/platform/transient-read";
 
 import { ownerShareImageStateSchema, shareImageManifestSchema } from "./long-image/schema";
 import {
@@ -25,9 +26,9 @@ import type {
 export async function getPublicItinerary(token: string): Promise<PublicItinerary | null> {
   if (!getBackendCapabilities().signedUrls) return null;
   const database = await getPublicRelationalDatabase();
-  const { data, error } = await database.rpc("get_public_share_page_v3", {
-    shared_token: token,
-  });
+  const { data, error } = await retryTransientRead(async () =>
+    database.rpc("get_public_share_page_v3", { shared_token: token }),
+  );
   if (error) return null;
   if (unavailablePublicItinerarySchema.safeParse(data).success) return null;
   const parsed = publicItinerarySchema.safeParse(data);
@@ -57,9 +58,9 @@ export async function listPublicItineraryLinks(
   if (!getBackendCapabilities().signedUrls)
     return { data: [], error: "Public sharing is not supported by this backend." };
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("list_share_pages_v2", {
-    target_trip_id: tripId,
-  });
+  const { data, error } = await retryTransientRead(async () =>
+    database.rpc("list_share_pages_v2", { target_trip_id: tripId }),
+  );
   if (error) return { data: [], error: error.message };
   const parsed = publicItineraryLinkSchema.array().safeParse(data);
   return parsed.success
@@ -70,9 +71,9 @@ export async function listPublicItineraryLinks(
 export async function getPublicShareImage(token: string): Promise<ShareImageManifest | null> {
   if (!getBackendCapabilities().signedUrls) return null;
   const database = await getPublicRelationalDatabase();
-  const { data, error } = await database.rpc("public_share_page_image_v1", {
-    shared_token: token,
-  });
+  const { data, error } = await retryTransientRead(async () =>
+    database.rpc("public_share_page_image_v1", { shared_token: token }),
+  );
   if (error) return null;
   const parsed = shareImageManifestSchema.safeParse(data);
   return parsed.success ? parsed.data : null;
@@ -83,9 +84,9 @@ export async function getShareImageManifest(
 ): Promise<ShareImageManifest | null> {
   if (!getBackendCapabilities().signedUrls) return null;
   const database = await getPublicRelationalDatabase();
-  const { data, error } = await database.rpc("public_share_image_manifest_v1", {
-    requested_slug: permanentSlug,
-  });
+  const { data, error } = await retryTransientRead(async () =>
+    database.rpc("public_share_image_manifest_v1", { requested_slug: permanentSlug }),
+  );
   if (error) return null;
   const parsed = shareImageManifestSchema.safeParse(data);
   return parsed.success ? parsed.data : null;
@@ -96,10 +97,11 @@ export async function getOwnerShareImageState(
 ): Promise<OwnerShareImageState | null> {
   if (!getBackendCapabilities().signedUrls) return null;
   const database = await getRelationalDatabase();
-  const { data, error } = await database.rpc("owner_share_page_image_state_v1", {
-    target_share_page_id: sharePageId,
-  });
-  if (error || data === null) return null;
+  const { data, error } = await retryTransientRead(async () =>
+    database.rpc("owner_share_page_image_state_v1", { target_share_page_id: sharePageId }),
+  );
+  if (error) throw new Error(error.message);
+  if (data === null) return null;
   const parsed = ownerShareImageStateSchema.safeParse(data);
   return parsed.success ? parsed.data : null;
 }
@@ -115,10 +117,11 @@ export async function getOwnerSharePageByToken(token: string): Promise<PublicIti
     }
     throw error;
   }
-  const { data, error } = await database.rpc("owner_share_page_by_token_v2", {
-    shared_token: token,
-  });
-  if (error || data === null) return null;
+  const { data, error } = await retryTransientRead(async () =>
+    database.rpc("owner_share_page_by_token_v2", { shared_token: token }),
+  );
+  if (error) throw new Error(error.message);
+  if (data === null) return null;
   const parsed = publicItineraryLinkSchema.safeParse(data);
   return parsed.success ? parsed.data : null;
 }
