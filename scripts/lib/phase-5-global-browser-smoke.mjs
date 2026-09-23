@@ -1207,46 +1207,14 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `Boolean([...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
-      .find((element) => element.getClientRects().length > 0))`,
-    "dated Google flight Plan day choice",
-  );
-  await clickElementUntil(
-    browser,
-    `[...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
-      .find((element) => element.getClientRects().length > 0)`,
-    `Boolean([...document.querySelectorAll('[role="option"]')]
-      .find((element) => element.getClientRects().length > 0))`,
-    "open dated Google flight Plan day choices",
-  );
-  assert.equal(
-    await evaluate(
-      browser,
-      `(() => {
-        const option = [...document.querySelectorAll('[role="option"]')]
-          .find((entry) => entry.getClientRects().length);
-        option?.focus();
-        return document.activeElement === option;
-      })()`,
-    ),
-    true,
-    "A Plan day option could not receive focus.",
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "keyUp", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
-  await waitFor(
-    browser,
-    `![...document.querySelectorAll('[role="option"]')]
-      .some((element) => element.getClientRects().length > 0)`,
-    "selected dated Google flight Plan day",
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
+      return Boolean(dialog?.innerText.includes('2026-11-20') &&
+        [...dialog.querySelectorAll('button')].some((button) =>
+          button.textContent.includes('Update this Plan') && !button.disabled));
+    })()`,
+    "dated Google flight Plan date decision",
   );
   await waitFor(
     browser,
@@ -1254,9 +1222,9 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
       return [...(dialog?.querySelectorAll('button') ?? [])].some((button) =>
-        button.textContent.includes('Add to Plan') && !button.disabled);
+        button.textContent.includes('Update this Plan') && !button.disabled);
     })()`,
-    "dated Google flight Plan confirmation readiness",
+    "dated Google flight Plan date update readiness",
   );
   await clickElement(
     browser,
@@ -1264,9 +1232,9 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
       return [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
-        button.textContent.includes('Add to Plan') && !button.disabled);
+        button.textContent.includes('Update this Plan') && !button.disabled);
     })()`,
-    "confirm dated Google flight Plan day",
+    "confirm dated Google flight Plan date update",
   );
   const datedApplyResult = await waitFor(
     browser,
