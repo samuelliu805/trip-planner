@@ -22,13 +22,14 @@ export function ResearchSegmentDetailFields({
   return (
     <div className="min-w-0 space-y-2">
       {label ? (
-        <p className="truncate text-sm font-semibold text-muted-foreground">
+        <p className="truncate text-base font-semibold leading-6">
           <Localized value={label} />
         </p>
       ) : null}
       {category === "flight" ? (
         <div className="grid min-w-0 grid-cols-2 gap-4">
           <Input
+            className="h-[3.75rem] rounded-xl text-base"
             aria-label={`${label ? `${t(label)} ` : ""}${t("Airline")}`}
             id={`${id}-airline`}
             maxLength={120}
@@ -38,6 +39,7 @@ export function ResearchSegmentDetailFields({
             value={segment.carrier ?? ""}
           />
           <Input
+            className="h-[3.75rem] rounded-xl text-base"
             aria-label={`${label ? `${t(label)} ` : ""}${t("Flight number")}`}
             id={`${id}-service-number`}
             maxLength={80}
@@ -49,6 +51,7 @@ export function ResearchSegmentDetailFields({
         </div>
       ) : (
         <Input
+          className="h-[3.75rem] rounded-xl text-base"
           aria-label={`${label ? `${t(label)} ` : ""}${t("Train number")}`}
           id={`${id}-service-number`}
           maxLength={80}

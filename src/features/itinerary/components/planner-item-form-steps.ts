@@ -45,12 +45,7 @@ export function plannerItemNeedsOrderStep({
   startTime: string;
   type: ItineraryItemType;
 }) {
-  return (
-    ["activity", "car_rental", "meal"].includes(type) &&
-    !startTime &&
-    !endTime &&
-    availableSlots > 1
-  );
+  return ["activity", "meal"].includes(type) && !startTime && !endTime && availableSlots > 1;
 }
 
 export function plannerItemSaveAction({
@@ -106,7 +101,7 @@ export function plannerItemFormSteps({
   const { supportsLink, supportsPrice, supportsTime } = itemFormCapabilities(type, carAction);
   const journeyItem = ["flight", "train", "transport"].includes(type);
   const journeySchedule = journey.departureTime || journey.arrivalTime;
-  const manualOrderItem = ["activity", "car_rental", "meal"].includes(type);
+  const manualOrderItem = ["activity", "meal"].includes(type);
   const ownTime = supportsTime && !["flight", "train", "transport"].includes(type);
   // Step titles stay one short word so the longest six-step journey still fits a 390px bar.
   const steps: ItemFormStep[] = [
@@ -166,8 +161,7 @@ export function plannerItemFormSteps({
         title: closing.includes("price") ? "Detail" : "Notes",
       });
   }
-  if (!manualOrderItem && !journeyItem && type !== "hotel") steps.push(filesStep);
-  if (manualOrderItem) steps.push(filesStep);
+  if (manualOrderItem || (!journeyItem && type !== "hotel")) steps.push(filesStep);
   if (includeOrder && manualOrderItem)
     steps.push({ blocks: ["order"], id: "order", title: "Order" });
   return steps;

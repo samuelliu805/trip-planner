@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/features/i18n/i18n-provider";
@@ -19,6 +20,7 @@ import {
 } from "../idea-actions";
 import type { ResearchItem, ResearchPlanSnapshot, ResearchSort } from "../types";
 import { activityNeedsDay } from "./idea-comparison-labels";
+import { applyIdeaChoiceToNewVariant } from "../idea-plan-variant-actions";
 import { IdeaComparisonCreateDialog } from "./idea-comparison-create-dialog";
 import { IdeaComparisonViewDialog } from "./idea-comparison-view-dialog";
 import { IdeaComparisonDeleteDialog } from "./idea-comparison-delete-dialog";
@@ -58,6 +60,7 @@ export function IdeaComparisons({
 }) {
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [comparisons, setComparisons] = useState<IdeaComparison[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [view, setView] = useState<IdeaComparison>();
@@ -132,7 +135,11 @@ export function IdeaComparisons({
     await refresh();
   }
 
-  async function apply(comparison: IdeaComparison, choiceId: string) {
+  async function apply(
+    comparison: IdeaComparison,
+    choiceId: string,
+    destination: "current" | "new" = "current",
+  ) {
     if (pending) return;
     const choice = comparison.choices.find((entry) => entry.id === choiceId);
     if (!choice) return;
@@ -148,28 +155,40 @@ export function IdeaComparisons({
     setPending(true);
     setError(undefined);
     const operationId = newTelemetryOperationId();
-    const result = await applyIdeaChoice({
+    const input = {
       comparisonId: comparison.id,
       choiceId,
       dayId: selectedDayId || null,
       operationId,
       tripId,
       variantId: plan.variantId,
-    });
+    };
+    const result =
+      destination === "new"
+        ? await applyIdeaChoiceToNewVariant(input)
+        : await applyIdeaChoice(input);
     setPending(false);
     if (!result.data) {
       setError(result.error);
       return;
     }
     captureBrowserProductEvent(
-      result.data.switched ? "comparison_choice_switched" : "comparison_choice_applied",
+      "switched" in result.data && result.data.switched
+        ? "comparison_choice_switched"
+        : "comparison_choice_applied",
       {
         operation_id: operationId,
         surface: "ideas_comparison",
       },
       { actorType: "authenticated" },
     );
+    if (destination === "new" && "variantId" in result.data) {
+      router.push(`${window.location.pathname}?variant=${result.data.variantId}`);
+      router.refresh();
+      return;
+    }
     void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, plan.variantId) });
+    router.refresh();
     setView(undefined);
     setNotice(t("Added to Plan. Other choices stay here, so you can switch later."));
   }

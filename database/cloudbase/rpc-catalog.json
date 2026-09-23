@@ -3200,6 +3200,7 @@
     "complete_trip_operation(uuid,uuid,jsonb)",
     "complete_wrapped_operation(uuid,uuid,uuid,text,text,uuid,text,jsonb)",
     "day_route_plan_structure_is_canonical(uuid)",
+    "ensure_idea_plan_day(uuid,uuid,date)",
     "guard_trip_owner_identity()",
     "guard_trip_owner_membership()",
     "history_order_item_snapshot(uuid,text)",

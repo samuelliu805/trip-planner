@@ -5,7 +5,7 @@ import { cloneElement, isValidElement, useId, type ReactElement, type ReactNode 
 import { PlannerEditorField } from "@/features/itinerary/components/planner-editor-fields";
 
 export const nativeSelectClass =
-  "h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-base shadow-sm outline-none focus:ring-2 focus:ring-ring sm:text-sm";
+  "h-[3.75rem] w-full min-w-0 rounded-xl border border-input bg-background px-3 text-base shadow-sm outline-none focus:ring-2 focus:ring-ring";
 
 export function ResearchField({
   children,

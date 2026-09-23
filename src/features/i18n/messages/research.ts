@@ -88,6 +88,13 @@ export const researchZhCN: Record<string, string> = {
   "Source link (optional)": "来源链接（选填）",
   "Notes (optional)": "备注（选填）",
   "Add to Plan": "放入行程",
+  "This journey needs Plan days for {dates}. Choose where to add them.":
+    "这些行程需要 {dates} 的日期，请选择安排方式。",
+  "Update this Plan's dates, or make a copy with its own dates. Your Ideas remain available in both Plans.":
+    "可以调整当前行程的日期，或复制一份独立安排行程。两份行程都能使用同一批 Ideas。",
+  "Create another Plan": "新建另一份行程",
+  "This trip has no space for another Plan.": "此旅行已达到行程方案数量上限。",
+  "Update this Plan": "调整当前行程",
   "This idea is dated {date}. Choose where it belongs in this Plan.":
     "这条内容的日期是 {date}。请选择它在当前行程中的位置。",
   "Choose where this belongs in your Plan.": "请选择它在行程中的位置。",

@@ -1131,15 +1131,31 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     '[data-editor-kind="research"] input[role="combobox"]',
     "Shanghai Pudong International Airport",
   );
-  try {
-    await waitFor(
-      browser,
-      `Boolean([...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
-        .find((option) => option.getClientRects().length && option.textContent.trim()))`,
-      "protected Google place suggestions",
-      45_000,
-    );
-  } catch (error) {
+  let suggestionError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt) {
+      await setInputValue(browser, '[data-editor-kind="research"] input[role="combobox"]', "");
+      await setInputValue(
+        browser,
+        '[data-editor-kind="research"] input[role="combobox"]',
+        "Shanghai Pudong International Airport",
+      );
+    }
+    try {
+      await waitFor(
+        browser,
+        `Boolean([...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
+          .find((option) => option.getClientRects().length && option.textContent.trim()))`,
+        "protected Google place suggestions",
+        20_000,
+      );
+      suggestionError = undefined;
+      break;
+    } catch (error) {
+      suggestionError = error;
+    }
+  }
+  if (suggestionError) {
     const diagnostic = await evaluate(
       browser,
       `(() => ({
@@ -1150,7 +1166,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       }))()`,
     ).catch(() => null);
     throw new Error(
-      `${error instanceof Error ? error.message : error}; place diagnostic: ${JSON.stringify(diagnostic)}; ` +
+      `${suggestionError instanceof Error ? suggestionError.message : suggestionError}; place diagnostic: ${JSON.stringify(diagnostic)}; ` +
         `client errors: ${JSON.stringify(browser.cdp.clientErrors.slice(-4))}; ` +
         `network failures: ${JSON.stringify(browser.cdp.networkFailures.slice(-4))}`,
     );
@@ -1191,46 +1207,14 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `Boolean([...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
-      .find((element) => element.getClientRects().length > 0))`,
-    "dated Google flight Plan day choice",
-  );
-  await clickElementUntil(
-    browser,
-    `[...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
-      .find((element) => element.getClientRects().length > 0)`,
-    `Boolean([...document.querySelectorAll('[role="option"]')]
-      .find((element) => element.getClientRects().length > 0))`,
-    "open dated Google flight Plan day choices",
-  );
-  assert.equal(
-    await evaluate(
-      browser,
-      `(() => {
-        const option = [...document.querySelectorAll('[role="option"]')]
-          .find((entry) => entry.getClientRects().length);
-        option?.focus();
-        return document.activeElement === option;
-      })()`,
-    ),
-    true,
-    "A Plan day option could not receive focus.",
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "rawKeyDown", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
-  await browser.cdp.send(
-    "Input.dispatchKeyEvent",
-    { code: "Enter", key: "Enter", type: "keyUp", windowsVirtualKeyCode: 13 },
-    browser.sessionId,
-  );
-  await waitFor(
-    browser,
-    `![...document.querySelectorAll('[role="option"]')]
-      .some((element) => element.getClientRects().length > 0)`,
-    "selected dated Google flight Plan day",
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
+      return Boolean(dialog?.innerText.includes('2026-11-20') &&
+        [...dialog.querySelectorAll('button')].some((button) =>
+          button.textContent.includes('Update this Plan') && !button.disabled));
+    })()`,
+    "dated Google flight Plan date decision",
   );
   await waitFor(
     browser,
@@ -1238,9 +1222,9 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
       return [...(dialog?.querySelectorAll('button') ?? [])].some((button) =>
-        button.textContent.includes('Add to Plan') && !button.disabled);
+        button.textContent.includes('Update this Plan') && !button.disabled);
     })()`,
-    "dated Google flight Plan confirmation readiness",
+    "dated Google flight Plan date update readiness",
   );
   await clickElement(
     browser,
@@ -1248,9 +1232,9 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
       return [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
-        button.textContent.includes('Add to Plan') && !button.disabled);
+        button.textContent.includes('Update this Plan') && !button.disabled);
     })()`,
-    "confirm dated Google flight Plan day",
+    "confirm dated Google flight Plan date update",
   );
   const datedApplyResult = await waitFor(
     browser,

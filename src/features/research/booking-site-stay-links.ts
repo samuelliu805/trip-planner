@@ -1,6 +1,7 @@
 import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { hiltonSearchUrl, type BookingDeepLinkItem } from "./booking-site-deeplinks.ts";
+import { propertyTitleFromIdeaSourceUrl } from "./idea-provider-url.ts";
 
 function count(value: number | null | undefined) {
   return value == null ? null : String(value);
@@ -38,8 +39,13 @@ export function bookingStayWebUrl(
   item: BookingDeepLinkItem,
   region: AppRegion,
 ) {
-  const location = item.location_text?.trim();
-  if (!location) return null;
+  const location = item.location_text?.trim() ?? null;
+  const property =
+    item.title?.trim() && !/^(?:booking\.com|hotel|stay)$/i.test(item.title.trim())
+      ? item.title.trim()
+      : (propertyTitleFromIdeaSourceUrl(item.source_url ?? null) ??
+        item.location_place?.formatted_address?.trim() ??
+        location);
   const common = {
     adults: count(item.adult_count),
     checkin: item.start_date,
@@ -47,6 +53,18 @@ export function bookingStayWebUrl(
     children: count(item.child_count),
     rooms: count(item.room_count),
   };
+  if (provider === "Booking.com")
+    return property
+      ? searchUrl("https://www.booking.com/searchresults.html", {
+          checkin: item.start_date,
+          checkout: item.end_date,
+          group_adults: count(item.adult_count),
+          group_children: count(item.child_count),
+          no_rooms: count(item.room_count),
+          ss: property,
+        })
+      : null;
+  if (!location) return null;
   if (provider === "Airbnb") {
     const slug = encodeURIComponent(location.replace(/\s*,\s*/g, "--").replace(/\s+/g, "-"));
     return searchUrl(`https://www.airbnb.com/s/${slug}/homes`, common);
@@ -59,15 +77,6 @@ export function bookingStayWebUrl(
       children: count(item.child_count),
       city: location,
       crn: count(item.room_count),
-    });
-  if (provider === "Booking.com")
-    return searchUrl("https://www.booking.com/searchresults.html", {
-      checkin: item.start_date,
-      checkout: item.end_date,
-      group_adults: count(item.adult_count),
-      group_children: count(item.child_count),
-      no_rooms: count(item.room_count),
-      ss: location,
     });
   if (provider === "Agoda")
     return searchUrl("https://www.agoda.com/search", {

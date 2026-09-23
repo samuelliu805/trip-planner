@@ -34,6 +34,7 @@ import {
 import { createResearchItemSchema } from "./schema.ts";
 import { researchItemFormSteps, researchItemPriceStep } from "./research-item-form-steps.ts";
 import type { ResearchItem, ResearchPlanSnapshot } from "./types.ts";
+import { missingJourneyDates } from "./idea-plan-dates.ts";
 import {
   compareHrefForPlanContext,
   matchingPlanResearchItems,
@@ -136,6 +137,7 @@ test("stay searches pass location and dates to Airbnb and Booking.com", () => {
     end_date: "2026-10-08",
     location_text: "Tokyo, Japan",
     start_date: "2026-10-04",
+    title: null,
   });
   const sites = bookingSitesForItem(stay);
   assert.deepEqual(
@@ -151,6 +153,19 @@ test("stay searches pass location and dates to Airbnb and Booking.com", () => {
   assert.equal(booking.searchParams.get("checkin"), "2026-10-04");
   assert.equal(booking.searchParams.get("checkout"), "2026-10-08");
   assert.equal(bookingSearchDetails(stay), "Tokyo, Japan · 2026-10-04 → 2026-10-08");
+});
+
+test("Booking.com searches the exact hotel name before the surrounding city", () => {
+  const stay = item({
+    category: "stay",
+    title: "Kobe Bay Sheraton Hotel and Towers",
+    location_text: "Kobe, Japan",
+    source_url: "https://www.booking.com/hotel/jp/kobe-bay-sheraton-hotel-and-towers.html",
+  });
+  const booking = new URL(
+    bookingSitesForItem(stay).find(({ name }) => name === "Booking.com")!.url,
+  );
+  assert.equal(booking.searchParams.get("ss"), "Kobe Bay Sheraton Hotel and Towers");
 });
 
 test("saved travel-party counts and dates reach every detailed stay search", () => {
@@ -575,6 +590,23 @@ function plan(): ResearchPlanSnapshot {
     variantId: ids.variant,
   };
 }
+
+test("each dated flight journey must have its own Plan day", () => {
+  const flight = item({
+    category: "flight",
+    journey_type: "round_trip",
+    start_date: "2026-09-03",
+    end_date: "2026-09-12",
+    segments: [
+      { origin: "PVG", destination: "IST", departureDate: "2026-09-03", journeyIndex: 0 },
+      { origin: "IST", destination: "MXP", departureDate: "2026-09-04", journeyIndex: 0 },
+      { origin: "MXP", destination: "PVG", departureDate: "2026-09-12", journeyIndex: 1 },
+    ],
+  });
+  assert.deepEqual(missingJourneyDates(flight, { ...plan(), days: plan().days.slice(0, 1) }), [
+    "2026-09-12",
+  ]);
+});
 
 test("ResearchItem saves with category and only a title or only a URL", () => {
   assert.equal(
@@ -1476,7 +1508,7 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.match(commonFields, /We’ll create a clear route or place label when this is blank\./);
   assert.doesNotMatch(journey + multiCity + commonFields, /<details|Add times \(optional\)/);
   assert.match(schedule, /label="Departure"[\s\S]*label="Arrival"/);
-  assert.match(schedule, /planner-editor-compound-field/);
+  assert.match(schedule, /data-research-schedule-control/);
   assert.match(journey, /Airline & flight number/);
   assert.match(segmentDetails, /placeholder="Airline"/);
   assert.match(segmentDetails, /placeholder="Flight number"/);

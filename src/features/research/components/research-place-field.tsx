@@ -113,7 +113,7 @@ export function ResearchPlaceField({
         <div className="flex min-w-0 gap-2">
           <Input
             aria-label={t("{label}, entered manually", { label: t(label) })}
-            className="min-w-0"
+            className="h-[3.75rem] min-w-0 rounded-xl"
             maxLength={200}
             onChange={(event) => changeText(event.target.value)}
             placeholder={t(placeholder ?? "Enter a name or area")}
@@ -121,7 +121,7 @@ export function ResearchPlaceField({
           />
           <Button
             aria-label={t("Search Maps for {label}", { label: t(label) })}
-            className="size-11 shrink-0 p-0"
+            className="size-[3.75rem] shrink-0 rounded-xl p-0"
             onClick={() => setManual(false)}
             type="button"
             variant="outline"
@@ -143,7 +143,7 @@ export function ResearchPlaceField({
           />
           {!place ? (
             <Button
-              className="h-11 px-2 text-muted-foreground"
+              className="min-h-[3.75rem] px-3 text-sm text-muted-foreground"
               onClick={useManualEntry}
               type="button"
               variant="ghost"

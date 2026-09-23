@@ -7,9 +7,12 @@ export type BookingDeepLinkItem = {
   end_date: string | null;
   journey_type: string | null;
   location_text: string | null;
+  location_place?: { formatted_address?: string | null } | null;
   origin_text: string | null;
   room_count: number | null;
   start_date: string | null;
+  source_url?: string | null;
+  title?: string | null;
 };
 
 function trimmed(value: string | null) {

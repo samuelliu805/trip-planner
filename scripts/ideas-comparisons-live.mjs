@@ -161,13 +161,13 @@ async function run() {
     const activity = await capture(first.db, tripId, "activity", "Ride by West Lake");
     const roundTrip = await capture(first.db, tripId, "flight", "Shanghai to Milan return", {
       destinationText: "MXP",
-      endDate: "2026-10-03",
+      endDate: "2026-10-05",
       journeyType: "round_trip",
       originText: "PVG",
       segments: [
         {
           carrier: "TK",
-          departureDate: "2026-10-01",
+          departureDate: "2026-09-30",
           destination: "IST",
           journeyIndex: 0,
           origin: "PVG",
@@ -175,7 +175,7 @@ async function run() {
         },
         {
           carrier: "TK",
-          departureDate: "2026-10-01",
+          departureDate: "2026-09-30",
           destination: "MXP",
           journeyIndex: 0,
           origin: "IST",
@@ -183,7 +183,7 @@ async function run() {
         },
         {
           carrier: "TK",
-          departureDate: "2026-10-03",
+          departureDate: "2026-10-05",
           destination: "IST",
           journeyIndex: 1,
           origin: "MXP",
@@ -191,14 +191,14 @@ async function run() {
         },
         {
           carrier: "TK",
-          departureDate: "2026-10-03",
+          departureDate: "2026-10-05",
           destination: "PVG",
           journeyIndex: 1,
           origin: "IST",
           serviceNumber: "26",
         },
       ],
-      startDate: "2026-10-01",
+      startDate: "2026-09-30",
     });
     const foreignIdea = await capture(first.db, otherTripId, "flight", "Other Trip flight");
     const saved = rows(
@@ -288,11 +288,27 @@ async function run() {
     const roundTripItems = rows(
       await first.db
         .from("itinerary_items")
-        .select("title,details,price_amount")
+        .select("title,details,price_amount,day_id")
         .eq("variant_id", variant.id),
       "round-trip Plan lookup",
     ).filter((item) => item.details?.ideaResearchItemId === roundTrip);
     assert.deepEqual(roundTripItems.map((item) => item.title).sort(), ["MXP → PVG", "PVG → MXP"]);
+    const expandedDays = rows(
+      await first.db.from("trip_days").select("id,date").eq("variant_id", variant.id),
+      "expanded Plan days",
+    );
+    assert.deepEqual(expandedDays.map((day) => day.date).sort(), [
+      "2026-09-30",
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+      "2026-10-04",
+      "2026-10-05",
+    ]);
+    assert.deepEqual(
+      roundTripItems.map((item) => expandedDays.find((day) => day.id === item.day_id)?.date).sort(),
+      ["2026-09-30", "2026-10-05"],
+    );
     assert.equal(
       roundTripItems.reduce((sum, item) => sum + Number(item.price_amount ?? 0), 0),
       0,

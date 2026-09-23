@@ -2,6 +2,7 @@
 
 import { Check } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -25,11 +26,14 @@ import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { applySingleIdea } from "../idea-actions";
+import { applySingleIdeaToNewVariant } from "../idea-plan-variant-actions";
+import { missingJourneyDates } from "../idea-plan-dates";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { PlanDaySelect } from "./plan-day-select";
 
 export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: ResearchPlanSnapshot }) {
   const { t } = useI18n();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [dayId, setDayId] = useState("");
@@ -40,29 +44,49 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   const matchingDay = item.start_date
     ? plan.days.find((entry) => entry.date === item.start_date)
     : undefined;
-  const needsSchedule = item.category === "activity" || Boolean(item.start_date && !matchingDay);
+  const missingDates = missingJourneyDates(item, plan);
+  const needsDateDecision = missingDates.length > 0;
+  const needsSchedule =
+    item.category === "activity" ||
+    (item.category !== "flight" &&
+      item.category !== "train" &&
+      Boolean(item.start_date && !matchingDay));
   const day = plan.days.find((entry) => entry.id === dayId);
 
-  async function apply() {
+  async function apply(destination: "current" | "new" = "current") {
     if (pending || (needsSchedule && !dayId)) return;
     setPending(true);
     setError(undefined);
-    const result = await applySingleIdea({
+    const input = {
       tripId: item.trip_id,
       variantId: plan.variantId,
       researchItemId: item.id,
-      dayId: dayId || null,
-      beforeItemId: beforeItemId || null,
+      dayId: destination === "new" ? null : dayId || null,
+      beforeItemId: destination === "new" ? null : beforeItemId || null,
       operationId: newTelemetryOperationId(),
-    });
+    };
+    const result =
+      destination === "new"
+        ? await applySingleIdeaToNewVariant(input)
+        : await applySingleIdea(input);
     setPending(false);
     if (!result.data) {
       setError(result.error);
       return;
     }
+    if (destination === "new" && "variantId" in result.data) {
+      router.push(`${window.location.pathname}?variant=${result.data.variantId}`);
+      router.refresh();
+      return;
+    }
     void queryClient.invalidateQueries({ queryKey: plannerQueryKey(item.trip_id, plan.variantId) });
+    router.refresh();
     setOpen(false);
-    setNotice(result.data.status === "already_applied" ? t("Already in Plan") : t("Added to Plan"));
+    setNotice(
+      "status" in result.data && result.data.status === "already_applied"
+        ? t("Already in Plan")
+        : t("Added to Plan"),
+    );
   }
 
   return (
@@ -81,7 +105,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             className="min-h-11"
             disabled={pending}
             onClick={() => {
-              if (needsSchedule) {
+              if (needsSchedule || needsDateDecision) {
                 setOpen(true);
                 setError(undefined);
               } else void apply();
@@ -106,7 +130,12 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
               <T message="Add to Plan" />
             </DialogTitle>
             <DialogDescription>
-              {item.start_date ? (
+              {needsDateDecision ? (
+                <T
+                  message="This journey needs Plan days for {dates}. Choose where to add them."
+                  values={{ dates: missingDates.join(", ") }}
+                />
+              ) : item.start_date ? (
                 <T
                   message="This idea is dated {date}. Choose where it belongs in this Plan."
                   values={{
@@ -119,18 +148,26 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-5 py-4 sm:px-6">
-            <label className="block text-sm font-medium">
-              <T message="Day" />
-              <PlanDaySelect
-                days={plan.days}
-                onChange={(value) => {
-                  setDayId(value);
-                  setBeforeItemId("");
-                }}
-                value={dayId}
-              />
-            </label>
-            {day ? (
+            {needsDateDecision ? (
+              <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                <T message="Update this Plan's dates, or make a copy with its own dates. Your Ideas remain available in both Plans." />
+              </p>
+            ) : (
+              <label className="block text-sm font-medium">
+                <T message="Day" />
+                <PlanDaySelect
+                  days={plan.days}
+                  onChange={(value) => {
+                    setDayId(value);
+                    setBeforeItemId("");
+                  }}
+                  value={dayId}
+                />
+              </label>
+            )}
+            {!needsDateDecision &&
+            day &&
+            (item.category === "stay" || item.category === "activity") ? (
               <label className="block text-sm font-medium">
                 <T message="Position" />
                 <Select
@@ -158,13 +195,24 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             ) : null}
           </div>
           <DialogFooter>
+            {needsDateDecision ? (
+              <Button
+                className="min-h-11"
+                disabled={pending}
+                onClick={() => void apply("new")}
+                type="button"
+                variant="outline"
+              >
+                <T message="Create another Plan" />
+              </Button>
+            ) : null}
             <Button
               className="min-h-11"
-              disabled={!dayId || pending}
-              onClick={() => void apply()}
+              disabled={(needsSchedule && !dayId) || pending}
+              onClick={() => void apply("current")}
               type="button"
             >
-              <T message="Add to Plan" />
+              <T message={needsDateDecision ? "Update this Plan" : "Add to Plan"} />
             </Button>
           </DialogFooter>
         </DialogContent>

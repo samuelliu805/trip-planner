@@ -10,6 +10,7 @@ import { placeSnapshotSchema } from "@/features/itinerary/item-schema";
 import { createResearchItem, loadResearchItem } from "./actions";
 import { canonicalIdeaUrl, classifyIdeaInput, parseReliableIdeaFields } from "./idea-input";
 import { fetchIdeaPageMetadata } from "./idea-page-metadata";
+import { enrichFlightTimes } from "./idea-page-flight";
 import type { ResearchItem, ResearchMutationResult } from "./types";
 
 const captureSchema = z
@@ -38,14 +39,9 @@ export async function captureIdea(
     parsed.data.sourceUrl && classifyIdeaInput(parsed.data.sourceUrl).kind === parsed.data.kind
       ? parseReliableIdeaFields(parsed.data.sourceUrl)
       : parseReliableIdeaFields(null);
-  const sourceIsCompleteGoogleFlight =
-    parsed.data.sourceUrl &&
-    fields.priceAmount !== undefined &&
-    /https:\/\/(?:[^/]+\.)?google\.com\/travel\/flights/i.test(parsed.data.sourceUrl);
-  const metadata =
-    parsed.data.sourceUrl && !sourceIsCompleteGoogleFlight
-      ? await fetchIdeaPageMetadata(parsed.data.sourceUrl)
-      : null;
+  const metadata = parsed.data.sourceUrl
+    ? await fetchIdeaPageMetadata(parsed.data.sourceUrl)
+    : null;
   const textWithoutUrl = parsed.data.sourceUrl
     ? parsed.data.shareText?.replace(parsed.data.sourceUrl, "").trim() || null
     : parsed.data.shareText;
@@ -72,7 +68,11 @@ export async function captureIdea(
         : null,
     operationId: parsed.data.operationId,
     originText: fields.originText,
-    segments: fields.segments ?? [],
+    segments:
+      parsed.data.kind === "flight"
+        ? (enrichFlightTimes(fields.segments, metadata?.segments) ??
+          (metadata?.segments?.length === 1 ? metadata.segments : []))
+        : (fields.segments ?? []),
     sourceUrl: parsed.data.sourceUrl,
     startDate: fields.startDate,
     title:
