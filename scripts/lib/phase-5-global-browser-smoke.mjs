@@ -1066,15 +1066,18 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `Boolean(document.querySelector('[role="dialog"] [role="combobox"]'))`,
+    `Boolean([...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
+      .find((element) => element.getClientRects().length > 0))`,
     "dated Google flight Plan day choice",
   );
-  await clickElement(
+  await clickElementUntil(
     browser,
-    `document.querySelector('[role="dialog"] [role="combobox"]')`,
+    `[...document.querySelectorAll('[role="dialog"][data-state="open"] [role="combobox"]')]
+      .find((element) => element.getClientRects().length > 0)`,
+    `Boolean([...document.querySelectorAll('[role="option"]')]
+      .find((element) => element.getClientRects().length > 0))`,
     "open dated Google flight Plan day choices",
   );
-  await waitFor(browser, `Boolean(document.querySelector('[role="option"]'))`, "Plan day options");
   assert.equal(
     await evaluate(
       browser,
@@ -1100,25 +1103,35 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await waitFor(
     browser,
-    `!document.querySelector('[role="option"]')`,
+    `![...document.querySelectorAll('[role="option"]')]
+      .some((element) => element.getClientRects().length > 0)`,
     "selected dated Google flight Plan day",
   );
   await waitFor(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
-      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
+      return [...(dialog?.querySelectorAll('button') ?? [])].some((button) =>
+        button.textContent.includes('Add to Plan') && !button.disabled);
+    })()`,
     "dated Google flight Plan confirmation readiness",
   );
   await clickElement(
     browser,
-    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
-      button.textContent.includes('Add to Plan') && !button.disabled)`,
+    `(() => {
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
+      return [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Add to Plan') && !button.disabled);
+    })()`,
     "confirm dated Google flight Plan day",
   );
   const datedApplyResult = await waitFor(
     browser,
     `(() => {
-      const dialog = document.querySelector('[role="dialog"]');
+      const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
+        .find((element) => element.getClientRects().length > 0);
       if (!dialog) return { status: 'closed' };
       const alert = dialog.querySelector('[role="alert"]');
       return alert ? { status: 'error', text: alert.textContent.trim() } : null;
