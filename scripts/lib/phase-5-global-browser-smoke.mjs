@@ -821,6 +821,49 @@ async function boundedPageDiagnostic(browser) {
   }
 }
 
+async function waitForRealGoogleMap(browser, baseUrl, tripId) {
+  const ready = `Boolean(window.google?.maps &&
+    [...document.querySelectorAll('.gm-style')]
+      .some((element) => element.getClientRects().length > 0))`;
+  let lastDiagnostic;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+      browser.sessionId,
+    );
+    await evaluate(browser, `window.dispatchEvent(new Event('resize')); true`);
+    try {
+      await waitFor(browser, ready, `real Google map attempt ${attempt}`, 30_000);
+      return;
+    } catch {
+      lastDiagnostic = await evaluate(
+        browser,
+        `(() => {
+          const map = [...document.querySelectorAll('[aria-label="Itinerary map"]')]
+            .find((element) => element.getClientRects().length > 0);
+          return {
+            googleMapsAvailable: Boolean(window.google?.maps),
+            innerWidth,
+            mapRect: map?.getBoundingClientRect().toJSON() ?? null,
+            mapStatus: map?.innerText.slice(0, 240) ?? null,
+            mapsScripts: [...document.querySelectorAll('script[src*="maps.googleapis.com"]')]
+              .map((script) => script.src.slice(0, 240)),
+          };
+        })()`,
+      ).catch(() => ({ category: "map-diagnostic-unavailable" }));
+      if (attempt < 3) {
+        await navigate(browser, baseUrl, `/trips/${tripId}`, `Google map retry ${attempt}`);
+      }
+    }
+  }
+  const page = await boundedPageDiagnostic(browser);
+  throw new Error(
+    `Timed out waiting for real Google map after reload recovery; map diagnostic: ${JSON.stringify(lastDiagnostic)}; ` +
+      `bounded page diagnostic: ${JSON.stringify(page)}`,
+  );
+}
+
 export function previewProtectionHeaders(secret, setCookie = false) {
   const value = secret?.trim();
   if (!value) throw new Error("VERCEL_AUTOMATION_BYPASS_SECRET is required for Global Preview.");
@@ -1984,18 +2027,7 @@ export async function runGlobalBrowserSmoke(options) {
       "reauthenticated Global trip",
     );
     await verifyGlobalBookingSites(browser, baseUrl, options.tripId);
-    try {
-      await waitFor(
-        browser,
-        'Boolean(window.google?.maps && document.querySelector(".gm-style"))',
-        "real Google map",
-      );
-    } catch (error) {
-      const diagnostic = await boundedPageDiagnostic(browser);
-      throw new Error(
-        `${error instanceof Error ? error.message : error}; bounded map diagnostic: ${JSON.stringify(diagnostic)}`,
-      );
-    }
+    await waitForRealGoogleMap(browser, baseUrl, options.tripId);
     await verifyVariantAffordance(browser);
     await verifyHardNewTabShare(browser, options.publicToken);
     await verifyVariantNavigation(browser);
