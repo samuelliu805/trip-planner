@@ -23,6 +23,8 @@ test("verifies deployed CAPTCHA surfaces while using controlled browser auth", a
   assert.match(source, /token\.value\.length > 0 \|\| submit\.disabled/);
   assert.match(source, /Global login was neither CAPTCHA-verified nor gated/);
   assert.match(source, /installBrowserAuthCookies/);
+  assert.match(source, /verifyGlobalBookingSites\(browser, bookingSitesBaseUrl/);
+  assert.match(source, /Controlled auth cookies are required for deployed Ideas verification/);
   assert.match(source, /authenticatedPath: "\/login\?guest=1"/);
   assert.match(source, /verifyPasswordRecovery/);
   assert.match(source, /#recovery-password/);

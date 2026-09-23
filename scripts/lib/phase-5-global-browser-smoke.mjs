@@ -1131,13 +1131,30 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     '[data-editor-kind="research"] input[role="combobox"]',
     "Shanghai Pudong International Airport",
   );
-  await waitFor(
-    browser,
-    `Boolean([...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
-      .find((option) => option.getClientRects().length && option.textContent.trim()))`,
-    "protected Google place suggestions",
-    45_000,
-  );
+  try {
+    await waitFor(
+      browser,
+      `Boolean([...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
+        .find((option) => option.getClientRects().length && option.textContent.trim()))`,
+      "protected Google place suggestions",
+      45_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `(() => ({
+        editor: document.querySelector('[data-editor-kind="research"]')?.innerText.slice(0, 900),
+        legacyAutocomplete: typeof window.google?.maps?.places?.AutocompleteService,
+        legacyDetails: typeof window.google?.maps?.places?.PlacesService,
+        modernAutocomplete: typeof window.google?.maps?.places?.AutocompleteSuggestion,
+      }))()`,
+    ).catch(() => null);
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; place diagnostic: ${JSON.stringify(diagnostic)}; ` +
+        `client errors: ${JSON.stringify(browser.cdp.clientErrors.slice(-4))}; ` +
+        `network failures: ${JSON.stringify(browser.cdp.networkFailures.slice(-4))}`,
+    );
+  }
   await clickElement(
     browser,
     `[...document.querySelectorAll('[data-editor-kind="research"] [role="option"]')]
@@ -2128,7 +2145,27 @@ export async function runGlobalBrowserSmoke(options) {
       `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,
       "reauthenticated Global trip",
     );
-    await verifyGlobalBookingSites(browser, baseUrl, options.tripId);
+    const bookingSitesBaseUrl = deploymentBaseUrl ?? baseUrl;
+    if (bookingSitesBaseUrl !== baseUrl) {
+      if (!options.createAuthCookies) {
+        throw new Error("Controlled auth cookies are required for deployed Ideas verification.");
+      }
+      await establishPreviewBypass(
+        browser,
+        bookingSitesBaseUrl,
+        process.env.VERCEL_AUTOMATION_BYPASS_SECRET,
+      );
+      await installBrowserAuthCookies(browser, bookingSitesBaseUrl, options.createAuthCookies);
+    }
+    await verifyGlobalBookingSites(browser, bookingSitesBaseUrl, options.tripId);
+    if (bookingSitesBaseUrl !== baseUrl) {
+      await navigate(browser, baseUrl, `/trips/${options.tripId}`, "return to local trip");
+      await waitFor(
+        browser,
+        `document.body.innerText.includes(${JSON.stringify(options.authenticatedTitle ?? options.privateTitle)})`,
+        "local trip after deployed Ideas verification",
+      );
+    }
     await waitForRealGoogleMap(browser, baseUrl, options.tripId);
     await verifyVariantAffordance(browser);
     await verifyHardNewTabShare(browser, options.publicToken);

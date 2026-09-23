@@ -3189,17 +3189,48 @@ async function addAmapActivityThroughUi(browser, query, expectedCount) {
       )}`,
     );
   }
-  await clickElement(
-    browser,
-    `[...document.querySelectorAll('li[role="option"]')].find((option) => option.getClientRects().length)`,
-    `AMap suggestion for ${query}`,
-  );
-  await waitFor(
-    browser,
-    "Boolean(document.querySelector('button[aria-label=\"Clear map place\"]'))",
-    `resolved AMap POI for ${query}`,
-    30_000,
-  );
+  const visibleSuggestion =
+    `[...document.querySelectorAll('li[role="option"]')]` +
+    `.find((option) => option.getClientRects().length)`;
+  let resolutionDiagnostic;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    if (attempt > 1) {
+      await setInputValue(browser, placeSelector, "");
+      await setInputValue(browser, placeSelector, query);
+      await waitFor(
+        browser,
+        `Boolean(${visibleSuggestion})`,
+        `retried AMap suggestions for ${query}`,
+        20_000,
+      );
+    }
+    await clickElement(browser, visibleSuggestion, `AMap suggestion for ${query}`);
+    try {
+      await waitFor(
+        browser,
+        "Boolean(document.querySelector('button[aria-label=\"Clear map place\"]'))",
+        `resolved AMap POI for ${query}`,
+        12_000,
+      );
+      resolutionDiagnostic = undefined;
+      break;
+    } catch {
+      resolutionDiagnostic = {
+        attempt,
+        browser: browser.cdp.diagnostics
+          .filter((entry) => entry.method === "Network.responseReceived")
+          .slice(-5),
+        place: await readBoundedAmapSuggestionDiagnostic(browser),
+      };
+    }
+  }
+  if (resolutionDiagnostic) {
+    throw new Error(
+      `Timed out waiting for resolved AMap POI for ${query}; bounded retry diagnostic: ${JSON.stringify(
+        resolutionDiagnostic,
+      )}`,
+    );
+  }
   const title = await evaluate(
     browser,
     `document.querySelector('input[id^="item-title-"]')?.value?.trim()`,
