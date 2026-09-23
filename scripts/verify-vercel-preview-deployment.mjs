@@ -65,6 +65,29 @@ function approvedVercelOrigin(value, label) {
   return url.origin;
 }
 
+export function selectVercelPreviewCommentOrigin(payload) {
+  if (!Array.isArray(payload)) throw new Error("GitHub Preview comments response was invalid.");
+  const comments = [...payload].sort((left, right) =>
+    String(right?.updated_at ?? "").localeCompare(String(left?.updated_at ?? "")),
+  );
+  for (const comment of comments) {
+    if (
+      comment?.user?.login !== "vercel[bot]" ||
+      comment?.performed_via_github_app?.slug !== "vercel" ||
+      typeof comment.body !== "string"
+    )
+      continue;
+    for (const match of comment.body.matchAll(/\[Preview\]\((https:\/\/[^\s)]+)\)/gu)) {
+      try {
+        return approvedVercelOrigin(match[1], "Vercel bot Preview URL");
+      } catch {
+        // Ignore malformed or non-Vercel links even when they appear in a bot comment.
+      }
+    }
+  }
+  return undefined;
+}
+
 export function previewBrowserOrigin(environment, deploymentOrigin) {
   const configured = environment.PHASE5_GLOBAL_PREVIEW_URL?.trim();
   return configured
@@ -72,10 +95,13 @@ export function previewBrowserOrigin(environment, deploymentOrigin) {
     : approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL");
 }
 
-export function previewCandidateOrigins(environment, deploymentOrigin) {
+export function previewCandidateOrigins(environment, deploymentOrigin, commentOrigin) {
   const exactDeployment = approvedVercelOrigin(deploymentOrigin, "GitHub Preview deployment URL");
   const configured = previewBrowserOrigin(environment, exactDeployment);
-  return configured === exactDeployment ? [exactDeployment] : [configured, exactDeployment];
+  const comment = commentOrigin
+    ? approvedVercelOrigin(commentOrigin, "Vercel bot Preview URL")
+    : undefined;
+  return [...new Set([comment, configured, exactDeployment].filter(Boolean))];
 }
 
 export async function previewOriginMatchesExactSha(
@@ -134,6 +160,10 @@ export async function verifyVercelPreview(environment = process.env) {
   const token = required("GITHUB_TOKEN", environment);
   const repository = required("GITHUB_REPOSITORY", environment);
   const expectedSha = exactPreviewSha(environment);
+  const pullRequestNumber = environment.PHASE5_PULL_REQUEST_NUMBER?.trim();
+  if (pullRequestNumber && !/^[1-9][0-9]*$/.test(pullRequestNumber)) {
+    throw new Error("PHASE5_PULL_REQUEST_NUMBER is invalid.");
+  }
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
     throw new Error("GITHUB_REPOSITORY is invalid.");
   }
@@ -156,8 +186,25 @@ export async function verifyVercelPreview(environment = process.env) {
       );
       const result = classifyPreviewStatuses(statuses);
       if (result.state === "ready") {
+        let commentOrigin;
+        if (pullRequestNumber) {
+          const comments = await githubJson(
+            `/repos/${encodedRepository}/issues/${pullRequestNumber}/comments?per_page=100`,
+            token,
+          );
+          commentOrigin = selectVercelPreviewCommentOrigin(comments);
+          if (!commentOrigin) {
+            process.stdout.write("Waiting for the Vercel bot stable Preview alias.\n");
+            await new Promise((resolve) => setTimeout(resolve, 15_000));
+            continue;
+          }
+        }
         let browserOrigin;
-        for (const origin of previewCandidateOrigins(environment, result.url)) {
+        const origins = previewCandidateOrigins(environment, result.url, commentOrigin);
+        const browserOrigins = pullRequestNumber
+          ? origins.filter((origin) => origin !== result.url)
+          : origins;
+        for (const origin of browserOrigins) {
           if (await previewOriginMatchesExactSha(origin, expectedSha, environment)) {
             browserOrigin = origin;
             break;
@@ -171,7 +218,7 @@ export async function verifyVercelPreview(environment = process.env) {
           continue;
         }
         process.stdout.write(
-          `Verified GitHub Vercel Preview deployment ${deployment.id} for ${expectedSha}.\n`,
+          `Verified GitHub Vercel Preview deployment ${deployment.id} and stable alias for ${expectedSha}.\n`,
         );
         if (environment.GITHUB_OUTPUT) {
           await appendFile(environment.GITHUB_OUTPUT, `url=${browserOrigin}\n`);

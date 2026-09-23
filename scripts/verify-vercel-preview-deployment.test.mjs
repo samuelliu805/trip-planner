@@ -8,6 +8,7 @@ import {
   previewCandidateOrigins,
   previewOriginMatchesExactSha,
   selectExactPreviewDeployment,
+  selectVercelPreviewCommentOrigin,
   verifyVercelPreview,
 } from "./verify-vercel-preview-deployment.mjs";
 
@@ -89,6 +90,36 @@ test("falls back to the exact deployment when a configured branch origin is stal
   assert.deepEqual(previewCandidateOrigins({}, "https://exact-commit.vercel.app"), [
     "https://exact-commit.vercel.app",
   ]);
+});
+
+test("prefers the current trusted Vercel bot branch alias", () => {
+  const current = "https://trip-planner-git-codex-ideas-followup.example.vercel.app";
+  assert.equal(
+    selectVercelPreviewCommentOrigin([
+      {
+        body: `[Preview](${current})`,
+        performed_via_github_app: { slug: "vercel" },
+        updated_at: "2026-09-23T10:00:00Z",
+        user: { login: "vercel[bot]" },
+      },
+      {
+        body: "[Preview](https://attacker.example.vercel.app)",
+        performed_via_github_app: { slug: "other" },
+        updated_at: "2026-09-23T11:00:00Z",
+        user: { login: "attacker" },
+      },
+    ]),
+    current,
+  );
+  assert.deepEqual(
+    previewCandidateOrigins(
+      { PHASE5_GLOBAL_PREVIEW_URL: "https://old-branch.vercel.app" },
+      "https://exact-commit.vercel.app",
+      current,
+    ),
+    [current, "https://old-branch.vercel.app", "https://exact-commit.vercel.app"],
+  );
+  assert.throws(() => selectVercelPreviewCommentOrigin({}), /comments response was invalid/);
 });
 
 test("requires the controlled Preview origin to report the exact candidate SHA", async () => {
