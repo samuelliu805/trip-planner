@@ -6,6 +6,7 @@ import { PlaceProviderError } from "../places/errors.ts";
 import type { PlacesProvider } from "../places/contracts.ts";
 
 import { handleGooglePlacesRequest } from "./places/google-places-api.ts";
+import { createGoogleLegacyPlacesProvider } from "./places/google-legacy-places-provider.ts";
 import { createGooglePlacesProvider } from "./places/google-places-provider.ts";
 import { createGoogleServerPlacesProvider } from "./places/google-server-places-provider.ts";
 
@@ -112,7 +113,9 @@ test("browser provider falls back to the authorized same-origin adapter", async 
       },
     },
   } as never;
-  const providerSession = createGooglePlacesProvider(places, { fallbackProvider }).createSession();
+  const providerSession = createGooglePlacesProvider(places, {
+    fallbackProviders: [fallbackProvider],
+  }).createSession();
   assert.equal(
     (await providerSession.fetchSuggestions({ input: "Golden Gate" }))[0].id,
     "google-bridge",
@@ -131,6 +134,90 @@ test("browser provider falls back to the authorized same-origin adapter", async 
       .fetchSuggestions({ input: "cancelled", signal: aborted.signal }),
     (error) => error instanceof PlaceProviderError && error.code === "cancelled",
   );
+});
+
+test("browser provider reaches the legacy Google service when newer adapters are unavailable", async () => {
+  let detailsRequested = false;
+  class AutocompleteService {
+    getPlacePredictions(_request: unknown, callback: (values: unknown[], status: string) => void) {
+      callback(
+        [
+          {
+            place_id: "legacy-pvg",
+            structured_formatting: {
+              main_text: "Shanghai Pudong International Airport",
+              secondary_text: "Shanghai, China",
+            },
+          },
+        ],
+        "OK",
+      );
+    }
+  }
+  class PlacesService {
+    getDetails(_request: unknown, callback: (value: unknown, status: string) => void) {
+      detailsRequested = true;
+      callback(
+        {
+          address_components: [
+            { long_name: "Shanghai", short_name: "Shanghai", types: ["locality"] },
+            { long_name: "China", short_name: "CN", types: ["country"] },
+          ],
+          formatted_address: "Pudong, Shanghai, China",
+          geometry: { location: { lat: () => 31.1443, lng: () => 121.8083 } },
+          name: "Shanghai Pudong International Airport",
+          place_id: "legacy-pvg",
+        },
+        "OK",
+      );
+    }
+  }
+  const placesImplementation = {
+    AutocompleteService,
+    AutocompleteSessionToken: class {},
+    PlacesService,
+    PlacesServiceStatus: { OK: "OK", ZERO_RESULTS: "ZERO_RESULTS" },
+  };
+  const places = placesImplementation as never;
+  const unavailableProvider: PlacesProvider = {
+    createSession: () => ({
+      close: () => {},
+      fetchSuggestions: async () => {
+        throw new PlaceProviderError("unavailable");
+      },
+      resolveSuggestion: async () => {
+        throw new PlaceProviderError("unavailable");
+      },
+    }),
+  };
+  const modern = {
+    ...placesImplementation,
+    AutocompleteSuggestion: {
+      fetchAutocompleteSuggestions: async () => {
+        throw new Error("Places API (New) unavailable");
+      },
+    },
+  } as never;
+  const session = createGooglePlacesProvider(modern, {
+    fallbackProviders: [unavailableProvider, createGoogleLegacyPlacesProvider(places)],
+  }).createSession();
+  const suggestions = await session.fetchSuggestions({ input: "PVG" });
+  assert.equal(suggestions[0]?.id, "legacy-pvg");
+  const previousDocument = globalThis.document;
+  Object.defineProperty(globalThis, "document", {
+    configurable: true,
+    value: { createElement: () => ({}) },
+  });
+  const place = await session.resolveSuggestion("legacy-pvg").finally(() => {
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: previousDocument,
+    });
+  });
+  assert.equal(detailsRequested, true);
+  assert.equal(place.providerPlaceId, "legacy-pvg");
+  assert.equal(place.localityName, "Shanghai");
+  assert.equal(place.countryCode, "CN");
 });
 
 test("paid Google Places fallback is same-origin, authenticated, trip-scoped, and rate limited", async () => {

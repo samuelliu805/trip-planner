@@ -24,19 +24,21 @@ function ensureActive(signal?: AbortSignal) {
 
 export function createGooglePlacesProvider(
   places: google.maps.PlacesLibrary,
-  options: { fallbackProvider?: PlacesProvider } = {},
+  options: { fallbackProviders?: PlacesProvider[] } = {},
 ): PlacesProvider {
   return {
     createSession(): PlaceSearchSession {
-      const fallbackSession = options.fallbackProvider?.createSession();
-      const fallbackSuggestions = new Set<string>();
+      const fallbackSessions = (options.fallbackProviders ?? []).map((provider) =>
+        provider.createSession(),
+      );
+      const fallbackSuggestions = new Map<string, PlaceSearchSession>();
       let sessionToken: google.maps.places.AutocompleteSessionToken | null = null;
       const predictions = new Map<string, google.maps.places.PlacePrediction>();
       const close = () => {
         sessionToken = null;
         predictions.clear();
         fallbackSuggestions.clear();
-        fallbackSession?.close();
+        for (const fallbackSession of fallbackSessions) fallbackSession.close();
       };
       return {
         close,
@@ -66,16 +68,31 @@ export function createGooglePlacesProvider(
             });
           } catch (error) {
             if (error instanceof PlaceProviderError) throw error;
-            if (!fallbackSession) throw new PlaceProviderError("search_failed", { cause: error });
-            const suggestions = await fallbackSession.fetchSuggestions(request);
-            for (const suggestion of suggestions) fallbackSuggestions.add(suggestion.id);
-            return suggestions;
+            let lastError: unknown = error;
+            for (const fallbackSession of fallbackSessions) {
+              try {
+                const suggestions = await fallbackSession.fetchSuggestions(request);
+                for (const suggestion of suggestions) {
+                  fallbackSuggestions.set(suggestion.id, fallbackSession);
+                }
+                return suggestions;
+              } catch (fallbackError) {
+                if (
+                  fallbackError instanceof PlaceProviderError &&
+                  fallbackError.code === "cancelled"
+                )
+                  throw fallbackError;
+                lastError = fallbackError;
+              }
+            }
+            throw new PlaceProviderError("search_failed", { cause: lastError });
           }
         },
         async resolveSuggestion(id, signal) {
           ensureActive(signal);
           const prediction = predictions.get(id);
-          if (!prediction && fallbackSuggestions.has(id) && fallbackSession) {
+          const fallbackSession = fallbackSuggestions.get(id);
+          if (!prediction && fallbackSession) {
             try {
               return await fallbackSession.resolveSuggestion(id, signal);
             } finally {

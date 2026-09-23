@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 
 import { createGooglePlacesProvider } from "./google-places-provider";
+import { createGoogleLegacyPlacesProvider } from "./google-legacy-places-provider";
 import { createGoogleServerPlacesProvider } from "./google-server-places-provider";
 
 const tripPath =
@@ -16,11 +17,16 @@ export function useGooglePlacesProvider() {
   const tripId = pathname.match(tripPath)?.[1];
   return useMemo(() => {
     if (!places) return null;
-    const fallbackProvider = tripId
-      ? createGoogleServerPlacesProvider({
-          endpoint: `/api/trips/${tripId}/maps/google/places`,
-        })
-      : undefined;
-    return createGooglePlacesProvider(places, { fallbackProvider });
+    const fallbackProviders = [
+      ...(tripId
+        ? [
+            createGoogleServerPlacesProvider({
+              endpoint: `/api/trips/${tripId}/maps/google/places`,
+            }),
+          ]
+        : []),
+      createGoogleLegacyPlacesProvider(places),
+    ];
+    return createGooglePlacesProvider(places, { fallbackProviders });
   }, [places, tripId]);
 }
