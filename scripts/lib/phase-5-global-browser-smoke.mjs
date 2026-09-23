@@ -607,7 +607,8 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
           hasStaticCategories: ['all', 'plans', 'itinerary', 'people', 'sharing', 'ideas']
             .every((value) => options.includes(value)),
           pagination: Boolean(pagination),
-          paginationText: pagination?.textContent.replace(/\\s+/g, ' ').trim(),
+          paginationLabels: [...(pagination?.children ?? [])]
+            .map((node) => node.textContent.trim()),
           showsPerPageCopy: document.body.innerText.includes('per page'),
         };
       })()`,
@@ -619,7 +620,7 @@ async function verifyPeopleHistoryAndPlannerLogout(browser, baseUrl, options) {
       hasManualDetailControls: false,
       hasStaticCategories: true,
       pagination: true,
-      paginationText: "Older Page 1 Newer",
+      paginationLabels: ["Older", "Page 1", "Newer"],
       showsPerPageCopy: false,
     },
   );
