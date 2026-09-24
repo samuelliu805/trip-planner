@@ -3,6 +3,7 @@
   "authenticated": [
     ["apply_idea_choice_v1(uuid,uuid,uuid,uuid,uuid,uuid)", "member_guard"],
     ["apply_single_idea_v1(uuid,uuid,uuid,uuid,uuid,uuid)", "member_guard"],
+    ["rebase_idea_variant_days_v1(uuid,uuid,date,integer,uuid)", "member_guard"],
     ["apply_research_item_to_variant_v3(uuid,uuid,uuid,text,uuid,bigint,uuid)", "member_guard"],
     ["capture_idea_v1(uuid,uuid,text,text,text,text,jsonb)", "member_guard"],
     ["clear_day_route_plan_v2(uuid,uuid,uuid,bigint,uuid)", "member_guard"],

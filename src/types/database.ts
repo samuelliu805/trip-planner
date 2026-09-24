@@ -1904,6 +1904,16 @@ export type Database = {
         };
         Returns: Json;
       };
+      rebase_idea_variant_days_v1: {
+        Args: {
+          target_trip_id: string;
+          target_variant_id: string;
+          requested_departure_date: string;
+          requested_anchor_day_number: number;
+          target_operation_id: string;
+        };
+        Returns: Json;
+      };
       capture_idea_v1: {
         Args: {
           target_trip_id: string;

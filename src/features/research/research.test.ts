@@ -34,7 +34,7 @@ import {
 import { createResearchItemSchema } from "./schema.ts";
 import { researchItemFormSteps, researchItemPriceStep } from "./research-item-form-steps.ts";
 import type { ResearchItem, ResearchPlanSnapshot } from "./types.ts";
-import { missingJourneyDates } from "./idea-plan-dates.ts";
+import { currentPlanDateChange, missingJourneyDates, newPlanDateRange } from "./idea-plan-dates.ts";
 import {
   compareHrefForPlanContext,
   matchingPlanResearchItems,
@@ -606,6 +606,38 @@ test("each dated flight journey must have its own Plan day", () => {
   assert.deepEqual(missingJourneyDates(flight, { ...plan(), days: plan().days.slice(0, 1) }), [
     "2026-09-12",
   ]);
+});
+
+test("a new Plan anchors the outbound flight to the chosen Day and preserves its duration", () => {
+  assert.deepEqual(newPlanDateRange("2026-11-20", 3, 5, ["2026-11-20", "2026-11-25"]), {
+    start: "2026-11-18",
+    end: "2026-11-25",
+  });
+  assert.deepEqual(newPlanDateRange("2026-11-20", 1, 5, ["2026-11-20"]), {
+    start: "2026-11-20",
+    end: "2026-11-24",
+  });
+});
+
+test("current Plan preview includes dates added before or after its existing calendar", () => {
+  const dated = {
+    ...plan(),
+    days: [
+      { ...plan().days[0], date: "2026-09-05", dayNumber: 1 },
+      { ...plan().days[0], id: "day-2", date: "2026-09-06", dayNumber: 2 },
+    ],
+  };
+  assert.deepEqual(currentPlanDateChange(["2026-09-03", "2026-09-12"], dated), {
+    before: ["2026-09-05", "2026-09-06"],
+    after: ["2026-09-03", "2026-09-12"],
+  });
+  assert.deepEqual(
+    currentPlanDateChange(["2026-09-03"], {
+      ...dated,
+      days: dated.days.map((day) => ({ ...day, date: null })),
+    }),
+    { before: null, after: ["2026-09-03", "2026-09-04"] },
+  );
 });
 
 test("ResearchItem saves with category and only a title or only a URL", () => {

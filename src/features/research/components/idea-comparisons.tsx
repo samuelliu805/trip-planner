@@ -139,6 +139,7 @@ export function IdeaComparisons({
     comparison: IdeaComparison,
     choiceId: string,
     destination: "current" | "new" = "current",
+    anchorDayNumber = 1,
   ) {
     if (pending) return;
     const choice = comparison.choices.find((entry) => entry.id === choiceId);
@@ -162,6 +163,7 @@ export function IdeaComparisons({
       operationId,
       tripId,
       variantId: plan.variantId,
+      anchorDayNumber,
     };
     const result =
       destination === "new"
@@ -298,7 +300,9 @@ export function IdeaComparisons({
         byId={byId}
         dayIds={dayIds}
         error={view ? error : undefined}
-        onApply={(comparison, choiceId) => void apply(comparison, choiceId)}
+        onApply={(comparison, choiceId, destination, anchorDayNumber) =>
+          void apply(comparison, choiceId, destination, anchorDayNumber)
+        }
         onClose={() => setView(undefined)}
         onDayChange={(choiceId, dayId) =>
           setDayIds((current) => ({ ...current, [choiceId]: dayId }))

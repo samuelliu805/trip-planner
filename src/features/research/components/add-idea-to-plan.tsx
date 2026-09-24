@@ -27,7 +27,12 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { applySingleIdea } from "../idea-actions";
 import { applySingleIdeaToNewVariant } from "../idea-plan-variant-actions";
-import { missingJourneyDates } from "../idea-plan-dates";
+import {
+  currentPlanDateChange,
+  ideaJourneyDates,
+  missingJourneyDates,
+  newPlanDateRange,
+} from "../idea-plan-dates";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { PlanDaySelect } from "./plan-day-select";
 
@@ -41,11 +46,18 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
+  const [dateMode, setDateMode] = useState<"current" | "new">("current");
+  const [anchorDayNumber, setAnchorDayNumber] = useState(1);
   const matchingDay = item.start_date
     ? plan.days.find((entry) => entry.date === item.start_date)
     : undefined;
   const missingDates = missingJourneyDates(item, plan);
   const needsDateDecision = missingDates.length > 0;
+  const journeyDates = ideaJourneyDates(item);
+  const dateChange = currentPlanDateChange(journeyDates, plan);
+  const newDates = journeyDates[0]
+    ? newPlanDateRange(journeyDates[0], anchorDayNumber, plan.days.length, journeyDates)
+    : null;
   const needsSchedule =
     item.category === "activity" ||
     (item.category !== "flight" &&
@@ -64,6 +76,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       dayId: destination === "new" ? null : dayId || null,
       beforeItemId: destination === "new" ? null : beforeItemId || null,
       operationId: newTelemetryOperationId(),
+      anchorDayNumber,
     };
     const result =
       destination === "new"
@@ -106,6 +119,8 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             disabled={pending}
             onClick={() => {
               if (needsSchedule || needsDateDecision) {
+                setDateMode("current");
+                setAnchorDayNumber(1);
                 setOpen(true);
                 setError(undefined);
               } else void apply();
@@ -126,18 +141,35 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              <T message="Add to Plan" />
+            <DialogTitle className="text-lg font-bold">
+              <T
+                message={
+                  needsDateDecision
+                    ? dateMode === "new"
+                      ? "New Plan dates"
+                      : "Update Plan dates?"
+                    : "Add to Plan"
+                }
+              />
             </DialogTitle>
             <DialogDescription>
               {needsDateDecision ? (
-                <T
-                  message="This journey needs Plan days for {dates}. Choose where to add them."
-                  values={{ dates: missingDates.join(", ") }}
-                />
+                dateMode === "new" ? (
+                  newDates ? (
+                    <T message="Day 1: {start} · Last day: {end}" values={newDates} />
+                  ) : null
+                ) : dateChange ? (
+                  <T
+                    message="Plan dates: {before} → {after}"
+                    values={{
+                      before: dateChange.before?.join("–") ?? t("No dates"),
+                      after: dateChange.after.join("–"),
+                    }}
+                  />
+                ) : null
               ) : item.start_date ? (
                 <T
-                  message="This idea is dated {date}. Choose where it belongs in this Plan."
+                  message="Idea date: {date}"
                   values={{
                     date: item.end_date ? `${item.start_date} – ${item.end_date}` : item.start_date,
                   }}
@@ -148,11 +180,26 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-5 py-4 sm:px-6">
-            {needsDateDecision ? (
-              <p className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-                <T message="Update this Plan's dates, or make a copy with its own dates. Your Ideas remain available in both Plans." />
-              </p>
-            ) : (
+            {needsDateDecision && dateMode === "new" ? (
+              <label className="block text-sm font-medium">
+                <T message="First flight on" />
+                <Select
+                  onValueChange={(value) => setAnchorDayNumber(Number(value))}
+                  value={String(anchorDayNumber)}
+                >
+                  <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plan.days.map((entry) => (
+                      <SelectItem key={entry.id} value={String(entry.dayNumber)}>
+                        {t("Day {number}", { number: entry.dayNumber })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            ) : needsDateDecision ? null : (
               <label className="block text-sm font-medium">
                 <T message="Day" />
                 <PlanDaySelect
@@ -199,20 +246,32 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
               <Button
                 className="min-h-11"
                 disabled={pending}
-                onClick={() => void apply("new")}
+                onClick={() => {
+                  if (dateMode === "new") setDateMode("current");
+                  else setDateMode("new");
+                  setError(undefined);
+                }}
                 type="button"
                 variant="outline"
               >
-                <T message="Create another Plan" />
+                <T message={dateMode === "new" ? "Back" : "Create another Plan"} />
               </Button>
             ) : null}
             <Button
               className="min-h-11"
               disabled={(needsSchedule && !dayId) || pending}
-              onClick={() => void apply("current")}
+              onClick={() => void apply(dateMode)}
               type="button"
             >
-              <T message={needsDateDecision ? "Update this Plan" : "Add to Plan"} />
+              <T
+                message={
+                  needsDateDecision
+                    ? dateMode === "new"
+                      ? "Create Plan"
+                      : "Update this Plan"
+                    : "Add to Plan"
+                }
+              />
             </Button>
           </DialogFooter>
         </DialogContent>
