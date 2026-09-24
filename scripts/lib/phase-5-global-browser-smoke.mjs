@@ -1224,6 +1224,30 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       { deviceScaleFactor: 1, height: 844, mobile: false, width },
       browser.sessionId,
     );
+    try {
+      await waitFor(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+          return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+        })()`,
+        `new Plan date dialog layout at ${width}px`,
+        10_000,
+      );
+    } catch (error) {
+      const bounds = await evaluate(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+          return { innerWidth, innerHeight, visualHeight: visualViewport?.height,
+            left: rect?.left, right: rect?.right, top: rect?.top, bottom: rect?.bottom };
+        })()`,
+      );
+      throw new Error(
+        `${error instanceof Error ? error.message : error}; ${JSON.stringify(bounds)}`,
+      );
+    }
     const layout = await evaluate(
       browser,
       `(() => {
