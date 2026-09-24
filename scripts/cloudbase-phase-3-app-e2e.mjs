@@ -1143,14 +1143,14 @@ async function verifyTripSectionNavigation(browser, tripId) {
 
   await waitFor(
     browser,
-    `Boolean([...document.querySelectorAll('button[aria-label="Search booking sites"]')]
+    `Boolean([...document.querySelectorAll('button[aria-label="Search other booking sites"]')]
       .find((button) => button.getClientRects().length && !button.disabled))`,
     "CN booking sites control",
     45_000,
   );
   await clickElement(
     browser,
-    `[...document.querySelectorAll('button[aria-label="Search booking sites"]')]
+    `[...document.querySelectorAll('button[aria-label="Search other booking sites"]')]
       .find((button) => button.getClientRects().length && !button.disabled)`,
     "CN booking sites",
   );
