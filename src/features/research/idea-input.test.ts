@@ -59,6 +59,115 @@ test("classifies known booking URLs without inventing itinerary fields", () => {
   }
 });
 
+test("every rental and rail search provider can enter the correct Ideas flow", () => {
+  const cases = [
+    ["https://www.avis.com/en/home", "car"],
+    ["https://www.hertz.com/us/en", "car"],
+    ["https://www.enterprise.com/en/home.html", "car"],
+    ["https://www.europcar.com/en-us", "car"],
+    ["https://www.budget.com/en/home", "car"],
+    ["https://www.sixt.com/car-rental/", "car"],
+    ["https://www.amtrak.com/home.html", "train"],
+    ["https://www.eurail.com/en/book-reservations", "train"],
+    ["https://www.sncf-connect.com/home/search", "train"],
+    ["https://www.sbb.ch/en", "train"],
+    ["https://www.omio.com/trains/paris/berlin", "train"],
+    ["https://www.omio.com/app/search-frontend/journey/train/123/session/456", "train"],
+    ["https://www.trip.com/trains/", "train"],
+    ["https://m.ctrip.com/webapp/train/", "train"],
+    ["https://www.12306.cn/index/", "train"],
+  ] as const;
+  for (const [url, expected] of cases) assert.equal(classifyIdeaInput(url).kind, expected, url);
+});
+
+test("actual provider booking formats recover route and dates without quote prices", () => {
+  const avis = parseReliableIdeaFields(
+    "https://www.avis.com/en/reservation/review-and-book?pickup_day=23&pickup_month=10&pickup_year=2026&return_day=31&return_month=10&return_year=2026&pickup_location_code=FCO&return_location_code=FCO&vehicle_code=SB",
+  );
+  assert.deepEqual(
+    [avis.originText, avis.destinationText, avis.startDate, avis.endDate, avis.priceAmount],
+    ["FCO", "FCO", "2026-10-23", "2026-10-31", undefined],
+  );
+  const hertz = parseReliableIdeaFields(
+    "https://www.hertz.com/us/en/book/checkout?pdate=2026-10-30T12%3A00%3A00&ddate=2026-10-31T12%3A00%3A00&pid=MXPT51&did=MXPT51&sippCode=PFAR",
+  );
+  assert.deepEqual(
+    [hertz.originText, hertz.destinationText, hertz.startDate, hertz.endDate],
+    ["MXPT51", "MXPT51", "2026-10-30", "2026-10-31"],
+  );
+  const sixt = parseReliableIdeaFields(
+    "https://www.sixt.com/betafunnel/#/offercheckout?zen_pu_title=Milan%20Airport%20Malpensa%20T1&zen_do_title=Milan%20Airport%20Malpensa%20T1&zen_pu_time=2026-09-26T10%3A00&zen_do_time=2026-09-30T10%3A00&zen_offer_id=GLAE-43294-43294",
+  );
+  assert.deepEqual(
+    [sixt.originText, sixt.destinationText, sixt.startDate, sixt.endDate],
+    ["Milan Airport Malpensa T1", "Milan Airport Malpensa T1", "2026-09-26", "2026-09-30"],
+  );
+  const tripHotel = parseReliableIdeaFields(
+    "https://hk.trip.com/hotels/detail/?cityEnName=Tokyo&cityId=228&hotelId=12255760&checkIn=2026-10-17&checkOut=2026-10-19",
+  );
+  assert.deepEqual(
+    [tripHotel.locationText, tripHotel.startDate, tripHotel.endDate],
+    ["Tokyo", "2026-10-17", "2026-10-19"],
+  );
+  const tripFlight = parseReliableIdeaFields(
+    "https://hk.trip.com/flights/passenger?triptype=RT&dcity=bjs&acity=lon&dairport=pek&aairport=lhr&ddate=2026-11-17&rdate=2026-11-20",
+  );
+  assert.deepEqual(
+    [
+      tripFlight.originText,
+      tripFlight.destinationText,
+      tripFlight.startDate,
+      tripFlight.endDate,
+      tripFlight.journeyType,
+    ],
+    ["pek", "lhr", "2026-11-17", "2026-11-20", "round_trip"],
+  );
+  const first = canonicalIdeaUrl(
+    "https://www.sixt.com/betafunnel/#/offercheckout?zen_pu_time=2026-09-26T10%3A00&zen_offer_id=first&zen_session_id=one",
+  );
+  const second = canonicalIdeaUrl(
+    "https://www.sixt.com/betafunnel/#/offercheckout?zen_pu_time=2026-09-26T10%3A00&zen_offer_id=second&zen_session_id=two",
+  );
+  assert.notEqual(first, second);
+});
+
+test("rental and rail links preserve only explicit route and date details", () => {
+  const cases = [
+    [
+      "https://www.avis.com/en/reservation?pickupLocation=LAX&returnLocation=SFO&pickupDate=2026-11-21&returnDate=2026-11-28",
+      ["LAX", "SFO", "2026-11-21", "2026-11-28"],
+    ],
+    [
+      "https://www.hertz.com/us/en?pickupLocation=LAX&returnLocation=SFO&pickupDate=11/21/2026&returnDate=11/28/2026",
+      ["LAX", "SFO", "2026-11-21", "2026-11-28"],
+    ],
+    [
+      "https://www.enterprise.com/en/car-rental/reservation/start.html?pickUpLocation.searchCriteria=LAX&dropOffLocation.searchCriteria=SFO&pickUpDate=20261121&dropOffDate=20261128",
+      ["LAX", "SFO", "2026-11-21", "2026-11-28"],
+    ],
+    [
+      "https://www.omio.com/trains/paris/berlin?date=2026-11-21",
+      ["paris", "berlin", "2026-11-21", null],
+    ],
+    [
+      "https://www.sbb.ch/en?stops%5B0%5D%5Bvalue%5D=Zurich&stops%5B1%5D%5Bvalue%5D=Bern&date=2026-11-21",
+      ["Zurich", "Bern", "2026-11-21", null],
+    ],
+    [
+      "https://www.trip.com/trains/?departStation=Paris&arriveStation=Lyon&departDate=2026-11-21",
+      ["Paris", "Lyon", "2026-11-21", null],
+    ],
+  ] as const;
+  for (const [url, expected] of cases) {
+    const fields = parseReliableIdeaFields(url);
+    assert.deepEqual(
+      [fields.originText, fields.destinationText, fields.startDate, fields.endDate],
+      expected,
+      url,
+    );
+  }
+});
+
 test("natural language, unknown links, invalid links, and overrides", () => {
   assert.equal(classifyIdeaInput("想去西湖骑行").kind, "activity");
   assert.equal(classifyIdeaInput("北京到上海的机票").kind, "flight");

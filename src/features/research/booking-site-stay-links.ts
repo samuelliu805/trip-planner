@@ -72,11 +72,21 @@ export function bookingStayWebUrl(
   if (provider === "Trip.com")
     return searchUrl("https://www.trip.com/hotels/list", {
       adult: count(item.adult_count),
-      checkin: item.start_date,
-      checkout: item.end_date,
+      checkIn: item.start_date,
+      checkOut: item.end_date,
       children: count(item.child_count),
-      city: location,
+      city: (() => {
+        try {
+          const url = new URL(item.source_url ?? "");
+          const id = url.searchParams.get("cityId") ?? url.searchParams.get("city");
+          return /^(?:\d{1,9})$/.test(id ?? "") ? id : null;
+        } catch {
+          return null;
+        }
+      })(),
       crn: count(item.room_count),
+      searchType: "CT",
+      searchValue: property ?? location,
     });
   if (provider === "Agoda")
     return searchUrl("https://www.agoda.com/search", {

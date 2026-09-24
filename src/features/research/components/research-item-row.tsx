@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, MapPin, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, MapPin, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -14,13 +14,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
@@ -146,53 +139,52 @@ export function ResearchItemRow({
           </span>
         ) : null}
       </button>
-      <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-1">
-          {needsPlaceConfirmation ? (
-            <Button
-              className="min-h-11"
-              onClick={() => setEditOpen(true)}
-              size="sm"
-              type="button"
-              variant="outline"
-            >
-              <MapPin aria-hidden="true" className="size-4" />
-              <T message="Confirm location" />
-            </Button>
-          ) : null}
+      {needsPlaceConfirmation ? (
+        <Button
+          className="mt-3 min-h-11"
+          onClick={() => setEditOpen(true)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <MapPin aria-hidden="true" className="size-4" />
+          <T message="Confirm location" />
+        </Button>
+      ) : null}
+      <div className="mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="flex min-h-11 min-w-0 items-center gap-1">
           {item.category !== "activity" ? <BookingSitesDialog item={item} /> : null}
           {source ? (
-            <Button asChild className="min-h-11 min-w-0 max-w-40 px-2.5" size="sm" variant="ghost">
-              <a href={source.url} rel="noreferrer" target="_blank">
-                <span className="truncate">{sourceLabel(source.url)}</span>
+            <Button
+              asChild
+              className="size-11 shrink-0 p-0 sm:w-auto sm:px-2"
+              size="sm"
+              variant="ghost"
+            >
+              <a
+                aria-label={t("Open original link")}
+                href={source.url}
+                rel="noreferrer"
+                target="_blank"
+                title={t("Open original link")}
+              >
+                <span className="hidden truncate sm:inline">
+                  <T message="Original" />
+                </span>
                 <ExternalLink aria-hidden="true" className="size-3.5 shrink-0" />
               </a>
             </Button>
           ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label={t("More actions for {item}", { item: title ?? t("idea") })}
-                className="size-11 p-0"
-                type="button"
-                variant="ghost"
-              >
-                <MoreHorizontal aria-hidden="true" className="size-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onSelect={() => window.setTimeout(() => setEditOpen(true), 0)}>
-                <Pencil aria-hidden="true" className="size-4" /> <T message="Edit" />
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onSelect={() => setConfirmOpen(true)}
-              >
-                <Trash2 aria-hidden="true" className="size-4" /> <T message="Delete" />
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            aria-label={t("Delete {item}", { item: displayTitle })}
+            className="size-11 shrink-0 border-destructive/30 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => setConfirmOpen(true)}
+            title={t("Delete")}
+            type="button"
+            variant="outline"
+          >
+            <Trash2 aria-hidden="true" className="size-4" />
+          </Button>
         </div>
         <AddIdeaToPlan item={item} plan={plan} />
       </div>

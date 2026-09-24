@@ -57,7 +57,9 @@ export function QuickIdeaInput({
   );
   const route =
     preview.originText && preview.destinationText
-      ? `${preview.originText} → ${preview.destinationText}`
+      ? classification.kind === "car" && preview.originText === preview.destinationText
+        ? `${t("Car")} · ${preview.originText}`
+        : `${preview.originText} → ${preview.destinationText}`
       : preview.originText;
   const textCandidate = classification.sourceUrl
     ? input.replace(classification.sourceUrl, "").trim()

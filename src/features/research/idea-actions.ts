@@ -17,7 +17,7 @@ const captureSchema = z
   .object({
     tripId: z.uuid(),
     operationId: z.uuid(),
-    kind: z.enum(["flight", "stay", "car", "activity"]),
+    kind: z.enum(["flight", "stay", "car", "train", "activity"]),
     title: z.string().trim().max(300).nullable(),
     sourceUrl: z.url().max(2048).nullable(),
     shareText: z.string().trim().max(5000).nullable(),
@@ -36,7 +36,8 @@ export async function captureIdea(
   const parsed = captureSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid idea." };
   const fields =
-    parsed.data.sourceUrl && classifyIdeaInput(parsed.data.sourceUrl).kind === parsed.data.kind
+    parsed.data.sourceUrl &&
+    ["unknown", parsed.data.kind].includes(classifyIdeaInput(parsed.data.sourceUrl).kind)
       ? parseReliableIdeaFields(parsed.data.sourceUrl)
       : parseReliableIdeaFields(null);
   const metadata = parsed.data.sourceUrl
@@ -58,6 +59,7 @@ export async function captureIdea(
     currency: priceAmount === null ? null : priceCurrency,
     destinationText: fields.destinationText,
     endDate: fields.endDate,
+    endTime: fields.endTime ?? null,
     journeyType: fields.journeyType ?? null,
     links: [],
     locationPlaceSnapshot: parsed.data.locationPlaceSnapshot ?? null,
@@ -75,11 +77,14 @@ export async function captureIdea(
         : (fields.segments ?? []),
     sourceUrl: parsed.data.sourceUrl,
     startDate: fields.startDate,
+    startTime: fields.startTime ?? null,
     title:
       parsed.data.title ??
       metadata?.title ??
       (fields.originText && fields.destinationText
-        ? `${fields.originText} → ${fields.destinationText}`
+        ? parsed.data.kind === "car" && fields.originText === fields.destinationText
+          ? `Car · ${fields.originText}`
+          : `${fields.originText} → ${fields.destinationText}`
         : locationText),
     totalPriceAmount: priceAmount,
     tripId: parsed.data.tripId,

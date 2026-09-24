@@ -1493,14 +1493,14 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     browser,
     `Boolean([...document.querySelectorAll('article')]
       .find((item) => item.innerText.includes('NH 972'))
-      ?.querySelector('button[aria-label="Search booking sites"]'))`,
+      ?.querySelector('button[aria-label="Search other booking sites"]'))`,
     "Global booking sites control",
   );
   await clickElement(
     browser,
     `[...document.querySelectorAll('article')]
       .find((item) => item.innerText.includes('NH 972'))
-      ?.querySelector('button[aria-label="Search booking sites"]')`,
+      ?.querySelector('button[aria-label="Search other booking sites"]')`,
     "Global booking sites",
   );
   await waitFor(
@@ -1517,7 +1517,11 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       text: link.textContent.trim(),
     }))`,
   );
-  assert.equal(bookingSites.length, 3, "Global flight providers did not render one action each.");
+  assert.equal(
+    bookingSites.length,
+    2,
+    "Global alternative flight providers did not render one action each.",
+  );
   assert.equal(
     bookingSites.some(({ href, label }) =>
       /apps\.apple\.com|download|get the .* app/i.test(`${href} ${label}`),
@@ -1527,7 +1531,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   assert.deepEqual(
     bookingSites.map(({ text }) => text),
-    ["Google Flights", "Trip.com", "KAYAK"],
+    ["Trip.com", "KAYAK"],
   );
   for (const site of bookingSites) {
     assert.match(site.href, /^https:\/\//, `${site.text} did not expose a normal web link.`);

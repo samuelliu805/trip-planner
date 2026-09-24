@@ -8,6 +8,8 @@ import {
   bookingSitesForCategory,
   bookingSitesForItem,
 } from "./booking-sites.ts";
+import { bookingProviderWebUrl } from "./booking-site-web-links.ts";
+import { bookingStayWebUrl } from "./booking-site-stay-links.ts";
 import { customSchemeFallbackDelay, isBookingAppDevice } from "./components/open-app-deep-link.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import { initialResearchSegments } from "./journey.ts";
@@ -167,9 +169,13 @@ test("Booking.com searches the exact hotel name before the surrounding city", ()
     source_url: "https://www.booking.com/hotel/jp/kobe-bay-sheraton-hotel-and-towers.html",
   });
   const booking = new URL(
-    bookingSitesForItem(stay).find(({ name }) => name === "Booking.com")!.url,
+    bookingStayWebUrl("Booking.com", "https://www.booking.com/searchresults.html", stay, "global")!,
   );
   assert.equal(booking.searchParams.get("ss"), "Kobe Bay Sheraton Hotel and Towers");
+  assert.equal(
+    bookingSitesForItem(stay).some(({ name }) => name === "Booking.com"),
+    false,
+  );
 });
 
 test("saved travel-party counts and dates reach every detailed stay search", () => {
@@ -205,7 +211,7 @@ test("saved travel-party counts and dates reach every detailed stay search", () 
   );
 });
 
-test("saved route, dates, times, and travelers reach flight, train, and rental searches", () => {
+test("only supported provider search URLs receive trip parameters", () => {
   const flight = bookingSitesForItem(
     item({
       adult_count: 2,
@@ -219,8 +225,8 @@ test("saved route, dates, times, and travelers reach flight, train, and rental s
   const trip = new URL(flight.find(({ name }) => name === "Trip.com")!.url);
   assert.equal(trip.searchParams.get("dcity"), "SFO");
   assert.equal(trip.searchParams.get("acity"), "LAX");
-  assert.equal(trip.searchParams.get("adult"), "2");
-  assert.equal(trip.searchParams.get("child"), "1");
+  assert.equal(trip.searchParams.get("quantity"), "2");
+  assert.equal(trip.searchParams.get("childqty"), "1");
 
   const train = bookingSitesForItem(
     item({
@@ -233,9 +239,8 @@ test("saved route, dates, times, and travelers reach flight, train, and rental s
     }),
   );
   for (const site of train) {
-    assert.match(site.url, /Paris/);
-    assert.match(site.url, /Lyon/);
-    assert.match(site.url, /2026-10-04/);
+    assert.match(site.url, /^https:\/\//);
+    assert.doesNotMatch(site.url, /\?(?:origin|destination|date)=/);
   }
 
   const rental = bookingSitesForItem(
@@ -249,16 +254,9 @@ test("saved route, dates, times, and travelers reach flight, train, and rental s
       start_time: "09:00",
     }),
   );
-  for (const site of rental) {
-    assert.match(site.url, /Tokyo/);
-    assert.match(site.url, /Osaka/);
-    assert.match(site.url, /2026-10-04/);
-    assert.match(site.url, /09%3A00/);
-  }
+  for (const site of rental) assert.equal(new URL(site.url).search, "");
   const enterpriseApp = new URL(rental.find(({ name }) => name === "Enterprise")!.appUrl!);
-  assert.equal(enterpriseApp.searchParams.get("pickUpLocation.searchCriteria"), "Tokyo");
-  assert.equal(enterpriseApp.searchParams.get("dropOffLocation.searchCriteria"), "Osaka");
-  assert.equal(enterpriseApp.searchParams.get("pickUpDate"), "2026-10-04");
+  assert.equal(enterpriseApp.pathname, "/en/universal-deeplink.html");
 });
 
 test("rental and train provider sets open official booking pages without brittle parameters", () => {
@@ -270,7 +268,68 @@ test("rental and train provider sets open official booking pages without brittle
   );
   assert.deepEqual(
     train.map(({ name }) => name),
-    ["Amtrak", "Eurail", "SNCF Connect", "SBB", "Omio"],
+    ["Amtrak", "Eurail", "SNCF Connect", "SBB", "Omio", "Trip.com"],
+  );
+});
+
+test("actual Hertz and Trip.com search URL formats retain verified booking details", () => {
+  const rental = item({
+    category: "rental",
+    origin_text: "MXPT51",
+    destination_text: "MXPT51",
+    start_date: "2026-10-30",
+    end_date: "2026-10-31",
+    start_time: "12:00",
+    end_time: "12:00",
+    source_url: "https://www.hertz.com/us/en/book/checkout?pCountryCode=IT",
+  });
+  const hertz = new URL(
+    bookingProviderWebUrl("Hertz", "https://www.hertz.com/us/en", rental, "global"),
+  );
+  assert.equal(hertz.pathname, "/us/en/book/vehicles");
+  assert.equal(hertz.searchParams.get("pid"), "MXPT51");
+  assert.equal(hertz.searchParams.get("did"), "MXPT51");
+  assert.equal(hertz.searchParams.get("pdate"), "2026-10-30T12:00:00");
+  assert.equal(hertz.searchParams.get("ddate"), "2026-10-31T12:00:00");
+  assert.equal(hertz.searchParams.get("pCountryCode"), "IT");
+
+  const flight = item({
+    category: "flight",
+    origin_text: "pek",
+    destination_text: "lhr",
+    start_date: "2026-11-17",
+    end_date: "2026-11-20",
+    adult_count: 1,
+    source_url:
+      "https://hk.trip.com/flights/passenger?dcity=bjs&acity=lon&dairport=pek&aairport=lhr",
+  });
+  const tripFlight = new URL(
+    bookingProviderWebUrl("Trip.com", "https://www.trip.com/flights/", flight, "global"),
+  );
+  assert.equal(tripFlight.searchParams.get("dcity"), "bjs");
+  assert.equal(tripFlight.searchParams.get("acity"), "lon");
+  assert.equal(tripFlight.searchParams.get("dairport"), "pek");
+  assert.equal(tripFlight.searchParams.get("quantity"), "1");
+
+  const stay = item({
+    category: "stay",
+    title: "Hotel Musse Ginza Meitetsu",
+    location_text: "Tokyo",
+    start_date: "2026-10-17",
+    end_date: "2026-10-19",
+    source_url: "https://hk.trip.com/hotels/detail/?cityEnName=Tokyo&cityId=228&hotelId=12255760",
+  });
+  const tripStay = new URL(
+    bookingStayWebUrl("Trip.com", "https://www.trip.com/hotels/w/home", stay, "global")!,
+  );
+  assert.equal(tripStay.searchParams.get("city"), "228");
+  assert.equal(tripStay.searchParams.get("checkIn"), "2026-10-17");
+  assert.equal(tripStay.searchParams.get("checkOut"), "2026-10-19");
+  assert.equal(tripStay.searchParams.get("searchValue"), "Hotel Musse Ginza Meitetsu");
+
+  assert.equal(
+    bookingSitesForItem(rental).some((site) => site.name === "Hertz"),
+    false,
   );
 });
 

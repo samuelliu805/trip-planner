@@ -51,6 +51,20 @@ test("derives Booking and Hilton property titles synchronously from their URLs",
   assert.equal(propertyTitleFromIdeaSourceUrl("https://example.com/hotel/example"), null);
 });
 
+test("Trip.com hotel detail metadata identifies the selected property by hotel ID", () => {
+  const url = new URL("https://hk.trip.com/hotels/detail/?cityEnName=Tokyo&hotelId=12255760");
+  const html = `<script>self.__next_f.push([1,"{\\"keywords\\":\\"銀座名鐵穆瑟酒店\\",\\"links\\":[{\\"href\\":\\"https://www.trip.com/hotels/tokyo-hotel-detail-12255760/hotel-musse-ginza-meitetsu/\\"}]}" ])</script>`;
+  assert.equal(parseIdeaPageMetadata(html, "trip.com", url).title, "Hotel Musse Ginza Meitetsu");
+  assert.equal(
+    parseIdeaPageMetadata(
+      html,
+      "trip.com",
+      new URL("https://hk.trip.com/hotels/detail/?hotelId=999"),
+    ).title,
+    null,
+  );
+});
+
 test("reads a public Airbnb listing title and locality from provider metadata", () => {
   const html = `<html><head>
     <meta property="og:title" content="Home in San Francisco · 1 bedroom">
@@ -162,6 +176,52 @@ test("fetches only approved HTTPS providers and blocks cross-provider redirects"
   assert.equal(
     (await fetchIdeaPageMetadata("https://abnb.me/example", shortLink)).title,
     "Quiet apartment",
+  );
+});
+
+test("fetches approved rental and rail pages and allows Eurail's official redirect", async () => {
+  const requests: string[] = [];
+  const fetchPage: typeof fetch = async (input) => {
+    const url = String(input);
+    requests.push(url);
+    if (url.includes("eurail.com"))
+      return new Response(null, {
+        status: 302,
+        headers: { location: "https://www.interrail.com/en-int/book-reservations" },
+      });
+    return new Response('<meta property="og:title" content="Public booking details">', {
+      headers: { "content-type": "text/html" },
+    });
+  };
+  for (const url of [
+    "https://www.avis.com/en/reservation",
+    "https://www.hertz.com/us/en",
+    "https://www.enterprise.com/en/car-rental/reservation/start.html",
+    "https://www.omio.com/trains/paris/berlin",
+    "https://www.eurail.com/en/book-reservations",
+    "https://www.trip.com/trains/",
+  ])
+    assert.equal((await fetchIdeaPageMetadata(url, fetchPage)).status, "readable", url);
+  assert.ok(requests.some((url) => url.includes("interrail.com")));
+});
+
+test("generic rail and rental home titles do not masquerade as booking details", async () => {
+  const shell: typeof fetch = async () =>
+    new Response("<title>Book seat reservations</title>", {
+      headers: { "content-type": "text/html" },
+    });
+  assert.equal(
+    (await fetchIdeaPageMetadata("https://www.eurail.com/en/book-reservations", shell)).status,
+    "unavailable",
+  );
+  assert.equal(
+    (
+      await fetchIdeaPageMetadata(
+        "https://www.eurail.com/en/book-reservations?origin=Paris&destination=Berlin&date=2026-11-21",
+        shell,
+      )
+    ).title,
+    "Paris → Berlin",
   );
 });
 
