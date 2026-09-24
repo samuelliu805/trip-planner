@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 211,
+  "publicFunctionCount": 212,
   "catalog": [
     {
       "schema": "public",
@@ -2015,6 +2015,22 @@
       "safeSearchPath": true,
       "category": "trigger",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "rebase_idea_variant_days_v1(uuid,uuid,date,integer,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "requested_departure_date", "type": "date" },
+        { "name": "requested_anchor_day_number", "type": "integer" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",

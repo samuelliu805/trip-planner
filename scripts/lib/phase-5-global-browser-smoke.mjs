@@ -1195,6 +1195,149 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     "saved Google place editor close",
     45_000,
   );
+  const originalVariantId = await evaluate(
+    browser,
+    `(() => {
+      const link = [...document.querySelectorAll('[data-i18n-aria-label="Trip sections"] a')]
+        .find((item) => item.textContent.trim() === 'Plan');
+      return link ? new URL(link.href).searchParams.get('variant') : null;
+    })()`,
+  );
+  assert.ok(originalVariantId, "Original Plan was not identifiable before the flight copy.");
+  await clickElement(
+    browser,
+    `(() => {
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+      return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Add to Plan'));
+    })()`,
+    "preview new Plan from dated Google flight",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.includes('Create another Plan'))`,
+    "choose new dated Plan",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
+      button.textContent.includes('Create Plan') && !button.disabled) &&
+      document.querySelector('[role="dialog"]')?.innerText.includes('Day 1: 2026-11-20')`,
+    "new Plan anchored to outbound date",
+  );
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 844, mobile: false, width },
+      browser.sessionId,
+    );
+    try {
+      await waitFor(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+          return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5;
+        })()`,
+        `new Plan date dialog layout at ${width}px`,
+        10_000,
+      );
+    } catch (error) {
+      const bounds = await evaluate(
+        browser,
+        `(() => {
+          const rect = document.querySelector('[role="dialog"]')?.getBoundingClientRect();
+          return { innerWidth, innerHeight, visualHeight: visualViewport?.height,
+            left: rect?.left, right: rect?.right, top: rect?.top, bottom: rect?.bottom };
+        })()`,
+      );
+      throw new Error(
+        `${error instanceof Error ? error.message : error}; ${JSON.stringify(bounds)}`,
+      );
+    }
+    const layout = await evaluate(
+      browser,
+      `(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      const rect = dialog?.getBoundingClientRect();
+      return {
+        fits: Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+          rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5,
+        noHorizontalSwipe: document.documentElement.scrollWidth <= innerWidth,
+        touchTargets: [...(dialog?.querySelectorAll('button') ?? [])]
+          .filter((button) => button.getClientRects().length)
+          .every((button) => button.getBoundingClientRect().height >= 44),
+      };
+    })()`,
+    );
+    assert.deepEqual(
+      layout,
+      { fits: true, noHorizontalSwipe: true, touchTargets: true },
+      `New Plan date dialog failed at ${width}px.`,
+    );
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('[role="dialog"] [role="combobox"]')`,
+    "choose first-flight Plan day",
+  );
+  const hasDayTwo = await evaluate(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].some((option) =>
+      option.getClientRects().length && option.textContent.trim() === 'Day 2')`,
+  );
+  const anchorDayNumber = hasDayTwo ? 2 : 1;
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].find((option) =>
+      option.getClientRects().length && option.textContent.trim() === 'Day ${anchorDayNumber}')`,
+    "set first-flight Plan day",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="dialog"]')?.innerText.includes('Day 1: 2026-11-${anchorDayNumber === 2 ? "19" : "20"}')`,
+    "new Plan date preview follows selected Day",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.includes('Create Plan') && !button.disabled)`,
+    "create rebased flight Plan",
+  );
+  const rebasedVariantId = await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') || ''`,
+    "rebased flight Plan navigation",
+    60_000,
+  );
+  await navigate(browser, baseUrl, `/trips/${tripId}?variant=${rebasedVariantId}`);
+  await waitFor(
+    browser,
+    `document.querySelector('[data-day-header][data-day-number="1"]')?.innerText.includes('Nov ${anchorDayNumber === 2 ? "19" : "20"}') &&
+      document.querySelector('[data-day-header][data-day-number="${anchorDayNumber + 5}"]')?.innerText.includes('Nov 25')`,
+    "rebased Plan calendar and return journey",
+    60_000,
+  );
+  await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights?variant=${originalVariantId}`);
+  await waitFor(
+    browser,
+    `(() => {
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+      return new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)} &&
+        [...(card?.querySelectorAll('button') ?? [])].some((button) =>
+          button.textContent.includes('Add to Plan'));
+    })()`,
+    "original Plan and saved flight Idea return",
+    45_000,
+  );
   await clickElement(
     browser,
     `(() => {

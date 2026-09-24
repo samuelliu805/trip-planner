@@ -111,41 +111,41 @@ export function ResearchItemRow({
 
   return (
     <article className="min-w-0 bg-card px-4 py-4">
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <button
-              aria-label={t("Edit {item}", { item: displayTitle })}
-              className="research-safe-wrap rounded-sm text-left text-base font-semibold outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => setEditOpen(true)}
-              type="button"
-            >
-              {displayTitle}
-            </button>
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-sm font-semibold text-primary">
-              <T message={categoryLabel(item.category)} />
+      <button
+        aria-label={t("Edit {item}", { item: displayTitle })}
+        className="block min-h-11 w-full min-w-0 rounded-lg text-left outline-none transition-colors hover:bg-muted/35 focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => setEditOpen(true)}
+        type="button"
+      >
+        <span className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+          <span className="min-w-0">
+            <span className="flex min-w-0 flex-wrap items-center gap-2">
+              <span className="research-safe-wrap text-base font-semibold">{displayTitle}</span>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-sm font-semibold text-primary">
+                <T message={categoryLabel(item.category)} />
+              </span>
             </span>
-          </div>
-          <p className="mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            {route && route !== title ? <span>{route}</span> : null}
-            {item.location_text && item.location_text !== title ? (
-              <span>{item.location_text}</span>
-            ) : null}
-            {dates ? <span>{dates}</span> : null}
-            {flights ? <span>{flights}</span> : null}
-          </p>
-        </div>
-        {item.total_price_amount !== null && item.currency ? (
-          <p className="whitespace-nowrap text-base font-semibold tabular-nums sm:text-lg">
-            {formatMoney(item.total_price_amount, item.currency)}
-          </p>
+            <span className="mt-2 flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              {route && route !== title ? <span>{route}</span> : null}
+              {item.location_text && item.location_text !== title ? (
+                <span>{item.location_text}</span>
+              ) : null}
+              {dates ? <span>{dates}</span> : null}
+              {flights ? <span>{flights}</span> : null}
+            </span>
+          </span>
+          {item.total_price_amount !== null && item.currency ? (
+            <span className="whitespace-nowrap text-base font-semibold tabular-nums sm:text-lg">
+              {formatMoney(item.total_price_amount, item.currency)}
+            </span>
+          ) : null}
+        </span>
+        {item.note && item.note !== title && item.note.trim() !== item.source_url?.trim() ? (
+          <span className="research-safe-wrap mt-2 line-clamp-2 text-sm text-muted-foreground">
+            {item.note}
+          </span>
         ) : null}
-      </div>
-      {item.note && item.note !== title && item.note.trim() !== item.source_url?.trim() ? (
-        <p className="research-safe-wrap mt-2 line-clamp-2 text-sm text-muted-foreground">
-          {item.note}
-        </p>
-      ) : null}
+      </button>
       <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-1">
           {needsPlaceConfirmation ? (

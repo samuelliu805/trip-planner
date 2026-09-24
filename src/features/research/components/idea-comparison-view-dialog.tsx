@@ -1,6 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +20,12 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 
 import type { IdeaComparison } from "../idea-actions";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
-import { missingJourneyDates } from "../idea-plan-dates";
+import {
+  currentPlanDateChange,
+  ideaJourneyDates,
+  missingJourneyDates,
+  newPlanDateRange,
+} from "../idea-plan-dates";
 import { activityNeedsDay, choiceLabel, itemLabel } from "./idea-comparison-labels";
 import { PlanDaySelect } from "./plan-day-select";
 
@@ -30,7 +43,12 @@ export function IdeaComparisonViewDialog({
   byId: ReadonlyMap<string, ResearchItem>;
   dayIds: Record<string, string>;
   error?: string;
-  onApply: (comparison: IdeaComparison, choiceId: string, destination?: "current" | "new") => void;
+  onApply: (
+    comparison: IdeaComparison,
+    choiceId: string,
+    destination?: "current" | "new",
+    anchorDayNumber?: number,
+  ) => void;
   onClose: () => void;
   onDayChange: (choiceId: string, dayId: string) => void;
   pending: boolean;
@@ -38,13 +56,20 @@ export function IdeaComparisonViewDialog({
   view?: IdeaComparison;
 }) {
   const { t } = useI18n();
+  const [newPlanChoiceId, setNewPlanChoiceId] = useState<string>();
+  const [anchorDayNumber, setAnchorDayNumber] = useState(1);
+  function close() {
+    setNewPlanChoiceId(undefined);
+    setAnchorDayNumber(1);
+    onClose();
+  }
   return (
-    <Dialog open={!!view} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!view} onOpenChange={(open) => !open && close()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{view?.title}</DialogTitle>
-          <DialogDescription>
-            <T message="Choose one to put into your current Plan." />
+          <DialogTitle className="text-lg font-bold">{view?.title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            <T message="Choose one to put into a Plan." />
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 px-5 py-4 sm:px-6">
@@ -55,6 +80,12 @@ export function IdeaComparisonViewDialog({
             const flightDates = [
               ...new Set(selectedItems.flatMap((item) => missingJourneyDates(item, plan))),
             ].sort();
+            const journeyDates = selectedItems.flatMap(ideaJourneyDates).sort();
+            const dateChange = currentPlanDateChange(journeyDates, plan);
+            const isNewPlan = newPlanChoiceId === choice.id;
+            const newDates = journeyDates[0]
+              ? newPlanDateRange(journeyDates[0], anchorDayNumber, plan.days.length, journeyDates)
+              : null;
             const dateMismatch = selectedItems.some(
               (item) =>
                 item.category !== "flight" &&
@@ -101,21 +132,55 @@ export function IdeaComparisonViewDialog({
                   </label>
                 ) : null}
                 {flightDates.length ? (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    {t("This journey needs Plan days for {dates}. Choose where to add them.", {
-                      dates: flightDates.join(", "),
-                    })}
-                  </p>
+                  <div className="mt-3 space-y-2">
+                    {isNewPlan ? (
+                      <>
+                        <label className="block text-sm font-medium">
+                          <T message="First flight on" />
+                          <Select
+                            onValueChange={(value) => setAnchorDayNumber(Number(value))}
+                            value={String(anchorDayNumber)}
+                          >
+                            <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {plan.days.map((day) => (
+                                <SelectItem key={day.id} value={String(day.dayNumber)}>
+                                  {t("Day {number}", { number: day.dayNumber })}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                        {newDates ? (
+                          <p className="text-sm text-muted-foreground">
+                            {t("Day 1: {start} · Last day: {end}", newDates)}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : dateChange ? (
+                      <p className="text-sm text-muted-foreground">
+                        {t("Plan dates: {before} → {after}", {
+                          before: dateChange.before?.join("–") ?? t("No dates"),
+                          after: dateChange.after.join("–"),
+                        })}
+                      </p>
+                    ) : null}
+                  </div>
                 ) : null}
                 {flightDates.length && !needsDay ? (
                   <Button
                     className="mt-3 min-h-11 w-full sm:w-auto"
                     disabled={pending}
-                    onClick={() => view && onApply(view, choice.id, "new")}
+                    onClick={() => {
+                      setNewPlanChoiceId(isNewPlan ? undefined : choice.id);
+                      setAnchorDayNumber(1);
+                    }}
                     type="button"
                     variant="outline"
                   >
-                    <T message="Create another Plan" />
+                    <T message={isNewPlan ? "Back" : "Create another Plan"} />
                   </Button>
                 ) : null}
                 <Button
@@ -125,10 +190,20 @@ export function IdeaComparisonViewDialog({
                     selectedItems.length !== choice.itemIds.length ||
                     (needsDay && !dayIds[choice.id])
                   }
-                  onClick={() => view && onApply(view, choice.id, "current")}
+                  onClick={() =>
+                    view && onApply(view, choice.id, isNewPlan ? "new" : "current", anchorDayNumber)
+                  }
                   type="button"
                 >
-                  <T message={flightDates.length ? "Update this Plan" : "Use this"} />
+                  <T
+                    message={
+                      isNewPlan
+                        ? "Create Plan"
+                        : flightDates.length
+                          ? "Update this Plan"
+                          : "Use this"
+                    }
+                  />
                 </Button>
               </article>
             );
