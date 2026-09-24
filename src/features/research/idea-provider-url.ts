@@ -60,7 +60,7 @@ export function usableProviderPageTitle(
   if (
     !title ||
     /(?:page reference code|access denied|just a moment|challenge validation)/i.test(title) ||
-    /^(?:book|book seat reservations|reservations?\s*\|.*|premium car rental at affordable prices\s*\|.*|the sbb online portal for timetable.*|train tickets: eurostar, europe, asia routes\s*\|.*)$/i.test(
+    /^(?:book|预订|预定|book seat reservations|reservations?\s*\|.*|premium car rental at affordable prices\s*\|.*|the sbb online portal for timetable.*|train tickets: eurostar, europe, asia routes\s*\|.*)$/i.test(
       title,
     )
   )

@@ -8,6 +8,8 @@ import {
   overrideIdeaClassification,
   parseReliableIdeaFields,
 } from "./idea-input.ts";
+import { ideaPlaceQuery } from "./idea-place-query.ts";
+import { inferredRentalCompany } from "./idea-rental-company.ts";
 
 test("classifies known booking URLs without inventing itinerary fields", () => {
   const cases = [
@@ -63,6 +65,7 @@ test("every rental and rail search provider can enter the correct Ideas flow", (
   const cases = [
     ["https://www.avis.com/en/home", "car"],
     ["https://www.hertz.com/us/en", "car"],
+    ["https://www.hertz.cn/cn/zh/book/checkout", "car"],
     ["https://www.enterprise.com/en/home.html", "car"],
     ["https://www.europcar.com/en-us", "car"],
     ["https://www.budget.com/en/home", "car"],
@@ -99,9 +102,38 @@ test("actual provider booking formats recover route and dates without quote pric
     "https://www.sixt.com/betafunnel/#/offercheckout?zen_pu_title=Milan%20Airport%20Malpensa%20T1&zen_do_title=Milan%20Airport%20Malpensa%20T1&zen_pu_time=2026-09-26T10%3A00&zen_do_time=2026-09-30T10%3A00&zen_offer_id=GLAE-43294-43294",
   );
   assert.deepEqual(
-    [sixt.originText, sixt.destinationText, sixt.startDate, sixt.endDate],
-    ["Milan Airport Malpensa T1", "Milan Airport Malpensa T1", "2026-09-26", "2026-09-30"],
+    [
+      sixt.originText,
+      sixt.destinationText,
+      sixt.startDate,
+      sixt.endDate,
+      sixt.startTime,
+      sixt.endTime,
+    ],
+    [
+      "Milan Airport Malpensa T1",
+      "Milan Airport Malpensa T1",
+      "2026-09-26",
+      "2026-09-30",
+      "10:00",
+      "10:00",
+    ],
   );
+  const hertzCn = parseReliableIdeaFields(
+    "https://www.hertz.cn/cn/zh/book/checkout?ddate=2026-10-24T20%3A00%3A00&did=LGWT51&pCountryCode=CN&pdate=2026-10-23T20%3A00%3A00&pid=LGWT51&selectedRateTotalRate=203.78&sippCode=FFAR",
+  );
+  assert.deepEqual(
+    [
+      hertzCn.originText,
+      hertzCn.destinationText,
+      hertzCn.startDate,
+      hertzCn.endDate,
+      hertzCn.startTime,
+      hertzCn.endTime,
+    ],
+    ["LGWT51", "LGWT51", "2026-10-23", "2026-10-24", "20:00", "20:00"],
+  );
+  assert.equal(classifyIdeaInput("https://www.hertz.cn/cn/zh/book/checkout").provider, "Hertz");
   const tripHotel = parseReliableIdeaFields(
     "https://hk.trip.com/hotels/detail/?cityEnName=Tokyo&cityId=228&hotelId=12255760&checkIn=2026-10-17&checkOut=2026-10-19",
   );
@@ -129,6 +161,41 @@ test("actual provider booking formats recover route and dates without quote pric
     "https://www.sixt.com/betafunnel/#/offercheckout?zen_pu_time=2026-09-26T10%3A00&zen_offer_id=second&zen_session_id=two",
   );
   assert.notEqual(first, second);
+});
+
+test("map searches use a place name and area without losing either", () => {
+  assert.equal(
+    ideaPlaceQuery("Hotel Musse Ginza Meitetsu", "Tokyo"),
+    "Hotel Musse Ginza Meitetsu Tokyo",
+  );
+  assert.equal(ideaPlaceQuery("Hilton Tokyo", "Tokyo"), "Hilton Tokyo");
+  assert.equal(ideaPlaceQuery(null, "Milan Airport Malpensa T1"), "Milan Airport Malpensa T1");
+});
+
+test("older rental Ideas show their provider in place of an auto-generated route title", () => {
+  const oldSixt = {
+    category: "rental",
+    destination_text: "Milan Airport Malpensa T1",
+    origin_text: "Milan Airport Malpensa T1",
+    source_url: "https://www.sixt.com/betafunnel/#/offercheckout?zen_offer_id=HTAR-43294-43294",
+    title: "Car · Milan Airport Malpensa T1",
+  } as const;
+  assert.equal(inferredRentalCompany(oldSixt), "SIXT");
+  assert.equal(
+    inferredRentalCompany({ ...oldSixt, title: "租车 · Milan Airport Malpensa T1" }),
+    "SIXT",
+  );
+  assert.equal(inferredRentalCompany({ ...oldSixt, title: "My Milan rental" }), null);
+  assert.equal(
+    inferredRentalCompany({
+      ...oldSixt,
+      destination_text: "LGWT51",
+      origin_text: "LGWT51",
+      source_url: "https://www.hertz.cn/cn/zh/book/checkout?pid=LGWT51&did=LGWT51",
+      title: "Car · LGWT51",
+    }),
+    "Hertz",
+  );
 });
 
 test("rental and rail links preserve only explicit route and date details", () => {

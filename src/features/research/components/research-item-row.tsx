@@ -19,6 +19,7 @@ import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { deleteResearchItem } from "../actions";
 import { researchLinksWithSource } from "../links";
+import { inferredRentalCompany } from "../idea-rental-company";
 import { formatMoney } from "../money";
 import type { ResearchCategory, ResearchItem, ResearchPlanSnapshot } from "../types";
 import { AddIdeaToPlan } from "./add-idea-to-plan";
@@ -81,6 +82,7 @@ export function ResearchItemRow({
       ? `${item.origin_text} → ${item.destination_text}`
       : null;
   const title =
+    inferredRentalCompany(item) ??
     item.title ??
     route ??
     item.location_text ??

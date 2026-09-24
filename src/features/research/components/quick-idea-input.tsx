@@ -19,12 +19,10 @@ import {
 } from "../idea-input";
 import type { IdeaPageMetadata } from "../idea-page-metadata";
 import { propertyTitleFromIdeaSourceUrl } from "../idea-provider-url";
-import { formatMoney } from "../money";
 import type { ResearchItem } from "../types";
-import { IdeaLinkPreview } from "./idea-link-preview";
+import { QuickIdeaDetails } from "./quick-idea-details";
 import { QuickIdeaDuplicateNotice } from "./quick-idea-duplicate-notice";
 import { ideaKindLabels, ideaKindSaveLabels, QuickIdeaKindPicker } from "./quick-idea-kind-picker";
-import { QuickIdeaPlaceConfirmation } from "./quick-idea-place-confirmation";
 
 export function QuickIdeaInput({
   items,
@@ -41,6 +39,8 @@ export function QuickIdeaInput({
   const [showTypes, setShowTypes] = useState(false);
   const [metadata, setMetadata] = useState<IdeaPageMetadata | null>(null);
   const [place, setPlace] = useState<PlaceSnapshot | null>(null);
+  const [originPlace, setOriginPlace] = useState<PlaceSnapshot | null>(null);
+  const [destinationPlace, setDestinationPlace] = useState<PlaceSnapshot | null>(null);
   const [pending, setPending] = useState(false);
   const [duplicate, setDuplicate] = useState<ResearchItem>();
   const [error, setError] = useState<string>();
@@ -55,12 +55,16 @@ export function QuickIdeaInput({
     () => propertyTitleFromIdeaSourceUrl(classification.sourceUrl),
     [classification.sourceUrl],
   );
-  const route =
+  const routeText =
     preview.originText && preview.destinationText
-      ? classification.kind === "car" && preview.originText === preview.destinationText
-        ? `${t("Car")} · ${preview.originText}`
+      ? preview.originText === preview.destinationText
+        ? preview.originText
         : `${preview.originText} → ${preview.destinationText}`
       : preview.originText;
+  const route =
+    classification.kind === "car" && routeText
+      ? `${classification.provider ?? t("Car")} · ${routeText}`
+      : routeText;
   const textCandidate = classification.sourceUrl
     ? input.replace(classification.sourceUrl, "").trim()
     : input.trim();
@@ -71,12 +75,6 @@ export function QuickIdeaInput({
     (classification.kind === "stay" || classification.kind === "activity"
       ? (metadata?.title ?? textCandidate) || null
       : null);
-  const priceAmount = preview.priceAmount ?? metadata?.priceAmount ?? null;
-  const priceCurrency = preview.priceCurrency ?? metadata?.priceCurrency ?? null;
-  const services = preview.segments
-    ?.map((segment) => [segment.carrier, segment.serviceNumber].filter(Boolean).join(" "))
-    .filter(Boolean)
-    .join(" · ");
   const lastReported = useRef("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const receiveMetadata = useCallback((value: IdeaPageMetadata | null) => setMetadata(value), []);
@@ -125,6 +123,8 @@ export function QuickIdeaInput({
     setShowTypes(false);
     setMetadata(null);
     setPlace(null);
+    setOriginPlace(null);
+    setDestinationPlace(null);
     setDuplicate(undefined);
   }
 
@@ -145,12 +145,17 @@ export function QuickIdeaInput({
       : shareText;
     const result = await captureIdea({
       kind: classification.kind,
+      originPlaceSnapshot: originPlace,
+      destinationPlaceSnapshot:
+        preview.originText && preview.originText === preview.destinationText
+          ? originPlace
+          : destinationPlace,
       locationPlaceSnapshot: place,
       locationText: place?.displayName ?? candidateLocation,
       operationId,
       shareText,
       sourceUrl: classification.sourceUrl,
-      title: textOnly ? textOnly.slice(0, 300) : route,
+      title: textOnly ? textOnly.slice(0, 300) : classification.kind === "car" ? null : route,
       tripId,
     });
     setPending(false);
@@ -219,6 +224,8 @@ export function QuickIdeaInput({
         onChange={(event) => {
           setInput(event.target.value);
           setPlace(null);
+          setOriginPlace(null);
+          setDestinationPlace(null);
           setOverride(null);
           setShowTypes(false);
           setMetadata(null);
@@ -240,41 +247,21 @@ export function QuickIdeaInput({
           {classification.kind === "unknown" || showTypes ? (
             <QuickIdeaKindPicker current={classification.kind} onChoose={choose} />
           ) : null}
-          {route || candidateLocation || preview.startDate || priceAmount !== null ? (
-            <p className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-muted-foreground">
-              {route || candidateLocation ? <span>{route || candidateLocation}</span> : null}
-              {preview.startDate ? (
-                <span>
-                  {preview.endDate
-                    ? `${preview.startDate} – ${preview.endDate}`
-                    : preview.startDate}
-                </span>
-              ) : null}
-              {services ? <span>{services}</span> : null}
-              {priceAmount !== null && priceCurrency ? (
-                <strong className="text-foreground">
-                  {formatMoney(priceAmount, priceCurrency)}
-                </strong>
-              ) : null}
-            </p>
-          ) : null}
-          <IdeaLinkPreview
-            hasReliableFields={Boolean(
-              (route || candidateLocation) && preview.startDate && priceAmount !== null,
-            )}
-            key={classification.sourceUrl ?? ""}
-            onResult={receiveMetadata}
-            sourceUrl={classification.sourceUrl}
+          <QuickIdeaDetails
+            candidateLocation={candidateLocation}
+            classification={classification}
+            destinationPlace={destinationPlace}
+            metadata={metadata}
+            onDestinationPlaceChange={setDestinationPlace}
+            onMetadata={receiveMetadata}
+            onOriginPlaceChange={setOriginPlace}
+            onPlaceChange={setPlace}
+            originPlace={originPlace}
+            place={place}
+            preview={preview}
+            providerTitle={providerTitle}
+            route={route}
           />
-          {(classification.kind === "stay" || classification.kind === "activity") &&
-          candidateLocation ? (
-            <QuickIdeaPlaceConfirmation
-              candidate={candidateLocation}
-              onChange={setPlace}
-              sourceKey={classification.sourceUrl ?? "manual"}
-              value={place}
-            />
-          ) : null}
         </div>
       ) : null}
       {duplicate ? (

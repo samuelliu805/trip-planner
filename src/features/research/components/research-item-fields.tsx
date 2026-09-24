@@ -21,6 +21,7 @@ import { ResearchJourneyDetailFields, ResearchJourneyFields } from "./research-j
 import { ResearchPlaceField } from "./research-place-field";
 import { ResearchDateTimeField, ResearchSegmentScheduleFields } from "./research-schedule-fields";
 import { initialResearchSegments } from "../journey";
+import { ideaPlaceQuery } from "../idea-place-query";
 import { rentalReturnsToPickup } from "../rental-return";
 import { researchItemPriceStep, type ResearchItemFormStep } from "../research-item-form-steps";
 import type {
@@ -42,6 +43,7 @@ function StayFields({ item }: { item?: ResearchItem }) {
       <ResearchPlaceField
         initialPlace={item?.location_place}
         initialPlaceId={item?.location_place_id}
+        initialSearchText={ideaPlaceQuery(item?.title, item?.location_text)}
         initialText={item?.location_text}
         label="Hotel or area"
         placeIdName="locationPlaceId"
@@ -239,12 +241,15 @@ export function ResearchItemFields({
             maxLength={300}
             name="title"
           />
-          <PlannerEditorTextField
-            defaultValue={item?.location_text ?? ""}
-            id="activity-location"
+          <ResearchPlaceField
+            initialPlace={item?.location_place}
+            initialPlaceId={item?.location_place_id}
+            initialSearchText={ideaPlaceQuery(item?.title, item?.location_text)}
+            initialText={item?.location_text}
             label="Location (optional)"
-            maxLength={200}
-            name="locationText"
+            placeIdName="locationPlaceId"
+            snapshotName="locationPlaceSnapshot"
+            textName="locationText"
           />
         </div>
         <div className="space-y-5" hidden={activeStepId !== "details"}>

@@ -92,7 +92,8 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
   if (hostIs(host, "hyatt.com")) return { kind: "stay", provider: "Hyatt" };
   if (hostIs(host, "tujia.com")) return { kind: "stay", provider: "Tujia" };
   if (hostIs(host, "enterprise.com")) return { kind: "car", provider: "Enterprise" };
-  if (hostIs(host, "hertz.com")) return { kind: "car", provider: "Hertz" };
+  if (hostIs(host, "hertz.com") || hostIs(host, "hertz.cn"))
+    return { kind: "car", provider: "Hertz" };
   for (const [domain, provider] of [
     ["avis.com", "Avis"],
     ["budget.com", "Budget"],

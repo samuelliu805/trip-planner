@@ -726,6 +726,21 @@ test("ResearchItem saves with category and only a title or only a URL", () => {
   );
 });
 
+test("saved rental times with PostgreSQL seconds remain editable at minute precision", () => {
+  const parsed = createResearchItemSchema.parse({
+    category: "rental",
+    endDate: "2026-09-30",
+    endTime: "10:00:00",
+    operationId: ids.operation,
+    startDate: "2026-09-26",
+    startTime: "10:00:00",
+    title: "SIXT",
+    tripId: ids.trip,
+  });
+  assert.equal(parsed.startTime, "10:00");
+  assert.equal(parsed.endTime, "10:00");
+});
+
 test("Ideas persist only valid category-specific traveler and room counts", async () => {
   const parsed = createResearchItemSchema.parse({
     adultCount: 2,

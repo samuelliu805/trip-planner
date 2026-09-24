@@ -132,6 +132,7 @@ function platformDomain(value: string) {
   try {
     const host = new URL(value).hostname.toLowerCase();
     if (host === "abnb.me") return "airbnb.com";
+    if (host === "hertz.cn" || host.endsWith(".hertz.cn")) return "hertz.com";
     if (host === "interrail.com" || host.endsWith(".interrail.com")) return "eurail.com";
     const parts = host.split(".");
     return parts.slice(host.endsWith(".com.cn") ? -3 : -2).join(".");

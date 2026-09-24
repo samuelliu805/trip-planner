@@ -13,6 +13,7 @@ import {
 } from "./idea-provider-url.ts";
 import { flightPageSegments } from "./idea-page-flight.ts";
 import { parseIdeaUrlFields } from "./idea-url-fields.ts";
+import { classifyIdeaInput } from "./idea-input.ts";
 import { approvedIdeaPageUrl } from "./idea-page-source.ts";
 import type { ResearchSegment } from "./types.ts";
 
@@ -38,6 +39,7 @@ function urlFallback(url: URL, provider: string): IdeaPageMetadata {
   const transport = parseIdeaUrlFields(url);
   const rental = [
     "hertz.com",
+    "hertz.cn",
     "enterprise.com",
     "avis.com",
     "budget.com",
@@ -46,14 +48,19 @@ function urlFallback(url: URL, provider: string): IdeaPageMetadata {
     "zuzuche.com",
     "zuche.com",
   ].includes(provider);
+  const rentalCompany = rental ? classifyIdeaInput(url.href).provider : null;
   const title =
     propertyTitleFromIdeaUrl(url, provider) ??
     (transport?.originText && transport.destinationText
-      ? rental && transport.originText === transport.destinationText
-        ? `Car · ${transport.originText}`
+      ? rental
+        ? `${rentalCompany ?? "Car"} · ${
+            transport.originText === transport.destinationText
+              ? transport.originText
+              : `${transport.originText} → ${transport.destinationText}`
+          }`
         : `${transport.originText} → ${transport.destinationText}`
       : transport?.originText && rental
-        ? `Car · ${transport.originText}`
+        ? `${rentalCompany ?? "Car"} · ${transport.originText}`
         : null);
   return {
     title,

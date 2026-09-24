@@ -8,11 +8,13 @@ import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 export function QuickIdeaPlaceConfirmation({
   candidate,
+  label = "Confirm location",
   onChange,
   sourceKey,
   value,
 }: {
   candidate: string;
+  label?: string;
   onChange: (place: PlaceSnapshot | null) => void;
   sourceKey: string;
   value: PlaceSnapshot | null;
@@ -21,7 +23,7 @@ export function QuickIdeaPlaceConfirmation({
     <div className="rounded-xl border bg-muted/20 p-3">
       <label className="mb-2 flex items-center gap-2 text-sm font-medium">
         <MapPin aria-hidden="true" className="size-4 text-primary" />
-        <T message="Confirm location" />
+        <T message={label} />
       </label>
       <PlaceAutocomplete
         initialQuery={candidate}

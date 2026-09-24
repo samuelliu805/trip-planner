@@ -27,10 +27,10 @@ const optionalUrl = z
 const optionalUuid = z.uuid().optional().nullable();
 const telemetryOperationId = z.uuid();
 const optionalTime = z
-  .union([z.literal(""), z.iso.time({ precision: -1 })])
+  .union([z.literal(""), z.iso.time({ precision: -1 }), z.iso.time({ precision: 0 })])
   .optional()
   .nullable()
-  .transform((value) => value || null);
+  .transform((value) => (value ? value.slice(0, 5) : null));
 const optionalCount = (minimum: number, maximum: number) =>
   z.number().int().min(minimum).max(maximum).optional().nullable();
 
