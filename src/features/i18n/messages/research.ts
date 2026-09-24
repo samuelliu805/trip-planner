@@ -93,6 +93,8 @@ export const researchZhCN: Record<string, string> = {
   "Plan dates: {before} → {after}": "行程日期：{before} → {after}",
   "Day 1: {start} · Last day: {end}": "第 1 天：{start} · 最后一天：{end}",
   "First flight on": "首程航班安排在",
+  "Choose a Day": "选择第几天",
+  "Choose a Day to see changes.": "选择第几天，查看日期变化。",
   "No dates": "未设置日期",
   "Idea date: {date}": "想法日期：{date}",
   "Choose one to put into a Plan.": "选择一个加入行程。",

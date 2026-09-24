@@ -1,7 +1,25 @@
 {
   "version": 1,
-  "publicFunctionCount": 212,
+  "publicFunctionCount": 214,
   "catalog": [
+    {
+      "schema": "public",
+      "signature": "apply_idea_choice_confirmed_v1(uuid,uuid,uuid,uuid,uuid,integer,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_comparison_id", "type": "uuid" },
+        { "name": "target_choice_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "requested_anchor_day_number", "type": "integer" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
+    },
     {
       "schema": "public",
       "signature": "apply_idea_choice_v1(uuid,uuid,uuid,uuid,uuid,uuid)",
@@ -232,6 +250,22 @@
       "safeSearchPath": true,
       "category": "obsolete_legacy",
       "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "apply_single_idea_confirmed_v1(uuid,uuid,uuid,integer,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_anchor_day_number", "type": "integer" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "external_authenticated",
+      "authorization": "member_guard"
     },
     {
       "schema": "public",
@@ -3228,6 +3262,7 @@
     "normalize_trip_history_order()",
     "operation_fingerprint(text,text,uuid,jsonb)",
     "raise_app_conflict(text,text)",
+    "rebase_confirmed_idea_plan(uuid,uuid,date,integer,uuid)",
     "safe_jsonb_diff(jsonb,jsonb,text)",
     "share_settings_json(public_itinerary_links)",
     "trip_actor_label()",
