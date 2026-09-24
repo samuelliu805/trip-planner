@@ -25,14 +25,9 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
-import { applySingleIdea } from "../idea-actions";
+import { applySingleIdea, applySingleIdeaWithConfirmedCalendar } from "../idea-actions";
 import { applySingleIdeaToNewVariant } from "../idea-plan-variant-actions";
-import {
-  currentPlanDateChange,
-  ideaJourneyDates,
-  missingJourneyDates,
-  newPlanDateRange,
-} from "../idea-plan-dates";
+import { anchoredPlanDateChange, ideaJourneyDates, newPlanDateRange } from "../idea-plan-dates";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { PlanDaySelect } from "./plan-day-select";
 
@@ -47,16 +42,17 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [dateMode, setDateMode] = useState<"current" | "new">("current");
-  const [anchorDayNumber, setAnchorDayNumber] = useState(1);
+  const [anchorDayNumber, setAnchorDayNumber] = useState<number | null>(null);
   const matchingDay = item.start_date
     ? plan.days.find((entry) => entry.date === item.start_date)
     : undefined;
-  const missingDates = missingJourneyDates(item, plan);
-  const needsDateDecision = missingDates.length > 0;
   const journeyDates = ideaJourneyDates(item);
-  const dateChange = currentPlanDateChange(journeyDates, plan);
+  const needsDateDecision = journeyDates.length > 0;
+  const dateChange = anchorDayNumber
+    ? anchoredPlanDateChange(journeyDates, plan, anchorDayNumber)
+    : null;
   const newDates = journeyDates[0]
-    ? newPlanDateRange(journeyDates[0], anchorDayNumber, plan.days.length, journeyDates)
+    ? newPlanDateRange(journeyDates[0], anchorDayNumber ?? 1, plan.days.length, journeyDates)
     : null;
   const needsSchedule =
     item.category === "activity" ||
@@ -66,7 +62,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   const day = plan.days.find((entry) => entry.id === dayId);
 
   async function apply(destination: "current" | "new" = "current") {
-    if (pending || (needsSchedule && !dayId)) return;
+    if (pending || (needsSchedule && !dayId) || (needsDateDecision && !anchorDayNumber)) return;
     setPending(true);
     setError(undefined);
     const input = {
@@ -76,12 +72,14 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       dayId: destination === "new" ? null : dayId || null,
       beforeItemId: destination === "new" ? null : beforeItemId || null,
       operationId: newTelemetryOperationId(),
-      anchorDayNumber,
+      anchorDayNumber: anchorDayNumber ?? 1,
     };
     const result =
       destination === "new"
         ? await applySingleIdeaToNewVariant(input)
-        : await applySingleIdea(input);
+        : needsDateDecision
+          ? await applySingleIdeaWithConfirmedCalendar(input)
+          : await applySingleIdea(input);
     setPending(false);
     if (!result.data) {
       setError(result.error);
@@ -120,7 +118,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             onClick={() => {
               if (needsSchedule || needsDateDecision) {
                 setDateMode("current");
-                setAnchorDayNumber(1);
+                setAnchorDayNumber(null);
                 setOpen(true);
                 setError(undefined);
               } else void apply();
@@ -152,43 +150,20 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
                 }
               />
             </DialogTitle>
-            <DialogDescription>
-              {needsDateDecision ? (
-                dateMode === "new" ? (
-                  newDates ? (
-                    <T message="Day 1: {start} · Last day: {end}" values={newDates} />
-                  ) : null
-                ) : dateChange ? (
-                  <T
-                    message="Plan dates: {before} → {after}"
-                    values={{
-                      before: dateChange.before?.join("–") ?? t("No dates"),
-                      after: dateChange.after.join("–"),
-                    }}
-                  />
-                ) : null
-              ) : item.start_date ? (
-                <T
-                  message="Idea date: {date}"
-                  values={{
-                    date: item.end_date ? `${item.start_date} – ${item.end_date}` : item.start_date,
-                  }}
-                />
-              ) : (
-                <T message="Choose where this belongs in your Plan." />
-              )}
+            <DialogDescription className="sr-only">
+              <T message="Choose where this belongs in your Plan." />
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-5 py-4 sm:px-6">
-            {needsDateDecision && dateMode === "new" ? (
-              <label className="block text-sm font-medium">
+            {needsDateDecision ? (
+              <label className="block text-base font-medium">
                 <T message="First flight on" />
                 <Select
                   onValueChange={(value) => setAnchorDayNumber(Number(value))}
-                  value={String(anchorDayNumber)}
+                  value={anchorDayNumber ? String(anchorDayNumber) : undefined}
                 >
                   <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
-                    <SelectValue />
+                    <SelectValue placeholder={t("Choose a Day")} />
                   </SelectTrigger>
                   <SelectContent>
                     {plan.days.map((entry) => (
@@ -199,7 +174,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
                   </SelectContent>
                 </Select>
               </label>
-            ) : needsDateDecision ? null : (
+            ) : (
               <label className="block text-sm font-medium">
                 <T message="Day" />
                 <PlanDaySelect
@@ -212,6 +187,27 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
                 />
               </label>
             )}
+            {needsDateDecision ? (
+              <div className="rounded-xl bg-muted/40 px-4 py-3 text-base font-medium">
+                {dateMode === "new" ? (
+                  newDates && anchorDayNumber ? (
+                    <T message="Day 1: {start} · Last day: {end}" values={newDates} />
+                  ) : (
+                    <T message="Choose a Day to see changes." />
+                  )
+                ) : dateChange ? (
+                  <T
+                    message="Plan dates: {before} → {after}"
+                    values={{
+                      before: dateChange.before?.join("–") ?? t("No dates"),
+                      after: dateChange.after.join("–"),
+                    }}
+                  />
+                ) : (
+                  <T message="Choose a Day to see changes." />
+                )}
+              </div>
+            ) : null}
             {!needsDateDecision &&
             day &&
             (item.category === "stay" || item.category === "activity") ? (
@@ -247,8 +243,13 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
                 className="min-h-11"
                 disabled={pending}
                 onClick={() => {
-                  if (dateMode === "new") setDateMode("current");
-                  else setDateMode("new");
+                  if (dateMode === "new") {
+                    setDateMode("current");
+                    setAnchorDayNumber(null);
+                  } else {
+                    setDateMode("new");
+                    setAnchorDayNumber(1);
+                  }
                   setError(undefined);
                 }}
                 type="button"
@@ -259,7 +260,9 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             ) : null}
             <Button
               className="min-h-11"
-              disabled={(needsSchedule && !dayId) || pending}
+              disabled={
+                (needsSchedule && !dayId) || (needsDateDecision && !anchorDayNumber) || pending
+              }
               onClick={() => void apply(dateMode)}
               type="button"
             >

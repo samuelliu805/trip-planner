@@ -1893,6 +1893,18 @@ export type Database = {
         };
         Returns: Json;
       };
+      apply_idea_choice_confirmed_v1: {
+        Args: {
+          target_trip_id: string;
+          target_variant_id: string;
+          target_comparison_id: string;
+          target_choice_id: string;
+          requested_day_id: string | null;
+          requested_anchor_day_number: number;
+          target_operation_id: string;
+        };
+        Returns: Json;
+      };
       apply_single_idea_v1: {
         Args: {
           target_trip_id: string;
@@ -1900,6 +1912,16 @@ export type Database = {
           target_research_item_id: string;
           requested_day_id: string | null;
           requested_before_item_id: string | null;
+          target_operation_id: string;
+        };
+        Returns: Json;
+      };
+      apply_single_idea_confirmed_v1: {
+        Args: {
+          target_trip_id: string;
+          target_variant_id: string;
+          target_research_item_id: string;
+          requested_anchor_day_number: number;
           target_operation_id: string;
         };
         Returns: Json;

@@ -79,14 +79,15 @@ async function comparison(db, tripId, id) {
   return data.find((entry) => entry.id === id);
 }
 
-async function apply(db, tripId, variantId, comparisonId, choiceId) {
+async function apply(db, tripId, variantId, comparisonId, choiceId, anchorDayNumber) {
   return dataOrThrow(
-    await db.rpc("apply_idea_choice_v1", {
+    await db.rpc("apply_idea_choice_confirmed_v1", {
       target_trip_id: tripId,
       target_variant_id: variantId,
       target_comparison_id: comparisonId,
       target_choice_id: choiceId,
       requested_day_id: null,
+      requested_anchor_day_number: anchorDayNumber,
       target_operation_id: randomUUID(),
     }),
     "apply choice",
@@ -257,6 +258,14 @@ async function run() {
       requested_choices: [[flightA], [flightB1]],
     });
     assert.ok(forbiddenWrite.error);
+    const forbiddenApply = await second.db.rpc("apply_single_idea_confirmed_v1", {
+      target_trip_id: tripId,
+      target_variant_id: variant.id,
+      target_research_item_id: roundTrip,
+      requested_anchor_day_number: 2,
+      target_operation_id: randomUUID(),
+    });
+    assert.ok(forbiddenApply.error, "nonmember could change Plan dates");
     await second.auth.signOut();
     await signIn(first.auth, userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
 
@@ -272,16 +281,32 @@ async function run() {
       "direct Activity apply",
     );
     assert.equal(activityResult.status, "applied");
+    const invalidAnchor = await first.db.rpc("apply_single_idea_confirmed_v1", {
+      target_trip_id: tripId,
+      target_variant_id: variant.id,
+      target_research_item_id: roundTrip,
+      requested_anchor_day_number: 0,
+      target_operation_id: randomUUID(),
+    });
+    assert.ok(invalidAnchor.error, "a Day outside this Plan was accepted");
+    assert.deepEqual(
+      rows(
+        await first.db.from("trip_days").select("date").eq("variant_id", variant.id),
+        "Plan after rejected Day",
+      )
+        .map((day) => day.date)
+        .sort(),
+      ["2026-10-01", "2026-10-02", "2026-10-03"],
+    );
     const roundTripResult = dataOrThrow(
-      await first.db.rpc("apply_single_idea_v1", {
+      await first.db.rpc("apply_single_idea_confirmed_v1", {
         target_trip_id: tripId,
         target_variant_id: variant.id,
         target_research_item_id: roundTrip,
-        requested_day_id: null,
-        requested_before_item_id: null,
+        requested_anchor_day_number: 2,
         target_operation_id: randomUUID(),
       }),
-      "direct round-trip apply",
+      "confirmed round-trip apply",
     );
     assert.equal(roundTripResult.status, "applied");
     assert.equal(roundTripResult.itemIds.length, 2);
@@ -298,6 +323,7 @@ async function run() {
       "expanded Plan days",
     );
     assert.deepEqual(expandedDays.map((day) => day.date).sort(), [
+      "2026-09-29",
       "2026-09-30",
       "2026-10-01",
       "2026-10-02",
@@ -309,15 +335,44 @@ async function run() {
       roundTripItems.map((item) => expandedDays.find((day) => day.id === item.day_id)?.date).sort(),
       ["2026-09-30", "2026-10-05"],
     );
+    const tripCalendar = rows(
+      await first.db.from("trips").select("start_date,end_date,day_count").eq("id", tripId),
+      "confirmed Trip dates",
+    )[0];
+    assert.deepEqual(
+      [tripCalendar.start_date, tripCalendar.end_date, Number(tripCalendar.day_count)],
+      ["2026-09-29", "2026-10-05", 7],
+    );
     assert.equal(
       roundTripItems.reduce((sum, item) => sum + Number(item.price_amount ?? 0), 0),
       0,
     );
-    const firstUse = await apply(first.db, tripId, variant.id, comparisonId, group.choices[0].id);
+    const firstUse = await apply(
+      first.db,
+      tripId,
+      variant.id,
+      comparisonId,
+      group.choices[0].id,
+      3,
+    );
     assert.equal(firstUse.status, "applied");
-    const repeated = await apply(first.db, tripId, variant.id, comparisonId, group.choices[0].id);
+    const repeated = await apply(
+      first.db,
+      tripId,
+      variant.id,
+      comparisonId,
+      group.choices[0].id,
+      3,
+    );
     assert.equal(repeated.status, "already_applied");
-    const switched = await apply(first.db, tripId, variant.id, comparisonId, group.choices[1].id);
+    const switched = await apply(
+      first.db,
+      tripId,
+      variant.id,
+      comparisonId,
+      group.choices[1].id,
+      4,
+    );
     assert.equal(switched.switched, true);
     const plan = rows(
       await first.db
@@ -375,15 +430,24 @@ async function run() {
       }),
       "edit generated Plan item",
     );
-    const unsafeSwitch = await first.db.rpc("apply_idea_choice_v1", {
+    const unsafeSwitch = await first.db.rpc("apply_idea_choice_confirmed_v1", {
       target_trip_id: tripId,
       target_variant_id: variant.id,
       target_comparison_id: comparisonId,
       target_choice_id: group.choices[0].id,
       requested_day_id: null,
+      requested_anchor_day_number: 1,
       target_operation_id: randomUUID(),
     });
     assert.ok(unsafeSwitch.error, "switch deleted an edited Plan item");
+    assert.deepEqual(
+      rows(
+        await first.db.from("trips").select("start_date,end_date").eq("id", tripId),
+        "Trip after rejected switch",
+      ).map((trip) => [trip.start_date, trip.end_date]),
+      [["2026-09-29", "2026-10-05"]],
+      "failed comparison apply changed the Plan calendar",
+    );
     assert.equal(
       rows(
         await first.db.from("itinerary_items").select("id").eq("id", generated.id),

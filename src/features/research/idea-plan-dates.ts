@@ -30,22 +30,24 @@ export function missingJourneyDates(item: ResearchItem, plan: ResearchPlanSnapsh
   return ideaJourneyDates(item).filter((date) => !planDates.has(date));
 }
 
-export function currentPlanDateChange(dates: string[], plan: ResearchPlanSnapshot) {
-  const existing = plan.days
+/** Preview the calendar after the first journey is placed on the chosen Day. */
+export function anchoredPlanDateChange(
+  dates: string[],
+  plan: ResearchPlanSnapshot,
+  anchorDayNumber: number,
+) {
+  if (!dates.length) return null;
+  const before = plan.days
     .map((day) => day.date)
     .filter((date): date is string => !!date)
     .sort();
-  if (!dates.length) return null;
-  const added = [...existing, ...dates].sort();
-  const first = added[0];
-  const last = added.at(-1)!;
-  const end = existing.length
-    ? last
-    : [last, addIsoDateDays(first, plan.days.length - 1)!].sort().at(-1)!;
-  return {
-    before: existing.length ? ([existing[0], existing.at(-1)!] as const) : null,
-    after: [first, end] as const,
-  };
+  const range = newPlanDateRange(dates[0], anchorDayNumber, plan.days.length, dates);
+  return range
+    ? {
+        before: before.length ? ([before[0], before.at(-1)!] as const) : null,
+        after: [range.start, range.end] as const,
+      }
+    : null;
 }
 
 export function newPlanDateRange(

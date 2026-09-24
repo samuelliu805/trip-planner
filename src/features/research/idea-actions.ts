@@ -244,6 +244,32 @@ export async function applyIdeaChoice(
   return { data: result.data };
 }
 
+export async function applyIdeaChoiceWithConfirmedCalendar(
+  input: z.input<typeof applyChoiceSchema> & { anchorDayNumber: number },
+): Promise<ResearchMutationResult<{ switched: boolean; status: string }>> {
+  const parsed = applyChoiceSchema
+    .extend({
+      anchorDayNumber: z.number().int().min(1).max(366),
+    })
+    .safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid choice." };
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("apply_idea_choice_confirmed_v1", {
+    target_trip_id: parsed.data.tripId,
+    target_variant_id: parsed.data.variantId,
+    target_comparison_id: parsed.data.comparisonId,
+    target_choice_id: parsed.data.choiceId,
+    requested_day_id: parsed.data.dayId,
+    requested_anchor_day_number: parsed.data.anchorDayNumber,
+    target_operation_id: parsed.data.operationId,
+  });
+  if (error || !data) return { error: error?.message ?? "The choice could not be added to Plan." };
+  const result = z.object({ switched: z.boolean(), status: z.string() }).safeParse(data);
+  if (!result.success) return { error: "The Plan changed, but its result could not be read." };
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return { data: result.data };
+}
+
 const applySingleSchema = z.object({
   tripId: z.uuid(),
   variantId: z.uuid(),
@@ -265,6 +291,36 @@ export async function applySingleIdea(
     target_research_item_id: parsed.data.researchItemId,
     requested_day_id: parsed.data.dayId,
     requested_before_item_id: parsed.data.beforeItemId,
+    target_operation_id: parsed.data.operationId,
+  });
+  if (error || !data) return { error: error?.message ?? "The idea could not be added to Plan." };
+  const result = z
+    .object({
+      status: z.string(),
+      itemId: z.uuid().optional(),
+      itemIds: z.array(z.uuid()).optional(),
+    })
+    .safeParse(data);
+  if (!result.success) return { error: "The Plan changed, but its result could not be read." };
+  revalidatePath(`/trips/${parsed.data.tripId}`);
+  return { data: result.data };
+}
+
+export async function applySingleIdeaWithConfirmedCalendar(
+  input: z.input<typeof applySingleSchema> & { anchorDayNumber: number },
+): Promise<ResearchMutationResult<{ status: string; itemId?: string; itemIds?: string[] }>> {
+  const parsed = applySingleSchema
+    .extend({
+      anchorDayNumber: z.number().int().min(1).max(366),
+    })
+    .safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid idea." };
+  const database = await getRelationalDatabase();
+  const { data, error } = await database.rpc("apply_single_idea_confirmed_v1", {
+    target_trip_id: parsed.data.tripId,
+    target_variant_id: parsed.data.variantId,
+    target_research_item_id: parsed.data.researchItemId,
+    requested_anchor_day_number: parsed.data.anchorDayNumber,
     target_operation_id: parsed.data.operationId,
   });
   if (error || !data) return { error: error?.message ?? "The idea could not be added to Plan." };

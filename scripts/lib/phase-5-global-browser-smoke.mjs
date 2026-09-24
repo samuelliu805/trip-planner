@@ -1353,19 +1353,32 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
-      return Boolean(dialog?.innerText.includes('2026-11-20') &&
-        [...dialog.querySelectorAll('button')].some((button) =>
-          button.textContent.includes('Update this Plan') && !button.disabled));
+      const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Update this Plan'));
+      return Boolean(dialog?.querySelector('[role="combobox"]') && confirm?.disabled &&
+        !dialog.querySelector('[role="dialog"] h2')?.innerText.includes('Plan dates:'));
     })()`,
-    "dated Google flight Plan date decision",
+    "dated Google flight waits for a selected Plan day",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('[role="dialog"] [role="combobox"]')`,
+    "open current Plan flight Day selection",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].find((option) =>
+      option.getClientRects().length && option.textContent.trim() === 'Day 1')`,
+    "anchor current Plan flight to Day 1",
   );
   await waitFor(
     browser,
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
-      return [...(dialog?.querySelectorAll('button') ?? [])].some((button) =>
-        button.textContent.includes('Update this Plan') && !button.disabled);
+      return dialog?.innerText.includes('Plan dates:') &&
+        [...(dialog?.querySelectorAll('button') ?? [])].some((button) =>
+          button.textContent.includes('Update this Plan') && !button.disabled);
     })()`,
     "dated Google flight Plan date update readiness",
   );

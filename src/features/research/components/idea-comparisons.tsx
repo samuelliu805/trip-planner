@@ -13,6 +13,7 @@ import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 
 import {
   applyIdeaChoice,
+  applyIdeaChoiceWithConfirmedCalendar,
   createIdeaComparison,
   deleteIdeaComparison,
   loadIdeaComparisons,
@@ -21,6 +22,7 @@ import {
 import type { ResearchItem, ResearchPlanSnapshot, ResearchSort } from "../types";
 import { activityNeedsDay } from "./idea-comparison-labels";
 import { applyIdeaChoiceToNewVariant } from "../idea-plan-variant-actions";
+import { ideaJourneyDates } from "../idea-plan-dates";
 import { IdeaComparisonCreateDialog } from "./idea-comparison-create-dialog";
 import { IdeaComparisonViewDialog } from "./idea-comparison-view-dialog";
 import { IdeaComparisonDeleteDialog } from "./idea-comparison-delete-dialog";
@@ -165,10 +167,16 @@ export function IdeaComparisons({
       variantId: plan.variantId,
       anchorDayNumber,
     };
+    const hasDatedTransport = choice.itemIds.some((id) => {
+      const item = byId.get(id);
+      return item && ideaJourneyDates(item).length > 0;
+    });
     const result =
       destination === "new"
         ? await applyIdeaChoiceToNewVariant(input)
-        : await applyIdeaChoice(input);
+        : hasDatedTransport
+          ? await applyIdeaChoiceWithConfirmedCalendar(input)
+          : await applyIdeaChoice(input);
     setPending(false);
     if (!result.data) {
       setError(result.error);

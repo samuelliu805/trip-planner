@@ -20,12 +20,7 @@ import { T, useI18n } from "@/features/i18n/i18n-provider";
 
 import type { IdeaComparison } from "../idea-actions";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
-import {
-  currentPlanDateChange,
-  ideaJourneyDates,
-  missingJourneyDates,
-  newPlanDateRange,
-} from "../idea-plan-dates";
+import { anchoredPlanDateChange, ideaJourneyDates, newPlanDateRange } from "../idea-plan-dates";
 import { activityNeedsDay, choiceLabel, itemLabel } from "./idea-comparison-labels";
 import { PlanDaySelect } from "./plan-day-select";
 
@@ -57,10 +52,10 @@ export function IdeaComparisonViewDialog({
 }) {
   const { t } = useI18n();
   const [newPlanChoiceId, setNewPlanChoiceId] = useState<string>();
-  const [anchorDayNumber, setAnchorDayNumber] = useState(1);
+  const [anchorDays, setAnchorDays] = useState<Record<string, number>>({});
   function close() {
     setNewPlanChoiceId(undefined);
-    setAnchorDayNumber(1);
+    setAnchorDays({});
     onClose();
   }
   return (
@@ -77,14 +72,19 @@ export function IdeaComparisonViewDialog({
             const selectedItems = choice.itemIds
               .map((id) => byId.get(id))
               .filter((item): item is ResearchItem => !!item);
-            const flightDates = [
-              ...new Set(selectedItems.flatMap((item) => missingJourneyDates(item, plan))),
-            ].sort();
             const journeyDates = selectedItems.flatMap(ideaJourneyDates).sort();
-            const dateChange = currentPlanDateChange(journeyDates, plan);
+            const anchorDayNumber = anchorDays[choice.id];
+            const dateChange = anchorDayNumber
+              ? anchoredPlanDateChange(journeyDates, plan, anchorDayNumber)
+              : null;
             const isNewPlan = newPlanChoiceId === choice.id;
             const newDates = journeyDates[0]
-              ? newPlanDateRange(journeyDates[0], anchorDayNumber, plan.days.length, journeyDates)
+              ? newPlanDateRange(
+                  journeyDates[0],
+                  anchorDayNumber ?? 1,
+                  plan.days.length,
+                  journeyDates,
+                )
               : null;
             const dateMismatch = selectedItems.some(
               (item) =>
@@ -131,18 +131,23 @@ export function IdeaComparisonViewDialog({
                     />
                   </label>
                 ) : null}
-                {flightDates.length ? (
+                {journeyDates.length ? (
                   <div className="mt-3 space-y-2">
                     {isNewPlan ? (
                       <>
-                        <label className="block text-sm font-medium">
+                        <label className="block text-base font-medium">
                           <T message="First flight on" />
                           <Select
-                            onValueChange={(value) => setAnchorDayNumber(Number(value))}
-                            value={String(anchorDayNumber)}
+                            onValueChange={(value) =>
+                              setAnchorDays((current) => ({
+                                ...current,
+                                [choice.id]: Number(value),
+                              }))
+                            }
+                            value={anchorDayNumber ? String(anchorDayNumber) : undefined}
                           >
                             <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
-                              <SelectValue />
+                              <SelectValue placeholder={t("Choose a Day")} />
                             </SelectTrigger>
                             <SelectContent>
                               {plan.days.map((day) => (
@@ -153,29 +158,54 @@ export function IdeaComparisonViewDialog({
                             </SelectContent>
                           </Select>
                         </label>
-                        {newDates ? (
-                          <p className="text-sm text-muted-foreground">
-                            {t("Day 1: {start} · Last day: {end}", newDates)}
-                          </p>
-                        ) : null}
                       </>
-                    ) : dateChange ? (
-                      <p className="text-sm text-muted-foreground">
-                        {t("Plan dates: {before} → {after}", {
-                          before: dateChange.before?.join("–") ?? t("No dates"),
-                          after: dateChange.after.join("–"),
-                        })}
-                      </p>
-                    ) : null}
+                    ) : (
+                      <label className="block text-base font-medium">
+                        <T message="First flight on" />
+                        <Select
+                          onValueChange={(value) =>
+                            setAnchorDays((current) => ({
+                              ...current,
+                              [choice.id]: Number(value),
+                            }))
+                          }
+                          value={anchorDayNumber ? String(anchorDayNumber) : undefined}
+                        >
+                          <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
+                            <SelectValue placeholder={t("Choose a Day")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {plan.days.map((day) => (
+                              <SelectItem key={day.id} value={String(day.dayNumber)}>
+                                {t("Day {number}", { number: day.dayNumber })}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </label>
+                    )}
+                    <p className="rounded-xl bg-card px-3 py-2 text-base font-medium">
+                      {isNewPlan && newDates && anchorDayNumber
+                        ? t("Day 1: {start} · Last day: {end}", newDates)
+                        : !isNewPlan && dateChange
+                          ? t("Plan dates: {before} → {after}", {
+                              before: dateChange.before?.join("–") ?? t("No dates"),
+                              after: dateChange.after.join("–"),
+                            })
+                          : t("Choose a Day to see changes.")}
+                    </p>
                   </div>
                 ) : null}
-                {flightDates.length && !needsDay ? (
+                {journeyDates.length && !needsDay ? (
                   <Button
                     className="mt-3 min-h-11 w-full sm:w-auto"
                     disabled={pending}
                     onClick={() => {
                       setNewPlanChoiceId(isNewPlan ? undefined : choice.id);
-                      setAnchorDayNumber(1);
+                      setAnchorDays((current) => ({
+                        ...current,
+                        [choice.id]: isNewPlan ? 0 : 1,
+                      }));
                     }}
                     type="button"
                     variant="outline"
@@ -188,7 +218,8 @@ export function IdeaComparisonViewDialog({
                   disabled={
                     pending ||
                     selectedItems.length !== choice.itemIds.length ||
-                    (needsDay && !dayIds[choice.id])
+                    (needsDay && !dayIds[choice.id]) ||
+                    (journeyDates.length > 0 && !anchorDayNumber)
                   }
                   onClick={() =>
                     view && onApply(view, choice.id, isNewPlan ? "new" : "current", anchorDayNumber)
@@ -199,7 +230,7 @@ export function IdeaComparisonViewDialog({
                     message={
                       isNewPlan
                         ? "Create Plan"
-                        : flightDates.length
+                        : journeyDates.length
                           ? "Update this Plan"
                           : "Use this"
                     }
