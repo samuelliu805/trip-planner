@@ -1330,22 +1330,27 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     browser,
     `(() => {
       const card = [...document.querySelectorAll('article')].find((item) =>
-        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+        item.getClientRects().length && item.innerText.includes('PVG → HND') &&
+        item.innerText.includes('NH 972 · NH 967'));
       return new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)} &&
         [...(card?.querySelectorAll('button') ?? [])].some((button) =>
+          button.getClientRects().length && !button.disabled &&
           button.textContent.includes('Add to Plan'));
     })()`,
     "original Plan and saved flight Idea return",
     45_000,
   );
-  await clickElement(
+  await clickElementUntil(
     browser,
     `(() => {
-    const card = [...document.querySelectorAll('article')].find((item) =>
-      item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
-    return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
-      button.textContent.includes('Add to Plan'));
-  })()`,
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.getClientRects().length && item.innerText.includes('PVG → HND') &&
+        item.innerText.includes('NH 972 · NH 967'));
+      return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
+        button.getClientRects().length && !button.disabled &&
+        button.textContent.includes('Add to Plan'));
+    })()`,
+    `Boolean(document.querySelector('[role="dialog"][data-state="open"]'))`,
     "add Google Flights booking idea to Plan",
   );
   await waitFor(
