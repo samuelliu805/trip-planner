@@ -1195,6 +1195,15 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     "saved Google place editor close",
     45_000,
   );
+  const originalVariantId = await evaluate(
+    browser,
+    `(() => {
+      const link = [...document.querySelectorAll('[data-i18n-aria-label="Trip sections"] a')]
+        .find((item) => item.textContent.trim() === 'Plan');
+      return link ? new URL(link.href).searchParams.get('variant') : null;
+    })()`,
+  );
+  assert.ok(originalVariantId, "Original Plan was not identifiable before the flight copy.");
   await clickElement(
     browser,
     `(() => {
@@ -1316,11 +1325,18 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     "rebased Plan calendar and return journey",
     60_000,
   );
-  await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights`);
+  await navigate(browser, baseUrl, `/trips/${tripId}/compare/flights?variant=${originalVariantId}`);
   await waitFor(
     browser,
-    `Boolean(document.querySelector('textarea'))`,
-    "original Plan Ideas return",
+    `(() => {
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+      return new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)} &&
+        [...(card?.querySelectorAll('button') ?? [])].some((button) =>
+          button.textContent.includes('Add to Plan'));
+    })()`,
+    "original Plan and saved flight Idea return",
+    45_000,
   );
   await clickElement(
     browser,
