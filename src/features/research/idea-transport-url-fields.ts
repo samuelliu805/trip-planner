@@ -198,6 +198,7 @@ export function parseTransportProviderUrl(url: URL): IdeaUrlFields | null {
     [
       "enterprise.com",
       "hertz.com",
+      "hertz.cn",
       "avis.com",
       "budget.com",
       "sixt.com",

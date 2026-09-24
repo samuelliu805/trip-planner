@@ -18,6 +18,7 @@ const providerDomains = [
   "hyatt.com",
   "tujia.com",
   "hertz.com",
+  "hertz.cn",
   "enterprise.com",
   "avis.com",
   "budget.com",

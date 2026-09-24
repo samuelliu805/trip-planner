@@ -196,6 +196,7 @@ test("fetches approved rental and rail pages and allows Eurail's official redire
   for (const url of [
     "https://www.avis.com/en/reservation",
     "https://www.hertz.com/us/en",
+    "https://www.hertz.cn/cn/zh/book/checkout?pdate=2026-10-23T20%3A00%3A00&ddate=2026-10-24T20%3A00%3A00&pid=LGWT51&did=LGWT51",
     "https://www.enterprise.com/en/car-rental/reservation/start.html",
     "https://www.omio.com/trains/paris/berlin",
     "https://www.eurail.com/en/book-reservations",
@@ -222,6 +223,28 @@ test("generic rail and rental home titles do not masquerade as booking details",
       )
     ).title,
     "Paris → Berlin",
+  );
+});
+
+test("Hertz China checkout remains readable when its page only says Book", async () => {
+  const shell: typeof fetch = async () =>
+    new Response("<title>Book</title>", { headers: { "content-type": "text/html" } });
+  const metadata = await fetchIdeaPageMetadata(
+    "https://www.hertz.cn/cn/zh/book/checkout?pdate=2026-10-23T20%3A00%3A00&ddate=2026-10-24T20%3A00%3A00&pid=LGWT51&did=LGWT51",
+    shell,
+  );
+  assert.equal(metadata.status, "readable");
+  assert.equal(metadata.title, "Hertz · LGWT51");
+  const chineseShell: typeof fetch = async () =>
+    new Response("<title>预订</title>", { headers: { "content-type": "text/html" } });
+  assert.equal(
+    (
+      await fetchIdeaPageMetadata(
+        "https://www.hertz.cn/cn/zh/book/checkout?pdate=2026-10-23T20%3A00%3A00&ddate=2026-10-24T20%3A00%3A00&pid=LGWT51&did=LGWT51",
+        chineseShell,
+      )
+    ).title,
+    "Hertz · LGWT51",
   );
 });
 

@@ -60,6 +60,7 @@ function toPlaceSnapshot(value?: StoredPlace | null): PlaceSnapshot | null {
 export function ResearchPlaceField({
   initialPlace,
   initialPlaceId,
+  initialSearchText,
   initialText,
   includedPrimaryTypes,
   label,
@@ -71,6 +72,7 @@ export function ResearchPlaceField({
 }: {
   initialPlace?: StoredPlace | null;
   initialPlaceId?: string | null;
+  initialSearchText?: string | null;
   initialText?: string | null;
   includedPrimaryTypes?: string[];
   label: string;
@@ -81,14 +83,19 @@ export function ResearchPlaceField({
   textName: string;
 }) {
   const stored = toPlaceSnapshot(initialPlace);
-  const [manual, setManual] = useState(Boolean(initialText) && !stored);
+  const [manual, setManual] = useState(false);
   const [place, setPlace] = useState<PlaceSnapshot | null>(stored);
   const [placeId, setPlaceId] = useState(initialPlaceId ?? "");
   const [text, setText] = useState(initialText ?? stored?.displayName ?? "");
+  const [searchText, setSearchText] = useState(
+    stored ? "" : (initialSearchText ?? initialText ?? ""),
+  );
   const labelId = useId();
   const { t } = useI18n();
 
   function useManualEntry() {
+    const nextText = place?.displayName ?? (searchText || text);
+    changeText(nextText);
     setManual(true);
     setPlace(null);
     setPlaceId("");
@@ -122,7 +129,10 @@ export function ResearchPlaceField({
           <Button
             aria-label={t("Search Maps for {label}", { label: t(label) })}
             className="size-[3.75rem] shrink-0 rounded-xl p-0"
-            onClick={() => setManual(false)}
+            onClick={() => {
+              setSearchText(text);
+              setManual(false);
+            }}
             type="button"
             variant="outline"
           >
@@ -133,25 +143,33 @@ export function ResearchPlaceField({
         <div className="min-w-0 space-y-1">
           <PlaceAutocomplete
             includedPrimaryTypes={includedPrimaryTypes}
+            initialQuery={searchText}
             onChange={(next) => {
               setPlace(next);
               setPlaceId("");
-              changeText(next?.displayName ?? "");
+              if (next) {
+                setSearchText("");
+                changeText(next.displayName);
+              }
+            }}
+            onQueryChange={(query) => {
+              setSearchText(query);
+              setPlace(null);
+              setPlaceId("");
+              changeText(query);
             }}
             placeholder={placeholder ? t(placeholder) : undefined}
             value={place}
           />
-          {!place ? (
-            <Button
-              className="min-h-[3.75rem] px-3 text-sm text-muted-foreground"
-              onClick={useManualEntry}
-              type="button"
-              variant="ghost"
-            >
-              <TextCursorInput aria-hidden="true" className="size-4" />{" "}
-              <T message={" Enter without Maps "} />
-            </Button>
-          ) : null}
+          <Button
+            className="min-h-11 px-3 text-sm text-muted-foreground"
+            onClick={useManualEntry}
+            type="button"
+            variant="ghost"
+          >
+            <TextCursorInput aria-hidden="true" className="size-4" />{" "}
+            <T message={" Enter without Maps "} />
+          </Button>
         </div>
       )}
     </div>

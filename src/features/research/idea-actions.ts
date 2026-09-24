@@ -23,6 +23,8 @@ const captureSchema = z
     shareText: z.string().trim().max(5000).nullable(),
     locationText: z.string().trim().max(200).nullable().optional(),
     locationPlaceSnapshot: placeSnapshotSchema.nullable().optional(),
+    originPlaceSnapshot: placeSnapshotSchema.nullable().optional(),
+    destinationPlaceSnapshot: placeSnapshotSchema.nullable().optional(),
   })
   .refine((value) => value.title || value.sourceUrl, "Add a link or a name.")
   .refine(
@@ -35,9 +37,10 @@ export async function captureIdea(
 ): Promise<ResearchMutationResult<ResearchItem>> {
   const parsed = captureSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid idea." };
+  const classification = parsed.data.sourceUrl ? classifyIdeaInput(parsed.data.sourceUrl) : null;
   const fields =
     parsed.data.sourceUrl &&
-    ["unknown", parsed.data.kind].includes(classifyIdeaInput(parsed.data.sourceUrl).kind)
+    ["unknown", parsed.data.kind].includes(classification?.kind ?? "unknown")
       ? parseReliableIdeaFields(parsed.data.sourceUrl)
       : parseReliableIdeaFields(null);
   const metadata = parsed.data.sourceUrl
@@ -54,10 +57,19 @@ export async function captureIdea(
     null;
   const priceAmount = fields.priceAmount ?? metadata?.priceAmount ?? null;
   const priceCurrency = fields.priceCurrency ?? metadata?.priceCurrency ?? null;
+  const originPlace = parsed.data.kind === "car" ? (parsed.data.originPlaceSnapshot ?? null) : null;
+  const destinationPlace =
+    parsed.data.kind === "car"
+      ? (parsed.data.destinationPlaceSnapshot ??
+        (fields.originText === fields.destinationText ? originPlace : null))
+      : null;
+  const originText = originPlace?.displayName ?? fields.originText;
+  const destinationText = destinationPlace?.displayName ?? fields.destinationText;
   return createResearchItem({
     category: parsed.data.kind === "car" ? "rental" : parsed.data.kind,
     currency: priceAmount === null ? null : priceCurrency,
-    destinationText: fields.destinationText,
+    destinationPlaceSnapshot: destinationPlace,
+    destinationText,
     endDate: fields.endDate,
     endTime: fields.endTime ?? null,
     journeyType: fields.journeyType ?? null,
@@ -69,7 +81,8 @@ export async function captureIdea(
         ? textWithoutUrl
         : null,
     operationId: parsed.data.operationId,
-    originText: fields.originText,
+    originPlaceSnapshot: originPlace,
+    originText,
     segments:
       parsed.data.kind === "flight"
         ? (enrichFlightTimes(fields.segments, metadata?.segments) ??
@@ -80,11 +93,14 @@ export async function captureIdea(
     startTime: fields.startTime ?? null,
     title:
       parsed.data.title ??
+      (parsed.data.kind === "car" && classification?.kind === "car"
+        ? classification.provider
+        : null) ??
       metadata?.title ??
-      (fields.originText && fields.destinationText
-        ? parsed.data.kind === "car" && fields.originText === fields.destinationText
-          ? `Car · ${fields.originText}`
-          : `${fields.originText} → ${fields.destinationText}`
+      (originText && destinationText
+        ? parsed.data.kind === "car" && originText === destinationText
+          ? `Car · ${originText}`
+          : `${originText} → ${destinationText}`
         : locationText),
     totalPriceAmount: priceAmount,
     tripId: parsed.data.tripId,

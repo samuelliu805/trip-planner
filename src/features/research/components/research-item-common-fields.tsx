@@ -11,6 +11,7 @@ import {
 import { BookingPriceFields } from "@/features/itinerary/components/booking-price-fields";
 
 import type { ResearchCategory, ResearchItem } from "../types";
+import { inferredRentalCompany } from "../idea-rental-company";
 
 const nameLabels: Record<ResearchCategory, string> = {
   activity: "Activity name",
@@ -137,7 +138,7 @@ export function ResearchItemDetailFields({
   );
   const name = (
     <PlannerEditorTextField
-      defaultValue={item?.title ?? ""}
+      defaultValue={item ? (inferredRentalCompany(item) ?? item.title ?? "") : ""}
       description="We’ll create a clear route or place label when this is blank."
       id={`${idPrefix}-name`}
       label={
