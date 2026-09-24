@@ -944,7 +944,18 @@ async function verifyTripSectionNavigation(browser, tripId) {
             [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()));
         const minimumFont = Math.min(...visibleText.map((element) =>
           Number.parseFloat(getComputedStyle(element).fontSize)));
+        const actionNodes = saved && [
+          saved.querySelector('button[aria-label="Search other booking sites"]'),
+          saved.querySelector('a[aria-label="Open original link"]'),
+          saved.querySelector('button[title="Delete"]'),
+          [...saved.querySelectorAll('button')].find((button) => button.textContent.includes('Add to Plan')),
+        ];
+        const actionRects = actionNodes?.map((node) => node?.getBoundingClientRect());
         return {
+          actionsAligned: Boolean(actionRects?.every(Boolean)) &&
+            actionRects.every((rect) => Math.abs(rect.top - actionRects[0].top) <= 2 &&
+              rect.left >= saved.getBoundingClientRect().left &&
+              rect.right <= saved.getBoundingClientRect().right && rect.height >= 44),
           captureFits: Boolean(capture) && capture.getBoundingClientRect().left >= 0 &&
             capture.getBoundingClientRect().right <= innerWidth,
           documentFits: document.documentElement.scrollWidth <= innerWidth,
@@ -957,6 +968,7 @@ async function verifyTripSectionNavigation(browser, tripId) {
     assert.equal(layout.documentFits, true, `Ideas overflowed at ${width}px.`);
     assert.equal(layout.captureFits, true, `Ideas capture escaped the ${width}px viewport.`);
     assert.equal(layout.savedFits, true, `Saved Ideas escaped the ${width}px viewport.`);
+    assert.equal(layout.actionsAligned, true, `Saved Ideas actions wrapped at ${width}px.`);
     assert.ok(
       layout.minimumFont >= 14,
       `Ideas rendered ${layout.minimumFont}px text at ${width}px.`,

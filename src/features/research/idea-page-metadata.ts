@@ -1,5 +1,3 @@
-import { isIP } from "node:net";
-
 import {
   decodeHtml,
   embeddedPrice,
@@ -8,8 +6,14 @@ import {
   structuredPrice,
   type ParsedPrice,
 } from "./idea-page-price.ts";
-import { propertyTitleFromIdeaUrl, usableProviderPageTitle } from "./idea-provider-url.ts";
+import {
+  propertyTitleFromIdeaUrl,
+  tripHotelTitleFromPage,
+  usableProviderPageTitle,
+} from "./idea-provider-url.ts";
 import { flightPageSegments } from "./idea-page-flight.ts";
+import { parseIdeaUrlFields } from "./idea-url-fields.ts";
+import { approvedIdeaPageUrl } from "./idea-page-source.ts";
 import type { ResearchSegment } from "./types.ts";
 
 export type IdeaPageMetadata = {
@@ -31,7 +35,26 @@ const unavailable: IdeaPageMetadata = {
 const maximumPageBytes = 1_048_576;
 
 function urlFallback(url: URL, provider: string): IdeaPageMetadata {
-  const title = propertyTitleFromIdeaUrl(url, provider);
+  const transport = parseIdeaUrlFields(url);
+  const rental = [
+    "hertz.com",
+    "enterprise.com",
+    "avis.com",
+    "budget.com",
+    "sixt.com",
+    "europcar.com",
+    "zuzuche.com",
+    "zuche.com",
+  ].includes(provider);
+  const title =
+    propertyTitleFromIdeaUrl(url, provider) ??
+    (transport?.originText && transport.destinationText
+      ? rental && transport.originText === transport.destinationText
+        ? `Car · ${transport.originText}`
+        : `${transport.originText} → ${transport.destinationText}`
+      : transport?.originText && rental
+        ? `Car · ${transport.originText}`
+        : null);
   return {
     title,
     locationText: null,
@@ -58,74 +81,8 @@ function withFallback(
     priceAmount,
     priceCurrency,
     ...(segments?.length ? { segments } : {}),
-    status: title || locationText || priceAmount !== null ? "readable" : parsed.status,
+    status: title || locationText || priceAmount !== null ? "readable" : "unavailable",
   };
-}
-
-const providerDomains = [
-  "airbnb.com",
-  "booking.com",
-  "trip.com",
-  "ctrip.com",
-  "fliggy.com",
-  "kayak.com",
-  "skyscanner.com",
-  "agoda.com",
-  "hilton.com",
-  "hilton.com.cn",
-  "marriott.com",
-  "marriott.com.cn",
-  "ihg.com",
-  "ihg.com.cn",
-  "hyatt.com",
-  "tujia.com",
-  "hertz.com",
-  "enterprise.com",
-  "avis.com",
-  "budget.com",
-  "sixt.com",
-  "europcar.com",
-  "zuzuche.com",
-  "zuche.com",
-  "meituan.com",
-  "dianping.com",
-];
-
-function providerDomain(host: string): string | null {
-  if (
-    [
-      "google.com",
-      "www.google.com",
-      "maps.google.com",
-      "flights.google.com",
-      "maps.app.goo.gl",
-    ].includes(host)
-  )
-    return "google.com";
-  if (host === "abnb.me") return "airbnb.com";
-  return providerDomains.find((domain) => host === domain || host.endsWith(`.${domain}`)) ?? null;
-}
-
-function approvedUrl(value: string, provider?: string): { url: URL; provider: string } | null {
-  try {
-    const url = new URL(value);
-    const host = url.hostname.toLowerCase();
-    const domain = providerDomain(host);
-    if (
-      url.protocol !== "https:" ||
-      url.username ||
-      url.password ||
-      url.port ||
-      isIP(host) ||
-      !domain ||
-      (provider && provider !== domain) ||
-      value.length > 2048
-    )
-      return null;
-    return { url, provider: domain };
-  } catch {
-    return null;
-  }
 }
 
 function clean(value: unknown, maximum = 300): string | null {
@@ -149,7 +106,7 @@ function structuredNodes(value: unknown): Record<string, unknown>[] {
   return [item, ...structuredNodes(item["@graph"])];
 }
 
-export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageMetadata {
+export function parseIdeaPageMetadata(html: string, provider: string, url?: URL): IdeaPageMetadata {
   const meta = new Map<string, string>();
   for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
     const attr = attributes(tag);
@@ -191,7 +148,8 @@ export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageM
     }
   }
   const title =
-    provider === "airbnb.com"
+    (provider === "trip.com" && url ? tripHotelTitleFromPage(html, url) : null) ??
+    (provider === "airbnb.com"
       ? (structuredName ??
         meta.get("og:description") ??
         meta.get("og:title") ??
@@ -201,7 +159,7 @@ export function parseIdeaPageMetadata(html: string, provider: string): IdeaPageM
         meta.get("og:title") ??
         meta.get("twitter:title") ??
         documentTitle ??
-        null);
+        null));
   price ??=
     parsedPrice(
       meta.get("product:price:amount") ?? meta.get("og:price:amount"),
@@ -225,7 +183,7 @@ export async function fetchIdeaPageMetadata(
   sourceUrl: string,
   fetchPage: typeof fetch = fetch,
 ): Promise<IdeaPageMetadata> {
-  const approved = approvedUrl(sourceUrl);
+  const approved = approvedIdeaPageUrl(sourceUrl);
   if (!approved) return { ...unavailable, status: "unsupported" };
   let current = approved.url;
   let fallback = urlFallback(current, approved.provider);
@@ -242,7 +200,7 @@ export async function fetchIdeaPageMetadata(
         signal: AbortSignal.timeout(6_000),
       });
       if (response.status >= 300 && response.status < 400) {
-        const next = approvedUrl(
+        const next = approvedIdeaPageUrl(
           new URL(response.headers.get("location") ?? "", current).href,
           approved.provider,
         );
@@ -278,7 +236,7 @@ export async function fetchIdeaPageMetadata(
         offset += chunk.byteLength;
       }
       return withFallback(
-        parseIdeaPageMetadata(new TextDecoder().decode(buffer), approved.provider),
+        parseIdeaPageMetadata(new TextDecoder().decode(buffer), approved.provider, current),
         fallback,
         approved.provider,
       );

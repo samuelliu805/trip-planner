@@ -57,7 +57,14 @@ export function usableProviderPageTitle(
   fallbackTitle: string | null,
   provider: string,
 ) {
-  if (!title || /(?:page reference code|access denied|just a moment)/i.test(title)) return null;
+  if (
+    !title ||
+    /(?:page reference code|access denied|just a moment|challenge validation)/i.test(title) ||
+    /^(?:book|book seat reservations|reservations?\s*\|.*|premium car rental at affordable prices\s*\|.*|the sbb online portal for timetable.*|train tickets: eurostar, europe, asia routes\s*\|.*)$/i.test(
+      title,
+    )
+  )
+    return null;
   if (!fallbackTitle || !["booking.com", "hilton.com"].includes(provider)) return title;
   return titleWords(title).length ? title : null;
 }
@@ -94,4 +101,13 @@ export function propertyTitleFromIdeaSourceUrl(sourceUrl: string | null): string
   } catch {
     return null;
   }
+}
+
+export function tripHotelTitleFromPage(html: string, url: URL): string | null {
+  const id = url.searchParams.get("hotelId");
+  if (!id || !/^\d{1,12}$/.test(id) || !/\/hotels?\//i.test(url.pathname)) return null;
+  const match = html.match(
+    new RegExp(`/hotels/[^"\\\\/]{1,100}-hotel-detail-${id}/([a-z0-9-]{3,150})`, "i"),
+  );
+  return match ? humanize(match[1]) : null;
 }

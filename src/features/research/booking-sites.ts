@@ -24,6 +24,7 @@ type SearchItem = Pick<
   | "origin_text"
   | "room_count"
   | "segments"
+  | "source_url"
   | "start_date"
   | "start_time"
 >;
@@ -54,24 +55,25 @@ const globalProviderPages: Record<ResearchCategory, BookingSiteLink[]> = {
     { name: "Hyatt", url: "https://www.hyatt.com/" },
   ],
   rental: [
-    { name: "Hertz", url: "https://www.hertz.com/rentacar/reservation/" },
+    { name: "Hertz", url: "https://www.hertz.com/us/en" },
     {
       name: "Enterprise",
       opensApp: true,
       appUrl: "https://www.enterprise.com/en/universal-deeplink.html",
       url: "https://www.enterprise.com/en/car-rental/reservation/start.html",
     },
-    { name: "Avis", url: "https://www.avis.com/en/reservation" },
+    { name: "Avis", url: "https://www.avis.com/en/reservation/make-reservation" },
     { name: "Europcar", opensApp: true, url: "https://www.europcar.com/en-us" },
     { name: "Budget", url: "https://www.budget.com/en/reservation" },
-    { name: "SIXT", opensApp: true, url: "https://www.sixt.com/rent" },
+    { name: "SIXT", opensApp: true, url: "https://www.sixt.com/car-rental/" },
   ],
   train: [
     { name: "Amtrak", url: "https://www.amtrak.com/home.html" },
     { name: "Eurail", url: "https://www.eurail.com/en/book-reservations" },
     { name: "SNCF Connect", opensApp: true, url: "https://www.sncf-connect.com/home/search" },
     { name: "SBB", url: "https://www.sbb.ch/en" },
-    { name: "Omio", url: "https://www.omio.com/" },
+    { name: "Omio", url: "https://www.omio.com/trains" },
+    { name: "Trip.com", url: "https://www.trip.com/trains/" },
   ],
 };
 
@@ -126,6 +128,18 @@ function providerPages(region: AppRegion) {
   return region === "cn" ? chinaProviderPages : globalProviderPages;
 }
 
+function platformDomain(value: string) {
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    if (host === "abnb.me") return "airbnb.com";
+    if (host === "interrail.com" || host.endsWith(".interrail.com")) return "eurail.com";
+    const parts = host.split(".");
+    return parts.slice(host.endsWith(".com.cn") ? -3 : -2).join(".");
+  } catch {
+    return null;
+  }
+}
+
 export function bookingSitesForCategory(category: ResearchCategory, region: AppRegion = "global") {
   return providerPages(region)[category];
 }
@@ -135,27 +149,30 @@ export function bookingSitesForItem(
   region: AppRegion = "global",
 ): BookingSiteLink[] {
   const category = item.category as ResearchCategory;
-  return providerPages(region)[category].map((provider) => ({
-    ...provider,
-    ...(provider.appUrl
-      ? {
-          appUrl: bookingProviderWebUrl(
-            provider.name,
-            provider.appUrl,
-            item as BookingSearchItem,
-            region,
-          ),
-        }
-      : {}),
-    ...(region === "cn" && provider.name === "携程旅行"
-      ? { appUrl: ctripDeepLink(category, item) ?? provider.appUrl }
-      : {}),
-    ...(region === "cn" && provider.name === "飞猪旅行"
-      ? { appUrl: fliggyDeepLink(category, item) ?? provider.appUrl }
-      : {}),
-    ...(provider.name === "Hilton" ? { appUrl: hiltonSearchUrl(item, true) } : {}),
-    url: bookingProviderWebUrl(provider.name, provider.url, item as BookingSearchItem, region),
-  }));
+  const sourceDomain = item.source_url ? platformDomain(item.source_url) : null;
+  return providerPages(region)
+    [category].filter((provider) => !sourceDomain || platformDomain(provider.url) !== sourceDomain)
+    .map((provider) => ({
+      ...provider,
+      ...(provider.appUrl
+        ? {
+            appUrl: bookingProviderWebUrl(
+              provider.name,
+              provider.appUrl,
+              item as BookingSearchItem,
+              region,
+            ),
+          }
+        : {}),
+      ...(region === "cn" && provider.name === "携程旅行"
+        ? { appUrl: ctripDeepLink(category, item) ?? provider.appUrl }
+        : {}),
+      ...(region === "cn" && provider.name === "飞猪旅行"
+        ? { appUrl: fliggyDeepLink(category, item) ?? provider.appUrl }
+        : {}),
+      ...(provider.name === "Hilton" ? { appUrl: hiltonSearchUrl(item, true) } : {}),
+      url: bookingProviderWebUrl(provider.name, provider.url, item as BookingSearchItem, region),
+    }));
 }
 
 export function bookingSearchDetails(item: SearchItem, locale: Locale = "en") {

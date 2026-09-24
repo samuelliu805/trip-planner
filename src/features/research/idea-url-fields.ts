@@ -1,5 +1,6 @@
 import { parseGoogleFlightUrl } from "./google-flights-url.ts";
 import { parseGenericIdeaUrlFields } from "./idea-generic-url-fields.ts";
+import { parseTransportProviderUrl } from "./idea-transport-url-fields.ts";
 import type { ResearchSegment } from "./types";
 
 export type IdeaUrlFields = {
@@ -8,6 +9,8 @@ export type IdeaUrlFields = {
   locationText: string | null;
   startDate: string | null;
   endDate: string | null;
+  startTime?: string;
+  endTime?: string;
   journeyType?: "one_way" | "round_trip" | "multi_city";
   priceAmount?: number;
   priceCurrency?: string;
@@ -89,22 +92,6 @@ function stay(
   };
 }
 
-function rental(
-  params: URLSearchParams,
-  startKeys: string[],
-  endKeys: string[],
-  pickupKeys: string[],
-  dropoffKeys: string[],
-): IdeaUrlFields {
-  return {
-    ...empty,
-    originText: place(value(params, ...pickupKeys)),
-    destinationText: place(value(params, ...dropoffKeys)),
-    startDate: date(value(params, ...startKeys)),
-    endDate: date(value(params, ...endKeys)),
-  };
-}
-
 function kayakFlight(url: URL): IdeaUrlFields {
   const match = url.pathname.match(
     /^\/flights\/([A-Za-z]{3})-([A-Za-z]{3})\/(\d{4}-\d{2}-\d{2})(?:\/(\d{4}-\d{2}-\d{2}))?/i,
@@ -153,32 +140,26 @@ export function parseIdeaUrlFields(url: URL | null): IdeaUrlFields {
     (hostIs(host, "google.com") && host.startsWith("maps."))
   )
     return { ...empty, locationText: mapLocation(url) };
+  const transport = parseTransportProviderUrl(url);
+  if (transport) return transport;
   if (hostIs(host, "trip.com") || hostIs(host, "ctrip.com")) {
     if (/\/flight/.test(path) || (params.has("dcity") && params.has("acity")))
       return {
         ...empty,
-        originText: place(value(params, "dcity")),
-        destinationText: place(value(params, "acity")),
+        originText: place(value(params, "dairport", "dcityName", "dcity")),
+        destinationText: place(value(params, "aairport", "acityName", "acity")),
         startDate: date(value(params, "ddate", "date")),
         endDate: date(value(params, "rdate")),
+        ...(/^(rt|roundtrip)$/i.test(value(params, "triptype") ?? "")
+          ? { journeyType: "round_trip" as const }
+          : {}),
       };
     if (/\/hotel/.test(path) || params.has("checkin") || params.has("checkIn"))
       return stay(
         params,
-        ["cityname", "city", "location"],
+        ["cityEnName", "cityname", "city", "location"],
         ["checkin", "checkIn"],
         ["checkout", "checkOut"],
-      );
-    if (
-      /\/(car-rental|carhire|cars)/.test(path) ||
-      (params.has("pickUpDate") && params.has("dropOffDate"))
-    )
-      return rental(
-        params,
-        ["pickUpDate", "pickupDate"],
-        ["dropOffDate", "returnDate"],
-        ["pickUpLocation", "pickupLocation"],
-        ["dropOffLocation", "returnLocation"],
       );
   }
   if (hostIs(host, "fliggy.com")) {
@@ -188,7 +169,7 @@ export function parseIdeaUrlFields(url: URL | null): IdeaUrlFields {
         originText: place(value(params, "depCity")),
         destinationText: place(value(params, "arrCity")),
         startDate: date(value(params, "depDate")),
-        endDate: date(value(params, "returnDate")),
+        endDate: date(value(params, "arrDate", "returnDate")),
       };
     if (host.startsWith("hotel.") || /hotel/.test(path))
       return stay(params, ["city"], ["checkIn"], ["checkOut"]);
@@ -197,14 +178,6 @@ export function parseIdeaUrlFields(url: URL | null): IdeaUrlFields {
     if (path.startsWith("/flights/")) return kayakFlight(url);
     if (path.startsWith("/hotels/"))
       return stay(params, ["q", "destination"], ["checkin", "checkIn"], ["checkout", "checkOut"]);
-    if (path.startsWith("/cars/"))
-      return rental(
-        params,
-        ["pickupDate"],
-        ["dropoffDate", "returnDate"],
-        ["pickupLocation"],
-        ["dropoffLocation", "returnLocation"],
-      );
   }
   if (hostIs(host, "skyscanner.com") && /\/transport\/flights\//.test(path)) {
     const match = url.pathname.match(/^\/transport\/flights\/([A-Za-z]{3})\/([A-Za-z]{3})\//i);
@@ -247,26 +220,6 @@ export function parseIdeaUrlFields(url: URL | null): IdeaUrlFields {
       endDate: dateFromIhg(params, "qCoD", "qCoMy"),
     };
   if (hostIs(host, "tujia.com")) return stay(params, ["location"], ["checkin"], ["checkout"]);
-  if (hostIs(host, "enterprise.com"))
-    return rental(
-      params,
-      ["pickUpDate"],
-      ["dropOffDate"],
-      ["pickUpLocation.searchCriteria"],
-      ["dropOffLocation.searchCriteria"],
-    );
-  if (
-    [
-      "hertz.com",
-      "avis.com",
-      "budget.com",
-      "sixt.com",
-      "europcar.com",
-      "zuzuche.com",
-      "zuche.com",
-    ].some((domain) => hostIs(host, domain))
-  )
-    return rental(params, ["pickupDate"], ["returnDate"], ["pickupLocation"], ["returnLocation"]);
   if (hostIs(host, "meituan.com")) {
     if (/hotel/.test(path))
       return stay(params, ["city", "cityName"], ["checkin", "checkIn"], ["checkout", "checkOut"]);

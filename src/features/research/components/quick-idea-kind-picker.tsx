@@ -7,18 +7,20 @@ import { useI18n } from "@/features/i18n/i18n-provider";
 
 import type { IdeaKind } from "../idea-input";
 
-const kinds = ["flight", "stay", "car", "activity"] as const;
+const kinds = ["flight", "stay", "car", "train", "activity"] as const;
 export const ideaKindLabels: Record<Exclude<IdeaKind, "unknown">, string> = {
   activity: "Activity",
   car: "Car",
   flight: "Flight",
   stay: "Stay",
+  train: "Train",
 };
 export const ideaKindSaveLabels: Record<Exclude<IdeaKind, "unknown">, string> = {
   activity: "Save Activity",
   car: "Save Car",
   flight: "Save Flight",
   stay: "Save Stay",
+  train: "Save Train",
 };
 
 export function QuickIdeaKindPicker({

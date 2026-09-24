@@ -39,22 +39,24 @@ export function BookingSitesDialog(props: BookingSitesDialogProps) {
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          aria-label={t("Search booking sites")}
-          className={toolbar ? "size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-3" : "min-h-11 px-2.5"}
+          aria-label={t("Search other booking sites")}
+          className={
+            toolbar ? "size-11 shrink-0 p-0 sm:h-11 sm:w-auto sm:px-3" : "min-h-11 shrink-0 px-2.5"
+          }
           size="sm"
-          title={t("Search booking sites")}
+          title={t("Search other booking sites")}
           variant="outline"
         >
           <Search aria-hidden="true" className="size-4" />
           <span className={toolbar ? "hidden sm:inline" : undefined}>
-            <T message={"Search sites"} />
+            <T message={"Other sites"} />
           </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            <T message={"Search booking sites"} />
+            <T message={"Search other booking sites"} />
           </DialogTitle>
           <DialogDescription>
             <T message={"Browse booking sites, then add the options you want to compare."} />

@@ -117,7 +117,7 @@ export type ItemKind = "activity" | "car_rental" | "hotel" | "meal" | "note" | "
 export type PlannerView = "map" | "matrix" | "split";
 export type FeatureArea = "ideas" | "research" | "routes" | "variants" | "sharing" | "attachments";
 export type IdeasCategory = "activity" | "flight" | "rental" | "stay" | "train";
-export type IdeaKind = "flight" | "stay" | "car" | "activity" | "unknown";
+export type IdeaKind = "flight" | "stay" | "car" | "train" | "activity" | "unknown";
 export type RouteView = "day" | "overview";
 export type RouteMode =
   | "walk"

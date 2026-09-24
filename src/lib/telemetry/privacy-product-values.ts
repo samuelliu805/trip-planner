@@ -22,7 +22,7 @@ const featureAreas = new Set<FeatureArea>([
   "attachments",
 ]);
 const ideasCategories = new Set<IdeasCategory>(["activity", "flight", "rental", "stay", "train"]);
-const ideaKinds = new Set<IdeaKind>(["flight", "stay", "car", "activity", "unknown"]);
+const ideaKinds = new Set<IdeaKind>(["flight", "stay", "car", "train", "activity", "unknown"]);
 const routeModes = new Set<RouteMode>([
   "walk",
   "self_driving",

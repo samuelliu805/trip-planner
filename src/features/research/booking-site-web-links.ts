@@ -75,14 +75,50 @@ function tripFlightUrl(item: BookingSearchItem) {
   const origin = text(item.origin_text);
   const destination = text(item.destination_text);
   if (!origin || !destination) return null;
+  const source = sourceParams(item, "trip.com");
   return searchUrl("https://www.trip.com/flights/showfarefirst", {
-    acity: destination,
-    adult: count(item.adult_count),
-    child: count(item.child_count),
-    dcity: origin,
+    acity: source?.get("acity") ?? destination,
+    aairport: source?.get("aairport") ?? null,
+    childqty: count(item.child_count),
+    dcity: source?.get("dcity") ?? origin,
+    dairport: source?.get("dairport") ?? null,
     ddate: item.start_date,
+    quantity: count(item.adult_count),
     rdate: item.end_date,
     triptype: item.end_date ? "rt" : "ow",
+  });
+}
+
+function sourceParams(item: BookingSearchItem, domain: string) {
+  try {
+    const url = new URL(item.source_url ?? "");
+    return url.hostname === domain || url.hostname.endsWith(`.${domain}`) ? url.searchParams : null;
+  } catch {
+    return null;
+  }
+}
+
+function hertzSearchUrl(item: BookingSearchItem) {
+  const origin = text(item.origin_text);
+  const destination = text(item.destination_text) ?? origin;
+  if (
+    !origin ||
+    !destination ||
+    !item.start_date ||
+    !item.end_date ||
+    !item.start_time ||
+    !item.end_time ||
+    !/^(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{3,10}$/.test(origin) ||
+    !/^(?=[A-Za-z0-9]*\d)[A-Za-z0-9]{3,10}$/.test(destination)
+  )
+    return null;
+  const source = sourceParams(item, "hertz.com");
+  return searchUrl("https://www.hertz.com/us/en/book/vehicles", {
+    ddate: `${item.end_date}T${item.end_time}:00`,
+    did: destination,
+    pCountryCode: source?.get("pCountryCode") ?? null,
+    pdate: `${item.start_date}T${item.start_time}:00`,
+    pid: origin,
   });
 }
 
@@ -105,34 +141,6 @@ function kayakFlightUrl(item: BookingSearchItem) {
   });
 }
 
-function rentalUrl(provider: string, item: BookingSearchItem, fallback: string) {
-  const origin = text(item.origin_text);
-  if (!origin) return null;
-  const destination = text(item.destination_text) ?? origin;
-  const names =
-    provider === "Enterprise"
-      ? {
-          end: "dropOffDate",
-          endPlace: "dropOffLocation.searchCriteria",
-          start: "pickUpDate",
-          startPlace: "pickUpLocation.searchCriteria",
-        }
-      : {
-          end: "returnDate",
-          endPlace: "returnLocation",
-          start: "pickupDate",
-          startPlace: "pickupLocation",
-        };
-  return searchUrl(fallback, {
-    [names.end]: item.end_date,
-    [names.endPlace]: destination,
-    returnTime: item.end_time,
-    [names.start]: item.start_date,
-    [names.startPlace]: origin,
-    pickupTime: item.start_time,
-  });
-}
-
 function trainUrl(provider: string, item: BookingSearchItem, fallback: string) {
   const origin = text(item.origin_text);
   const destination = text(item.destination_text);
@@ -145,21 +153,7 @@ function trainUrl(provider: string, item: BookingSearchItem, fallback: string) {
       linktypeid: "dc",
       ts: destination,
     });
-  if (provider === "SBB")
-    return searchUrl(fallback, {
-      date: item.start_date,
-      moment: "DEPARTURE",
-      selected_trip: "1",
-      "stops[0][value]": origin,
-      "stops[1][value]": destination,
-    });
-  return searchUrl(fallback, {
-    adults: count(item.adult_count),
-    children: count(item.child_count),
-    date: item.start_date,
-    destination,
-    origin,
-  });
+  return fallback;
 }
 
 export function bookingProviderWebUrl(
@@ -185,6 +179,7 @@ export function bookingProviderWebUrl(
     return trainUrl(provider, item, fallback) ?? fallback;
   }
   if (category === "stay") return bookingStayWebUrl(provider, fallback, item, region) ?? fallback;
-  if (category === "rental") return rentalUrl(provider, item, fallback) ?? fallback;
+  if (category === "rental")
+    return provider === "Hertz" ? (hertzSearchUrl(item) ?? fallback) : fallback;
   return trainUrl(provider, item, fallback) ?? fallback;
 }

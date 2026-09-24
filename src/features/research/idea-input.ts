@@ -1,7 +1,7 @@
 import { parseIdeaUrlFields, parseIdeaUrlPrice } from "./idea-url-fields.ts";
 import { parseGenericIdeaUrlFields } from "./idea-generic-url-fields.ts";
 
-export type IdeaKind = "flight" | "stay" | "car" | "activity" | "unknown";
+export type IdeaKind = "flight" | "stay" | "car" | "train" | "activity" | "unknown";
 export type IdeaClassification = {
   kind: IdeaKind;
   method: "url_rule" | "keyword_rule" | "user";
@@ -24,7 +24,21 @@ export function canonicalIdeaUrl(input: string): string | null {
   try {
     const url = new URL(input);
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-    url.hash = "";
+    if (hostIs(url.hostname.toLowerCase(), "sixt.com") && url.hash.includes("?")) {
+      const hashParams = new URLSearchParams(url.hash.slice(url.hash.indexOf("?") + 1));
+      const stable = new URLSearchParams();
+      for (const key of [
+        "zen_pu_title",
+        "zen_do_title",
+        "zen_pu_time",
+        "zen_do_time",
+        "zen_offer_id",
+      ])
+        if (hashParams.has(key)) stable.set(key, hashParams.get(key)!);
+      stable.sort();
+      const stableQuery = stable.toString();
+      url.hash = stableQuery ? `#${url.hash.slice(1).split("?")[0]}?${stableQuery}` : "";
+    } else url.hash = "";
     url.hostname = url.hostname.toLowerCase();
     for (const key of [...url.searchParams.keys()])
       if (trackingParameter.test(key)) url.searchParams.delete(key);
@@ -65,35 +79,20 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
   if (hostIs(host, "google.com") && path.startsWith("/travel/flights"))
     return { kind: "flight", provider: "Google Flights" };
   if (hostIs(host, "flights.google.com")) return { kind: "flight", provider: "Google Flights" };
-  if (hostIs(host, "booking.com") && (path.includes("/hotel/") || path.includes("searchresults")))
-    return { kind: "stay", provider: "Booking.com" };
-  if (hostIs(host, "airbnb.com") && (/\/(rooms|s)\//.test(path) || path.startsWith("/homes")))
-    return { kind: "stay", provider: "Airbnb" };
+  if (hostIs(host, "booking.com")) return { kind: "stay", provider: "Booking.com" };
+  if (hostIs(host, "airbnb.com")) return { kind: "stay", provider: "Airbnb" };
   if (host === "abnb.me") return { kind: "stay", provider: "Airbnb" };
-  if (
-    (hostIs(host, "hilton.com") || hostIs(host, "hilton.com.cn")) &&
-    /\/(hotel|search)/.test(path)
-  )
+  if (hostIs(host, "hilton.com") || hostIs(host, "hilton.com.cn"))
     return { kind: "stay", provider: "Hilton" };
-  if (hostIs(host, "agoda.com") && /\/(search|hotel|.*\.html)/.test(path))
-    return { kind: "stay", provider: "Agoda" };
-  if (
-    (hostIs(host, "marriott.com") || hostIs(host, "marriott.com.cn")) &&
-    /\/(search|hotels|hotel-search)/.test(path)
-  )
+  if (hostIs(host, "agoda.com")) return { kind: "stay", provider: "Agoda" };
+  if (hostIs(host, "marriott.com") || hostIs(host, "marriott.com.cn"))
     return { kind: "stay", provider: "Marriott" };
-  if (
-    (hostIs(host, "ihg.com") || hostIs(host, "ihg.com.cn")) &&
-    /\/(hotels|hotel-search)/.test(path)
-  )
+  if (hostIs(host, "ihg.com") || hostIs(host, "ihg.com.cn"))
     return { kind: "stay", provider: "IHG" };
-  if (hostIs(host, "hyatt.com") && /\/(shop|hotels)/.test(path))
-    return { kind: "stay", provider: "Hyatt" };
-  if (hostIs(host, "tujia.com") && /\/hotel/.test(path)) return { kind: "stay", provider: "Tujia" };
-  if (hostIs(host, "enterprise.com") && /\/(car-rental|reservation)/.test(path))
-    return { kind: "car", provider: "Enterprise" };
-  if (hostIs(host, "hertz.com") && /\/(rent|reservation|booking)/.test(path))
-    return { kind: "car", provider: "Hertz" };
+  if (hostIs(host, "hyatt.com")) return { kind: "stay", provider: "Hyatt" };
+  if (hostIs(host, "tujia.com")) return { kind: "stay", provider: "Tujia" };
+  if (hostIs(host, "enterprise.com")) return { kind: "car", provider: "Enterprise" };
+  if (hostIs(host, "hertz.com")) return { kind: "car", provider: "Hertz" };
   for (const [domain, provider] of [
     ["avis.com", "Avis"],
     ["budget.com", "Budget"],
@@ -102,8 +101,18 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
     ["zuzuche.com", "Zuzuche"],
     ["zuche.com", "Zuche"],
   ] as const)
-    if (hostIs(host, domain) && /\/(rent|reservation|booking|car|search)/.test(path))
-      return { kind: "car", provider };
+    if (hostIs(host, domain)) return { kind: "car", provider };
+  for (const [domain, provider] of [
+    ["amtrak.com", "Amtrak"],
+    ["eurail.com", "Eurail"],
+    ["interrail.com", "Interrail"],
+    ["sncf-connect.com", "SNCF Connect"],
+    ["sbb.ch", "SBB"],
+    ["12306.cn", "12306"],
+  ] as const)
+    if (hostIs(host, domain)) return { kind: "train", provider };
+  if (hostIs(host, "omio.com") && /\/(trains?|bahn|zug|search)/.test(path))
+    return { kind: "train", provider: "Omio" };
   if (hostIs(host, "kayak.com")) {
     if (path.startsWith("/flights/")) return { kind: "flight", provider: "KAYAK" };
     if (path.startsWith("/cars/")) return { kind: "car", provider: "KAYAK" };
@@ -113,6 +122,8 @@ function fromUrl(url: URL): Pick<IdeaClassification, "kind" | "provider"> | null
     return { kind: "flight", provider: "Skyscanner" };
   if (hostIs(host, "trip.com") || hostIs(host, "ctrip.com")) {
     const params = url.searchParams;
+    if (/\/(trains?|rail)/.test(path) || /\/webapp\/train/.test(path))
+      return { kind: "train", provider: "Trip.com" };
     if (params.has("dcity") && params.has("acity")) return { kind: "flight", provider: "Trip.com" };
     if (params.has("checkIn") && params.has("checkOut"))
       return { kind: "stay", provider: "Trip.com" };
@@ -145,6 +156,7 @@ const keywordRules: Array<[IdeaKind, RegExp]> = [
   ["flight", /\b(flight|airfare|airline|fly to)\b|航班|机票|飞往|直飞/i],
   ["stay", /\b(hotel|hostel|airbnb|lodging|stay at)\b|酒店|民宿|住宿|入住/i],
   ["car", /\b(rental car|rent a car|car hire|car rental)\b|租车|自驾车/i],
+  ["train", /\b(train|rail|eurail|amtrak)\b|火车|高铁|动车|铁路/i],
   ["activity", /\b(visit|hiking|cycling|museum|sightseeing)\b|想去|骑行|徒步|景点|游玩|攻略/i],
 ];
 
