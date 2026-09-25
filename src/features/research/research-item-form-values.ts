@@ -28,7 +28,46 @@ function optionalJson<Value>(form: FormData, key: string) {
 export function researchDraftCanSave(form: FormData, category: ResearchCategory) {
   if (optional(form, "title") || optional(form, "sourceUrl") || optional(form, "note")) return true;
   if (category === "stay") return Boolean(optional(form, "locationText"));
+  if (category === "flight" || category === "train") {
+    const segments = optionalJson<Array<{ arrivalDate?: string; departureDate?: string }>>(
+      form,
+      "segments",
+    );
+    return Boolean(
+      optional(form, "originText") ||
+      optional(form, "destinationText") ||
+      optional(form, "totalPriceAmount") ||
+      segments?.some((segment) => segment.departureDate || segment.arrivalDate),
+    );
+  }
   return Boolean(optional(form, "originText"));
+}
+
+function journeyTitle({
+  category,
+  currency,
+  departureDate,
+  destination,
+  origin,
+  price,
+  segment,
+}: {
+  category: "flight" | "train";
+  currency: string | null;
+  departureDate: string | null;
+  destination?: string | null;
+  origin?: string | null;
+  price: string | null;
+  segment?: { carrier?: string | null; serviceNumber?: string | null };
+}) {
+  if (origin && destination && destination !== origin) return `${origin} → ${destination}`;
+  if (origin || destination) return origin ?? destination;
+  const service = [segment?.carrier, segment?.serviceNumber].filter(Boolean).join(" ");
+  if (service) return service;
+  const label = category === "flight" ? "Flight" : "Train";
+  if (departureDate) return `${label} · ${departureDate}`;
+  if (price !== null) return `${label} · ${currency ? `${currency} ` : ""}${price}`;
+  return null;
 }
 
 export function researchItemInputFromForm({
@@ -111,11 +150,21 @@ export function researchItemInputFromForm({
   const automaticTitle =
     category === "stay"
       ? locationText
-      : originText
-        ? destinationText && destinationText !== originText
-          ? `${originText} → ${destinationText}`
-          : originText
-        : null;
+      : category === "flight" || category === "train"
+        ? journeyTitle({
+            category,
+            currency: optional(form, "currency"),
+            departureDate: firstDepartureDate,
+            destination: destinationText,
+            origin: originText,
+            price,
+            segment: firstSegment,
+          })
+        : originText
+          ? destinationText && destinationText !== originText
+            ? `${originText} → ${destinationText}`
+            : originText
+          : null;
 
   return {
     adultCount: optionalInteger(form, "adultCount"),

@@ -25,7 +25,8 @@ import { parseEcbReferenceRates } from "./exchange-rate-parser.ts";
 import { addIsoDateDays, firstPresentIsoDate } from "./date-range.ts";
 import { rentalReturnsToPickup } from "./rental-return.ts";
 import { deriveOptionImpact } from "./option-impact.ts";
-import { researchItemInputFromForm } from "./research-item-form-values.ts";
+import { researchDraftCanSave, researchItemInputFromForm } from "./research-item-form-values.ts";
+import { emptyIdeaVariantPlacement, placementReady } from "./idea-variant-placement.ts";
 import {
   isReadyToCompare,
   missingComparisonFields,
@@ -568,6 +569,97 @@ test("connecting flight edits keep the journey endpoints instead of promoting a 
   assert.equal(values.originText, "PVG");
   assert.equal(values.destinationText, "LHR");
   assert.equal(values.segments.length, 4);
+});
+
+test("flight ideas save without an option name, airline, or flight number", () => {
+  const route = new FormData();
+  route.set("originText", "SHA");
+  route.set("destinationText", "SYD");
+  route.set(
+    "segments",
+    JSON.stringify([{ departureDate: "2026-12-25", destination: "SYD", origin: "SHA" }]),
+  );
+  assert.equal(researchDraftCanSave(route, "flight"), true);
+  const routeInput = researchItemInputFromForm({
+    category: "flight",
+    form: route,
+    tripId: ids.trip,
+  });
+  assert.equal(routeInput.title, "SHA → SYD");
+  assert.equal(routeInput.segments[0].carrier, null);
+  assert.equal(routeInput.segments[0].serviceNumber, null);
+  assert.equal(
+    createResearchItemSchema.safeParse({ ...routeInput, operationId: ids.operation }).success,
+    true,
+  );
+
+  const price = new FormData();
+  price.set("totalPriceAmount", "2681");
+  price.set("currency", "CNY");
+  assert.equal(researchDraftCanSave(price, "flight"), true);
+  const priceInput = researchItemInputFromForm({
+    category: "flight",
+    form: price,
+    tripId: ids.trip,
+  });
+  assert.equal(priceInput.title, "Flight · CNY 2681");
+  assert.equal(
+    createResearchItemSchema.safeParse({ ...priceInput, operationId: ids.operation }).success,
+    true,
+  );
+
+  const date = new FormData();
+  date.set("segments", JSON.stringify([{ departureDate: "2026-12-25" }]));
+  assert.equal(researchDraftCanSave(date, "flight"), true);
+  assert.equal(
+    researchItemInputFromForm({ category: "flight", form: date, tripId: ids.trip }).title,
+    "Flight · 2026-12-25",
+  );
+  assert.equal(researchDraftCanSave(new FormData(), "flight"), false);
+});
+
+test("a flight arrival one year late is rejected before saving", () => {
+  const base = {
+    category: "flight",
+    operationId: ids.operation,
+    title: "SHA to AKL",
+    tripId: ids.trip,
+  };
+  const segment = {
+    origin: "SHA",
+    destination: "AKL",
+    departureDate: "2026-12-26",
+    arrivalDate: "2027-12-26",
+  };
+  const invalid = createResearchItemSchema.safeParse({ ...base, segments: [segment] });
+  assert.equal(invalid.success, false);
+  if (!invalid.success) assert.match(invalid.error.issues[0].message, /Check the year/);
+  assert.equal(
+    createResearchItemSchema.safeParse({
+      ...base,
+      segments: [{ ...segment, arrivalDate: "2026-12-26" }],
+    }).success,
+    true,
+  );
+  assert.equal(
+    createResearchItemSchema.safeParse({
+      ...base,
+      segments: [{ ...segment, departureDate: "2026-12-31", arrivalDate: "2027-01-01" }],
+    }).success,
+    true,
+  );
+});
+
+test("each selected Plan needs its own flight anchor or activity day", () => {
+  const first = plan();
+  const second = { ...plan(), variantId: "second" };
+  const flight = item({ category: "flight", start_date: "2026-12-25" });
+  const activity = item({ category: "activity", start_date: null });
+  const empty = emptyIdeaVariantPlacement();
+  assert.equal(placementReady(flight, first, empty), false);
+  assert.equal(placementReady(flight, second, { ...empty, anchorDayNumber: 1 }), true);
+  assert.equal(placementReady(activity, first, empty), false);
+  assert.equal(placementReady(activity, second, { ...empty, dayId: "day-2" }), true);
 });
 
 test("Ideas apply preserves source dates in the Plan item and prefers a matching Plan day", async () => {
@@ -1609,11 +1701,12 @@ test("mobile Research chrome stays on one row and add forms use the shared progr
   assert.doesNotMatch(journey, /Station or city/);
   assert.match(commonFields, /message=\{nameLabels\[category\]\}[\s\S]*message="optional"/);
   assert.doesNotMatch(commonFields, /Optional\. We’ll create/);
-  assert.match(commonFields, /We’ll create a clear route or place label when this is blank\./);
+  assert.match(commonFields, /We’ll make a name from the details you add\./);
   assert.doesNotMatch(journey + multiCity + commonFields, /<details|Add times \(optional\)/);
   assert.match(schedule, /label="Departure"[\s\S]*label="Arrival"/);
   assert.match(schedule, /data-research-schedule-control/);
   assert.match(journey, /Airline & flight number/);
+  assert.match(journey, /<T message="optional" \/>/);
   assert.match(segmentDetails, /placeholder="Airline"/);
   assert.match(segmentDetails, /placeholder="Flight number"/);
   assert.doesNotMatch(segmentDetails, /operating airline|rounded-xl border/);

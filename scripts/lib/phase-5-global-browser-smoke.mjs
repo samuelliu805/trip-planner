@@ -1361,7 +1361,8 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
         .find((element) => element.getClientRects().length > 0);
       const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
         button.textContent.includes('Update this Plan'));
-      return Boolean(dialog?.querySelector('[role="combobox"]') && confirm?.disabled &&
+      return Boolean(dialog?.querySelector('[role="combobox"]') &&
+        dialog.querySelector('input[data-variant-id="${rebasedVariantId}"]') && confirm?.disabled &&
         dialog.innerText.includes('Adding to Plan:') &&
         !dialog.querySelector('[role="dialog"] h2')?.innerText.includes('Plan dates:'));
     })()`,
@@ -1369,7 +1370,22 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   );
   await clickElement(
     browser,
-    `document.querySelector('[role="dialog"] [role="combobox"]')`,
+    `document.querySelector('input[data-variant-id="${rebasedVariantId}"]')`,
+    "select rebased Plan alongside original Plan",
+  );
+  await waitFor(
+    browser,
+    `(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      return dialog?.querySelectorAll('[role="combobox"]').length === 2 &&
+        [...dialog.querySelectorAll('button')].some((button) =>
+          button.textContent.includes('Update selected Plans') && button.disabled);
+    })()`,
+    "each selected Plan requires its own day",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('input[data-variant-id="${originalVariantId}"]')?.closest('section')?.querySelector('[role="combobox"]')`,
     "open current Plan flight Day selection",
   );
   await clickElement(
@@ -1378,16 +1394,60 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       option.getClientRects().length && option.textContent.trim().startsWith('Day 1 · '))`,
     "anchor current Plan flight to Day 1",
   );
+  await clickElement(
+    browser,
+    `document.querySelector('input[data-variant-id="${rebasedVariantId}"]')?.closest('section')?.querySelector('[role="combobox"]')`,
+    "open rebased Plan flight Day selection",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="option"]')].find((option) =>
+      option.getClientRects().length && option.textContent.trim().startsWith('Day ${anchorDayNumber} · '))`,
+    "anchor rebased Plan flight to its existing Day",
+  );
   await waitFor(
     browser,
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
-      return dialog?.innerText.includes('Plan dates:') &&
+      return dialog?.innerText.match(/Plan dates:/g)?.length === 2 &&
         [...(dialog?.querySelectorAll('button') ?? [])].some((button) =>
-          button.textContent.includes('Update this Plan') && !button.disabled);
+          button.textContent.includes('Update selected Plans') && !button.disabled);
     })()`,
-    "dated Google flight Plan date update readiness",
+    "both Plan date previews are ready",
+  );
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      { deviceScaleFactor: 1, height: 844, mobile: false, width },
+      browser.sessionId,
+    );
+    const layout = await evaluate(
+      browser,
+      `(() => {
+        const dialog = document.querySelector('[role="dialog"]');
+        const rect = dialog?.getBoundingClientRect();
+        return {
+          fits: Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5 &&
+            rect.top >= -0.5 && rect.bottom <= innerHeight + 0.5,
+          noHorizontalSwipe: document.documentElement.scrollWidth <= innerWidth,
+          choices: dialog?.querySelectorAll('input[data-variant-id]').length,
+          touchTargets: [...(dialog?.querySelectorAll('button, section > label') ?? [])]
+            .filter((element) => element.getClientRects().length)
+            .every((element) => element.getBoundingClientRect().height >= 44),
+        };
+      })()`,
+    );
+    assert.deepEqual(
+      layout,
+      { fits: true, noHorizontalSwipe: true, choices: 2, touchTargets: true },
+      `Multi-Plan apply dialog failed at ${width}px.`,
+    );
+  }
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
   );
   await clickElement(
     browser,
@@ -1395,9 +1455,9 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       const dialog = [...document.querySelectorAll('[role="dialog"][data-state="open"]')]
         .find((element) => element.getClientRects().length > 0);
       return [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
-        button.textContent.includes('Update this Plan') && !button.disabled);
+        button.textContent.includes('Update selected Plans') && !button.disabled);
     })()`,
-    "confirm dated Google flight Plan date update",
+    "apply dated Google flight to both Plans",
   );
   const datedApplyResult = await waitFor(
     browser,

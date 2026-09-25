@@ -173,7 +173,10 @@ export function ResearchJourneyDetailFields({
       data-i18n-aria-label={"Carrier and service details"}
     >
       <h3 className="text-base font-bold">
-        <Localized value={category === "flight" ? "Airline & flight number" : "Train number"} />
+        <Localized value={category === "flight" ? "Airline & flight number" : "Train number"} />{" "}
+        <span className="text-sm font-normal text-muted-foreground">
+          <T message="optional" />
+        </span>
       </h3>
       <div className="min-w-0 space-y-5">
         {segments.map((segment, index) => (
