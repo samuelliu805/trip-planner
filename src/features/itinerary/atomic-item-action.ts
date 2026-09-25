@@ -3,7 +3,7 @@ import type { Json } from "@/types/database";
 
 import { insertedActivityOrderIds } from "./activity-order";
 import { mutationError } from "./action-helpers";
-import { scheduleKind } from "./mutation-helpers";
+import { normalizedScheduleEndTime, scheduleKind } from "./mutation-helpers";
 import type { ItineraryItem, MutationResult } from "./types";
 import { getItineraryItem } from "./data";
 import { nameTripAfterFirstPlace } from "@/features/trips/auto-title";
@@ -56,16 +56,22 @@ export async function saveAtomicItineraryItem(input: AtomicItemInput): Promise<M
     },
     input.insertAfterItemId,
   );
+  const endTime = normalizedScheduleEndTime(
+    input.type,
+    input.details,
+    input.startTime,
+    input.endTime,
+  );
   const requestedItem = {
     bookingUrl: input.links?.[0]?.url ?? input.bookingUrl ?? null,
     details: input.details ?? {},
-    endTime: input.endTime || null,
+    endTime,
     notes: input.notes || null,
     placeId: input.placeId ?? null,
     placeSnapshot: input.placeSnapshot ?? null,
     priceAmount: input.priceAmount ?? null,
     priceCurrency: input.priceAmount == null ? null : (input.priceCurrency ?? null),
-    scheduleKind: scheduleKind(input.startTime, input.endTime),
+    scheduleKind: scheduleKind(input.startTime, endTime),
     startTime: input.startTime || null,
     title: input.title.trim(),
     type: input.type,

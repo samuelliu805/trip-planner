@@ -9,6 +9,29 @@ export function normalizedTimes(startTime?: string | null, endTime?: string | nu
   return { end_time: normalizedOptional(endTime), start_time: normalizedOptional(startTime) };
 }
 
+export function hasDifferentJourneyDates(type: string, details: unknown) {
+  if (!["flight", "train", "transport"].includes(type) || !details || typeof details !== "object")
+    return false;
+  const { departureDate, arrivalDate } = details as Record<string, unknown>;
+  return (
+    typeof departureDate === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(departureDate) &&
+    typeof arrivalDate === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(arrivalDate) &&
+    departureDate !== arrivalDate
+  );
+}
+
+// The SQL schedule columns describe a single day. Multi-day arrival times remain in details.
+export function normalizedScheduleEndTime(
+  type: string,
+  details: unknown,
+  startTime?: string | null,
+  endTime?: string | null,
+) {
+  return startTime && !hasDifferentJourneyDates(type, details) ? normalizedOptional(endTime) : null;
+}
+
 export function scheduleKind(startTime?: string | null, endTime?: string | null) {
   if (startTime && endTime) return "range" as const;
   if (startTime || endTime) return "exact" as const;

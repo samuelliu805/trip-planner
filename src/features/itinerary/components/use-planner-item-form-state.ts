@@ -48,7 +48,9 @@ export function usePlannerItemFormState({
   const [autoFilledTitle, setAutoFilledTitle] = useState<string | null>(() =>
     item?.place?.displayName === initialTitle ? initialTitle : null,
   );
-  const [startTime, setStartTime] = useState(item?.start_time?.slice(0, 5) ?? "");
+  const [startTime, setStartTime] = useState(
+    item?.start_time?.slice(0, 5) ?? detailText("departureTime").slice(0, 5),
+  );
   const [arrivalTime, setArrivalTime] = useState(
     item?.end_time?.slice(0, 5) ?? detailText("arrivalTime").slice(0, 5),
   );
