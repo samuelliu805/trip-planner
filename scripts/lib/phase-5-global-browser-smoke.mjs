@@ -1214,7 +1214,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     })()`,
     "preview new Plan from dated Google flight",
   );
-  await clickElement(
+  await clickElementWhenAvailable(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
       button.textContent.includes('Create another Plan'))`,
