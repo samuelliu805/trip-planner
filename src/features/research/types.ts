@@ -118,6 +118,7 @@ export type ResearchPlanDay = {
 export type ResearchPlanSnapshot = {
   days: ResearchPlanDay[];
   variantId: string;
+  variantName: string;
 };
 
 export type ResearchWorkspaceSnapshot = {

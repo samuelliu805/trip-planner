@@ -1217,13 +1217,14 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await clickElementWhenAvailable(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
-      button.textContent.includes('Create another Plan'))`,
+      button.textContent.includes('Copy Plan and add idea'))`,
     "choose new dated Plan",
   );
   await waitFor(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].some((button) =>
       button.textContent.includes('Create Plan') && !button.disabled) &&
+      document.querySelector('[role="dialog"]')?.innerText.includes('Copying Plan:') &&
       document.querySelector('[role="dialog"]')?.innerText.includes('Day 1: 2026-11-20')`,
     "new Plan anchored to outbound date",
   );
@@ -1291,13 +1292,13 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   const hasDayTwo = await evaluate(
     browser,
     `[...document.querySelectorAll('[role="option"]')].some((option) =>
-      option.getClientRects().length && option.textContent.trim() === 'Day 2')`,
+      option.getClientRects().length && option.textContent.trim().startsWith('Day 2 · '))`,
   );
   const anchorDayNumber = hasDayTwo ? 2 : 1;
   await clickElement(
     browser,
     `[...document.querySelectorAll('[role="option"]')].find((option) =>
-      option.getClientRects().length && option.textContent.trim() === 'Day ${anchorDayNumber}')`,
+      option.getClientRects().length && option.textContent.trim().startsWith('Day ${anchorDayNumber} · '))`,
     "set first-flight Plan day",
   );
   await waitFor(
@@ -1361,6 +1362,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
         button.textContent.includes('Update this Plan'));
       return Boolean(dialog?.querySelector('[role="combobox"]') && confirm?.disabled &&
+        dialog.innerText.includes('Adding to Plan:') &&
         !dialog.querySelector('[role="dialog"] h2')?.innerText.includes('Plan dates:'));
     })()`,
     "dated Google flight waits for a selected Plan day",
@@ -1373,7 +1375,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await clickElement(
     browser,
     `[...document.querySelectorAll('[role="option"]')].find((option) =>
-      option.getClientRects().length && option.textContent.trim() === 'Day 1')`,
+      option.getClientRects().length && option.textContent.trim().startsWith('Day 1 · '))`,
     "anchor current Plan flight to Day 1",
   );
   await waitFor(

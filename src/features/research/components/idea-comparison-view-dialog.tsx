@@ -3,13 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,7 +15,7 @@ import type { IdeaComparison } from "../idea-actions";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { anchoredPlanDateChange, ideaJourneyDates, newPlanDateRange } from "../idea-plan-dates";
 import { activityNeedsDay, choiceLabel, itemLabel } from "./idea-comparison-labels";
-import { PlanDaySelect } from "./plan-day-select";
+import { PlanAnchorDaySelect, PlanDaySelect } from "./plan-day-select";
 import { IdeaJourneyPreviewList } from "./idea-journey-preview-list";
 
 export function IdeaComparisonViewDialog({
@@ -101,6 +94,12 @@ export function IdeaComparisonViewDialog({
                 <h3 className="text-base font-semibold">
                   {t("Choice {letter}", { letter: choiceLabel(choice.position) })}
                 </h3>
+                <p className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium">
+                  <T
+                    message={isNewPlan ? "Copying Plan: {variant}" : "Adding to Plan: {variant}"}
+                    values={{ variant: plan.variantName }}
+                  />
+                </p>
                 <ul className="mt-2 space-y-2">
                   {selectedItems.map((item) => (
                     <li className="text-sm" key={item.id}>
@@ -137,57 +136,16 @@ export function IdeaComparisonViewDialog({
                 ) : null}
                 {journeyDates.length ? (
                   <div className="mt-3 space-y-2">
-                    {isNewPlan ? (
-                      <>
-                        <label className="block text-base font-medium">
-                          <T message="First flight on" />
-                          <Select
-                            onValueChange={(value) =>
-                              setAnchorDays((current) => ({
-                                ...current,
-                                [choice.id]: Number(value),
-                              }))
-                            }
-                            value={anchorDayNumber ? String(anchorDayNumber) : undefined}
-                          >
-                            <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
-                              <SelectValue placeholder={t("Choose a Day")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {plan.days.map((day) => (
-                                <SelectItem key={day.id} value={String(day.dayNumber)}>
-                                  {t("Day {number}", { number: day.dayNumber })}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </label>
-                      </>
-                    ) : (
-                      <label className="block text-base font-medium">
-                        <T message="First flight on" />
-                        <Select
-                          onValueChange={(value) =>
-                            setAnchorDays((current) => ({
-                              ...current,
-                              [choice.id]: Number(value),
-                            }))
-                          }
-                          value={anchorDayNumber ? String(anchorDayNumber) : undefined}
-                        >
-                          <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
-                            <SelectValue placeholder={t("Choose a Day")} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {plan.days.map((day) => (
-                              <SelectItem key={day.id} value={String(day.dayNumber)}>
-                                {t("Day {number}", { number: day.dayNumber })}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </label>
-                    )}
+                    <label className="block text-base font-medium">
+                      <T message="First flight on" />
+                      <PlanAnchorDaySelect
+                        days={plan.days}
+                        onChange={(dayNumber) =>
+                          setAnchorDays((current) => ({ ...current, [choice.id]: dayNumber }))
+                        }
+                        value={anchorDayNumber ?? null}
+                      />
+                    </label>
                     <p className="rounded-xl bg-card px-3 py-2 text-base font-medium">
                       {isNewPlan && newDates && anchorDayNumber
                         ? t("Day 1: {start} · Last day: {end}", newDates)
@@ -214,7 +172,7 @@ export function IdeaComparisonViewDialog({
                     type="button"
                     variant="outline"
                   >
-                    <T message={isNewPlan ? "Back" : "Create another Plan"} />
+                    <T message={isNewPlan ? "Back" : "Copy Plan and add idea"} />
                   </Button>
                 ) : null}
                 <Button

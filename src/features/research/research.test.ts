@@ -651,6 +651,7 @@ function plan(): ResearchPlanSnapshot {
       { date: "2026-09-12", dayNumber: 4, id: "day-4", items: [] },
     ],
     variantId: ids.variant,
+    variantName: "Plan A",
   };
 }
 
