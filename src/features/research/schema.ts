@@ -3,6 +3,7 @@ import { z } from "zod";
 import { placeSnapshotSchema } from "../itinerary/item-schema.ts";
 
 import { researchCategories } from "./types.ts";
+import { flightArrivalLooksLate } from "./flight-date-validity.ts";
 
 const optionalText = (max: number) =>
   z
@@ -138,13 +139,23 @@ function validateResearchItem(
       message: "The end date must be on or after the start date.",
       path: ["endDate"],
     });
-  for (const [index, segment] of (value.segments ?? []).entries())
+  for (const [index, segment] of (value.segments ?? []).entries()) {
     if (segment.arrivalDate && segment.arrivalDate < segment.departureDate)
       context.addIssue({
         code: "custom",
         message: "Arrival must be on or after departure.",
         path: ["segments", index, "arrivalDate"],
       });
+    if (
+      value.category === "flight" &&
+      flightArrivalLooksLate(segment.departureDate, segment.arrivalDate)
+    )
+      context.addIssue({
+        code: "custom",
+        message: "Flight arrival is more than two days after departure. Check the year.",
+        path: ["segments", index, "arrivalDate"],
+      });
+  }
 }
 
 export const createResearchItemSchema = z

@@ -94,6 +94,19 @@ export const researchZhCN: Record<string, string> = {
   "Source link (optional)": "来源链接（选填）",
   "Notes (optional)": "备注（选填）",
   "Add to Plan": "放入行程",
+  "Apply to {variant}": "加入「{variant}」",
+  "Choose one or more Plans. Each Plan has its own day and date preview.":
+    "可选择一个或多个行程方案，并分别查看日期与安排。",
+  "Loading Plans…": "正在加载行程方案…",
+  "Plans could not be loaded.": "无法加载行程方案。",
+  "The trip could not be loaded.": "无法加载这趟旅行。",
+  "The idea could not be added to Plan.": "无法将想法加入行程。",
+  "The new Plan could not be created.": "无法创建新行程方案。",
+  "Update selected Plans": "调整选中的行程方案",
+  "Retry remaining Plans": "重试尚未完成的行程方案",
+  "Added to {count} Plans": "已加入 {count} 个行程方案",
+  "Flight arrival is more than two days after departure. Check the year.":
+    "航班抵达日期比出发日期晚两天以上，请检查年份。",
   "Adding to Plan: {variant}": "将加入行程方案：「{variant}」",
   "Copying Plan: {variant}": "将复制行程方案：「{variant}」",
   "Copy Plan and add idea": "复制行程并加入想法",
@@ -149,7 +162,8 @@ export const researchZhCN: Record<string, string> = {
   "Add price or idea": "添加价格或灵感",
   "Add the price, route, departure, and arrival for each flight.":
     "添加每段航班的价格、路线、出发与抵达信息。",
-  "Add airline and flight numbers and any booking records.": "添加航空公司、航班号和预订信息。",
+  "Airline and flight numbers are optional. Add booking records if you have them.":
+    "航空公司和航班号均为选填；如有预订信息也可补充。",
   "Add the price, locations, pick-up, and return. Times start at 12:00 PM.":
     "添加价格、取还车地点和时间；默认时间为中午 12:00。",
   "Add the rental company, notes, and any booking records.": "添加租车公司、备注和预订信息。",
@@ -233,8 +247,7 @@ export const researchZhCN: Record<string, string> = {
   "Return location": "还车地点",
   "Rental car": "租车",
   "Stay name": "住宿名称",
-  "We’ll create a clear route or place label when this is blank.":
-    "留空时会根据路线或地点生成清晰的名称。",
+  "We’ll make a name from the details you add.": "留空时会根据已填写的信息生成名称。",
   "Rental locations": "租车地点",
   "Pick-up and return": "取车与还车",
   Airline: "航空公司",

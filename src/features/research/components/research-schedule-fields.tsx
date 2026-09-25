@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import type { ResearchSegment } from "../types";
+import { flightArrivalLooksLate } from "../flight-date-validity";
 
 export function ResearchDateTimeField({
   date,
@@ -34,10 +35,7 @@ export function ResearchDateTimeField({
       <Label className="text-sm font-medium" htmlFor={`${id}-date`}>
         <Localized value={label} />
       </Label>
-      <div
-        className="grid min-w-0 max-w-full grid-cols-[minmax(0,4fr)_minmax(0,5fr)] gap-2"
-        data-research-schedule-control=""
-      >
+      <div className="grid min-w-0 max-w-full grid-cols-2 gap-2" data-research-schedule-control="">
         <Input
           aria-label={t("{label} date", { label: t(label) })}
           className="planner-native-datetime-input h-[3.75rem] min-w-0 rounded-xl px-2 text-base"
@@ -117,6 +115,12 @@ export function ResearchSegmentScheduleFields({
                 time={segment.arrivalTime ?? ""}
               />
             </div>
+            {category === "flight" &&
+            flightArrivalLooksLate(segment.departureDate, segment.arrivalDate) ? (
+              <p className="text-sm text-destructive" role="alert">
+                <Localized value="Flight arrival is more than two days after departure. Check the year." />
+              </p>
+            ) : null}
           </div>
         );
       })}

@@ -28,7 +28,7 @@ const stepDescriptions: Record<ResearchCategory, Record<ResearchItemFormStep["id
   },
   flight: {
     primary: "Add the price, route, departure, and arrival for each flight.",
-    details: "Add airline and flight numbers and any booking records.",
+    details: "Airline and flight numbers are optional. Add booking records if you have them.",
   },
   rental: {
     primary: "Add the price, locations, pick-up, and return. Times start at 12:00 PM.",

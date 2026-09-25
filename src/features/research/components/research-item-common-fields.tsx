@@ -139,7 +139,7 @@ export function ResearchItemDetailFields({
   const name = (
     <PlannerEditorTextField
       defaultValue={item ? (inferredRentalCompany(item) ?? item.title ?? "") : ""}
-      description="We’ll create a clear route or place label when this is blank."
+      description="We’ll make a name from the details you add."
       id={`${idPrefix}-name`}
       label={
         ["flight", "train"].includes(category) ? (
