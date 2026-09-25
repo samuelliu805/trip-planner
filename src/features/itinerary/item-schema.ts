@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { hasDifferentJourneyDates } from "./mutation-helpers.ts";
 
 export const itineraryItemTypes = [
   "hotel",
@@ -219,10 +220,17 @@ export const createItineraryItemSchema = z
         }),
       ),
   ])
-  .refine((value) => !value.endTime || !value.startTime || value.endTime >= value.startTime, {
-    message: "End time must be on or after start time.",
-    path: ["endTime"],
-  })
+  .refine(
+    (value) =>
+      !value.endTime ||
+      !value.startTime ||
+      hasDifferentJourneyDates(value.type, value.details) ||
+      value.endTime >= value.startTime,
+    {
+      message: "End time must be on or after start time.",
+      path: ["endTime"],
+    },
+  )
   .superRefine((value, context) => {
     validateCommonItem(value, context);
     if (
@@ -251,10 +259,17 @@ export const updateItineraryItemSchema = z
     type: z.enum(itineraryItemTypes),
     variantId: z.uuid(),
   })
-  .refine((value) => !value.endTime || !value.startTime || value.endTime >= value.startTime, {
-    message: "End time must be on or after start time.",
-    path: ["endTime"],
-  })
+  .refine(
+    (value) =>
+      !value.endTime ||
+      !value.startTime ||
+      hasDifferentJourneyDates(value.type, value.details) ||
+      value.endTime >= value.startTime,
+    {
+      message: "End time must be on or after start time.",
+      path: ["endTime"],
+    },
+  )
   .superRefine((value, context) => {
     validateCommonItem(value, context);
     if (value.type !== "car_rental") return;

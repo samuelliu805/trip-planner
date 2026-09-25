@@ -72,6 +72,7 @@ export function plannerItemSaveValues({
                 arrivalTime: journey.arrivalTime ? arrivalTime || null : null,
                 arrivalDate: journey.dates ? arrivalDate || null : null,
                 departureDate: journey.dates ? departureDate || null : null,
+                departureTime: journey.departureTime ? startTime || null : null,
                 destination: journey.endpoints
                   ? destinationPlace?.displayName || destination || null
                   : null,

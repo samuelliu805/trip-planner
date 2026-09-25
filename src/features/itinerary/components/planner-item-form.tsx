@@ -176,8 +176,10 @@ function PlannerItemFormInner({
   const { requestCancel } = attachmentSession;
 
   usePlannerItemDraft({
+    arrivalDate: state.arrivalDate,
     arrivalTime: state.arrivalTime,
     dayId,
+    departureDate: state.departureDate,
     item,
     links: state.links,
     notes: state.notes,

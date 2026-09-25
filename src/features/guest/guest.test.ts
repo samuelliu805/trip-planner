@@ -258,6 +258,43 @@ test("guest item and day mutations stay local and preserve importable identifier
   assert.equal(guestTripDraftSchema.safeParse(current).success, true);
 });
 
+test("guest flight edits retain overnight arrival details and use a valid schedule", async () => {
+  let current = draft();
+  const local = new GuestDraftMutations((update) => (current = update(current)), ids(200));
+  const input = {
+    dayId: current.workspace.days[0].id,
+    details: {
+      departureDate: "2026-12-25",
+      departureTime: "18:50",
+      arrivalDate: "2026-12-26",
+      arrivalTime: "16:15",
+    },
+    endTime: "16:15",
+    expectedItemsVersion: 1,
+    operationId: "00000000-0000-4000-8000-000000000901",
+    startTime: "18:50",
+    title: "SHA → AKL",
+    tripId: current.draftId,
+    type: "flight" as const,
+    variantId: current.workspace.variant.id,
+  };
+  const created = await local.createItem(input);
+  assert.equal(created.start_time, "18:50");
+  assert.equal(created.end_time, null);
+  assert.equal(created.schedule_kind, "exact");
+  assert.equal((created.details as Record<string, unknown>).arrivalTime, "16:15");
+  const updated = await local.updateItem({
+    ...input,
+    expectedVersion: created.version,
+    id: created.id,
+    operationId: "00000000-0000-4000-8000-000000000902",
+    title: "SHA → AKL edited",
+  });
+  assert.equal(updated.end_time, null);
+  assert.equal(updated.schedule_kind, "exact");
+  assert.equal(guestTripDraftSchema.safeParse(current).success, true);
+});
+
 test("guest import migration is authenticated, bounded, idempotent, and never grants anon", () => {
   const sql = readFileSync(
     new URL(

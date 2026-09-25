@@ -19,7 +19,11 @@ import {
   type DeleteItineraryItemInput,
   type UpdateItineraryItemInput,
 } from "../itinerary/item-schema.ts";
-import { normalizedOptional, scheduleKind } from "../itinerary/mutation-helpers.ts";
+import {
+  normalizedOptional,
+  normalizedScheduleEndTime,
+  scheduleKind,
+} from "../itinerary/mutation-helpers.ts";
 import type { ItineraryItem } from "../itinerary/types.ts";
 import { isDefaultTripTitle, tripTitleFromPlace } from "../trips/create-defaults.ts";
 
@@ -59,13 +63,19 @@ export class GuestDraftMutations {
       const timestamp = this.now().toISOString();
       const id = this.createId();
       const place = placeForItem(values.placeId, values.placeSnapshot, undefined, this.createId);
+      const endTime = normalizedScheduleEndTime(
+        values.type,
+        values.details,
+        values.startTime,
+        values.endTime,
+      );
       const item: ItineraryItem = {
         attachments: [],
         booking_url: values.links?.[0]?.url ?? normalizedOptional(values.bookingUrl),
         created_at: timestamp,
         day_id: day.id,
         details: serializableDetails(values.details),
-        end_time: normalizedOptional(values.endTime),
+        end_time: endTime,
         id,
         links: itemLinks(id, values.links, this.createId),
         notes: normalizedOptional(values.notes),
@@ -73,7 +83,7 @@ export class GuestDraftMutations {
         place_id: place?.id ?? null,
         price_amount: values.priceAmount ?? null,
         price_currency: values.priceAmount == null ? null : (values.priceCurrency ?? null),
-        schedule_kind: scheduleKind(values.startTime, values.endTime),
+        schedule_kind: scheduleKind(values.startTime, endTime),
         schedule_text: null,
         sort_order: day.items.length,
         start_time: normalizedOptional(values.startTime),
@@ -120,6 +130,10 @@ export class GuestDraftMutations {
       );
       if (!targetDay) throw new Error("The selected day no longer exists.");
       const place = placeForItem(values.placeId, values.placeSnapshot, existing, this.createId);
+      const details = values.details === undefined ? existing.details : values.details;
+      const startTime = values.startTime === undefined ? existing.start_time : values.startTime;
+      const requestedEndTime = values.endTime === undefined ? existing.end_time : values.endTime;
+      const endTime = normalizedScheduleEndTime(values.type, details, startTime, requestedEndTime);
       const next: ItineraryItem = {
         ...existing,
         ...(values.links !== undefined && {
@@ -132,7 +146,7 @@ export class GuestDraftMutations {
           }),
         day_id: targetDay.id,
         ...(values.details !== undefined && { details: serializableDetails(values.details) }),
-        ...(values.endTime !== undefined && { end_time: normalizedOptional(values.endTime) }),
+        end_time: endTime,
         ...(values.notes !== undefined && { notes: normalizedOptional(values.notes) }),
         place,
         place_id: place?.id ?? null,
@@ -142,10 +156,7 @@ export class GuestDraftMutations {
             values.priceAmount === null ? null : (values.priceCurrency ?? existing.price_currency),
         }),
         ...(values.startTime !== undefined && { start_time: normalizedOptional(values.startTime) }),
-        schedule_kind: scheduleKind(
-          values.startTime === undefined ? existing.start_time : values.startTime,
-          values.endTime === undefined ? existing.end_time : values.endTime,
-        ),
+        schedule_kind: scheduleKind(startTime, endTime),
         ...(values.title !== undefined && { title: values.title.trim() }),
         type: values.type,
         updated_at: this.now().toISOString(),

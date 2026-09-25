@@ -35,8 +35,8 @@ export function PlannerItemRow({
   selected: boolean;
 }) {
   const { t } = useI18n();
-  const start = item.start_time ? item.start_time.slice(0, 5) : null;
   const details = item.details as Record<string, string | undefined>;
+  const start = (item.start_time ?? details.departureTime)?.slice(0, 5) ?? null;
   const mode =
     item.type === "transport"
       ? normalizeTransportMode(details.mode)

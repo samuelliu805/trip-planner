@@ -25,7 +25,12 @@ import { shouldRestorePlannerDocumentScroll } from "./hooks/use-planner-viewport
 import { plannerEditorKeyboardOcclusion } from "./components/use-planner-editor-keyboard-scroll.ts";
 import { plannerEditorViewportBox } from "./components/use-planner-editor-viewport-lock.ts";
 
-import { buildCopyRows, normalizedTimes, scheduleKind } from "./mutation-helpers.ts";
+import {
+  buildCopyRows,
+  normalizedScheduleEndTime,
+  normalizedTimes,
+  scheduleKind,
+} from "./mutation-helpers.ts";
 import {
   encodePlannerClipboard,
   fillTargetRows,
@@ -1821,6 +1826,42 @@ test("create accepts missing, start-only, and end-only time", () => {
   assert.equal(createItineraryItemSchema.safeParse({ ...base, startTime: "09:30" }).success, true);
   assert.equal(createItineraryItemSchema.safeParse({ ...base, endTime: "11:00" }).success, true);
   assert.deepEqual(normalizedTimes("", undefined), { start_time: null, end_time: null });
+});
+
+test("overnight flight saves its arrival clock time in details without a same-day end time", () => {
+  const flight = {
+    ...base,
+    type: "flight" as const,
+    title: "SHA → AKL",
+    startTime: "18:50",
+    endTime: "16:15",
+    details: {
+      departureDate: "2026-12-25",
+      departureTime: "18:50",
+      arrivalDate: "2026-12-26",
+      arrivalTime: "16:15",
+    },
+  };
+  assert.equal(createItineraryItemSchema.safeParse(flight).success, true);
+  assert.equal(
+    updateItineraryItemSchema.safeParse({
+      ...flight,
+      id: ids.item,
+      expectedVersion: 1,
+    }).success,
+    true,
+  );
+  assert.equal(
+    normalizedScheduleEndTime(flight.type, flight.details, flight.startTime, flight.endTime),
+    null,
+  );
+  assert.equal(scheduleKind(flight.startTime, null), "exact");
+  const sameDay = {
+    ...flight,
+    details: { ...flight.details, arrivalDate: "2026-12-25" },
+  };
+  assert.equal(createItineraryItemSchema.safeParse(sameDay).success, false);
+  assert.equal(normalizedScheduleEndTime(sameDay.type, sameDay.details, "09:00", "11:00"), "11:00");
 });
 
 test("URL-capable items accept multiple labeled links", () => {
