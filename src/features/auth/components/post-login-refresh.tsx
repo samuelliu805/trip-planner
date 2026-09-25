@@ -25,8 +25,6 @@ export function PostLoginRefresh({ region }: { region: GuestRegion }) {
         if (draft) {
           const result = await claimGuestTrip(draft);
           if (!result.data) {
-            for (const targetRegion of ["global", "cn"] as const)
-              new GuestDraftStorage(targetRegion, window.localStorage).clearAll();
             setError(result.error ?? "The local trip could not be imported.");
             return;
           }
@@ -44,13 +42,8 @@ export function PostLoginRefresh({ region }: { region: GuestRegion }) {
         for (const targetRegion of ["global", "cn"] as const)
           new GuestDraftStorage(targetRegion, window.localStorage).clearAll();
       } catch {
-        for (const targetRegion of ["global", "cn"] as const) {
-          try {
-            new GuestDraftStorage(targetRegion, window.localStorage).clearAll();
-          } catch {
-            /* Authentication succeeds even when browser storage is unavailable. */
-          }
-        }
+        setError("The local trip could not be imported. Your browser copy is still available.");
+        return;
       }
       window.location.replace("/trips");
     })();
@@ -63,20 +56,8 @@ export function PostLoginRefresh({ region }: { region: GuestRegion }) {
           <p className="text-sm font-medium text-destructive" role="alert">
             <T message={error} />
           </p>
-          <Button
-            onClick={() => {
-              for (const targetRegion of ["global", "cn"] as const) {
-                try {
-                  new GuestDraftStorage(targetRegion, window.localStorage).clearAll();
-                } catch {
-                  /* Continue to the authenticated workspace. */
-                }
-              }
-              window.location.replace("/trips");
-            }}
-            type="button"
-          >
-            <T message="Continue to trips" />
+          <Button onClick={() => window.location.reload()} type="button">
+            <T message="Retry saving trip" />
           </Button>
         </div>
       ) : (

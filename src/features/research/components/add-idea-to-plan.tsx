@@ -30,6 +30,7 @@ import { applySingleIdeaToNewVariant } from "../idea-plan-variant-actions";
 import { anchoredPlanDateChange, ideaJourneyDates, newPlanDateRange } from "../idea-plan-dates";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { PlanDaySelect } from "./plan-day-select";
+import { IdeaJourneyPreviewList } from "./idea-journey-preview-list";
 
 export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: ResearchPlanSnapshot }) {
   const { t } = useI18n();
@@ -137,7 +138,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
         ) : null}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-full overflow-x-hidden sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold">
               <T
@@ -154,7 +155,8 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
               <T message="Choose where this belongs in your Plan." />
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 px-5 py-4 sm:px-6">
+          <div className="max-h-[65dvh] space-y-4 overflow-y-auto px-5 py-4 sm:px-6">
+            <IdeaJourneyPreviewList items={[item]} />
             {needsDateDecision ? (
               <label className="block text-base font-medium">
                 <T message="First flight on" />

@@ -24,6 +24,7 @@ export type PlannerToolbarProps = {
   fillLabel: string;
   fillThroughDay?: number;
   guestExperience?: {
+    onOpenIdeas: () => void;
     onSaveToAccount: () => void;
     onShare: () => void;
     saveStatus: ReactNode;

@@ -8,13 +8,16 @@ import { Button } from "@/components/ui/button";
 import { PlannerEditorScreen } from "@/features/itinerary/components/planner-editor-screen";
 
 import { ResearchItemForm } from "./research-item-form";
+import type { CreateResearchItemInput } from "../schema";
 import { researchCategorySingularLabels, type ResearchCategory, type ResearchItem } from "../types";
+import type { ResearchMutationResult } from "../types";
 
 export function ResearchItemDialog({
   category,
   context,
   defaultCurrency,
   item,
+  localSave,
   hideTrigger = false,
   onOpenChange,
   onSaved,
@@ -25,6 +28,10 @@ export function ResearchItemDialog({
   context?: { dayId?: string; itemId?: string };
   defaultCurrency: string;
   item?: ResearchItem;
+  localSave?: (
+    input: CreateResearchItemInput,
+    existingId?: string,
+  ) => Promise<ResearchMutationResult<ResearchItem>>;
   hideTrigger?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSaved: (item: ResearchItem) => void;
@@ -82,6 +89,7 @@ export function ResearchItemDialog({
           context={context}
           defaultCurrency={defaultCurrency}
           item={item}
+          localSave={localSave}
           key={`${category}:${item?.id ?? "new"}`}
           onCancel={() => setOpen(false)}
           onCloseRequestRegistration={(handler) => {

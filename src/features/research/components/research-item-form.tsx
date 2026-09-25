@@ -16,18 +16,25 @@ import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { ResearchItemFields } from "./research-item-fields";
 import { createResearchItem, loadResearchItem, updateResearchItem } from "../actions";
 import { researchDraftCanSave, researchItemInputFromForm } from "../research-item-form-values";
+import type { CreateResearchItemInput } from "../schema";
 import {
   researchItemFormSteps,
   researchItemStepDescription,
   type ResearchItemFormStep,
 } from "../research-item-form-steps";
-import { researchCategorySingularLabels, type ResearchCategory, type ResearchItem } from "../types";
+import {
+  researchCategorySingularLabels,
+  type ResearchCategory,
+  type ResearchItem,
+  type ResearchMutationResult,
+} from "../types";
 
 export function ResearchItemForm({
   category,
   context,
   defaultCurrency,
   item,
+  localSave,
   onCancel,
   onCloseRequestRegistration,
   onSaved,
@@ -37,6 +44,10 @@ export function ResearchItemForm({
   context?: { dayId?: string; itemId?: string };
   defaultCurrency: string;
   item?: ResearchItem;
+  localSave?: (
+    input: CreateResearchItemInput,
+    existingId?: string,
+  ) => Promise<ResearchMutationResult<ResearchItem>>;
   onCancel: () => void;
   onCloseRequestRegistration: (handler: (() => void) | null) => void;
   onSaved: (item: ResearchItem) => void;
@@ -58,7 +69,7 @@ export function ResearchItemForm({
   const label = researchCategorySingularLabels[category];
   const activeIndex = steps.findIndex(({ id }) => id === stepId);
   const attachmentSession = useAttachmentEditSession({
-    item,
+    item: localSave ? undefined : item,
     itemMutationPending: mutationPending,
     onCancel,
     targetKind: "research",
@@ -128,21 +139,23 @@ export function ResearchItemForm({
     setError(undefined);
     const input = researchItemInputFromForm({ category, context, form, item, tripId });
     const operationId = newTelemetryOperationId();
-    if (!item)
+    if (!item && !localSave)
       captureBrowserProductEvent(
         "research_create_started",
         { ideas_category: category, operation_id: operationId, surface: "research_editor" },
         { actorType: "authenticated" },
       );
-    const result = item
-      ? await updateResearchItem({
-          ...input,
-          draftSessionId: uploadSessionId,
-          expectedVersion: baseVersion ?? item.version,
-          id: item.id,
-          operationId,
-        })
-      : await createResearchItem({ ...input, draftSessionId: uploadSessionId, operationId });
+    const result = localSave
+      ? await localSave({ ...input, operationId }, item?.id)
+      : item
+        ? await updateResearchItem({
+            ...input,
+            draftSessionId: uploadSessionId,
+            expectedVersion: baseVersion ?? item.version,
+            id: item.id,
+            operationId,
+          })
+        : await createResearchItem({ ...input, draftSessionId: uploadSessionId, operationId });
     if (result.error || !result.data) {
       setMutationPending(false);
       setConflict(result.code === "conflict");
@@ -241,14 +254,16 @@ export function ResearchItemForm({
       <ResearchItemFields
         activeStepId={stepId}
         attachments={
-          <ResearchAttachments
-            item={item}
-            onDraftCountChange={handleDraftCountChange}
-            onPendingChange={setAttachmentPending}
-            tripId={tripId}
-            uploadSessionId={uploadSessionId}
-            uploadSessionSignal={uploadSessionSignal}
-          />
+          localSave ? null : (
+            <ResearchAttachments
+              item={item}
+              onDraftCountChange={handleDraftCountChange}
+              onPendingChange={setAttachmentPending}
+              tripId={tripId}
+              uploadSessionId={uploadSessionId}
+              uploadSessionSignal={uploadSessionSignal}
+            />
+          )
         }
         category={category}
         defaultCurrency={defaultCurrency}

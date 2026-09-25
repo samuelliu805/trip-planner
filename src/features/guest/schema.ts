@@ -3,9 +3,17 @@ import { z } from "zod";
 import { itineraryItemTypes, placeSnapshotSchema } from "../itinerary/item-schema.ts";
 import type { PlannerWorkspace } from "../itinerary/types.ts";
 import type { Trip } from "../../platform/contracts/trips.ts";
+import { createResearchItemSchema } from "../research/schema.ts";
 
 export const guestDraftSchemaVersion = 1 as const;
 export type GuestRegion = "cn" | "global";
+
+export const guestIdeaSchema = z.object({
+  id: z.uuid(),
+  createdAt: z.iso.datetime(),
+  values: createResearchItemSchema,
+});
+export type GuestIdea = z.infer<typeof guestIdeaSchema>;
 
 const linkSchema = z.object({
   id: z.uuid(),
@@ -123,6 +131,7 @@ export const guestTripDraftSchema = z
   .object({
     createdAt: z.iso.datetime(),
     draftId: z.uuid(),
+    ideas: z.array(guestIdeaSchema).max(100).default([]),
     region: z.enum(["cn", "global"]),
     revision: z.number().int().min(0),
     schemaVersion: z.literal(guestDraftSchemaVersion),
@@ -136,6 +145,7 @@ export const guestTripDraftSchema = z
     const items = draft.workspace.days.flatMap(({ items }) => items);
     const itemIds = items.map(({ id }) => id);
     const linkIds = items.flatMap((item) => item.links?.map(({ id }) => id) ?? []);
+    const ideaIds = draft.ideas.map(({ id }) => id);
     const idsMatch =
       draft.trip.id === draft.draftId &&
       draft.workspace.variant.trip_id === draft.draftId &&
@@ -154,11 +164,18 @@ export const guestTripDraftSchema = z
     if (
       new Set(dayIds).size !== dayIds.length ||
       new Set(itemIds).size !== itemIds.length ||
-      new Set(linkIds).size !== linkIds.length
+      new Set(linkIds).size !== linkIds.length ||
+      new Set(ideaIds).size !== ideaIds.length
     )
       context.addIssue({ code: "custom", message: "Guest draft identifiers must be unique." });
     if (draft.trip.day_count !== draft.workspace.days.length)
       context.addIssue({ code: "custom", message: "Guest draft day count is inconsistent." });
+    if (
+      draft.ideas.some(
+        (idea) => idea.values.tripId !== draft.draftId || idea.values.operationId !== idea.id,
+      )
+    )
+      context.addIssue({ code: "custom", message: "Guest idea relationships are inconsistent." });
     const expectedProvider = draft.region === "cn" ? "amap" : "google";
     if (items.some((item) => item.place && item.place.provider !== expectedProvider))
       context.addIssue({

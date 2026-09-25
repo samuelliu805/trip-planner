@@ -48,7 +48,9 @@ export function ResearchJourneyFields({
 }) {
   const first = segments[0] ?? blankSegment();
   const returned = segments[1] ?? blankSegment(first.destination, first.origin);
-  const simpleJourney = category === "train" || journeyType !== "multi_city";
+  const simpleJourney =
+    (category === "train" || journeyType !== "multi_city") &&
+    segments.length <= (journeyType === "round_trip" ? 2 : 1);
 
   function update(index: number, values: Partial<ResearchSegment>) {
     const next = segments.map((segment, position) =>
@@ -67,13 +69,18 @@ export function ResearchJourneyFields({
 
   function setJourneyType(value: ResearchJourneyType) {
     onJourneyTypeChange(value);
-    if (value === "one_way") return onSegmentsChange([first]);
+    if (value === "one_way") return onSegmentsChange([{ ...first, journeyIndex: 0 }]);
     if (value === "round_trip")
       return onSegmentsChange([
-        first,
-        { ...returned, origin: first.destination, destination: first.origin },
+        { ...first, journeyIndex: 0 },
+        { ...returned, origin: first.destination, destination: first.origin, journeyIndex: 1 },
       ]);
-    onSegmentsChange(segments.length > 1 ? segments : [first, blankSegment()]);
+    onSegmentsChange(
+      (segments.length > 1 ? segments : [first, blankSegment()]).map((segment, index) => ({
+        ...segment,
+        journeyIndex: index,
+      })),
+    );
   }
 
   return (
@@ -132,7 +139,11 @@ export function ResearchJourneyFields({
           </div>
         </>
       ) : (
-        <ResearchMultiCityFields onSegmentsChange={onSegmentsChange} segments={segments} />
+        <ResearchMultiCityFields
+          journeyType={journeyType}
+          onSegmentsChange={onSegmentsChange}
+          segments={segments}
+        />
       )}
     </div>
   );

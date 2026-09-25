@@ -24,6 +24,7 @@ export function createGuestTripDraft(
   return {
     createdAt,
     draftId,
+    ideas: [],
     region,
     revision: 0,
     schemaVersion: 1,

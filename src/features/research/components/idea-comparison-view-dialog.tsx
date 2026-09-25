@@ -23,6 +23,7 @@ import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { anchoredPlanDateChange, ideaJourneyDates, newPlanDateRange } from "../idea-plan-dates";
 import { activityNeedsDay, choiceLabel, itemLabel } from "./idea-comparison-labels";
 import { PlanDaySelect } from "./plan-day-select";
+import { IdeaJourneyPreviewList } from "./idea-journey-preview-list";
 
 export function IdeaComparisonViewDialog({
   byId,
@@ -60,14 +61,14 @@ export function IdeaComparisonViewDialog({
   }
   return (
     <Dialog open={!!view} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="max-w-full overflow-x-hidden sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">{view?.title}</DialogTitle>
           <DialogDescription className="sr-only">
             <T message="Choose one to put into a Plan." />
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 px-5 py-4 sm:px-6">
+        <div className="max-h-[65dvh] space-y-3 overflow-y-auto px-5 py-4 sm:px-6">
           {view?.choices.map((choice) => {
             const selectedItems = choice.itemIds
               .map((id) => byId.get(id))
@@ -121,6 +122,9 @@ export function IdeaComparisonViewDialog({
                     </li>
                   ))}
                 </ul>
+                <div className="mt-3">
+                  <IdeaJourneyPreviewList items={selectedItems} />
+                </div>
                 {needsDay ? (
                   <label className="mt-3 block text-sm font-medium">
                     <T message="Plan day" />

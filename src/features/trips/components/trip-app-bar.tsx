@@ -80,6 +80,8 @@ export type TripAppBarProps = {
   actions?: ReactNode;
   active: TripSection;
   guestExperience?: {
+    onOpenIdeas: () => void;
+    onOpenPlan?: () => void;
     onSaveToAccount: () => void;
     onShare: () => void;
     saveStatus: ReactNode;
@@ -222,6 +224,24 @@ export function TripAppBar({
           <div className="ml-auto flex min-w-0 shrink-0 items-center justify-end gap-1 sm:ml-0 sm:gap-1.5">
             {guestExperience ? (
               <>
+                <Button
+                  aria-label={active === "plan" ? "Ideas & Options" : "Plan"}
+                  className="h-11 min-w-11 gap-1.5 px-2 sm:px-3"
+                  onClick={
+                    active === "plan" ? guestExperience.onOpenIdeas : guestExperience.onOpenPlan
+                  }
+                  size="sm"
+                  variant="outline"
+                >
+                  {active === "plan" ? (
+                    <Lightbulb aria-hidden="true" className="size-4" />
+                  ) : (
+                    <Table2 aria-hidden="true" className="size-4" />
+                  )}
+                  <span className="hidden md:inline">
+                    <T message={active === "plan" ? "Ideas & Options" : "Plan"} />
+                  </span>
+                </Button>
                 <div className="hidden lg:block">{guestExperience.saveStatus}</div>
                 <Button
                   aria-label="Save to account"
