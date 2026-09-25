@@ -6,6 +6,10 @@ BEGIN;
 CREATE INDEX itinerary_flight_endpoint_parent_idx ON public.itinerary_items
   ((details ->> 'flightEndpointParentId'))
   WHERE details ? 'flightEndpointParentId';
+CREATE UNIQUE INDEX itinerary_flight_endpoint_role_unique ON public.itinerary_items
+  (variant_id, (details ->> 'flightEndpointParentId'),
+    (details ->> 'flightEndpointRole'))
+  WHERE details ? 'flightEndpointParentId';
 
 CREATE FUNCTION app_private.sync_flight_endpoint_stops(target_parent_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$

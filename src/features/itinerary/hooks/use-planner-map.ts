@@ -90,7 +90,7 @@ export function usePlannerMap(
     () => [
       ...overviewStages.map((stage) => ({
         address: stage.address,
-          appearance: "overview" as const,
+        appearance: "overview" as const,
         entries: stage.entries.map((entry) => ({ ...entry, kind: "city" as const })),
         id: stage.id,
         itemIds: stage.entries.map(({ itemId }) => itemId),
