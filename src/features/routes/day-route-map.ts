@@ -106,12 +106,20 @@ export function buildDayRouteMarkers(
       .flatMap((itemId) => positionsByItem.get(itemId) ?? [])
       .sort((a, b) => a - b);
     const kinds = new Set(marker.entries.map(({ kind }) => kind));
+    const flightOnly = [...kinds].every(
+      (kind) => kind === "flightDeparture" || kind === "flightArrival",
+    );
+    const flightLabel = flightOnly
+      ? [...kinds]
+          .map((kind) => markerGlyph[locale][kind as "flightDeparture" | "flightArrival"])
+          .join("·")
+      : "";
     marker.appearance = positions.length ? "route-planned" : "route-unplanned";
     marker.label = positions.length
-      ? `${kinds.size === 1 && (marker.entries[0].kind === "flightDeparture" || marker.entries[0].kind === "flightArrival") ? `${markerGlyph[locale][marker.entries[0].kind]} · ` : ""}${positions.join(" · ")}`
+      ? `${flightLabel ? `${flightLabel} · ` : ""}${positions.join(" · ")}`
       : kinds.size === 1
         ? markerGlyph[locale][marker.entries[0].kind as keyof (typeof markerGlyph)["en"]]
-        : "•";
+        : flightLabel || "•";
   }
   return [...grouped.values()];
 }

@@ -3983,6 +3983,11 @@ test("flight endpoints share their Plan day and cannot be ordered arrival before
     buildDayRouteMarkers(day, []).map(({ entries }) => entries[0].kind),
     ["flightDeparture", "flightArrival"],
   );
+  const sameAirport = { ...arrive, place: depart.place };
+  assert.equal(
+    buildDayRouteMarkers({ ...day, items: [depart, sameAirport] }, ["depart", "arrive"])[0].label,
+    "D·A · 1 · 2",
+  );
 });
 
 test("new Activities default before Hotel and can be placed in the dedicated next step", () => {
