@@ -25,12 +25,13 @@ update flight_repair_state state set variant_id = variant.id
   from public.route_variants variant
   where variant.trip_id = state.trip_id and variant.is_primary;
 
--- Reproduce an old saved idea: the first connection was mistaken for the destination.
+-- Reproduce an old saved idea: localized place labels do not match airport codes.
 insert into public.research_items (
   id, trip_id, category, title, start_date, end_date, origin_text,
   destination_text, journey_type, segments
 ) select '7e100000-0000-4000-8000-000000000001', state.trip_id, 'flight',
-  'SHA return', '2026-12-25', '2027-01-03', 'SHA', 'HAK', 'round_trip',
+  'SHA return', '2026-12-25', '2027-01-03',
+  '上海虹桥国际机场', '悉尼机场', 'round_trip',
   '[{"origin":"SHA","destination":"HAK","departureDate":"2026-12-25"},
     {"origin":"HAK","destination":"SYD","departureDate":"2026-12-26","arrivalDate":"2026-12-27"},
     {"origin":"SYD","destination":"HAK","departureDate":"2027-01-02","arrivalDate":"2027-01-03"},
