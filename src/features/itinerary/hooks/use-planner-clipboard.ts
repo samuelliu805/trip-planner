@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import { categories } from "@/features/itinerary/components/planner-config";
+import { isMatrixVisibleItem } from "@/features/itinerary/flight-endpoints";
 import {
   encodePlannerClipboard,
   fillTargetRows,
@@ -67,7 +68,7 @@ export function usePlannerClipboard({
         const category = categories[column];
         if (!day || !category) continue;
         const items = day.items
-          .filter((item) => category.types.includes(item.type))
+          .filter((item) => category.types.includes(item.type) && isMatrixVisibleItem(item))
           .map(({ id }) => id);
         cells.push({ columnOffset: column - bounds.left, items, rowOffset: row - bounds.top });
       }
@@ -112,8 +113,8 @@ export function usePlannerClipboard({
         )
         .map((operation) => ({
           ...operation,
-          replacedItems: operation.targetDay.items.filter((item) =>
-            operation.types.includes(item.type),
+          replacedItems: operation.targetDay.items.filter(
+            (item) => operation.types.includes(item.type) && isMatrixVisibleItem(item),
           ),
         }));
       const grouped = new Map<
@@ -234,7 +235,7 @@ export function usePlannerClipboard({
       fillTargetRows(anchor, end).flatMap((row) =>
         selectedCategories.map((category) => ({
           sourceItemIds: sourceDay.items
-            .filter((item) => category.types.includes(item.type))
+            .filter((item) => category.types.includes(item.type) && isMatrixVisibleItem(item))
             .map(({ id }) => id),
           targetDay: workspace.days[row],
           types: category.types,
@@ -254,7 +255,7 @@ export function usePlannerClipboard({
     await replaceCategoryItems(
       categories.slice(bounds.left, bounds.right + 1).map((category) => ({
         sourceItemIds: source.items
-          .filter((item) => category.types.includes(item.type))
+          .filter((item) => category.types.includes(item.type) && isMatrixVisibleItem(item))
           .map(({ id }) => id),
         targetDay: target,
         types: category.types,
@@ -282,7 +283,7 @@ export function usePlannerClipboard({
         return targetDay
           ? selectedCategories.map((category) => ({
               sourceItemIds: sourceDay.items
-                .filter((item) => category.types.includes(item.type))
+                .filter((item) => category.types.includes(item.type) && isMatrixVisibleItem(item))
                 .map(({ id }) => id),
               targetDay,
               types: category.types,

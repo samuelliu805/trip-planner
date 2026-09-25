@@ -17,6 +17,7 @@ import { selectionContains } from "@/features/itinerary/grid-interactions";
 import { useInitialMatrixScrollPosition } from "@/features/itinerary/hooks/use-initial-matrix-scroll-position";
 import { useMobileMatrixTopContainment } from "@/features/itinerary/hooks/use-mobile-matrix-top-containment";
 import { deriveDayLocality } from "@/features/itinerary/locality";
+import { isMatrixVisibleItem } from "@/features/itinerary/flight-endpoints";
 
 export function PlannerMatrix({
   compactMapEmptyState,
@@ -128,7 +129,9 @@ export function PlannerMatrix({
                 {categories.map((category, column) => {
                   const coordinate = { row, column };
                   const items = day.items
-                    .filter((item) => category.types.includes(item.type))
+                    .filter(
+                      (item) => category.types.includes(item.type) && isMatrixVisibleItem(item),
+                    )
                     .sort((a, b) => a.sort_order - b.sort_order);
                   const selected = selectionContains(selectionAnchor, selectionEnd, coordinate);
                   const active =

@@ -59,6 +59,14 @@ export const dynamicPlannerZhCN: Record<string, string> = {
   "Download {file}": "下载{file}",
   "Edit {item}": "编辑{item}",
   "End of day": "当天结束",
+  "Flight departure": "航班出发",
+  "Flight arrival": "航班到达",
+  "flight departure": "航班出发",
+  "flight arrival": "航班到达",
+  "Select an untimed Activity or flight stop, then click a gap. Use Arrow keys to move between gaps and Enter to place.":
+    "选择未设时间的活动或航班停靠点，再点击空隙放置。也可用方向键选择空隙并按回车放置。",
+  " Timed items stay anchored and Hotel stays last. Transport stays in its separate section; flight stops appear here. Flight departure stays before arrival. ":
+    "已设时间的项目固定，住宿排在最后；交通工具仍在单独区域，航班停靠点显示于此，出发始终在到达之前。",
   "Enter a city name": "输入城市名称",
   "Enter a hotel name": "输入住宿名称",
   "Enter a meal name": "输入餐厅名称",

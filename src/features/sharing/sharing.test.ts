@@ -613,6 +613,47 @@ test("Timeline projects manual order and keeps transport out of the node rail", 
   );
 });
 
+test("shared flight endpoints appear as distinct activity stops in Overview, Timeline, and map", () => {
+  const day = {
+    ...itinerary.days[0],
+    items: [
+      { ref: ref("f"), sortOrder: 1, title: "SHA → SYD", type: "flight" as const },
+      {
+        ref: ref("d"),
+        sortOrder: 0,
+        title: "Shanghai Hongqiao",
+        type: "activity" as const,
+        flightEndpoint: { role: "departure" as const, date: "2026-12-25" },
+        place: { displayName: "Shanghai Hongqiao", latitude: 31.2, longitude: 121.3 },
+        startTime: "11:00:00",
+      },
+      {
+        ref: ref("a"),
+        sortOrder: 2,
+        title: "Sydney Airport",
+        type: "activity" as const,
+        flightEndpoint: { role: "arrival" as const, date: "2026-12-26" },
+        place: { displayName: "Sydney Airport", latitude: -33.9, longitude: 151.2 },
+        startTime: "07:00:00",
+      },
+    ],
+  };
+  const shared = { ...itinerary, days: [day] };
+  assert.equal(publicItinerarySchema.safeParse(shared).success, true);
+  assert.deepEqual(
+    publicOverviewDaySections(day).cards.map(({ item }) => item.title),
+    ["Shanghai Hongqiao", "Sydney Airport"],
+  );
+  assert.deepEqual(
+    publicTimelineDayPresentation(day).nodes.map(({ item }) => item.title),
+    ["Shanghai Hongqiao", "Sydney Airport"],
+  );
+  assert.deepEqual(
+    buildPublicMarkers(shared).map(({ entries }) => entries[0].kind),
+    ["flightDeparture", "flightArrival"],
+  );
+});
+
 test("public schema keeps old payloads valid and accepts only safe optional media URLs", () => {
   assert.equal(publicItinerarySchema.safeParse(itinerary).success, true);
   const withMedia = {
@@ -1746,12 +1787,10 @@ test("public UI contracts keep distinct views, a responsive switcher, and the ma
   assert.match(overviewTransport, /publicTransportShortLabel/);
   assert.doesNotMatch(overviewTransport, /onMouseEnter|onFocus=/);
   assert.match(overviewCard, /PublicItemMediaGallery/);
-  assert.match(
-    overviewCard,
-    /data-public-item-category=\{t\(publicItemTypeLabels\[item\.type\]\)\}/,
-  );
+  assert.match(overviewCard, /data-public-item-category=\{t\(category\)\}/);
+  assert.match(overviewCard, /item\.flightEndpoint\.role === "departure"/);
   assert.doesNotMatch(overviewCard, /\{media\.length\} media/);
-  assert.doesNotMatch(overviewCard, /span-wide|transport|flight|train/);
+  assert.doesNotMatch(overviewCard, /span-wide|public-overview-transport|typeClass === "flight"/);
   assert.doesNotMatch(overview + overviewCard, /PublicTimelineNode|PublicDayJourney/);
   const timelineSources = timeline + timelineDay + timelineNode + timelineTransport;
   assert.match(timelineSources, /publicTimelineDayPresentation/);

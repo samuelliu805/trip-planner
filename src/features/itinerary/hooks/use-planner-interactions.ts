@@ -1,6 +1,7 @@
 "use client";
 
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
+import { isMatrixVisibleItem } from "@/features/itinerary/flight-endpoints";
 
 import {
   categories,
@@ -260,7 +261,9 @@ export function usePlannerInteractions({
     const requestedId = target.closest<HTMLElement>("[data-edit-item]")?.dataset.editItem;
     const item = requestedId
       ? day.items.find(({ id }) => id === requestedId)
-      : day.items.find((candidate) => category.types.includes(candidate.type));
+      : day.items.find(
+          (candidate) => category.types.includes(candidate.type) && isMatrixVisibleItem(candidate),
+        );
     setEditor(
       item
         ? { dayId: day.id, item, type: item.type }

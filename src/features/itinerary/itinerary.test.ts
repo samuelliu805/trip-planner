@@ -119,6 +119,11 @@ import { nextVariantName } from "../variants/default-name.ts";
 import { routeLegExplanation } from "../routes/route-leg-presentation.ts";
 import { compactTransportEndpoint, compactTransportRoute } from "./transport-presentation.ts";
 import {
+  flightEndpointDate,
+  flightEndpointParentId,
+  flightEndpointRole,
+} from "./flight-endpoints.ts";
+import {
   overviewRouteModes,
   routeLegModes,
   selectableRouteLegModes,
@@ -156,6 +161,7 @@ import {
 } from "./locality.ts";
 import { isSameDayOrder, placeDayAtGap, reorderWorkspaceDays } from "./day-order.ts";
 import {
+  canonicalActivityOrderIds,
   insertActivityAtPlacement,
   itemOrderAnchor,
   itemOrderSlots,
@@ -3920,6 +3926,62 @@ test("Activity ordering excludes transport support, anchors timed items, and fix
       "hotel",
     ]),
     true,
+  );
+});
+
+test("flight endpoints share their Plan day and cannot be ordered arrival before departure", () => {
+  const endpoint = (id: string, role: "departure" | "arrival", order: number, time?: string) =>
+    ({
+      details: {
+        flightEndpointParentId: "flight-1",
+        flightEndpointRole: role,
+        flightEndpointDate: role === "arrival" ? "2027-01-02" : "2027-01-01",
+      },
+      id,
+      sort_order: order,
+      start_time: time ?? null,
+      title: id,
+      type: "activity",
+      place: { id, displayName: id, latitude: 40 + order, longitude: -70, provider: "google" },
+    }) as unknown as ItineraryItem;
+  const depart = endpoint("depart", "departure", 0);
+  const arrive = endpoint("arrive", "arrival", 2);
+  const museum = {
+    id: "museum",
+    sort_order: 1,
+    title: "Museum",
+    type: "activity",
+  } as ItineraryItem;
+  const flight = {
+    id: "flight-1",
+    sort_order: 3,
+    title: "Flight",
+    type: "flight",
+  } as ItineraryItem;
+  const items = [depart, museum, arrive, flight];
+
+  assert.equal(flightEndpointRole(depart), "departure");
+  assert.equal(flightEndpointParentId(arrive), "flight-1");
+  assert.equal(flightEndpointDate(arrive), "2027-01-02");
+  const arrivalMovedFirst = placeActivityAtGap(items, "arrive", 0);
+  assert.ok(arrivalMovedFirst.indexOf("depart") < arrivalMovedFirst.indexOf("arrive"));
+  const departureMovedLast = placeActivityAtGap(items, "depart", 3);
+  assert.ok(departureMovedLast.indexOf("depart") < departureMovedLast.indexOf("arrive"));
+  const timedArrival = { ...arrive, start_time: "06:30:00" };
+  assert.equal(isActivityOrderAnchor(timedArrival), true);
+  assert.deepEqual(
+    placeActivityAtGap([depart, museum, timedArrival, flight], "arrive", 0),
+    canonicalActivityOrderIds([depart, museum, timedArrival, flight]),
+  );
+
+  const day = { id: "day-1", day_number: 1, items } as PlannerDay;
+  assert.deepEqual(
+    eligibleDayRouteItems(day).map(({ id }) => id),
+    ["depart", "arrive"],
+  );
+  assert.deepEqual(
+    buildDayRouteMarkers(day, []).map(({ entries }) => entries[0].kind),
+    ["flightDeparture", "flightArrival"],
   );
 });
 

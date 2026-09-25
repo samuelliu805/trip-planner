@@ -140,11 +140,11 @@ export function ArrangeActivitiesSheet({
                   { day: day?.day_number ?? "" },
                 )
               : t(
-                  "Select an untimed Activity, then click a gap. Use Arrow keys to move between gaps and Enter to place.",
+                  "Select an untimed Activity or flight stop, then click a gap. Use Arrow keys to move between gaps and Enter to place.",
                 )}{" "}
             <T
               message={
-                " Timed items stay anchored and Hotel stays last. Transport stays in its separate section. "
+                " Timed items stay anchored and Hotel stays last. Transport stays in its separate section; flight stops appear here. Flight departure stays before arrival. "
               }
             />
           </SheetDescription>

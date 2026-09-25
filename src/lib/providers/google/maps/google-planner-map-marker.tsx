@@ -12,6 +12,8 @@ const markerStyles: Record<MarkerKind, { background: string; glyph: string; labe
   city: { background: "#2563eb", glyph: "C", label: "city" },
   hotel: { background: "#7c3aed", glyph: "H", label: "hotel" },
   meal: { background: "#dc2626", glyph: "M", label: "meal" },
+  flightDeparture: { background: "#0f766e", glyph: "D", label: "flight departure" },
+  flightArrival: { background: "#1d4ed8", glyph: "A", label: "flight arrival" },
 };
 
 const markerOffsets: Record<MarkerKind, [number, number]> = {
@@ -20,6 +22,8 @@ const markerOffsets: Record<MarkerKind, [number, number]> = {
   city: [0, -7],
   hotel: [0, 7],
   meal: [7, 7],
+  flightDeparture: [-7, -7],
+  flightArrival: [7, -7],
 };
 
 export function GooglePlannerMapMarkerOverlay({

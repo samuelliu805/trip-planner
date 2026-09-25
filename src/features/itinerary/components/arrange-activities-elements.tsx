@@ -5,6 +5,7 @@ import { Bed, Clock3, ListOrdered } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { ItineraryItem } from "@/features/itinerary/types";
+import { flightEndpointDate, flightEndpointRole } from "@/features/itinerary/flight-endpoints";
 
 type PointerIntent = {
   cancelled: boolean;
@@ -16,8 +17,16 @@ type PointerIntent = {
 export function ActivityIdentity({ item }: { item: ItineraryItem }) {
   const { t } = useI18n();
   const time = (item.start_time ?? item.end_time)?.slice(0, 5);
+  const endpointRole = flightEndpointRole(item);
+  const endpointDate = flightEndpointDate(item);
   const anchorLabel =
-    item.type === "hotel" ? t("End of day") : time ? t("{time} anchor", { time }) : null;
+    item.type === "hotel"
+      ? t("End of day")
+      : endpointRole
+        ? `${t(endpointRole === "departure" ? "Flight departure" : "Flight arrival")}${endpointDate ? ` · ${endpointDate}` : ""}${time ? ` · ${time}` : ""}`
+        : time
+          ? t("{time} anchor", { time })
+          : null;
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
       <span
