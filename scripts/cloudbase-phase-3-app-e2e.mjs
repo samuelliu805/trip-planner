@@ -809,7 +809,8 @@ async function verifyTripSectionNavigation(browser, tripId) {
         .find((element) => element.getClientRects().length > 0);
       const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
         button.textContent.includes('Update this Plan'));
-      return Boolean(dialog?.querySelector('[role="combobox"]') && confirm?.disabled);
+      return Boolean(dialog?.querySelector('[role="combobox"]') && confirm?.disabled &&
+        dialog.innerText.includes('Adding to Plan:'));
     })()`,
     "dated Google flight waits for a selected Plan day",
   );
@@ -821,7 +822,7 @@ async function verifyTripSectionNavigation(browser, tripId) {
   await clickElement(
     browser,
     `[...document.querySelectorAll('[role="option"]')].find((option) =>
-      option.getClientRects().length && option.textContent.trim() === 'Day 1')`,
+      option.getClientRects().length && option.textContent.trim().startsWith('Day 1 · '))`,
     "anchor current Plan flight to Day 1",
   );
   await waitFor(
