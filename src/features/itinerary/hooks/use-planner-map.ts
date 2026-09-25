@@ -15,6 +15,7 @@ import { buildOverviewRouteLines, deriveOverviewStages } from "@/features/routes
 import {
   buildDayRouteLines,
   buildDayRouteMarkers,
+  buildFlightEndpointMarkers,
   type DayRouteLineStop,
 } from "@/features/routes/day-route-map";
 import type { DayRouteUi } from "@/features/routes/use-day-route";
@@ -26,6 +27,7 @@ import { useVariantDecisionSummary } from "@/features/variants/use-variant-decis
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { usePlannerPersistence } from "@/features/itinerary/planner-persistence";
+import { flightEndpointParentId } from "@/features/itinerary/flight-endpoints";
 
 export function usePlannerMap(
   workspace: PlannerWorkspace,
@@ -85,10 +87,10 @@ export function usePlannerMap(
     variantId,
   );
   const overviewMarkers = useMemo<PlannerMapMarker[]>(
-    () =>
-      overviewStages.map((stage) => ({
+    () => [
+      ...overviewStages.map((stage) => ({
         address: stage.address,
-        appearance: "overview",
+        appearance: "overview" as const,
         entries: stage.entries.map((entry) => ({ ...entry, kind: "city" as const })),
         id: stage.id,
         itemIds: stage.entries.map(({ itemId }) => itemId),
@@ -100,7 +102,9 @@ export function usePlannerMap(
           range: stage.dayRangeLabel,
         }),
       })),
-    [overviewStages, t],
+      ...buildFlightEndpointMarkers(workspace.days, locale),
+    ],
+    [locale, overviewStages, t, workspace.days],
   );
   const overviewLines = useMemo<PlannerMapLine[]>(
     () => buildOverviewRouteLines(overviewStages, overviewRoute.calculatedLegs),
@@ -174,7 +178,7 @@ export function usePlannerMap(
         : dayMarkers;
   const mapLines =
     mapMode === "comparison" ? comparisonLines : mapMode === "overview" ? overviewLines : dayLines;
-  const overviewViewportKey = overviewStages
+  const overviewViewportKey = overviewMarkers
     .map(({ id, latitude, longitude }) => `${id}:${latitude}:${longitude}`)
     .join("|");
   const dayRouteViewportKey = mapMarkers
@@ -199,7 +203,11 @@ export function usePlannerMap(
       }
       const coordinate = {
         row,
-        column: categories.findIndex(({ types }) => types.includes(item.type)),
+        column: categories.findIndex(({ types }) =>
+          types.includes(
+            day.items.find(({ id }) => id === flightEndpointParentId(item))?.type ?? item.type,
+          ),
+        ),
       };
       setSelectionAnchor(coordinate);
       setSelectionEnd(coordinate);

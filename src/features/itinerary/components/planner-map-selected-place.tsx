@@ -21,6 +21,11 @@ import {
 } from "lucide-react";
 
 import { deriveHotelStaySummary } from "@/features/itinerary/hotel-stay-summary";
+import {
+  flightEndpointDate,
+  flightEndpointParentId,
+  flightEndpointRole,
+} from "@/features/itinerary/flight-endpoints";
 import { useI18n } from "@/features/i18n/i18n-provider";
 import type { ItineraryItem, PlannerDay } from "@/features/itinerary/types";
 import { mergeMarkerDateRanges } from "@/features/maps/marker-date-ranges";
@@ -108,6 +113,8 @@ export function PlannerMapSelectedPlace({
   const entry = marker.entries.find(({ itemId }) => itemId === selectedId);
   if (!entry) return null;
   const entryTitle = entry.kind === "carRental" ? t(entry.title) : entry.title;
+  const endpointRole = item ? flightEndpointRole(item) : null;
+  const endpointDate = item ? flightEndpointDate(item) : null;
   const details = itemDetails(item);
   const hotelStay = deriveHotelStaySummary(days, item);
   const firstStay = hotelStay?.ranges[0];
@@ -125,7 +132,12 @@ export function PlannerMapSelectedPlace({
         : entry.dayLabel;
   const time = timeLabel(item);
   const facts: CompactFact[] = [
-    dayValue && { icon: CalendarDays, label: "Date", value: dayValue },
+    dayValue && { icon: CalendarDays, label: "Date", value: endpointDate ?? dayValue },
+    endpointRole && {
+      icon: MapPin,
+      label: "Flight",
+      value: t(endpointRole === "departure" ? "Flight departure" : "Flight arrival"),
+    },
     time && { icon: Clock3, label: "Time", value: time },
     price && { icon: CircleDollarSign, label: "Price", value: price },
     details.serviceNumber && { icon: Hash, label: "Service", value: details.serviceNumber },
@@ -141,7 +153,14 @@ export function PlannerMapSelectedPlace({
     : item?.booking_url
       ? [{ id: item.id, label: "Booking", url: item.booking_url }]
       : [];
-  const eligibleDayStop = ["activity", "carRental", "hotel", "meal"].includes(entry.kind);
+  const eligibleDayStop = [
+    "activity",
+    "carRental",
+    "hotel",
+    "meal",
+    "flightDeparture",
+    "flightArrival",
+  ].includes(entry.kind);
   const repeatedLabel =
     entry.kind === "city"
       ? t("{count} day(s) in this city", { count: dayCount })
@@ -167,7 +186,9 @@ export function PlannerMapSelectedPlace({
         </div>
         <RouteIconButton
           label={t("Edit {item}", { item: entryTitle })}
-          onClick={() => onEditMapItem(entry.itemId)}
+          onClick={() =>
+            onEditMapItem(item ? (flightEndpointParentId(item) ?? entry.itemId) : entry.itemId)
+          }
           title="Edit item"
         >
           <Pencil className="size-4" />

@@ -1,7 +1,9 @@
 import type { Locale } from "../i18n/config.ts";
 import { translateMessage } from "../i18n/translate.ts";
 import type { ItineraryItem, PlannerDay } from "../itinerary/types.ts";
+import { flightEndpointRole } from "../itinerary/flight-endpoints.ts";
 import type { PlannerMapLine, PlannerMapMarker } from "../maps/planner-map-model.ts";
+import type { MarkerKind } from "../../lib/providers/maps/contracts.ts";
 import { routeGeometryCoordinates } from "../../lib/providers/routes/geometry.ts";
 
 import { isEligibleRouteStopType } from "./route-config.ts";
@@ -13,18 +15,36 @@ export type DayRouteLineStop = {
   longitude: number;
 };
 
-const markerKind = (item: ItineraryItem): "activity" | "carRental" | "hotel" | "meal" =>
-  item.type === "hotel"
-    ? "hotel"
-    : item.type === "meal"
-      ? "meal"
-      : item.type === "car_rental"
-        ? "carRental"
-        : "activity";
+const markerKind = (item: ItineraryItem): MarkerKind =>
+  flightEndpointRole(item) === "departure"
+    ? ("flightDeparture" as const)
+    : flightEndpointRole(item) === "arrival"
+      ? ("flightArrival" as const)
+      : item.type === "hotel"
+        ? "hotel"
+        : item.type === "meal"
+          ? "meal"
+          : item.type === "car_rental"
+            ? "carRental"
+            : "activity";
 
 const markerGlyph = {
-  en: { activity: "A", carRental: "R", hotel: "H", meal: "M" },
-  "zh-CN": { activity: "活", carRental: "租", hotel: "住", meal: "餐" },
+  en: {
+    activity: "A",
+    carRental: "R",
+    hotel: "H",
+    meal: "M",
+    flightDeparture: "D",
+    flightArrival: "A",
+  },
+  "zh-CN": {
+    activity: "活",
+    carRental: "租",
+    hotel: "住",
+    meal: "餐",
+    flightDeparture: "出",
+    flightArrival: "到",
+  },
 } as const;
 
 export function eligibleDayRouteItems(day?: PlannerDay): ItineraryItem[] {
@@ -86,14 +106,52 @@ export function buildDayRouteMarkers(
       .flatMap((itemId) => positionsByItem.get(itemId) ?? [])
       .sort((a, b) => a - b);
     const kinds = new Set(marker.entries.map(({ kind }) => kind));
+    const flightOnly = [...kinds].every(
+      (kind) => kind === "flightDeparture" || kind === "flightArrival",
+    );
+    const flightLabel = flightOnly
+      ? [...kinds]
+          .map((kind) => markerGlyph[locale][kind as "flightDeparture" | "flightArrival"])
+          .join("·")
+      : "";
     marker.appearance = positions.length ? "route-planned" : "route-unplanned";
     marker.label = positions.length
-      ? positions.join(" · ")
+      ? `${flightLabel ? `${flightLabel} · ` : ""}${positions.join(" · ")}`
       : kinds.size === 1
         ? markerGlyph[locale][marker.entries[0].kind as keyof (typeof markerGlyph)["en"]]
-        : "•";
+        : flightLabel || "•";
   }
   return [...grouped.values()];
+}
+
+export function buildFlightEndpointMarkers(days: PlannerDay[], locale: Locale = "en") {
+  return days.flatMap((day) =>
+    eligibleDayRouteItems(day).flatMap((item) => {
+      const role = flightEndpointRole(item);
+      if (!role || !item.place) return [];
+      const kind = role === "departure" ? ("flightDeparture" as const) : ("flightArrival" as const);
+      return [
+        {
+          address: item.place.formattedAddress,
+          appearance: "category" as const,
+          entries: [
+            {
+              dayLabel: translateMessage(locale, "Day {day}", { day: day.day_number }),
+              dayNumber: day.day_number,
+              itemId: item.id,
+              kind,
+              title: item.title,
+            },
+          ],
+          id: `flight-endpoint:${item.id}`,
+          itemIds: [item.id],
+          latitude: item.place.latitude,
+          longitude: item.place.longitude,
+          summary: item.title,
+        },
+      ];
+    }),
+  );
 }
 
 function calculatedRouteLine(

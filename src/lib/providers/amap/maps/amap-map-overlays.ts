@@ -17,6 +17,8 @@ const markerColors = {
   city: "#2563eb",
   hotel: "#7c3aed",
   meal: "#dc2626",
+  flightDeparture: "#0f766e",
+  flightArrival: "#1d4ed8",
 } as const;
 
 function amapPosition(latitude: number, longitude: number): AmapPosition {
@@ -62,7 +64,11 @@ function markerContent(marker: PlannerMapMarker, selectedId?: string) {
       ? ""
       : entry.kind === "carRental"
         ? "R"
-        : entry.kind[0].toUpperCase());
+        : entry.kind === "flightDeparture"
+          ? "D"
+          : entry.kind === "flightArrival"
+            ? "A"
+            : entry.kind[0].toUpperCase());
   visual.style.alignItems = "center";
   visual.style.background =
     marker.variantColor ??

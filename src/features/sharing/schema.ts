@@ -133,6 +133,10 @@ const publicItemSchema = z
   .object({
     carRental: publicCarRentalSchema.optional(),
     endTime: z.string().optional(),
+    flightEndpoint: z
+      .object({ role: z.enum(["departure", "arrival"]), date: z.iso.date().optional() })
+      .strict()
+      .optional(),
     links: z.array(publicLinkSchema).max(20).optional(),
     media: z.array(publicItemMediaSchema).max(12).optional(),
     notes: z.string().max(5000).optional(),

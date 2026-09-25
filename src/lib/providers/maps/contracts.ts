@@ -1,4 +1,5 @@
-export type MarkerKind = "city" | "activity" | "hotel" | "carRental" | "meal";
+export type MarkerKind =
+  "city" | "activity" | "hotel" | "carRental" | "meal" | "flightDeparture" | "flightArrival";
 
 export type PlannerMapMarker = {
   accessibleLabel?: string;

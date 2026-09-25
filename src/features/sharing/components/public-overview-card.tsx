@@ -23,7 +23,14 @@ export function PublicOverviewCard({
   const { t } = useI18n();
   const { item, media } = presentation;
   const title = item.type === "car_rental" ? t(item.title) : item.title;
-  const schedule = item.startTime?.slice(0, 5) ?? item.scheduleLabel;
+  const schedule = item.flightEndpoint?.date
+    ? `${item.flightEndpoint.date}${item.startTime ? ` · ${item.startTime.slice(0, 5)}` : ""}`
+    : (item.startTime?.slice(0, 5) ?? item.scheduleLabel);
+  const category = item.flightEndpoint
+    ? item.flightEndpoint.role === "departure"
+      ? "Flight departure"
+      : "Flight arrival"
+    : publicItemTypeLabels[item.type];
   const place = item.place?.localityName ?? item.place?.displayName;
   const placeMedia = media.filter(({ source }) => source === "google_place");
   const attachments = media.filter(({ source }) => source === "attachment");
@@ -48,10 +55,7 @@ export function PublicOverviewCard({
         onClick={onSelect}
         type="button"
       >
-        <span
-          className="overview-item-icon-v4"
-          data-public-item-category={t(publicItemTypeLabels[item.type])}
-        >
+        <span className="overview-item-icon-v4" data-public-item-category={t(category)}>
           <PublicItemIcon className="size-3.5" type={item.type} />
         </span>
         <span className="overview-item-copy-v4">
@@ -79,7 +83,7 @@ export function PublicOverviewCard({
       ) : null}
       <footer className="overview-item-footer-v4">
         <span>
-          <Localized value={publicItemTypeLabels[item.type]} />
+          <Localized value={category} />
         </span>
         <PublicQuickActions item={item} quiet />
       </footer>

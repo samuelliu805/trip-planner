@@ -1,4 +1,5 @@
 import type { ItineraryItem } from "@/features/itinerary/types";
+import { flightEndpointParentId, flightEndpointRole } from "./flight-endpoints.ts";
 
 type OrderableActivity = Pick<ItineraryItem, "id" | "sort_order" | "type">;
 
@@ -121,7 +122,22 @@ export function placeActivityAtGap(
   const hotelIndex = remaining.findIndex(({ type }) => type === "hotel");
   const maximumGap = hotelIndex >= 0 ? hotelIndex : remaining.length;
   const insertion = Math.max(0, Math.min(gapIndex, maximumGap));
-  remaining.splice(insertion, 0, moving);
+  const parentId = flightEndpointParentId(moving);
+  const role = flightEndpointRole(moving);
+  const siblingIndex = parentId
+    ? remaining.findIndex(
+        (item) =>
+          flightEndpointParentId(item) === parentId &&
+          flightEndpointRole(item) === (role === "departure" ? "arrival" : "departure"),
+      )
+    : -1;
+  const safeInsertion =
+    siblingIndex < 0
+      ? insertion
+      : role === "departure"
+        ? Math.min(insertion, siblingIndex)
+        : Math.max(insertion, siblingIndex + 1);
+  remaining.splice(safeInsertion, 0, moving);
   const reorderedDestinations = [...remaining];
   const visible = orderedDayActivities(items).map((item) =>
     isDestinationActivity(item) ? reorderedDestinations.shift()! : item,

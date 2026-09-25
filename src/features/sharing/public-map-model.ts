@@ -11,6 +11,7 @@ import type {
   PublicSavedRoute,
 } from "./types";
 import { derivePublicOverviewStages } from "./public-overview-map-model.ts";
+import type { MarkerKind } from "@/lib/providers/maps/contracts";
 
 export {
   buildPublicOverviewLines,
@@ -18,7 +19,9 @@ export {
   publicOverviewStops,
 } from "./public-overview-map-model.ts";
 
-function markerKind(type: string): "activity" | "carRental" | "city" | "hotel" | "meal" {
+function markerKind(type: string, endpoint?: "departure" | "arrival"): MarkerKind {
+  if (endpoint === "departure") return "flightDeparture";
+  if (endpoint === "arrival") return "flightArrival";
   if (type === "location") return "city";
   if (type === "hotel") return "hotel";
   if (type === "meal") return "meal";
@@ -36,7 +39,7 @@ export function buildPublicMarkers(
       if (item.type === "location") return [];
       if (typeof item.place?.latitude !== "number" || typeof item.place.longitude !== "number")
         return [];
-      const kind = markerKind(item.type);
+      const kind = markerKind(item.type, item.flightEndpoint?.role);
       const title = kind === "carRental" ? translateMessage(locale, item.title) : item.title;
       return [
         {

@@ -112,7 +112,7 @@ export function PublicTable({
               </div>
               {columns.map((column, columnIndex) => {
                 const items = day.items
-                  .filter((item) => column.types.includes(item.type))
+                  .filter((item) => column.types.includes(item.type) && !item.flightEndpoint)
                   .sort((left, right) => left.sortOrder - right.sortOrder);
                 return (
                   <div

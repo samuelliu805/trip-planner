@@ -19,8 +19,15 @@ export function PublicTimelineNode({
   const { t } = useI18n();
   const { item } = node;
   const title = item.type === "car_rental" ? t(item.title) : item.title;
+  const category = item.flightEndpoint
+    ? item.flightEndpoint.role === "departure"
+      ? "Flight departure"
+      : "Flight arrival"
+    : publicItemTypeLabels[item.type];
   const schedule =
-    item.scheduleLabel ??
+    (item.flightEndpoint?.date
+      ? `${item.flightEndpoint.date}${item.startTime ? ` · ${item.startTime.slice(0, 5)}` : ""}`
+      : item.scheduleLabel) ??
     (item.startTime && item.endTime
       ? `${item.startTime.slice(0, 5)}–${item.endTime.slice(0, 5)}`
       : undefined);
@@ -50,7 +57,7 @@ export function PublicTimelineNode({
             <span aria-hidden="true" className="timeline-node-mobile-label-v4">
               <span className="timeline-node-mobile-key-v4">{node.gutterLabel}</span>
               <span className="timeline-node-mobile-type-v4">
-                <Localized value={publicItemTypeLabels[item.type]} />
+                <Localized value={category} />
               </span>
             </span>
             <span className="timeline-node-copy-v4">
@@ -67,7 +74,7 @@ export function PublicTimelineNode({
               ) : null}
             </span>
             <span className="timeline-node-type-v4">
-              <Localized value={publicItemTypeLabels[item.type]} />
+              <Localized value={category} />
             </span>
           </button>
           <PublicItemMediaGallery media={node.media} variant="timeline" />

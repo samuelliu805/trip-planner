@@ -2,6 +2,7 @@
 
 import { useIsMutating, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isMatrixVisibleItem } from "@/features/itinerary/flight-endpoints";
 
 import {
   categories,
@@ -111,7 +112,11 @@ export function usePlannerWorkspaceController({
         .flatMap((day) =>
           categories
             .slice(visibleSelectionBounds.left, visibleSelectionBounds.right + 1)
-            .flatMap((category) => day.items.filter((item) => category.types.includes(item.type))),
+            .flatMap((category) =>
+              day.items.filter(
+                (item) => category.types.includes(item.type) && isMatrixVisibleItem(item),
+              ),
+            ),
         ),
     [
       projectedWorkspace.days,

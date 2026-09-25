@@ -4952,14 +4952,15 @@ async function loadPersistedAmapEvidence(tripId) {
     () =>
       db
         .from("itinerary_items")
-        .select("id,place_id,title")
+        .select("id,place_id,title,details,day_id,sort_order")
         .eq("trip_id", tripId)
         .eq("type", "activity"),
     "application E2E AMap activities",
   );
-  const placeIds = (Array.isArray(items) ? items : [items])
-    .map(({ place_id: placeId }) => placeId)
-    .filter(Boolean);
+  const activityRows = Array.isArray(items) ? items : [items];
+  const flightStops = activityRows.filter(({ details }) => details?.flightEndpointRole);
+  const ordinaryActivities = activityRows.filter(({ details }) => !details?.flightEndpointRole);
+  const placeIds = ordinaryActivities.map(({ place_id: placeId }) => placeId).filter(Boolean);
   const places = placeIds.length
     ? await controlledData(
         () =>
@@ -5000,7 +5001,8 @@ async function loadPersistedAmapEvidence(tripId) {
     : [];
   return {
     calculations: Array.isArray(calculations) ? calculations : [calculations],
-    items: Array.isArray(items) ? items : [items],
+    flightStops,
+    items: ordinaryActivities,
     places: Array.isArray(places) ? places : [places],
     stops: Array.isArray(stops) ? stops : [stops],
   };
@@ -5023,6 +5025,24 @@ async function loadPersistedShareCount(tripId) {
 function assertPersistedAmapPlaces(evidence) {
   assert.equal(evidence.items.length, 3, "The real UI did not persist all AMap activities.");
   assert.equal(evidence.places.length, 3, "The real UI did not persist all AMap place rows.");
+  assert.equal(evidence.flightStops.length, 4, "The flights did not create both endpoint stops.");
+  for (const parentId of new Set(
+    evidence.flightStops.map(({ details }) => details.flightEndpointParentId),
+  )) {
+    const stops = evidence.flightStops.filter(
+      ({ details }) => details.flightEndpointParentId === parentId,
+    );
+    assert.deepEqual(stops.map(({ details }) => details.flightEndpointRole).sort(), [
+      "arrival",
+      "departure",
+    ]);
+    assert.equal(stops[0].day_id, stops[1].day_id, "Flight stops moved to different Plan days.");
+    assert.ok(
+      stops.find(({ details }) => details.flightEndpointRole === "departure").sort_order <
+        stops.find(({ details }) => details.flightEndpointRole === "arrival").sort_order,
+      "Flight arrival appears before departure.",
+    );
+  }
   for (const place of evidence.places) {
     assert.equal(place.source, "amap");
     assert.equal(place.coordinate_system, "wgs84");

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 217,
+  "publicFunctionCount": 218,
   "catalog": [
     {
       "schema": "public",
@@ -1496,6 +1496,16 @@
     {
       "schema": "public",
       "signature": "get_public_itinerary_v4_without_amap_geometry(uuid)",
+      "arguments": [{ "name": "shared_token", "type": "uuid" }],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
+    },
+    {
+      "schema": "public",
+      "signature": "get_public_itinerary_v4_without_flight_endpoints(uuid)",
       "arguments": [{ "name": "shared_token", "type": "uuid" }],
       "returns": "jsonb",
       "securityDefiner": true,
@@ -3290,6 +3300,7 @@
     "bump_content_from_day()",
     "bump_content_from_item_link()",
     "bump_day_content_from_route_child()",
+    "bump_flight_endpoint_membership()",
     "bump_trip_content_version()",
     "bump_variant_day_content_version()",
     "collaboration_identifier_user_id(text)",
@@ -3298,7 +3309,9 @@
     "complete_trip_operation(uuid,uuid,jsonb)",
     "complete_wrapped_operation(uuid,uuid,uuid,text,text,uuid,text,jsonb)",
     "day_route_plan_structure_is_canonical(uuid)",
+    "enforce_flight_endpoint_order()",
     "ensure_idea_plan_day(uuid,uuid,date)",
+    "guard_flight_endpoint_parent()",
     "guard_trip_owner_identity()",
     "guard_trip_owner_membership()",
     "history_order_item_snapshot(uuid,text)",
@@ -3316,6 +3329,8 @@
     "rebase_confirmed_idea_plan(uuid,uuid,date,integer,uuid)",
     "safe_jsonb_diff(jsonb,jsonb,text)",
     "share_settings_json(public_itinerary_links)",
+    "sync_flight_endpoint_stops(uuid)",
+    "sync_flight_endpoint_stops_trigger()",
     "trip_actor_label()",
     "validate_share_settings(uuid,integer,text,integer,text,uuid,integer,integer)",
     "variant_trip_id(uuid)"
