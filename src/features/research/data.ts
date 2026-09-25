@@ -42,7 +42,7 @@ export function researchItemFromRow(row: ResearchItemRow): ResearchItem {
 
 export async function getResearchPlanSnapshot(tripId: string, variantId: string) {
   const database = await getRelationalDatabase();
-  const [daysResult, itemsResult] = await runServerReads([
+  const [daysResult, itemsResult, variantResult] = await runServerReads([
     () =>
       database
         .from("trip_days")
@@ -57,13 +57,21 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
         .eq("variant_id", variantId)
         .order("day_id", { ascending: true })
         .order("sort_order", { ascending: true }),
+    () =>
+      database
+        .from("route_variants")
+        .select("name")
+        .eq("trip_id", tripId)
+        .eq("id", variantId)
+        .maybeSingle(),
   ]);
-  if (daysResult.error || itemsResult.error)
+  if (daysResult.error || itemsResult.error || variantResult.error || !variantResult.data)
     return {
       data: null,
       error:
         daysResult.error?.message ??
         itemsResult.error?.message ??
+        variantResult.error?.message ??
         "The selected Plan could not be loaded.",
     };
 
@@ -82,6 +90,7 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
         items: itemsByDay.get(day.id) ?? [],
       })),
       variantId,
+      variantName: variantResult.data.name,
     } satisfies ResearchPlanSnapshot,
     error: null,
   };

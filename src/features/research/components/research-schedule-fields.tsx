@@ -35,12 +35,12 @@ export function ResearchDateTimeField({
         <Localized value={label} />
       </Label>
       <div
-        className="grid min-w-0 max-w-full grid-cols-[minmax(0,1.4fr)_minmax(7rem,0.85fr)] gap-2"
+        className="grid min-w-0 max-w-full grid-cols-[minmax(0,4fr)_minmax(0,5fr)] gap-2"
         data-research-schedule-control=""
       >
         <Input
           aria-label={t("{label} date", { label: t(label) })}
-          className="planner-native-datetime-input h-[3.75rem] rounded-xl px-3 text-base"
+          className="planner-native-datetime-input h-[3.75rem] min-w-0 rounded-xl px-2 text-base"
           id={`${id}-date`}
           min={minDate || undefined}
           name={dateName}
@@ -50,7 +50,7 @@ export function ResearchDateTimeField({
         />
         <Input
           aria-label={t("{label} time (optional)", { label: t(label) })}
-          className="planner-native-time-input h-[3.75rem] rounded-xl px-3 text-base"
+          className="planner-native-time-input h-[3.75rem] min-w-0 rounded-xl px-2 text-base"
           name={timeName}
           onChange={(event) => onTimeChange(event.target.value)}
           type="time"

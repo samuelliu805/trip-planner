@@ -42,3 +42,33 @@ export function PlanDaySelect({
     </Select>
   );
 }
+
+export function PlanAnchorDaySelect({
+  days,
+  onChange,
+  value,
+}: {
+  days: ResearchPlanDay[];
+  onChange: (dayNumber: number) => void;
+  value: number | null;
+}) {
+  const { t } = useI18n();
+  return (
+    <Select
+      onValueChange={(next) => onChange(Number(next))}
+      value={value ? String(value) : undefined}
+    >
+      <SelectTrigger aria-label={t("Plan day")} className="mt-1 min-h-11 bg-card font-medium">
+        <SelectValue placeholder={t("Choose a Day")} />
+      </SelectTrigger>
+      <SelectContent>
+        {days.map((day) => (
+          <SelectItem key={day.id} value={String(day.dayNumber)}>
+            {t("Day {number}", { number: day.dayNumber })}
+            {day.date ? ` · ${day.date}` : ` · ${t("No dates")}`}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}

@@ -29,7 +29,7 @@ import { applySingleIdea, applySingleIdeaWithConfirmedCalendar } from "../idea-a
 import { applySingleIdeaToNewVariant } from "../idea-plan-variant-actions";
 import { anchoredPlanDateChange, ideaJourneyDates, newPlanDateRange } from "../idea-plan-dates";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
-import { PlanDaySelect } from "./plan-day-select";
+import { PlanAnchorDaySelect, PlanDaySelect } from "./plan-day-select";
 import { IdeaJourneyPreviewList } from "./idea-journey-preview-list";
 
 export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: ResearchPlanSnapshot }) {
@@ -156,25 +156,23 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[65dvh] space-y-4 overflow-y-auto px-5 py-4 sm:px-6">
+            <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium">
+              <T
+                message={
+                  dateMode === "new" ? "Copying Plan: {variant}" : "Adding to Plan: {variant}"
+                }
+                values={{ variant: plan.variantName }}
+              />
+            </p>
             <IdeaJourneyPreviewList items={[item]} />
             {needsDateDecision ? (
               <label className="block text-base font-medium">
                 <T message="First flight on" />
-                <Select
-                  onValueChange={(value) => setAnchorDayNumber(Number(value))}
-                  value={anchorDayNumber ? String(anchorDayNumber) : undefined}
-                >
-                  <SelectTrigger className="mt-1 min-h-11 bg-card font-medium">
-                    <SelectValue placeholder={t("Choose a Day")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {plan.days.map((entry) => (
-                      <SelectItem key={entry.id} value={String(entry.dayNumber)}>
-                        {t("Day {number}", { number: entry.dayNumber })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PlanAnchorDaySelect
+                  days={plan.days}
+                  onChange={setAnchorDayNumber}
+                  value={anchorDayNumber}
+                />
               </label>
             ) : (
               <label className="block text-sm font-medium">
@@ -257,7 +255,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
                 type="button"
                 variant="outline"
               >
-                <T message={dateMode === "new" ? "Back" : "Create another Plan"} />
+                <T message={dateMode === "new" ? "Back" : "Copy Plan and add idea"} />
               </Button>
             ) : null}
             <Button
