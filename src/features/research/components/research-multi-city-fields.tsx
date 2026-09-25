@@ -22,9 +22,11 @@ const blankSegment = (): ResearchSegment => ({
 });
 
 export function ResearchMultiCityFields({
+  journeyType,
   onSegmentsChange,
   segments,
 }: {
+  journeyType: "one_way" | "round_trip" | "multi_city";
   onSegmentsChange: (segments: ResearchSegment[]) => void;
   segments: ResearchSegment[];
 }) {
@@ -95,7 +97,29 @@ export function ResearchMultiCityFields({
       ))}
       <Button
         className="min-h-[3.75rem] w-full"
-        onClick={() => onSegmentsChange([...segments, blankSegment()])}
+        onClick={() =>
+          onSegmentsChange([
+            ...segments.map((segment, index) => ({
+              ...segment,
+              journeyIndex:
+                segment.journeyIndex ??
+                (journeyType === "multi_city"
+                  ? index
+                  : journeyType === "round_trip" && index >= Math.ceil(segments.length / 2)
+                    ? 1
+                    : 0),
+            })),
+            {
+              ...blankSegment(),
+              journeyIndex:
+                journeyType === "multi_city"
+                  ? segments.length
+                  : journeyType === "round_trip"
+                    ? 1
+                    : 0,
+            },
+          ])
+        }
         type="button"
         variant="outline"
       >

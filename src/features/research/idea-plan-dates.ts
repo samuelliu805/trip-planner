@@ -1,22 +1,16 @@
 import type { ResearchItem, ResearchPlanSnapshot, ResearchSegment } from "./types.ts";
 import { addIsoDateDays } from "./date-range.ts";
+import { ideaJourneyPreview } from "./idea-journey-preview.ts";
 
-/** The date of each journey, rather than the overall return or arrival date. */
+/** Dates the Plan must cover, including connections and the final arrival. */
 export function ideaJourneyDates(
   item: Pick<ResearchItem, "category" | "segments" | "journey_type" | "start_date" | "end_date">,
 ) {
   if (item.category !== "flight" && item.category !== "train") return [];
   const segments = Array.isArray(item.segments) ? (item.segments as ResearchSegment[]) : [];
-  const seenJourneys = new Set<number>();
-  const dates = segments
-    .filter((segment, index) => {
-      const journey = segment.journeyIndex ?? (item.journey_type === "multi_city" ? index : 0);
-      if (seenJourneys.has(journey)) return false;
-      seenJourneys.add(journey);
-      return true;
-    })
-    .map((segment) => segment.departureDate)
-    .filter(Boolean);
+  const dates = segments.flatMap((segment) =>
+    [segment.departureDate, segment.arrivalDate].filter((value): value is string => Boolean(value)),
+  );
   if (!dates.length) {
     if (item.start_date) dates.push(item.start_date);
   }
@@ -27,7 +21,9 @@ export function ideaJourneyDates(
 
 export function missingJourneyDates(item: ResearchItem, plan: ResearchPlanSnapshot) {
   const planDates = new Set(plan.days.map((day) => day.date));
-  return ideaJourneyDates(item).filter((date) => !planDates.has(date));
+  return [...new Set(ideaJourneyPreview(item).map((journey) => journey.departureDate))].filter(
+    (date) => Boolean(date) && !planDates.has(date),
+  );
 }
 
 /** Preview the calendar after the first journey is placed on the chosen Day. */

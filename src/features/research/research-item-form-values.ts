@@ -56,6 +56,7 @@ export function researchItemInputFromForm({
         departureTime?: string;
         destination: string;
         origin: string;
+        journeyIndex?: number;
         serviceNumber?: string;
       }> | null
     )?.map((segment) => ({
@@ -71,13 +72,29 @@ export function researchItemInputFromForm({
   );
   const firstSegment = rawSegments[0];
   const lastSegment = rawSegments.at(-1);
+  const journeyType = optional(form, "journeyType") as
+    "one_way" | "round_trip" | "multi_city" | null;
+  const markedOutbound = rawSegments.filter((segment) => segment.journeyIndex === 0);
+  const midpointDestination =
+    journeyType === "round_trip" &&
+    rawSegments.length >= 4 &&
+    rawSegments.length % 2 === 0 &&
+    firstSegment?.origin === lastSegment?.destination
+      ? rawSegments[rawSegments.length / 2 - 1]?.destination
+      : undefined;
+  const outboundDestination =
+    markedOutbound.at(-1)?.destination ??
+    midpointDestination ??
+    item?.destination_text ??
+    firstSegment?.destination;
+  const returnDeparture =
+    rawSegments.find((segment) => segment.journeyIndex === 1)?.departureDate ??
+    (midpointDestination ? rawSegments[rawSegments.length / 2]?.departureDate : undefined);
   const firstDepartureDate = firstPresentIsoDate(
     firstSegment?.departureDate,
     optional(form, "startDate"),
   );
   const lastJourneyDate = firstPresentIsoDate(lastSegment?.arrivalDate, lastSegment?.departureDate);
-  const journeyType = optional(form, "journeyType") as
-    "one_way" | "round_trip" | "multi_city" | null;
   const originText = optional(form, "originText") ?? firstSegment?.origin;
   const returnToPickup = category === "rental" && optional(form, "returnToPickup") === "true";
   const originPlaceId = optional(form, "originPlaceId");
@@ -85,7 +102,7 @@ export function researchItemInputFromForm({
   const destinationText = returnToPickup
     ? originText
     : (optional(form, "destinationText") ??
-      (journeyType === "multi_city" ? lastSegment?.destination : firstSegment?.destination));
+      (journeyType === "multi_city" ? lastSegment?.destination : outboundDestination));
   const destinationPlaceId = returnToPickup ? originPlaceId : optional(form, "destinationPlaceId");
   const destinationPlaceSnapshot = returnToPickup
     ? originPlaceSnapshot
@@ -111,7 +128,13 @@ export function researchItemInputFromForm({
     destinationText,
     endDate:
       journeyType && journeyType !== "one_way" && rawSegments.length >= 2
-        ? lastJourneyDate
+        ? journeyType === "round_trip"
+          ? firstPresentIsoDate(
+              returnDeparture,
+              rawSegments.length > 2 ? item?.end_date : lastSegment?.departureDate,
+              lastSegment?.departureDate,
+            )
+          : lastJourneyDate
         : optional(form, "endDate"),
     endTime: firstSegment?.arrivalTime ?? optional(form, "endTime"),
     itemId: item?.itinerary_item_id ?? context?.itemId,

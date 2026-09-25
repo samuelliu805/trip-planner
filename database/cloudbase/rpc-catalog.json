@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "publicFunctionCount": 214,
+  "publicFunctionCount": 217,
   "catalog": [
     {
       "schema": "public",
@@ -19,6 +19,23 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_idea_choice_v1_phase_arrival_days(uuid,uuid,uuid,uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_comparison_id", "type": "uuid" },
+        { "name": "target_choice_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -266,6 +283,23 @@
       "safeSearchPath": true,
       "category": "external_authenticated",
       "authorization": "member_guard"
+    },
+    {
+      "schema": "public",
+      "signature": "apply_single_idea_v1_phase_arrival_days(uuid,uuid,uuid,uuid,uuid,uuid)",
+      "arguments": [
+        { "name": "target_trip_id", "type": "uuid" },
+        { "name": "target_variant_id", "type": "uuid" },
+        { "name": "target_research_item_id", "type": "uuid" },
+        { "name": "requested_day_id", "type": "uuid" },
+        { "name": "requested_before_item_id", "type": "uuid" },
+        { "name": "target_operation_id", "type": "uuid" }
+      ],
+      "returns": "jsonb",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -1518,6 +1552,20 @@
       "safeSearchPath": true,
       "category": "external_anonymous",
       "authorization": "public_token_snapshot"
+    },
+    {
+      "schema": "public",
+      "signature": "import_guest_trip_v1_phase_ideas(uuid,jsonb,text)",
+      "arguments": [
+        { "name": "guest_draft_id", "type": "uuid" },
+        { "name": "guest_payload", "type": "jsonb" },
+        { "name": "guest_locale", "type": "text" }
+      ],
+      "returns": "uuid",
+      "securityDefiner": true,
+      "safeSearchPath": true,
+      "category": "internal_helper",
+      "authorization": null
     },
     {
       "schema": "public",
@@ -3257,6 +3305,7 @@
     "history_order_snapshot_list(uuid,jsonb)",
     "history_readable_order_changes(uuid,jsonb)",
     "idea_journey_groups(jsonb,text,text,text,date,date)",
+    "idea_journey_groups_phase_direction_repair(jsonb,text,text,text,date,date)",
     "insert_collaboration_member(uuid,text,text)",
     "is_trip_member(uuid)",
     "normalize_trip_history_order()",

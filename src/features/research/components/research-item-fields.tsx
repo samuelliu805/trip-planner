@@ -198,7 +198,8 @@ function JourneyFieldPages({
           onSegmentsChange={setSegments}
           segments={segments}
         />
-        {journeyType !== "multi_city" ? (
+        {journeyType !== "multi_city" &&
+        segments.length <= (journeyType === "round_trip" ? 2 : 1) ? (
           <ResearchSegmentScheduleFields
             category={category}
             onSegmentsChange={setSegments}

@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { createGuestTripDraft } from "./defaults.ts";
+import { applyGuestIdea } from "./apply-idea.ts";
+import { removeGuestIdea, saveGuestIdea } from "./idea-records.ts";
 import { GuestDraftMutations } from "./mutations.ts";
 import { guestTripDraftSchema, migrateGuestTripDraft } from "./schema.ts";
 import {
@@ -48,6 +50,58 @@ function ids(start = 0) {
 function draft(region: "cn" | "global" = "global", idStart = 0) {
   return createGuestTripDraft(region, "UTC", new Date("2026-09-05T12:00:00.000Z"), ids(idStart));
 }
+
+test("guest flight ideas survive local storage and add separate outbound and return items", () => {
+  const memory = new MemoryStorage();
+  const storage = new GuestDraftStorage("global", memory as Storage);
+  const initial = draft();
+  const createId = ids(100);
+  const saved = saveGuestIdea(
+    initial,
+    {
+      category: "flight",
+      destinationText: "SYD",
+      endDate: "2027-01-02",
+      journeyType: "round_trip",
+      operationId: createId(),
+      originText: "SHA",
+      segments: [
+        { origin: "SHA", destination: "HAK", departureDate: "2026-12-25", journeyIndex: 0 },
+        { origin: "HAK", destination: "SYD", departureDate: "2026-12-26", journeyIndex: 0 },
+        { origin: "SYD", destination: "HAK", departureDate: "2027-01-02", journeyIndex: 1 },
+        { origin: "HAK", destination: "SHA", departureDate: "2027-01-03", journeyIndex: 1 },
+      ],
+      sourceUrl: "https://www.google.com/travel/flights/booking",
+      startDate: "2026-12-25",
+      title: "SHA to SYD round trip",
+      tripId: initial.draftId,
+    },
+    undefined,
+    createId,
+  );
+  storage.save(saved.draft, null);
+  const restored = storage.load()!;
+  assert.equal(restored.ideas.length, 1);
+  assert.deepEqual(
+    restored.ideas[0].values.segments.map((leg) => leg.journeyIndex),
+    [0, 0, 1, 1],
+  );
+  const applied = applyGuestIdea(restored, saved.idea.id, createId);
+  const items = applied.workspace.days.flatMap((day) => day.items);
+  assert.deepEqual(
+    items.map((item) => item.title),
+    ["SHA → SYD", "SYD → SHA"],
+  );
+  assert.deepEqual(
+    items.map((item) => applied.workspace.days.find((day) => day.id === item.day_id)?.date),
+    ["2026-12-25", "2027-01-02"],
+  );
+  assert.equal(applied.trip.start_date, "2026-12-25");
+  assert.equal(applied.trip.end_date, "2027-01-03");
+  assert.equal(restored.workspace.days[0].items.length, 0);
+  assert.equal(guestTripDraftSchema.parse(applied).ideas.length, 1);
+  assert.equal(removeGuestIdea(applied, saved.idea.id).ideas.length, 0);
+});
 
 test("guest drafts are region-isolated, versioned, and runtime validated", () => {
   const value = draft();

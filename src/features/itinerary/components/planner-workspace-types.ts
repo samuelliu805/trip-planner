@@ -13,6 +13,7 @@ export type PlannerWorkspaceProps = {
   deleteError: boolean;
   exchangeRates: ExchangeRateTable | null;
   guestExperience?: {
+    onOpenIdeas: () => void;
     onSaveToAccount: () => void;
     onShare: () => void;
     saveStatus: ReactNode;

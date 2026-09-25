@@ -228,6 +228,8 @@ export const landingZhCN: Record<string, string> = {
   "Bring the pieces together.": "现在就把零散信息收进来。",
   "Start locally. Create an account when you are ready to keep planning across devices.":
     "先在这台设备上开始规划。想跨设备继续时，再登录保存到账号。",
+  "Collect ideas and build your day plan locally. Save to an account when you are ready.":
+    "先在本机收集想法、安排行程，准备好后再保存到账号。",
   Privacy: "隐私",
   Terms: "条款",
   Support: "支持",

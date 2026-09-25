@@ -55,7 +55,7 @@ export function LandingPage({
           <T message="Ready when you are." />
         </h2>
         <p>
-          <T message="Start locally. Create an account when you are ready to keep planning across devices." />
+          <T message="Collect ideas and build your day plan locally. Save to an account when you are ready." />
         </p>
         <Button asChild size="lg">
           <Link href={startHref}>

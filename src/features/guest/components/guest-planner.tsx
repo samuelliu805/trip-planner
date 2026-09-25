@@ -20,6 +20,7 @@ import { GuestDraftMutations } from "../mutations";
 import type { GuestIntent, GuestRegion, GuestTripDraft } from "../schema";
 import { useGuestDraft } from "../use-guest-draft";
 import { GuestAccountGateDialog, type GuestGateAction } from "./guest-account-gate-dialog";
+import { GuestIdeasWorkspace } from "./guest-ideas-workspace";
 import { GuestSaveStatus } from "./guest-save-status";
 import { GuestStorageNotice } from "./guest-storage-notice";
 import { GuestTripForm, type GuestTripSettings } from "./guest-trip-form";
@@ -46,6 +47,7 @@ export function GuestPlanner({
   const [gateItemId, setGateItemId] = useState<string>();
   const [claimError, setClaimError] = useState<string>();
   const [claimPending, setClaimPending] = useState(false);
+  const [section, setSection] = useState<"plan" | "ideas">("plan");
   const automaticClaimStarted = useRef(false);
   const mutations = useMemo(() => new GuestDraftMutations(local.commit), [local.commit]);
   const activeDraftId = local.draft?.draftId;
@@ -232,27 +234,43 @@ export function GuestPlanner({
         data-guest-planner=""
       >
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          <PlannerMapProvider>
-            <PlannerWorkspace
-              accountEmail="Local guest"
-              deleteError={false}
-              exchangeRates={null}
-              guestExperience={{
-                onSaveToAccount: () => openGate("save"),
-                onShare: () => openGate("share"),
-                saveStatus: <GuestSaveStatus state={local.saveState} />,
-              }}
-              initialResearchItems={[]}
-              initialResearchSelections={[]}
-              initialVariants={[draft.workspace.variant]}
-              initialWorkspace={draft.workspace}
-              settings={
-                <GuestTripForm key={draft.trip.updated_at} onSave={updateTrip} trip={draft.trip} />
-              }
-              shareAttachmentsEnabled={false}
-              trip={draft.trip}
+          {section === "ideas" ? (
+            <GuestIdeasWorkspace
+              commit={local.commit}
+              draft={draft}
+              onOpenPlan={() => setSection("plan")}
+              onSaveToAccount={() => openGate("save")}
+              onShare={() => openGate("share")}
+              saveState={local.saveState}
             />
-          </PlannerMapProvider>
+          ) : (
+            <PlannerMapProvider>
+              <PlannerWorkspace
+                accountEmail="Local guest"
+                deleteError={false}
+                exchangeRates={null}
+                guestExperience={{
+                  onOpenIdeas: () => setSection("ideas"),
+                  onSaveToAccount: () => openGate("save"),
+                  onShare: () => openGate("share"),
+                  saveStatus: <GuestSaveStatus state={local.saveState} />,
+                }}
+                initialResearchItems={[]}
+                initialResearchSelections={[]}
+                initialVariants={[draft.workspace.variant]}
+                initialWorkspace={draft.workspace}
+                settings={
+                  <GuestTripForm
+                    key={draft.trip.updated_at}
+                    onSave={updateTrip}
+                    trip={draft.trip}
+                  />
+                }
+                shareAttachmentsEnabled={false}
+                trip={draft.trip}
+              />
+            </PlannerMapProvider>
+          )}
         </div>
         <div className="fixed bottom-3 left-3 z-[70] rounded-full border bg-background/95 px-3 py-2 shadow-sm lg:hidden">
           <GuestSaveStatus state={local.saveState} />

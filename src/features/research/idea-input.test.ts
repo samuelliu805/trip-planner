@@ -10,6 +10,11 @@ import {
 } from "./idea-input.ts";
 import { ideaPlaceQuery } from "./idea-place-query.ts";
 import { inferredRentalCompany } from "./idea-rental-company.ts";
+import { researchItemInputFromForm } from "./research-item-form-values.ts";
+import { createResearchItemSchema } from "./schema.ts";
+import { ideaJourneyPreview } from "./idea-journey-preview.ts";
+import { ideaJourneyDates } from "./idea-plan-dates.ts";
+import type { ResearchItem } from "./types.ts";
 
 test("classifies known booking URLs without inventing itinerary fields", () => {
   const cases = [
@@ -383,6 +388,118 @@ test("Google Flights booking links expose selected flights from nested tfs field
       },
     ],
   });
+});
+
+test("SHA to SYD booking retains both connected directions without inventing clock times", () => {
+  const url =
+    "https://www.google.com/travel/flights/booking?tfs=CBwQAhqbARIKMjAyNi0xMi0yNSIgCgNTSEESCjIwMjYtMTItMjUaA0hBSyoCSFUyBDczMjAiHwoDSEFLEgoyMDI2LTEyLTI2GgNTWUQqAkhVMgM3NzUoAWoMCAMSCC9tLzBoc3FmagwIAhIIL20vMDZ3amZqDAgCEggvbS8wMTkxNGoHCAESA0NBTmoHCAESA0hLR3IMCAISCC9tLzA2eTU3GpsBEgoyMDI3LTAxLTAyIh8KA1NZRBIKMjAyNy0wMS0wMhoDSEFLKgJIVTIDNzc2IiAKA0hBSxIKMjAyNy0wMS0wMxoDU0hBKgJIVTIENzMxOSgBagwIAhIIL20vMDZ5NTdyDAgDEggvbS8waHNxZnIMCAISCC9tLzA2d2pmcgwIAhIIL20vMDE5MTRyBwgBEgNDQU5yBwgBEgNIS0dAAUgDYNCMAXABggELCP___________wGYAQGyAQkSBy9tLzBuMno&curr=CNY";
+  const parsed = parseReliableIdeaFields(url);
+  assert.deepEqual(
+    [
+      parsed.originText,
+      parsed.destinationText,
+      parsed.startDate,
+      parsed.endDate,
+      parsed.journeyType,
+    ],
+    ["SHA", "SYD", "2026-12-25", "2027-01-02", "round_trip"],
+  );
+  assert.deepEqual(
+    parsed.segments?.map(({ origin, destination, departureDate, journeyIndex }) => [
+      origin,
+      destination,
+      departureDate,
+      journeyIndex,
+    ]),
+    [
+      ["SHA", "HAK", "2026-12-25", 0],
+      ["HAK", "SYD", "2026-12-26", 0],
+      ["SYD", "HAK", "2027-01-02", 1],
+      ["HAK", "SHA", "2027-01-03", 1],
+    ],
+  );
+  assert.ok(
+    parsed.segments?.every(
+      (segment) =>
+        !Object.hasOwn(segment, "departureTime") && !Object.hasOwn(segment, "arrivalTime"),
+    ),
+  );
+});
+
+test("saved and edited connecting round trips retain the turn and return departure", () => {
+  const segments = [
+    { origin: "SHA", destination: "HAK", departureDate: "2026-12-25", journeyIndex: 0 },
+    { origin: "HAK", destination: "SYD", departureDate: "2026-12-26", journeyIndex: 0 },
+    { origin: "SYD", destination: "HAK", departureDate: "2027-01-02", journeyIndex: 1 },
+    { origin: "HAK", destination: "SHA", departureDate: "2027-01-03", journeyIndex: 1 },
+  ];
+  const tripId = "00000000-0000-4000-8000-000000000001";
+  const saved = createResearchItemSchema.parse({
+    category: "flight",
+    destinationText: "SYD",
+    endDate: "2027-01-02",
+    journeyType: "round_trip",
+    operationId: tripId,
+    originText: "SHA",
+    segments,
+    startDate: "2026-12-25",
+    title: "SHA → SYD",
+    tripId,
+  });
+  assert.deepEqual(
+    saved.segments.map((segment) => segment.journeyIndex),
+    [0, 0, 1, 1],
+  );
+  const form = new FormData();
+  form.set(
+    "segments",
+    JSON.stringify(
+      segments.map((leg) => ({
+        origin: leg.origin,
+        destination: leg.destination,
+        departureDate: leg.departureDate,
+      })),
+    ),
+  );
+  form.set("journeyType", "round_trip");
+  const edited = researchItemInputFromForm({
+    category: "flight",
+    form,
+    item: { destination_text: "HAK", end_date: "2027-01-03" } as ResearchItem,
+    tripId,
+  });
+  assert.equal(edited.destinationText, "SYD");
+  assert.equal(edited.endDate, "2027-01-02");
+});
+
+test("apply previews repair an old stopover destination and include the final arrival", () => {
+  const item = {
+    category: "flight",
+    origin_text: "SHA",
+    destination_text: "HAK",
+    journey_type: "round_trip",
+    title: "SHA return",
+    start_date: "2026-12-25",
+    end_date: "2027-01-03",
+    segments: [
+      { origin: "SHA", destination: "HAK", departureDate: "2026-12-25" },
+      { origin: "HAK", destination: "SYD", departureDate: "2026-12-26" },
+      { origin: "SYD", destination: "HAK", departureDate: "2027-01-02" },
+      { origin: "HAK", destination: "SHA", departureDate: "2027-01-03", arrivalDate: "2027-01-03" },
+    ],
+  } as unknown as ResearchItem;
+  assert.deepEqual(
+    ideaJourneyPreview(item).map(({ origin, destination, departureDate }) => [
+      origin,
+      destination,
+      departureDate,
+    ]),
+    [
+      ["SHA", "SYD", "2026-12-25"],
+      ["SYD", "SHA", "2027-01-02"],
+    ],
+  );
+  assert.equal(ideaJourneyDates(item).at(-1), "2027-01-03");
 });
 
 test("explicit provider URL price and currency parameters are preserved", () => {
