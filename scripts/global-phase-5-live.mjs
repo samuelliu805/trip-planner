@@ -721,6 +721,46 @@ async function run() {
         tripId: aTrip,
       });
       if (guestTripId) tripIds.push(guestTripId);
+      const flightSession = await signIn(admin, userA);
+      ok(
+        await userA.client.auth.setSession({
+          access_token: flightSession.access_token,
+          refresh_token: flightSession.refresh_token,
+        }),
+        "restore owner for flight share snapshot",
+      );
+      const flightVariantVersion = rows(
+        await userA.client.from("route_variants").select("version").eq("id", variant.id),
+        "flight Plan version",
+      )[0].version;
+      const flightShare = ok(
+        await userA.client.rpc("create_share_page_v4", {
+          expected_variant_version: flightVariantVersion,
+          target_operation_id: randomUUID(),
+          target_variant_id: variant.id,
+        }),
+        "publish flight endpoint share",
+      );
+      const flightProjection = ok(
+        await anonymous.rpc("get_public_share_page_v3", {
+          shared_token: flightShare.publicToken,
+        }),
+        "read public flight endpoint snapshot",
+      );
+      const endpointDay = flightProjection.days.find(
+        (day) =>
+          day.items.some((item) => item.flightEndpoint?.role === "departure") &&
+          day.items.some((item) => item.flightEndpoint?.role === "arrival"),
+      );
+      assert.ok(endpointDay, "Published flight did not retain both stops on one Plan day.");
+      const endpoints = endpointDay.items.filter((item) => item.flightEndpoint);
+      assert.ok(endpoints.every((item) => item.type === "activity"));
+      assert.ok(
+        endpoints.find((item) => item.flightEndpoint.role === "departure").sortOrder <
+          endpoints.find((item) => item.flightEndpoint.role === "arrival").sortOrder,
+        "Published flight arrival must follow departure in manual order.",
+      );
+      ok(await userA.client.auth.signOut(), "flight share owner logout");
     }
     const expired = await anonymous.auth.setSession({
       access_token: "expired.invalid.token",
