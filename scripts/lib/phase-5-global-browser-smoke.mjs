@@ -1475,7 +1475,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     "closed",
     `Dated Google flight was not added to Plan: ${datedApplyResult.text ?? "unknown error"}`,
   );
-  await navigate(browser, baseUrl, `/trips/${tripId}`);
+  await navigate(browser, baseUrl, `/trips/${tripId}?variant=${originalVariantId}`);
   await waitFor(
     browser,
     `(() => {
@@ -1487,6 +1487,12 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
       return Boolean(outbound && inbound && outbound !== inbound);
     })()`,
     "both Google Flights directions visible in Plan",
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)} &&
+      document.querySelector('[data-cell="0-2"]')?.innerText.includes('Shanghai Pudong – HND')`,
+    "outbound flight occupies the original Plan's first Day",
   );
   await clickElement(
     browser,
