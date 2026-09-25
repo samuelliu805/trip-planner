@@ -96,6 +96,7 @@ const transportDetailsSchema = z
     arrivalDate: optionalText(10),
     arrivalTime: optionalTime,
     departureDate: optionalText(10),
+    departureTime: optionalTime,
     destination: optionalText(200),
     destinationPlace: placeSnapshotSchema.optional().nullable(),
     mode: z.enum([

@@ -1844,6 +1844,14 @@ test("overnight flight saves its arrival clock time in details without a same-da
   };
   assert.equal(createItineraryItemSchema.safeParse(flight).success, true);
   assert.equal(
+    createItineraryItemSchema.safeParse({
+      ...flight,
+      type: "transport",
+      details: { ...flight.details, mode: "flight" },
+    }).success,
+    true,
+  );
+  assert.equal(
     updateItineraryItemSchema.safeParse({
       ...flight,
       id: ids.item,
