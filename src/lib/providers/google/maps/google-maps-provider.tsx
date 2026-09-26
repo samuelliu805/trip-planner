@@ -61,11 +61,10 @@ export function GoogleMapsProvider({ children }: { children: React.ReactNode }) 
         authReferrerPolicy="origin"
         key={locale}
         language={locale}
-        libraries={["places", "marker"]}
+        libraries={["places"]}
         onError={(error) =>
           setApiError(error instanceof Error ? error.message : "Google Maps could not be loaded.")
         }
-        version="quarterly"
       >
         <GooglePlacesProviderBridge>{children}</GooglePlacesProviderBridge>
       </APIProvider>

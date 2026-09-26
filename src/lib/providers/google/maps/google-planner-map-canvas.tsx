@@ -28,15 +28,8 @@ function GoogleMapReadyContent({
 
   useLayoutEffect(() => {
     if (!map) return;
-    // A projection can exist before the map's marker pane is mounted. Wait for
-    // the first rendered frame before attaching AdvancedMarkerElements.
-    const showWhenRendered = () => setReadyMap(map);
-    const tilesListener = map.addListener("tilesloaded", showWhenRendered);
-    const idleListener = map.addListener("idle", showWhenRendered);
-    return () => {
-      tilesListener.remove();
-      idleListener.remove();
-    };
+    const listener = map.addListener("tilesloaded", () => setReadyMap(map));
+    return () => listener.remove();
   }, [map]);
 
   return readyMap === map ? children : null;
