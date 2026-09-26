@@ -71,13 +71,14 @@ export function ManageRouteVariantsDialog({
       queryClient.setQueryData(variantListQueryKey(tripId), latest.data);
       const current = latest.data.find(({ id }) => id === variant.id);
       if (!current) return;
-      await primaryMutation.mutateAsync({
+      const result = await primaryMutation.mutateAsync({
         expectedVersion: current.version,
         operationId: newTelemetryOperationId(),
         tripId,
         variantId: variant.id,
       });
-      setNotice(t("{variant} is now the primary Plan.", { variant: variant.name }));
+      const saved = result.variants.find(({ id }) => id === variant.id);
+      setNotice(t("{variant} is now the primary Plan.", { variant: saved?.name ?? current.name }));
       router.refresh();
     } catch (caught) {
       setConflict(isItineraryConflict(caught));

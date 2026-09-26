@@ -2437,17 +2437,16 @@ async function openManageVariantsDialog(browser) {
   );
 }
 
-async function assertMobileManagePlansConflict(browser, width) {
+async function assertMobileManagePlansResult(browser, width) {
   const evidence = await evaluate(
     browser,
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"]')]
         .find((node) => node.textContent.includes('Manage Plans'));
       const overlay = dialog?.previousElementSibling;
-      const reload = [...(dialog?.querySelectorAll('button') ?? [])]
-        .find((button) => button.textContent.trim() === 'Reload latest');
+      const status = dialog?.querySelector('[role="status"]');
       const dialogRect = dialog?.getBoundingClientRect();
-      const reloadRect = reload?.getBoundingClientRect();
+      const statusRect = status?.getBoundingClientRect();
       const frozen = document.querySelector('.matrix-grid-header');
       return {
         dialogZ: Number.parseInt(getComputedStyle(dialog).zIndex, 10),
@@ -2455,17 +2454,15 @@ async function assertMobileManagePlansConflict(browser, width) {
         fits: Boolean(dialogRect) && dialogRect.left >= 0 && dialogRect.right <= innerWidth && dialogRect.top >= 0 && dialogRect.bottom <= innerHeight,
         frozenZ: frozen ? Number.parseInt(getComputedStyle(frozen).zIndex, 10) : 0,
         overlayZ: Number.parseInt(getComputedStyle(overlay).zIndex, 10),
-        reloadFits: Boolean(dialogRect && reloadRect) && reloadRect.left >= dialogRect.left && reloadRect.right <= dialogRect.right,
-        reloadHeight: reloadRect?.height ?? 0,
-        reloadVisible: Boolean(reload && reload.getClientRects().length && !reload.disabled),
+        statusFits: Boolean(dialogRect && statusRect) && statusRect.left >= dialogRect.left && statusRect.right <= dialogRect.right,
+        statusVisible: Boolean(status && status.getClientRects().length),
       };
     })()`,
   );
   assert.equal(evidence.fits, true, `Manage Plans escaped ${width}px viewport.`);
   assert.equal(evidence.documentFits, true, `Manage Plans overflowed at ${width}px.`);
-  assert.equal(evidence.reloadVisible, true, `Reload latest was unavailable at ${width}px.`);
-  assert.equal(evidence.reloadFits, true, `Reload latest escaped Manage Plans at ${width}px.`);
-  assert.ok(evidence.reloadHeight >= 44, `Reload latest was below 44px at ${width}px.`);
+  assert.equal(evidence.statusVisible, true, `Manage Plans result was unavailable at ${width}px.`);
+  assert.equal(evidence.statusFits, true, `Manage Plans result escaped at ${width}px.`);
   assert.ok(
     evidence.overlayZ > evidence.frozenZ,
     `Manage Plans overlay was under Matrix at ${width}px.`,
@@ -2476,7 +2473,7 @@ async function assertMobileManagePlansConflict(browser, width) {
   );
 }
 
-async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdVariant) {
+async function verifySetPrimaryConflictRetryThroughUi(browser, tripId, createdVariant) {
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
 
@@ -2559,44 +2556,28 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
     await browser.cdp.send("Fetch.disable", {}, browser.sessionId).catch(() => undefined);
   }
 
-  const conflictResult = await waitFor(
+  const retryResult = await waitFor(
     browser,
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"]')]
         .find((node) => node.textContent.includes('Manage Plans'));
-      const reload = [...(dialog?.querySelectorAll('button') ?? [])]
-        .find((button) => button.textContent.trim() === 'Reload latest' && !button.disabled);
-      if (reload) return { kind: 'conflict' };
       const alert = dialog?.querySelector('[role="alert"]');
       if (alert?.textContent.trim()) return { kind: 'error', text: alert.textContent.trim() };
       const status = dialog?.querySelector('[role="status"]');
       return status?.textContent.trim() ? { kind: 'status', text: status.textContent.trim() } : null;
     })()`,
-    "Set Primary structured conflict",
+    "Set Primary automatic retry result",
     45_000,
   );
-  assert.deepEqual(conflictResult, { kind: "conflict" });
+  assert.deepEqual(retryResult, { kind: "status", text: `${v2Name} is now the primary Plan.` });
   for (const width of [390, 430]) {
     await browser.cdp.send(
       "Emulation.setDeviceMetricsOverride",
       { deviceScaleFactor: 1, height: width === 390 ? 844 : 932, mobile: true, width },
       browser.sessionId,
     );
-    await assertMobileManagePlansConflict(browser, width);
+    await assertMobileManagePlansResult(browser, width);
   }
-
-  await clickButtonText(browser, "Reload latest");
-  await waitFor(
-    browser,
-    `(() => {
-      const dialog = [...document.querySelectorAll('[role="dialog"]')]
-        .find((node) => node.textContent.includes('Manage Plans'));
-      return dialog?.textContent.includes('Latest Plans loaded. You can retry setting the primary Plan.') &&
-        dialog.textContent.includes(${JSON.stringify(v2Name)}) &&
-        !dialog.querySelector('[role="alert"]');
-    })()`,
-    "Set Primary V2 reload",
-  );
   assert.equal(
     await evaluate(
       browser,
@@ -2604,21 +2585,12 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
         .some((node) => node.textContent.includes('Manage Plans'))`,
     ),
     true,
-    "Manage Plans closed after Set Primary reload.",
-  );
-
-  await clickElement(browser, primaryAction(v2Name), `Set ${v2Name} as primary`);
-  await waitFor(
-    browser,
-    `[...document.querySelectorAll('[role="dialog"] [role="status"]')]
-      .some((node) => node.textContent.includes(${JSON.stringify(`${v2Name} is now the primary Plan.`)}))`,
-    "Set Primary V2 retry success",
-    45_000,
+    "Manage Plans closed after Set Primary automatic retry.",
   );
   const primary = await controlledData(
     () =>
       db.from("route_variants").select("id,is_primary").eq("id", createdVariant.createdVariantId),
-    "Set Primary retry evidence",
+    "Set Primary automatic retry evidence",
   );
   assert.deepEqual(primary, [{ id: createdVariant.createdVariantId, is_primary: true }]);
 
@@ -5359,7 +5331,7 @@ async function run() {
     await saveWalkingTransportThroughUi(browser);
     await verifyMobileTransportEditorScroll(browser);
     let createdVariant = await verifyVariantNavigationThroughUi(browser);
-    createdVariant = await verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdVariant);
+    createdVariant = await verifySetPrimaryConflictRetryThroughUi(browser, tripId, createdVariant);
     await verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant);
     await navigate(browser, `/trips/${tripId}`);
     await navigate(browser, `/trips/${tripId}`);
