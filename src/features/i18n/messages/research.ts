@@ -102,6 +102,7 @@ export const researchZhCN: Record<string, string> = {
   "The trip could not be loaded.": "无法加载这趟旅行。",
   "The idea could not be added to Plan.": "无法将想法加入行程。",
   "The new Plan could not be created.": "无法创建新行程方案。",
+  "The idea could not be added to the new Plan.": "无法将想法加入新行程方案。",
   "Update selected Plans": "调整选中的行程方案",
   "Retry remaining Plans": "重试尚未完成的行程方案",
   "Added to {count} Plans": "已加入 {count} 个行程方案",

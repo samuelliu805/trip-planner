@@ -62,24 +62,24 @@ export function usePullUpPanelDrag(onClose: () => void) {
     let settleListener: (() => void) | undefined;
     let suppressClickUntil = 0;
 
-    const clearInlineMotion = () => {
+    const clearInlineMotion = (preserveAnimation = false) => {
       surface.style.removeProperty("transform");
       surface.style.removeProperty("transition");
       surface.style.removeProperty("will-change");
-      surface.style.removeProperty("animation");
+      if (!preserveAnimation) surface.style.removeProperty("animation");
       surface.style.removeProperty("touch-action");
       surface.removeAttribute("data-pull-up-dragging");
       overlay?.style.removeProperty("opacity");
       overlay?.style.removeProperty("transition");
       overlay?.style.removeProperty("will-change");
-      overlay?.style.removeProperty("animation");
+      if (!preserveAnimation) overlay?.style.removeProperty("animation");
     };
 
     const begin = (clientX: number, clientY: number, target: EventTarget | null) => {
       window.clearTimeout(settleTimer);
       settleListener?.();
       settleListener = undefined;
-      clearInlineMotion();
+      clearInlineMotion(true);
       gesture = {
         dragEnabled: Boolean(controller.getClientRects().length),
         dragging: false,
@@ -194,7 +194,7 @@ export function usePullUpPanelDrag(onClose: () => void) {
           surface.style.animation = "none";
           if (overlay) overlay.style.animation = "none";
           onCloseRef.current();
-        } else clearInlineMotion();
+        } else clearInlineMotion(true);
       };
       const onTransitionEnd = (event: TransitionEvent) => {
         if (event.target === surface && event.propertyName === "transform") finish();
