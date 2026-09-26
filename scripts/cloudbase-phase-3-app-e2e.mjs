@@ -360,7 +360,7 @@ async function exerciseSharePanelDrag(browser, close) {
     send('touchmove', distance / 2);
     await new Promise((resolve) => setTimeout(resolve, 20));
     send('touchmove', distance);
-    const during = Number(surface.style.transform.match(/translate3d\\(0, ([\\d.]+)px/)?.[1]);
+    const during = new DOMMatrixReadOnly(getComputedStyle(surface).transform).m42;
     const opacityAtRelease = Number(getComputedStyle(overlay).opacity);
     if (!${close}) await new Promise((resolve) => setTimeout(resolve, 140));
     send('touchend', distance);
