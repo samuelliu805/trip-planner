@@ -16,6 +16,7 @@ import { captureBrowserProductEvent } from "@/lib/telemetry/product-client";
 import { ManageRouteVariantsDialog } from "./manage-route-variants-dialog";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { RouteVariantSwitcher, type RouteVariantAction } from "./route-variant-switcher";
+import { useRouteVariants } from "../queries";
 
 export function RouteVariantControls({
   activeVariantId,
@@ -37,9 +38,12 @@ export function RouteVariantControls({
   variants: PlannerVariant[];
 }) {
   const pathname = usePathname();
+  const variantQuery = useRouteVariants(tripId, variants);
+  const currentVariants = variantQuery.data ?? variants;
   const currentResearchCategory =
     parseResearchCategoryRouteSegment(pathname.split("/").at(-1)) ?? researchCategory;
-  const activeVariant = variants.find(({ id }) => id === activeVariantId) ?? variants[0];
+  const activeVariant =
+    currentVariants.find(({ id }) => id === activeVariantId) ?? currentVariants[0];
   const [sheetOpen, setSheetOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [duplicateOpen, setDuplicateOpen] = useState(false);
@@ -79,13 +83,13 @@ export function RouteVariantControls({
       <RouteVariantSwitcher
         activeVariant={activeVariant}
         activeVariantId={activeVariantId}
-        limitReached={variants.length >= 3}
+        limitReached={currentVariants.length >= 3}
         onAction={openAction}
         onSheetOpenChange={setSheetOpen}
         onSwitch={switchVariant}
         sheetOpen={sheetOpen}
         title={title}
-        variants={variants}
+        variants={currentVariants}
         comparisonBlockingReason={comparisonBlockingReason}
         onCompare={
           onCompare
@@ -105,7 +109,7 @@ export function RouteVariantControls({
         onSaved={navigateToVariant}
         open={createOpen}
         tripId={tripId}
-        variants={variants}
+        variants={currentVariants}
       />
       <RouteVariantEditorDialog
         activeVariant={activeVariant}
@@ -115,14 +119,14 @@ export function RouteVariantControls({
         onSaved={navigateToVariant}
         open={duplicateOpen}
         tripId={tripId}
-        variants={variants}
+        variants={currentVariants}
       />
       <ManageRouteVariantsDialog
         activeVariantId={activeVariantId}
         onOpenChange={setManageOpen}
         open={manageOpen}
         tripId={tripId}
-        variants={variants}
+        variants={currentVariants}
       />
     </>
   );

@@ -7,7 +7,7 @@ import { getTrip } from "@/features/trips/data";
 import { getAuthProvider, runServerReads } from "@/platform/composition/server";
 import { retryTransientRead } from "@/platform/transient-read";
 
-import { getResearchPlanSnapshot } from "./data";
+import { getResearchPlanSnapshots } from "./data";
 import type { ResearchMutationResult, ResearchPlanSnapshot } from "./types";
 
 export async function loadIdeaVariantPlans(
@@ -22,12 +22,7 @@ export async function loadIdeaVariantPlans(
   if (!trip.data || trip.data.owner_id !== user?.id)
     return { error: "The trip could not be loaded." };
   if (!variants.data) return { error: variants.error ?? "Plans could not be loaded." };
-  const plans = await runServerReads(
-    variants.data.map(
-      (variant) => () => retryTransientRead(() => getResearchPlanSnapshot(tripId, variant.id)),
-    ),
-  );
-  const failed = plans.find((plan) => plan.error || !plan.data);
-  if (failed) return { error: failed.error ?? "Plans could not be loaded." };
-  return { data: plans.map((plan) => plan.data!) };
+  const availableVariants = variants.data;
+  const plans = await retryTransientRead(() => getResearchPlanSnapshots(tripId, availableVariants));
+  return plans.data ? { data: plans.data } : { error: plans.error ?? "Plans could not be loaded." };
 }

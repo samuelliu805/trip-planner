@@ -338,6 +338,45 @@ async function evaluate(browser, expression) {
   return result.result?.value;
 }
 
+async function exerciseSharePanelDrag(browser, close) {
+  return evaluate(
+    browser,
+    `(async () => {
+    const surface = document.querySelector('.public-share-settings-dialog');
+    const handle = surface?.querySelector('[data-pull-up-handle]');
+    const overlay = surface?.previousElementSibling;
+    if (!surface || !handle || !overlay) return { error: 'panel missing' };
+    const rect = handle.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const distance = ${close ? "Math.max(320, surface.getBoundingClientRect().height * 0.55)" : "80"};
+    function send(type, delta) {
+      const touch = new Touch({ identifier: 1, target: handle, clientX: x, clientY: y + delta });
+      handle.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: type === 'touchend' ? [] : [touch],
+        targetTouches: type === 'touchend' ? [] : [touch], changedTouches: [touch] }));
+    }
+    send('touchstart', 0);
+    send('touchmove', distance / 2);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    send('touchmove', distance);
+    const during = new DOMMatrixReadOnly(getComputedStyle(surface).transform).m42;
+    const opacityAtRelease = Number(getComputedStyle(overlay).opacity);
+    if (!${close}) await new Promise((resolve) => setTimeout(resolve, 140));
+    send('touchend', distance);
+    const observedOpacities = [];
+    for (let frame = 0; frame < 42; frame += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      if (overlay.isConnected) observedOpacities.push(Number(getComputedStyle(overlay).opacity));
+    }
+    return { close: !surface.isConnected, distance, during,
+      overlayReturned: overlay.style.opacity === '',
+      panelReturned: surface.style.transform === '',
+      opacityAtRelease, maxOpacity: Math.max(0, ...observedOpacities) };
+  })()`,
+  );
+}
+
 async function waitFor(browser, expression, label, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   let last;
@@ -813,6 +852,68 @@ async function verifyTripSectionNavigation(browser, tripId) {
         dialog.innerText.includes('Adding to Plan:'));
     })()`,
     "dated Google flight waits for a selected Plan day",
+  );
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      {
+        deviceScaleFactor: 2,
+        height: width === 390 ? 844 : 932,
+        mobile: true,
+        width,
+      },
+      browser.sessionId,
+    );
+    await waitFor(browser, `innerWidth === ${width}`, `${width}px Idea apply viewport`);
+    const actions = await evaluate(
+      browser,
+      `(() => {
+      const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+      const blank = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Create empty Plan + idea'));
+      const copy = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Copy Plan + idea'));
+      const bounds = dialog?.getBoundingClientRect();
+      return { blank: Boolean(blank?.getClientRects().length),
+        copy: Boolean(copy?.getClientRects().length),
+        fits: Boolean(bounds) && bounds.left >= -0.5 && bounds.right <= innerWidth + 0.5 &&
+          bounds.top >= -0.5 && bounds.bottom <= innerHeight + 0.5,
+        noHorizontalScroll: document.documentElement.scrollWidth <= innerWidth };
+    })()`,
+    );
+    assert.deepEqual(
+      actions,
+      { blank: true, copy: true, fits: true, noHorizontalScroll: true },
+      `${width}px Idea apply options escaped the viewport`,
+    );
+  }
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.includes('Create empty Plan + idea'))`,
+    "preview creating an empty Plan with this Idea",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="dialog"]')?.innerText
+    .includes('New empty Plan from:')`,
+    "empty Plan preview",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.trim() === 'Back')`,
+    "return to existing Plan apply",
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    {
+      deviceScaleFactor: 1,
+      height: 900,
+      mobile: false,
+      width: 1280,
+    },
+    browser.sessionId,
   );
   await clickElement(
     browser,
@@ -2336,17 +2437,16 @@ async function openManageVariantsDialog(browser) {
   );
 }
 
-async function assertMobileManagePlansConflict(browser, width) {
+async function assertMobileManagePlansResult(browser, width) {
   const evidence = await evaluate(
     browser,
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"]')]
         .find((node) => node.textContent.includes('Manage Plans'));
       const overlay = dialog?.previousElementSibling;
-      const reload = [...(dialog?.querySelectorAll('button') ?? [])]
-        .find((button) => button.textContent.trim() === 'Reload latest');
+      const status = dialog?.querySelector('[role="status"]');
       const dialogRect = dialog?.getBoundingClientRect();
-      const reloadRect = reload?.getBoundingClientRect();
+      const statusRect = status?.getBoundingClientRect();
       const frozen = document.querySelector('.matrix-grid-header');
       return {
         dialogZ: Number.parseInt(getComputedStyle(dialog).zIndex, 10),
@@ -2354,17 +2454,15 @@ async function assertMobileManagePlansConflict(browser, width) {
         fits: Boolean(dialogRect) && dialogRect.left >= 0 && dialogRect.right <= innerWidth && dialogRect.top >= 0 && dialogRect.bottom <= innerHeight,
         frozenZ: frozen ? Number.parseInt(getComputedStyle(frozen).zIndex, 10) : 0,
         overlayZ: Number.parseInt(getComputedStyle(overlay).zIndex, 10),
-        reloadFits: Boolean(dialogRect && reloadRect) && reloadRect.left >= dialogRect.left && reloadRect.right <= dialogRect.right,
-        reloadHeight: reloadRect?.height ?? 0,
-        reloadVisible: Boolean(reload && reload.getClientRects().length && !reload.disabled),
+        statusFits: Boolean(dialogRect && statusRect) && statusRect.left >= dialogRect.left && statusRect.right <= dialogRect.right,
+        statusVisible: Boolean(status && status.getClientRects().length),
       };
     })()`,
   );
   assert.equal(evidence.fits, true, `Manage Plans escaped ${width}px viewport.`);
   assert.equal(evidence.documentFits, true, `Manage Plans overflowed at ${width}px.`);
-  assert.equal(evidence.reloadVisible, true, `Reload latest was unavailable at ${width}px.`);
-  assert.equal(evidence.reloadFits, true, `Reload latest escaped Manage Plans at ${width}px.`);
-  assert.ok(evidence.reloadHeight >= 44, `Reload latest was below 44px at ${width}px.`);
+  assert.equal(evidence.statusVisible, true, `Manage Plans result was unavailable at ${width}px.`);
+  assert.equal(evidence.statusFits, true, `Manage Plans result escaped at ${width}px.`);
   assert.ok(
     evidence.overlayZ > evidence.frozenZ,
     `Manage Plans overlay was under Matrix at ${width}px.`,
@@ -2375,7 +2473,7 @@ async function assertMobileManagePlansConflict(browser, width) {
   );
 }
 
-async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdVariant) {
+async function verifySetPrimaryConflictRetryThroughUi(browser, tripId, createdVariant) {
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
 
@@ -2458,44 +2556,28 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
     await browser.cdp.send("Fetch.disable", {}, browser.sessionId).catch(() => undefined);
   }
 
-  const conflictResult = await waitFor(
+  const retryResult = await waitFor(
     browser,
     `(() => {
       const dialog = [...document.querySelectorAll('[role="dialog"]')]
         .find((node) => node.textContent.includes('Manage Plans'));
-      const reload = [...(dialog?.querySelectorAll('button') ?? [])]
-        .find((button) => button.textContent.trim() === 'Reload latest' && !button.disabled);
-      if (reload) return { kind: 'conflict' };
       const alert = dialog?.querySelector('[role="alert"]');
       if (alert?.textContent.trim()) return { kind: 'error', text: alert.textContent.trim() };
       const status = dialog?.querySelector('[role="status"]');
       return status?.textContent.trim() ? { kind: 'status', text: status.textContent.trim() } : null;
     })()`,
-    "Set Primary structured conflict",
+    "Set Primary automatic retry result",
     45_000,
   );
-  assert.deepEqual(conflictResult, { kind: "conflict" });
+  assert.deepEqual(retryResult, { kind: "status", text: `${v2Name} is now the primary Plan.` });
   for (const width of [390, 430]) {
     await browser.cdp.send(
       "Emulation.setDeviceMetricsOverride",
       { deviceScaleFactor: 1, height: width === 390 ? 844 : 932, mobile: true, width },
       browser.sessionId,
     );
-    await assertMobileManagePlansConflict(browser, width);
+    await assertMobileManagePlansResult(browser, width);
   }
-
-  await clickButtonText(browser, "Reload latest");
-  await waitFor(
-    browser,
-    `(() => {
-      const dialog = [...document.querySelectorAll('[role="dialog"]')]
-        .find((node) => node.textContent.includes('Manage Plans'));
-      return dialog?.textContent.includes('Latest Plans loaded. You can retry setting the primary Plan.') &&
-        dialog.textContent.includes(${JSON.stringify(v2Name)}) &&
-        !dialog.querySelector('[role="alert"]');
-    })()`,
-    "Set Primary V2 reload",
-  );
   assert.equal(
     await evaluate(
       browser,
@@ -2503,21 +2585,12 @@ async function verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdV
         .some((node) => node.textContent.includes('Manage Plans'))`,
     ),
     true,
-    "Manage Plans closed after Set Primary reload.",
-  );
-
-  await clickElement(browser, primaryAction(v2Name), `Set ${v2Name} as primary`);
-  await waitFor(
-    browser,
-    `[...document.querySelectorAll('[role="dialog"] [role="status"]')]
-      .some((node) => node.textContent.includes(${JSON.stringify(`${v2Name} is now the primary Plan.`)}))`,
-    "Set Primary V2 retry success",
-    45_000,
+    "Manage Plans closed after Set Primary automatic retry.",
   );
   const primary = await controlledData(
     () =>
       db.from("route_variants").select("id,is_primary").eq("id", createdVariant.createdVariantId),
-    "Set Primary retry evidence",
+    "Set Primary automatic retry evidence",
   );
   assert.deepEqual(primary, [{ id: createdVariant.createdVariantId, is_primary: true }]);
 
@@ -2604,7 +2677,7 @@ async function assertMobileDeleteConfirmation(browser, width, actionText) {
   assert.ok(evidence.dialogZ > evidence.overlayZ, `${actionText} dialog was below its overlay.`);
 }
 
-async function verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant) {
+async function verifyVariantDeleteRefreshThroughUi(browser, tripId, createdVariant) {
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
 
@@ -2663,30 +2736,15 @@ async function verifyVariantDeleteConflictReloadThroughUi(browser, tripId, creat
   await clickButtonText(browser, "Delete Plan");
   await waitFor(
     browser,
-    `[...document.querySelectorAll('[role="alertdialog"] button')]
-      .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
-    "Plan delete structured conflict",
-    45_000,
-  );
-  await clickButtonText(browser, "Reload latest");
-  await waitFor(
-    browser,
-    `document.querySelector('[role="alertdialog"]')?.textContent.includes("Latest Plan loaded. You can retry deletion.") &&
-      !document.querySelector('[role="alertdialog"] [role="alert"]')`,
-    "Plan delete V2 reload",
-  );
-  assert.equal(
-    await evaluate(browser, "Boolean(document.querySelector('[role=\"alertdialog\"]'))"),
-    true,
-    "Plan delete confirmation closed after reload.",
-  );
-  await clickButtonText(browser, "Delete Plan");
-  await waitFor(
-    browser,
     `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(createdVariant.priorVariantId)}`,
-    "Plan delete retry success",
+    "Plan delete with refreshed version",
     45_000,
   );
+  const deleted = await controlledData(
+    () => db.from("route_variants").select("id").eq("id", createdVariant.createdVariantId),
+    "Plan delete with refreshed version evidence",
+  );
+  assert.deepEqual(deleted, []);
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
@@ -3896,12 +3954,43 @@ async function publishThroughUi(browser, tripId) {
     browser.sessionId,
   );
   await generateLongImageThroughUi(browser);
-  await clickElement(
-    browser,
-    `document.querySelector('[role="dialog"] [data-dialog-close]')`,
-    "Close published share dialog",
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  const returnedDrag = await exerciseSharePanelDrag(browser, false);
+  assert.ok(
+    Math.abs(returnedDrag.during - returnedDrag.distance) <= 2,
+    `390px pull-up panel did not follow the finger: ${JSON.stringify(returnedDrag)}`,
+  );
+  assert.equal(returnedDrag.close, false, "a paused short drag closed the panel");
+  assert.equal(
+    returnedDrag.panelReturned && returnedDrag.overlayReturned,
+    true,
+    "390px pull-up panel did not settle with its overlay",
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 932, mobile: true, width: 430 },
+    browser.sessionId,
+  );
+  const closedDrag = await exerciseSharePanelDrag(browser, true);
+  assert.ok(
+    Math.abs(closedDrag.during - closedDrag.distance) <= 2,
+    `430px pull-up panel did not follow the finger: ${JSON.stringify(closedDrag)}`,
+  );
+  assert.equal(closedDrag.close, true, "a downward sheet drag did not close the dialog");
+  assert.ok(
+    closedDrag.maxOpacity <= closedDrag.opacityAtRelease + 0.08,
+    `the backdrop darkened again while the panel closed: ${JSON.stringify(closedDrag)}`,
   );
   await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "share dialog close");
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
   return token;
 }
 
@@ -5232,8 +5321,8 @@ async function run() {
     await saveWalkingTransportThroughUi(browser);
     await verifyMobileTransportEditorScroll(browser);
     let createdVariant = await verifyVariantNavigationThroughUi(browser);
-    createdVariant = await verifySetPrimaryConflictReloadThroughUi(browser, tripId, createdVariant);
-    await verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant);
+    createdVariant = await verifySetPrimaryConflictRetryThroughUi(browser, tripId, createdVariant);
+    await verifyVariantDeleteRefreshThroughUi(browser, tripId, createdVariant);
     await navigate(browser, `/trips/${tripId}`);
     await navigate(browser, `/trips/${tripId}`);
     await waitFor(

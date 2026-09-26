@@ -35,7 +35,7 @@ export function IdeaComparisonViewDialog({
   onApply: (
     comparison: IdeaComparison,
     choiceId: string,
-    destination?: "current" | "new",
+    destination?: "current" | "new" | "blank",
     anchorDayNumber?: number,
   ) => void;
   onClose: () => void;
@@ -46,9 +46,11 @@ export function IdeaComparisonViewDialog({
 }) {
   const { t } = useI18n();
   const [newPlanChoiceId, setNewPlanChoiceId] = useState<string>();
+  const [newPlanMode, setNewPlanMode] = useState<"new" | "blank">("blank");
   const [anchorDays, setAnchorDays] = useState<Record<string, number>>({});
   function close() {
     setNewPlanChoiceId(undefined);
+    setNewPlanMode("blank");
     setAnchorDays({});
     onClose();
   }
@@ -96,7 +98,13 @@ export function IdeaComparisonViewDialog({
                 </h3>
                 <p className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium">
                   <T
-                    message={isNewPlan ? "Copying Plan: {variant}" : "Adding to Plan: {variant}"}
+                    message={
+                      isNewPlan
+                        ? newPlanMode === "blank"
+                          ? "New empty Plan from: {variant}"
+                          : "Copying Plan: {variant}"
+                        : "Adding to Plan: {variant}"
+                    }
                     values={{ variant: plan.variantName }}
                   />
                 </p>
@@ -124,7 +132,12 @@ export function IdeaComparisonViewDialog({
                 <div className="mt-3">
                   <IdeaJourneyPreviewList items={selectedItems} />
                 </div>
-                {needsDay ? (
+                {isNewPlan && newPlanMode === "blank" ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    <T message="The new Plan starts without items. Only this idea will be added." />
+                  </p>
+                ) : null}
+                {needsDay && !isNewPlan ? (
                   <label className="mt-3 block text-sm font-medium">
                     <T message="Plan day" />
                     <PlanDaySelect
@@ -158,33 +171,61 @@ export function IdeaComparisonViewDialog({
                     </p>
                   </div>
                 ) : null}
-                {journeyDates.length && !needsDay ? (
-                  <Button
-                    className="mt-3 min-h-11 w-full sm:w-auto"
-                    disabled={pending}
-                    onClick={() => {
-                      setNewPlanChoiceId(isNewPlan ? undefined : choice.id);
-                      setAnchorDays((current) => ({
-                        ...current,
-                        [choice.id]: isNewPlan ? 0 : 1,
-                      }));
-                    }}
-                    type="button"
-                    variant="outline"
-                  >
-                    <T message={isNewPlan ? "Back" : "Copy Plan and add idea"} />
-                  </Button>
-                ) : null}
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  {isNewPlan ? (
+                    <Button
+                      className="min-h-11"
+                      disabled={pending}
+                      onClick={() => setNewPlanChoiceId(undefined)}
+                      type="button"
+                      variant="outline"
+                    >
+                      <T message="Back" />
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        className="min-h-11"
+                        disabled={pending}
+                        onClick={() => {
+                          setNewPlanChoiceId(choice.id);
+                          setNewPlanMode("blank");
+                          setAnchorDays((current) => ({ ...current, [choice.id]: 1 }));
+                        }}
+                        type="button"
+                        variant="outline"
+                      >
+                        <T message="Create empty Plan + idea" />
+                      </Button>
+                      {journeyDates.length ? (
+                        <Button
+                          className="min-h-11"
+                          disabled={pending}
+                          onClick={() => {
+                            setNewPlanChoiceId(choice.id);
+                            setNewPlanMode("new");
+                            setAnchorDays((current) => ({ ...current, [choice.id]: 1 }));
+                          }}
+                          type="button"
+                          variant="outline"
+                        >
+                          <T message="Copy Plan + idea" />
+                        </Button>
+                      ) : null}
+                    </>
+                  )}
+                </div>
                 <Button
                   className="mt-3 min-h-11 w-full sm:w-auto"
                   disabled={
                     pending ||
                     selectedItems.length !== choice.itemIds.length ||
-                    (needsDay && !dayIds[choice.id]) ||
+                    (!isNewPlan && needsDay && !dayIds[choice.id]) ||
                     (journeyDates.length > 0 && !anchorDayNumber)
                   }
                   onClick={() =>
-                    view && onApply(view, choice.id, isNewPlan ? "new" : "current", anchorDayNumber)
+                    view &&
+                    onApply(view, choice.id, isNewPlan ? newPlanMode : "current", anchorDayNumber)
                   }
                   type="button"
                 >

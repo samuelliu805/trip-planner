@@ -36,6 +36,7 @@ import {
 } from "./readiness.ts";
 import { createResearchItemSchema } from "./schema.ts";
 import { researchItemFormSteps, researchItemPriceStep } from "./research-item-form-steps.ts";
+import { airportPlaceQuery } from "../places/airport-place-query.ts";
 import type { ResearchItem, ResearchPlanSnapshot } from "./types.ts";
 import {
   anchoredPlanDateChange,
@@ -569,6 +570,54 @@ test("connecting flight edits keep the journey endpoints instead of promoting a 
   assert.equal(values.originText, "PVG");
   assert.equal(values.destinationText, "LHR");
   assert.equal(values.segments.length, 4);
+});
+
+test("flight Ideas retain a chosen airport for every leg that uses its code", () => {
+  const sha = {
+    coordinateSystem: "wgs84",
+    displayName: "Shanghai Hongqiao Airport",
+    latitude: 31.19,
+    longitude: 121.33,
+    provider: "google",
+    providerPlaceId: "sha-google",
+  };
+  const syd = {
+    coordinateSystem: "wgs84",
+    displayName: "Sydney Airport",
+    latitude: -33.94,
+    longitude: 151.18,
+    provider: "google",
+    providerPlaceId: "syd-google",
+  };
+  const form = new FormData();
+  form.set(
+    "segments",
+    JSON.stringify([
+      {
+        origin: "SHA",
+        destination: "SYD",
+        departureDate: "2026-12-25",
+        originPlace: sha,
+        destinationPlace: syd,
+      },
+      {
+        origin: "SYD",
+        destination: "SHA",
+        departureDate: "2027-01-02",
+        originPlace: syd,
+        destinationPlace: sha,
+      },
+    ]),
+  );
+  const input = researchItemInputFromForm({ category: "flight", form, tripId: ids.trip });
+  const parsed = createResearchItemSchema.safeParse({ ...input, operationId: ids.operation });
+  assert.equal(parsed.success, true);
+  if (parsed.success) {
+    assert.equal(parsed.data.segments[0].originPlace?.providerPlaceId, "sha-google");
+    assert.equal(parsed.data.segments[1].destinationPlace?.providerPlaceId, "sha-google");
+  }
+  assert.equal(airportPlaceQuery("pvg"), "PVG airport");
+  assert.equal(airportPlaceQuery("Shanghai Hongqiao Airport"), "Shanghai Hongqiao Airport");
 });
 
 test("flight ideas save without an option name, airline, or flight number", () => {

@@ -103,6 +103,7 @@ import {
 import {
   buildDayRouteLines,
   buildDayRouteMarkers,
+  buildFlightEndpointMarkers,
   eligibleDayRouteItems,
 } from "../routes/day-route-map.ts";
 import { fixedDayRouteDraft } from "../routes/day-route-order.ts";
@@ -920,12 +921,17 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
     new URL("../variants/components/route-variant-identity.tsx", import.meta.url),
     "utf8",
   );
+  const variantDeleteDialog = await readFile(
+    new URL("../variants/components/delete-route-variant-dialog.tsx", import.meta.url),
+    "utf8",
+  );
   const variantUi = [
     controls,
     variantSwitcher,
     variantManagement,
     variantEditor,
     variantIdentity,
+    variantDeleteDialog,
   ].join("\n");
   const variantQueries = await readFile(new URL("../variants/queries.ts", import.meta.url), "utf8");
   let toolbar = await readFile(
@@ -3982,6 +3988,17 @@ test("flight endpoints share their Plan day and cannot be ordered arrival before
   assert.deepEqual(
     buildDayRouteMarkers(day, []).map(({ entries }) => entries[0].kind),
     ["flightDeparture", "flightArrival"],
+  );
+  assert.deepEqual(
+    buildFlightEndpointMarkers([day]).map(({ entries, latitude, longitude }) => ({
+      kind: entries[0].kind,
+      latitude,
+      longitude,
+    })),
+    [
+      { kind: "flightDeparture", latitude: 40, longitude: -70 },
+      { kind: "flightArrival", latitude: 42, longitude: -70 },
+    ],
   );
   const sameAirport = { ...arrive, place: depart.place };
   assert.equal(

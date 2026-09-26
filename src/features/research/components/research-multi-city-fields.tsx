@@ -5,6 +5,9 @@ import { Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
+import { airportPlaceQuery } from "@/features/places/airport-place-query";
+import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 import { ResearchField } from "./form-controls";
 import { ResearchDateTimeField } from "./research-schedule-fields";
@@ -31,6 +34,13 @@ export function ResearchMultiCityFields({
   segments: ResearchSegment[];
 }) {
   const { t } = useI18n();
+  const airportCodes = [
+    ...new Set(
+      segments.flatMap(({ origin, destination }) =>
+        [origin, destination].map((value) => value.trim().toUpperCase()).filter(Boolean),
+      ),
+    ),
+  ];
   const update = (index: number, values: Partial<ResearchSegment>) =>
     onSegmentsChange(
       segments.map((segment, position) =>
@@ -49,14 +59,18 @@ export function ResearchMultiCityFields({
             <ResearchField label="From">
               <Input
                 className="h-[3.75rem] rounded-xl text-base"
-                onChange={(event) => update(index, { origin: event.target.value })}
+                onChange={(event) =>
+                  update(index, { origin: event.target.value, originPlace: null })
+                }
                 value={segment.origin}
               />
             </ResearchField>
             <ResearchField label="To">
               <Input
                 className="h-[3.75rem] rounded-xl text-base"
-                onChange={(event) => update(index, { destination: event.target.value })}
+                onChange={(event) =>
+                  update(index, { destination: event.target.value, destinationPlace: null })
+                }
                 value={segment.destination}
               />
             </ResearchField>
@@ -95,6 +109,53 @@ export function ResearchMultiCityFields({
           ) : null}
         </fieldset>
       ))}
+      {airportCodes.length ? (
+        <section className="min-w-0 space-y-3 rounded-xl border bg-muted/25 p-4">
+          <h3 className="font-semibold">
+            <T message="Airport locations on Maps" />
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            <T message="Select each airport once for the flight map." />
+          </p>
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            {airportCodes.map((code) => {
+              const matched = segments.find(
+                (segment) =>
+                  segment.origin.trim().toUpperCase() === code ||
+                  segment.destination.trim().toUpperCase() === code,
+              );
+              const selected =
+                matched?.origin.trim().toUpperCase() === code
+                  ? matched.originPlace
+                  : matched?.destinationPlace;
+              return (
+                <div className="min-w-0 space-y-2" key={code}>
+                  <label className="block text-sm font-medium">{code}</label>
+                  <PlaceAutocomplete
+                    ariaLabel={`${code} airport`}
+                    includedPrimaryTypes={["airport", "international_airport", "locality"]}
+                    initialQuery={selected ? "" : airportPlaceQuery(code)}
+                    onChange={(place: PlaceSnapshot | null) =>
+                      onSegmentsChange(
+                        segments.map((segment) => ({
+                          ...segment,
+                          ...(segment.origin.trim().toUpperCase() === code && {
+                            originPlace: place,
+                          }),
+                          ...(segment.destination.trim().toUpperCase() === code && {
+                            destinationPlace: place,
+                          }),
+                        })),
+                      )
+                    }
+                    value={selected ?? null}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
       <Button
         className="min-h-[3.75rem] w-full"
         onClick={() =>

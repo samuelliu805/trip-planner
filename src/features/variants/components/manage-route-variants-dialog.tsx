@@ -3,18 +3,9 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { Pencil, RotateCcw, Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import {
@@ -38,6 +29,9 @@ import {
 } from "../queries";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { VariantIdentity } from "./route-variant-identity";
+import { DeleteRouteVariantDialog } from "./delete-route-variant-dialog";
+import { loadRouteVariants } from "../actions";
+import { variantListQueryKey } from "../variant-list-reload";
 
 export function ManageRouteVariantsDialog({
   activeVariantId,
@@ -61,6 +55,8 @@ export function ManageRouteVariantsDialog({
   const [notice, setNotice] = useState<string>();
   const [conflict, setConflict] = useState(false);
   const [reloadPending, setReloadPending] = useState(false);
+  const deletingRef = useRef(false);
+  const [deletePending, setDeletePending] = useState(false);
   const primaryMutation = useSetPrimaryRouteVariant(tripId);
   const deleteMutation = useDeleteRouteVariant(tripId);
   const limitReached = variants.length >= 3;
@@ -70,13 +66,19 @@ export function ManageRouteVariantsDialog({
     setConflict(false);
     setNotice(undefined);
     try {
-      await primaryMutation.mutateAsync({
-        expectedVersion: variant.version,
+      const latest = await loadRouteVariants(tripId);
+      if (!latest.data) throw new Error(latest.error ?? "The latest Plans could not be loaded.");
+      queryClient.setQueryData(variantListQueryKey(tripId), latest.data);
+      const current = latest.data.find(({ id }) => id === variant.id);
+      if (!current) return;
+      const result = await primaryMutation.mutateAsync({
+        expectedVersion: current.version,
         operationId: newTelemetryOperationId(),
         tripId,
         variantId: variant.id,
       });
-      setNotice(t("{variant} is now the primary Plan.", { variant: variant.name }));
+      const saved = result.variants.find(({ id }) => id === variant.id);
+      setNotice(t("{variant} is now the primary Plan.", { variant: saved?.name ?? current.name }));
       router.refresh();
     } catch (caught) {
       setConflict(isItineraryConflict(caught));
@@ -85,23 +87,37 @@ export function ManageRouteVariantsDialog({
   }
 
   async function removeVariant() {
-    if (!deleteVariant) return;
+    if (!deleteVariant || deletingRef.current) return;
+    deletingRef.current = true;
+    setDeletePending(true);
     setError(undefined);
     setConflict(false);
     setNotice(undefined);
     try {
+      const latest = await loadRouteVariants(tripId);
+      if (!latest.data) throw new Error(latest.error ?? "The latest Plans could not be loaded.");
+      queryClient.setQueryData(variantListQueryKey(tripId), latest.data);
+      const current = latest.data.find(({ id }) => id === deleteVariant.id);
+      if (!current) {
+        setDeleteVariant(undefined);
+        router.refresh();
+        return;
+      }
       const wasActive = deleteVariant.id === activeVariantId;
       const result = await deleteMutation.mutateAsync(
-        buildDeleteVariantInput(tripId, deleteVariant, newTelemetryOperationId()),
+        buildDeleteVariantInput(tripId, current, newTelemetryOperationId()),
       );
       setDeleteVariant(undefined);
       if (wasActive) {
         const primary = result.variants.find(({ is_primary }) => is_primary);
         if (primary) window.location.assign(variantHref(tripId, primary.id));
-      }
+      } else router.refresh();
     } catch (caught) {
       setConflict(isItineraryConflict(caught));
       setError(caught instanceof Error ? caught.message : "The Plan could not be deleted.");
+    } finally {
+      deletingRef.current = false;
+      setDeletePending(false);
     }
   }
 
@@ -228,74 +244,26 @@ export function ManageRouteVariantsDialog({
           key={`metadata:${editVariant.id}`}
           mode="metadata"
           onOpenChange={(editorOpen) => !editorOpen && setEditVariant(undefined)}
+          onSaved={() => router.refresh()}
           open
           tripId={tripId}
           variants={variants}
         />
       ) : null}
 
-      <AlertDialog
-        onOpenChange={(dialogOpen) => !dialogOpen && setDeleteVariant(undefined)}
-        open={Boolean(deleteVariant)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              <T message={"Delete “"} />
-              {deleteVariant?.name}”?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              <T
-                message={
-                  " This permanently deletes this variant’s days, itinerary items, and saved routes. Shared trip places remain available to other Plans. "
-                }
-              />
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AutoDismissAlert
-            className="rounded-md text-sm shadow-none"
-            onDismiss={() => setError(undefined)}
-            role="alert"
-            tone="destructive"
-            value={error}
-          >
-            {error ? <Localized value={error} /> : null}
-            {conflict ? (
-              <Button
-                className="ml-3 min-h-11"
-                disabled={reloadPending}
-                onClick={() => void reloadLatest()}
-                type="button"
-                variant="outline"
-              >
-                <RotateCcw aria-hidden="true" className="size-4" />
-                <Localized value={reloadPending ? "Loading…" : "Reload latest"} />
-              </Button>
-            ) : null}
-          </AutoDismissAlert>
-          <AutoDismissAlert
-            className="rounded-md text-sm shadow-none"
-            onDismiss={() => setNotice(undefined)}
-            tone="success"
-            value={notice}
-          >
-            {notice ? <Localized value={notice} /> : null}
-          </AutoDismissAlert>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-11">
-              <T message={"Cancel"} />
-            </AlertDialogCancel>
-            <Button
-              className="min-h-11"
-              disabled={deleteMutation.isPending}
-              onClick={() => void removeVariant()}
-              variant="destructive"
-            >
-              <Localized value={deleteMutation.isPending ? "Deleting…" : "Delete Plan"} />
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteRouteVariantDialog
+        conflict={conflict}
+        deletePending={deletePending}
+        error={error}
+        notice={notice}
+        onDismissError={() => setError(undefined)}
+        onDismissNotice={() => setNotice(undefined)}
+        onOpenChange={(dialogOpen) => !dialogOpen && !deletePending && setDeleteVariant(undefined)}
+        onReload={() => void reloadLatest()}
+        onRemove={() => void removeVariant()}
+        reloadPending={reloadPending}
+        variant={deleteVariant}
+      />
     </>
   );
 }

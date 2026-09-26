@@ -283,7 +283,8 @@ async function run() {
             contentType: "image/jpeg",
             path: rejectedSharePath,
             type: "upload",
-            upsert: false,
+            // A timed-out service response may be retried after the upload succeeded.
+            upsert: true,
           },
           "service creates share isolation fixture",
         ),

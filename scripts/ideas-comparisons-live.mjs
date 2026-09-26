@@ -160,6 +160,22 @@ async function run() {
     });
     const car = await capture(first.db, tripId, "car", "Rental car");
     const activity = await capture(first.db, tripId, "activity", "Ride by West Lake");
+    const pvgPlace = {
+      coordinateSystem: "wgs84",
+      displayName: "Shanghai Pudong Airport",
+      latitude: 31.1434,
+      longitude: 121.8052,
+      provider: "google",
+      providerPlaceId: `${label}-pvg`,
+    };
+    const mxpPlace = {
+      coordinateSystem: "wgs84",
+      displayName: "Milan Malpensa Airport",
+      latitude: 45.6301,
+      longitude: 8.7281,
+      provider: "google",
+      providerPlaceId: `${label}-mxp`,
+    };
     const roundTrip = await capture(first.db, tripId, "flight", "Shanghai to Milan return", {
       destinationText: "MXP",
       endDate: "2026-10-05",
@@ -172,6 +188,7 @@ async function run() {
           destination: "IST",
           journeyIndex: 0,
           origin: "PVG",
+          originPlace: pvgPlace,
           serviceNumber: "27",
         },
         {
@@ -180,6 +197,7 @@ async function run() {
           destination: "MXP",
           journeyIndex: 0,
           origin: "IST",
+          destinationPlace: mxpPlace,
           serviceNumber: "1873",
         },
         {
@@ -188,6 +206,7 @@ async function run() {
           destination: "IST",
           journeyIndex: 1,
           origin: "MXP",
+          originPlace: mxpPlace,
           serviceNumber: "1874",
         },
         {
@@ -196,6 +215,7 @@ async function run() {
           destination: "PVG",
           journeyIndex: 1,
           origin: "IST",
+          destinationPlace: pvgPlace,
           serviceNumber: "26",
         },
       ],
@@ -313,11 +333,28 @@ async function run() {
     const roundTripItems = rows(
       await first.db
         .from("itinerary_items")
-        .select("title,details,price_amount,day_id")
+        .select("id,title,details,price_amount,day_id")
         .eq("variant_id", variant.id),
       "round-trip Plan lookup",
     ).filter((item) => item.details?.ideaResearchItemId === roundTrip);
     assert.deepEqual(roundTripItems.map((item) => item.title).sort(), ["MXP → PVG", "PVG → MXP"]);
+    const flightStops = rows(
+      await first.db
+        .from("itinerary_items")
+        .select("day_id,details,place_id,place:places(display_name)")
+        .eq("variant_id", variant.id),
+      "Idea flight endpoint lookup",
+    ).filter((item) =>
+      roundTripItems.some((flight) => item.details?.flightEndpointParentId === flight.id),
+    );
+    assert.equal(flightStops.length, 4, "round trip needs departure and arrival on each Plan day");
+    assert.ok(flightStops.every((stop) => stop.place_id && stop.place?.display_name));
+    assert.deepEqual(flightStops.map((stop) => stop.place.display_name).sort(), [
+      "Milan Malpensa Airport",
+      "Milan Malpensa Airport",
+      "Shanghai Pudong Airport",
+      "Shanghai Pudong Airport",
+    ]);
     const expandedDays = rows(
       await first.db.from("trip_days").select("id,date").eq("variant_id", variant.id),
       "expanded Plan days",
@@ -342,6 +379,82 @@ async function run() {
     assert.deepEqual(
       [tripCalendar.start_date, tripCalendar.end_date, Number(tripCalendar.day_count)],
       ["2026-09-29", "2026-10-05", 7],
+    );
+    const sourcePlan = rows(
+      await first.db
+        .from("route_variants")
+        .select("id,color,version,days_version,items_version,content_version")
+        .eq("id", variant.id),
+      "blank Plan source version",
+    )[0];
+    const blank = dataOrThrow(
+      await first.db.rpc("create_route_variant_v3", {
+        duplicate_content: false,
+        expected_source_content_version: sourcePlan.content_version,
+        expected_source_days_version: sourcePlan.days_version,
+        expected_source_items_version: sourcePlan.items_version,
+        expected_source_version: sourcePlan.version,
+        source_variant_id: sourcePlan.id,
+        target_operation_id: randomUUID(),
+        target_trip_id: tripId,
+        variant_color: sourcePlan.color?.toLowerCase() === "#be123c" ? "#2563eb" : "#be123c",
+        variant_name: `${label}-empty-idea`,
+      }),
+      "create empty Plan for round-trip Idea",
+    );
+    assert.ok(blank.variantId);
+    assert.equal(
+      rows(
+        await first.db.from("itinerary_items").select("id").eq("variant_id", blank.variantId),
+        "empty Plan items",
+      ).length,
+      0,
+    );
+    dataOrThrow(
+      await first.db.rpc("rebase_idea_variant_days_v1", {
+        target_trip_id: tripId,
+        target_variant_id: blank.variantId,
+        requested_departure_date: "2026-09-30",
+        requested_anchor_day_number: 1,
+        target_operation_id: randomUUID(),
+      }),
+      "align empty Plan to outbound flight",
+    );
+    const blankFirstDay = rows(
+      await first.db
+        .from("trip_days")
+        .select("id")
+        .eq("variant_id", blank.variantId)
+        .order("day_number", { ascending: true })
+        .limit(1),
+      "empty Plan first day",
+    )[0];
+    dataOrThrow(
+      await first.db.rpc("apply_single_idea_v1", {
+        target_trip_id: tripId,
+        target_variant_id: blank.variantId,
+        target_research_item_id: roundTrip,
+        requested_day_id: blankFirstDay.id,
+        requested_before_item_id: null,
+        target_operation_id: randomUUID(),
+      }),
+      "apply round-trip Idea to empty Plan",
+    );
+    const blankItems = rows(
+      await first.db
+        .from("itinerary_items")
+        .select("type,details,place_id,day_id")
+        .eq("variant_id", blank.variantId),
+      "empty Plan after Idea apply",
+    );
+    assert.equal(blankItems.filter((item) => item.type === "flight").length, 2);
+    assert.equal(blankItems.filter((item) => item.details?.flightEndpointRole).length, 4);
+    assert.ok(
+      blankItems.filter((item) => item.details?.flightEndpointRole).every((item) => item.place_id),
+    );
+    assert.equal(
+      blankItems.filter((item) => item.details?.ideaResearchItemId === activity).length,
+      0,
     );
     assert.equal(
       roundTripItems.reduce((sum, item) => sum + Number(item.price_amount ?? 0), 0),
