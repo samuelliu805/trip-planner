@@ -3986,6 +3986,11 @@ async function publishThroughUi(browser, tripId) {
     `the backdrop darkened again while the panel closed: ${JSON.stringify(closedDrag)}`,
   );
   await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "share dialog close");
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
+    browser.sessionId,
+  );
   return token;
 }
 
