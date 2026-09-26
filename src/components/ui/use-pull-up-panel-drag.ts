@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { settlePullUpPanel } from "./pull-up-panel-motion";
 
 type DragGesture = {
   dragEnabled: boolean;
@@ -8,8 +9,9 @@ type DragGesture = {
   offset: number;
   scrollTarget: HTMLElement | null;
   startX: number;
-  startedAt: number;
   startY: number;
+  samples: Array<{ offset: number; time: number }>;
+  height: number;
 };
 
 function verticalScroller(target: EventTarget | null, surface: HTMLElement) {
@@ -57,20 +59,26 @@ export function usePullUpPanelDrag(onClose: () => void) {
     const overlay = surfaceOverlay(surface);
     let gesture: DragGesture | undefined;
     let settleTimer = 0;
+    let settleListener: (() => void) | undefined;
     let suppressClickUntil = 0;
 
     const clearInlineMotion = () => {
       surface.style.removeProperty("transform");
       surface.style.removeProperty("transition");
       surface.style.removeProperty("will-change");
+      surface.style.removeProperty("animation");
+      surface.style.removeProperty("touch-action");
       surface.removeAttribute("data-pull-up-dragging");
       overlay?.style.removeProperty("opacity");
       overlay?.style.removeProperty("transition");
       overlay?.style.removeProperty("will-change");
+      overlay?.style.removeProperty("animation");
     };
 
     const begin = (clientX: number, clientY: number, target: EventTarget | null) => {
       window.clearTimeout(settleTimer);
+      settleListener?.();
+      settleListener = undefined;
       clearInlineMotion();
       gesture = {
         dragEnabled: Boolean(controller.getClientRects().length),
@@ -78,8 +86,9 @@ export function usePullUpPanelDrag(onClose: () => void) {
         offset: 0,
         scrollTarget: verticalScroller(target, surface),
         startX: clientX,
-        startedAt: performance.now(),
         startY: clientY,
+        samples: [],
+        height: surface.getBoundingClientRect().height,
       };
     };
 
@@ -102,7 +111,6 @@ export function usePullUpPanelDrag(onClose: () => void) {
       if (!current.dragging && canScroll) {
         current.startX = clientX;
         current.startY = clientY;
-        current.startedAt = performance.now();
         return;
       }
 
@@ -116,13 +124,13 @@ export function usePullUpPanelDrag(onClose: () => void) {
         if (distance <= 0 || !current.dragEnabled) {
           current.startX = clientX;
           current.startY = clientY;
-          current.startedAt = performance.now();
           return;
         }
-        if (distance <= 6) return;
         current.dragging = true;
         surface.setAttribute("data-pull-up-dragging", "");
         surface.style.transition = "none";
+        surface.style.animation = "none";
+        surface.style.touchAction = "none";
         surface.style.willChange = "transform";
         if (overlay) {
           overlay.style.transition = "none";
@@ -133,49 +141,72 @@ export function usePullUpPanelDrag(onClose: () => void) {
       preventDefault();
       current.offset = Math.max(0, distance);
       surface.style.transform = `translate3d(0, ${current.offset}px, 0)`;
+      const now = performance.now();
+      current.samples.push({ offset: current.offset, time: now });
+      current.samples = current.samples.filter((sample) => now - sample.time <= 100);
       if (overlay) {
-        const fade = Math.max(0, 1 - current.offset / Math.max(1, surface.clientHeight * 0.85));
+        const fade = Math.max(0, 1 - current.offset / Math.max(1, current.height * 0.85));
         overlay.style.opacity = String(fade);
       }
     };
 
-    const settle = (clientY: number) => {
+    const settle = (clientY: number, forceSnapBack = false) => {
       const current = gesture;
       gesture = undefined;
       if (!current?.dragging) return;
 
       suppressClickUntil = performance.now() + 350;
-      const elapsed = Math.max(1, performance.now() - current.startedAt);
       const distance = Math.max(current.offset, clientY - current.startY);
-      const velocity = distance / elapsed;
-      const close =
-        distance >= Math.min(160, surface.clientHeight * 0.22) ||
-        (distance >= 48 && velocity >= 0.55);
+      const first = current.samples[0];
+      const last = current.samples.at(-1);
+      const velocity =
+        first && last && performance.now() - last.time < 120 && last.time > first.time
+          ? (last.offset - first.offset) / (last.time - first.time)
+          : 0;
+      const { close, duration } = settlePullUpPanel({
+        distance,
+        forceSnapBack,
+        height: current.height,
+        velocity,
+      });
 
       surface.style.transition = close
-        ? "transform 180ms cubic-bezier(0.32, 0.72, 0, 1)"
-        : "transform 320ms cubic-bezier(0.22, 1, 0.36, 1)";
+        ? `transform ${duration}ms cubic-bezier(0.25, 0.78, 0.25, 1)`
+        : `transform ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`;
       surface.style.transform = close
-        ? `translate3d(0, ${surface.clientHeight}px, 0)`
+        ? `translate3d(0, ${current.height}px, 0)`
         : "translate3d(0, 0, 0)";
       if (overlay) {
-        overlay.style.transition = close ? "opacity 180ms ease-out" : "opacity 240ms ease-out";
+        overlay.style.transition = `opacity ${duration}ms ease-out`;
         overlay.style.opacity = close ? "0" : "1";
       }
 
-      settleTimer = window.setTimeout(
-        () => {
-          if (close) onCloseRef.current();
-          else clearInlineMotion();
-        },
-        close ? 160 : 320,
-      );
+      let completed = false;
+      const finish = () => {
+        if (completed) return;
+        completed = true;
+        window.clearTimeout(settleTimer);
+        settleListener?.();
+        settleListener = undefined;
+        if (close) {
+          // Radix keeps closed content mounted for its exit animation. Preserve the
+          // completed sheet/overlay position so the backdrop cannot flash back.
+          surface.style.animation = "none";
+          if (overlay) overlay.style.animation = "none";
+          onCloseRef.current();
+        } else clearInlineMotion();
+      };
+      const onTransitionEnd = (event: TransitionEvent) => {
+        if (event.target === surface && event.propertyName === "transform") finish();
+      };
+      surface.addEventListener("transitionend", onTransitionEnd);
+      settleListener = () => surface.removeEventListener("transitionend", onTransitionEnd);
+      settleTimer = window.setTimeout(finish, duration + 60);
     };
 
     const cancel = () => {
       if (gesture?.dragging) {
-        gesture.offset = 0;
-        settle(gesture.startY);
+        settle(gesture.startY, true);
       } else gesture = undefined;
     };
     const onTouchStart = (event: TouchEvent) => {
@@ -213,6 +244,7 @@ export function usePullUpPanelDrag(onClose: () => void) {
     window.addEventListener("mouseup", onMouseUp);
     return () => {
       window.clearTimeout(settleTimer);
+      settleListener?.();
       clearInlineMotion();
       surface.removeEventListener("touchstart", onTouchStart);
       surface.removeEventListener("touchmove", onTouchMove);

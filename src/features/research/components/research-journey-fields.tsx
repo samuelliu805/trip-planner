@@ -3,6 +3,7 @@
 import { Localized, T } from "@/features/i18n/i18n-provider";
 import { nativeSelectClass, ResearchField } from "./form-controls";
 import { ResearchPlaceField } from "./research-place-field";
+import { airportPlaceQuery } from "@/features/places/airport-place-query";
 import { ResearchMultiCityFields } from "./research-multi-city-fields";
 import { ResearchSegmentDetailFields } from "./research-segment-detail-fields";
 import type { ResearchItem, ResearchJourneyType, ResearchSegment } from "../types";
@@ -114,6 +115,7 @@ export function ResearchJourneyFields({
               }
               initialPlace={initialOriginPlace}
               initialPlaceId={initialOriginPlaceId}
+              initialSearchText={airportPlaceQuery(initialOriginText ?? first.origin)}
               initialText={initialOriginText ?? first.origin}
               label="From"
               onTextChange={(origin) => segments.length <= 2 && update(0, { origin })}
@@ -128,6 +130,7 @@ export function ResearchJourneyFields({
               }
               initialPlace={initialDestinationPlace}
               initialPlaceId={initialDestinationPlaceId}
+              initialSearchText={airportPlaceQuery(initialDestinationText ?? first.destination)}
               initialText={initialDestinationText ?? first.destination}
               label="To"
               onTextChange={(destination) => segments.length <= 2 && update(0, { destination })}

@@ -42,7 +42,9 @@ export const researchSegmentSchema = z.object({
   departureDate: z.iso.date(),
   departureTime: optionalTime,
   destination: z.string().trim().min(1, "Add the segment destination.").max(200),
+  destinationPlace: placeSnapshotSchema.optional().nullable(),
   origin: z.string().trim().min(1, "Add the segment origin.").max(200),
+  originPlace: placeSnapshotSchema.optional().nullable(),
   journeyIndex: z.number().int().min(0).max(11).optional(),
   serviceNumber: optionalText(80),
 });

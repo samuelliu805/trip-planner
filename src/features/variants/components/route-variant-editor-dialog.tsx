@@ -123,21 +123,30 @@ export function RouteVariantEditorDialog({
   async function submit() {
     setError(undefined);
     const operationId = newTelemetryOperationId();
-    const source = (latestVariants ?? variants).find(
-      ({ id }) => id === (mode === "blank" ? activeVariant.id : sourceVariantId),
-    );
-    if (!source) {
-      setConflict(true);
-      setError("The source Plan is no longer available. Reload the latest Plans.");
-      return;
-    }
-    const sourceVersions = {
-      expectedSourceContentVersion: source.content_version,
-      expectedSourceDaysVersion: source.days_version,
-      expectedSourceItemsVersion: source.items_version,
-      expectedSourceVersion: source.version,
-    };
     try {
+      const loaded = await loadRouteVariants(tripId);
+      if (!loaded.data) throw new Error(loaded.error ?? "The latest Plans could not be loaded.");
+      const source = loaded.data.find(
+        ({ id }) =>
+          id === (mode === "blank" || mode === "metadata" ? activeVariant.id : sourceVariantId),
+      );
+      if (!source) {
+        setEntityUnavailable(true);
+        setError("The source Plan is no longer available. Reload the latest Plans.");
+        return;
+      }
+      if (mode === "metadata" && source.version !== baseVersion) {
+        setConflict(true);
+        setLatestVariant(source);
+        setError("This Plan changed while you were editing it. Review the latest values.");
+        return;
+      }
+      const sourceVersions = {
+        expectedSourceContentVersion: source.content_version,
+        expectedSourceDaysVersion: source.days_version,
+        expectedSourceItemsVersion: source.items_version,
+        expectedSourceVersion: source.version,
+      };
       const result =
         mode === "blank"
           ? await createMutation.mutateAsync({

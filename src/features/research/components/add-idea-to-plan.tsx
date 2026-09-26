@@ -10,7 +10,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -19,7 +18,10 @@ import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { applySingleIdea, applySingleIdeaWithConfirmedCalendar } from "../idea-actions";
-import { applySingleIdeaToNewVariant } from "../idea-plan-variant-actions";
+import {
+  applySingleIdeaToBlankVariant,
+  applySingleIdeaToNewVariant,
+} from "../idea-plan-variant-actions";
 import { ideaJourneyDates } from "../idea-plan-dates";
 import { loadIdeaVariantPlans } from "../idea-variant-plan-actions";
 import {
@@ -29,6 +31,7 @@ import {
 } from "../idea-variant-placement";
 import type { ResearchItem, ResearchPlanSnapshot } from "../types";
 import { IdeaCopyPlanFields } from "./idea-copy-plan-fields";
+import { IdeaApplyFooter, type IdeaApplyMode } from "./idea-apply-footer";
 import { IdeaVariantTargetList, type IdeaApplyResult } from "./idea-variant-target-list";
 
 export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: ResearchPlanSnapshot }) {
@@ -42,7 +45,7 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
   const [selectedIds, setSelectedIds] = useState([plan.variantId]);
   const [placements, setPlacements] = useState<Record<string, IdeaVariantPlacement>>({});
   const [results, setResults] = useState<Record<string, IdeaApplyResult>>({});
-  const [mode, setMode] = useState<"existing" | "copy">("existing");
+  const [mode, setMode] = useState<IdeaApplyMode>("existing");
   const [copyAnchor, setCopyAnchor] = useState<number | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string>();
@@ -150,12 +153,13 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
     router.refresh();
   }
 
-  async function applyToCopy() {
+  async function applyToNew() {
     if (pending || !copyAnchor) return;
     setPending(true);
     setError(undefined);
     try {
-      const result = await applySingleIdeaToNewVariant({
+      const create = mode === "blank" ? applySingleIdeaToBlankVariant : applySingleIdeaToNewVariant;
+      const result = await create({
         tripId: item.trip_id,
         variantId: plan.variantId,
         researchItemId: item.id,
@@ -165,14 +169,19 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
       if (!result.data) setError(result.error);
       else {
         setOpen(false);
-        router.push(`${window.location.pathname}?variant=${result.data.variantId}`);
-        router.refresh();
+        window.location.assign(`${window.location.pathname}?variant=${result.data.variantId}`);
       }
     } catch {
       setError(t("The new Plan could not be created."));
     } finally {
       setPending(false);
     }
+  }
+
+  function changeMode(next: IdeaApplyMode) {
+    setMode(next);
+    setCopyAnchor(next === "existing" ? null : 1);
+    setError(undefined);
   }
 
   return (
@@ -198,8 +207,10 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             <DialogTitle className="text-lg font-bold">
               <T
                 message={
-                  mode === "copy"
-                    ? "New Plan dates"
+                  mode !== "existing"
+                    ? journeyDates.length || item.start_date
+                      ? "New Plan dates"
+                      : "Create empty Plan + idea"
                     : journeyDates.length
                       ? "Update Plan dates?"
                       : "Add to Plan"
@@ -232,56 +243,30 @@ export function AddIdeaToPlan({ item, plan }: { item: ResearchItem; plan: Resear
             ) : (
               <IdeaCopyPlanFields
                 anchor={copyAnchor}
+                blank={mode === "blank"}
                 item={item}
                 onAnchorChange={setCopyAnchor}
                 plan={plan}
               />
             )}
-            {error ? (
+            {error && (mode !== "existing" || !loading) ? (
               <p className="text-sm text-destructive" role="alert">
                 {error}
               </p>
             ) : null}
           </div>
-          <DialogFooter>
-            {journeyDates.length ? (
-              <Button
-                className="min-h-11"
-                disabled={pending || loading}
-                onClick={() => {
-                  setMode(mode === "copy" ? "existing" : "copy");
-                  setCopyAnchor(mode === "copy" ? null : 1);
-                  setError(undefined);
-                }}
-                type="button"
-                variant="outline"
-              >
-                <T message={mode === "copy" ? "Back" : "Copy Plan and add idea"} />
-              </Button>
-            ) : null}
-            <Button
-              className="min-h-11"
-              disabled={
-                mode === "copy" ? !copyAnchor || pending : !canApply || !remainingPlans.length
-              }
-              onClick={() => void (mode === "copy" ? applyToCopy() : applyToSelected())}
-              type="button"
-            >
-              <T
-                message={
-                  mode === "copy"
-                    ? "Create Plan"
-                    : Object.values(results).some((result) => result.status)
-                      ? "Retry remaining Plans"
-                      : selectedPlans.length > 1
-                        ? "Update selected Plans"
-                        : journeyDates.length
-                          ? "Update this Plan"
-                          : "Add to Plan"
-                }
-              />
-            </Button>
-          </DialogFooter>
+          <IdeaApplyFooter
+            canApply={canApply}
+            copyAnchor={copyAnchor}
+            journeyDateCount={journeyDates.length}
+            mode={mode}
+            onApply={() => void (mode !== "existing" ? applyToNew() : applyToSelected())}
+            onModeChange={changeMode}
+            pending={pending}
+            remainingCount={remainingPlans.length}
+            retrying={Object.values(results).some((result) => result.status)}
+            selectedCount={selectedPlans.length}
+          />
         </DialogContent>
       </Dialog>
     </>

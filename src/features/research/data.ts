@@ -77,6 +77,13 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
 
   const itemsByDay = new Map<string, ResearchPlanItem[]>();
   for (const { day_id, ...item } of itemsResult.data ?? []) {
+    if (
+      item.details &&
+      typeof item.details === "object" &&
+      !Array.isArray(item.details) &&
+      "flightEndpointParentId" in item.details
+    )
+      continue;
     const items = itemsByDay.get(day_id) ?? [];
     items.push(item);
     itemsByDay.set(day_id, items);
@@ -94,6 +101,63 @@ export async function getResearchPlanSnapshot(tripId: string, variantId: string)
     } satisfies ResearchPlanSnapshot,
     error: null,
   };
+}
+
+/** Read every Plan for the Apply dialog in one consistent, bounded set of requests. */
+export async function getResearchPlanSnapshots(
+  tripId: string,
+  variants: Array<{ id: string; name: string }>,
+) {
+  if (!variants.length) return { data: [] as ResearchPlanSnapshot[], error: null };
+  const database = await getRelationalDatabase();
+  const variantIds = variants.map(({ id }) => id);
+  const [daysResult, itemsResult] = await runServerReads([
+    () =>
+      database
+        .from("trip_days")
+        .select("id, variant_id, date, day_number")
+        .in("variant_id", variantIds)
+        .order("day_number", { ascending: true }),
+    () =>
+      database
+        .from("itinerary_items")
+        .select(
+          "id, variant_id, day_id, details, place_id, price_amount, price_currency, title, type",
+        )
+        .eq("trip_id", tripId)
+        .in("variant_id", variantIds)
+        .order("day_id", { ascending: true })
+        .order("sort_order", { ascending: true }),
+  ]);
+  if (daysResult.error || itemsResult.error)
+    return { data: null, error: daysResult.error?.message ?? itemsResult.error?.message };
+
+  const itemsByDay = new Map<string, ResearchPlanItem[]>();
+  for (const { variant_id: _variantId, day_id, ...item } of itemsResult.data ?? []) {
+    if (
+      item.details &&
+      typeof item.details === "object" &&
+      !Array.isArray(item.details) &&
+      "flightEndpointParentId" in item.details
+    )
+      continue;
+    const items = itemsByDay.get(day_id) ?? [];
+    items.push(item);
+    itemsByDay.set(day_id, items);
+  }
+  const data: ResearchPlanSnapshot[] = variants.map((variant) => ({
+    variantId: variant.id,
+    variantName: variant.name,
+    days: (daysResult.data ?? [])
+      .filter((day) => day.variant_id === variant.id)
+      .map((day) => ({
+        id: day.id,
+        date: day.date,
+        dayNumber: day.day_number,
+        items: itemsByDay.get(day.id) ?? [],
+      })),
+  }));
+  return { data, error: null };
 }
 
 export async function getCompareItems(tripId: string) {

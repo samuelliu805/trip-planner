@@ -21,7 +21,10 @@ import {
 } from "../idea-actions";
 import type { ResearchItem, ResearchPlanSnapshot, ResearchSort } from "../types";
 import { activityNeedsDay } from "./idea-comparison-labels";
-import { applyIdeaChoiceToNewVariant } from "../idea-plan-variant-actions";
+import {
+  applyIdeaChoiceToBlankVariant,
+  applyIdeaChoiceToNewVariant,
+} from "../idea-plan-variant-actions";
 import { ideaJourneyDates } from "../idea-plan-dates";
 import { IdeaComparisonCreateDialog } from "./idea-comparison-create-dialog";
 import { IdeaComparisonViewDialog } from "./idea-comparison-view-dialog";
@@ -140,7 +143,7 @@ export function IdeaComparisons({
   async function apply(
     comparison: IdeaComparison,
     choiceId: string,
-    destination: "current" | "new" = "current",
+    destination: "current" | "new" | "blank" = "current",
     anchorDayNumber = 1,
   ) {
     if (pending) return;
@@ -151,7 +154,7 @@ export function IdeaComparisons({
       return item ? activityNeedsDay(item, plan) : false;
     });
     const selectedDayId = dayIds[choiceId] ?? "";
-    if (needsDay && !selectedDayId) {
+    if (destination === "current" && needsDay && !selectedDayId) {
       setError(t("Choose a Plan day."));
       return;
     }
@@ -172,11 +175,13 @@ export function IdeaComparisons({
       return item && ideaJourneyDates(item).length > 0;
     });
     const result =
-      destination === "new"
-        ? await applyIdeaChoiceToNewVariant(input)
-        : hasDatedTransport
-          ? await applyIdeaChoiceWithConfirmedCalendar(input)
-          : await applyIdeaChoice(input);
+      destination === "blank"
+        ? await applyIdeaChoiceToBlankVariant(input)
+        : destination === "new"
+          ? await applyIdeaChoiceToNewVariant(input)
+          : hasDatedTransport
+            ? await applyIdeaChoiceWithConfirmedCalendar(input)
+            : await applyIdeaChoice(input);
     setPending(false);
     if (!result.data) {
       setError(result.error);
@@ -192,9 +197,8 @@ export function IdeaComparisons({
       },
       { actorType: "authenticated" },
     );
-    if (destination === "new" && "variantId" in result.data) {
-      router.push(`${window.location.pathname}?variant=${result.data.variantId}`);
-      router.refresh();
+    if (destination !== "current" && "variantId" in result.data) {
+      window.location.assign(`${window.location.pathname}?variant=${result.data.variantId}`);
       return;
     }
     void queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, plan.variantId) });

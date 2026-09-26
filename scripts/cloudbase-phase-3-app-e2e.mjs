@@ -338,6 +338,45 @@ async function evaluate(browser, expression) {
   return result.result?.value;
 }
 
+async function exerciseSharePanelDrag(browser, close) {
+  return evaluate(
+    browser,
+    `(async () => {
+    const surface = document.querySelector('.public-share-settings-dialog');
+    const handle = surface?.querySelector('[data-pull-up-handle]');
+    const overlay = surface?.previousElementSibling;
+    if (!surface || !handle || !overlay) return { error: 'panel missing' };
+    const rect = handle.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const distance = ${close ? "Math.max(320, surface.getBoundingClientRect().height * 0.55)" : "80"};
+    function send(type, delta) {
+      const touch = new Touch({ identifier: 1, target: handle, clientX: x, clientY: y + delta });
+      handle.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+        touches: type === 'touchend' ? [] : [touch],
+        targetTouches: type === 'touchend' ? [] : [touch], changedTouches: [touch] }));
+    }
+    send('touchstart', 0);
+    send('touchmove', distance / 2);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    send('touchmove', distance);
+    const during = Number(surface.style.transform.match(/translate3d\\(0, ([\\d.]+)px/)?.[1]);
+    const opacityAtRelease = Number(getComputedStyle(overlay).opacity);
+    if (!${close}) await new Promise((resolve) => setTimeout(resolve, 140));
+    send('touchend', distance);
+    const observedOpacities = [];
+    for (let frame = 0; frame < 42; frame += 1) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      if (overlay.isConnected) observedOpacities.push(Number(getComputedStyle(overlay).opacity));
+    }
+    return { close: !surface.isConnected, distance, during,
+      overlayReturned: overlay.style.opacity === '',
+      panelReturned: surface.style.transform === '',
+      opacityAtRelease, maxOpacity: Math.max(0, ...observedOpacities) };
+  })()`,
+  );
+}
+
 async function waitFor(browser, expression, label, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   let last;
@@ -813,6 +852,68 @@ async function verifyTripSectionNavigation(browser, tripId) {
         dialog.innerText.includes('Adding to Plan:'));
     })()`,
     "dated Google flight waits for a selected Plan day",
+  );
+  for (const width of [390, 430]) {
+    await browser.cdp.send(
+      "Emulation.setDeviceMetricsOverride",
+      {
+        deviceScaleFactor: 2,
+        height: width === 390 ? 844 : 932,
+        mobile: true,
+        width,
+      },
+      browser.sessionId,
+    );
+    await waitFor(browser, `innerWidth === ${width}`, `${width}px Idea apply viewport`);
+    const actions = await evaluate(
+      browser,
+      `(() => {
+      const dialog = document.querySelector('[role="dialog"][data-state="open"]');
+      const blank = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Create empty Plan + idea'));
+      const copy = [...(dialog?.querySelectorAll('button') ?? [])].find((button) =>
+        button.textContent.includes('Copy Plan + idea'));
+      const bounds = dialog?.getBoundingClientRect();
+      return { blank: Boolean(blank?.getClientRects().length),
+        copy: Boolean(copy?.getClientRects().length),
+        fits: Boolean(bounds) && bounds.left >= -0.5 && bounds.right <= innerWidth + 0.5 &&
+          bounds.top >= -0.5 && bounds.bottom <= innerHeight + 0.5,
+        noHorizontalScroll: document.documentElement.scrollWidth <= innerWidth };
+    })()`,
+    );
+    assert.deepEqual(
+      actions,
+      { blank: true, copy: true, fits: true, noHorizontalScroll: true },
+      `${width}px Idea apply options escaped the viewport`,
+    );
+  }
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.includes('Create empty Plan + idea'))`,
+    "preview creating an empty Plan with this Idea",
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[role="dialog"]')?.innerText
+    .includes('New empty Plan from:')`,
+    "empty Plan preview",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
+      button.textContent.trim() === 'Back')`,
+    "return to existing Plan apply",
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    {
+      deviceScaleFactor: 1,
+      height: 900,
+      mobile: false,
+      width: 1280,
+    },
+    browser.sessionId,
   );
   await clickElement(
     browser,
@@ -3896,10 +3997,36 @@ async function publishThroughUi(browser, tripId) {
     browser.sessionId,
   );
   await generateLongImageThroughUi(browser);
-  await clickElement(
-    browser,
-    `document.querySelector('[role="dialog"] [data-dialog-close]')`,
-    "Close published share dialog",
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 844, mobile: true, width: 390 },
+    browser.sessionId,
+  );
+  const returnedDrag = await exerciseSharePanelDrag(browser, false);
+  assert.ok(
+    Math.abs(returnedDrag.during - returnedDrag.distance) <= 2,
+    `390px pull-up panel did not follow the finger: ${JSON.stringify(returnedDrag)}`,
+  );
+  assert.equal(returnedDrag.close, false, "a paused short drag closed the panel");
+  assert.equal(
+    returnedDrag.panelReturned && returnedDrag.overlayReturned,
+    true,
+    "390px pull-up panel did not settle with its overlay",
+  );
+  await browser.cdp.send(
+    "Emulation.setDeviceMetricsOverride",
+    { deviceScaleFactor: 2, height: 932, mobile: true, width: 430 },
+    browser.sessionId,
+  );
+  const closedDrag = await exerciseSharePanelDrag(browser, true);
+  assert.ok(
+    Math.abs(closedDrag.during - closedDrag.distance) <= 2,
+    `430px pull-up panel did not follow the finger: ${JSON.stringify(closedDrag)}`,
+  );
+  assert.equal(closedDrag.close, true, "a downward sheet drag did not close the dialog");
+  assert.ok(
+    closedDrag.maxOpacity <= closedDrag.opacityAtRelease + 0.08,
+    `the backdrop darkened again while the panel closed: ${JSON.stringify(closedDrag)}`,
   );
   await waitFor(browser, "!document.querySelector('[role=\"dialog\"]')", "share dialog close");
   return token;

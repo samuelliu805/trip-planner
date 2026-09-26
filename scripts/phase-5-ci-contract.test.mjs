@@ -295,7 +295,8 @@ test("the CN AMap smoke uses the real application UI and rejects Google requests
   );
   assert.match(smoke, /bounded share-publish diagnostic/);
   assert.match(smoke, /loadPersistedShareCount\(tripId\)/);
-  assert.match(smoke, /Close published share dialog/);
+  assert.match(smoke, /exerciseSharePanelDrag\(browser, true\)/);
+  assert.match(smoke, /the backdrop darkened again while the panel closed/);
   assert.match(smoke, /share dialog close/);
   assert.match(smoke, /Trip settings unexpectedly conflicted/);
   assert.match(smoke, /saved-right-after-share/);

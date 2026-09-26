@@ -6,6 +6,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PlaceAutocomplete } from "@/features/places/place-autocomplete";
+import { airportPlaceQuery } from "@/features/places/airport-place-query";
 import type { PlaceSnapshot } from "@/lib/providers/places/types";
 
 import { BookingPriceFields } from "./booking-price-fields";
@@ -38,7 +39,7 @@ export function JourneyEndpointFields({
         </Label>
         <PlaceAutocomplete
           ariaLabel="From"
-          initialQuery={originPlace ? "" : origin}
+          initialQuery={originPlace ? "" : airportPlaceQuery(origin)}
           onChange={(nextPlace) => {
             setOriginPlace(nextPlace);
             setOrigin(nextPlace?.displayName ?? "");
@@ -53,7 +54,7 @@ export function JourneyEndpointFields({
         </Label>
         <PlaceAutocomplete
           ariaLabel="To"
-          initialQuery={destinationPlace ? "" : destination}
+          initialQuery={destinationPlace ? "" : airportPlaceQuery(destination)}
           onChange={(nextPlace) => {
             setDestinationPlace(nextPlace);
             setDestination(nextPlace?.displayName ?? "");

@@ -28,7 +28,13 @@ function GoogleMapReadyContent({
 
   useLayoutEffect(() => {
     if (!map) return;
-    const listener = map.addListener("tilesloaded", () => setReadyMap(map));
+    const showWhenReady = () => {
+      if (map.getProjection()) setReadyMap(map);
+    };
+    // The first tilesloaded event can precede this effect on a fast cached map.
+    // Read current readiness first, then listen for projection changes.
+    const listener = map.addListener("projection_changed", showWhenReady);
+    showWhenReady();
     return () => listener.remove();
   }, [map]);
 
