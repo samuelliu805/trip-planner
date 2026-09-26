@@ -121,9 +121,7 @@ export async function getResearchPlanSnapshots(
     () =>
       database
         .from("itinerary_items")
-        .select(
-          "id, variant_id, day_id, details, place_id, price_amount, price_currency, title, type",
-        )
+        .select("id, day_id, details, place_id, price_amount, price_currency, title, type")
         .eq("trip_id", tripId)
         .in("variant_id", variantIds)
         .order("day_id", { ascending: true })
@@ -133,7 +131,7 @@ export async function getResearchPlanSnapshots(
     return { data: null, error: daysResult.error?.message ?? itemsResult.error?.message };
 
   const itemsByDay = new Map<string, ResearchPlanItem[]>();
-  for (const { variant_id: _variantId, day_id, ...item } of itemsResult.data ?? []) {
+  for (const { day_id, ...item } of itemsResult.data ?? []) {
     if (
       item.details &&
       typeof item.details === "object" &&

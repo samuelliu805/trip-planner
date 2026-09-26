@@ -28,14 +28,15 @@ function GoogleMapReadyContent({
 
   useLayoutEffect(() => {
     if (!map) return;
-    const showWhenReady = () => {
-      if (map.getProjection()) setReadyMap(map);
+    // A projection can exist before the map's marker pane is mounted. Wait for
+    // the first rendered frame before attaching AdvancedMarkerElements.
+    const showWhenRendered = () => setReadyMap(map);
+    const tilesListener = map.addListener("tilesloaded", showWhenRendered);
+    const idleListener = map.addListener("idle", showWhenRendered);
+    return () => {
+      tilesListener.remove();
+      idleListener.remove();
     };
-    // The first tilesloaded event can precede this effect on a fast cached map.
-    // Read current readiness first, then listen for projection changes.
-    const listener = map.addListener("projection_changed", showWhenReady);
-    showWhenReady();
-    return () => listener.remove();
   }, [map]);
 
   return readyMap === map ? children : null;
