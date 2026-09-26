@@ -2677,7 +2677,7 @@ async function assertMobileDeleteConfirmation(browser, width, actionText) {
   assert.ok(evidence.dialogZ > evidence.overlayZ, `${actionText} dialog was below its overlay.`);
 }
 
-async function verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant) {
+async function verifyVariantDeleteRefreshThroughUi(browser, tripId, createdVariant) {
   const config = loadLiveConfig();
   const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
 
@@ -2736,30 +2736,15 @@ async function verifyVariantDeleteConflictReloadThroughUi(browser, tripId, creat
   await clickButtonText(browser, "Delete Plan");
   await waitFor(
     browser,
-    `[...document.querySelectorAll('[role="alertdialog"] button')]
-      .some((button) => button.textContent.trim() === "Reload latest" && !button.disabled)`,
-    "Plan delete structured conflict",
-    45_000,
-  );
-  await clickButtonText(browser, "Reload latest");
-  await waitFor(
-    browser,
-    `document.querySelector('[role="alertdialog"]')?.textContent.includes("Latest Plan loaded. You can retry deletion.") &&
-      !document.querySelector('[role="alertdialog"] [role="alert"]')`,
-    "Plan delete V2 reload",
-  );
-  assert.equal(
-    await evaluate(browser, "Boolean(document.querySelector('[role=\"alertdialog\"]'))"),
-    true,
-    "Plan delete confirmation closed after reload.",
-  );
-  await clickButtonText(browser, "Delete Plan");
-  await waitFor(
-    browser,
     `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(createdVariant.priorVariantId)}`,
-    "Plan delete retry success",
+    "Plan delete with refreshed version",
     45_000,
   );
+  const deleted = await controlledData(
+    () => db.from("route_variants").select("id").eq("id", createdVariant.createdVariantId),
+    "Plan delete with refreshed version evidence",
+  );
+  assert.deepEqual(deleted, []);
   await browser.cdp.send(
     "Emulation.setDeviceMetricsOverride",
     { deviceScaleFactor: 1, height: 900, mobile: false, width: 1280 },
@@ -5332,7 +5317,7 @@ async function run() {
     await verifyMobileTransportEditorScroll(browser);
     let createdVariant = await verifyVariantNavigationThroughUi(browser);
     createdVariant = await verifySetPrimaryConflictRetryThroughUi(browser, tripId, createdVariant);
-    await verifyVariantDeleteConflictReloadThroughUi(browser, tripId, createdVariant);
+    await verifyVariantDeleteRefreshThroughUi(browser, tripId, createdVariant);
     await navigate(browser, `/trips/${tripId}`);
     await navigate(browser, `/trips/${tripId}`);
     await waitFor(

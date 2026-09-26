@@ -1217,7 +1217,7 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
   await clickElementWhenAvailable(
     browser,
     `[...document.querySelectorAll('[role="dialog"] button')].find((button) =>
-      button.textContent.includes('Copy Plan and add idea'))`,
+      button.textContent.includes('Copy Plan + idea'))`,
     "choose new dated Plan",
   );
   await waitFor(
