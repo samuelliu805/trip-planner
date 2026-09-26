@@ -4334,8 +4334,9 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
   );
   assert.match(stableMarker, /return \(\) => \{[\s\S]*nextMarker\.map = null/);
   assert.doesNotMatch(stableMarker, /useEffect\(/);
-  assert.match(googleCanvas, /map\.addListener\("projection_changed"/);
-  assert.match(googleCanvas, /if \(map\.getProjection\(\)\) setReadyMap\(map\)/);
+  assert.match(googleCanvas, /map\.addListener\("tilesloaded", showWhenRendered\)/);
+  assert.match(googleCanvas, /map\.addListener\("idle", showWhenRendered\)/);
+  assert.doesNotMatch(googleCanvas, /getProjection\(\)/);
   assert.match(googleCanvas, /readyMap === map \? children : null/);
   assert.match(googleProvider, /gm_authFailure/);
   assert.match(map, /anchorLeft=\{comparison \? "-50%" : undefined\}/);
