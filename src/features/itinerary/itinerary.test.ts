@@ -41,6 +41,7 @@ import {
   selectionBounds,
   selectionContains,
 } from "./grid-interactions.ts";
+import { rebaseUnchangedAdditiveCopy, rebaseUnchangedItemEdit } from "./mutation-rebase.ts";
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
 import { plannerItemTitleAfterPlaceSelection } from "./planner-item-title-autofill.ts";
 import { providerPlaceRpcArguments } from "./place-persistence.ts";
@@ -3131,6 +3132,41 @@ test("copied items paste into every matching selected cell and reject mixed type
   assert.throws(
     () => itemPasteCoordinates({ row: 0, column: 5 }, { row: 3, column: 5 }, "meal", 3),
     /matching cells/,
+  );
+});
+
+test("a rapid paste rebases only safe item edits and additive copies", () => {
+  const edit = { ...base, expectedVersion: 2, id: ids.item };
+  const copy = {
+    expectedItemsVersion: 1,
+    operationId: base.operationId,
+    replaceTargetItemIds: [],
+    replaceTargetVersions: [],
+    sourceItemIds: [ids.item],
+    sourceVersions: [2],
+    targetDayId: ids.targetDay,
+    tripId: ids.trip,
+    variantId: ids.variant,
+  };
+  const latest = {
+    days: [
+      { id: ids.day, items_version: 3, items: [{ day_id: ids.day, id: ids.item, version: 2 }] },
+      { id: ids.targetDay, items_version: 4, items: [] },
+    ],
+  };
+  assert.equal(rebaseUnchangedItemEdit(edit, latest)?.expectedItemsVersion, 3);
+  assert.equal(rebaseUnchangedAdditiveCopy(copy, latest)?.expectedItemsVersion, 4);
+  const changed = {
+    days: [
+      { ...latest.days[0], items: [{ day_id: ids.day, id: ids.item, version: 3 }] },
+      latest.days[1],
+    ],
+  };
+  assert.equal(rebaseUnchangedItemEdit(edit, changed), null);
+  assert.equal(rebaseUnchangedAdditiveCopy(copy, changed), null);
+  assert.equal(
+    rebaseUnchangedAdditiveCopy({ ...copy, replaceTargetItemIds: [ids.item] }, latest),
+    null,
   );
 });
 

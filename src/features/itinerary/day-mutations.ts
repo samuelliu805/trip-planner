@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
+import { loadPlannerWorkspace } from "@/features/itinerary/actions";
 import {
   copyItineraryItems,
   insertTripDay,
@@ -15,7 +16,13 @@ import {
   plannerWorkspaceItems,
 } from "@/features/itinerary/mutation-impact";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
-import { removeItem, replaceItem, requireData } from "@/features/itinerary/query-cache";
+import { rebaseUnchangedAdditiveCopy } from "@/features/itinerary/mutation-rebase";
+import {
+  isItineraryConflict,
+  removeItem,
+  replaceItem,
+  requireData,
+} from "@/features/itinerary/query-cache";
 import { reorderWorkspaceDays } from "@/features/itinerary/day-order";
 import { insertActivityAtPlacement } from "@/features/itinerary/activity-order";
 import type {
@@ -50,8 +57,8 @@ export function useInsertTripDay(tripId: string, variantId: string) {
   return useMutation({
     mutationFn: async (input: InsertTripDayInput) =>
       persistence ? persistence.insertDay(input) : requireData(await insertTripDay(input)),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       if (!persistence) {
         invalidateDayStructure(client, tripId);
         refreshResearch(client, tripId, variantId);
@@ -66,8 +73,8 @@ export function useRemoveTripDay(tripId: string, variantId: string) {
   return useMutation({
     mutationFn: async (input: RemoveTripDayInput) =>
       persistence ? persistence.removeDay(input) : requireData(await removeTripDay(input)),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+    onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       if (!persistence) {
         invalidateDayStructure(client, tripId);
         refreshResearch(client, tripId, variantId);
@@ -104,8 +111,18 @@ export function useCopyItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
   const persistence = usePlannerPersistence();
   return useMutation({
-    mutationFn: async (input: CopyItineraryItemsInput) =>
-      persistence ? persistence.copyItems(input) : requireData(await copyItineraryItems(input)),
+    mutationFn: async (input: CopyItineraryItemsInput) => {
+      if (persistence) return persistence.copyItems(input);
+      try {
+        return requireData(await copyItineraryItems(input));
+      } catch (error) {
+        if (!isItineraryConflict(error)) throw error;
+        const latest = await loadPlannerWorkspace(tripId, variantId);
+        const rebased = latest.data && rebaseUnchangedAdditiveCopy(input, latest.data);
+        if (!rebased) throw error;
+        return requireData(await copyItineraryItems(rebased));
+      }
+    },
     onMutate: async (input) => {
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
@@ -237,13 +254,14 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (items, _input, context) => {
+    onSuccess: async (items, _input, context) => {
       items.forEach((item) =>
         client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
           replaceItem(current, item),
         ),
       );
       if (!persistence) {
+        await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         if (context?.reorderedLocalitySource) void invalidateVariantComparison(client, tripId);
         if (context?.reorderedDecisionSummaryItem)
           void invalidateVariantDecisionSummary(client, tripId);

@@ -3128,6 +3128,63 @@ async function verifyMatrixContextMenus(browser) {
   );
 }
 
+async function verifyRapidPasteThenEdit(browser) {
+  await clickElement(
+    browser,
+    `document.querySelector('[data-cell="0-1"]')`,
+    "day cell menu",
+    "right",
+  );
+  await clickButtonText(browser, "Add day after");
+  await waitFor(browser, `Boolean(document.querySelector('[data-cell="1-1"]'))`, "new day");
+  await clickElement(
+    browser,
+    `document.querySelector('[data-cell="1-1"]')`,
+    "new activity cell menu",
+    "right",
+  );
+  await clickButtonText(browser, "Paste");
+  await waitFor(
+    browser,
+    `(() => {
+      const item = document.querySelector('[data-cell="1-1"] [data-item-row]');
+      return item && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(item.dataset.itemRow ?? '') &&
+        ![...document.querySelectorAll('[role="status"]')]
+          .some((status) => status.textContent.includes('Updating selected cells'));
+    })()`,
+    "persisted pasted activity and refreshed day version",
+    45_000,
+  );
+  await openSavedItemEditor(browser, "1-1");
+  const editedTitle = `${runLabel} rapid pasted activity`;
+  await setInputValue(browser, 'input[id^="item-title-"]', editedTitle);
+  await saveOpenItemEditor(browser, "rapid pasted activity");
+  await waitFor(
+    browser,
+    `document.querySelector('[data-cell="1-1"]')?.textContent.includes(${JSON.stringify(editedTitle)})`,
+    "pasted activity edited without a reload",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('[data-cell="1-5"]')`,
+    "new day menu",
+    "right",
+  );
+  await clickButtonText(browser, "Delete day");
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[role="alertdialog"]'))`,
+    "delete new day",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      /Remove day|删除当天/.test(button.textContent.trim()))`,
+    "confirm new day deletion",
+  );
+  await waitFor(browser, `!document.querySelector('[data-cell="1-1"]')`, "new day removed");
+}
+
 async function pressElement(browser, elementExpression, label) {
   await waitFor(
     browser,
@@ -5425,6 +5482,7 @@ async function run() {
       60_000,
     );
     await verifyMatrixContextMenus(browser);
+    await verifyRapidPasteThenEdit(browser);
     await uploadAttachmentThroughUi(browser);
     await verifyMobileMapBackNavigation(browser);
     await clickElement(
