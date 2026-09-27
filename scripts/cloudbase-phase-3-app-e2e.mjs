@@ -3131,7 +3131,7 @@ async function verifyMatrixContextMenus(browser) {
 async function verifyRapidPasteThenEdit(browser) {
   await clickElement(
     browser,
-    `document.querySelector('[data-cell="0-1"]')`,
+    `document.querySelector('[data-cell="0-5"]')`,
     "day cell menu",
     "right",
   );
