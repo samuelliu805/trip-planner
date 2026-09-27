@@ -3129,6 +3129,28 @@ async function verifyMatrixContextMenus(browser) {
 }
 
 async function verifyRapidPasteThenEdit(browser) {
+  await evaluate(
+    browser,
+    `(() => {
+      window.__rapidClipboardWrites = [];
+      window.__rapidPasteSignals = [];
+      const clipboard = navigator.clipboard;
+      if (clipboard?.writeText) {
+        const writeText = clipboard.writeText.bind(clipboard);
+        clipboard.writeText = (value) => {
+          window.__rapidClipboardWrites.push(value);
+          return writeText(value);
+        };
+      }
+      new MutationObserver(() => {
+        const signals = [...document.querySelectorAll('[role="alert"], [role="status"]')]
+          .map((item) => item.textContent.trim()).filter(Boolean);
+        for (const signal of signals) {
+          if (!window.__rapidPasteSignals.includes(signal)) window.__rapidPasteSignals.push(signal);
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    })()`,
+  );
   await clickElement(
     browser,
     `document.querySelector('[data-cell="0-5"]')`,
@@ -3196,6 +3218,13 @@ async function verifyRapidPasteThenEdit(browser) {
           .map((item) => item.dataset.itemRow).slice(0, 4),
         notices: [...document.querySelectorAll('[role="alert"], [role="status"]')]
           .map((item) => item.textContent.trim().slice(0, 180)).filter(Boolean).slice(0, 4),
+        clipboardWrites: (window.__rapidClipboardWrites ?? []).map((value) => {
+          try {
+            const parsed = JSON.parse(value);
+            return { kind: parsed.kind, itemId: parsed.itemId, cells: parsed.cells?.length };
+          } catch { return { kind: 'other' }; }
+        }),
+        signals: (window.__rapidPasteSignals ?? []).slice(-6),
       })`,
     );
     throw new Error(
