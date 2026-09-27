@@ -3139,6 +3139,19 @@ async function verifyRapidPasteThenEdit(browser) {
   await waitFor(browser, `Boolean(document.querySelector('[data-cell="1-1"]'))`, "new day");
   await clickElement(
     browser,
+    `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+      .find((item) => item.getClientRects().length)`,
+    "activity to copy after adding a day",
+    "right",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Copy item' && item.getClientRects().length)`,
+    "item Copy action",
+  );
+  await clickElement(
+    browser,
     `document.querySelector('[data-cell="1-1"]')`,
     "new activity cell menu",
     "right",
