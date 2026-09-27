@@ -10,6 +10,7 @@ import {
 } from "@/features/itinerary/components/planner-config";
 import {
   moveGridFocus,
+  selectionContains,
   selectionBounds,
   type GridCoordinate,
 } from "@/features/itinerary/grid-interactions";
@@ -65,6 +66,15 @@ export function usePlannerInteractions({
   setSplit: Dispatch<SetStateAction<number>>;
   workspace: PlannerWorkspace;
 }) {
+  function clearSelection() {
+    setSelectedDayRow(null);
+    setSelectedItemId(undefined);
+    setSelectedMapItemId(undefined);
+    setSelectionAnchor({ column: -1, row: -1 });
+    setSelectionEnd({ column: -1, row: -1 });
+    setMapMode("overview");
+  }
+
   function focusCell(coordinate: GridCoordinate, extend: boolean) {
     if (rangeJustSelected.current) {
       rangeJustSelected.current = false;
@@ -77,12 +87,7 @@ export function usePlannerInteractions({
       selectionEnd.row === coordinate.row &&
       selectionEnd.column === coordinate.column;
     if (selectedAgain) {
-      setSelectedDayRow(null);
-      setSelectedItemId(undefined);
-      setSelectedMapItemId(undefined);
-      setSelectionAnchor({ column: -1, row: -1 });
-      setSelectionEnd({ column: -1, row: -1 });
-      setMapMode("overview");
+      clearSelection();
       return;
     }
     setSelectedDayRow(null);
@@ -114,6 +119,16 @@ export function usePlannerInteractions({
     setSelectionAnchor({ column: -1, row: -1 });
     setSelectionEnd({ column: -1, row: -1 });
     setInteractionError(undefined);
+  }
+
+  function selectContextCell(coordinate: GridCoordinate) {
+    setSelectedDayRow(null);
+    setSelectedItemId(undefined);
+    setSelectedMapItemId(undefined);
+    if (!selectionContains(selectionAnchor, selectionEnd, coordinate)) {
+      setSelectionAnchor(coordinate);
+      setSelectionEnd(coordinate);
+    }
   }
 
   function selectItem(item: ItineraryItem, coordinate: GridCoordinate) {
@@ -213,8 +228,22 @@ export function usePlannerInteractions({
       setEditor(item ? { dayId, item, type: item.type } : { dayId, type: category.defaultType });
     }
     if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
       setEditor(null);
-      focusCell(coordinate, false);
+      if (selectedItemId) {
+        setSelectedItemId(undefined);
+        setSelectedMapItemId(undefined);
+        setSelectionAnchor(coordinate);
+        setSelectionEnd(coordinate);
+        requestAnimationFrame(() =>
+          document
+            .querySelector<HTMLElement>(`[data-cell="${coordinate.row}-${coordinate.column}"]`)
+            ?.focus(),
+        );
+        return;
+      }
+      clearSelection();
     }
   }
 
@@ -294,6 +323,7 @@ export function usePlannerInteractions({
     handleCellKey,
     openEditorFromDoubleClick,
     selectItem,
+    selectContextCell,
     selectDay,
     startFill,
     startRangeSelection,

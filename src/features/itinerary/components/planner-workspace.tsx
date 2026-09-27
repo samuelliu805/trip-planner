@@ -24,6 +24,7 @@ import { convertPlanCostBreakdown, planCostBreakdown, planCostSummary } from "..
 import { usePlannerViewTelemetry } from "../hooks/use-planner-view-telemetry";
 import { usePlannerMapSheetHistory } from "../hooks/use-planner-map-sheet-history";
 import { useExclusivePullUpPanel } from "@/components/ui/pull-up-panel";
+import type { PlannerDay } from "../types";
 
 export function PlannerWorkspace(props: PlannerWorkspaceProps) {
   return <PlannerWorkspaceVariant key={props.initialWorkspace.variant.id} {...props} />;
@@ -36,6 +37,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
   useExclusivePullUpPanel("planner-map", c.mapExpanded, mapSheet.onOpenChange);
   usePlannerViewTelemetry(c.mapExpanded);
   const [itemSaveFeedback, setItemSaveFeedback] = useState<PlannerItemSaveFeedback>();
+  const [dayToRemove, setDayToRemove] = useState<PlannerDay | null>(null);
   const activeItem =
     c.selectedItem ??
     (c.selectedCount === 1 && c.selectedItems.length === 1 ? c.selectedItems[0] : undefined);
@@ -102,6 +104,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         copyPreviousDay={c.clipboard.copyPreviousDay}
         copySelectionToClipboard={c.clipboard.copySelectionToClipboard}
         dayMutationPending={c.dayMutationPending}
+        dayToRemove={dayToRemove}
         deleteError={props.deleteError}
         fillLabel={c.fillLabel}
         fillThroughDay={c.workspace.days[c.selectionEnd.row]?.day_number}
@@ -128,6 +131,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         selectedCount={c.selectedCount}
         selectedItem={activeItem}
         setCopyDaysOpen={c.clipboard.setCopyDaysOpen}
+        setDayToRemove={setDayToRemove}
         setEditor={c.setEditor}
         setInteractionError={c.setInteractionError}
         setSettingsOpen={c.setSettingsOpen}
@@ -164,6 +168,8 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         compactMapViewportKey={c.map.compactMapViewportKey}
         comparison={c.map.comparison}
         containerRef={c.containerRef}
+        copyCell={c.clipboard.copyCellToClipboard}
+        copyItem={c.clipboard.copyItemToClipboard}
         dayCityLayerAvailable={c.map.dayCityLayerAvailable}
         dayMapLayer={c.map.dayMapLayer}
         dayMutationPending={c.dayMutationPending}
@@ -177,6 +183,9 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         gridTemplate={c.gridTemplate}
         handleCellKey={c.interactions.handleCellKey}
         insertDay={c.insertDay}
+        pasteClipboard={c.clipboard.pasteAvailableClipboard}
+        requestClearCell={c.requestClearCell}
+        requestRemoveDay={setDayToRemove}
         isFillDragging={c.isFillDragging}
         mapEmptyState={c.map.mapEmptyState}
         mapLines={c.map.mapLines}
@@ -203,6 +212,7 @@ function PlannerWorkspaceVariant(props: PlannerWorkspaceProps) {
         selectionEndRef={c.selectionEndRef}
         selectDay={c.interactions.selectDay}
         selectItem={c.interactions.selectItem}
+        selectContextCell={c.interactions.selectContextCell}
         setEditor={c.setEditor}
         setSelectionEnd={c.setSelectionEnd}
         setSplit={c.setSplit}

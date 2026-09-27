@@ -35,6 +35,7 @@ import {
   encodePlannerClipboard,
   fillTargetRows,
   initialPlannerSelection,
+  itemPasteCoordinates,
   moveGridFocus,
   parsePlannerClipboard,
   selectionBounds,
@@ -2688,7 +2689,7 @@ test("Overview route calculation is explicit while ordinary map rendering stays 
   assert.match(routeUi, /Close route panel/);
   assert.match(routeUi, /route\.openEdit/);
   assert.match(routeUi, /label="Edit route"[\s\S]*variant="secondary"/);
-  assert.match(routeUi, /label="Create route"[\s\S]*variant="primary"/);
+  assert.match(routeUi, /label="Compute route"[\s\S]*variant="primary"/);
   assert.match(routeUi, /primary: "bg-primary text-primary-foreground/);
   assert.match(routeUi, /secondary: "border bg-background text-foreground/);
   assert.match(routeUi, /destructive: "text-destructive hover:bg-destructive\/10"/);
@@ -3100,6 +3101,37 @@ test("planner clipboard copy and paste preserves typed item IDs", () => {
     version: 2 as const,
   };
   assert.deepEqual(parsePlannerClipboard(encodePlannerClipboard(payload)), payload);
+  const itemPayload = {
+    itemId: ids.item,
+    itemType: "meal",
+    kind: "trip-planner/item" as const,
+    version: 1 as const,
+  };
+  assert.deepEqual(parsePlannerClipboard(encodePlannerClipboard(itemPayload)), itemPayload);
+});
+
+test("copied items paste into every matching selected cell and reject mixed types", () => {
+  assert.deepEqual(itemPasteCoordinates({ row: 0, column: 5 }, { row: 2, column: 5 }, "meal", 3), [
+    { row: 0, column: 5 },
+    { row: 1, column: 5 },
+    { row: 2, column: 5 },
+  ]);
+  assert.deepEqual(
+    itemPasteCoordinates({ row: 2, column: 1 }, { row: 0, column: 1 }, "activity", 3),
+    [
+      { row: 0, column: 1 },
+      { row: 1, column: 1 },
+      { row: 2, column: 1 },
+    ],
+  );
+  assert.throws(
+    () => itemPasteCoordinates({ row: 0, column: 4 }, { row: 2, column: 5 }, "meal", 3),
+    /matching cells/,
+  );
+  assert.throws(
+    () => itemPasteCoordinates({ row: 0, column: 5 }, { row: 3, column: 5 }, "meal", 3),
+    /matching cells/,
+  );
 });
 
 test("malformed and unrelated clipboard input is rejected safely", () => {
@@ -3143,7 +3175,6 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
-  workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
   workspace += await readFile(

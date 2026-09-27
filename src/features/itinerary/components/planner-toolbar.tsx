@@ -2,7 +2,6 @@
 
 import { Copy, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 
 import {
   AlertDialog,
@@ -25,14 +24,13 @@ import {
 } from "@/features/itinerary/components/planner-context-menu-items";
 import { PlannerStatus } from "@/features/itinerary/components/planner-layout-elements";
 import type { PlannerToolbarProps } from "@/features/itinerary/components/planner-toolbar-types";
-import type { PlannerDay } from "@/features/itinerary/types";
 import type { PlannerWorkspace } from "@/features/itinerary/types";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { TripAppBar } from "@/features/trips/components/trip-app-bar";
 
 export function PlannerToolbar(props: PlannerToolbarProps) {
   const { t } = useI18n();
-  const [dayToRemove, setDayToRemove] = useState<PlannerDay | null>(null);
+  const { dayToRemove, setDayToRemove } = props;
   const activeDay = props.activeDay;
   const queryClient = useQueryClient();
 

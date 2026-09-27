@@ -1,7 +1,7 @@
 "use client";
 
 import { T, useI18n } from "@/features/i18n/i18n-provider";
-import { MoreHorizontal, Paperclip, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Paperclip, Trash2 } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ import { compactTransportRoute } from "@/features/itinerary/transport-presentati
 export function PlannerItemRow({
   interactive,
   item,
+  onCopy,
   onDelete,
   onEdit,
   onSelect,
@@ -29,6 +30,7 @@ export function PlannerItemRow({
 }: {
   interactive: boolean;
   item: ItineraryItem;
+  onCopy: (item: ItineraryItem) => void;
   onDelete: (item: ItineraryItem) => void;
   onEdit: (item: ItineraryItem) => void;
   onSelect: (item: ItineraryItem) => void;
@@ -77,6 +79,7 @@ export function PlannerItemRow({
   return (
     <div
       className={`group/item grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] items-center rounded ${selected ? "bg-primary/10 ring-1 ring-primary/40" : interactive ? "hover:bg-muted/70" : ""}`}
+      data-item-row={item.id}
     >
       <button
         className="flex min-h-8 min-w-0 flex-col justify-center rounded px-1.5 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -132,6 +135,9 @@ export function PlannerItemRow({
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => onEdit(item)}>
               <T message={"Edit item"} />
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onCopy(item)}>
+              <Copy className="size-4" /> <T message={"Copy item"} />
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

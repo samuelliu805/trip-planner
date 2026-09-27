@@ -1,7 +1,7 @@
 "use client";
 
 import { Localized, T } from "@/features/i18n/i18n-provider";
-import { LoaderCircle, Pencil, Plus, RefreshCw, Route, X } from "lucide-react";
+import { LoaderCircle, Pencil, RefreshCw, Route, X } from "lucide-react";
 
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { DayRouteEditor } from "./day-route-editor";
@@ -149,7 +149,7 @@ export function DayRouteOverlay({
     return (
       <DayRouteEditor onBack={route.cancelEditing} route={route} selectedPlace={selectedPlace} />
     );
-  if (route.plan)
+  if (route.hasCalculation)
     return <DayRouteSummary onClose={onClose} route={route} selectedPlace={selectedPlace} />;
   return (
     <section className="map-bottom-panel day-route-summary absolute bottom-3 left-3 right-3 z-20 overflow-hidden overscroll-none rounded-xl border bg-background/95 shadow-lg backdrop-blur">
@@ -162,17 +162,32 @@ export function DayRouteOverlay({
           </p>
         </div>
         <RouteIconButton
-          label="Create route"
-          onClick={route.openCreate}
-          title="Create route"
+          disabled={route.pending || (route.displayDraft?.itemIds.length ?? 0) < 2}
+          label="Compute route"
+          onClick={() => void route.computeDefault()}
+          title="Compute route"
           variant="primary"
+          className="w-auto gap-2 px-3"
         >
-          <Plus className="size-4" />
+          {route.pending ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <Route className="size-4" />
+          )}
+          <T message="Compute route" />
         </RouteIconButton>
         <RouteIconButton label="Close route panel" onClick={onClose} title="Close panel">
           <X className="size-4" />
         </RouteIconButton>
       </div>
+      <AutoDismissAlert
+        className="m-3 mt-1 rounded-md text-xs shadow-none"
+        role="alert"
+        tone="destructive"
+        value={route.error}
+      >
+        {route.error ? <Localized value={route.error} /> : null}
+      </AutoDismissAlert>
     </section>
   );
 }

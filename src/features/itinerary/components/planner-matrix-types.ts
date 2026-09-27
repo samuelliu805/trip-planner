@@ -10,7 +10,7 @@ import type {
 import type { PlannerCategory, EditorState } from "./planner-config";
 import type { PlannerMapMode, PlannerMapModeChange } from "./planner-map-types";
 import type { GridCoordinate } from "../grid-interactions";
-import type { ItineraryItem, PlannerWorkspace } from "../types";
+import type { ItineraryItem, PlannerDay, PlannerWorkspace } from "../types";
 import type { PlannerMapLine, PlannerMapMarker } from "../../maps/planner-map-model";
 import type { DayRouteUi } from "../../routes/use-day-route";
 import type { OverviewRouteUi } from "../../routes/use-overview-route";
@@ -34,6 +34,8 @@ export type PlannerMatrixProps = {
   dayMutationPending: boolean;
   dayRoute: DayRouteUi;
   deleteItem: (item: ItineraryItem) => Promise<void>;
+  copyCell: (coordinate: GridCoordinate) => Promise<void>;
+  copyItem: (item: ItineraryItem) => Promise<void>;
   fillDragging: MutableRefObject<boolean>;
   fillSourceRight: MutableRefObject<number>;
   focusCell: (coordinate: GridCoordinate, extend: boolean) => void;
@@ -46,6 +48,9 @@ export type PlannerMatrixProps = {
     items: ItineraryItem[],
   ) => void;
   insertDay: (position: number) => Promise<void>;
+  pasteClipboard: () => Promise<void>;
+  requestClearCell: (coordinate: GridCoordinate) => void;
+  requestRemoveDay: (day: PlannerDay) => void;
   isFillDragging: boolean;
   mapEmptyState?: MapEmptyState;
   mapLines: PlannerMapLine[];
@@ -72,6 +77,7 @@ export type PlannerMatrixProps = {
   selectionEndRef: MutableRefObject<GridCoordinate>;
   selectDay: (row: number) => void;
   selectItem: (item: ItineraryItem, coordinate: GridCoordinate) => void;
+  selectContextCell: (coordinate: GridCoordinate) => void;
   setEditor: Dispatch<SetStateAction<EditorState | null>>;
   setSelectionEnd: (coordinate: GridCoordinate) => void;
   setSplit: Dispatch<SetStateAction<number>>;
