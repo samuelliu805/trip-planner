@@ -3012,7 +3012,13 @@ async function waitForReactHydration(browser, elementExpression, label) {
   );
 }
 
-async function clickElement(browser, elementExpression, label, button = "left") {
+async function clickElement(
+  browser,
+  elementExpression,
+  label,
+  button = "left",
+  movePointer = false,
+) {
   await waitForClickableElement(browser, elementExpression, label);
   const point = await evaluate(
     browser,
@@ -3042,6 +3048,13 @@ async function clickElement(browser, elementExpression, label, button = "left") 
     })()`,
   );
   assert(point?.available, `${label} was not available: ${JSON.stringify(point)}`);
+  if (movePointer) {
+    await browser.cdp.send(
+      "Input.dispatchMouseEvent",
+      { type: "mouseMoved", x: point.x, y: point.y },
+      browser.sessionId,
+    );
+  }
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
     { button, clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
@@ -3128,7 +3141,7 @@ async function verifyMatrixContextMenus(browser) {
   );
 }
 
-async function verifyRapidPasteThenEdit(browser) {
+async function verifyRapidPasteThenEdit(browser, tripId) {
   await evaluate(
     browser,
     `(() => {
@@ -3151,14 +3164,26 @@ async function verifyRapidPasteThenEdit(browser) {
       }).observe(document.body, { childList: true, subtree: true });
     })()`,
   );
+  const dayCount = await evaluate(browser, `document.querySelectorAll('[data-cell$="-1"]').length`);
   await clickElement(
     browser,
     `document.querySelector('[data-cell="0-5"]')`,
     "day cell menu",
     "right",
   );
-  await clickButtonText(browser, "Add day after");
-  await waitFor(browser, `Boolean(document.querySelector('[data-cell="1-1"]'))`, "new day");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Add day after' && item.getClientRects().length)`,
+    "cell Add day after action",
+    "left",
+    true,
+  );
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-cell$="-1"]').length === ${dayCount + 1}`,
+    "new day persisted in the Matrix",
+  );
   await clickElement(
     browser,
     `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
@@ -3177,6 +3202,8 @@ async function verifyRapidPasteThenEdit(browser) {
     `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
       item.textContent.trim() === 'Copy item' && item.getClientRects().length)`,
     "item Copy action",
+    "left",
+    true,
   );
   await clickElement(
     browser,
@@ -3189,6 +3216,8 @@ async function verifyRapidPasteThenEdit(browser) {
     `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
       item.textContent.trim() === 'Paste' && item.getClientRects().length)`,
     "cell Paste action",
+    "left",
+    true,
   );
   try {
     const result = await waitFor(
@@ -3207,6 +3236,26 @@ async function verifyRapidPasteThenEdit(browser) {
     );
     assert.equal(result.saved, true, `Paste failed: ${JSON.stringify(result)}`);
   } catch (error) {
+    let persisted;
+    try {
+      const config = loadLiveConfig();
+      const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+      const days = await controlledData(
+        () => db.from("trip_days").select("id,day_number,items_version").eq("trip_id", tripId),
+        "rapid paste day snapshot",
+      );
+      const items = await controlledData(
+        () => db.from("itinerary_items").select("id,day_id").eq("trip_id", tripId),
+        "rapid paste item snapshot",
+      );
+      persisted = days.slice(0, 4).map((day) => ({
+        dayNumber: day.day_number,
+        itemsVersion: day.items_version,
+        itemIds: items.filter((item) => item.day_id === day.id).map((item) => item.id),
+      }));
+    } catch (lookupError) {
+      persisted = lookupError instanceof Error ? lookupError.message : String(lookupError);
+    }
     const diagnostic = await evaluate(
       browser,
       `({
@@ -3228,7 +3277,7 @@ async function verifyRapidPasteThenEdit(browser) {
       })`,
     );
     throw new Error(
-      `${error instanceof Error ? error.message : error}; paste state: ${JSON.stringify(diagnostic)}`,
+      `${error instanceof Error ? error.message : error}; paste state: ${JSON.stringify(diagnostic)}; persisted: ${JSON.stringify(persisted)}`,
     );
   }
   await openSavedItemEditor(browser, "1-1");
@@ -5558,7 +5607,7 @@ async function run() {
       60_000,
     );
     await verifyMatrixContextMenus(browser);
-    await verifyRapidPasteThenEdit(browser);
+    await verifyRapidPasteThenEdit(browser, tripId);
     await uploadAttachmentThroughUi(browser);
     await verifyMobileMapBackNavigation(browser);
     await clickElement(
