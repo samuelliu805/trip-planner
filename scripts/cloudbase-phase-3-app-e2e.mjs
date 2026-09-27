@@ -3240,16 +3240,21 @@ async function verifyRapidPasteThenEdit(browser, tripId) {
     try {
       const config = loadLiveConfig();
       const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
-      const days = await controlledData(
-        () => db.from("trip_days").select("id,day_number,items_version").eq("trip_id", tripId),
-        "rapid paste day snapshot",
-      );
       const items = await controlledData(
-        () => db.from("itinerary_items").select("id,day_id").eq("trip_id", tripId),
+        () => db.from("itinerary_items").select("id,day_id,variant_id").eq("trip_id", tripId),
         "rapid paste item snapshot",
       );
-      persisted = days.slice(0, 4).map((day) => ({
+      const days = await controlledData(
+        () =>
+          db
+            .from("trip_days")
+            .select("id,day_number,items_version,variant_id")
+            .in("variant_id", [...new Set(items.map((item) => item.variant_id))]),
+        "rapid paste day snapshot",
+      );
+      persisted = days.slice(0, 6).map((day) => ({
         dayNumber: day.day_number,
+        variantId: day.variant_id,
         itemsVersion: day.items_version,
         itemIds: items.filter((item) => item.day_id === day.id).map((item) => item.id),
       }));
