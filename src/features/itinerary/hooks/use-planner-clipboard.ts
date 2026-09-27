@@ -8,6 +8,7 @@ import { isMatrixVisibleItem } from "@/features/itinerary/flight-endpoints";
 import {
   encodePlannerClipboard,
   fillTargetRows,
+  itemPasteCoordinates,
   parsePlannerClipboard,
   selectionBounds,
   type GridCoordinate,
@@ -16,7 +17,12 @@ import {
 import { useCopyItineraryItems } from "@/features/itinerary/day-mutations";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import { isItineraryConflict } from "@/features/itinerary/query-cache";
-import type { ItineraryItemType, PlannerDay, PlannerWorkspace } from "@/features/itinerary/types";
+import type {
+  ItineraryItem,
+  ItineraryItemType,
+  PlannerDay,
+  PlannerWorkspace,
+} from "@/features/itinerary/types";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 export function usePlannerClipboard({
@@ -99,8 +105,54 @@ export function usePlannerClipboard({
     });
   }
 
+  async function storeClipboard(payload: PlannerClipboard) {
+    setInternalClipboard(payload);
+    setInteractionError(undefined);
+    await withRequestPending(async () => {
+      try {
+        await navigator.clipboard.writeText(encodePlannerClipboard(payload));
+      } catch {
+        /* The internal clipboard remains available. */
+      }
+    });
+  }
+
+  async function copyItemToClipboard(item: ItineraryItem) {
+    await storeClipboard({
+      itemId: item.id,
+      itemType: item.type,
+      kind: "trip-planner/item",
+      version: 1,
+    });
+  }
+
+  async function copyCellToClipboard(coordinate: GridCoordinate) {
+    const day = workspace.days[coordinate.row];
+    const category = categories[coordinate.column];
+    if (!day || !category) return;
+    await storeClipboard({
+      cells: [
+        {
+          columnOffset: 0,
+          items: day.items
+            .filter((item) => category.types.includes(item.type) && isMatrixVisibleItem(item))
+            .map(({ id }) => id),
+          rowOffset: 0,
+        },
+      ],
+      kind: "trip-planner/items",
+      sourceColumn: coordinate.column,
+      version: 2,
+    });
+  }
+
   async function replaceCategoryItems(
-    operations: { sourceItemIds: string[]; targetDay: PlannerDay; types: ItineraryItemType[] }[],
+    operations: {
+      sourceItemIds: string[];
+      targetDay: PlannerDay;
+      types: ItineraryItemType[];
+      replaceExisting?: boolean;
+    }[],
   ) {
     await withRequestPending(async () => {
       const previous = queryClient.getQueryData<PlannerWorkspace>(
@@ -113,9 +165,12 @@ export function usePlannerClipboard({
         )
         .map((operation) => ({
           ...operation,
-          replacedItems: operation.targetDay.items.filter(
-            (item) => operation.types.includes(item.type) && isMatrixVisibleItem(item),
-          ),
+          replacedItems:
+            operation.replaceExisting === false
+              ? []
+              : operation.targetDay.items.filter(
+                  (item) => operation.types.includes(item.type) && isMatrixVisibleItem(item),
+                ),
         }));
       const grouped = new Map<
         string,
@@ -187,6 +242,26 @@ export function usePlannerClipboard({
   async function pastePayload(payload: PlannerClipboard) {
     try {
       const selectedBounds = selectionBounds(selectionAnchor, selectionEnd);
+      if (payload.kind === "trip-planner/item") {
+        const source = workspace.days
+          .flatMap(({ items }) => items)
+          .find(({ id }) => id === payload.itemId);
+        if (!source || source.type !== payload.itemType || !isMatrixVisibleItem(source))
+          throw new Error("The copied item is no longer available. Copy it again before pasting.");
+        const operations = itemPasteCoordinates(
+          selectionAnchor,
+          selectionEnd,
+          source.type,
+          workspace.days.length,
+        ).map(({ row }) => ({
+          sourceItemIds: [source.id],
+          targetDay: workspace.days[row],
+          types: [source.type],
+          replaceExisting: false,
+        }));
+        await replaceCategoryItems(operations);
+        return;
+      }
       if (selectedBounds.top !== selectedBounds.bottom)
         throw new Error("Paste works only when the selected destination cells are in one row.");
       const destination = { column: selectedBounds.left, row: selectedBounds.top };
@@ -297,7 +372,9 @@ export function usePlannerClipboard({
 
   return {
     clipboardPayload,
+    copyCellToClipboard,
     copyDaysOpen,
+    copyItemToClipboard,
     copyMutation,
     copyPreviousDay,
     copySelectionToClipboard,

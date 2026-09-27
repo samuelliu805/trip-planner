@@ -24,6 +24,7 @@ export type DayRouteUi = {
   addStop: (itemId: string) => void;
   cancelEditing: () => void;
   clearRoute: () => Promise<void>;
+  computeDefault: () => Promise<void>;
   displayDraft: DayRouteEditorDraft | null;
   draft: DayRouteEditorDraft | null;
   editing: boolean;
@@ -31,6 +32,7 @@ export type DayRouteUi = {
   error?: string;
   conflict: boolean;
   fitKey?: string;
+  hasCalculation: boolean;
   openCreate: () => void;
   openEdit: () => void;
   pending: boolean;
@@ -115,7 +117,11 @@ export function useDayRoute(
         : null,
     [eligibleItems, plan, previousHotel, suggestedMode],
   );
-  const displayDraft = draft ?? synchronized?.draft ?? null;
+  const defaultDraft = useMemo(
+    () => defaultDayRouteDraft(eligibleItems, suggestedMode, previousHotel),
+    [eligibleItems, previousHotel, suggestedMode],
+  );
+  const displayDraft = draft ?? synchronized?.draft ?? (plan ? null : defaultDraft);
   const variantId = workspace.variant.id;
   function setError(value?: string) {
     setErrorState(value && activeDay ? { dayId: activeDay.id, value } : null);
@@ -239,7 +245,6 @@ export function useDayRoute(
     baseStatus === "needs_edit" ? baseStatus : synchronizedChanged ? "stale" : baseStatus;
   const resolved = plan ? resolveRouteCalculationConfig(workspace, plan) : undefined;
   const calculatedFitKey = plan?.calculation?.computed_at;
-  const defaultDraft = () => defaultDayRouteDraft(eligibleItems, suggestedMode, previousHotel);
 
   return {
     activeDay,
@@ -249,6 +254,13 @@ export function useDayRoute(
       setError(undefined);
     },
     clearRoute,
+    computeDefault: async () => {
+      if (persistence) {
+        persistence.requestAccountFeature("route");
+        return;
+      }
+      await persistAndCalculate(defaultDraft);
+    },
     conflict,
     displayDraft,
     draft,
@@ -256,12 +268,13 @@ export function useDayRoute(
     eligibleItems,
     error: error ?? (!resolved?.config && plan ? resolved?.error : undefined),
     fitKey: calculatedFitKey ? `day-route:${activeDay?.id}:${calculatedFitKey}` : undefined,
+    hasCalculation: Boolean(plan?.calculation),
     openCreate: () => {
       if (persistence) {
         persistence.requestAccountFeature("route");
         return;
       }
-      setDraft(defaultDraft());
+      setDraft(defaultDraft);
       setError(undefined);
     },
     openEdit: () => {
@@ -270,7 +283,7 @@ export function useDayRoute(
         return;
       }
       if (plan) setDraft(synchronized?.draft ?? savedDraft(plan));
-      else setDraft(defaultDraft());
+      else setDraft(defaultDraft);
       setError(undefined);
     },
     pending,

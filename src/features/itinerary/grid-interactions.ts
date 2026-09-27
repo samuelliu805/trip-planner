@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { matrixCategoryColumns } from "./components/matrix-columns.ts";
+import type { ItineraryItemType } from "./types.ts";
 
 export type GridCoordinate = { column: number; row: number };
 
@@ -8,12 +10,21 @@ export type ClipboardCell = {
   rowOffset: number;
 };
 
-export type PlannerClipboard = {
+export type PlannerCellsClipboard = {
   cells: ClipboardCell[];
   kind: "trip-planner/items";
   sourceColumn: number;
   version: 2;
 };
+
+export type PlannerItemClipboard = {
+  itemId: string;
+  itemType: string;
+  kind: "trip-planner/item";
+  version: 1;
+};
+
+export type PlannerClipboard = PlannerCellsClipboard | PlannerItemClipboard;
 
 export function initialPlannerSelection(dayCount: number, preferredColumn: number): GridCoordinate {
   return dayCount > 0 && preferredColumn >= 0
@@ -21,7 +32,7 @@ export function initialPlannerSelection(dayCount: number, preferredColumn: numbe
     : { column: -1, row: -1 };
 }
 
-const clipboardSchema = z
+const cellsClipboardSchema = z
   .object({
     cells: z
       .array(
@@ -37,6 +48,17 @@ const clipboardSchema = z
     version: z.literal(2),
   })
   .strict();
+
+const itemClipboardSchema = z
+  .object({
+    itemId: z.uuid(),
+    itemType: z.string(),
+    kind: z.literal("trip-planner/item"),
+    version: z.literal(1),
+  })
+  .strict();
+
+const clipboardSchema = z.union([cellsClipboardSchema, itemClipboardSchema]);
 
 export function selectionBounds(anchor: GridCoordinate, end: GridCoordinate) {
   return {
@@ -59,6 +81,24 @@ export function selectionContains(
     coordinate.column >= bounds.left &&
     coordinate.column <= bounds.right
   );
+}
+
+export function itemPasteCoordinates(
+  anchor: GridCoordinate,
+  end: GridCoordinate,
+  itemType: ItineraryItemType,
+  dayCount: number,
+): GridCoordinate[] {
+  const bounds = selectionBounds(anchor, end);
+  const coordinates: GridCoordinate[] = [];
+  for (let row = bounds.top; row <= bounds.bottom; row += 1) {
+    for (let column = bounds.left; column <= bounds.right; column += 1) {
+      if (row < 0 || row >= dayCount || !matrixCategoryColumns[column]?.types.includes(itemType))
+        throw new Error(`Paste blocked: ${itemType} items can only be pasted into matching cells.`);
+      coordinates.push({ row, column });
+    }
+  }
+  return coordinates;
 }
 
 export function moveGridFocus(

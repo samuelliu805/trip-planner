@@ -169,6 +169,18 @@ export function usePlannerWorkspaceController({
     setClearTargetItems(selectedItems);
   }
 
+  function requestClearCell(coordinate: GridCoordinate) {
+    const day = projectedWorkspace.days[coordinate.row];
+    const category = categories[coordinate.column];
+    if (!day || !category) return;
+    const items = day.items.filter(
+      (item) => category.types.includes(item.type) && isMatrixVisibleItem(item),
+    );
+    if (!items.length) return;
+    setInteractionError(undefined);
+    setClearTargetItems(items);
+  }
+
   async function confirmClearSelection() {
     const cleared = await clearItems(clearTargetItems);
     if (!cleared) return;
@@ -335,6 +347,7 @@ export function usePlannerWorkspaceController({
     removeDay,
     reorderItems,
     requestClearSelection,
+    requestClearCell,
     selectedCount,
     selectedDay,
     selectedDayRow,

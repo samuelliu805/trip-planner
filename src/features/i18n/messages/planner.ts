@@ -27,6 +27,9 @@ export const plannerZhCN: Record<string, string> = {
   "Click a gap to place it · swipe or scroll safely": "点击空隙放置，也可放心滑动或滚动",
   "Click to place": "点击放置",
   "Confirm order": "确认顺序",
+  "Compute route": "计算路线",
+  "Copy cell": "复制单元格",
+  "Copy item": "复制项目",
   "Copy previous day": "复制前一天",
   "Copy selected cells": "复制所选单元格",
   "Copy to days": "复制到其他天",
@@ -34,6 +37,8 @@ export const plannerZhCN: Record<string, string> = {
   "Create independent copies on each selected destination day.":
     "在每个选中的目标日期创建独立副本。",
   Departure: "出发",
+  "Delete cell": "删除单元格内容",
+  "Delete day": "删除当天",
   "Discard new files?": "要放弃新增文件吗？",
   "Edit item": "编辑项目",
   "Editable trip planning matrix": "可编辑的行程规划表",

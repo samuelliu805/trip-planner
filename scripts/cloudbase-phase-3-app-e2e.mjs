@@ -3012,7 +3012,7 @@ async function waitForReactHydration(browser, elementExpression, label) {
   );
 }
 
-async function clickElement(browser, elementExpression, label) {
+async function clickElement(browser, elementExpression, label, button = "left") {
   await waitForClickableElement(browser, elementExpression, label);
   const point = await evaluate(
     browser,
@@ -3044,13 +3044,87 @@ async function clickElement(browser, elementExpression, label) {
   assert(point?.available, `${label} was not available: ${JSON.stringify(point)}`);
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
-    { button: "left", clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
+    { button, clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
     browser.sessionId,
   );
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
-    { button: "left", clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
+    { button, clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
     browser.sessionId,
+  );
+}
+
+async function verifyMatrixContextMenus(browser) {
+  const activity = `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+    .find((item) => item.getClientRects().length)`;
+  await clickElement(browser, activity, "activity context menu", "right");
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].some((item) => item.textContent.trim() === "Copy item")`,
+    "activity copy action on right click",
+  );
+  await clickButtonText(browser, "Copy item");
+  await clickElement(
+    browser,
+    `document.querySelector('[data-cell="0-5"]')`,
+    "meal cell context menu",
+    "right",
+  );
+  await waitFor(
+    browser,
+    `["Delete cell", "Copy cell", "Paste", "Delete day", "Add day before", "Add day after"]
+      .every((label) => [...document.querySelectorAll('[role="menuitem"]')]
+        .some((item) => item.textContent.trim() === label))`,
+    "cell context actions on right click",
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await clickElement(browser, activity, "selected activity after context menu");
+  await waitFor(
+    browser,
+    `(${activity})?.getAttribute('aria-pressed') === 'true'`,
+    "selected activity",
+  );
+  await evaluate(browser, `(${activity})?.focus()`);
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `(${activity})?.getAttribute('aria-pressed') === 'false' &&
+      document.activeElement?.getAttribute('data-cell') === '0-1' &&
+      document.activeElement?.getAttribute('aria-selected') === 'true'`,
+    "Escape returns item selection to its cell",
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "rawKeyDown", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await browser.cdp.send(
+    "Input.dispatchKeyEvent",
+    { code: "Escape", key: "Escape", type: "keyUp", windowsVirtualKeyCode: 27 },
+    browser.sessionId,
+  );
+  await waitFor(
+    browser,
+    `document.querySelector('[data-cell="0-1"]')?.getAttribute('aria-selected') === 'false'`,
+    "Escape clears cell selection",
   );
 }
 
@@ -3338,8 +3412,8 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
   try {
     await waitFor(
       browser,
-      "Boolean(document.querySelector('button[aria-label=\"Create route\"]'))",
-      "create day route control",
+      "Boolean(document.querySelector('button[aria-label=\"Compute route\"]'))",
+      "compute day route control",
     );
   } catch (error) {
     const diagnostic = await evaluate(
@@ -3360,8 +3434,26 @@ async function calculateAmapRouteThroughUi(browser, tripId) {
   }
   await clickElement(
     browser,
-    `document.querySelector('button[aria-label="Create route"]')`,
-    "Create route",
+    `document.querySelector('button[aria-label="Compute route"]')`,
+    "Compute route with all eligible stops",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('button[aria-label="Edit route"]')) &&
+      !document.querySelector('button[aria-label="Compute route"]') &&
+      Number(document.querySelector('[data-amap-line-count]')?.dataset.amapLineCount) > 0`,
+    "computed route replaces Compute with Edit",
+    60_000,
+  );
+  const initialRoute = await loadPersistedAmapEvidence(tripId);
+  assert.ok(
+    initialRoute.items.every((item) => initialRoute.stops.some((stop) => stop.item_id === item.id)),
+    "The default route should include every saved activity.",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('button[aria-label="Edit route"]')`,
+    "Edit computed route",
   );
   await waitFor(
     browser,
@@ -3560,7 +3652,7 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
   await waitFor(
     browser,
     `[...document.querySelectorAll('button')].some((button) =>
-      ["Edit route", "Create route"].includes(button.getAttribute("aria-label")) &&
+      button.getAttribute("aria-label") === "Edit route" &&
       button.getClientRects().length
     )`,
     "route recovery control after activity delete",
@@ -3568,7 +3660,7 @@ async function verifyDeletedActivityLeavesMapAndRoute(browser, tripId) {
   await clickElement(
     browser,
     `[...document.querySelectorAll('button')].find((button) =>
-      ["Edit route", "Create route"].includes(button.getAttribute("aria-label")) &&
+      button.getAttribute("aria-label") === "Edit route" &&
       button.getClientRects().length
     )`,
     "edit or recreate route after activity delete",
@@ -5332,6 +5424,7 @@ async function run() {
       "refreshed saved activities",
       60_000,
     );
+    await verifyMatrixContextMenus(browser);
     await uploadAttachmentThroughUi(browser);
     await verifyMobileMapBackNavigation(browser);
     await clickElement(

@@ -1,10 +1,14 @@
 "use client";
 
 import { useI18n } from "@/features/i18n/i18n-provider";
+import { useState } from "react";
+
+import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 
 import { AddItemButton } from "@/features/itinerary/components/planner-add-item-button";
 import { PlannerDayHeaderCell } from "@/features/itinerary/components/planner-day-header-cell";
 import { PlannerItemRow } from "@/features/itinerary/components/planner-item-row";
+import { PlannerCellContextMenu } from "@/features/itinerary/components/planner-cell-context-menu";
 import { MatrixCityList } from "@/features/itinerary/components/matrix-city-list";
 import {
   PlannerDivider,
@@ -28,6 +32,8 @@ export function PlannerMatrix({
   decisionSummary,
   decisionSummaryPanelOpen,
   containerRef,
+  copyCell,
+  copyItem,
   dayCityLayerAvailable,
   dayMapLayer,
   dayMutationPending,
@@ -55,6 +61,9 @@ export function PlannerMatrix({
   openEditorFromDoubleClick,
   overviewRoute,
   insertDay,
+  pasteClipboard,
+  requestClearCell,
+  requestRemoveDay,
   selectedCount,
   selectDay,
   selectedDayRow,
@@ -65,6 +74,7 @@ export function PlannerMatrix({
   selectionEndRef,
   setEditor,
   selectItem,
+  selectContextCell,
   setSelectionEnd,
   setSplit,
   split,
@@ -78,6 +88,7 @@ export function PlannerMatrix({
 }: PlannerMatrixProps) {
   const matrixRef = useInitialMatrixScrollPosition<HTMLElement>();
   const { t } = useI18n();
+  const [contextItemId, setContextItemId] = useState<string | null>(null);
   useMobileMatrixTopContainment(matrixRef);
 
   return (
@@ -149,73 +160,111 @@ export function PlannerMatrix({
                       ),
                     );
                   return (
-                    <div
-                      aria-selected={selected}
-                      className={`${category.width} group relative flex shrink-0 flex-col border-r p-0.5 ${selected ? "bg-primary/5 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
-                      data-cell={`${row}-${column}`}
-                      key={category.id}
-                      onClick={(event) => focusCell(coordinate, event.shiftKey)}
-                      onKeyDown={(event) =>
-                        handleCellKey(event, coordinate, day.id, category, items)
-                      }
-                      onPointerEnter={() => {
-                        if (fillDragging.current) {
-                          const sameColumn = {
-                            column: fillSourceRight.current,
-                            row: coordinate.row,
-                          };
-                          selectionEndRef.current = sameColumn;
-                          setSelectionEnd(sameColumn);
-                        }
-                      }}
-                      role="gridcell"
-                      tabIndex={active ? 0 : -1}
-                    >
-                      <div className="space-y-px min-[1200px]:space-y-1">
-                        {category.id === "city" ? (
-                          <MatrixCityList
-                            labels={deriveDayLocality(day).localities.map(({ label }) => label)}
-                          />
-                        ) : null}
-                        {items.map((item) => (
-                          <PlannerItemRow
-                            interactive={selected}
-                            onDelete={(selectedItem) => void deleteItem(selectedItem)}
-                            item={item}
-                            key={item.id}
-                            onEdit={(selectedItem) =>
-                              setEditor({
-                                dayId: day.id,
-                                item: selectedItem,
-                                type: selectedItem.type,
-                              })
+                    <ContextMenu key={category.id}>
+                      <ContextMenuTrigger asChild>
+                        <div
+                          aria-selected={selected}
+                          className={`${category.width} group relative flex shrink-0 flex-col border-r p-0.5 ${selected ? "bg-primary/5 shadow-[inset_0_0_0_2px_var(--primary)]" : "bg-background"}`}
+                          data-cell={`${row}-${column}`}
+                          onContextMenu={(event) => {
+                            const itemId = (event.target as HTMLElement).closest<HTMLElement>(
+                              "[data-item-row]",
+                            )?.dataset.itemRow;
+                            const item = day.items.find(({ id }) => id === itemId);
+                            setContextItemId(item?.id ?? null);
+                            if (item) {
+                              if (selectedItemId !== item.id) selectItem(item, coordinate);
+                            } else selectContextCell(coordinate);
+                          }}
+                          onClick={(event) => focusCell(coordinate, event.shiftKey)}
+                          onKeyDown={(event) =>
+                            handleCellKey(event, coordinate, day.id, category, items)
+                          }
+                          onPointerEnter={() => {
+                            if (fillDragging.current) {
+                              const sameColumn = {
+                                column: fillSourceRight.current,
+                                row: coordinate.row,
+                              };
+                              selectionEndRef.current = sameColumn;
+                              setSelectionEnd(sameColumn);
                             }
-                            onSelect={() => {
-                              selectItem(item, { row, column });
-                            }}
-                            selected={item.id === selectedItemId}
-                          />
-                        ))}
-                      </div>
-                      {(active || dayStarter) && category.id !== "city" ? (
-                        <AddItemButton
-                          category={category}
-                          dayStarter={dayStarter}
-                          day={day}
-                          disabled={category.id === "hotel" && items.length > 0}
-                          onAdd={() => setEditor({ dayId: day.id, type: category.defaultType })}
-                        />
-                      ) : null}
-                      {lastSelected && selectionAnchor.row === selectionEnd.row ? (
-                        <button
-                          aria-label="Fill selected cells down"
-                          data-i18n-aria-label={"Fill selected cells down"}
-                          className="absolute -bottom-1 -right-1 z-20 size-3 cursor-crosshair rounded-[2px] border border-background bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          onPointerDown={startFill}
-                          type="button"
-                        />
-                      ) : null}
-                    </div>
+                          }}
+                          role="gridcell"
+                          tabIndex={active ? 0 : -1}
+                        >
+                          <div className="space-y-px min-[1200px]:space-y-1">
+                            {category.id === "city" ? (
+                              <MatrixCityList
+                                labels={deriveDayLocality(day).localities.map(({ label }) => label)}
+                              />
+                            ) : null}
+                            {items.map((item) => (
+                              <PlannerItemRow
+                                interactive={selected}
+                                onCopy={(selectedItem) => void copyItem(selectedItem)}
+                                onDelete={(selectedItem) => void deleteItem(selectedItem)}
+                                item={item}
+                                key={item.id}
+                                onEdit={(selectedItem) =>
+                                  setEditor({
+                                    dayId: day.id,
+                                    item: selectedItem,
+                                    type: selectedItem.type,
+                                  })
+                                }
+                                onSelect={() => {
+                                  selectItem(item, { row, column });
+                                }}
+                                selected={item.id === selectedItemId}
+                              />
+                            ))}
+                          </div>
+                          {(active || dayStarter) && category.id !== "city" ? (
+                            <AddItemButton
+                              category={category}
+                              dayStarter={dayStarter}
+                              day={day}
+                              disabled={category.id === "hotel" && items.length > 0}
+                              onAdd={() => setEditor({ dayId: day.id, type: category.defaultType })}
+                            />
+                          ) : null}
+                          {lastSelected && selectionAnchor.row === selectionEnd.row ? (
+                            <button
+                              aria-label="Fill selected cells down"
+                              data-i18n-aria-label={"Fill selected cells down"}
+                              className="absolute -bottom-1 -right-1 z-20 size-3 cursor-crosshair rounded-[2px] border border-background bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              onPointerDown={startFill}
+                              type="button"
+                            />
+                          ) : null}
+                        </div>
+                      </ContextMenuTrigger>
+                      <PlannerCellContextMenu
+                        dayMutationPending={dayMutationPending}
+                        hasItems={items.length > 0}
+                        isOnlyDay={workspace.days.length === 1}
+                        item={day.items.find(({ id }) => id === contextItemId)}
+                        insertDayAfter={() => void insertDay(day.day_number + 1)}
+                        insertDayBefore={() => void insertDay(day.day_number)}
+                        onCopyCell={() => void copyCell(coordinate)}
+                        onCopyItem={() => {
+                          const item = day.items.find(({ id }) => id === contextItemId);
+                          if (item) void copyItem(item);
+                        }}
+                        onDeleteCell={() => requestClearCell(coordinate)}
+                        onDeleteDay={() => requestRemoveDay(day)}
+                        onDeleteItem={() => {
+                          const item = day.items.find(({ id }) => id === contextItemId);
+                          if (item) void deleteItem(item);
+                        }}
+                        onEditItem={() => {
+                          const item = day.items.find(({ id }) => id === contextItemId);
+                          if (item) setEditor({ dayId: day.id, item, type: item.type });
+                        }}
+                        onPaste={() => void pasteClipboard()}
+                      />
+                    </ContextMenu>
                   );
                 })}
               </div>
