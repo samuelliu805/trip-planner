@@ -3300,7 +3300,14 @@ async function verifyRapidPasteThenEdit(browser, tripId) {
     "new day menu",
     "right",
   );
-  await clickButtonText(browser, "Delete day");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Delete day' && item.getClientRects().length)`,
+    "cell Delete day action",
+    "left",
+    true,
+  );
   await waitFor(
     browser,
     `Boolean(document.querySelector('[role="alertdialog"]'))`,
@@ -3312,7 +3319,13 @@ async function verifyRapidPasteThenEdit(browser, tripId) {
       /Remove day|删除当天/.test(button.textContent.trim()))`,
     "confirm new day deletion",
   );
-  await waitFor(browser, `!document.querySelector('[data-cell="1-1"]')`, "new day removed");
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-cell$="-1"]').length === ${dayCount} &&
+      ![...document.querySelectorAll('[data-item-row]')]
+        .some((item) => item.textContent.includes(${JSON.stringify(editedTitle)}))`,
+    "new day and pasted activity removed",
+  );
 }
 
 async function pressElement(browser, elementExpression, label) {
