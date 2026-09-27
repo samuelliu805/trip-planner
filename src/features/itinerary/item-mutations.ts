@@ -18,6 +18,13 @@ import {
 } from "@/features/itinerary/mutation-impact";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import {
+  rebaseAdditiveItemCreate,
+  rebaseUnchangedCellClear,
+  rebaseUnchangedItemDelete,
+  rebaseUnchangedItemEdit,
+} from "@/features/itinerary/mutation-rebase";
+import { retryPlannerMutation } from "@/features/itinerary/mutation-retry";
+import {
   removeItem,
   removeItems,
   replaceItem,
@@ -50,7 +57,15 @@ export function useCreateItineraryItem(tripId: string, variantId: string) {
   const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: CreateItineraryItemInput) =>
-      persistence ? persistence.createItem(input) : requireData(await createItineraryItem(input)),
+      persistence
+        ? persistence.createItem(input)
+        : retryPlannerMutation(
+            input,
+            async (value) => requireData(await createItineraryItem(value)),
+            rebaseAdditiveItemCreate,
+            tripId,
+            variantId,
+          ),
     onMutate: async (input) => {
       input.operationId ??= newTelemetryOperationId();
       input.surface ??= "planner";
@@ -145,8 +160,16 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
   const client = useQueryClient();
   const persistence = usePlannerPersistence();
   return useMutation({
-    mutationFn: async (input: UpdateItineraryItemInput) =>
-      persistence ? persistence.updateItem(input) : requireData(await updateItineraryItem(input)),
+    mutationFn: async (input: UpdateItineraryItemInput) => {
+      if (persistence) return persistence.updateItem(input);
+      return retryPlannerMutation(
+        input,
+        async (value) => requireData(await updateItineraryItem(value)),
+        rebaseUnchangedItemEdit,
+        tripId,
+        variantId,
+      );
+    },
     onMutate: async (input) => {
       input.operationId ??= newTelemetryOperationId();
       input.surface ??= "planner";
@@ -220,11 +243,13 @@ export function useUpdateItineraryItem(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (item, _input, context) => {
+    onSuccess: async (item, _input, context) => {
       client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
         replaceItem(current, item),
       );
       if (!persistence) {
+        // Item saves advance the aggregate day version even if the item itself is unchanged.
+        await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         if (localityProjectionItemChanged(context?.existing, item))
           void invalidateVariantComparison(client, tripId);
         if (decisionSummaryItemChanged(context?.existing, item))
@@ -240,7 +265,15 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
   const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: DeleteItineraryItemInput) =>
-      persistence ? persistence.deleteItem(input) : requireData(await deleteItineraryItem(input)),
+      persistence
+        ? persistence.deleteItem(input)
+        : retryPlannerMutation(
+            input,
+            async (value) => requireData(await deleteItineraryItem(value)),
+            rebaseUnchangedItemDelete,
+            tripId,
+            variantId,
+          ),
     onMutate: async (input) => {
       input.operationId ??= newTelemetryOperationId();
       input.surface ??= "planner";
@@ -257,9 +290,9 @@ export function useDeleteItineraryItem(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (_data, _input, context) => {
+    onSuccess: async (_data, _input, context) => {
       if (!persistence) {
-        void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+        await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         if (context?.deletedLocalitySource) void invalidateVariantComparison(client, tripId);
         if (context?.deletedDecisionSummaryItem)
           void invalidateVariantDecisionSummary(client, tripId);
@@ -274,7 +307,15 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
   const persistence = usePlannerPersistence();
   return useMutation({
     mutationFn: async (input: ClearItineraryItemsInput) =>
-      persistence ? persistence.clearItems(input) : requireData(await clearItineraryItems(input)),
+      persistence
+        ? persistence.clearItems(input)
+        : retryPlannerMutation(
+            input,
+            async (value) => requireData(await clearItineraryItems(value)),
+            rebaseUnchangedCellClear,
+            tripId,
+            variantId,
+          ),
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
       const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
@@ -293,9 +334,9 @@ export function useClearItineraryItems(tripId: string, variantId: string) {
     },
     onError: (_error, _input, context) =>
       client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: (_data, _input, context) => {
+    onSuccess: async (_data, _input, context) => {
       if (!persistence) {
-        void client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
+        await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         if (context?.clearedLocalitySource) void invalidateVariantComparison(client, tripId);
         if (context?.clearedDecisionSummaryItem)
           void invalidateVariantDecisionSummary(client, tripId);

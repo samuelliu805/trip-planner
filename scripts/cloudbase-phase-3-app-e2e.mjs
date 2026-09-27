@@ -3012,7 +3012,13 @@ async function waitForReactHydration(browser, elementExpression, label) {
   );
 }
 
-async function clickElement(browser, elementExpression, label, button = "left") {
+async function clickElement(
+  browser,
+  elementExpression,
+  label,
+  button = "left",
+  movePointer = false,
+) {
   await waitForClickableElement(browser, elementExpression, label);
   const point = await evaluate(
     browser,
@@ -3042,6 +3048,13 @@ async function clickElement(browser, elementExpression, label, button = "left") 
     })()`,
   );
   assert(point?.available, `${label} was not available: ${JSON.stringify(point)}`);
+  if (movePointer) {
+    await browser.cdp.send(
+      "Input.dispatchMouseEvent",
+      { type: "mouseMoved", x: point.x, y: point.y },
+      browser.sessionId,
+    );
+  }
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
     { button, clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
@@ -3125,6 +3138,193 @@ async function verifyMatrixContextMenus(browser) {
     browser,
     `document.querySelector('[data-cell="0-1"]')?.getAttribute('aria-selected') === 'false'`,
     "Escape clears cell selection",
+  );
+}
+
+async function verifyRapidPasteThenEdit(browser, tripId) {
+  await evaluate(
+    browser,
+    `(() => {
+      window.__rapidClipboardWrites = [];
+      window.__rapidPasteSignals = [];
+      const clipboard = navigator.clipboard;
+      if (clipboard?.writeText) {
+        const writeText = clipboard.writeText.bind(clipboard);
+        clipboard.writeText = (value) => {
+          window.__rapidClipboardWrites.push(value);
+          return writeText(value);
+        };
+      }
+      new MutationObserver(() => {
+        const signals = [...document.querySelectorAll('[role="alert"], [role="status"]')]
+          .map((item) => item.textContent.trim()).filter(Boolean);
+        for (const signal of signals) {
+          if (!window.__rapidPasteSignals.includes(signal)) window.__rapidPasteSignals.push(signal);
+        }
+      }).observe(document.body, { childList: true, subtree: true });
+    })()`,
+  );
+  const dayCount = await evaluate(browser, `document.querySelectorAll('[data-cell$="-1"]').length`);
+  await clickElement(
+    browser,
+    `document.querySelector('[data-cell="0-5"]')`,
+    "day cell menu",
+    "right",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Add day after' && item.getClientRects().length)`,
+    "cell Add day after action",
+    "left",
+    true,
+  );
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-cell$="-1"]').length === ${dayCount + 1}`,
+    "new day persisted in the Matrix",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[data-cell="0-1"] [data-edit-item]')]
+      .find((item) => item.getClientRects().length)`,
+    "activity to copy after adding a day",
+    "right",
+  );
+  await waitFor(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+      .some((item) => item.textContent.trim() === 'Copy item' && item.getClientRects().length)`,
+    "item Copy action after adding a day",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Copy item' && item.getClientRects().length)`,
+    "item Copy action",
+    "left",
+    true,
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('[data-cell="1-1"]')`,
+    "new activity cell menu",
+    "right",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Paste' && item.getClientRects().length)`,
+    "cell Paste action",
+    "left",
+    true,
+  );
+  try {
+    const result = await waitFor(
+      browser,
+      `(() => {
+        const item = document.querySelector('[data-cell="1-1"] [data-item-row]');
+        const saved = item && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(item.dataset.itemRow ?? '') &&
+          ![...document.querySelectorAll('[role="status"]')]
+            .some((status) => status.textContent.includes('Updating selected cells'));
+        const error = [...document.querySelectorAll('[role="alert"]')]
+          .map((alert) => alert.textContent.trim()).find(Boolean);
+        return saved ? { saved: true } : error ? { error } : null;
+      })()`,
+      "persisted pasted activity or paste error",
+      30_000,
+    );
+    assert.equal(result.saved, true, `Paste failed: ${JSON.stringify(result)}`);
+  } catch (error) {
+    let persisted;
+    try {
+      const config = loadLiveConfig();
+      const { db } = await controlledDataClient(userA, config.CLOUDBASE_TEST_USER_A_PASSWORD);
+      const items = await controlledData(
+        () => db.from("itinerary_items").select("id,day_id,variant_id").eq("trip_id", tripId),
+        "rapid paste item snapshot",
+      );
+      const days = await controlledData(
+        () =>
+          db
+            .from("trip_days")
+            .select("id,day_number,items_version,variant_id")
+            .in("variant_id", [...new Set(items.map((item) => item.variant_id))]),
+        "rapid paste day snapshot",
+      );
+      persisted = days.slice(0, 6).map((day) => ({
+        dayNumber: day.day_number,
+        variantId: day.variant_id,
+        itemsVersion: day.items_version,
+        itemIds: items.filter((item) => item.day_id === day.id).map((item) => item.id),
+      }));
+    } catch (lookupError) {
+      persisted = lookupError instanceof Error ? lookupError.message : String(lookupError);
+    }
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        selected: [...document.querySelectorAll('[data-cell][aria-selected="true"]')]
+          .map((cell) => cell.dataset.cell).slice(0, 4),
+        dayOneItems: [...document.querySelectorAll('[data-cell="0-1"] [data-item-row]')]
+          .map((item) => item.dataset.itemRow).slice(0, 4),
+        dayTwoItems: [...document.querySelectorAll('[data-cell="1-1"] [data-item-row]')]
+          .map((item) => item.dataset.itemRow).slice(0, 4),
+        notices: [...document.querySelectorAll('[role="alert"], [role="status"]')]
+          .map((item) => item.textContent.trim().slice(0, 180)).filter(Boolean).slice(0, 4),
+        clipboardWrites: (window.__rapidClipboardWrites ?? []).map((value) => {
+          try {
+            const parsed = JSON.parse(value);
+            return { kind: parsed.kind, itemId: parsed.itemId, cells: parsed.cells?.length };
+          } catch { return { kind: 'other' }; }
+        }),
+        signals: (window.__rapidPasteSignals ?? []).slice(-6),
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; paste state: ${JSON.stringify(diagnostic)}; persisted: ${JSON.stringify(persisted)}`,
+    );
+  }
+  await openSavedItemEditor(browser, "1-1");
+  const editedTitle = `${runLabel} rapid pasted activity`;
+  await setInputValue(browser, 'input[id^="item-title-"]', editedTitle);
+  await saveOpenItemEditor(browser, "rapid pasted activity");
+  await waitFor(
+    browser,
+    `document.querySelector('[data-cell="1-1"]')?.textContent.includes(${JSON.stringify(editedTitle)})`,
+    "pasted activity edited without a reload",
+  );
+  await clickElement(
+    browser,
+    `document.querySelector('[data-cell="1-5"]')`,
+    "new day menu",
+    "right",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Delete day' && item.getClientRects().length)`,
+    "cell Delete day action",
+    "left",
+    true,
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[role="alertdialog"]'))`,
+    "delete new day",
+  );
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="alertdialog"] button')].find((button) =>
+      /Remove day|删除当天/.test(button.textContent.trim()))`,
+    "confirm new day deletion",
+  );
+  await waitFor(
+    browser,
+    `document.querySelectorAll('[data-cell$="-1"]').length === ${dayCount} &&
+      ![...document.querySelectorAll('[data-item-row]')]
+        .some((item) => item.textContent.includes(${JSON.stringify(editedTitle)}))`,
+    "new day and pasted activity removed",
   );
 }
 
@@ -5425,6 +5625,7 @@ async function run() {
       60_000,
     );
     await verifyMatrixContextMenus(browser);
+    await verifyRapidPasteThenEdit(browser, tripId);
     await uploadAttachmentThroughUi(browser);
     await verifyMobileMapBackNavigation(browser);
     await clickElement(

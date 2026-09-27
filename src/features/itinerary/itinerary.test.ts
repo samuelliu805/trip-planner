@@ -41,6 +41,16 @@ import {
   selectionBounds,
   selectionContains,
 } from "./grid-interactions.ts";
+import {
+  rebaseAdditiveItemCreate,
+  rebaseDayInsert,
+  rebaseUnchangedCellClear,
+  rebaseUnchangedCopy,
+  rebaseUnchangedDayDelete,
+  rebaseUnchangedItemDelete,
+  rebaseUnchangedItemEdit,
+  rebaseUnchangedItemOrder,
+} from "./mutation-rebase.ts";
 import { deriveHotelStaySummary } from "./hotel-stay-summary.ts";
 import { plannerItemTitleAfterPlaceSelection } from "./planner-item-title-autofill.ts";
 import { providerPlaceRpcArguments } from "./place-persistence.ts";
@@ -3131,6 +3141,133 @@ test("copied items paste into every matching selected cell and reject mixed type
   assert.throws(
     () => itemPasteCoordinates({ row: 0, column: 5 }, { row: 3, column: 5 }, "meal", 3),
     /matching cells/,
+  );
+});
+
+test("rapid planner writes rebase aggregate versions without overwriting changed records", () => {
+  const edit = { ...base, expectedVersion: 2, id: ids.item };
+  const copy = {
+    expectedItemsVersion: 1,
+    operationId: base.operationId,
+    replaceTargetItemIds: [],
+    replaceTargetVersions: [],
+    sourceItemIds: [ids.item],
+    sourceVersions: [2],
+    targetDayId: ids.targetDay,
+    tripId: ids.trip,
+    variantId: ids.variant,
+  };
+  const latest = {
+    variant: { days_version: 5, items_version: 7 },
+    days: [
+      {
+        content_version: 3,
+        day_number: 1,
+        id: ids.day,
+        items_version: 3,
+        items: [{ day_id: ids.day, id: ids.item, version: 2 }],
+        version: 2,
+      },
+      {
+        content_version: 1,
+        day_number: 2,
+        id: ids.targetDay,
+        items_version: 4,
+        items: [],
+        version: 1,
+      },
+    ],
+  };
+  assert.equal(rebaseAdditiveItemCreate(base, latest)?.expectedItemsVersion, 3);
+  assert.equal(rebaseUnchangedItemEdit(edit, latest)?.expectedItemsVersion, 3);
+  assert.equal(rebaseUnchangedCopy(copy, latest)?.expectedItemsVersion, 4);
+  assert.equal(
+    rebaseUnchangedItemDelete(
+      {
+        expectedItemsVersion: 1,
+        expectedVersion: 2,
+        id: ids.item,
+        operationId: base.operationId,
+        tripId: ids.trip,
+        variantId: ids.variant,
+      },
+      latest,
+    )?.expectedItemsVersion,
+    3,
+  );
+  assert.equal(
+    rebaseUnchangedCellClear(
+      {
+        expectedItemsVersion: 1,
+        itemIds: [ids.item],
+        itemVersions: [2],
+        operationId: base.operationId,
+        tripId: ids.trip,
+        variantId: ids.variant,
+      },
+      latest,
+    )?.expectedItemsVersion,
+    7,
+  );
+  assert.equal(
+    rebaseUnchangedDayDelete(
+      {
+        dayId: ids.day,
+        expectedContentVersion: 3,
+        expectedDaysVersion: 1,
+        expectedVersion: 2,
+        operationId: base.operationId,
+        tripId: ids.trip,
+        variantId: ids.variant,
+      },
+      latest,
+    )?.expectedDaysVersion,
+    5,
+  );
+  assert.equal(
+    rebaseUnchangedItemOrder(
+      {
+        dayId: ids.day,
+        expectedItemsVersion: 1,
+        items: [{ id: ids.item, sortOrder: 0 }],
+        operationId: base.operationId,
+        tripId: ids.trip,
+        variantId: ids.variant,
+      },
+      latest,
+      latest,
+    )?.expectedItemsVersion,
+    3,
+  );
+  assert.equal(
+    rebaseDayInsert(
+      {
+        beforeDayNumber: 2,
+        expectedDaysVersion: 1,
+        operationId: base.operationId,
+        tripId: ids.trip,
+        variantId: ids.variant,
+      },
+      latest,
+      { ...latest, days: [...latest.days.slice(0, 1), { ...latest.days[1], day_number: 3 }] },
+    )?.beforeDayNumber,
+    3,
+  );
+  const changed = {
+    ...latest,
+    days: [
+      { ...latest.days[0], items: [{ day_id: ids.day, id: ids.item, version: 3 }] },
+      latest.days[1],
+    ],
+  };
+  assert.equal(rebaseUnchangedItemEdit(edit, changed), null);
+  assert.equal(rebaseUnchangedCopy(copy, changed), null);
+  assert.equal(
+    rebaseUnchangedCopy(
+      { ...copy, replaceTargetItemIds: [ids.item], replaceTargetVersions: [2] },
+      latest,
+    ),
+    null,
   );
 });
 

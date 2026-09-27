@@ -1,0 +1,24 @@
+"use client";
+
+import { loadPlannerWorkspace } from "./actions";
+import { isItineraryConflict } from "./query-cache";
+import type { PlannerWorkspace } from "./types";
+
+/** Retry one version conflict only when a fresh snapshot makes the same intent safe. */
+export async function retryPlannerMutation<TInput, TResult>(
+  input: TInput,
+  send: (value: TInput) => Promise<TResult>,
+  rebase: (value: TInput, latest: PlannerWorkspace) => TInput | null,
+  tripId: string,
+  variantId: string,
+): Promise<TResult> {
+  try {
+    return await send(input);
+  } catch (error) {
+    if (!isItineraryConflict(error)) throw error;
+    const result = await loadPlannerWorkspace(tripId, variantId);
+    const rebased = result.data && rebase(input, result.data);
+    if (!rebased) throw error;
+    return send(rebased);
+  }
+}

@@ -158,7 +158,12 @@ export function usePlannerClipboard({
       const previous = queryClient.getQueryData<PlannerWorkspace>(
         plannerQueryKey(tripId, variantId),
       );
+      const currentDays = new Map(previous?.days.map((day) => [day.id, day]) ?? []);
       const replacements = operations
+        .map((operation) => ({
+          ...operation,
+          targetDay: currentDays.get(operation.targetDay.id) ?? operation.targetDay,
+        }))
         .filter(
           (operation) =>
             !operation.targetDay.items.some((item) => operation.sourceItemIds.includes(item.id)),
@@ -228,9 +233,13 @@ export function usePlannerClipboard({
               }),
             ),
         );
+        // The copy RPC returns items, but not the advanced day/variant collection versions.
+        // Keep the interaction pending until those versions are back in the query cache.
+        await queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         setInteractionError(undefined);
       } catch (error) {
         queryClient.setQueryData(plannerQueryKey(tripId, variantId), previous);
+        await queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         setInteractionConflict(isItineraryConflict(error));
         setInteractionError(
           error instanceof Error ? error.message : "The destination cells could not be replaced.",
