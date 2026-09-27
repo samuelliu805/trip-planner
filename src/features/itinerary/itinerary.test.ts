@@ -3116,8 +3116,20 @@ test("copied items paste into every matching selected cell and reject mixed type
     { row: 1, column: 5 },
     { row: 2, column: 5 },
   ]);
+  assert.deepEqual(
+    itemPasteCoordinates({ row: 2, column: 1 }, { row: 0, column: 1 }, "activity", 3),
+    [
+      { row: 0, column: 1 },
+      { row: 1, column: 1 },
+      { row: 2, column: 1 },
+    ],
+  );
   assert.throws(
     () => itemPasteCoordinates({ row: 0, column: 4 }, { row: 2, column: 5 }, "meal", 3),
+    /matching cells/,
+  );
+  assert.throws(
+    () => itemPasteCoordinates({ row: 0, column: 5 }, { row: 3, column: 5 }, "meal", 3),
     /matching cells/,
   );
 });
@@ -3163,7 +3175,6 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "utf8",
   );
   workspace += await readFile(new URL("./components/planner-sheets.tsx", import.meta.url), "utf8");
-  workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-matrix.tsx", import.meta.url), "utf8");
   workspace += await readFile(new URL("./components/planner-toolbar.tsx", import.meta.url), "utf8");
   workspace += await readFile(
