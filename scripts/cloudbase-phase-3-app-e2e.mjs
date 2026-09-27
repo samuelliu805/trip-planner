@@ -3143,18 +3143,42 @@ async function verifyRapidPasteThenEdit(browser) {
     "new activity cell menu",
     "right",
   );
-  await clickButtonText(browser, "Paste");
-  await waitFor(
+  await clickElement(
     browser,
-    `(() => {
-      const item = document.querySelector('[data-cell="1-1"] [data-item-row]');
-      return item && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(item.dataset.itemRow ?? '') &&
-        ![...document.querySelectorAll('[role="status"]')]
-          .some((status) => status.textContent.includes('Updating selected cells'));
-    })()`,
-    "persisted pasted activity and refreshed day version",
-    45_000,
+    `[...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+      item.textContent.trim() === 'Paste' && item.getClientRects().length)`,
+    "cell Paste action",
   );
+  try {
+    await waitFor(
+      browser,
+      `(() => {
+        const item = document.querySelector('[data-cell="1-1"] [data-item-row]');
+        return item && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(item.dataset.itemRow ?? '') &&
+          ![...document.querySelectorAll('[role="status"]')]
+            .some((status) => status.textContent.includes('Updating selected cells'));
+      })()`,
+      "persisted pasted activity and refreshed day version",
+      30_000,
+    );
+  } catch (error) {
+    const diagnostic = await evaluate(
+      browser,
+      `({
+        selected: [...document.querySelectorAll('[data-cell][aria-selected="true"]')]
+          .map((cell) => cell.dataset.cell).slice(0, 4),
+        dayOneItems: [...document.querySelectorAll('[data-cell="0-1"] [data-item-row]')]
+          .map((item) => item.dataset.itemRow).slice(0, 4),
+        dayTwoItems: [...document.querySelectorAll('[data-cell="1-1"] [data-item-row]')]
+          .map((item) => item.dataset.itemRow).slice(0, 4),
+        notices: [...document.querySelectorAll('[role="alert"], [role="status"]')]
+          .map((item) => item.textContent.trim().slice(0, 180)).filter(Boolean).slice(0, 4),
+      })`,
+    );
+    throw new Error(
+      `${error instanceof Error ? error.message : error}; paste state: ${JSON.stringify(diagnostic)}`,
+    );
+  }
   await openSavedItemEditor(browser, "1-1");
   const editedTitle = `${runLabel} rapid pasted activity`;
   await setInputValue(browser, 'input[id^="item-title-"]', editedTitle);
