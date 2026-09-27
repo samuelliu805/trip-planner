@@ -3150,17 +3150,21 @@ async function verifyRapidPasteThenEdit(browser) {
     "cell Paste action",
   );
   try {
-    await waitFor(
+    const result = await waitFor(
       browser,
       `(() => {
         const item = document.querySelector('[data-cell="1-1"] [data-item-row]');
-        return item && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(item.dataset.itemRow ?? '') &&
+        const saved = item && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(item.dataset.itemRow ?? '') &&
           ![...document.querySelectorAll('[role="status"]')]
             .some((status) => status.textContent.includes('Updating selected cells'));
+        const error = [...document.querySelectorAll('[role="alert"]')]
+          .map((alert) => alert.textContent.trim()).find(Boolean);
+        return saved ? { saved: true } : error ? { error } : null;
       })()`,
-      "persisted pasted activity and refreshed day version",
+      "persisted pasted activity or paste error",
       30_000,
     );
+    assert.equal(result.saved, true, `Paste failed: ${JSON.stringify(result)}`);
   } catch (error) {
     const diagnostic = await evaluate(
       browser,
