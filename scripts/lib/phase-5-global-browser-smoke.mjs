@@ -259,6 +259,23 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
 }
 
 async function clickElement(browser, elementExpression, label, button = "left") {
+  await waitFor(
+    browser,
+    `(() => {
+      const element = (${elementExpression});
+      if (!element || !element.getClientRects().length || element.disabled) return false;
+      for (let node = element; node; node = node.parentElement)
+        if (node.getAnimations().some((animation) => ["pending", "running"].includes(animation.playState)))
+          return false;
+      element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+      const rect = element.getBoundingClientRect();
+      const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false;
+      const hit = document.elementFromPoint(x, y);
+      return hit === element || element.contains(hit);
+    })()`,
+    `${label} clickable`,
+  );
   const point = await evaluate(
     browser,
     `(async () => {
