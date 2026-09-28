@@ -5,6 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { verifyCrossVariantClipboard } from "./cross-variant-clipboard-browser.mjs";
 import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
@@ -257,7 +258,24 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-async function clickElement(browser, elementExpression, label) {
+async function clickElement(browser, elementExpression, label, button = "left") {
+  await waitFor(
+    browser,
+    `(() => {
+      const element = (${elementExpression});
+      if (!element || !element.getClientRects().length || element.disabled) return false;
+      for (let node = element; node; node = node.parentElement)
+        if (node.getAnimations().some((animation) => ["pending", "running"].includes(animation.playState)))
+          return false;
+      element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
+      const rect = element.getBoundingClientRect();
+      const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false;
+      const hit = document.elementFromPoint(x, y);
+      return hit === element || element.contains(hit);
+    })()`,
+    `${label} clickable`,
+  );
   const point = await evaluate(
     browser,
     `(async () => {
@@ -275,12 +293,12 @@ async function clickElement(browser, elementExpression, label) {
   assert.ok(point, `${label} was not available.`);
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
-    { button: "left", clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
+    { button, clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
     browser.sessionId,
   );
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
-    { button: "left", clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
+    { button, clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
     browser.sessionId,
   );
 }
@@ -741,8 +759,9 @@ async function verifyVariantNavigation(browser) {
       .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(originalPlan)}))`,
     "Global original Plan",
   );
+  let originalVariantId;
   try {
-    await waitFor(
+    originalVariantId = await waitFor(
       browser,
       `(() => {
         const variant = new URLSearchParams(location.search).get('variant');
@@ -767,6 +786,29 @@ async function verifyVariantNavigation(browser) {
       `${error instanceof Error ? error.message : error}; original Plan diagnostic: ${JSON.stringify(diagnostic)}`,
     );
   }
+  await verifyCrossVariantClipboard({
+    browser,
+    tripId: new URL(await evaluate(browser, "location.href")).pathname.split("/")[2],
+    sourceName: originalPlan,
+    sourceVariantId: originalVariantId,
+    targetName: planName,
+    targetVariantId: createdVariantId,
+    clickElement,
+    evaluate,
+    waitFor,
+  });
+  await clickElement(browser, trigger, "Global Plans menu after clipboard");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+    .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(originalPlan)}))`,
+    "Global original Plan after clipboard",
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)}`,
+    "Global original Plan restored",
+  );
   await clickElement(browser, trigger, "Global Plans menu after original switch");
   await clickElement(
     browser,

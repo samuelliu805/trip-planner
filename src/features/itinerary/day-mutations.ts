@@ -3,7 +3,6 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import {
-  copyItineraryItems,
   insertTripDay,
   removeTripDay,
   reorderItineraryItems,
@@ -12,27 +11,23 @@ import {
 import {
   affectsDecisionSummary,
   affectsLocalityProjection,
-  plannerWorkspaceItems,
 } from "@/features/itinerary/mutation-impact";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
 import {
   rebaseDayInsert,
-  rebaseUnchangedCopy,
   rebaseUnchangedDayDelete,
   rebaseUnchangedItemOrder,
 } from "@/features/itinerary/mutation-rebase";
 import { retryPlannerMutation } from "@/features/itinerary/mutation-retry";
-import { removeItem, replaceItem, requireData } from "@/features/itinerary/query-cache";
+import { replaceItem, requireData } from "@/features/itinerary/query-cache";
 import { reorderWorkspaceDays } from "@/features/itinerary/day-order";
-import { insertActivityAtPlacement } from "@/features/itinerary/activity-order";
 import type {
-  CopyItineraryItemsInput,
   InsertTripDayInput,
   RemoveTripDayInput,
   ReorderItineraryItemsInput,
   ReorderVariantDaysInput,
 } from "@/features/itinerary/day-schema";
-import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
+import type { PlannerWorkspace } from "@/features/itinerary/types";
 import {
   invalidateVariantComparison,
   invalidateVariantDecisionSummary,
@@ -124,103 +119,6 @@ export function useReorderVariantDays(tripId: string, variantId: string) {
   });
 }
 
-export function useCopyItineraryItems(tripId: string, variantId: string) {
-  const client = useQueryClient();
-  const persistence = usePlannerPersistence();
-  return useMutation({
-    mutationFn: async (input: CopyItineraryItemsInput) => {
-      if (persistence) return persistence.copyItems(input);
-      return retryPlannerMutation(
-        input,
-        async (value) => requireData(await copyItineraryItems(value)),
-        rebaseUnchangedCopy,
-        tripId,
-        variantId,
-      );
-    },
-    onMutate: async (input) => {
-      const previous = client.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId));
-      await client.cancelQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-      const workspaceItems = plannerWorkspaceItems(previous);
-      const sources = input.sourceItemIds
-        .map((id) => workspaceItems.find((item) => item.id === id))
-        .filter((item): item is ItineraryItem => Boolean(item));
-      const itemKinds = itemKindsForTelemetry(sources.map(({ type }) => type));
-      input.itemKinds ??= itemKinds;
-      input.operationId ??= newTelemetryOperationId();
-      input.surface ??= "planner";
-      itemKinds.forEach((itemKind) =>
-        captureBrowserProductEvent(
-          "item_create_started",
-          {
-            item_kind: itemKind,
-            operation_id: input.operationId!,
-            surface: "planner",
-          },
-          { actorType: persistence?.actorType ?? "authenticated" },
-        ),
-      );
-      const destination = previous?.days.find(({ id }) => id === input.targetDayId);
-      const nextOrder =
-        destination?.items.reduce((maximum, item) => Math.max(maximum, item.sort_order), -1) ?? -1;
-      const optimistic = sources.map((source, index): ItineraryItem => ({
-        ...source,
-        created_at: new Date().toISOString(),
-        day_id: input.targetDayId,
-        id: `optimistic-${crypto.randomUUID()}`,
-        place_id: input.preservePlace === false ? null : source.place_id,
-        sort_order: nextOrder + index + 1,
-        updated_at: new Date().toISOString(),
-      }));
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
-        current
-          ? {
-              ...current,
-              days: current.days.map((day) =>
-                day.id === input.targetDayId
-                  ? {
-                      ...day,
-                      items: optimistic.reduce(
-                        (items, item) => insertActivityAtPlacement(items, item),
-                        day.items,
-                      ),
-                    }
-                  : day,
-              ),
-            }
-          : current,
-      );
-      return { optimisticIds: optimistic.map(({ id }) => id), previous, sources };
-    },
-    onError: (_error, _input, context) =>
-      client.setQueryData(plannerQueryKey(tripId, variantId), context?.previous),
-    onSuccess: async (items, input, context) => {
-      client.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
-        items.reduce(
-          (workspace, item) => {
-            const source = context?.sources.find(
-              ({ place_id }) => Boolean(place_id) && place_id === item.place_id,
-            );
-            return replaceItem(workspace, {
-              ...item,
-              place: input.preservePlace === false ? null : (source?.place ?? null),
-            });
-          },
-          context?.optimisticIds.reduce((workspace, id) => removeItem(workspace, id), current),
-        ),
-      );
-      if (!persistence) {
-        await client.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-        if (context?.sources.some(({ type }) => affectsLocalityProjection(type)))
-          void invalidateVariantComparison(client, tripId);
-        if (context?.sources.some(({ type }) => affectsDecisionSummary(type)))
-          void invalidateVariantDecisionSummary(client, tripId);
-        refreshResearch(client, tripId, variantId);
-      }
-    },
-  });
-}
-
 export function useReorderItineraryItems(tripId: string, variantId: string) {
   const client = useQueryClient();
   const persistence = usePlannerPersistence();
@@ -293,3 +191,5 @@ export function useReorderItineraryItems(tripId: string, variantId: string) {
     },
   });
 }
+
+export { useCopyItineraryItems } from "./copy-mutations";

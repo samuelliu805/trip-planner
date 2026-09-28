@@ -66,6 +66,7 @@ export const plannerZhCN: Record<string, string> = {
   "Open map and route tools": "打开地图和路线工具",
   "Open map details": "打开地图详情",
   Order: "顺序",
+  "Paste blocked: copied items belong to another trip.": "无法粘贴：复制的项目属于另一个行程。",
   Pickup: "取车",
   "Pickup or return": "取车或还车",
   "Plan cost": "行程费用",

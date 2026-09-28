@@ -13,6 +13,7 @@ import {
   signInSession,
 } from "./lib/cloudbase-pg-live.mjs";
 import { runCloudBaseSdkCall } from "./lib/cloudbase-phase-4-live-requests.mjs";
+import { verifyCrossVariantClipboard } from "./lib/cross-variant-clipboard-browser.mjs";
 import { stopChild } from "./lib/child-process.mjs";
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { googleFlightsBookingSample } from "./lib/idea-provider-samples.mjs";
@@ -2391,6 +2392,29 @@ async function verifyVariantNavigationThroughUi(browser) {
     60_000,
   );
   assert.ok(priorVariantId);
+  await verifyCrossVariantClipboard({
+    browser,
+    tripId: new URL(await evaluate(browser, "location.href")).pathname.split("/")[2],
+    sourceName: priorPlan,
+    sourceVariantId: priorVariantId,
+    targetName: planName,
+    targetVariantId: createdVariantId,
+    clickElement,
+    evaluate,
+    waitFor,
+  });
+  await clickElement(browser, triggerExpression, "Plans menu after clipboard");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+    .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(priorPlan)}))`,
+    "original Plan after clipboard",
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(priorVariantId)}`,
+    "original Plan restored",
+  );
   await clickElement(browser, triggerExpression, "Plans menu after original switch");
   await clickElement(
     browser,

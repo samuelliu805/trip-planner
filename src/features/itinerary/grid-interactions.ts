@@ -10,10 +10,13 @@ export type ClipboardCell = {
   rowOffset: number;
 };
 
+export type PlannerClipboardSource = { tripId: string; variantId: string };
+
 export type PlannerCellsClipboard = {
   cells: ClipboardCell[];
   kind: "trip-planner/items";
   sourceColumn: number;
+  source?: PlannerClipboardSource;
   version: 2;
 };
 
@@ -21,6 +24,7 @@ export type PlannerItemClipboard = {
   itemId: string;
   itemType: string;
   kind: "trip-planner/item";
+  source?: PlannerClipboardSource;
   version: 1;
 };
 
@@ -31,6 +35,8 @@ export function initialPlannerSelection(dayCount: number, preferredColumn: numbe
     ? { column: preferredColumn, row: 0 }
     : { column: -1, row: -1 };
 }
+
+const clipboardSourceSchema = z.object({ tripId: z.uuid(), variantId: z.uuid() }).strict();
 
 const cellsClipboardSchema = z
   .object({
@@ -45,6 +51,7 @@ const cellsClipboardSchema = z
       .min(1),
     kind: z.literal("trip-planner/items"),
     sourceColumn: z.number().int().min(0),
+    source: clipboardSourceSchema.optional(),
     version: z.literal(2),
   })
   .strict();
@@ -54,6 +61,7 @@ const itemClipboardSchema = z
     itemId: z.uuid(),
     itemType: z.string(),
     kind: z.literal("trip-planner/item"),
+    source: clipboardSourceSchema.optional(),
     version: z.literal(1),
   })
   .strict();

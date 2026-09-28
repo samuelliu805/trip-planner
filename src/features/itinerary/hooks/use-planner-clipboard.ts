@@ -8,22 +8,18 @@ import { isMatrixVisibleItem } from "@/features/itinerary/flight-endpoints";
 import {
   encodePlannerClipboard,
   fillTargetRows,
-  itemPasteCoordinates,
   parsePlannerClipboard,
   selectionBounds,
   type GridCoordinate,
   type PlannerClipboard,
 } from "@/features/itinerary/grid-interactions";
-import { useCopyItineraryItems } from "@/features/itinerary/day-mutations";
 import { plannerQueryKey } from "@/features/itinerary/planner-query";
-import { isItineraryConflict } from "@/features/itinerary/query-cache";
-import type {
-  ItineraryItem,
-  ItineraryItemType,
-  PlannerDay,
-  PlannerWorkspace,
-} from "@/features/itinerary/types";
-import { newTelemetryOperationId } from "@/lib/telemetry/product";
+import { isItineraryConflict, requireData } from "@/features/itinerary/query-cache";
+import { loadPlannerWorkspace } from "../actions";
+import { plannerClipboardOperations } from "../planner-clipboard-paste";
+import { usePlannerCellReplacement } from "./use-planner-cell-replacement";
+import { usePlannerClipboardStorage } from "./use-planner-clipboard-storage";
+import type { ItineraryItem, PlannerWorkspace } from "@/features/itinerary/types";
 
 export function usePlannerClipboard({
   selectionAnchor,
@@ -42,10 +38,10 @@ export function usePlannerClipboard({
 }) {
   const queryClient = useQueryClient();
   const variantId = workspace.variant.id;
-  const copyMutation = useCopyItineraryItems(tripId, variantId);
   const [copyDaysOpen, setCopyDaysOpen] = useState(false);
   const [targetDays, setTargetDays] = useState<Set<string>>(new Set());
-  const [internalClipboard, setInternalClipboard] = useState<PlannerClipboard | null>(null);
+  const { internalClipboard, setInternalClipboard } = usePlannerClipboardStorage(tripId);
+  const source = { tripId, variantId };
   const [requestPending, setRequestPending] = useState(false);
   const pendingDepth = useRef(0);
   const selectionEndRef = useRef(selectionEnd);
@@ -64,6 +60,14 @@ export function usePlannerClipboard({
     }
   }
 
+  const { copyMutation, replaceCategoryItems } = usePlannerCellReplacement({
+    tripId,
+    workspace,
+    setInteractionError,
+    setInteractionConflict,
+    withRequestPending,
+  });
+
   function clipboardPayload(): PlannerClipboard | null {
     const bounds = selectionBounds(selectionAnchor, selectionEnd);
     if (bounds.top !== bounds.bottom) return null;
@@ -79,7 +83,7 @@ export function usePlannerClipboard({
         cells.push({ columnOffset: column - bounds.left, items, rowOffset: row - bounds.top });
       }
     return cells.length
-      ? { cells, kind: "trip-planner/items", sourceColumn: bounds.left, version: 2 }
+      ? { cells, kind: "trip-planner/items", source, sourceColumn: bounds.left, version: 2 }
       : null;
   }
 
@@ -94,15 +98,7 @@ export function usePlannerClipboard({
       setInteractionError("The selected cells do not contain items to copy.");
       return;
     }
-    setInternalClipboard(payload);
-    setInteractionError(undefined);
-    await withRequestPending(async () => {
-      try {
-        await navigator.clipboard.writeText(encodePlannerClipboard(payload));
-      } catch {
-        /* The internal clipboard remains available. */
-      }
-    });
+    await storeClipboard(payload);
   }
 
   async function storeClipboard(payload: PlannerClipboard) {
@@ -119,6 +115,7 @@ export function usePlannerClipboard({
 
   async function copyItemToClipboard(item: ItineraryItem) {
     await storeClipboard({
+      source,
       itemId: item.id,
       itemType: item.type,
       kind: "trip-planner/item",
@@ -141,156 +138,43 @@ export function usePlannerClipboard({
         },
       ],
       kind: "trip-planner/items",
+      source,
       sourceColumn: coordinate.column,
       version: 2,
     });
   }
 
-  async function replaceCategoryItems(
-    operations: {
-      sourceItemIds: string[];
-      targetDay: PlannerDay;
-      types: ItineraryItemType[];
-      replaceExisting?: boolean;
-    }[],
-  ) {
+  async function pastePayload(payload: PlannerClipboard) {
     await withRequestPending(async () => {
-      const previous = queryClient.getQueryData<PlannerWorkspace>(
-        plannerQueryKey(tripId, variantId),
-      );
-      const currentDays = new Map(previous?.days.map((day) => [day.id, day]) ?? []);
-      const replacements = operations
-        .map((operation) => ({
-          ...operation,
-          targetDay: currentDays.get(operation.targetDay.id) ?? operation.targetDay,
-        }))
-        .filter(
-          (operation) =>
-            !operation.targetDay.items.some((item) => operation.sourceItemIds.includes(item.id)),
-        )
-        .map((operation) => ({
-          ...operation,
-          replacedItems:
-            operation.replaceExisting === false
-              ? []
-              : operation.targetDay.items.filter(
-                  (item) => operation.types.includes(item.type) && isMatrixVisibleItem(item),
-                ),
-        }));
-      const grouped = new Map<
-        string,
-        { sourceItemIds: string[]; replaceTargetItemIds: string[]; targetDay: PlannerDay }
-      >();
-      for (const { replacedItems, sourceItemIds, targetDay } of replacements) {
-        const group = grouped.get(targetDay.id) ?? {
-          replaceTargetItemIds: [],
-          sourceItemIds: [],
-          targetDay,
-        };
-        group.sourceItemIds.push(...sourceItemIds);
-        group.replaceTargetItemIds.push(...replacedItems.map(({ id }) => id));
-        grouped.set(targetDay.id, group);
-      }
-      setInteractionConflict(false);
       try {
-        const replacedIds = new Set(
-          replacements.flatMap(({ replacedItems }) => replacedItems.map(({ id }) => id)),
+        if (payload.source && payload.source.tripId !== tripId)
+          throw new Error("Paste blocked: copied items belong to another trip.");
+        const sourceVariantId = payload.source?.variantId ?? variantId;
+        const sourceWorkspace =
+          sourceVariantId === variantId
+            ? (queryClient.getQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId)) ??
+              workspace)
+            : await queryClient.fetchQuery({
+                queryKey: plannerQueryKey(tripId, sourceVariantId),
+                queryFn: async () =>
+                  requireData(await loadPlannerWorkspace(tripId, sourceVariantId)),
+                staleTime: 0,
+              });
+        const operations = plannerClipboardOperations(
+          payload,
+          selectionAnchor,
+          selectionEnd,
+          sourceWorkspace,
+          workspace,
         );
-        const itemVersions = new Map(
-          (previous?.days.flatMap(({ items }) => items) ?? []).map((item) => [
-            item.id,
-            item.version,
-          ]),
-        );
-        queryClient.setQueryData<PlannerWorkspace>(plannerQueryKey(tripId, variantId), (current) =>
-          current
-            ? {
-                ...current,
-                days: current.days.map((day) => ({
-                  ...day,
-                  items: day.items.filter(({ id }) => !replacedIds.has(id)),
-                })),
-              }
-            : current,
-        );
-        await Promise.all(
-          [...grouped.values()]
-            .filter(
-              ({ replaceTargetItemIds, sourceItemIds }) =>
-                sourceItemIds.length > 0 || replaceTargetItemIds.length > 0,
-            )
-            .map(({ replaceTargetItemIds, sourceItemIds, targetDay }) =>
-              copyMutation.mutateAsync({
-                expectedItemsVersion: targetDay.items_version,
-                operationId: newTelemetryOperationId(),
-                replaceTargetItemIds,
-                replaceTargetVersions: replaceTargetItemIds.map((id) => itemVersions.get(id) ?? 0),
-                sourceItemIds,
-                sourceVersions: sourceItemIds.map((id) => itemVersions.get(id) ?? 0),
-                targetDayId: targetDay.id,
-                tripId,
-                variantId,
-              }),
-            ),
-        );
-        // The copy RPC returns items, but not the advanced day/variant collection versions.
-        // Keep the interaction pending until those versions are back in the query cache.
-        await queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
-        setInteractionError(undefined);
+        await replaceCategoryItems(operations, sourceWorkspace);
       } catch (error) {
-        queryClient.setQueryData(plannerQueryKey(tripId, variantId), previous);
-        await queryClient.invalidateQueries({ queryKey: plannerQueryKey(tripId, variantId) });
         setInteractionConflict(isItineraryConflict(error));
         setInteractionError(
-          error instanceof Error ? error.message : "The destination cells could not be replaced.",
+          error instanceof Error ? error.message : "The copied items could not be pasted.",
         );
       }
     });
-  }
-
-  async function pastePayload(payload: PlannerClipboard) {
-    try {
-      const selectedBounds = selectionBounds(selectionAnchor, selectionEnd);
-      if (payload.kind === "trip-planner/item") {
-        const source = workspace.days
-          .flatMap(({ items }) => items)
-          .find(({ id }) => id === payload.itemId);
-        if (!source || source.type !== payload.itemType || !isMatrixVisibleItem(source))
-          throw new Error("The copied item is no longer available. Copy it again before pasting.");
-        const operations = itemPasteCoordinates(
-          selectionAnchor,
-          selectionEnd,
-          source.type,
-          workspace.days.length,
-        ).map(({ row }) => ({
-          sourceItemIds: [source.id],
-          targetDay: workspace.days[row],
-          types: [source.type],
-          replaceExisting: false,
-        }));
-        await replaceCategoryItems(operations);
-        return;
-      }
-      if (selectedBounds.top !== selectedBounds.bottom)
-        throw new Error("Paste works only when the selected destination cells are in one row.");
-      const destination = { column: selectedBounds.left, row: selectedBounds.top };
-      if (destination.column !== payload.sourceColumn)
-        throw new Error(
-          `Paste blocked: copied ${categories[payload.sourceColumn]?.label ?? "column"} cells can only be pasted into the same column.`,
-        );
-      const operations = payload.cells.map((cell) => {
-        const category = categories[destination.column + cell.columnOffset];
-        if (!category) throw new Error("Clipboard data does not fit the selected range.");
-        const day = workspace.days[destination.row + cell.rowOffset];
-        if (!day) throw new Error("Clipboard data does not fit the available trip days.");
-        return { sourceItemIds: cell.items, targetDay: day, types: category.types };
-      });
-      await replaceCategoryItems(operations);
-    } catch (error) {
-      setInteractionError(
-        error instanceof Error ? error.message : "The copied items could not be pasted.",
-      );
-    }
   }
 
   async function pasteAvailableClipboard() {
