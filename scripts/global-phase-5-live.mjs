@@ -5,6 +5,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 
 import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
+import { createGlobalClipboardFixture } from "./lib/global-clipboard-fixture.mjs";
 import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
 import { runGlobalBrowserSmoke } from "./lib/phase-5-global-browser-smoke.mjs";
 import { signInWithAdminMagicLink } from "./lib/supabase-test-auth.mjs";
@@ -698,6 +699,7 @@ async function run() {
     );
     assertPublicProjection(projection, intendedTitle, privateTitle, userA.id);
     if (process.env.PHASE5_REQUIRE_BROWSER_SMOKE === "1") {
+      await createGlobalClipboardFixture(userA.client, aTrip, variant.id);
       const recoveryPassword = `${randomBytes(18).toString("base64url")}aA1!`;
       const recoveryLink = ok(
         await admin.auth.admin.generateLink({ email: userC.email, type: "recovery" }),

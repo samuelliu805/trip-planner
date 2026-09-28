@@ -96,8 +96,30 @@ export async function verifyCrossVariantClipboard({
   }
   async function pasteCell(row, column) {
     await denySystemClipboard();
-    await clickElement(browser, cell(row, column), "clipboard target cell", "right");
+    await contextCell(row, column);
     await menuAction("Paste");
+  }
+  async function contextCell(row, column) {
+    const point = await waitFor(
+      browser,
+      `(() => {
+        const node = ${cell(row, column)};
+        if (!node) return false;
+        node.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' });
+        const rect = node.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        for (const y of [rect.top + 1, rect.bottom - 1])
+          if (document.elementFromPoint(x, y) === node) return { x, y };
+        return false;
+      })()`,
+      "clipboard cell padding hit target",
+    );
+    for (const type of ["mousePressed", "mouseReleased"])
+      await browser.cdp.send(
+        "Input.dispatchMouseEvent",
+        { type, button: "right", clickCount: 1, ...point },
+        browser.sessionId,
+      );
   }
   async function settled() {
     await waitFor(
@@ -129,7 +151,7 @@ export async function verifyCrossVariantClipboard({
   assert.ok(original.activity.length, "Cross-variant clipboard needs a real source activity.");
   await denySystemClipboard();
   // Native copy events cover the same path as Ctrl/Cmd+C, including a multi-column selection.
-  await clickElement(browser, cell(0, 1), "clipboard source activity cell", "right");
+  await contextCell(0, 1);
   await menuAction("Copy cell");
   await evaluate(browser, `(${cell(0, 1)}).focus()`);
   await extendSelection("ArrowRight", "ArrowRight", 39);
@@ -192,7 +214,7 @@ export async function verifyCrossVariantClipboard({
     );
     await switchPlan(targetName, targetVariantId);
     const before = await evaluate(browser, `(${items(0, 1)}).length`);
-    await clickElement(browser, cell(0, 1), "clipboard item target", "right");
+    await contextCell(0, 1);
     await browser.cdp.send(
       "Input.dispatchKeyEvent",
       { type: "rawKeyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 },
@@ -235,7 +257,7 @@ export async function verifyCrossVariantClipboard({
   await metrics(1280);
   await switchPlan(sourceName, sourceVariantId);
   await denySystemClipboard();
-  await clickElement(browser, cell(0, 1), "source cell replacement copy", "right");
+  await contextCell(0, 1);
   await menuAction("Copy cell");
   await switchPlan(targetName, targetVariantId);
   await pasteCell(0, 1);
