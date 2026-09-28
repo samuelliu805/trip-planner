@@ -678,6 +678,8 @@ async function run() {
       ).error,
       "A forged owner_id",
     );
+    if (process.env.PHASE5_REQUIRE_BROWSER_SMOKE === "1")
+      await createGlobalClipboardFixture(userA.client, aTrip, variant.id);
     ok(await userA.client.auth.signOut(), "A final logout");
 
     const anonymous = client(url, publishableKey);
@@ -699,7 +701,6 @@ async function run() {
     );
     assertPublicProjection(projection, intendedTitle, privateTitle, userA.id);
     if (process.env.PHASE5_REQUIRE_BROWSER_SMOKE === "1") {
-      await createGlobalClipboardFixture(userA.client, aTrip, variant.id);
       const recoveryPassword = `${randomBytes(18).toString("base64url")}aA1!`;
       const recoveryLink = ok(
         await admin.auth.admin.generateLink({ email: userC.email, type: "recovery" }),
