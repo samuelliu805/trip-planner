@@ -17,6 +17,7 @@ import { ManageRouteVariantsDialog } from "./manage-route-variants-dialog";
 import { RouteVariantEditorDialog } from "./route-variant-editor-dialog";
 import { RouteVariantSwitcher, type RouteVariantAction } from "./route-variant-switcher";
 import { useRouteVariants } from "../queries";
+import { maxRouteVariants } from "../limits";
 
 export function RouteVariantControls({
   activeVariantId,
@@ -83,7 +84,7 @@ export function RouteVariantControls({
       <RouteVariantSwitcher
         activeVariant={activeVariant}
         activeVariantId={activeVariantId}
-        limitReached={currentVariants.length >= 3}
+        limitReached={currentVariants.length >= maxRouteVariants}
         onAction={openAction}
         onSheetOpenChange={setSheetOpen}
         onSwitch={switchVariant}

@@ -836,6 +836,32 @@ async function verifyTripSectionNavigation(browser, tripId) {
     `(() => {
       const card = [...document.querySelectorAll('article')].find((item) =>
         item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
+      return card?.querySelector('button[aria-label^="Edit "]');
+    })()`,
+    "edit captured flight dates",
+  );
+  await waitFor(
+    browser,
+    `Boolean(document.querySelector('[data-editor-kind="research"] input[name="segments"]'))`,
+    "flight segment dates",
+  );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `JSON.parse(document.querySelector('[data-editor-kind="research"] input[name="segments"]').value).map((segment) => [segment.departureDate, segment.arrivalDate])`,
+    ),
+    [
+      ["2026-11-20", "2026-11-20"],
+      ["2026-11-25", "2026-11-25"],
+    ],
+    "Flight editor did not default each arrival to its departure date.",
+  );
+  await closePlannerEditor(browser, "captured flight dates editor");
+  await clickElement(
+    browser,
+    `(() => {
+      const card = [...document.querySelectorAll('article')].find((item) =>
+        item.innerText.includes('PVG → HND') && item.innerText.includes('NH 972 · NH 967'));
       return [...(card?.querySelectorAll('button') ?? [])].find((button) =>
         button.textContent.includes('Add to Plan'));
     })()`,

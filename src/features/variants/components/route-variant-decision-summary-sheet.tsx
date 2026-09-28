@@ -33,16 +33,14 @@ export function RouteVariantDecisionSummarySheet({
         {summary.isLoading || summary.error ? (
           <DecisionSummaryFeedback summary={summary} />
         ) : (
-          summary.summaries
-            .slice(0, 3)
-            .map((variantSummary) => (
-              <DecisionSummaryCard
-                activeVariantId={activeVariantId}
-                key={variantSummary.variantId}
-                summary={variantSummary}
-                visibility={visibility}
-              />
-            ))
+          summary.summaries.map((variantSummary) => (
+            <DecisionSummaryCard
+              activeVariantId={activeVariantId}
+              key={variantSummary.variantId}
+              summary={variantSummary}
+              visibility={visibility}
+            />
+          ))
         )}
       </div>
     </PullUpPanel>

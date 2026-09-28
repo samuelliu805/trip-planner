@@ -12,6 +12,7 @@ import type { PlaceSnapshot } from "@/lib/providers/places/types";
 import { ResearchField } from "./form-controls";
 import { ResearchDateTimeField } from "./research-schedule-fields";
 import type { ResearchSegment } from "../types";
+import { changeSegmentDepartureDate } from "../journey";
 
 const blankSegment = (): ResearchSegment => ({
   arrivalDate: "",
@@ -79,7 +80,9 @@ export function ResearchMultiCityFields({
             <ResearchDateTimeField
               date={segment.departureDate}
               label="Departure"
-              onDateChange={(departureDate) => update(index, { departureDate })}
+              onDateChange={(departureDate) =>
+                update(index, changeSegmentDepartureDate(segment, departureDate, true))
+              }
               onTimeChange={(departureTime) => update(index, { departureTime })}
               time={segment.departureTime ?? ""}
             />

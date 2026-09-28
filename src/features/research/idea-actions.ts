@@ -11,6 +11,7 @@ import { createResearchItem, loadResearchItem } from "./actions";
 import { canonicalIdeaUrl, classifyIdeaInput, parseReliableIdeaFields } from "./idea-input";
 import { fetchIdeaPageMetadata } from "./idea-page-metadata";
 import { enrichFlightTimes } from "./idea-page-flight";
+import { defaultFlightArrivalDate } from "./journey";
 import type { ResearchItem, ResearchMutationResult } from "./types";
 
 const captureSchema = z
@@ -85,8 +86,10 @@ export async function captureIdea(
     originText,
     segments:
       parsed.data.kind === "flight"
-        ? (enrichFlightTimes(fields.segments, metadata?.segments) ??
-          (metadata?.segments?.length === 1 ? metadata.segments : []))
+        ? (
+            enrichFlightTimes(fields.segments, metadata?.segments) ??
+            (metadata?.segments?.length === 1 ? metadata.segments : [])
+          ).map(defaultFlightArrivalDate)
         : (fields.segments ?? []),
     sourceUrl: parsed.data.sourceUrl,
     startDate: fields.startDate,

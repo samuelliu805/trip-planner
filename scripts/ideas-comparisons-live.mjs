@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { verifyRouteVariantLimit } from "./lib/route-variant-limit-live.mjs";
 
 import {
   dataOrThrow,
@@ -130,6 +131,7 @@ async function run() {
     tripIds.push(tripId);
     const otherTripId = await createTrip(first.db, `${label}-other`);
     tripIds.push(otherTripId);
+    await verifyRouteVariantLimit(first.db, otherTripId);
     const variant = rows(
       await first.db.from("route_variants").select("id").eq("trip_id", tripId),
       "variant lookup",
