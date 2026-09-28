@@ -63,12 +63,14 @@ export async function verifyCrossVariantClipboard({
     );
   }
   async function menuAction(label) {
-    await clickElement(
+    const expression = `[...document.querySelectorAll('[role="menuitem"]')]
+      .find((node) => node.getClientRects().length && node.textContent.trim() === ${JSON.stringify(label)})`;
+    await waitFor(
       browser,
-      `[...document.querySelectorAll('[role="menuitem"]')]
-      .find((node) => node.getClientRects().length && node.textContent.trim() === ${JSON.stringify(label)})`,
-      label,
+      `Boolean(${expression})`,
+      `${label} menu visible`,
     );
+    await clickElement(browser, expression, label);
   }
   async function extendSelection(key, code, keyCode) {
     await browser.cdp.send(

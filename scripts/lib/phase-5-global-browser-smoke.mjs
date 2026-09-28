@@ -258,7 +258,7 @@ async function waitFor(browser, expression, label, timeoutMs = 45_000) {
   throw new Error(`Timed out waiting for ${label}.`);
 }
 
-async function clickElement(browser, elementExpression, label) {
+async function clickElement(browser, elementExpression, label, button = "left") {
   const point = await evaluate(
     browser,
     `(async () => {
@@ -276,12 +276,12 @@ async function clickElement(browser, elementExpression, label) {
   assert.ok(point, `${label} was not available.`);
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
-    { button: "left", clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
+    { button, clickCount: 1, type: "mousePressed", x: point.x, y: point.y },
     browser.sessionId,
   );
   await browser.cdp.send(
     "Input.dispatchMouseEvent",
-    { button: "left", clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
+    { button, clickCount: 1, type: "mouseReleased", x: point.x, y: point.y },
     browser.sessionId,
   );
 }
