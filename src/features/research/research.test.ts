@@ -12,7 +12,11 @@ import { bookingProviderWebUrl } from "./booking-site-web-links.ts";
 import { bookingStayWebUrl } from "./booking-site-stay-links.ts";
 import { customSchemeFallbackDelay, isBookingAppDevice } from "./components/open-app-deep-link.ts";
 import { translateMessage } from "../i18n/translate.ts";
-import { initialResearchSegments } from "./journey.ts";
+import {
+  changeSegmentDepartureDate,
+  defaultFlightArrivalDate,
+  initialResearchSegments,
+} from "./journey.ts";
 import { researchDecisionSlotKey } from "./decision-slot.ts";
 import {
   convertPlanCostBreakdown,
@@ -1269,23 +1273,79 @@ test("price sorting partitions currencies and sorts numerically only within one 
   );
 });
 
-test("legacy round trips infer exactly one reverse leg from the same two cities", () => {
+test("legacy round trips infer same-day arrival for each reverse leg", () => {
   assert.deepEqual(
     initialResearchSegments({
       destination: "Tokyo",
       endDate: "2026-09-12",
       origin: "San Francisco",
       startDate: "2026-09-03",
-    }).map(({ departureDate, destination, origin }) => ({
+    }).map(({ arrivalDate, departureDate, destination, origin }) => ({
+      arrivalDate,
       departureDate,
       destination,
       origin,
     })),
     [
-      { departureDate: "2026-09-03", destination: "Tokyo", origin: "San Francisco" },
-      { departureDate: "2026-09-12", destination: "San Francisco", origin: "Tokyo" },
+      {
+        arrivalDate: "2026-09-03",
+        departureDate: "2026-09-03",
+        destination: "Tokyo",
+        origin: "San Francisco",
+      },
+      {
+        arrivalDate: "2026-09-12",
+        departureDate: "2026-09-12",
+        destination: "San Francisco",
+        origin: "Tokyo",
+      },
     ],
   );
+});
+
+test("flight date defaults cover every connecting segment and preserve explicit arrivals", () => {
+  const segments = [
+    { origin: "SHA", destination: "HAK", departureDate: "2026-12-25" },
+    { origin: "HAK", destination: "SYD", departureDate: "2026-12-26", arrivalDate: null },
+    { origin: "SYD", destination: "HAK", departureDate: "2027-01-02", arrivalDate: "" },
+    {
+      origin: "HAK",
+      destination: "SHA",
+      departureDate: "2027-01-03",
+      arrivalDate: "2027-01-04",
+      departureTime: "23:00",
+      arrivalTime: "01:00",
+    },
+  ];
+  const expected = ["2026-12-25", "2026-12-26", "2027-01-02", "2027-01-04"];
+  assert.deepEqual(
+    segments.map(defaultFlightArrivalDate).map(({ arrivalDate }) => arrivalDate),
+    expected,
+  );
+  assert.deepEqual(
+    initialResearchSegments({ category: "flight", segments }).map(({ arrivalDate }) => arrivalDate),
+    expected,
+  );
+  assert.deepEqual(initialResearchSegments({ category: "train", segments }), segments);
+  assert.equal(segments[0].arrivalDate, undefined);
+});
+
+test("manual flight departure dates fill and follow same-day defaults without changing explicit arrivals", () => {
+  const blank = { origin: "SFO", destination: "HND", departureDate: "", arrivalDate: "" };
+  const first = changeSegmentDepartureDate(blank, "2026-09-03", true);
+  assert.equal(first.arrivalDate, "2026-09-03");
+  assert.equal(changeSegmentDepartureDate(first, "2026-09-04", true).arrivalDate, "2026-09-04");
+  assert.equal(changeSegmentDepartureDate(first, "", true).arrivalDate, "");
+  assert.equal(
+    changeSegmentDepartureDate({ ...first, arrivalDate: "2026-09-05" }, "2026-09-04", true)
+      .arrivalDate,
+    "2026-09-05",
+  );
+  assert.equal(
+    changeSegmentDepartureDate({ ...first, arrivalTime: "18:00" }, "2026-09-04", true).arrivalDate,
+    "2026-09-03",
+  );
+  assert.equal(changeSegmentDepartureDate(blank, "2026-09-03", false).arrivalDate, "");
 });
 
 test("decision slots prefer canonical item, then Day context, then normalized comparison context", () => {

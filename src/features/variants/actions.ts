@@ -30,7 +30,7 @@ const domainMessages: Record<string, string> = {
   VARIANT_DUPLICATION_MAPPING_FAILED:
     "The route could not be copied safely. No changes were saved.",
   VARIANT_FINAL_DELETE_FORBIDDEN: "A trip must keep at least one route variant.",
-  VARIANT_LIMIT_REACHED: "A trip can have at most three route variants.",
+  VARIANT_LIMIT_REACHED: "A trip can have at most five route variants.",
   VARIANT_NAME_INVALID: "Route names must contain between 1 and 80 characters.",
   VARIANT_NAME_TAKEN: "Route names must be unique within this trip.",
   VARIANT_NOT_FOUND: "That route variant is no longer available.",

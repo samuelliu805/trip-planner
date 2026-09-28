@@ -165,6 +165,7 @@ function JourneyFieldPages({
   );
   const [segments, setSegments] = useState(() =>
     initialResearchSegments({
+      category,
       destination: item?.destination_text,
       endDate: category === "flight" ? item?.end_date : null,
       origin: item?.origin_text,

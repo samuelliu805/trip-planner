@@ -1008,7 +1008,7 @@ test("Phase 5A loading, cache, switch, and responsive UI contracts stay variant-
   assert.match(variantSwitcher, /min-\[960px\]:text-base[\s\S]*<ChevronDown/);
   assert.match(variantUi, /PrimaryBadge/);
   assert.match(variantUi, /message=\{"? ?Primary ?"?\}/);
-  assert.match(variantUi, /Maximum of three variants reached/);
+  assert.match(variantUi, /Maximum of five variants reached/);
   assert.match(variantUi, /<AlertDialog/);
   assert.doesNotMatch(variantUi, /window\.confirm/);
   assert.match(variantUi, /min-h-11|h-11/);

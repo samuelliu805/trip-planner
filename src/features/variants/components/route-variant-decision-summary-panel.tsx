@@ -48,7 +48,7 @@ export function RouteVariantDecisionSummaryPanel({
           <DecisionSummaryFeedback summary={summary} />
         ) : (
           <div className="grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
-            {summary.summaries.slice(0, 3).map((variantSummary) => (
+            {summary.summaries.map((variantSummary) => (
               <DecisionSummaryCard
                 activeVariantId={activeVariantId}
                 key={variantSummary.variantId}

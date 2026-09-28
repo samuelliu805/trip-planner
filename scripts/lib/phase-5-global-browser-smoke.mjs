@@ -1120,6 +1120,17 @@ async function verifyGlobalBookingSites(browser, baseUrl, tripId) {
     `Boolean(document.querySelector('[data-editor-kind="research"]'))`,
     "Google flight editor opened from its title",
   );
+  assert.deepEqual(
+    await evaluate(
+      browser,
+      `JSON.parse(document.querySelector('[data-editor-kind="research"] input[name="segments"]').value).map((segment) => [segment.departureDate, segment.arrivalDate])`,
+    ),
+    [
+      ["2026-11-20", "2026-11-20"],
+      ["2026-11-25", "2026-11-25"],
+    ],
+    "Flight editor did not default each arrival to its departure date.",
+  );
   await clickElementUntil(
     browser,
     `document.querySelector('[data-editor-kind="research"] button[aria-label="Search Maps for From"]')`,

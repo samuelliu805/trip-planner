@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 
 import type { ResearchSegment } from "../types";
 import { flightArrivalLooksLate } from "../flight-date-validity";
+import { changeSegmentDepartureDate } from "../journey";
 
 export function ResearchDateTimeField({
   date,
@@ -102,7 +103,12 @@ export function ResearchSegmentScheduleFields({
               <ResearchDateTimeField
                 date={segment.departureDate}
                 label="Departure"
-                onDateChange={(departureDate) => update(index, { departureDate })}
+                onDateChange={(departureDate) =>
+                  update(
+                    index,
+                    changeSegmentDepartureDate(segment, departureDate, category === "flight"),
+                  )
+                }
                 onTimeChange={(departureTime) => update(index, { departureTime })}
                 time={segment.departureTime ?? ""}
               />

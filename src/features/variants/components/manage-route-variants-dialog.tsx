@@ -21,6 +21,7 @@ import { isItineraryConflict } from "@/features/itinerary/query-cache";
 import { newTelemetryOperationId } from "@/lib/telemetry/product";
 
 import { variantHref } from "../active";
+import { maxRouteVariants } from "../limits";
 import { buildDeleteVariantInput, resolveManageVariantReload } from "../delete-variant-reload";
 import {
   refetchRouteVariantList,
@@ -59,7 +60,7 @@ export function ManageRouteVariantsDialog({
   const [deletePending, setDeletePending] = useState(false);
   const primaryMutation = useSetPrimaryRouteVariant(tripId);
   const deleteMutation = useDeleteRouteVariant(tripId);
-  const limitReached = variants.length >= 3;
+  const limitReached = variants.length >= maxRouteVariants;
 
   async function setPrimary(variant: PlannerVariant) {
     setError(undefined);
@@ -203,7 +204,7 @@ export function ManageRouteVariantsDialog({
             ))}
             {limitReached ? (
               <p className="text-xs text-muted-foreground">
-                <T message={"Maximum of three variants reached."} />
+                <T message={"Maximum of five variants reached."} />
               </p>
             ) : null}
             <AutoDismissAlert

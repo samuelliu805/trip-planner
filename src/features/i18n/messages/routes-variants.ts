@@ -62,7 +62,8 @@ export const routesVariantsZhCN: Record<string, string> = {
   "no-route ·": "无路线 ·",
   "Rename Plans, change identity colors, or choose the primary Plan.":
     "可重命名方案、更改识别颜色，或选择主方案。",
-  "Maximum of three variants reached.": "最多只能创建三个方案。",
+  "Maximum of five variants reached.": "最多只能创建五个方案。",
+  "A trip can have at most five route variants.": "每个行程最多可以创建五个方案。",
   "Delete “": "删除“",
   "This permanently deletes this variant’s days, itinerary items, and saved routes. Shared trip places remain available to other Plans.":
     "这会永久删除该方案的行程日、行程项目和已保存路线；共享地点仍可供其他方案使用。",

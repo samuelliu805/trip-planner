@@ -8,6 +8,7 @@ import { createGuestTripFixture } from "./lib/guest-trip-fixture.mjs";
 import { boundedRetryFetch } from "./lib/bounded-fetch-retry.mjs";
 import { runGlobalBrowserSmoke } from "./lib/phase-5-global-browser-smoke.mjs";
 import { signInWithAdminMagicLink } from "./lib/supabase-test-auth.mjs";
+import { verifyRouteVariantLimit } from "./lib/route-variant-limit-live.mjs";
 
 const runLabel = `phase5-global-${Date.now()}-${randomUUID()}`;
 const timeoutMilliseconds = 20_000;
@@ -297,6 +298,9 @@ async function run() {
     assert.equal(refreshed.user?.id, userA.id);
 
     const intendedTitle = `${runLabel}-published`;
+    const variantLimitTrip = await createTrip(userA.client, `${runLabel}-variant-limit`);
+    tripIds.push(variantLimitTrip);
+    await verifyRouteVariantLimit(userA.client, variantLimitTrip);
     const privateTitle = `${runLabel}-private-after-publish`;
     const collaboratorTitle = `${runLabel}-collaborator-edit`;
     const aTrip = await createTrip(userA.client, `${runLabel}-a`);

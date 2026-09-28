@@ -13,7 +13,7 @@ grant insert, update, delete on public.places, public.itinerary_items,
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(38);
+select plan(41);
 
 insert into auth.users (
   instance_id,
@@ -388,22 +388,67 @@ select throws_ok(
   'VARIANT_NAME_TAKEN',
   'trimmed route names are unique case-insensitively within a trip'
 );
+insert into phase_5a_state (key, id)
+select 'route_d', public.create_route_variant(
+  (select id from phase_5a_state where key = 'trip_a'),
+  (select id from phase_5a_state where key = 'route_a'),
+  'Route D',
+  '#7c3aed'
+);
+select is(
+  (select count(*)::integer from public.route_variants where trip_id = (select id from phase_5a_state where key = 'trip_a')),
+  4,
+  'a fourth variant can be created'
+);
+insert into phase_5a_state (key, id)
+select 'route_e', public.duplicate_route_variant(
+  (select id from phase_5a_state where key = 'trip_a'),
+  (select id from phase_5a_state where key = 'route_a'),
+  'Route E',
+  '#be123c'
+);
+select is(
+  (select count(*)::integer from public.route_variants where trip_id = (select id from phase_5a_state where key = 'trip_a')),
+  5,
+  'a fifth variant can be duplicated'
+);
 select throws_ok(
   format(
     'select public.create_route_variant(%L::uuid, %L::uuid, %L, %L)',
     (select id from phase_5a_state where key = 'trip_a'),
     (select id from phase_5a_state where key = 'route_a'),
-    'Route D',
+    'Route F',
     '#7c3aed'
   ),
   '22023',
   'VARIANT_LIMIT_REACHED',
-  'maximum three variants is enforced server-side'
+  'maximum five variants is enforced server-side for creation'
+);
+select throws_ok(
+  format(
+    'select public.duplicate_route_variant(%L::uuid, %L::uuid, %L, %L)',
+    (select id from phase_5a_state where key = 'trip_a'),
+    (select id from phase_5a_state where key = 'route_a'),
+    'Route F copy',
+    '#be123c'
+  ),
+  '22023',
+  'VARIANT_LIMIT_REACHED',
+  'maximum five variants is enforced server-side for duplication'
 );
 select is(
   (select count(*)::integer from public.route_variants where trip_id = (select id from phase_5a_state where key = 'trip_a')),
-  3,
+  5,
   'failed creation leaves no partial variant'
+);
+
+select public.delete_route_variant(
+  (select id from phase_5a_state where key = 'trip_a'),
+  (select id from phase_5a_state where key = 'route_d')
+);
+select public.delete_route_variant(
+  (select id from phase_5a_state where key = 'trip_a'),
+  (select id from phase_5a_state where key = 'route_e')
 );
 
 select public.set_primary_route_variant(
