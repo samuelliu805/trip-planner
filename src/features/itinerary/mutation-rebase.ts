@@ -54,6 +54,7 @@ export function rebaseUnchangedItemEdit(
 export function rebaseUnchangedCopy(
   input: CopyItineraryItemsInput,
   latest: VersionedWorkspace,
+  sourceWorkspace: VersionedWorkspace = latest,
 ): CopyItineraryItemsInput | null {
   const day = latest.days.find(({ id }) => id === input.targetDayId);
   if (
@@ -64,7 +65,7 @@ export function rebaseUnchangedCopy(
     return null;
   if (
     input.sourceItemIds.some(
-      (id, index) => findItem(latest, id)?.version !== input.sourceVersions[index],
+      (id, index) => findItem(sourceWorkspace, id)?.version !== input.sourceVersions[index],
     ) ||
     input.replaceTargetItemIds?.some(
       (id, index) =>

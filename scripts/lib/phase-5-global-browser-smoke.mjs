@@ -5,6 +5,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { verifyCrossVariantClipboard } from "./cross-variant-clipboard-browser.mjs";
 import { stopChild } from "./child-process.mjs";
 import { googleFlightsBookingSample } from "./idea-provider-samples.mjs";
 import { startLoopbackTlsProxy } from "./loopback-tls-proxy.mjs";
@@ -741,8 +742,9 @@ async function verifyVariantNavigation(browser) {
       .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(originalPlan)}))`,
     "Global original Plan",
   );
+  let originalVariantId;
   try {
-    await waitFor(
+    originalVariantId = await waitFor(
       browser,
       `(() => {
         const variant = new URLSearchParams(location.search).get('variant');
@@ -767,6 +769,29 @@ async function verifyVariantNavigation(browser) {
       `${error instanceof Error ? error.message : error}; original Plan diagnostic: ${JSON.stringify(diagnostic)}`,
     );
   }
+  await verifyCrossVariantClipboard({
+    browser,
+    tripId: new URL(await evaluate(browser, "location.href")).pathname.split("/")[2],
+    sourceName: originalPlan,
+    sourceVariantId: originalVariantId,
+    targetName: planName,
+    targetVariantId: createdVariantId,
+    clickElement,
+    evaluate,
+    waitFor,
+  });
+  await clickElement(browser, trigger, "Global Plans menu after clipboard");
+  await clickElement(
+    browser,
+    `[...document.querySelectorAll('[role="menuitem"]')]
+    .find((item) => item.getClientRects().length && item.textContent.includes(${JSON.stringify(originalPlan)}))`,
+    "Global original Plan after clipboard",
+  );
+  await waitFor(
+    browser,
+    `new URLSearchParams(location.search).get('variant') === ${JSON.stringify(originalVariantId)}`,
+    "Global original Plan restored",
+  );
   await clickElement(browser, trigger, "Global Plans menu after original switch");
   await clickElement(
     browser,

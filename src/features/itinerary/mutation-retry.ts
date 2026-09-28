@@ -8,7 +8,7 @@ import type { PlannerWorkspace } from "./types";
 export async function retryPlannerMutation<TInput, TResult>(
   input: TInput,
   send: (value: TInput) => Promise<TResult>,
-  rebase: (value: TInput, latest: PlannerWorkspace) => TInput | null,
+  rebase: (value: TInput, latest: PlannerWorkspace) => TInput | null | Promise<TInput | null>,
   tripId: string,
   variantId: string,
 ): Promise<TResult> {
@@ -17,7 +17,7 @@ export async function retryPlannerMutation<TInput, TResult>(
   } catch (error) {
     if (!isItineraryConflict(error)) throw error;
     const result = await loadPlannerWorkspace(tripId, variantId);
-    const rebased = result.data && rebase(input, result.data);
+    const rebased = result.data && (await rebase(input, result.data));
     if (!rebased) throw error;
     return send(rebased);
   }

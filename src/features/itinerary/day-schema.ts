@@ -78,6 +78,7 @@ export const copyItineraryItemsSchema = z
     replaceTargetItemIds: z.array(z.uuid()).max(2000).optional().default([]),
     replaceTargetVersions: z.array(z.number().int().positive()).max(2000).optional().default([]),
     sourceItemIds: z.array(z.uuid()).max(2000),
+    sourceVariantId: z.uuid().optional(),
     sourceVersions: z.array(z.number().int().positive()).max(2000),
     targetDayId: z.uuid(),
     tripId: z.uuid(),

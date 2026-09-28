@@ -205,9 +205,12 @@ test("Matrix transport routes prefer airport codes and compact terminal names", 
 async function readItineraryQueryModules() {
   return (
     await Promise.all(
-      ["./planner-query.ts", "./item-mutations.ts", "./day-mutations.ts"].map((path) =>
-        readFile(new URL(path, import.meta.url), "utf8"),
-      ),
+      [
+        "./planner-query.ts",
+        "./item-mutations.ts",
+        "./day-mutations.ts",
+        "./copy-mutations.ts",
+      ].map((path) => readFile(new URL(path, import.meta.url), "utf8")),
     )
   ).join("\n");
 }
@@ -3337,6 +3340,8 @@ test("spreadsheet UI uses tap-to-place Activity ordering plus rollback hooks", a
     "./components/planner-toolbar.tsx",
     "./components/planner-workspace-event-boundary.tsx",
     "./hooks/use-planner-clipboard.ts",
+    "./hooks/use-planner-cell-replacement.ts",
+    "./planner-clipboard-paste.ts",
     "./hooks/use-planner-interactions.ts",
     "./hooks/use-planner-mutations.ts",
     "./hooks/use-planner-workspace-controller.ts",
@@ -4534,7 +4539,7 @@ test("Phase 3 keeps exact item and marker selection synchronized", async () => {
 
 test("replace-copy submits one atomic copy-and-replace mutation with preserved places", async () => {
   const workspace = await readFile(
-    new URL("./hooks/use-planner-clipboard.ts", import.meta.url),
+    new URL("./hooks/use-planner-cell-replacement.ts", import.meta.url),
     "utf8",
   );
   const queries = await readItineraryQueryModules();
