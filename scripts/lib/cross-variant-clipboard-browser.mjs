@@ -65,11 +65,7 @@ export async function verifyCrossVariantClipboard({
   async function menuAction(label) {
     const expression = `[...document.querySelectorAll('[role="menuitem"]')]
       .find((node) => node.getClientRects().length && node.textContent.trim() === ${JSON.stringify(label)})`;
-    await waitFor(
-      browser,
-      `Boolean(${expression})`,
-      `${label} menu visible`,
-    );
+    await waitFor(browser, `Boolean(${expression})`, `${label} menu visible`);
     await clickElement(browser, expression, label);
   }
   async function extendSelection(key, code, keyCode) {
