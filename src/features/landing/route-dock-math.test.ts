@@ -42,6 +42,30 @@ test("regional landing links always point to the other deployment", () => {
   assert.equal(translateMessage("zh-CN", "Go to Global site"), "前往全球站");
 });
 
+test("regional domains switch independently after their origin is configured", () => {
+  const env = {
+    CN_SITE_URL: "https://cn.therewego.world",
+    GLOBAL_SITE_URL: "https://therewego.world",
+  };
+  assert.equal(alternateLandingSite("global", env).href, "https://cn.therewego.world/");
+  assert.equal(alternateLandingSite("cn", env).href, "https://therewego.world/");
+  assert.equal(
+    alternateLandingSite("global", { GLOBAL_SITE_URL: env.GLOBAL_SITE_URL }).href,
+    "https://trip-planner-cn-306129-11-1253819205.sh.run.tcloudbase.com/",
+  );
+});
+
+test("regional links reject insecure URLs and paths that bypass the regional home page", () => {
+  for (const CN_SITE_URL of [
+    "http://cn.therewego.world",
+    "https://cn.therewego.world/login",
+    "https://user:password@cn.therewego.world",
+    "https://cn.therewego.world?next=/login",
+  ]) {
+    assert.throws(() => alternateLandingSite("global", { CN_SITE_URL }));
+  }
+});
+
 test("mobile workspace uses a native-size one-column viewport without scaling", () => {
   const short = mobileWorkspaceLayout(375, 667, 306);
   assert.equal(short.top, 342);
