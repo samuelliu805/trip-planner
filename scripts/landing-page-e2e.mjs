@@ -295,7 +295,7 @@ try {
   );
   assert.deepEqual(registration, {
     href: "https://beian.miit.gov.cn/",
-    text: "沪ICP备2026049500号",
+    text: "沪ICP备2026049500号-1",
   });
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
 

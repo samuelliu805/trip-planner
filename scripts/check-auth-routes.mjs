@@ -55,14 +55,16 @@ for (const { forbidden, markers, pathname } of routes) {
       signal: AbortSignal.timeout(30_000),
     });
     const body = await response.text();
+    const title = body.match(/<title>([^<]*)<\/title>/)?.[1] ?? "";
 
     if (
       response.status !== 200 ||
+      !title.includes("ThereWeGo行至") ||
       markers.some((marker) => !body.includes(marker)) ||
       forbidden.some((marker) => body.includes(marker))
     ) {
       failures.push(
-        `${pathname}: expected 200 with ${markers.map(JSON.stringify).join(" and ")}, received ${response.status}`,
+        `${pathname}: expected 200 with ${markers.map(JSON.stringify).join(" and ")} and ThereWeGo行至 in title, received ${response.status}`,
       );
       continue;
     }

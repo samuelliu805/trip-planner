@@ -15,21 +15,25 @@ Global 的 Preview 与 Production 继续共用 Supabase 项目
 `ewyefmnadibnampbeyzc`，包括登录、数据库和存储。不新建 Supabase 项目或分支。
 CN 与 Global 仍是独立账户和数据体系。
 
-两站首页都显示低调的 `沪ICP备2026049500号`，链接到工信部查询页面。
-首页标题及其他页面的标题后缀都包含 `ThereWeGo行至`。`www` 会进入同一个 Global 页面。
+两站首页都显示低调的 `沪ICP备2026049500号-1`，链接到工信部查询页面。
+首页标题及其他页面的标题后缀都连续包含完整的 `ThereWeGo行至`，中间没有空格或符号。
+CN 首页为 `ThereWeGo行至 - 协作旅行规划`，Global 首页为
+`ThereWeGo行至 - Collaborative trip planner`；其他页面使用 `页面名称 | ThereWeGo行至`。
+`www` 会进入同一个 Global 页面，具有相同标题。
 
 ## 目前完成与待办
 
 - 已完成：Vercel 绑定主域名和 `www`，设置 `www` 的 308 跳转。
 - 已核查：Global 主域名 A 记录和 `www` CNAME 已生效，HTTPS 可以访问。
 - 已完成：Supabase 允许主域名和 `www` 的登录回跳地址，保留原有地址。
+- 已完成：CloudBase 安全域名加入 `cn.therewego.world`，原有 12 项完整保留。
 - 待核查／填写：Google Cloud 和 Cloudflare 的新域名白名单。
 - 待切换：Vercel Production、GitHub 和 Supabase 的正式站点地址。
-- 待办理：CN 证书、CloudBase 自定义域名／路由、安全域名、高德白名单、`cn` 解析。
+- 待办理：CN 证书、CloudBase 自定义域名／路由、高德白名单、`cn` 解析。
 - 待办理：公安联网备案；通过后补正式公安备案号、官方图标和查询链接。
 
-当前连接不能写 DNSPod，不能管理 Google Cloud／Cloudflare，也未能写入 CloudBase
-的新安全域名。下列标注后台入口的步骤需要在对应账号中完成。
+当前连接不能写 DNSPod，不能管理 Google Cloud／Cloudflare。CloudBase 安全域名已自动添加；
+CN 证书和域名绑定尚待办理。下列标注后台入口的步骤需要在对应账号中完成。
 Google Drive 连接不能修改 Google Cloud 配置，此次无需修改 Drive 文件或权限。
 
 ## 第 1 步：Google 登录
@@ -157,8 +161,8 @@ Run 服务 `trip-planner-cn`。环境名中含 `dev` 本身不影响自定义域
 4. 复制这次域名绑定返回的 **CNAME 目标**。
 5. 到 DNSPod 添加 **CNAME → 主机记录 `cn` → 记录值为上一步返回的目标 → 默认线路**。
    不要用旧 Run 地址猜测 CNAME。等待域名绑定和 HTTPS 状态正常。
-6. CloudBase 环境 **环境设置 → 安全来源／安全域名**：添加 `cn.therewego.world`，
-   保留旧域名。当前安全域名清单里尚未加入它。
+6. CloudBase 环境 **环境设置 → 安全来源／安全域名**：确认已有 `cn.therewego.world`，
+   保留旧域名。这一项已自动添加，无需重复。
 7. 高德 **控制台 → 应用管理 → 对应 Web JS Key**：在域名限制中加入
    `cn.therewego.world`，保留旧 Run 域名。保留现有 JS 安全码和独立服务端 Key。
 8. CN Run 的站点配置及 GitHub 当前部署 environment 的 Variable
@@ -184,7 +188,8 @@ Run 服务 `trip-planner-cn`。环境名中含 `dev` 本身不影响自定义域
 1. 进入 [公安联网备案平台](https://beian.mps.gov.cn/)，使用你收到的联网数据码
    导入主体和网站资料。数据码只填在官方备案平台，不放到网站或代码。
 2. 核对网站名称 `ThereWeGo行至`、ICP备案信息、域名、负责人和平台要求的接入信息，提交审核。
-   如果正式备案网站号包含 `-1` 等后缀，以备案后台实际签发的号码为准再调整页脚。
+   网站备案号使用你提供的完整 `沪ICP备2026049500号-1`。
+   可在腾讯云 **ICP 备案 → 我的备案 → 网站信息** 中点击网站备案号核对；不要与主体备案号混用。
 3. 数据码有效期为 30 天；网站联网备案也有开通后 30 日内办理的要求，尽快完成。
 4. 审核通过后，从官方平台下载备案图标和展示代码，把正式 `沪公网安备…号`、图标、
    官方查询链接补到两站的共同首页页脚。当前联网数据码不是这个正式号码。

@@ -34,6 +34,8 @@ For console-by-console instructions in Chinese, see
 - Only CN environment `trip-planner-cn-dev-d3bz94038b26` exists in Shanghai. Its PG instance is
   `pgdb-l4lhtrv7`; it is also the fixed live-test target. No separate CN production environment,
   custom domain or certificate was verified.
+- `cn.therewego.world` has been added to the CN environment's safe domains; all 12 existing entries
+  were preserved. This is separate from custom-domain routing and TLS binding.
 - The current Tencent management credential cannot read or change DNSPod records and cannot read
   SSL certificates. Google Cloud and Cloudflare management sessions are unavailable.
 
@@ -120,8 +122,8 @@ do not remove the assertions, skip live suites or merely rename the GitHub envir
 5. Add a route for this domain: CN Run service, path `/`, path pass-through enabled. This Next.js
    application serves its own public/auth routes and enforces application authentication; preserve
    that behavior rather than adding a gateway login requirement to every page.
-6. Add `cn.therewego.world` to CloudBase authentication/storage safe domains and to the AMap browser
-   key's domain restrictions. Preserve server-key separation and the AMap JS security code.
+6. Verify the existing `cn.therewego.world` CloudBase safe-domain entry and add the hostname to the
+   AMap browser key's domain restrictions. Preserve server-key separation and the AMap JS security code.
 7. Add `CNAME cn` in DNSPod using the exact **CNAME returned by the custom-domain binding**. Do not
    infer it from the old Run hostname.
 8. Set the CN runtime and production GitHub `NEXT_PUBLIC_SITE_URL=https://cn.therewego.world`.
@@ -133,12 +135,13 @@ do not remove the assertions, skip live suites or merely rename the GitHub envir
 
 ## 5. Complete the registration display
 
-The CN and Global homepage footers display `沪ICP备2026049500号` linked to
+The CN and Global homepage footers display `沪ICP备2026049500号-1` linked to
 `https://beian.miit.gov.cn/` in subdued small text. The Global `www` domain redirects to that same
 Global homepage. Both regional homepage titles and inherited page-title suffixes contain the
 registered site name `ThereWeGo行至`; the visible English wordmark stays `There we go`.
-Confirm the exact website number in the filing console, including any website suffix, and adjust
-the display if the issued website number differs from the supplied number.
+The owner supplied the complete website registration number, including its `-1` suffix.
+To independently confirm it, open Tencent Cloud **ICP filing > My filings > Website information**,
+or query the number at the MIIT portal; distinguish the website record from the subject record.
 
 Use the privately supplied public-security data code in
 [the public-security filing portal](https://beian.mps.gov.cn/), following

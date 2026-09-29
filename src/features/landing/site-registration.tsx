@@ -1,7 +1,7 @@
 import "./site-registration.css";
 
 // The official registration identifier stays identical across locales.
-const icpRegistrationNumber = "沪ICP备2026049500号";
+const icpRegistrationNumber = "沪ICP备2026049500号-1";
 
 export function SiteRegistration() {
   return (
