@@ -15,7 +15,8 @@ Global 的 Preview 与 Production 继续共用 Supabase 项目
 `ewyefmnadibnampbeyzc`，包括登录、数据库和存储。不新建 Supabase 项目或分支。
 CN 与 Global 仍是独立账户和数据体系。
 
-两站首页都显示低调的 `沪ICP备2026049500号-1`，链接到工信部查询页面。
+两站首页页脚将版权与备案号合并为一行：`© 2026 There we go ｜ 沪ICP备2026049500号-1`，
+年份随当前年份更新，备案号保持低调样式并链接到工信部查询页面。
 首页标题及其他页面的标题后缀都连续包含完整的 `ThereWeGo行至`，中间没有空格或符号。
 CN 首页为 `ThereWeGo行至 - 协作旅行规划`，Global 首页为
 `ThereWeGo行至 - Collaborative trip planner`；其他页面使用 `页面名称 | ThereWeGo行至`。
