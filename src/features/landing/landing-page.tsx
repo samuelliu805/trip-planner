@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { T } from "@/features/i18n/i18n-provider";
 import type { AppRegion } from "@/platform/config/provider-matrix";
 
-import { tripPlannerBrandName, tripPlannerWordmark } from "./brand";
+import { tripPlannerWordmark } from "./brand";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
 import { LandingRevealSection } from "./landing-reveal-section";
@@ -68,9 +68,7 @@ export function LandingPage({
         <Link className="plandock-wordmark" href="/">
           {tripPlannerWordmark}
         </Link>
-        <p>
-          © {year} {tripPlannerBrandName}
-        </p>
+        <SiteRegistration year={year} />
         <nav aria-label="Footer navigation" data-i18n-aria-label="Footer navigation">
           <a
             aria-label={alternateSite.message}
@@ -91,7 +89,6 @@ export function LandingPage({
             <T message="Support" />
           </Link>
         </nav>
-        <SiteRegistration />
       </footer>
     </main>
   );

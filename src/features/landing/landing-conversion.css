@@ -97,7 +97,7 @@
 
 .landing-final-cta {
   background: #e2ece6;
-  padding: clamp(6rem, 11vw, 10rem) 1.25rem;
+  padding: clamp(6rem, 11vw, 10rem) var(--landing-frame-inset);
   text-align: center;
 }
 .landing-final-cta h2 {
@@ -125,7 +125,7 @@
   font-size: 0.72rem;
   gap: 20px;
   grid-template-columns: 1fr auto 1fr;
-  padding: 28px clamp(1.25rem, 5vw, 4rem);
+  padding: 28px var(--landing-frame-inset);
 }
 .plandock-footer p {
   color: rgba(251, 250, 246, 0.55);
@@ -228,7 +228,6 @@
   }
   .matrix-section {
     row-gap: 2.75rem;
-    padding-inline: 1.5rem;
   }
   .options-section .feature-heading {
     grid-row: 1;

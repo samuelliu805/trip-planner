@@ -76,8 +76,6 @@
 .documents-section {
   background: #132238;
   color: #fbfaf6;
-  max-width: none;
-  padding-inline: max(1.25rem, calc((100vw - 1180px) / 2));
 }
 .documents-section .feature-heading .landing-eyebrow {
   color: #91cdb9;

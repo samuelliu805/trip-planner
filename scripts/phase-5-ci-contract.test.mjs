@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { runInNewContext } from "node:vm";
 
 const workflowUrl = new URL("../.github/workflows/phase-5-dual-environment.yml", import.meta.url);
 const entryWorkflowUrl = new URL("../.github/workflows/cloudbase-pg-ci.yml", import.meta.url);
@@ -232,6 +233,39 @@ test("Next builds carry an exact deployment identifier for version-skew recovery
   assert.match(nextConfig, /process\.env\.APP_DEPLOYMENT_ID/);
   assert.match(nextConfig, /process\.env\.VERCEL_GIT_COMMIT_SHA/);
   assert.match(nextConfig, /deploymentId: deploymentIdCandidate\?\.slice\(0, 32\) \|\| undefined/);
+});
+
+test("Vercel rebuilds delegate deployment IDs while self-hosted releases retain their ID", async () => {
+  const nextConfig = await readFile(nextConfigUrl, "utf8");
+  const selection = nextConfig.match(
+    /const deploymentIdCandidate =[\s\S]+?(?=const selectedAliases =)/,
+  )?.[0];
+  assert.ok(selection, "The deployment ID selector was not found.");
+  const select = (env) =>
+    runInNewContext(
+      `${selection}\ndeploymentIdCandidate`,
+      { process: { env } },
+      { timeout: 1_000 },
+    );
+  const sha = "a".repeat(40);
+  for (const target of ["preview", "production"]) {
+    assert.equal(
+      select({
+        APP_DEPLOYMENT_ID: sha,
+        NEXT_DEPLOYMENT_ID: `dpl_${target}`,
+        VERCEL: "1",
+        VERCEL_ENV: target,
+        VERCEL_GIT_COMMIT_SHA: sha,
+      }),
+      undefined,
+      `${target} must use Vercel's own per-deployment identifier.`,
+    );
+  }
+  assert.equal(select({ APP_DEPLOYMENT_ID: ` ${sha} ` }), sha);
+  assert.equal(select({ APP_DEPLOYMENT_ID: sha, VERCEL_GIT_COMMIT_SHA: "b".repeat(40) }), sha);
+  assert.equal(select({ VERCEL_GIT_COMMIT_SHA: sha }), sha);
+  assert.equal(select({}), undefined);
+  assert.throws(() => select({ APP_DEPLOYMENT_ID: "invalid/release" }), /URL-safe characters/);
 });
 
 test("the i18n check has no runner-specific file discovery dependency", async () => {

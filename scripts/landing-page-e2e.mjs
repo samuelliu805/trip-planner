@@ -182,6 +182,30 @@ async function viewport(browser, width, height, mobile = false, coarsePointer = 
   );
 }
 
+async function assertLandingFrame(browser) {
+  const frame = await evaluate(
+    browser,
+    `(() => {
+      const left = document.querySelector('.plandock-nav .plandock-wordmark').getBoundingClientRect().left;
+      const right = document.querySelector('.plandock-nav-actions').getBoundingClientRect().right;
+      const sections = [...document.querySelectorAll('.feature-section, .departure-story, .share-section, .landing-final-cta, .plandock-footer')].map(node => {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return { name: node.className, left: rect.left + parseFloat(style.paddingLeft), right: rect.right - parseFloat(style.paddingRight) };
+      });
+      return { left, right, sections, heroLeft: document.querySelector('.hero-copy').getBoundingClientRect().left, width: innerWidth };
+    })()`,
+  );
+  assert.ok(Math.abs(frame.heroLeft - frame.left) <= 1, `${frame.width}px hero frame drifted.`);
+  assert.equal(frame.sections.length, 8);
+  for (const section of frame.sections) {
+    assert.ok(
+      Math.abs(section.left - frame.left) <= 1 && Math.abs(section.right - frame.right) <= 1,
+      `${frame.width}px ${section.name} does not align with the navigation frame.`,
+    );
+  }
+}
+
 async function navigate(browser, baseUrl, path = "/", expectedWebgl = "ready") {
   await browser.cdp.send("Page.navigate", { url: new URL(path, baseUrl).href }, browser.sessionId);
   const webglCondition = expectedWebgl
@@ -246,6 +270,7 @@ if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
 try {
   await viewport(browser, 1440, 900);
   await navigate(browser, app.baseUrl);
+  await assertLandingFrame(browser);
   const initial = await evaluate(
     browser,
     `({ fragments: [...document.querySelectorAll('[data-fragment]')].filter((node) => node.getClientRects().length && Number(getComputedStyle(node).opacity) > .9).length, navPosition: getComputedStyle(document.querySelector('.plandock-nav')).position, navTop: Math.round(document.querySelector('.plandock-nav').getBoundingClientRect().top), state: document.querySelector('[data-testid="route-dock-hero"]').dataset.dockState, webgl: Boolean(document.querySelector('[data-testid="route-dock-canvas"]')?.getContext('webgl2')) })`,
@@ -301,6 +326,7 @@ try {
 
   await viewport(browser, 2560, 1389);
   await navigate(browser, app.baseUrl);
+  await assertLandingFrame(browser);
   const ultraWide = await evaluate(
     browser,
     `(() => { const nav = document.querySelector('.plandock-wordmark').getBoundingClientRect(); const copy = document.querySelector('.hero-copy').getBoundingClientRect(); const workspace = document.querySelector('.workspace-stage').getBoundingClientRect(); const rail = document.querySelector('.scene-state').getBoundingClientRect(); return { alignment: Math.abs(nav.left-copy.left), headingSize: parseFloat(getComputedStyle(document.querySelector('.hero-copy h1')).fontSize), railBottom: rail.bottom, viewport: innerHeight, workspaceWidth: workspace.width }; })()`,
@@ -523,6 +549,7 @@ try {
     const tablet = width >= 700 && width <= 1366;
     await viewport(browser, width, height, width < 700, width < 700 || tablet);
     await navigate(browser, app.baseUrl);
+    await assertLandingFrame(browser);
     if (tablet) {
       assert.equal(
         await evaluate(browser, `matchMedia('(pointer: coarse)').matches`),
@@ -934,7 +961,7 @@ try {
   for (const [path, status] of routes) assert.equal(status, 200, `${path} returned ${status}`);
   const authBranding = await evaluate(
     browser,
-    `Promise.all(['/login','/signup'].map(async (path) => { const html = await (await fetch(path)).text(); const page = new DOMParser().parseFromString(html, 'text/html'); return [path, { brand: page.querySelector('header a')?.textContent.trim(), oldBrand: /Trip Planner/i.test(page.body.textContent) }]; }))`,
+    `Promise.all(['/login','/signup'].map(async (path) => { const html = await (await fetch(path)).text(); const page = new DOMParser().parseFromString(html, 'text/html'); page.querySelectorAll('script, style').forEach((node) => node.remove()); return [path, { brand: page.querySelector('header a')?.textContent.trim(), oldBrand: /Trip Planner/i.test(page.body.textContent) }]; }))`,
   );
   for (const [path, branding] of authBranding) {
     assert.equal(branding.brand, "There we go", `${path} lost the shared brand header.`);
@@ -989,6 +1016,7 @@ try {
   );
   await viewport(browser, 390, 844, true);
   await navigate(browser, app.baseUrl);
+  await assertLandingFrame(browser);
   const chineseLanding = await evaluate(
     browser,
     `(() => { const h1 = document.querySelector('h1'); const nav = document.querySelector('.plandock-nav').getBoundingClientRect(); const hero = document.querySelector('.hero-copy').getBoundingClientRect(); const copy = document.body.innerText; return { brandMarks: [...document.querySelectorAll('.plandock-wordmark')].filter((node) => node.textContent.trim() === 'There we go').length, h1Lines: h1.getBoundingClientRect().height / parseFloat(getComputedStyle(h1).lineHeight), navClearance: hero.top - nav.bottom, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth, untranslatedFixture: ['Day 1','Apr 12','Marriott Rive Gauche','Louvre Museum','Palace of Versailles','Gare du Nord','Saint-Germain','Rive Gauche'].filter((text) => copy.includes(text)) }; })()`,

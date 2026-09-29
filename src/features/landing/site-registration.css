@@ -1,8 +1,16 @@
 .site-registration {
+  align-items: center;
+  column-gap: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
   font-size: 0.6875rem;
-  grid-column: 1 / -1;
+  justify-content: center;
   min-width: 0;
   text-align: center;
+}
+
+.site-registration > span {
+  white-space: nowrap;
 }
 
 .site-registration a {
