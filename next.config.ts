@@ -9,8 +9,11 @@ import { resolveDeploymentProviderConfig } from "./src/platform/config/provider-
 const deploymentProviders = resolveDeploymentProviderConfig(process.env);
 const providerSuffix = deploymentProviders.appRegion === "cn" ? "cloudbase" : "supabase";
 const mapSuffix = deploymentProviders.appRegion === "cn" ? "amap" : "google";
+// Vercel supplies a unique ID per deployment, including rebuilds of the same commit.
 const deploymentIdCandidate =
-  process.env.APP_DEPLOYMENT_ID?.trim() || process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+  process.env.VERCEL === "1"
+    ? undefined
+    : process.env.APP_DEPLOYMENT_ID?.trim() || process.env.VERCEL_GIT_COMMIT_SHA?.trim();
 if (deploymentIdCandidate && !/^[A-Za-z0-9._-]{1,100}$/.test(deploymentIdCandidate)) {
   throw new Error("APP_DEPLOYMENT_ID must be 1-100 URL-safe characters.");
 }
