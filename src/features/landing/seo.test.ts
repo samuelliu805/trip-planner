@@ -36,7 +36,10 @@ test("landing structured data describes the website and free web app", () => {
   assert.equal(tripPlannerBrandNameForRegion("cn"), "ThereWeGo行至");
   assert.equal(tripPlannerBrandNameForRegion("global"), "There we go");
   assert.equal(tripPlannerSiteTitleForRegion("cn"), "ThereWeGo行至 - 协作旅行规划");
-  assert.equal(tripPlannerSiteTitleForRegion("global"), "There we go - Collaborative trip planner");
+  assert.equal(
+    tripPlannerSiteTitleForRegion("global"),
+    "ThereWeGo行至 - Collaborative trip planner",
+  );
   assert.equal(tripPlannerWordmark, "There we go");
 });
 
@@ -69,9 +72,11 @@ test("regional SEO copy is complete for search and social metadata", () => {
   const cn = tripPlannerSeoForRegion("cn");
 
   assert.match(global.title, /trip planner/i);
+  assert.match(global.title, /ThereWeGo行至/);
   assert.match(global.description, /shareable itineraries/i);
   assert.match(global.shareImageAlt, /trip planner/i);
   assert.match(cn.title, /旅行规划/);
+  assert.match(cn.title, /ThereWeGo行至/);
   assert.match(cn.description, /路线/);
   assert.match(cn.shareImageAlt, /ThereWeGo行至/);
   assert.equal(global.keywords.length, 5);

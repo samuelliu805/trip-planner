@@ -2,6 +2,8 @@
 
 Trip Planner uses Supabase Auth as the application identity provider and Google as a social login
 provider. The Google client secret belongs in Supabase, not in the Next.js or Vercel environment.
+Global Preview and Production intentionally use the same existing Supabase backend and database.
+Keep their shared project and credentials; the domain change only updates origins and redirects.
 
 ## Google Auth Platform
 
@@ -87,8 +89,9 @@ then opens `/reset-password`.
 
 ## Custom-domain rollout after ICP filing
 
-ICP filing is approved. Follow [the domain rollout runbook](./production-domains.md) to restore
-the website records in DNSPod after the Google Maps and Turnstile hostname restrictions are ready.
+ICP filing is approved. Follow [the domain rollout runbook](./production-domains.md) or
+[the detailed Chinese setup steps](./domain-setup-steps.zh-CN.md). Global website records in DNSPod
+already resolve; verify Google Maps and Turnstile hostname restrictions before changing Site URL.
 Keep the Resend SPF, DKIM, MX and DMARC records intact and keep the DNS zone active.
 
 Vercel already binds `therewego.world` and redirects `www.therewego.world` to it with HTTP 308.

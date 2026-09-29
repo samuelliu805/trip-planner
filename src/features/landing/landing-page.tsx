@@ -6,12 +6,12 @@ import { T } from "@/features/i18n/i18n-provider";
 import type { AppRegion } from "@/platform/config/provider-matrix";
 
 import { tripPlannerBrandName, tripPlannerWordmark } from "./brand";
-import { CnSiteRegistration } from "./cn-site-registration";
 import { FeatureSections } from "./feature-sections";
 import { LandingNavigation } from "./landing-navigation";
 import { LandingRevealSection } from "./landing-reveal-section";
 import { alternateLandingSite } from "./regional-landing-sites";
 import { RouteDockHero } from "./route-dock-hero";
+import { SiteRegistration } from "./site-registration";
 
 import "./landing-hero-shell.css";
 import "./landing-workspace.css";
@@ -91,7 +91,7 @@ export function LandingPage({
             <T message="Support" />
           </Link>
         </nav>
-        <CnSiteRegistration appRegion={appRegion} />
+        <SiteRegistration />
       </footer>
     </main>
   );

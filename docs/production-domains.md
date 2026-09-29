@@ -11,10 +11,19 @@ Final topology:
 Global and CN accounts and trips remain independent. A shared parent domain must not introduce
 parent-domain session cookies or a shared authentication backend.
 
+Global Preview and Production intentionally share the existing Supabase backend, database, auth
+and storage. Keep their Supabase project references and credentials as configured. A Preview URL
+does not imply an isolated data plane, so use controlled test accounts and preserve cleanup guards.
+The domain rollout does not create a Supabase branch or project.
+
+For console-by-console instructions in Chinese, see
+[the detailed setup steps](./domain-setup-steps.zh-CN.md).
+
 ## Verified state on 2026-09-29
 
-- DNS is delegated to DNSPod (`henry.dnspod.net`, `peach.dnspod.net`). The apex, `www` and `cn`
-  website records are absent. Cloudflare is currently used for Turnstile, not authoritative DNS.
+- DNS is delegated to DNSPod (`henry.dnspod.net`, `peach.dnspod.net`). The apex A and `www` CNAME
+  now resolve, HTTPS works, and `www` redirects to the apex. The `cn` record is still absent.
+  Cloudflare is currently used for Turnstile, not authoritative DNS.
 - Vercel project `trip-planner`, `prj_51kZNlaZEWGpQo6a1Gn0p9jr9wbd`, already verifies both Global
   domains and has the correct `www` HTTP 308 redirect.
 - Supabase project `ewyefmnadibnampbeyzc` allows both Global domain redirect patterns. Google login,
@@ -25,6 +34,8 @@ parent-domain session cookies or a shared authentication backend.
 - Only CN environment `trip-planner-cn-dev-d3bz94038b26` exists in Shanghai. Its PG instance is
   `pgdb-l4lhtrv7`; it is also the fixed live-test target. No separate CN production environment,
   custom domain or certificate was verified.
+- `cn.therewego.world` has been added to the CN environment's safe domains; all 12 existing entries
+  were preserved. This is separate from custom-domain routing and TLS binding.
 - The current Tencent management credential cannot read or change DNSPod records and cannot read
   SSL certificates. Google Cloud and Cloudflare management sessions are unavailable.
 
@@ -54,7 +65,7 @@ Cloudflare hostname entries use hostnames without `https://` or paths.
 Google Drive does not manage Google Cloud OAuth clients, Maps keys or DNS; no Drive permission or
 file change is needed for this rollout.
 
-## 2. Restore Global DNS in DNSPod
+## 2. Verify Global DNS in DNSPod
 
 The Vercel domain-configuration API returned these preferred values on 2026-09-29. Recheck the
 project's **Settings > Domains** before entering them if the rollout happens later.
@@ -62,9 +73,10 @@ project's **Settings > Domains** before entering them if the rollout happens lat
 | Type  | Name  | Value                                 | Line    |
 | ----- | ----- | ------------------------------------- | ------- |
 | A     | `@`   | `216.198.79.1`                        | Default |
-| A     | `@`   | `64.29.17.1`                          | Default |
 | CNAME | `www` | `443c5344fc5d2083.vercel-dns-017.com` | Default |
 
+The working records above are already present; leave them in place. Vercel also accepts
+`64.29.17.1` at rank 1, but adding another A record is unnecessary while the domain is healthy.
 Keep all mail records, including the `mail.therewego.world` SPF/DKIM/MX and existing DMARC.
 Do not pause the zone, replace nameservers, add a conflicting `AAAA`, or add a URL-forwarding record.
 Wait until Vercel shows both domains correctly configured and their TLS certificates ready.
@@ -73,6 +85,7 @@ Wait until Vercel shows both domains correctly configured and their TLS certific
 
 1. In Vercel **trip-planner > Settings > Environment Variables > Production**, set
    `NEXT_PUBLIC_SITE_URL=https://therewego.world`. Preserve Preview's existing value.
+   Keep the existing shared Supabase URL and keys for both Production and Preview.
 2. In GitHub **Settings > Environments > global-production > Variables**, set the same
    `NEXT_PUBLIC_SITE_URL`. This keeps deployment verification synchronized with the application.
 3. In Supabase **Authentication > URL Configuration**, set Site URL to `https://therewego.world`.
@@ -109,8 +122,8 @@ do not remove the assertions, skip live suites or merely rename the GitHub envir
 5. Add a route for this domain: CN Run service, path `/`, path pass-through enabled. This Next.js
    application serves its own public/auth routes and enforces application authentication; preserve
    that behavior rather than adding a gateway login requirement to every page.
-6. Add `cn.therewego.world` to CloudBase authentication/storage safe domains and to the AMap browser
-   key's domain restrictions. Preserve server-key separation and the AMap JS security code.
+6. Verify the existing `cn.therewego.world` CloudBase safe-domain entry and add the hostname to the
+   AMap browser key's domain restrictions. Preserve server-key separation and the AMap JS security code.
 7. Add `CNAME cn` in DNSPod using the exact **CNAME returned by the custom-domain binding**. Do not
    infer it from the old Run hostname.
 8. Set the CN runtime and production GitHub `NEXT_PUBLIC_SITE_URL=https://cn.therewego.world`.
@@ -122,9 +135,13 @@ do not remove the assertions, skip live suites or merely rename the GitHub envir
 
 ## 5. Complete the registration display
 
-The CN homepage footer displays `沪ICP备2026049500号` linked to `https://beian.miit.gov.cn/`.
-Confirm the exact website number in the filing console, including any website suffix, and adjust
-the display if the issued website number differs from the supplied number.
+The CN and Global homepage footers display `沪ICP备2026049500号-1` linked to
+`https://beian.miit.gov.cn/` in subdued small text. The Global `www` domain redirects to that same
+Global homepage. Both regional homepage titles and inherited page-title suffixes contain the
+registered site name `ThereWeGo行至`; the visible English wordmark stays `There we go`.
+The owner supplied the complete website registration number, including its `-1` suffix.
+To independently confirm it, open Tencent Cloud **ICP filing > My filings > Website information**,
+or query the number at the MIIT portal; distinguish the website record from the subject record.
 
 Use the privately supplied public-security data code in
 [the public-security filing portal](https://beian.mps.gov.cn/), following
@@ -134,6 +151,6 @@ and must not appear in source, frontend metadata, screenshots or this runbook.
 
 The data code is valid for 30 days; website public-security filing is due within 30 days after
 service opening. After approval, add the issued `沪公网安备…号`, official icon and portal-provided
-query link to the CN footer. Do not construct a registration number from the data code.
+query link to the shared homepage footer. Do not construct a registration number from the data code.
 
 No application database migration is needed for the domain/ICP-footer change itself.

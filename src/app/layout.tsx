@@ -7,6 +7,7 @@ import { I18nProvider } from "@/features/i18n/i18n-provider";
 import { getRequestLocaleState } from "@/features/i18n/server";
 import {
   tripPlannerBrandNameForRegion,
+  tripPlannerRegisteredSiteName,
   tripPlannerSiteTitleForRegion,
 } from "@/features/landing/brand";
 import { tripPlannerSeoForRegion } from "@/features/landing/seo";
@@ -47,7 +48,7 @@ export async function generateMetadata(): Promise<Metadata> {
     referrer: "strict-origin",
     title: {
       default: tripPlannerSiteTitleForRegion(appRegion),
-      template: `%s | ${siteName}`,
+      template: `%s | ${tripPlannerRegisteredSiteName}`,
     },
   };
 }

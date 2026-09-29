@@ -1,0 +1,25 @@
+.site-registration {
+  font-size: 0.6875rem;
+  grid-column: 1 / -1;
+  min-width: 0;
+  text-align: center;
+}
+
+.site-registration a {
+  align-items: center;
+  color: rgba(251, 250, 246, 0.6);
+  display: inline-flex;
+  justify-content: center;
+  line-height: 1.6;
+  max-width: 100%;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.site-registration a:hover,
+.site-registration a:focus-visible {
+  color: var(--dock-paper);
+  text-decoration: underline;
+}

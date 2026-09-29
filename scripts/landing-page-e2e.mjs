@@ -288,7 +288,15 @@ try {
   assert.equal(seo.canonicalPath, "/");
   assert.match(seo.description, /route/i);
   assert.deepEqual(seo.graphTypes, ["WebSite", "WebApplication"]);
-  assert.equal(seo.title, "There we go - Collaborative trip planner");
+  assert.equal(seo.title, "ThereWeGo行至 - Collaborative trip planner");
+  const registration = await evaluate(
+    browser,
+    `(() => { const link = document.querySelector('.plandock-footer .site-registration a'); return { href: link?.href, text: link?.textContent.trim() }; })()`,
+  );
+  assert.deepEqual(registration, {
+    href: "https://beian.miit.gov.cn/",
+    text: "沪ICP备2026049500号-1",
+  });
   await screenshot(browser, screenshotDirectory, "01-scattered-desktop.png");
 
   await viewport(browser, 2560, 1389);
