@@ -15,8 +15,6 @@ html[lang="zh-CN"] .documents-section .feature-heading h2 {
 }
 .matrix-section {
   background: #fbf7ed;
-  max-width: none;
-  padding-inline: max(1.25rem, calc((100vw - 1180px) / 2));
 }
 .documents-section {
   padding-bottom: clamp(4rem, 7vw, 6rem);
@@ -28,7 +26,7 @@ html[lang="zh-CN"] .documents-section .feature-heading h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: clamp(2.5rem, 5vw, 5rem) max(1.25rem, calc((100vw - 1180px) / 2));
+  padding: clamp(2.5rem, 5vw, 5rem) var(--landing-frame-inset);
   color: var(--dock-paper);
   background: var(--dock-navy);
 }

@@ -58,8 +58,8 @@
   }
   .scene-state {
     bottom: auto;
-    left: 1rem;
-    right: 1rem;
+    left: var(--landing-frame-inset);
+    right: var(--landing-frame-inset);
     gap: 0.4rem;
     padding-top: 10px;
     top: min(calc(var(--hero-workspace-bottom, 70svh) + 3.25rem), calc(100% - 58px));

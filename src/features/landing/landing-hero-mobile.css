@@ -4,8 +4,8 @@
     --route-dock-stage-height: 100svh;
     --route-dock-track-height: 190svh;
   }
-  .plandock-nav {
-    padding-inline: 1.4rem;
+  .plandock-page {
+    --landing-frame-inset: 1.4rem;
   }
   .plandock-nav-actions {
     --landing-nav-action-gap: 0.5rem;
@@ -27,9 +27,9 @@
     display: none;
   }
   .hero-copy {
-    left: 1.4rem;
-    max-width: calc(100% - 2.8rem);
-    right: 1.4rem;
+    left: var(--landing-frame-inset);
+    max-width: calc(100% - 2 * var(--landing-frame-inset));
+    right: var(--landing-frame-inset);
     top: 86px;
   }
   .hero-copy h1 {
@@ -37,7 +37,7 @@
     max-width: 22rem;
   }
   html[lang="zh-CN"] .hero-copy {
-    max-width: calc(100% - 2.8rem);
+    max-width: calc(100% - 2 * var(--landing-frame-inset));
   }
   html[lang="zh-CN"] .hero-copy h1 {
     font-size: clamp(2.45rem, 11vw, 3.2rem);
