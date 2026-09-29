@@ -8,6 +8,8 @@ provider. The Google client secret belongs in Supabase, not in the Next.js or Ve
 Create a Web application OAuth client with these values:
 
 - Authorized JavaScript origins:
+  - `https://therewego.world`
+  - `https://www.therewego.world`
   - `https://trip-planner-ivory-one.vercel.app`
   - `http://localhost:3000`
 - Authorized redirect URI:
@@ -21,8 +23,11 @@ Only request the `openid`, `email`, and `profile` scopes for sign-in.
 1. Open **Authentication → Sign In / Providers → Google**.
 2. Paste the Google Web Client ID and Client Secret, enable the provider, and save.
 3. Under **Authentication → URL Configuration**, set:
-   - Site URL: `https://trip-planner-ivory-one.vercel.app`
+   - Site URL after custom-domain DNS and HTTPS verification: `https://therewego.world`.
+     Until then, retain `https://trip-planner-ivory-one.vercel.app` so default email links work.
    - Redirect URLs:
+     - `https://therewego.world/**`
+     - `https://www.therewego.world/**`
      - `https://trip-planner-ivory-one.vercel.app/**`
      - `http://localhost:3000/**`
      - `https://*-shus-projects-f7d1dcd0.vercel.app/**`
@@ -80,17 +85,13 @@ then opens `/reset-password`.
    existing user rather than create another user.
 10. Sign out, select **Continue with Google** again, and confirm Google displays its account chooser.
 
-## Temporary ICP-filing DNS layout
+## Custom-domain rollout after ICP filing
 
-While the Global web domain is offline for ICP filing, use
-`https://trip-planner-ivory-one.vercel.app` for the application and all authentication redirects.
-Do not publish `A`, `AAAA`, `CNAME`, or URL-forwarding records for `@` or `www`.
+ICP filing is approved. Follow [the domain rollout runbook](./production-domains.md) to restore
+the website records in DNSPod after the Google Maps and Turnstile hostname restrictions are ready.
+Keep the Resend SPF, DKIM, MX and DMARC records intact and keep the DNS zone active.
 
-Email can continue using the `mail.therewego.world` subdomain. Keep the DNS zone active and keep only
-the Resend verification records for that mail subdomain: the SPF `TXT`, DKIM `TXT`, and the MX record
-shown in Resend. Keep the `_dmarc` record if present. Pausing the entire DNSPod zone removes those
-records from public DNS and therefore stops reliable email delivery.
-
-Before restoring the website after filing, change the Vercel, GitHub, Supabase Auth, Google OAuth,
-Google Maps, and regional landing-link origins together, then run the full Global and CN release
-matrix.
+Vercel already binds `therewego.world` and redirects `www.therewego.world` to it with HTTP 308.
+Keep the current application origin and fallback email Site URL until the new domain has working
+DNS and HTTPS. Activate the application origin, Supabase Site URL, GitHub deployment variable and
+regional landing links together, then verify login, email links, maps and the exact deployment.

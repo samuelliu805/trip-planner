@@ -1,0 +1,17 @@
+.cn-site-registration {
+  grid-column: 1 / -1;
+  min-width: 0;
+  text-align: center;
+}
+
+.cn-site-registration a {
+  align-items: center;
+  color: inherit;
+  display: inline-flex;
+  justify-content: center;
+  max-width: 100%;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
