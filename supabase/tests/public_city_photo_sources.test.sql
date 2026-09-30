@@ -35,6 +35,9 @@ UPDATE public.public_itinerary_links SET show_place_photos=true,published_snapsh
 SELECT is(public.get_public_city_photo_sources_v1(((SELECT payload->>'token' FROM city_photo_state WHERE key='link'))::uuid),'[]'::jsonb,'a snapshot published without photos remains photo free');
 UPDATE public.public_itinerary_links SET published_snapshot=jsonb_set(published_snapshot,'{settings,showPlacePhotos}','true'),revoked_at=now() WHERE id=(SELECT id FROM city_photo_state WHERE key='link');
 SELECT is(public.get_public_city_photo_sources_v1(((SELECT payload->>'token' FROM city_photo_state WHERE key='link'))::uuid),'[]'::jsonb,'revoked links expose nothing');
-SELECT ok(NOT has_table_privilege('anon','public.places','SELECT'),'city sources do not grant direct private-place reads');
+SELECT set_config('request.jwt.claims','{"role":"anon"}',true);
+SET LOCAL ROLE anon;
+SELECT is((SELECT count(*) FROM public.places WHERE trip_id=(SELECT id FROM city_photo_state WHERE key='trip')),0::bigint,'anonymous city-photo callers cannot directly read private places');
+RESET ROLE;
 SELECT * FROM finish();
 ROLLBACK;
