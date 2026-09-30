@@ -470,6 +470,11 @@ try {
           .scrollIntoViewIfNeeded();
         assert.equal(await page.locator("#public-overview-panel .edition-plan-list").count(), 0);
         await page.getByRole("tab", { name: "Timeline", exact: true }).click();
+        await page.waitForFunction(
+          () =>
+            document.querySelector("#public-timeline-tab")?.getAttribute("aria-selected") ===
+            "true",
+        );
         if (scenario === "blank" || scenario === "failed-photo")
           assert.equal(await page.locator("#public-timeline-panel .edition-note").count(), 0);
         if (scenario === "blank")
@@ -490,7 +495,31 @@ try {
         }
         await page.getByRole("button", { name: "Open map and routes", exact: true }).click();
         const panel = page.locator(".public-map-pull-up");
-        await panel.waitFor();
+        try {
+          await panel.waitFor();
+        } catch (error) {
+          console.error(
+            "Map open diagnostic",
+            JSON.stringify({
+              templateId,
+              scenario,
+              errors,
+              surface: await page.evaluate(() => ({
+                timelineSelected: document
+                  .querySelector("#public-timeline-tab")
+                  ?.getAttribute("aria-selected"),
+                trigger: document.querySelector(".public-mobile-map-control")?.outerHTML,
+                bodyPointerEvents: getComputedStyle(document.body).pointerEvents,
+                dialogs: [...document.querySelectorAll("[role=dialog]")].map((node) => ({
+                  state: node.getAttribute("data-state"),
+                  className: node.className,
+                  rect: node.getBoundingClientRect().toJSON(),
+                })),
+              })),
+            }),
+          );
+          throw error;
+        }
         const handle = panel.locator("[data-pull-up-handle]");
         const box = await handle.boundingBox();
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
