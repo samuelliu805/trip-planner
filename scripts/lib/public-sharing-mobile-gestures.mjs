@@ -22,6 +22,10 @@ async function touchDrag(page, start, end, steps = 10) {
 }
 
 export async function verifyPagedReaderAndSheet(page, fixture) {
+  await page.locator("#public-timeline-panel .edition-plan-button").first().tap();
+  await page.locator("[role=dialog].mobile-pull-up-panel").waitFor();
+  await page.keyboard.press("Escape");
+  await page.locator("[role=dialog].mobile-pull-up-panel").waitFor({ state: "hidden" });
   const reader = page.locator("#public-timeline-panel .edition-paged-scroll");
   const box = await reader.boundingBox();
   const start = { x: box.x + box.width * 0.8, y: box.y + 160 };
@@ -41,6 +45,13 @@ export async function verifyPagedReaderAndSheet(page, fixture) {
     0,
     "A chapter swipe never opens an item.",
   );
+  // A new deliberate tap immediately after the swipe must not inherit its click guard.
+  await page.locator("#public-timeline-panel .edition-plan-button").first().tap();
+  const fastTapPanel = page.locator("[role=dialog].mobile-pull-up-panel");
+  await fastTapPanel.waitFor();
+  assert.ok(await fastTapPanel.locator(".public-item-detail").isVisible());
+  await page.keyboard.press("Escape");
+  await fastTapPanel.waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "Choose day", exact: true }).click();
   await page
     .getByRole("menuitemradio", { name: new RegExp(`Day ${fixture.days[0].dayNumber}`) })
