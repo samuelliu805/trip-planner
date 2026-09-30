@@ -119,6 +119,7 @@ try {
         ]) {
           await page.setViewportSize({ width, height });
           await page.goto(`${app.baseUrl}/share/${token}`);
+          await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
           await page.locator(".itinerary-edition").first().waitFor();
           await page.evaluate(() => document.fonts.ready);
           if (photos) {
@@ -330,6 +331,7 @@ try {
       for (const width of [390, 430, 820, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         await page.goto(`${app.baseUrl}/share/${token}`);
+        await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
         await page.locator(".itinerary-edition").first().waitFor();
         await page.locator("#public-overview-panel .edition-overview-open").nth(1).click();
         await page.locator("#public-timeline-panel").waitFor({ state: "visible" });
@@ -398,6 +400,7 @@ try {
     await page.setViewportSize({ width: 1440, height: 1000 });
     const cityRequestStart = resolvedRefs.length;
     await page.goto(`${app.baseUrl}/share/${token}`);
+    await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
     await page.locator("#public-overview-panel .edition-photo").first().waitFor();
     assert.ok(resolvedRefs.slice(cityRequestStart).includes("1".repeat(64)));
     assert.ok(
@@ -464,6 +467,7 @@ try {
         app.setFixture(fixture);
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto(`${app.baseUrl}/share/${token}`);
+        await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
         await page.locator(".itinerary-edition").first().waitFor();
         await page
           .locator("#public-overview-panel .edition-overview-day-card")
@@ -520,6 +524,11 @@ try {
           );
           throw error;
         }
+        await panel.evaluate((node) =>
+          Promise.all(
+            node.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+          ),
+        );
         const handle = panel.locator("[data-pull-up-handle]");
         const box = await handle.boundingBox();
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -546,6 +555,11 @@ try {
         await panel.waitFor({ state: "hidden" });
         await page.getByRole("button", { name: "Open map and routes", exact: true }).click();
         await panel.waitFor();
+        await panel.evaluate((node) =>
+          Promise.all(
+            node.getAnimations().map((animation) => animation.finished.catch(() => undefined)),
+          ),
+        );
         const closeBox = await handle.boundingBox();
         await page.mouse.move(closeBox.x + closeBox.width / 2, closeBox.y + 10);
         await page.mouse.down();
@@ -603,6 +617,7 @@ try {
         imageAvailable = false;
         const before = classicResolves;
         await page.goto(`${app.baseUrl}/share/${token}?view=overview`);
+        await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
         await page.locator("#public-overview-panel .overview-item-card-v4").first().waitFor();
         if (photos) {
           const deadline = Date.now() + 5000;
@@ -626,6 +641,7 @@ try {
           );
           imageAvailable = true;
           await page.reload();
+          await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
           await page
             .locator("#public-overview-panel .overview-item-card-v4.has-media")
             .first()
@@ -672,6 +688,7 @@ try {
       app.setFixture(fixture);
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`${app.baseUrl}/share/${token}`);
+      await page.locator('.public-itinerary-shell[data-public-reader-ready="true"]').waitFor();
       await page.getByRole("tab", { name: "Timeline", exact: true }).click();
       await verifyPagedReaderAndSheet(page, fixture);
     }

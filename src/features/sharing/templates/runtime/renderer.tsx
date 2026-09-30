@@ -5,7 +5,7 @@ import {
   PublicItemDetailsPanel,
 } from "../../components/public-resources-panel";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 
@@ -88,8 +88,15 @@ function TemplateNode({ node }: { node: PublicTemplateLayoutNodeV1 }) {
 }
 
 export function PublicTemplateRenderer({ template }: { template: CompiledPublicTemplateV1 }) {
+  const root = useRef<HTMLElement>(null);
+  useEffect(() => {
+    // Server HTML can be visible before its buttons have client event handlers.
+    // Browser verification waits for this commit signal rather than a guessed delay.
+    root.current?.setAttribute("data-public-reader-ready", "true");
+  }, []);
   return (
     <main
+      ref={root}
       className={`public-itinerary-shell public-template-${template.id} isolate flex h-dvh min-w-0 flex-col overflow-hidden bg-background`}
       data-public-template={template.id}
       data-public-template-key={template.key}
