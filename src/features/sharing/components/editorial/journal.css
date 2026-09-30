@@ -1,0 +1,147 @@
+.public-template-journal .itinerary-edition {
+  --edition-paper: #f5f1e5;
+  --edition-border: #d8cebb;
+}
+.public-template-journal .itinerary-edition .edition-journal-book {
+  display: grid;
+  grid-template-columns: 182px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.public-template-journal .itinerary-edition .edition-journal-book > .edition-front {
+  grid-column: 1/-1;
+  margin-bottom: 0;
+}
+.public-template-journal .itinerary-edition .edition-rail {
+  position: sticky;
+  top: 12px;
+  min-width: 0;
+}
+.public-template-journal .itinerary-edition .edition-rail button {
+  gap: 12px;
+  min-height: 78px;
+  padding: 14px 12px;
+  margin-bottom: 10px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+.public-template-journal .itinerary-edition .edition-rail button[aria-current="date"] {
+  background: #fffdf5;
+  border-color: #d9cfbc;
+  box-shadow: 2px 3px 0 #d4c9b82c;
+}
+.public-template-journal .itinerary-edition .edition-rail strong {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.public-template-journal .itinerary-edition .edition-day-heading {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--edition-paper);
+  padding: 8px 0;
+  margin-bottom: 24px;
+}
+.public-template-journal .itinerary-edition .edition-day-number {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #c8826b;
+  border-radius: 48% 52% 44% 53%;
+  color: #b36e55;
+  font: italic 26px/1 var(--edition-serif);
+  letter-spacing: -0.03em;
+}
+.public-template-journal .itinerary-edition .edition-day-number::before {
+  display: none;
+}
+.public-template-journal .itinerary-edition .edition-day-heading h3 {
+  font-style: italic;
+  font-size: 35px;
+  margin: 3px 0 8px;
+}
+.public-template-journal .itinerary-edition .edition-day-heading .edition-kicker {
+  display: none;
+}
+.public-template-journal .itinerary-edition .journal-day-spread {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+}
+.public-template-journal .itinerary-edition .journal-day-spread:has(> .edition-photo-slot) {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+}
+.public-template-journal .itinerary-edition .edition-photo {
+  position: relative;
+  isolation: isolate;
+  background: #fffdf9;
+  border: 1px solid #d9cfbc;
+  padding: 12px 12px 0;
+  box-shadow: 2px 6px 16px #796a4c18;
+}
+.public-template-journal .itinerary-edition .edition-journal-front-spread .edition-photo::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 38%;
+  width: 80px;
+  height: 20px;
+  background: #d6dfcfb3;
+  transform: rotate(-3deg);
+  pointer-events: none;
+}
+.public-template-journal .itinerary-edition .edition-plan-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.public-template-journal .itinerary-edition .edition-plan {
+  position: relative;
+  border: 1px solid #ddd2bc;
+  background: #fffdf8;
+  padding: 18px 18px 16px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+}
+.public-template-journal .itinerary-edition .edition-plan:last-child:nth-child(odd) {
+  grid-column: 1/-1;
+}
+.public-template-journal .itinerary-edition .edition-plan::before {
+  display: none;
+}
+.public-template-journal .itinerary-edition .edition-plan-order {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d3dcc4;
+  border-radius: 50%;
+  color: #84916e;
+  font-size: 10px;
+}
+.public-template-journal .itinerary-edition .edition-plan-button strong {
+  font-size: 14px;
+}
+.public-template-journal .itinerary-edition .edition-plan-category {
+  font-size: 10px;
+}
+.public-template-journal .itinerary-edition .edition-transport {
+  background: #fffdf8;
+  border: 1px solid #ddd2bc;
+  border-style: solid;
+  padding: 16px 18px;
+}
+.public-template-journal .edition-dates {
+  background: #fbf8ef;
+}
+.public-template-journal .edition-dates button {
+  border-radius: 2px;
+}
+.public-template-journal .edition-dates button[aria-current="date"] {
+  border: 1px solid #e2bc89;
+  background: #efdab9;
+  color: #835b39;
+}

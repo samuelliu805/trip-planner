@@ -2053,13 +2053,13 @@ async function verifyPublicShareMapAndDialog(browser) {
   );
   await waitFor(
     browser,
-    `Boolean(document.querySelector('.public-map-sheet[data-state="open"]'))`,
+    `Boolean(document.querySelector('.public-map-pull-up[data-state="open"]'))`,
     "public map sheet",
   );
   await waitFor(
     browser,
     `(() => {
-      const rect = document.querySelector('.public-map-sheet')?.getBoundingClientRect();
+      const rect = document.querySelector('.public-map-pull-up')?.getBoundingClientRect();
       return Boolean(rect) && rect.left >= -0.5 && rect.right <= innerWidth + 0.5;
     })()`,
     "settled public map sheet",
@@ -2068,7 +2068,7 @@ async function verifyPublicShareMapAndDialog(browser) {
     await evaluate(
       browser,
       `(() => {
-        const sheet = document.querySelector('.public-map-sheet');
+        const sheet = document.querySelector('.public-map-pull-up');
         const rect = sheet?.getBoundingClientRect();
         return {
           documentFits: document.documentElement.scrollWidth <= innerWidth,
@@ -2080,20 +2080,20 @@ async function verifyPublicShareMapAndDialog(browser) {
   );
   await clickElement(
     browser,
-    `document.querySelector('.public-map-sheet .public-map-panel-toggle')`,
+    `document.querySelector('.public-map-pull-up .public-map-panel-toggle')`,
     "public route panel",
   );
   await waitFor(
     browser,
-    `document.querySelector('.public-map-sheet .public-map-panel-toggle')?.getAttribute('aria-expanded') === 'true'`,
+    `document.querySelector('.public-map-pull-up .public-map-panel-toggle')?.getAttribute('aria-expanded') === 'true'`,
     "expanded public route panel",
   );
   const sharedRoute = await evaluate(
     browser,
     `(() => {
-      const panel = document.querySelector('.public-map-sheet .public-map-panel');
-      const canvas = document.querySelector('.public-map-sheet .public-map-canvas');
-      const logo = document.querySelector('.public-map-sheet .amap-logo');
+      const panel = document.querySelector('.public-map-pull-up .public-map-panel');
+      const canvas = document.querySelector('.public-map-pull-up .public-map-canvas');
+      const logo = document.querySelector('.public-map-pull-up .amap-logo');
       const summary = panel?.querySelector('[data-shared-route-summary]');
       return {
         amapBelowPanel:
@@ -2115,35 +2115,35 @@ async function verifyPublicShareMapAndDialog(browser) {
   });
   await clickElement(
     browser,
-    `[...document.querySelectorAll('.public-map-sheet button')].find((button) =>
+    `[...document.querySelectorAll('.public-map-pull-up button')].find((button) =>
       /Edit route|编辑路线/.test(button.textContent.trim())
     )`,
     "public Edit route",
   );
   await waitFor(
     browser,
-    `document.querySelectorAll('.public-map-sheet [data-route-leg-mode]').length >= 1 &&
-      document.querySelectorAll('.public-map-sheet [data-shared-route-summary]').length === 0`,
+    `document.querySelectorAll('.public-map-pull-up [data-route-leg-mode]').length >= 1 &&
+      document.querySelectorAll('.public-map-pull-up [data-shared-route-summary]').length === 0`,
     "per-leg public route editor",
   );
   assert.ok(
     (await evaluate(
       browser,
-      `document.querySelectorAll('.public-map-sheet [data-route-leg-mode] [role="combobox"]').length`,
+      `document.querySelectorAll('.public-map-pull-up [data-route-leg-mode] [role="combobox"]').length`,
     )) >= 1,
     "The public day route did not expose a travel-mode Select after each usable stop.",
   );
   assert.ok(
     (await evaluate(
       browser,
-      `document.querySelectorAll('.public-map-sheet [role="checkbox"]').length`,
+      `document.querySelectorAll('.public-map-pull-up [role="checkbox"]').length`,
     )) >= 2,
     "The public day route did not let visitors choose stops.",
   );
   const editableRoute = await evaluate(
     browser,
     `(() => {
-      const panel = document.querySelector('.public-map-sheet .public-map-panel');
+      const panel = document.querySelector('.public-map-pull-up .public-map-panel');
       const stopRows = [...panel.querySelectorAll('[data-public-route-stop]')];
       const checkboxes = [...panel.querySelectorAll('[role="checkbox"]')];
       return {
@@ -2171,13 +2171,13 @@ async function verifyPublicShareMapAndDialog(browser) {
   );
   await clickElement(
     browser,
-    `document.querySelector('.public-map-sheet [data-public-route-stop] [role="checkbox"]')`,
+    `document.querySelector('.public-map-pull-up [data-public-route-stop] [role="checkbox"]')`,
     "toggle first public route stop",
   );
   assert.deepEqual(
     await evaluate(
       browser,
-      `[...document.querySelectorAll('.public-map-sheet [data-public-route-stop]')]
+      `[...document.querySelectorAll('.public-map-pull-up [data-public-route-stop]')]
         .map((row) => row.getAttribute('data-public-route-stop'))`,
     ),
     editableRoute.stopOrder,
@@ -2185,10 +2185,10 @@ async function verifyPublicShareMapAndDialog(browser) {
   );
   await clickElement(
     browser,
-    `document.querySelector('.public-map-sheet [data-sheet-close]')`,
+    `document.querySelector('.public-map-pull-up [data-sheet-close]')`,
     "close public map",
   );
-  await waitFor(browser, `!document.querySelector('.public-map-sheet')`, "public map close");
+  await waitFor(browser, `!document.querySelector('.public-map-pull-up')`, "public map close");
   const closedMapBody = await evaluate(browser, "document.body.innerText");
   if (/This page couldn.t load|This Plan could not be loaded/i.test(closedMapBody)) {
     const exceptionDiagnostics = browser.cdp.diagnostics
@@ -5093,19 +5093,19 @@ async function verifyPublicTabletViewportMatrix(browser, publicToken) {
   await navigate(browser, `/share/${publicToken}?view=timeline`);
   await waitFor(
     browser,
-    `document.querySelectorAll('.timeline-transport-list-v4.is-flow').length > 0`,
+    `document.querySelectorAll('#public-timeline-panel .journal-page .edition-transport').length > 0`,
     "Journal scrolling transport rows",
   );
   const journalTimelineTransport = await evaluate(
     browser,
     `(() => {
-      const header = document.querySelector('.timeline-section-header-v4');
-      const rows = [...document.querySelectorAll('.timeline-transport-list-v4.is-flow')];
+      const header = document.querySelector('#public-timeline-panel .journal-page .edition-day-heading');
+      const rows = [...document.querySelectorAll('#public-timeline-panel .journal-page .edition-transport')];
       return {
         flowCount: rows.length,
         headerPosition: getComputedStyle(header).position,
-        headerTransportCount: document.querySelectorAll('.timeline-section-header-v4 [data-public-transport]').length,
-        rowsOutsideHeaders: rows.every((row) => !row.closest('.timeline-section-header-v4')),
+        headerTransportCount: document.querySelectorAll('#public-timeline-panel .edition-day-heading .edition-transfer').length,
+        rowsOutsideHeaders: rows.every((row) => !row.closest('.edition-day-heading')),
         rowsStatic: rows.every((row) => getComputedStyle(row).position === 'static'),
       };
     })()`,

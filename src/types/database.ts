@@ -2767,6 +2767,10 @@ export type Database = {
         Args: { shared_token: string };
         Returns: Json;
       };
+      get_public_city_photo_sources_v1: {
+        Args: { shared_token: string };
+        Returns: Json;
+      };
       import_guest_trip_v1: {
         Args: {
           guest_draft_id: string;

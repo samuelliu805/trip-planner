@@ -70,6 +70,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Verify sharing designs, gestures, and export in Chromium
+        run: CHROME_PATH=/usr/bin/google-chrome npm run test:e2e:sharing-design
       - run: npm run test:telemetry
       - run: npm run check:backend-provider-boundary
       - run: npm run check:maps-provider-boundary
@@ -167,15 +169,28 @@ jobs:
       verification_gate: VERIFY
     secrets: inherit
 
+  pr-cn-deployment:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == github.repository_owner
+    needs: [static, pr-live-verification]
+    uses: ./.github/workflows/deploy-cn.yml
+    with:
+      candidate_sha: ${{ github.event.pull_request.head.sha }}
+      deployment_gate: DEPLOY
+    secrets: inherit
+
   verification-gate:
     if: >-
       ${{ always() &&
       (github.event_name != 'workflow_dispatch' ||
       (inputs.run_mode != 'phase5' && inputs.run_mode != 'phase6')) }}
-    needs: [static, global-build, cn-build, pr-live-verification]
+    needs: [static, global-build, cn-build, pr-live-verification, pr-cn-deployment]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
+      CN_DEPLOY_RESULT: ${{ needs.pr-cn-deployment.result }}
       CN_BUILD_RESULT: ${{ needs.cn-build.result }}
       GLOBAL_BUILD_RESULT: ${{ needs.global-build.result }}
       TRUSTED_PULL_REQUEST: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == github.repository_owner }}
@@ -187,10 +202,12 @@ jobs:
           test "$STATIC_RESULT" = "success"
           if [ "$TRUSTED_PULL_REQUEST" = "true" ]; then
             test "$LIVE_RESULT" = "success"
+            test "$CN_DEPLOY_RESULT" = "success"
             test "$GLOBAL_BUILD_RESULT" = "skipped"
             test "$CN_BUILD_RESULT" = "skipped"
           else
             test "$LIVE_RESULT" = "skipped"
+            test "$CN_DEPLOY_RESULT" = "skipped"
             test "$GLOBAL_BUILD_RESULT" = "success"
             test "$CN_BUILD_RESULT" = "success"
           fi

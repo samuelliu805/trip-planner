@@ -1,5 +1,8 @@
 "use client";
 
+import { PublicPhotoProvider } from "./public-photo-provider";
+import { publicDisplayItinerary } from "../editorial-presentation";
+
 import { T } from "@/features/i18n/i18n-provider";
 import type { PublicItinerary, PublicView, ShareImageManifest } from "../types";
 import {
@@ -27,6 +30,7 @@ export function PublicItineraryShell({
   templateKey: PublicTemplateKey;
   token: string;
 }) {
+  itinerary = publicDisplayItinerary(itinerary);
   const template = getPublicTemplate(templateKey) ?? getPublicTemplate(LEGACY_PUBLIC_TEMPLATE_KEY);
   if (!template)
     return (
@@ -46,7 +50,9 @@ export function PublicItineraryShell({
       template={template}
       token={token}
     >
-      <PublicTemplateRenderer template={template} />
+      <PublicPhotoProvider itinerary={itinerary} token={token}>
+        <PublicTemplateRenderer template={template} />
+      </PublicPhotoProvider>
     </PublicTemplateControllerProvider>
   );
 }

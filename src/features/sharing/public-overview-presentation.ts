@@ -22,7 +22,12 @@ export function publicOverviewItemPresentation(
     item,
     media,
     remainingMediaCount: Math.max(0, media.length - 3),
-    size: media.length > 1 ? "rich" : media.length === 1 ? "media" : "compact",
+    size:
+      media.filter(({ source }) => source === "google_place").length > 1
+        ? "rich"
+        : media.some(({ source }) => source === "google_place")
+          ? "media"
+          : "compact",
   };
 }
 
@@ -33,7 +38,8 @@ export function publicOverviewDayLayout(day: PublicItineraryDay) {
     .filter(({ type }) => type !== "location")
     .map((item) => {
       const presentation = publicOverviewItemPresentation(item, mediaByItem.get(item.ref) ?? []);
-      const useFeature = !featured && presentation.media.some(({ kind }) => kind === "image");
+      const useFeature =
+        !featured && presentation.media.some(({ source }) => source === "google_place");
       if (useFeature) featured = true;
       return { ...presentation, featured: useFeature };
     });

@@ -1,0 +1,104 @@
+.itinerary-edition .edition-plans > h4 {
+  margin: 0 0 22px;
+  color: var(--edition-muted);
+}
+.itinerary-edition .edition-plan-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.itinerary-edition .edition-plan {
+  display: grid;
+  grid-template-columns: 37px minmax(0, 1fr);
+  gap: 15px;
+  min-width: 0;
+  padding-bottom: 28px;
+}
+.itinerary-edition .edition-plan-body {
+  min-width: 0;
+}
+.itinerary-edition .edition-plan-button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 44px;
+  align-items: stretch;
+  text-align: left;
+  gap: 8px;
+}
+.itinerary-edition .edition-plan-button strong {
+  order: 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.itinerary-edition .edition-plan-category {
+  order: 1;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--edition-muted);
+  font-size: 11px;
+}
+.itinerary-edition .edition-plan-category svg {
+  width: 14px;
+  height: 14px;
+}
+.itinerary-edition .edition-plan-meta {
+  order: 2;
+  color: var(--edition-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.itinerary-edition .edition-plan .public-quick-actions {
+  margin-top: 8px;
+}
+.itinerary-edition .edition-transport {
+  position: static;
+  margin-top: 28px;
+  border: 1px solid var(--edition-border);
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 16px 0 0;
+}
+.itinerary-edition .edition-transfer + .edition-transfer {
+  margin-top: 14px;
+  border-top: 1px solid var(--edition-border);
+  padding-top: 14px;
+}
+.itinerary-edition .edition-transfer-button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  font-size: 12px;
+}
+.itinerary-edition .edition-transfer-button > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.itinerary-edition .edition-transfer-button strong {
+  flex: none;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.itinerary-edition .edition-transfer-button > span {
+  min-width: 0;
+  color: var(--edition-muted);
+  line-height: 1.7;
+}
+.itinerary-edition .edition-transfer .public-quick-actions {
+  margin-top: 8px;
+}
+.itinerary-edition .edition-transfer-copy {
+  display: grid;
+  gap: 4px;
+}
+.itinerary-edition .edition-transfer-title {
+  color: var(--edition-ink);
+  font-size: 13px;
+}

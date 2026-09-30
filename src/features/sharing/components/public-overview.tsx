@@ -36,11 +36,7 @@ export function PublicOverview({
             <T message={"Whole trip overview"} />
           </div>
           <p className="overview-subtitle-v4">
-            <T
-              message={
-                " Media-aware board. Shared place imagery and attachments receive visual weight while manual itinerary order stays intact. "
-              }
-            />
+            <T message={"Shared days, places, and plans in your original order."} />
           </p>
         </div>
       </div>

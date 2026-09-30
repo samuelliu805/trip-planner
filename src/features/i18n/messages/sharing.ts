@@ -1,4 +1,26 @@
 export const sharingZhCN: Record<string, string> = {
+  "A journey, beautifully kept": "珍藏这段旅程",
+  "The little things, all in one place": "旅途点滴，珍藏在这里",
+  "The chapters ahead": "接下来的篇章",
+  "Shared days": "已分享日期",
+  "Shared pages": "已分享篇章",
+  Contents: "目录",
+  Chapter: "篇章",
+  "{count} plans": "{count} 个事项",
+  "{count} transfers": "{count} 项交通",
+  "Turn to this day": "翻到这一天",
+  "Journey transport": "全程交通",
+  "Only {shared} of {planned} planned days are shared.":
+    "当前仅分享 {shared} 天的内容。规划范围共 {planned} 天，其余日期未公开安排。",
+  "THE DAY": "当天安排",
+  Chapters: "章节目录",
+  "{count} planned days": "{count} 个规划日",
+  "{count} shared days": "{count} 个已分享日",
+  "Shared days, places, and plans in your original order.":
+    "按原顺序浏览已分享的日期、地点与安排。",
+  "Shared itinerary attachments": "已分享的行程资料",
+  "Shared itinerary item": "已分享的行程事项",
+
   "The Share Page is invalid.": "分享页面无效。",
   "Permanent image exports are not supported by this backend.": "当前后端不支持永久长图导出。",
   "Public sharing is not supported by this backend.": "当前后端不支持公开分享。",
@@ -186,4 +208,7 @@ export const sharingZhCN: Record<string, string> = {
   "Route unavailable": "方案不可用",
   Times: "时间",
   Traverse: "远行",
+  "Previous day": "上一天",
+  "Next day": "下一天",
+  "Choose day": "选择日期",
 };

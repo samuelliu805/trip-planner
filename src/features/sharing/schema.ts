@@ -55,6 +55,7 @@ export const publicItemMediaSchema = z.union([
     .object({
       alt: z.string().trim().max(300).optional(),
       attribution: publicMediaAttributionSchema.optional(),
+      attributions: publicMediaAttributionSchema.array().max(20).optional(),
       id: z.string().trim().min(1).max(500),
       kind: z.literal("image"),
       source: z.literal("google_place"),
@@ -129,6 +130,12 @@ const publicTransportSchema = z
     serviceNumber: z.string().trim().min(1).max(80).optional(),
   })
   .strict();
+const optionalPublicText = (max: number) =>
+  z.preprocess(
+    (value) => (value === null || (typeof value === "string" && !value.trim()) ? undefined : value),
+    z.string().max(max).optional(),
+  );
+
 const publicItemSchema = z
   .object({
     carRental: publicCarRentalSchema.optional(),
@@ -139,7 +146,7 @@ const publicItemSchema = z
       .optional(),
     links: z.array(publicLinkSchema).max(20).optional(),
     media: z.array(publicItemMediaSchema).max(12).optional(),
-    notes: z.string().max(5000).optional(),
+    notes: optionalPublicText(5000),
     place: publicPlaceSchema.optional(),
     ref: z.string().length(64),
     scheduleLabel: z.string().max(120).optional(),
@@ -157,9 +164,25 @@ const publicDaySchema = z
     dayNumber: z.number().int().positive(),
     items: z.array(publicItemSchema),
     localities: z.array(z.string().min(1).max(300)).optional(),
-    notes: z.string().max(5000).optional(),
+    notes: optionalPublicText(5000),
     ref: z.string().length(64),
     primaryLocality: z.string().min(1).max(300).optional(),
+    photoSource: z
+      .object({
+        ref: z.string().length(64),
+        googlePlaceId: z.string().trim().min(1).max(300),
+        name: z.string().min(1).max(300),
+      })
+      .strict()
+      .optional(),
+    cityPhotoSource: z
+      .object({
+        ref: z.string().length(64),
+        googlePlaceId: z.string().trim().min(1).max(300),
+        name: z.string().min(1).max(300),
+      })
+      .strict()
+      .optional(),
     title: z.string().max(200).nullable().optional(),
   })
   .strict();
@@ -182,7 +205,7 @@ export const publicItinerarySchema = z
     metadata: z
       .object({
         coverCities: z.array(z.string().min(1).max(300)),
-        description: z.string().min(1).max(500),
+        description: z.preprocess((value) => value ?? "", z.string().max(500)).default(""),
         title: z.string().min(1).max(160),
       })
       .strict(),

@@ -15,6 +15,8 @@
 @import "./public-sharing-content-safety.css";
 @import "./public-sharing-table-resources.css";
 @import "./public-sharing-i18n.css";
+@import "../features/sharing/components/editorial/edition.css";
+@import "../features/sharing/components/editorial/edition-shell.css";
 
 html:has(.public-itinerary-shell),
 body:has(.public-itinerary-shell) {

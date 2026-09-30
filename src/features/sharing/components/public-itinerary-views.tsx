@@ -1,3 +1,5 @@
+import { ContinuousItineraryEdition } from "./editorial/continuous-itinerary-edition";
+import { OverviewEdition } from "./editorial/overview-edition";
 import { canonicalPublicViews } from "../schema";
 import type { PublicItinerary, PublicView } from "../types";
 import { PublicOverview } from "./public-overview";
@@ -11,6 +13,7 @@ export function PublicItineraryViews({
   selectedDayRef,
   selectedItemRef,
   transportPlacement,
+  templateId,
   view,
 }: {
   itinerary: PublicItinerary;
@@ -19,6 +22,7 @@ export function PublicItineraryViews({
   selectedDayRef?: string;
   selectedItemRef?: string;
   transportPlacement?: "flow" | "header";
+  templateId?: string;
   view: PublicView;
 }) {
   return canonicalPublicViews.map((option) => (
@@ -30,6 +34,7 @@ export function PublicItineraryViews({
       option={option}
       selectedDayRef={selectedDayRef}
       selectedItemRef={selectedItemRef}
+      templateId={templateId}
       transportPlacement={transportPlacement}
       view={view}
     />
@@ -44,6 +49,7 @@ export function PublicItineraryViewPanel({
   selectedDayRef,
   selectedItemRef,
   transportPlacement,
+  templateId,
   view,
 }: {
   itinerary: PublicItinerary;
@@ -53,28 +59,36 @@ export function PublicItineraryViewPanel({
   selectedDayRef?: string;
   selectedItemRef?: string;
   transportPlacement?: "flow" | "header";
+  templateId?: string;
   view: PublicView;
 }) {
   const viewProps = { itinerary, onSelectDay, onSelectItem, selectedDayRef, selectedItemRef };
+  const editorial = templateId === "journal" || templateId === "ethereal";
   return (
     <section
       aria-labelledby={`public-${option}-tab`}
-      className="h-full min-h-0 min-w-0"
+      className={`h-full min-h-0 min-w-0 ${editorial && option === "timeline" ? "edition-timeline-panel" : ""}`}
       hidden={view !== option}
       id={`public-${option}-panel`}
       role="tabpanel"
     >
-      <div
-        className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
-      >
-        {option === "overview" ? (
-          <PublicOverview {...viewProps} />
-        ) : option === "table" ? (
-          <PublicTable {...viewProps} />
-        ) : (
-          <PublicTimeline {...viewProps} transportPlacement={transportPlacement} />
-        )}
-      </div>
+      {editorial && option === "timeline" ? (
+        <ContinuousItineraryEdition {...viewProps} templateId={templateId} />
+      ) : (
+        <div
+          className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
+        >
+          {option === "overview" && editorial ? (
+            <OverviewEdition {...viewProps} templateId={templateId} />
+          ) : option === "overview" ? (
+            <PublicOverview {...viewProps} />
+          ) : option === "table" ? (
+            <PublicTable {...viewProps} />
+          ) : (
+            <PublicTimeline {...viewProps} transportPlacement={transportPlacement} />
+          )}
+        </div>
+      )}
     </section>
   );
 }

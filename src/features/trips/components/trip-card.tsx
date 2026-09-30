@@ -20,6 +20,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
+import { TripCardArt } from "./trip-card-art";
+import { TripCoverPhoto } from "./trip-cover-photo";
+
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,8 +163,10 @@ export function TripCard({
   return (
     <>
       <Card
-        className={`relative h-full transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
+        data-trip-card={trip.id}
+        className={`relative h-full [&:has(.trip-cover-photo_figure)_.trip-card-identity]:pr-0 transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
       >
+        <TripCardArt id={trip.id} cityName={trip.coverSource?.name} />
         <Link
           className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           href={`/trips/${trip.id}`}
@@ -171,9 +176,11 @@ export function TripCard({
             {trip.title}
           </span>
         </Link>
-        <CardHeader className="flex-row items-start justify-between gap-4">
-          <div className="min-w-0">
-            <CardTitle className="truncate text-lg sm:text-xl">{trip.title}</CardTitle>
+        <CardHeader className="trip-card-header relative pointer-events-none grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+          <div className="trip-card-identity min-w-0 pr-10">
+            <CardTitle className="break-words font-serif text-2xl leading-tight sm:text-3xl">
+              {trip.title}
+            </CardTitle>
             <CardDescription className="mt-1 flex items-center gap-2">
               <CalendarDays aria-hidden="true" className="size-4 shrink-0" />
               {tripDateSummary(trip, locale)}
@@ -188,11 +195,12 @@ export function TripCard({
               <T message={trip.role === "owner" ? "Owner" : "Collaborator"} />
             </p>
           </div>
+          <TripCoverPhoto tripId={trip.id} source={trip.coverSource} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label={t("Actions for {title}", { title: trip.title })}
-                className="relative z-10 -mr-2 -mt-2 size-11 shrink-0 px-0"
+                className="pointer-events-auto absolute right-4 top-4 z-10 size-11 shrink-0 px-0"
                 disabled={unavailable}
                 variant="ghost"
               >
@@ -251,7 +259,7 @@ export function TripCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
-        <CardContent className="grid grid-cols-[1fr_auto] gap-4 border-t pt-4 text-sm">
+        <CardContent className="trip-card-footer pointer-events-none relative grid grid-cols-[1fr_auto] gap-4 border-t pt-4 text-sm">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <T message={" Currency "} />

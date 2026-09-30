@@ -1,6 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
+import {
+  PublicAttachmentsTrigger,
+  PublicItemDetailsPanel,
+} from "../../components/public-resources-panel";
+
+import { useEffect, useRef, type ReactNode } from "react";
 
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 
@@ -53,6 +58,7 @@ function TemplateRegion({
     return (
       <div {...data} className="public-template-region-header-actions public-header-actions">
         {children}
+        <PublicAttachmentsTrigger />
         <LanguageSwitcher className="public-header-button px-2" />
       </div>
     );
@@ -82,14 +88,22 @@ function TemplateNode({ node }: { node: PublicTemplateLayoutNodeV1 }) {
 }
 
 export function PublicTemplateRenderer({ template }: { template: CompiledPublicTemplateV1 }) {
+  const root = useRef<HTMLElement>(null);
+  useEffect(() => {
+    // Server HTML can be visible before its buttons have client event handlers.
+    // Browser verification waits for this commit signal rather than a guessed delay.
+    root.current?.setAttribute("data-public-reader-ready", "true");
+  }, []);
   return (
     <main
+      ref={root}
       className={`public-itinerary-shell public-template-${template.id} isolate flex h-dvh min-w-0 flex-col overflow-hidden bg-background`}
       data-public-template={template.id}
       data-public-template-key={template.key}
       data-public-template-version={template.version}
     >
       <style data-public-template-styles={template.key}>{template.scopedCss}</style>
+      <PublicItemDetailsPanel />
       {template.layout.children.map((node, index) => (
         <TemplateNode key={`${node.type}:${node.name}:${index}`} node={node} />
       ))}

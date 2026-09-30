@@ -1,0 +1,144 @@
+@container public-content (max-width:1000px) {
+  :is(.public-template-ethereal, .public-template-journal) .itinerary-edition {
+    padding: 28px 30px 38px;
+  }
+  .public-template-ethereal .edition-editorial-spread {
+    gap: 28px;
+  }
+  .public-template-ethereal .itinerary-edition .edition-cover-copy {
+    padding: 30px;
+  }
+  .public-template-journal .itinerary-edition .edition-journal-book {
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: 26px;
+  }
+  .public-template-journal .itinerary-edition .journal-day-spread:has(> .edition-photo-slot) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container public-content (max-width:700px) {
+  :is(.public-template-ethereal, .public-template-journal) .itinerary-edition {
+    padding: 24px 22px 32px;
+  }
+  .public-template-ethereal .edition-editorial-spread {
+    display: block;
+  }
+  .public-template-ethereal .itinerary-edition .edition-ethereal-cover.is-timeline {
+    position: static;
+    margin-bottom: 32px;
+  }
+  .public-template-ethereal .edition-overview .edition-ethereal-cover {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .public-template-ethereal
+    .edition-overview
+    .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
+    grid-template-columns: minmax(0, 1fr) 120px;
+    min-height: 260px;
+  }
+  .itinerary-edition .edition-cover-visual .edition-journey-numeral {
+    font-size: 76px;
+    padding: 16px 12px;
+  }
+  .public-template-ethereal .itinerary-edition .edition-cover-copy {
+    padding: 28px 24px;
+  }
+  .public-template-journal .itinerary-edition .edition-journal-book {
+    display: block;
+  }
+  .public-template-journal .itinerary-edition .edition-rail {
+    display: none;
+  }
+  .public-template-journal .itinerary-edition .edition-journal-book > .edition-front {
+    margin-bottom: 30px;
+  }
+  .itinerary-edition .edition-overview-cards {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+  .public-template-journal .itinerary-edition .edition-overview-cards {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+    gap: 24px;
+  }
+  .public-template-journal .itinerary-edition .edition-overview-day-card:nth-child(even) {
+    margin-top: 0;
+  }
+  .public-template-journal .itinerary-edition .edition-plan-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .itinerary-edition .edition-day-heading {
+    gap: 14px;
+  }
+  .itinerary-edition .edition-day-heading h3 {
+    font-size: 28px;
+  }
+  .public-template-journal .itinerary-edition .edition-day-heading h3 {
+    font-size: 29px;
+  }
+}
+@container public-content (max-width:450px) {
+  .public-template-ethereal
+    .edition-overview
+    .edition-ethereal-cover:not(:has(.edition-photo-slot)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .public-template-ethereal .itinerary-edition .edition-journey-numeral {
+    padding: 0 24px 24px;
+    text-align: left;
+    font-size: 60px;
+  }
+  .itinerary-edition .edition-journey-numeral span {
+    display: inline-block;
+    margin: 0 0 0 14px;
+  }
+  .public-template-journal .itinerary-edition .edition-contents-paper {
+    padding: 32px 22px 22px;
+  }
+  .public-template-journal .itinerary-edition .edition-journal-front-spread {
+    padding: 0;
+  }
+  .edition-dates {
+    padding-inline: 16px;
+  }
+  .edition-dates > .edition-kicker {
+    display: none;
+  }
+  .itinerary-edition .edition-transfer-button {
+    flex-wrap: wrap;
+  }
+  .itinerary-edition .edition-transfer-button > span {
+    flex: 1 1 160px;
+  }
+}
+.timeline-export-document .itinerary-edition {
+  padding: 20px;
+}
+.timeline-export-document .edition-book {
+  display: block;
+}
+.timeline-export-document .edition-front {
+  margin-bottom: 30px;
+}
+.timeline-export-document .itinerary-edition .edition-day-heading {
+  position: static;
+}
+.timeline-export-document .edition-rail {
+  display: none;
+}
+.timeline-export-document .edition-day {
+  display: block;
+}
+.timeline-export-document .edition-cover-copy h2 {
+  font-size: 48px;
+}
+.timeline-export-document .edition-ethereal-cover {
+  position: static;
+  margin-bottom: 28px;
+}
+.timeline-export-document .edition-ethereal-cover .edition-cover-copy {
+  padding: 30px;
+}
+.timeline-export-document .journal-day-spread {
+  display: block;
+}

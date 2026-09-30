@@ -90,7 +90,8 @@ export function isTransientCloudBaseFailure(error) {
       (status != null && status >= 500 && status <= 599) ||
       /aborted|fetch failed|network(?: request)? failed|network.*timeout|socket hang up|timed?\s*out/i.test(
         description,
-      )
+      ) ||
+      /请求在\d+(?:\.\d+)?s内未完成[，,]\s*已中断/.test(description)
     ) {
       return true;
     }

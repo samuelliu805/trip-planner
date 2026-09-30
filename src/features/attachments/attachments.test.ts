@@ -392,7 +392,12 @@ test("upload and viewer source retain private, resumable, and expiry safeguards"
   );
   assert.match(publicRoute, /service_public_asset_access_v2/);
   assert.match(publicRoute, /private, no-store/);
-  assert.match(longImage, /source !== "attachment"/);
+  // Export preparation retains permitted document names while excluding Google photo metadata.
+  assert.match(longImage, /source === "attachment"/);
+  assert.match(
+    publicMedia,
+    /if \(exporting\)[\s\S]*attachmentMedia\.map\(\(entry\) => entry\.label\)/,
+  );
   assert.doesNotMatch(publicRoute, /service_role|SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(attachmentSession, /beforeunload/);
   assert.match(attachmentSession, /const itemId = item\?\.id/);

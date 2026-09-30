@@ -1,3 +1,4 @@
+import { orderedPublicItems } from "../presentation.ts";
 import type { PublicItineraryDay } from "../types";
 
 export const TIMELINE_EXPORT_WIDTH = 1080;
@@ -15,6 +16,7 @@ export function splitTimelineExportDays(
   maxItems = TIMELINE_EXPORT_MAX_ITEMS_PER_SECTION,
 ) {
   return days.flatMap((day) => {
+    day = { ...day, items: orderedPublicItems(day) };
     if (day.items.length <= maxItems) return [day];
     const chunks: PublicItineraryDay[] = [];
     for (let start = 0; start < day.items.length; start += maxItems) {

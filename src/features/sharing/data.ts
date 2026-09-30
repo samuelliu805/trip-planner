@@ -8,14 +8,16 @@ import {
 import { PlatformOperationError } from "@/platform/contracts/errors";
 import { retryTransientRead } from "@/platform/transient-read";
 
+import { publicPlaceMediaSources } from "./public-media-data";
+import { publicCityPhotoSourcesSchema, withPublicCityPhotos } from "./public-city-photos";
+import { publicPlacePhotosConfigured } from "@/lib/providers/places/public-photo.server";
+
 import { ownerShareImageStateSchema, shareImageManifestSchema } from "./long-image/schema";
 import {
   publicItineraryLinkSchema,
   publicItinerarySchema,
   unavailablePublicItinerarySchema,
 } from "./schema";
-import { resolvePublicPlaceMedia } from "@/lib/providers/places/public-photo.server";
-import { publicPlaceMediaSources } from "./public-media-data";
 import type {
   OwnerShareImageState,
   PublicItinerary,
@@ -34,22 +36,41 @@ export async function getPublicItinerary(token: string): Promise<PublicItinerary
   const parsed = publicItinerarySchema.safeParse(data);
   if (!parsed.success) return null;
 
-  const items = parsed.data.days.flatMap(({ items: dayItems }) => dayItems);
-  const sources = publicPlaceMediaSources(parsed.data);
-  const mediaByItem = await resolvePublicPlaceMedia(token, sources, items);
-  if (!mediaByItem.size) return parsed.data;
-  const withMedia = {
-    ...parsed.data,
-    days: parsed.data.days.map((day) => ({
+  let itinerary = parsed.data;
+  if (publicPlacePhotosConfigured() && itinerary.settings.showPlacePhotos) {
+    const cities = await retryTransientRead(async () =>
+      database.rpc("get_public_city_photo_sources_v1", { shared_token: token }),
+    );
+    const sources = publicCityPhotoSourcesSchema.safeParse(cities.data);
+    itinerary = withPublicCityPhotos(itinerary, sources.success ? sources.data : []);
+  }
+  const sourceRefs = new Set(
+    publicPlacePhotosConfigured()
+      ? publicPlaceMediaSources(itinerary).map(({ itemRef }) => itemRef)
+      : [],
+  );
+  return {
+    ...itinerary,
+    days: itinerary.days.map((day) => ({
       ...day,
-      items: day.items.map((item) => {
-        const media = mediaByItem.get(item.ref);
-        return media?.length ? { ...item, media: [...(item.media ?? []), ...media] } : item;
-      }),
+      items: day.items.map((item) =>
+        sourceRefs.has(item.ref)
+          ? {
+              ...item,
+              media: [
+                ...(item.media ?? []).filter(({ source }) => source !== "google_place"),
+                {
+                  id: `google-place:${item.ref}`,
+                  kind: "image" as const,
+                  source: "google_place" as const,
+                  url: `/api/public-place-photo/${token}/${item.ref}?resolve=1`,
+                },
+              ],
+            }
+          : item,
+      ),
     })),
   };
-  const enriched = publicItinerarySchema.safeParse(withMedia);
-  return enriched.success ? enriched.data : parsed.data;
 }
 
 export async function listPublicItineraryLinks(

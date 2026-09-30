@@ -670,6 +670,12 @@ async function runAssertions(auth, db, config) {
       `${runLabel}-private-after-publish`,
       aId,
     );
+    const citySources = dataOrThrow(
+      await db.rpc("get_public_city_photo_sources_v1", { shared_token: publicToken }),
+      "anonymous city-photo scope",
+    );
+    if (!Array.isArray(citySources) || citySources.length !== 0)
+      throw new Error("A page without saved cities exposed city sources");
     await signIn(auth, userB, config.CLOUDBASE_TEST_USER_B_PASSWORD);
     const bOwn = rows(await db.from("trips").select("id,title").eq("id", bTrip), "B own read");
     if (bOwn.length !== 1 || bOwn[0].title !== `${runLabel}-b`) {

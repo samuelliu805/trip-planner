@@ -4,12 +4,20 @@ import type { PublicPlaceMediaSource } from "@/features/sharing/public-media-dat
 import type { PublicItineraryItem } from "@/features/sharing/types";
 import {
   fetchGooglePhotoMedia,
+  googlePlacePhotosConfigured,
   resolveGooglePlaceMedia,
   verifyGooglePhotoSignature,
 } from "@/lib/providers/google/sharing/google-place-photo.server";
 import { configuredMapsProviderId } from "@/lib/providers/maps/provider";
 
 import { publicPhotoProviderEnabled } from "./photo-gating";
+
+export function publicPlacePhotosConfigured() {
+  return (
+    publicPhotoProviderEnabled(configuredMapsProviderId(), "google") &&
+    googlePlacePhotosConfigured()
+  );
+}
 
 export async function resolvePublicPlaceMedia(
   token: string,

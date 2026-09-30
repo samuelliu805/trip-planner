@@ -27,11 +27,13 @@ export function publicTimelineTransportMeta(item: PublicItineraryItem) {
   const start = item.startTime?.slice(0, 5);
   const end = item.endTime?.slice(0, 5);
   const schedule = start ? (end && end !== start ? `${start}–${end}` : start) : item.scheduleLabel;
+  const place = item.place?.displayName;
+  const routePlaces = [item.transport?.origin, item.transport?.destination];
   return [
     publicTransportRouteLabel(item),
     item.transport?.serviceNumber,
     schedule,
-    item.place?.displayName,
+    place && !routePlaces.includes(place) ? place : undefined,
   ]
     .filter((value, index, values): value is string =>
       Boolean(value && values.findIndex((entry) => entry === value) === index),

@@ -1,0 +1,29 @@
+/* Provider pixels retain their colors and complete natural aspect ratio in every template. */
+.public-itinerary-shell .public-item-media:has(.public-media-gallery.google-place) {
+  clip-path: none;
+}
+.public-itinerary-shell .public-media-gallery.google-place,
+.public-itinerary-shell .public-media-gallery.google-place .public-media-entry,
+.public-itinerary-shell .public-media-gallery.google-place .media-thumb-v4 {
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  border-radius: 0;
+  filter: none;
+  transform: none;
+  opacity: 1;
+}
+.public-itinerary-shell .public-media-gallery.google-place .media-thumb-v4::after {
+  display: none;
+}
+.public-itinerary-shell .public-media-gallery.google-place img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+  filter: none;
+  transform: none;
+  opacity: 1;
+}
