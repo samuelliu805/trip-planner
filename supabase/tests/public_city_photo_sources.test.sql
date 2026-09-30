@@ -11,8 +11,8 @@ SET LOCAL ROLE authenticated;
 INSERT INTO city_photo_state(key,id) SELECT 'trip',public.create_trip('City photo scope','2027-04-12','2027-04-13','UTC','USD',2);
 RESET ROLE;
 INSERT INTO city_photo_state(key,id) SELECT 'variant',id FROM public.route_variants WHERE trip_id=(SELECT id FROM city_photo_state WHERE key='trip') AND is_primary;
-INSERT INTO public.places(trip_id,source,google_place_id,provider_place_id,display_name,locality_name,locality_kind,locality_source)
-SELECT id,'google','saved-paris-city','saved-paris-city','Paris','Paris','locality','google_address_component' FROM city_photo_state WHERE key='trip';
+INSERT INTO public.places(trip_id,source,google_place_id,provider_place_id,display_name,latitude,longitude,locality_name,locality_kind,locality_source)
+SELECT id,'google','saved-paris-city','saved-paris-city','Paris',48.8566,2.3522,'Paris','locality','google_address_component' FROM city_photo_state WHERE key='trip';
 INSERT INTO public.itinerary_items(trip_id,variant_id,day_id,type,title,place_id,sort_order)
 SELECT place.trip_id,day.variant_id,day.id,'location','Paris',place.id,0 FROM public.places place JOIN public.trip_days day ON day.variant_id=(SELECT id FROM city_photo_state WHERE key='variant') WHERE place.trip_id=(SELECT id FROM city_photo_state WHERE key='trip');
 INSERT INTO public.public_itinerary_links(trip_id,variant_id,created_by,show_place_photos,show_attachments,published_snapshot)
