@@ -7,6 +7,7 @@ import type { PublicItinerary } from "../../types";
 import { DayPhoto } from "./day-photo";
 import { EditionNavigation } from "./edition-navigation";
 import { publicDateSummary } from "../public-trip-header";
+import { editionCoverDay } from "../../edition-destinations";
 
 export function EditionCover({
   itinerary,
@@ -27,7 +28,8 @@ export function EditionCover({
     ? meaningfulText(itinerary.metadata.description)
     : undefined;
   const dates = publicDateSummary(itinerary, locale);
-  const photo = !exporting && itinerary.days[0] ? <DayPhoto day={itinerary.days[0]} /> : null;
+  const coverDay = editionCoverDay(itinerary);
+  const photo = !exporting && coverDay ? <DayPhoto day={coverDay} /> : null;
   const title = (
     <div className="edition-cover-copy">
       <span className="edition-kicker">
@@ -54,6 +56,7 @@ export function EditionCover({
     return (
       <header className={`edition-front edition-journal-front ${timeline ? "is-timeline" : ""}`}>
         {title}
+        {timeline ? <div className="edition-journal-cover-photo">{photo}</div> : null}
         {!timeline && !exporting ? (
           <div className="edition-journal-front-spread">
             {photo}
@@ -74,8 +77,8 @@ export function EditionCover({
     );
   return (
     <header className={`edition-front edition-ethereal-cover ${timeline ? "is-timeline" : ""}`}>
-      {timeline ? photo : null}
       {title}
+      {timeline ? photo : null}
       {!timeline ? (
         <div className="edition-cover-visual">
           {photo}

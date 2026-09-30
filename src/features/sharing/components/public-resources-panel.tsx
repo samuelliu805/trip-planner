@@ -8,8 +8,7 @@ import { T } from "@/features/i18n/i18n-provider";
 import { publicItemAttachments } from "../editorial-presentation";
 import { usePublicTemplateController } from "../templates/runtime/controller";
 import { PublicItemMediaGallery } from "./public-item-media";
-import { DayPlans, DayTransport } from "./editorial/day-plans";
-import { isPublicTransfer } from "../presentation";
+import { PublicItemDetails } from "./public-item-details";
 
 export function PublicAttachmentsTrigger() {
   const { itinerary } = usePublicTemplateController();
@@ -38,8 +37,8 @@ export function PublicAttachmentsTrigger() {
         open={open}
         onOpenChange={setOpen}
         title="Attachments"
-        description="Shared itinerary attachments"
-        dragMode="handle"
+        compactHeader
+        dragMode="all"
         trigger={trigger}
       >
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
@@ -65,28 +64,15 @@ export function PublicItemDetailsPanel() {
     <PullUpPanel
       id="public-item-details"
       title={item?.title || "Details"}
-      description="Shared itinerary item"
+      compactHeader
       open={Boolean(item)}
       onOpenChange={(open) => !open && setDetailItemRef(undefined)}
-      dragMode="handle"
+      dragMode="all"
       trigger={detailTrigger}
       className={`public-template-${template.id}`}
     >
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
-        {item ? (
-          <div className={`itinerary-edition edition-${template.id}`}>
-            {isPublicTransfer(item) ? (
-              <DayTransport items={[item]} onSelect={() => undefined} />
-            ) : (
-              <DayPlans items={[item]} onSelect={() => undefined} />
-            )}
-            {item.place?.address ? (
-              <p className="mt-4 break-words text-sm">{item.place.address}</p>
-            ) : null}
-          </div>
-        ) : (
-          <T message="No shared plans for this day." />
-        )}
+        {item ? <PublicItemDetails item={item} /> : <T message="No shared plans for this day." />}
       </div>
     </PullUpPanel>
   );

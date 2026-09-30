@@ -1,6 +1,5 @@
-import { ItineraryEdition } from "./editorial/itinerary-edition";
+import { PagedItineraryEdition } from "./editorial/paged-itinerary-edition";
 import { OverviewEdition } from "./editorial/overview-edition";
-import { EditionNavigation } from "./editorial/edition-navigation";
 import { canonicalPublicViews } from "../schema";
 import type { PublicItinerary, PublicView } from "../types";
 import { PublicOverview } from "./public-overview";
@@ -74,28 +73,22 @@ export function PublicItineraryViewPanel({
       role="tabpanel"
     >
       {editorial && option === "timeline" ? (
-        <EditionNavigation
-          days={itinerary.days}
-          onSelectDay={onSelectDay}
-          selectedDayRef={selectedDayRef}
-          variant="dates"
-        />
-      ) : null}
-      <div
-        className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
-      >
-        {option === "overview" && editorial ? (
-          <OverviewEdition {...viewProps} templateId={templateId} />
-        ) : option === "timeline" && editorial ? (
-          <ItineraryEdition {...viewProps} templateId={templateId} />
-        ) : option === "overview" ? (
-          <PublicOverview {...viewProps} />
-        ) : option === "table" ? (
-          <PublicTable {...viewProps} />
-        ) : (
-          <PublicTimeline {...viewProps} transportPlacement={transportPlacement} />
-        )}
-      </div>
+        <PagedItineraryEdition {...viewProps} templateId={templateId} />
+      ) : (
+        <div
+          className={`public-view-scroll h-full min-w-0 ${option === "table" ? "overflow-hidden" : "overflow-y-auto"}`}
+        >
+          {option === "overview" && editorial ? (
+            <OverviewEdition {...viewProps} templateId={templateId} />
+          ) : option === "overview" ? (
+            <PublicOverview {...viewProps} />
+          ) : option === "table" ? (
+            <PublicTable {...viewProps} />
+          ) : (
+            <PublicTimeline {...viewProps} transportPlacement={transportPlacement} />
+          )}
+        </div>
+      )}
     </section>
   );
 }

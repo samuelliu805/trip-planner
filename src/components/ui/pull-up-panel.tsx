@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 import {
   Sheet,
@@ -98,10 +98,12 @@ export function PullUpPanel({
   trigger?: HTMLElement | null;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const descriptionId = useId();
   useExclusivePullUpPanel(id, open, onOpenChange);
   return (
     <Sheet onOpenChange={onOpenChange} open={open}>
       <SheetContent
+        aria-describedby={description ? descriptionId : undefined}
         className={cn(
           "mobile-pull-up-panel max-h-[76dvh] rounded-t-2xl border-t bg-background pb-[env(safe-area-inset-bottom)] [&>[data-sheet-close]]:top-8",
           compactHeader && "[&>[data-sheet-close]]:top-3",
@@ -119,7 +121,7 @@ export function PullUpPanel({
           event.preventDefault();
           trigger.focus({ preventScroll: true });
         }}
-        showCloseButton={dragMode === "handle"}
+        showCloseButton
         side="bottom"
         tabIndex={focusPanelOnOpen ? -1 : undefined}
       >
@@ -133,7 +135,7 @@ export function PullUpPanel({
             <Localized value={title} />
           </SheetTitle>
           {description ? (
-            <SheetDescription>
+            <SheetDescription id={descriptionId}>
               <Localized value={description} />
             </SheetDescription>
           ) : null}

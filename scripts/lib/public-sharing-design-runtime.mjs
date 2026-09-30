@@ -51,6 +51,24 @@ export const designTrips = [
   ],
 }));
 
+export const designTripCoverRows = designTrips.flatMap((trip) =>
+  [1, 2].map((day) => ({
+    trip_id: trip.id,
+    variant_id: trip.route_variants[0].id,
+    day_id: `day-${day}`,
+    type: "location",
+    sort_order: day,
+    place: {
+      id: "77777777-7777-4777-8777-777777777777",
+      source: "google",
+      google_place_id: "saved-city-Paris",
+      display_name: "Paris",
+      locality_name: "Paris",
+      country_code: "FR",
+    },
+  })),
+);
+
 export function designSessionCookie() {
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
   const exp = Math.floor(Date.now() / 1000) + 3600;
@@ -94,10 +112,18 @@ export async function startPublicSharingDesignRuntime() {
       );
     if (url.pathname === "/rest/v1/trips") {
       const filter = url.searchParams.get("status")?.replace(/^eq\./, "");
+      const id = url.searchParams.get("id")?.replace(/^eq\./, "");
+      const trips = designTrips.filter(
+        (trip) => (!filter || trip.status === filter) && (!id || trip.id === id),
+      );
       return response.end(
-        JSON.stringify(designTrips.filter((trip) => !filter || trip.status === filter)),
+        JSON.stringify(request.headers.accept?.includes("object") ? (trips[0] ?? null) : trips),
       );
     }
+    if (url.pathname === "/rest/v1/itinerary_items")
+      return response.end(JSON.stringify(designTripCoverRows));
+    if (url.pathname === "/rest/v1/route_variants")
+      return response.end(JSON.stringify(designTrips[0].route_variants[0]));
     response.statusCode = 404;
     response.end("{}");
   });

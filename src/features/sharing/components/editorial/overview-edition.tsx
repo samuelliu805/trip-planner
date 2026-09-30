@@ -8,6 +8,7 @@ import { EditionCover } from "./edition-cover";
 import { EditionDate, editionDayTitle } from "./edition-navigation";
 import { DayPhoto } from "./day-photo";
 import { DayTransport } from "./day-plans";
+import { editionTripTowns } from "../../edition-destinations";
 
 function OverviewDayCard({
   day,
@@ -76,6 +77,7 @@ export function OverviewEdition({
 }) {
   const { t } = useI18n();
   const journal = templateId === "journal";
+  const towns = editionTripTowns(itinerary);
   const planCount = itinerary.days.reduce(
     (sum, day) => sum + editorialDaySections(day).plans.length,
     0,
@@ -87,13 +89,13 @@ export function OverviewEdition({
       aria-label={t("Whole trip overview")}
     >
       <EditionCover itinerary={itinerary} templateId={templateId} onSelectDay={onSelectDay} />
-      {itinerary.citySequence.length ? (
+      {towns.length ? (
         <div className="edition-city-stages">
           <MapPin aria-hidden="true" />
-          {itinerary.citySequence.map((stage, index) => (
-            <span key={`${stage.ref}:${index}`}>
+          {towns.map((town, index) => (
+            <span key={`${town}:${index}`}>
               {index ? <ArrowRight aria-hidden="true" /> : null}
-              {stage.name}
+              {town}
             </span>
           ))}
         </div>

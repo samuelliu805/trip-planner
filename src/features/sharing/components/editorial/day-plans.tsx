@@ -3,7 +3,7 @@
 import { Localized, T, useI18n } from "@/features/i18n/i18n-provider";
 import { meaningfulText, publicItemAttachments } from "../../editorial-presentation";
 import { publicTimelineTransportMeta } from "../../public-timeline-presentation";
-import { publicTransportShortLabel } from "../../presentation";
+import { publicTransportShortLabel, publicTransportSupportingTitle } from "../../presentation";
 import type { PublicItineraryItem } from "../../types";
 import { PublicItemIcon, publicItemTypeLabels } from "../public-item-icon";
 import { PublicItemMediaGallery } from "../public-item-media";
@@ -77,7 +77,7 @@ export function DayPlans({
                   type="button"
                 >
                   <span className="edition-plan-category">
-                    <PublicItemIcon type={item.type} />
+                    <PublicItemIcon type={item.flightEndpoint ? "flight" : item.type} />
                     <Localized value={category} />
                   </span>
                   <strong>{item.type === "car_rental" ? t(title) : title}</strong>
@@ -133,7 +133,18 @@ export function DayTransport({
           >
             <PublicItemIcon type={item.type} />
             <strong>{t(publicTransportShortLabel(item))}</strong>
-            <span>{publicTimelineTransportMeta(item) || meaningfulText(item.title)}</span>
+            {publicTimelineTransportMeta(item) || publicTransportSupportingTitle(item) ? (
+              <span className="edition-transfer-copy">
+                {publicTransportSupportingTitle(item) ? (
+                  <span className="edition-transfer-title">
+                    {publicTransportSupportingTitle(item)}
+                  </span>
+                ) : null}
+                {publicTimelineTransportMeta(item) ? (
+                  <span>{publicTimelineTransportMeta(item)}</span>
+                ) : null}
+              </span>
+            ) : null}
           </button>
           <OptionalNote text={item.notes} exporting={exporting} />
           {exporting ? (

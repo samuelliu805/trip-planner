@@ -208,4 +208,7 @@ export const sharingZhCN: Record<string, string> = {
   "Route unavailable": "方案不可用",
   Times: "时间",
   Traverse: "远行",
+  "Previous day": "上一天",
+  "Next day": "下一天",
+  "Choose day": "选择日期",
 };

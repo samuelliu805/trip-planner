@@ -183,8 +183,7 @@ function MobileMapSheetPart() {
       open={mapSheetOpen}
       trigger={mapTrigger}
       title="Map & routes"
-      description="Shared route first; route exploration stays temporary."
-      dragMode="handle"
+      dragMode="all"
       className={`public-map-pull-up public-share-surface public-template-${template.id} h-[85dvh] max-h-[85dvh] p-0`}
     >
       <div className="min-h-0 flex-1 overflow-hidden">

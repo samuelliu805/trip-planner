@@ -5,7 +5,7 @@ export function tripCardPalette(id: string) {
   return hash % 4;
 }
 
-export function TripCardArt({ id }: { id: string }) {
+export function TripCardArt({ id, cityName }: { id: string; cityName?: string }) {
   const colors = [
     ["#dcebe1", "#79a99a"],
     ["#eee5d4", "#c5a97b"],
@@ -19,20 +19,22 @@ export function TripCardArt({ id }: { id: string }) {
       className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl"
       style={{ background: `linear-gradient(135deg, ${paper}, #fffefa 72%)` }}
     >
-      <svg
-        className="absolute -right-10 -top-4 h-60 w-80 opacity-30"
-        viewBox="0 0 320 240"
-        fill="none"
-      >
-        <path
-          d="M 14 180 C 72 208 43 74 119 84 S 149 205 212 146 S 199 19 297 46"
-          stroke={ink}
-          strokeWidth="2"
-          strokeDasharray="4 7"
-        />
-        <circle cx="119" cy="84" r="7" stroke={ink} strokeWidth="2" />
-        <circle cx="212" cy="146" r="4" fill={ink} />
-      </svg>
+      {!cityName ? (
+        <svg
+          className="absolute -right-10 -top-4 h-60 w-80 opacity-30"
+          viewBox="0 0 320 240"
+          fill="none"
+        >
+          <path
+            d="M 14 180 C 72 208 43 74 119 84 S 149 205 212 146 S 199 19 297 46"
+            stroke={ink}
+            strokeWidth="2"
+            strokeDasharray="4 7"
+          />
+          <circle cx="119" cy="84" r="7" stroke={ink} strokeWidth="2" />
+          <circle cx="212" cy="146" r="4" fill={ink} />
+        </svg>
+      ) : null}
     </div>
   );
 }

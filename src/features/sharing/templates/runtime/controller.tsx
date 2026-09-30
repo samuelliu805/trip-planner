@@ -149,7 +149,9 @@ export function PublicTemplateControllerProvider({
         },
         { actorType: "anonymous" },
       );
-      setSelection({});
+      setSelection((current) =>
+        template.id === "journal" || template.id === "ethereal" ? { dayRef: current.dayRef } : {},
+      );
       setView(nextView);
     }
     window.history.replaceState(window.history.state, "", `${pathname}?${nextParams.toString()}`);

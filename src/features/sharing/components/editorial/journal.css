@@ -129,8 +129,10 @@
   font-size: 10px;
 }
 .public-template-journal .itinerary-edition .edition-transport {
-  background: #e9eddf;
-  border-style: dashed;
+  background: #fffdf8;
+  border: 1px solid #ddd2bc;
+  border-style: solid;
+  padding: 16px 18px;
 }
 .public-template-journal .edition-dates {
   background: #fbf8ef;

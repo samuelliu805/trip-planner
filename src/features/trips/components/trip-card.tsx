@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
 import { TripCardArt } from "./trip-card-art";
+import { TripCoverPhoto } from "./trip-cover-photo";
 
 import { Button } from "@/components/ui/button";
 import { AutoDismissAlert } from "@/components/ui/auto-dismiss-alert";
@@ -164,7 +165,8 @@ export function TripCard({
       <Card
         className={`relative h-full transition-shadow focus-within:shadow-md hover:shadow-md ${status === "done" ? "bg-muted/40" : ""}`}
       >
-        <TripCardArt id={trip.id} />
+        <TripCardArt id={trip.id} cityName={trip.coverSource?.name} />
+        <TripCoverPhoto tripId={trip.id} source={trip.coverSource} />
         <Link
           className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           href={`/trips/${trip.id}`}

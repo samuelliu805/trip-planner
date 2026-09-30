@@ -227,7 +227,11 @@ export function usePullUpPanelDrag(onClose: () => void, handleOnly = false) {
         return;
       }
       const touch = event.touches[0];
-      if (touch) move(touch.clientX, touch.clientY, () => event.preventDefault());
+      if (touch)
+        move(touch.clientX, touch.clientY, () => {
+          if (event.cancelable) event.preventDefault();
+          if (gesture?.dragging) event.stopPropagation();
+        });
     };
     const onTouchEnd = (event: TouchEvent) => {
       const touch = event.changedTouches[0];
@@ -240,32 +244,37 @@ export function usePullUpPanelDrag(onClose: () => void, handleOnly = false) {
     const onMouseMove = (event: MouseEvent) =>
       move(event.clientX, event.clientY, () => event.preventDefault());
     const onMouseUp = (event: MouseEvent) => settle(event.clientY);
+    const onPointerCancel = (event: globalThis.PointerEvent) => {
+      // Native scrolling cancels the browser's touch pointer, but touchmove/end still
+      // deliver the scroll-to-sheet handoff. Only touchcancel should abort that gesture.
+      if (event.pointerType === "mouse") cancel();
+    };
     const suppressDraggedClick = (event: MouseEvent) => {
       if (performance.now() >= suppressClickUntil) return;
       event.preventDefault();
       event.stopPropagation();
     };
 
-    eventSurface.addEventListener("touchstart", onTouchStart, { passive: true });
-    eventSurface.addEventListener("touchmove", onTouchMove, { passive: false });
-    eventSurface.addEventListener("touchend", onTouchEnd);
-    eventSurface.addEventListener("touchcancel", cancel);
+    eventSurface.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
+    eventSurface.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+    eventSurface.addEventListener("touchend", onTouchEnd, true);
+    eventSurface.addEventListener("touchcancel", cancel, true);
     eventSurface.addEventListener("mousedown", onMouseDown);
     surface.addEventListener("click", suppressDraggedClick, true);
-    eventSurface.addEventListener("pointercancel", cancel);
+    eventSurface.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     return () => {
       window.clearTimeout(settleTimer);
       settleListener?.();
       clearInlineMotion();
-      eventSurface.removeEventListener("touchstart", onTouchStart);
-      eventSurface.removeEventListener("touchmove", onTouchMove);
-      eventSurface.removeEventListener("touchend", onTouchEnd);
-      eventSurface.removeEventListener("touchcancel", cancel);
+      eventSurface.removeEventListener("touchstart", onTouchStart, true);
+      eventSurface.removeEventListener("touchmove", onTouchMove, true);
+      eventSurface.removeEventListener("touchend", onTouchEnd, true);
+      eventSurface.removeEventListener("touchcancel", cancel, true);
       eventSurface.removeEventListener("mousedown", onMouseDown);
       surface.removeEventListener("click", suppressDraggedClick, true);
-      eventSurface.removeEventListener("pointercancel", cancel);
+      eventSurface.removeEventListener("pointercancel", onPointerCancel);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };

@@ -57,9 +57,10 @@
   position: static;
   margin-top: 28px;
   border: 1px solid var(--edition-border);
-  border-radius: 3px;
-  background: #fffefa;
-  padding: 18px 20px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 16px 0 0;
 }
 .itinerary-edition .edition-transfer + .edition-transfer {
   margin-top: 14px;
@@ -92,4 +93,12 @@
 }
 .itinerary-edition .edition-transfer .public-quick-actions {
   margin-top: 8px;
+}
+.itinerary-edition .edition-transfer-copy {
+  display: grid;
+  gap: 4px;
+}
+.itinerary-edition .edition-transfer-title {
+  color: var(--edition-ink);
+  font-size: 13px;
 }

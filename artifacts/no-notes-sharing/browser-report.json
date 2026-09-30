@@ -506,9 +506,13 @@
     }
   ],
   "requests": {
-    "resolve": 21,
-    "media": 21,
+    "resolve": 31,
+    "media": 31,
     "external": 0
+  },
+  "tripPhotoRequests": {
+    "resolve": 3,
+    "media": 3
   },
   "errors": []
 }
